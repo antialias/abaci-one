@@ -1056,10 +1056,25 @@ def generate_web_flashcards(numbers, config, output_path):
                 justify-content: center;
             }}
             
-            .challenge-buttons {{
+            .challenges-grid {{
                 grid-template-columns: 1fr;
-                gap: 15px;
+                gap: 20px;
                 margin: 20px 0;
+            }}
+            
+            .challenge-category {{
+                padding: 20px;
+            }}
+            
+            .challenge-card {{
+                min-height: 80px;
+                padding: 15px;
+            }}
+            
+            .challenge-icon {{
+                width: 40px;
+                height: 40px;
+                font-size: 24px;
             }}
             
             .modal-content {{
@@ -1837,53 +1852,857 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
         
         /* Challenge Buttons */
-        .challenge-buttons {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-            max-width: 800px;
+        .challenges-section {{
+            margin: 40px 0;
+            max-width: 1200px;
             margin-left: auto;
             margin-right: auto;
         }}
         
-        .challenge-btn {{
+        .section-header {{
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        
+        .section-header h2 {{
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 28px;
+        }}
+        
+        .section-header p {{
+            margin: 0;
+            color: #7a8695;
+            font-size: 16px;
+        }}
+        
+        .challenges-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }}
+        
+        .challenge-category {{
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #f0f2f5;
+        }}
+        
+        .category-title {{
+            margin: 0 0 20px 0;
+            color: #2c3e50;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f2f5;
+        }}
+        
+        .challenge-cards {{
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }}
+        
+        .challenge-card {{
             background: linear-gradient(135deg, #4a90e2, #357abd);
             color: white;
             border: none;
-            border-radius: 16px;
-            padding: 30px;
+            border-radius: 12px;
+            padding: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
             text-align: left;
-            box-shadow: 0 6px 20px rgba(74, 144, 226, 0.3);
+            min-height: 100px;
         }}
         
-        .challenge-btn:hover {{
-            transform: translateY(-3px);
+        .challenge-card:hover {{
+            transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(74, 144, 226, 0.4);
         }}
         
-        .challenge-btn h3 {{
-            margin: 0 0 10px 0;
-            font-size: 20px;
-            font-weight: bold;
+        .challenge-icon {{
+            font-size: 32px;
+            flex-shrink: 0;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
         }}
         
-        .challenge-btn p {{
-            margin: 0;
+        .challenge-content {{
+            flex: 1;
+        }}
+        
+        .challenge-content h4 {{
+            margin: 0 0 8px 0;
+            font-size: 18px;
+            font-weight: 600;
+        }}
+        
+        .challenge-content p {{
+            margin: 0 0 12px 0;
             opacity: 0.9;
             font-size: 14px;
             line-height: 1.4;
         }}
         
-        .sorting-btn {{
-            background: linear-gradient(135deg, #2c5f76, #1e4a61);
-            box-shadow: 0 6px 20px rgba(44, 95, 118, 0.3);
+        .challenge-stats {{
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
         }}
         
-        .sorting-btn:hover {{
+        .stat {{
+            background: rgba(255,255,255,0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }}
+        
+        .sorting-card {{
+            background: linear-gradient(135deg, #2c5f76, #1e4a61);
+        }}
+        
+        .sorting-card:hover {{
             box-shadow: 0 8px 25px rgba(44, 95, 118, 0.4);
+        }}
+        
+        .matching-card {{
+            background: linear-gradient(135deg, #7b4397, #dc2430);
+        }}
+        
+        .matching-card:hover {{
+            box-shadow: 0 8px 25px rgba(123, 67, 151, 0.4);
+        }}
+        
+        .start-game-btn {{
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+        }}
+        
+        .start-game-btn:hover {{
+            background: linear-gradient(135deg, #5f4ed6, #9085f5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.4);
+        }}
+        
+        .start-game-btn .btn-main {{
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.2;
+        }}
+        
+        .start-game-btn .btn-sub {{
+            font-size: 13px;
+            opacity: 0.9;
+            font-weight: 400;
+        }}
+        
+        .mode-buttons, .timer-buttons {{
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }}
+        
+        .mode-btn, .timer-btn {{
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 120px;
+            justify-content: center;
+        }}
+        
+        .mode-btn.active, .timer-btn.active {{
+            background: #007bff;
+            border-color: #007bff;
+            color: white;
+        }}
+        
+        .mode-btn:hover, .timer-btn:hover {{
+            border-color: #007bff;
+            background: #e3f2fd;
+        }}
+        
+        .mode-btn.active:hover, .timer-btn.active:hover {{
+            background: #0056b3;
+        }}
+        
+        .mode-icon {{
+            font-size: 18px;
+        }}
+        
+        .mode-text {{
+            font-weight: 500;
+        }}
+        
+        .timer-btn {{
+            min-width: 80px;
+            font-size: 14px;
+            font-weight: 500;
+        }}
+        
+        /* Matching Game Styles */
+        .matching-header {{
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            padding: 15px 20px;
+            z-index: 100;
+            margin: 0 -20px 15px -20px;
+        }}
+        
+        .matching-header-content {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        
+        .matching-status-group {{
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }}
+        
+        .matching-stats {{
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+            color: #6c757d;
+        }}
+        
+        .matching-timer {{
+            font-weight: 600;
+            color: #495057;
+        }}
+        
+        .player-stats {{
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 10px;
+        }}
+        
+        .player-info {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            min-width: 80px;
+        }}
+        
+        .player-info.active {{
+            color: white;
+        }}
+        
+        .player-info.player1 {{
+            border: 2px solid #007bff;
+        }}
+        
+        .player-info.player1.active {{
+            background: #007bff;
+        }}
+        
+        .player-info.player2 {{
+            border: 2px solid #fd7e14;
+        }}
+        
+        .player-info.player2.active {{
+            background: #fd7e14;
+        }}
+        
+        .player-name {{
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }}
+        
+        .player-score {{
+            font-size: 14px;
+            font-weight: 500;
+        }}
+        
+        .current-turn {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #007bff;
+            text-align: center;
+        }}
+        
+        .turn-timer {{
+            font-size: 20px;
+            font-weight: 700;
+            color: #495057;
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 8px;
+            min-width: 60px;
+            text-align: center;
+            border: 2px solid #dee2e6;
+        }}
+        
+        .turn-timer.warning {{
+            background: #fff3cd;
+            color: #856404;
+            animation: timerPulse 1s infinite;
+        }}
+        
+        .turn-timer.critical {{
+            background: #f8d7da;
+            color: #721c24;
+            animation: timerPulse 0.5s infinite;
+        }}
+        
+        .turn-timer.waiting {{
+            background: #d1ecf1;
+            color: #0c5460;
+            opacity: 0.8;
+        }}
+        
+        @keyframes timerPulse {{
+            0%, 100% {{ transform: scale(1); }}
+            50% {{ transform: scale(1.1); }}
+        }}
+        
+        .two-player-results {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }}
+        
+        .player-result {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .player-name {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #495057;
+        }}
+        
+        .player-final-score {{
+            font-size: 24px;
+            font-weight: 700;
+            color: #007bff;
+        }}
+        
+        .vs-divider {{
+            font-size: 18px;
+            font-weight: 700;
+            color: #6c757d;
+            padding: 0 10px;
+        }}
+        
+        .game-summary {{
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+        }}
+        
+        .summary-item {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }}
+        
+        .summary-label {{
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-weight: 600;
+        }}
+        
+        .summary-value {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #495057;
+        }}
+        
+        .matching-grid {{
+            display: grid;
+            gap: 8px;
+            padding: 10px;
+            justify-content: center;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        
+        .matching-grid.grid-3x4 {{
+            grid-template-columns: repeat(4, 1fr);
+            aspect-ratio: 4/3;
+            width: min(100%, calc(100vh - 280px) * 4/3);
+            height: min(calc(100vw - 40px) * 3/4, calc(100vh - 280px));
+        }}
+        
+        .matching-grid.grid-4x4 {{
+            grid-template-columns: repeat(4, 1fr);
+            aspect-ratio: 1;
+            width: min(100%, calc(100vh - 280px));
+            height: min(calc(100vw - 40px), calc(100vh - 280px));
+        }}
+        
+        .matching-grid.grid-4x6 {{
+            grid-template-columns: repeat(6, 1fr);
+            aspect-ratio: 6/4;
+            width: min(100%, calc(100vh - 280px) * 6/4);
+            height: min(calc(100vw - 40px) * 4/6, calc(100vh - 280px));
+        }}
+        
+        .matching-grid.grid-5x6 {{
+            grid-template-columns: repeat(6, 1fr);
+            aspect-ratio: 6/5;
+            width: min(100%, calc(100vh - 280px) * 6/5);
+            height: min(calc(100vw - 40px) * 5/6, calc(100vh - 280px));
+        }}
+        
+        .match-card {{
+            aspect-ratio: 1;
+            background: #ffffff;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.3s ease;
+            user-select: none;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }}
+        
+        /* Cards automatically size to fill grid cells while maintaining aspect ratio */
+        .match-card {{
+            /* Let the card fill the grid cell */
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 0;
+        }}
+        
+        .match-card:hover {{
+            border-color: #007bff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+        }}
+        
+        .match-card.flipped {{
+            background: #f8f9fa;
+            border-color: #007bff;
+        }}
+        
+        .match-card.matched {{
+            background: #d4edda;
+            border-color: #28a745;
+            cursor: default;
+            position: relative;
+            opacity: 0.7;
+            filter: grayscale(20%);
+            transform: scale(0.95);
+            transition: all 0.3s ease;
+        }}
+        
+        .match-card.matched:hover {{
+            transform: scale(0.95);
+            box-shadow: none;
+            border-color: #28a745;
+        }}
+        
+        .match-card.matched-player1 {{
+            background: #cce7ff;
+            border-color: #007bff;
+            box-shadow: none;
+            opacity: 0.7;
+            filter: grayscale(20%);
+        }}
+        
+        .match-card.matched-player1:hover {{
+            border-color: #007bff;
+            box-shadow: none;
+        }}
+        
+        .match-card.matched-player1::before {{
+            border-color: #007bff !important;
+            background: linear-gradient(45deg, rgba(0, 123, 255, 0.1), rgba(0, 123, 255, 0.05)) !important;
+        }}
+        
+        .match-card.matched-player1::after {{
+            background: #007bff !important;
+            box-shadow: 0 0 0 1px #007bff, 0 0 8px rgba(0, 123, 255, 0.4) !important;
+        }}
+        
+        .match-card.matched-player2 {{
+            background: #ffe6cc;
+            border-color: #fd7e14;
+            box-shadow: none;
+            opacity: 0.7;
+            filter: grayscale(20%);
+        }}
+        
+        .match-card.matched-player2:hover {{
+            border-color: #fd7e14;
+            box-shadow: none;
+        }}
+        
+        .match-card.matched-player2::before {{
+            border-color: #fd7e14 !important;
+            background: linear-gradient(45deg, rgba(253, 126, 20, 0.1), rgba(253, 126, 20, 0.05)) !important;
+        }}
+        
+        .match-card.matched-player2::after {{
+            background: #fd7e14 !important;
+            box-shadow: 0 0 0 1px #fd7e14, 0 0 8px rgba(253, 126, 20, 0.4) !important;
+        }}
+        
+        .player-badge {{
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 20;
+        }}
+        
+        .player-badge.player1 {{
+            background: #007bff;
+        }}
+        
+        .player-badge.player2 {{
+            background: #fd7e14;
+        }}
+        
+        .match-card.matched::after {{
+            content: '';
+            position: absolute;
+            bottom: 3px;
+            left: 3px;
+            width: 12px;
+            height: 12px;
+            background: #28a745;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 1px #28a745, 0 0 8px rgba(40, 167, 69, 0.4);
+            pointer-events: none;
+            z-index: 10;
+        }}
+        
+        .match-card.matched::before {{
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            background: linear-gradient(45deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
+            pointer-events: none;
+            z-index: 1;
+        }}
+        
+        .match-card.matched .match-card-content {{
+            opacity: 0.6;
+        }}
+        
+        .match-card.invalid-move {{
+            animation: invalidMoveShake 0.6s ease-in-out;
+            border-color: #dc3545 !important;
+        }}
+        
+        @keyframes invalidMoveShake {{
+            0%, 100% {{ transform: translateX(0); }}
+            10%, 30%, 50%, 70%, 90% {{ transform: translateX(-3px); }}
+            20%, 40%, 60%, 80% {{ transform: translateX(3px); }}
+        }}
+        
+        .match-card.valid-choice {{
+            border-color: #28a745 !important;
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.4);
+            animation: validChoicePulse 2s infinite;
+        }}
+        
+        .match-card.invalid-choice {{
+            opacity: 0.5;
+            cursor: not-allowed;
+        }}
+        
+        .match-card.invalid-choice:hover {{
+            transform: none;
+            box-shadow: none;
+        }}
+        
+        @keyframes validChoicePulse {{
+            0%, 100% {{ box-shadow: 0 0 8px rgba(40, 167, 69, 0.4); }}
+            50% {{ box-shadow: 0 0 12px rgba(40, 167, 69, 0.7); }}
+        }}
+        
+        @keyframes matchedCard {{
+            0% {{ 
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }}
+            50% {{ 
+                transform: scale(1.1) rotate(2deg);
+                opacity: 0.9;
+            }}
+            100% {{ 
+                transform: scale(0.95) rotate(0deg);
+                opacity: 0.7;
+            }}
+        }}
+        
+        .match-card.matched {{
+            animation: matchedCard 0.6s ease-out forwards;
+        }}
+        
+        .match-card-content {{
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 8px;
+        }}
+        
+        .match-card.flipped .match-card-content,
+        .match-card.matched .match-card-content {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        
+        .match-card-number {{
+            font-size: 24px;
+            font-weight: bold;
+            color: #495057;
+        }}
+        
+        .match-card-abacus {{
+            width: 100%;
+            height: 100%;
+        }}
+        
+        .match-card-abacus svg {{
+            width: 100%;
+            height: 100%;
+        }}
+        
+        .match-card-back {{
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            gap: 4px;
+            border-radius: 6px;
+            overflow: hidden;
+        }}
+        
+        .match-card-back.abacus-type {{
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+        }}
+        
+        .match-card-back.number-type {{
+            background: linear-gradient(135deg, #00b894, #00cec9);
+        }}
+        
+        .match-card-back .card-type-icon {{
+            font-size: 40px;
+        }}
+        
+        .match-card.flipped .match-card-back,
+        .match-card.matched .match-card-back {{
+            display: none;
+        }}
+        
+        .matching-instructions {{
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }}
+        
+        .matching-feedback {{
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }}
+        
+        @media (max-width: 768px) {{
+            .matching-grid {{
+                gap: 6px;
+                padding: 8px;
+            }}
+            
+            .matching-grid.grid-3x4 {{
+                width: min(100%, calc(100vh - 260px) * 4/3);
+                height: min(calc(100vw - 30px) * 3/4, calc(100vh - 260px));
+            }}
+            
+            .matching-grid.grid-4x4 {{
+                width: min(100%, calc(100vh - 260px));
+                height: min(calc(100vw - 30px), calc(100vh - 260px));
+            }}
+            
+            .matching-grid.grid-4x6 {{
+                width: min(100%, calc(100vh - 260px) * 6/4);
+                height: min(calc(100vw - 30px) * 4/6, calc(100vh - 260px));
+            }}
+            
+            .matching-grid.grid-5x6 {{
+                width: min(100%, calc(100vh - 260px) * 6/5);
+                height: min(calc(100vw - 30px) * 5/6, calc(100vh - 260px));
+            }}
+            
+            .match-card-number {{
+                font-size: 16px;
+            }}
+            
+            .match-card-back .card-type-icon {{
+                font-size: 28px;
+            }}
+            
+            .matching-header {{
+                padding: 10px 15px;
+                margin: 0 -20px 10px -20px;
+            }}
+            
+            .matching-instructions {{
+                padding: 12px;
+                margin: 0 0 15px 0;
+                font-size: 14px;
+            }}
+            
+            .start-game-btn {{
+                min-height: 60px;
+                padding: 12px 16px;
+            }}
+            
+            .start-game-btn .btn-main {{
+                font-size: 14px;
+            }}
+            
+            .start-game-btn .btn-sub {{
+                font-size: 12px;
+            }}
+        }}
+        
+        @media (max-width: 480px) {{
+            .matching-grid {{
+                gap: 4px;
+                padding: 5px;
+            }}
+            
+            .matching-grid.grid-3x4 {{
+                width: min(100%, calc(100vh - 240px) * 4/3);
+                height: min(calc(100vw - 20px) * 3/4, calc(100vh - 240px));
+            }}
+            
+            .matching-grid.grid-4x4 {{
+                width: min(100%, calc(100vh - 240px));
+                height: min(calc(100vw - 20px), calc(100vh - 240px));
+            }}
+            
+            .matching-grid.grid-4x6 {{
+                width: min(100%, calc(100vh - 240px) * 6/4);
+                height: min(calc(100vw - 20px) * 4/6, calc(100vh - 240px));
+            }}
+            
+            .matching-grid.grid-5x6 {{
+                width: min(100%, calc(100vh - 240px) * 6/5);
+                height: min(calc(100vw - 20px) * 5/6, calc(100vh - 240px));
+            }}
+            
+            .match-card-number {{
+                font-size: 14px;
+            }}
+            
+            .match-card-back .card-type-icon {{
+                font-size: 24px;
+            }}
+            
+            .start-game-btn {{
+                min-height: 50px;
+                padding: 10px 12px;
+            }}
+            
+            .start-game-btn .btn-main {{
+                font-size: 13px;
+            }}
+            
+            .start-game-btn .btn-sub {{
+                font-size: 11px;
+            }}
+            
+            .match-card.matched::after {{
+                width: 10px;
+                height: 10px;
+                bottom: 2px;
+                left: 2px;
+            }}
         }}
         
         /* Modal Styling */
@@ -2035,16 +2854,60 @@ def generate_web_flashcards(numbers, config, output_path):
             </div>
         </div>
         
-        <!-- Challenge Buttons -->
-        <div class="challenge-buttons">
-            <button id="open-quiz-modal" class="challenge-btn quiz-btn">
-                <h3>Speed Memory Quiz</h3>
-                <p>Test your soroban reading skills with timed card displays</p>
-            </button>
-            <button id="open-sorting-modal" class="challenge-btn sorting-btn">
-                <h3>Card Sorting Challenge</h3>
-                <p>Arrange cards in order using only the abacus representations</p>
-            </button>
+        <!-- Challenges Section -->
+        <div class="challenges-section">
+            <div class="section-header">
+                <h2>🎯 Interactive Challenges</h2>
+                <p>Test your soroban skills with engaging games and quizzes</p>
+            </div>
+            
+            <div class="challenges-grid">
+                <div class="challenge-category">
+                    <h3 class="category-title">🧠 Memory & Speed</h3>
+                    <div class="challenge-cards">
+                        <button id="open-quiz-modal" class="challenge-card quiz-card">
+                            <div class="challenge-icon">⚡</div>
+                            <div class="challenge-content">
+                                <h4>Speed Memory Quiz</h4>
+                                <p>Quick card displays test your reading skills</p>
+                                <div class="challenge-stats">
+                                    <span class="stat">🎯 Accuracy</span>
+                                    <span class="stat">⏱️ Speed</span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="challenge-category">
+                    <h3 class="category-title">🎲 Logic & Patterns</h3>
+                    <div class="challenge-cards">
+                        <button id="open-sorting-modal" class="challenge-card sorting-card">
+                            <div class="challenge-icon">🔢</div>
+                            <div class="challenge-content">
+                                <h4>Card Sorting Challenge</h4>
+                                <p>Arrange cards using only abacus patterns</p>
+                                <div class="challenge-stats">
+                                    <span class="stat">🧩 Logic</span>
+                                    <span class="stat">👀 Pattern Recognition</span>
+                                </div>
+                            </div>
+                        </button>
+                        
+                        <button id="open-matching-modal" class="challenge-card matching-card">
+                            <div class="challenge-icon">🧩</div>
+                            <div class="challenge-content">
+                                <h4>Matching Pairs</h4>
+                                <p>Match abacus patterns with their numerals</p>
+                                <div class="challenge-stats">
+                                    <span class="stat">🔍 Memory</span>
+                                    <span class="stat">⚡ Speed</span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Quiz Modal -->
@@ -2265,6 +3128,133 @@ def generate_web_flashcards(numbers, config, output_path):
             </div>
         </div>
 
+        <!-- Matching Pairs Modal -->
+        <div id="matching-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Matching Pairs Challenge</h2>
+                    <div class="modal-controls">
+                        <button id="matching-fullscreen-btn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+                        <button id="close-matching-modal" class="close-btn">&times;</button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <p>Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves!</p>
+            
+            <div class="matching-controls">
+                <div class="control-group">
+                    <label>Game Mode:</label>
+                    <div class="mode-buttons">
+                        <button type="button" class="mode-btn active" data-mode="single">
+                            <div class="mode-icon">👤</div>
+                            <div class="mode-text">Single Player</div>
+                        </button>
+                        <button type="button" class="mode-btn" data-mode="two-player">
+                            <div class="mode-icon">👥</div>
+                            <div class="mode-text">Two Player</div>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-group" id="timer-controls" style="display: none;">
+                    <label>Turn Timer:</label>
+                    <div class="timer-buttons">
+                        <button type="button" class="timer-btn active" data-timer="0">No Timer</button>
+                        <button type="button" class="timer-btn" data-timer="15">15 sec</button>
+                        <button type="button" class="timer-btn" data-timer="30">30 sec</button>
+                        <button type="button" class="timer-btn" data-timer="60">60 sec</button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="match-grid-size">Choose Grid Size to Start:</label>
+                    <div class="count-buttons">
+                        <button type="button" class="match-size-btn start-game-btn" data-pairs="6">
+                            <div class="btn-main">3×4 Grid</div>
+                            <div class="btn-sub">6 pairs</div>
+                        </button>
+                        <button type="button" class="match-size-btn start-game-btn" data-pairs="8">
+                            <div class="btn-main">4×4 Grid</div>
+                            <div class="btn-sub">8 pairs</div>
+                        </button>
+                        <button type="button" class="match-size-btn start-game-btn" data-pairs="12">
+                            <div class="btn-main">4×6 Grid</div>
+                            <div class="btn-sub">12 pairs</div>
+                        </button>
+                        <button type="button" class="match-size-btn start-game-btn" data-pairs="15">
+                            <div class="btn-main">5×6 Grid</div>
+                            <div class="btn-sub">15 pairs</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Matching Game Header (Sticky) -->
+            <div id="matching-header" class="matching-header" style="display: none;">
+                <div class="matching-header-content">
+                    <div class="matching-status-group">
+                        <span id="matching-status">Ready to start</span>
+                        <div class="matching-stats">
+                            <span id="moves-counter">Moves: 0</span>
+                            <span id="pairs-found">Pairs: 0/0</span>
+                            <div class="matching-timer" id="matching-timer">0:00</div>
+                        </div>
+                        <!-- Two-player specific stats -->
+                        <div class="player-stats" id="player-stats" style="display: none;">
+                            <div class="player-info player1" id="player1-info">
+                                <span class="player-name">🔵 Player 1</span>
+                                <span class="player-score">0 pairs</span>
+                            </div>
+                            <div class="current-turn" id="current-turn">🔵 Player 1's Turn</div>
+                            <div class="turn-timer" id="turn-timer" style="display: none;">30s</div>
+                            <div class="player-info player2" id="player2-info">
+                                <span class="player-name">🟠 Player 2</span>
+                                <span class="player-score">0 pairs</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="matching-controls">
+                        <button id="new-matching" class="header-btn new-btn">New Game</button>
+                        <button id="end-matching" class="header-btn end-btn">End Game</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matching Game Area -->
+            <div id="matching-game" style="display: none;">
+                <div class="matching-instructions">
+                    <p><strong>Instructions:</strong> Click two cards to flip them. Purple cards (🧮) contain abacus patterns, green cards (🔢) contain numbers. Match abacus patterns with their corresponding numbers. Complete all pairs with minimum moves!</p>
+                </div>
+                
+                <div id="matching-grid" class="matching-grid">
+                    <!-- Matching cards will be generated here -->
+                </div>
+                
+                <div class="matching-feedback" id="matching-feedback" style="display: none;">
+                    <!-- Feedback will be shown here -->
+                </div>
+            </div>
+
+            <!-- Matching Score Modal -->
+            <div id="matching-score-modal" class="score-modal" style="display: none;">
+                <div class="score-modal-content">
+                    <div class="score-modal-header">
+                        <h3>🧩 Matching Pairs Results</h3>
+                        <button class="matching-score-modal-close">&times;</button>
+                    </div>
+                    <div id="matching-score-modal-body" class="score-modal-body">
+                        <!-- Score content will be inserted here -->
+                    </div>
+                    <div class="score-modal-footer">
+                        <button id="matching-score-modal-new-game" class="modal-btn new-game-btn">New Challenge</button>
+                        <button id="matching-score-modal-close-btn" class="modal-btn close-btn">Close</button>
+                    </div>
+                </div>
+            </div>
+                </div>
+            </div>
+        </div>
+
         <div class="cards-grid" id="cards-grid">
             {cards_html}
         </div>
@@ -2292,6 +3282,10 @@ def generate_web_flashcards(numbers, config, output_path):
                 this.openModal('sorting-modal');
             }});
             
+            document.getElementById('open-matching-modal').addEventListener('click', () => {{
+                this.openModal('matching-modal');
+            }});
+            
             // Close button events
             document.getElementById('close-quiz-modal').addEventListener('click', () => {{
                 this.closeModal('quiz-modal');
@@ -2301,6 +3295,10 @@ def generate_web_flashcards(numbers, config, output_path):
                 this.closeModal('sorting-modal');
             }});
             
+            document.getElementById('close-matching-modal').addEventListener('click', () => {{
+                this.closeModal('matching-modal');
+            }});
+            
             // Fullscreen button events
             document.getElementById('quiz-fullscreen-btn').addEventListener('click', () => {{
                 this.toggleFullscreen('quiz-modal');
@@ -2308,6 +3306,10 @@ def generate_web_flashcards(numbers, config, output_path):
             
             document.getElementById('sorting-fullscreen-btn').addEventListener('click', () => {{
                 this.toggleFullscreen('sorting-modal');
+            }});
+            
+            document.getElementById('matching-fullscreen-btn').addEventListener('click', () => {{
+                this.toggleFullscreen('matching-modal');
             }});
             
             // Close modal when clicking outside
@@ -4042,11 +5044,765 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
     }}
     
+    // Matching Pairs Challenge
+    class MatchingChallenge {{
+        constructor() {{
+            this.cards = [];
+            this.gameCards = [];
+            this.flippedCards = [];
+            this.matchedPairs = 0;
+            this.totalPairs = 0;
+            this.moves = 0;
+            this.selectedPairs = 6;
+            this.gameStartTime = null;
+            this.timerInterval = null;
+            
+            // Two-player mode variables
+            this.gameMode = 'single';
+            this.turnTimer = 0; // 0 = no timer
+            this.currentPlayer = 1;
+            this.player1Score = 0;
+            this.player2Score = 0;
+            this.turnTimeLeft = 0;
+            this.turnTimerInterval = null;
+            this.playerTurnActive = true;
+            this.isFirstMove = true;
+            
+            this.initializeMatching();
+            this.bindMatchingEvents();
+        }}
+        
+        initializeMatching() {{
+            // Get available cards (same as quiz cards)
+            const cardElements = document.querySelectorAll('.flashcard');
+            this.cards = Array.from(cardElements).map(card => ({{
+                number: parseInt(card.dataset.number),
+                svg: card.querySelector('.abacus-container').outerHTML
+            }}));
+        }}
+        
+        bindMatchingEvents() {{
+            // Remove existing event listeners to prevent duplicates
+            document.querySelectorAll('.mode-btn').forEach(btn => {{
+                // Clone the button to remove all event listeners
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+            }});
+            
+            document.querySelectorAll('.timer-btn').forEach(btn => {{
+                // Clone the button to remove all event listeners
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+            }});
+            
+            document.querySelectorAll('.start-game-btn').forEach(btn => {{
+                // Clone the button to remove all event listeners
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+            }});
+            
+            // Mode selection
+            document.querySelectorAll('.mode-btn').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    this.gameMode = e.target.dataset.mode;
+                    
+                    // Show/hide timer controls for two-player mode
+                    const timerControls = document.getElementById('timer-controls');
+                    if (this.gameMode === 'two-player') {{
+                        timerControls.style.display = 'block';
+                    }} else {{
+                        timerControls.style.display = 'none';
+                    }}
+                }});
+            }});
+            
+            // Timer selection
+            document.querySelectorAll('.timer-btn').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    document.querySelectorAll('.timer-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    this.turnTimer = parseInt(e.target.dataset.timer);
+                }});
+            }});
+            
+            // Grid size selection and immediate game start
+            document.querySelectorAll('.start-game-btn').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    // Get the pairs count from the clicked button
+                    const target = e.currentTarget; // Use currentTarget to get the button itself
+                    this.selectedPairs = parseInt(target.dataset.pairs);
+                    
+                    // Start the game immediately
+                    this.startMatching();
+                }});
+            }});
+            
+            // Action buttons
+            document.getElementById('new-matching').addEventListener('click', () => this.newChallenge());
+            document.getElementById('end-matching').addEventListener('click', () => this.endMatching());
+            
+            // Score modal event listeners
+            document.querySelector('.matching-score-modal-close').addEventListener('click', () => this.hideScoreModal());
+            document.getElementById('matching-score-modal-close-btn').addEventListener('click', () => this.hideScoreModal());
+            document.getElementById('matching-score-modal-new-game').addEventListener('click', () => {{
+                this.hideScoreModal();
+                this.newChallenge();
+            }});
+            
+            // Close modal when clicking outside
+            document.getElementById('matching-score-modal').addEventListener('click', (e) => {{
+                if (e.target.id === 'matching-score-modal') {{
+                    this.hideScoreModal();
+                }}
+            }});
+        }}
+        
+        startMatching() {{
+            // Select random cards for matching
+            const shuffledCards = [...this.cards].sort(() => Math.random() - 0.5);
+            const selectedCards = shuffledCards.slice(0, this.selectedPairs);
+            
+            // Create pairs: abacus and number
+            this.gameCards = [];
+            selectedCards.forEach(card => {{
+                // Add abacus card
+                this.gameCards.push({{
+                    id: `abacus_${{card.number}}`,
+                    type: 'abacus',
+                    number: card.number,
+                    content: card.svg,
+                    matched: false
+                }});
+                
+                // Add number card
+                this.gameCards.push({{
+                    id: `number_${{card.number}}`,
+                    type: 'number',
+                    number: card.number,
+                    content: card.number.toString(),
+                    matched: false
+                }});
+            }});
+            
+            // Shuffle the game cards
+            this.gameCards = this.gameCards.sort(() => Math.random() - 0.5);
+            this.totalPairs = this.selectedPairs;
+            this.matchedPairs = 0;
+            this.moves = 0;
+            this.flippedCards = [];
+            
+            // Initialize two-player mode variables
+            if (this.gameMode === 'two-player') {{
+                this.currentPlayer = 1;
+                this.player1Score = 0;
+                this.player2Score = 0;
+                this.playerTurnActive = true;
+            }}
+            
+            // Hide configuration controls, show game
+            document.querySelector('.matching-controls').style.display = 'none';
+            document.getElementById('matching-game').style.display = 'block';
+            document.getElementById('matching-header').style.display = 'block';
+            
+            this.renderMatchingGrid();
+            this.adjustCardSizes();
+            this.startTimer();
+            this.setupGameInterface();
+            this.updateMatchingStatus(this.gameMode === 'two-player' ? 'Player 1 starts!' : 'Find all matching pairs!');
+            this.updateMatchingStats();
+            
+            // For two-player mode with timer, show timer but don't start counting until first move
+            if (this.gameMode === 'two-player' && this.turnTimer > 0) {{
+                this.turnTimeLeft = this.turnTimer;
+                this.updateTurnTimerDisplay();
+                this.updateTurnTimerStatus('waiting'); // Show timer is waiting for first move
+            }}
+        }}
+        
+        renderMatchingGrid() {{
+            const grid = document.getElementById('matching-grid');
+            
+            // Set grid class based on number of pairs
+            grid.className = 'matching-grid';
+            if (this.selectedPairs === 6) grid.classList.add('grid-3x4');
+            else if (this.selectedPairs === 8) grid.classList.add('grid-4x4');
+            else if (this.selectedPairs === 12) grid.classList.add('grid-4x6');
+            else if (this.selectedPairs === 15) grid.classList.add('grid-5x6');
+            
+            grid.innerHTML = '';
+            
+            this.gameCards.forEach((card, index) => {{
+                const cardElement = document.createElement('div');
+                cardElement.className = 'match-card';
+                cardElement.dataset.index = index;
+                cardElement.dataset.cardId = card.id;
+                cardElement.dataset.number = card.number;
+                
+                const typeClass = card.type === 'abacus' ? 'abacus-type' : 'number-type';
+                const typeIcon = card.type === 'abacus' ? '🧮' : '🔢';
+                
+                cardElement.innerHTML = `
+                    <div class="match-card-back ${{typeClass}}">
+                        <div class="card-type-icon">${{typeIcon}}</div>
+                    </div>
+                    <div class="match-card-content">
+                        ${{card.type === 'number' ? 
+                            `<div class="match-card-number">${{card.content}}</div>` :
+                            `<div class="match-card-abacus">${{card.content}}</div>`
+                        }}
+                    </div>
+                `;
+                
+                cardElement.addEventListener('click', () => this.cardClicked(index));
+                grid.appendChild(cardElement);
+            }});
+        }}
+        
+        cardClicked(index) {{
+            const card = this.gameCards[index];
+            const cardElement = document.querySelector(`[data-index="${{index}}"]`);
+            
+            // Ignore if card is already flipped or matched
+            if (card.matched || cardElement.classList.contains('flipped')) return;
+            
+            // Ignore if two cards are already flipped
+            if (this.flippedCards.length >= 2) return;
+            
+            // In two-player mode, ignore clicks if it's not the player's turn
+            if (this.gameMode === 'two-player' && !this.playerTurnActive) return;
+            
+            // Start timer on first move in two-player mode
+            if (this.gameMode === 'two-player' && this.turnTimer > 0 && this.isFirstMove) {{
+                this.isFirstMove = false;
+                this.startTurnTimer();
+                this.updateTurnTimerStatus('active');
+            }}
+            
+            // If one card is already flipped, only allow clicking cards of opposite type
+            if (this.flippedCards.length === 1) {{
+                const flippedCardType = this.flippedCards[0].card.type;
+                if (card.type === flippedCardType) {{
+                    // Same type - show visual feedback but don't flip
+                    this.showInvalidMoveHint(cardElement);
+                    return;
+                }}
+            }}
+            
+            // Flip the card
+            cardElement.classList.add('flipped');
+            this.flippedCards.push({{ index, element: cardElement, card }});
+            
+            // If this is the first card flipped, highlight valid choices
+            if (this.flippedCards.length === 1) {{
+                this.highlightValidCards(card.type);
+            }}
+            
+            // If two cards are flipped, check for match
+            if (this.flippedCards.length === 2) {{
+                this.clearHighlights();
+                this.stopTurnTimer();
+                
+                if (this.gameMode === 'single') {{
+                    this.moves++;
+                }}
+                
+                this.updateMatchingStats();
+                setTimeout(() => this.checkMatch(), 1000);
+            }}
+        }}
+        
+        checkMatch() {{
+            const [first, second] = this.flippedCards;
+            
+            // Check if numbers match and types are different
+            if (first.card.number === second.card.number && first.card.type !== second.card.type) {{
+                // Match found!
+                first.element.classList.add('matched');
+                second.element.classList.add('matched');
+                first.card.matched = true;
+                second.card.matched = true;
+                
+                this.matchedPairs++;
+                
+                // In two-player mode, award point to current player and mark cards
+                if (this.gameMode === 'two-player') {{
+                    const playerClass = `matched-player${{this.currentPlayer}}`;
+                    first.element.classList.add(playerClass);
+                    second.element.classList.add(playerClass);
+                    
+                    // Add player badges
+                    this.addPlayerBadge(first.element, this.currentPlayer);
+                    this.addPlayerBadge(second.element, this.currentPlayer);
+                    
+                    if (this.currentPlayer === 1) {{
+                        this.player1Score++;
+                    }} else {{
+                        this.player2Score++;
+                    }}
+                    // Player gets another turn after a match
+                    this.updatePlayerStats();
+                }} else {{
+                    this.updateMatchingStats();
+                }}
+                
+                // Check if game is complete
+                if (this.matchedPairs === this.totalPairs) {{
+                    this.endGame();
+                }}
+            }} else {{
+                // No match - flip cards back
+                first.element.classList.remove('flipped');
+                second.element.classList.remove('flipped');
+                
+                // In two-player mode, switch turns after a miss
+                if (this.gameMode === 'two-player') {{
+                    this.switchPlayer();
+                }}
+            }}
+            
+            this.flippedCards = [];
+            this.clearHighlights();
+            this.playerTurnActive = true; // Re-enable clicks
+        }}
+        
+        endGame() {{
+            this.stopTimer();
+            this.stopTurnTimer();
+            const elapsedTime = Date.now() - this.gameStartTime;
+            const seconds = Math.floor(elapsedTime / 1000);
+            
+            if (this.gameMode === 'two-player') {{
+                // Two-player results
+                let winner, description;
+                if (this.player1Score > this.player2Score) {{
+                    winner = 'Player 1 Wins!';
+                    description = `${{this.player1Score}} - ${{this.player2Score}}`;
+                }} else if (this.player2Score > this.player1Score) {{
+                    winner = 'Player 2 Wins!';
+                    description = `${{this.player2Score}} - ${{this.player1Score}}`;
+                }} else {{
+                    winner = "It's a Tie!";
+                    description = `${{this.player1Score}} - ${{this.player2Score}}`;
+                }}
+                
+                this.showScoreModal({{
+                    gameMode: 'two-player',
+                    winner,
+                    description,
+                    player1Score: this.player1Score,
+                    player2Score: this.player2Score,
+                    totalPairs: this.totalPairs,
+                    time: seconds
+                }});
+            }} else {{
+                // Single player results
+                const minimumMoves = this.totalPairs;
+                const efficiency = this.moves / minimumMoves;
+                
+                let medal, description;
+                if (efficiency <= 1.5) {{
+                    medal = '🏆 Gold';
+                    description = 'Perfect efficiency!';
+                }} else if (efficiency <= 2.0) {{
+                    medal = '🥈 Silver';
+                    description = 'Great job!';
+                }} else if (efficiency <= 3.0) {{
+                    medal = '🥉 Bronze';
+                    description = 'Good effort!';
+                }} else {{
+                    medal = '🎯 Practice';
+                    description = 'Keep practicing!';
+                }}
+                
+                this.showScoreModal({{
+                    gameMode: 'single',
+                    pairs: this.totalPairs,
+                    moves: this.moves,
+                    time: seconds,
+                    efficiency: efficiency.toFixed(1),
+                    medal,
+                    description
+                }});
+            }}
+        }}
+        
+        showScoreModal(results) {{
+            const modal = document.getElementById('matching-score-modal');
+            const body = document.getElementById('matching-score-modal-body');
+            
+            const timeStr = this.formatTime(results.time);
+            
+            if (results.gameMode === 'two-player') {{
+                // Two-player results layout
+                body.innerHTML = `
+                    <div class="score-summary">
+                        <div class="score-medal">${{results.winner}}</div>
+                        <div class="score-description">${{results.description}}</div>
+                    </div>
+                    
+                    <div class="two-player-results">
+                        <div class="player-result">
+                            <div class="player-name">🔵 Player 1</div>
+                            <div class="player-final-score" style="color: #007bff;">${{results.player1Score}} pairs</div>
+                        </div>
+                        <div class="vs-divider">VS</div>
+                        <div class="player-result">
+                            <div class="player-name">🟠 Player 2</div>
+                            <div class="player-final-score" style="color: #fd7e14;">${{results.player2Score}} pairs</div>
+                        </div>
+                    </div>
+                    
+                    <div class="game-summary">
+                        <div class="summary-item">
+                            <span class="summary-label">Total Pairs:</span>
+                            <span class="summary-value">${{results.totalPairs}}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Game Time:</span>
+                            <span class="summary-value">${{timeStr}}</span>
+                        </div>
+                    </div>
+                `;
+            }} else {{
+                // Single player results layout
+                body.innerHTML = `
+                    <div class="score-summary">
+                        <div class="score-medal">${{results.medal}}</div>
+                        <div class="score-description">${{results.description}}</div>
+                    </div>
+                    
+                    <div class="score-details">
+                        <div class="score-item">
+                            <span class="score-label">Pairs Matched:</span>
+                            <span class="score-value">${{results.pairs}}</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-label">Total Moves:</span>
+                            <span class="score-value">${{results.moves}}</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-label">Time:</span>
+                            <span class="score-value">${{timeStr}}</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-label">Efficiency:</span>
+                            <span class="score-value">${{results.efficiency}}x</span>
+                        </div>
+                    </div>
+                    
+                    <div class="score-explanation">
+                        <h4>Scoring System</h4>
+                        <div class="score-tiers">
+                            <div>🏆 Gold: ≤1.5x minimum moves</div>
+                            <div>🥈 Silver: ≤2.0x minimum moves</div>
+                            <div>🥉 Bronze: ≤3.0x minimum moves</div>
+                            <div>🎯 Practice: >3.0x minimum moves</div>
+                        </div>
+                    </div>
+                `;
+            }}
+            
+            modal.style.display = 'block';
+        }}
+        
+        hideScoreModal() {{
+            document.getElementById('matching-score-modal').style.display = 'none';
+        }}
+        
+        newChallenge() {{
+            this.endMatching();
+            setTimeout(() => this.startMatching(), 100);
+        }}
+        
+        endMatching() {{
+            // Stop timer
+            this.stopTimer();
+            this.stopTurnTimer();
+            
+            // Hide game and sticky header, show configuration controls
+            document.getElementById('matching-game').style.display = 'none';
+            document.getElementById('matching-header').style.display = 'none';
+            document.querySelector('.matching-controls').style.display = 'block';
+            
+            // Reset game state
+            this.flippedCards = [];
+            this.matchedPairs = 0;
+            this.moves = 0;
+            this.currentPlayer = 1;
+            this.player1Score = 0;
+            this.player2Score = 0;
+            this.playerTurnActive = true;
+            this.isFirstMove = true;
+            
+            // Reset mode selection display but preserve selected values
+            this.updateModeDisplay();
+            
+            // Re-bind events to ensure they work after DOM changes
+            this.bindMatchingEvents();
+        }}
+        
+        updateModeDisplay() {{
+            // Ensure the current game mode button is properly highlighted
+            document.querySelectorAll('.mode-btn').forEach(btn => {{
+                btn.classList.remove('active');
+                if (btn.dataset.mode === this.gameMode) {{
+                    btn.classList.add('active');
+                }}
+            }});
+            
+            // Show/hide timer controls based on current mode
+            const timerControls = document.getElementById('timer-controls');
+            if (this.gameMode === 'two-player') {{
+                timerControls.style.display = 'block';
+            }} else {{
+                timerControls.style.display = 'none';
+            }}
+            
+            // Ensure timer button is highlighted
+            document.querySelectorAll('.timer-btn').forEach(btn => {{
+                btn.classList.remove('active');
+                if (parseInt(btn.dataset.timer) === this.turnTimer) {{
+                    btn.classList.add('active');
+                }}
+            }});
+        }}
+        
+        startTimer() {{
+            this.gameStartTime = Date.now();
+            this.timerInterval = setInterval(() => {{
+                const elapsed = Date.now() - this.gameStartTime;
+                const seconds = Math.floor(elapsed / 1000);
+                document.getElementById('matching-timer').textContent = this.formatTime(seconds);
+            }}, 1000);
+        }}
+        
+        stopTimer() {{
+            if (this.timerInterval) {{
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }}
+        }}
+        
+        formatTime(totalSeconds) {{
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${{minutes}}:${{seconds.toString().padStart(2, '0')}}`;
+        }}
+        
+        updateMatchingStatus(message) {{
+            document.getElementById('matching-status').textContent = message;
+        }}
+        
+        updateMatchingStats() {{
+            document.getElementById('moves-counter').textContent = `Moves: ${{this.moves}}`;
+            document.getElementById('pairs-found').textContent = `Pairs: ${{this.matchedPairs}}/${{this.totalPairs}}`;
+        }}
+        
+        adjustCardSizes() {{
+            // CSS now handles responsive sizing automatically
+            // This method can be kept for any future dynamic adjustments if needed
+            
+            // Just ensure font sizes scale with container
+            const grid = document.getElementById('matching-grid');
+            const cards = grid.querySelectorAll('.match-card');
+            
+            cards.forEach(card => {{
+                const cardRect = card.getBoundingClientRect();
+                const cardSize = Math.min(cardRect.width, cardRect.height);
+                
+                // Adjust font sizes proportionally to actual card size
+                const baseFontSize = Math.max(cardSize * 0.25, 12);
+                const iconSize = Math.max(cardSize * 0.4, 16);
+                
+                const number = card.querySelector('.match-card-number');
+                if (number) number.style.fontSize = `${{baseFontSize}}px`;
+                
+                const icon = card.querySelector('.card-type-icon');
+                if (icon) icon.style.fontSize = `${{iconSize}}px`;
+            }});
+        }}
+        
+        showInvalidMoveHint(cardElement) {{
+            // Add temporary visual feedback for invalid moves
+            cardElement.classList.add('invalid-move');
+            
+            // Remove the class after animation
+            setTimeout(() => {{
+                cardElement.classList.remove('invalid-move');
+            }}, 600);
+        }}
+        
+        highlightValidCards(flippedCardType) {{
+            // Highlight cards of the opposite type
+            const validType = flippedCardType === 'abacus' ? 'number' : 'abacus';
+            
+            this.gameCards.forEach((card, index) => {{
+                const cardElement = document.querySelector(`[data-index="${{index}}"]`);
+                if (!card.matched && !cardElement.classList.contains('flipped')) {{
+                    if (card.type === validType) {{
+                        cardElement.classList.add('valid-choice');
+                    }} else {{
+                        cardElement.classList.add('invalid-choice');
+                    }}
+                }}
+            }});
+        }}
+        
+        clearHighlights() {{
+            // Remove all highlight classes
+            const cards = document.querySelectorAll('.match-card');
+            cards.forEach(card => {{
+                card.classList.remove('valid-choice', 'invalid-choice');
+            }});
+        }}
+        
+        setupGameInterface() {{
+            // Show/hide appropriate UI elements based on game mode
+            const singleStats = document.querySelector('.matching-stats');
+            const playerStats = document.getElementById('player-stats');
+            
+            if (this.gameMode === 'two-player') {{
+                singleStats.style.display = 'none';
+                playerStats.style.display = 'flex';
+                this.updatePlayerStats();
+                
+                // Show turn timer if enabled
+                const turnTimer = document.getElementById('turn-timer');
+                if (this.turnTimer > 0) {{
+                    turnTimer.style.display = 'block';
+                    turnTimer.textContent = `${{this.turnTimer}}s`;
+                }} else {{
+                    turnTimer.style.display = 'none';
+                }}
+            }} else {{
+                singleStats.style.display = 'flex';
+                playerStats.style.display = 'none';
+            }}
+        }}
+        
+        updatePlayerStats() {{
+            // Update player scores and current turn indicator
+            document.querySelector('#player1-info .player-score').textContent = `${{this.player1Score}} pairs`;
+            document.querySelector('#player2-info .player-score').textContent = `${{this.player2Score}} pairs`;
+            
+            // Update active player highlighting
+            const player1Info = document.getElementById('player1-info');
+            const player2Info = document.getElementById('player2-info');
+            const currentTurn = document.getElementById('current-turn');
+            
+            if (this.currentPlayer === 1) {{
+                player1Info.classList.add('active');
+                player2Info.classList.remove('active');
+                currentTurn.textContent = "🔵 Player 1's Turn";
+            }} else {{
+                player1Info.classList.remove('active');
+                player2Info.classList.add('active');
+                currentTurn.textContent = "🟠 Player 2's Turn";
+            }}
+        }}
+        
+        addPlayerBadge(cardElement, player) {{
+            // Create player badge element
+            const badge = document.createElement('div');
+            badge.className = `player-badge player${{player}}`;
+            badge.textContent = player;
+            
+            // Add badge to card
+            cardElement.appendChild(badge);
+        }}
+        
+        switchPlayer() {{
+            this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+            this.updatePlayerStats();
+            this.updateMatchingStatus(`Player ${{this.currentPlayer}}'s turn`);
+            
+            // Start turn timer immediately for new player if enabled
+            if (this.turnTimer > 0) {{
+                this.startTurnTimer();
+            }}
+        }}
+        
+        startTurnTimer() {{
+            if (this.turnTimer <= 0) return;
+            
+            this.turnTimeLeft = this.turnTimer;
+            this.updateTurnTimerDisplay();
+            
+            this.turnTimerInterval = setInterval(() => {{
+                this.turnTimeLeft--;
+                this.updateTurnTimerDisplay();
+                
+                if (this.turnTimeLeft <= 0) {{
+                    this.handleTurnTimeout();
+                }}
+            }}, 1000);
+        }}
+        
+        stopTurnTimer() {{
+            if (this.turnTimerInterval) {{
+                clearInterval(this.turnTimerInterval);
+                this.turnTimerInterval = null;
+            }}
+        }}
+        
+        updateTurnTimerDisplay() {{
+            const timerElement = document.getElementById('turn-timer');
+            if (!timerElement || this.turnTimer <= 0) return;
+            
+            timerElement.textContent = `${{this.turnTimeLeft}}s`;
+            
+            // Add warning/critical classes based on time left
+            timerElement.classList.remove('warning', 'critical');
+            if (this.turnTimeLeft <= 5) {{
+                timerElement.classList.add('critical');
+            }} else if (this.turnTimeLeft <= 10) {{
+                timerElement.classList.add('warning');
+            }}
+        }}
+        
+        updateTurnTimerStatus(status) {{
+            const timerElement = document.getElementById('turn-timer');
+            if (!timerElement) return;
+            
+            if (status === 'waiting') {{
+                timerElement.classList.add('waiting');
+                const timeString = `${{this.turnTimeLeft}}s`;
+                timerElement.textContent = `⏸️ ${{timeString}}`;
+            }} else if (status === 'active') {{
+                timerElement.classList.remove('waiting');
+                this.updateTurnTimerDisplay();
+            }}
+        }}
+        
+        handleTurnTimeout() {{
+            this.stopTurnTimer();
+            this.playerTurnActive = false;
+            
+            // Clear any flipped cards
+            if (this.flippedCards.length > 0) {{
+                this.flippedCards.forEach(item => {{
+                    item.element.classList.remove('flipped');
+                }});
+                this.flippedCards = [];
+                this.clearHighlights();
+            }}
+            
+            // Switch to next player
+            setTimeout(() => {{
+                this.switchPlayer();
+                this.playerTurnActive = true;
+            }}, 500);
+        }}
+    }}
+    
     // Initialize quiz and sorting when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {{
         new ModalManager();
         new SorobanQuiz();
         new SortingChallenge();
+        new MatchingChallenge();
     }});
     </script>
 </body>
