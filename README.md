@@ -1,6 +1,62 @@
-# Soroban Flashcard Generator
+<div align="center">
 
-A comprehensive flashcard generator for learning soroban (Japanese abacus) numbers. Creates high-quality outputs in multiple formats including interactive web flashcards, vector PDFs, PNG/SVG images, with built-in quiz modes and sorting challenges.
+# 🧮 Soroban Flashcard Generator
+### *Master the Ancient Art of Mental Math*
+
+<p align="center">
+<img src="docs/images/hero-colorblind-large.svg" width="400" alt="Colorful Soroban showing 987,654,321"><br>
+<em>Transform numbers into beautiful, interactive learning experiences</em>
+</p>
+
+**The ultimate toolkit for learning soroban (Japanese abacus) calculation**  
+🎯 Perfect for students, teachers, and mental math enthusiasts  
+🚀 From zero to calculation ninja in record time  
+🎨 Stunning visuals meet ancient wisdom  
+
+</div>
+
+---
+
+Create **gorgeous flashcards**, **interactive web games**, and **immersive quizzes** that make learning soroban addictive. Whether you're teaching a classroom or mastering mental math yourself, this generator transforms traditional number learning into a vibrant, engaging adventure.
+
+**🔥 What makes this special:**
+- **Visual perfection**: Crystal-clear soroban representations with authentic bead positioning
+- **Game-changing interactivity**: Memory challenges, sorting games, and smart input systems
+- **Universal compatibility**: Generate PDFs, web apps, PNGs, SVGs - whatever you need
+- **Colorblind-friendly**: Thoughtfully designed palettes ensure everyone can learn
+- **Instant deployment**: One command creates complete learning environments
+
+## 🎨 Visual Gallery
+
+<div align="center">
+
+### Experience the Beauty of Mathematical Precision
+
+<table>
+<tr>
+<td align="center">
+<img src="docs/images/hero-nature-large.svg" width="250" alt="Nature palette soroban"><br>
+<strong>🌿 Nature Palette</strong><br>
+<em>Earth tones for focused learning</em>
+</td>
+<td align="center">
+<img src="docs/images/hero-colorblind-large.svg" width="250" alt="Colorblind-friendly soroban"><br>
+<strong>👁️ Universal Access</strong><br>
+<em>Colorblind-friendly brilliance</em>
+</td>
+<td align="center">
+<img src="docs/images/hero-mnemonic-large.svg" width="250" alt="Mnemonic color soroban"><br>
+<strong>🧠 Memory Master</strong><br>
+<em>Colors that stick in your mind</em>
+</td>
+</tr>
+</table>
+
+*Each bead precisely positioned, every color carefully chosen, all interactions thoughtfully designed.*
+
+</div>
+
+---
 
 ## Examples
 
