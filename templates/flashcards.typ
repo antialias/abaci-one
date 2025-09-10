@@ -385,6 +385,7 @@
   hide-inactive-beads: false,
   bead-shape: "diamond",
   color-scheme: "monochrome",
+  color-palette: "default",
   colored-numerals: false,
   scale-factor: 0.9  // Manual scale adjustment (0.1 to 1.0)
 ) = {
