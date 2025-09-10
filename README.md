@@ -161,6 +161,11 @@ python3 src/generate.py --format web --range 0-50 --shuffle
 - **🧠 Timed Quiz Mode**: Configurable display times (0.5-10 seconds), multiple card counts (5, 10, 15, 25, All)
 - **📊 Smart Scoring**: Fair scoring algorithm, progress tracking, detailed results
 - **🎯 Sorting Challenge**: Drag-and-drop number sorting with gap-filling logic
+- **🎮 Matching Pairs**: Memory game matching abacus patterns with numerals
+  - Single & two-player modes with competitive scoring
+  - Multiple grid sizes (3×4, 4×4, 4×6, 5×6) for different skill levels
+  - Turn-based timers and player indicators for multiplayer games
+  - Efficiency-based medal system (Gold/Silver/Bronze achievements)
 - **📱 Responsive Design**: Works on desktop, tablet, and mobile
 - **🖨️ Print Support**: CSS optimized for printing physical cards
 - **♿ Accessible**: Keyboard navigation, semantic HTML, ARIA labels
@@ -204,6 +209,11 @@ python3 src/generate.py --format svg --range 0-99 --separate
 ### 🎓 Learning & Teaching Tools
 - **🧠 Interactive Quiz Mode**: Timed flashcard quizzes with configurable display times and scoring
 - **🎯 Sorting Challenges**: Drag-and-drop number sorting games with intelligent gap-filling
+- **🎮 Matching Pairs Game**: Memory challenges matching soroban patterns with numerals
+  - **Single Player**: Focus mode with efficiency scoring and medal achievements
+  - **Two Player**: Competitive multiplayer with turn timers and player tracking
+  - **Adaptive Difficulty**: 4 grid sizes (6-30 pairs) scaling with skill level
+  - **Smart Validation**: Prevents invalid moves, guides learning progression
 - **📊 Progress Tracking**: Real-time feedback, scoring, and performance analytics
 - **📱 Multi-Device Support**: Responsive design works on desktop, tablet, and mobile
 
@@ -272,6 +282,46 @@ python3 src/generate.py --range "1,2,5,10,20,50,100"
 # With shuffle
 python3 src/generate.py --range 0-99 --shuffle --seed 42
 ```
+
+## 🎮 Interactive Learning Games
+
+The web format includes three immersive learning experiences designed to make soroban mastery engaging and fun:
+
+### 🧠 Memory Quiz Challenge
+Test your number recognition skills with timed flashcard quizzes:
+- **Adaptive Timing**: 0.5-10 second display windows
+- **Flexible Difficulty**: 5, 10, 15, 25 cards or full deck
+- **Smart Scoring**: Accounts for difficulty and accuracy
+- **Progress Tracking**: Real-time feedback and performance analytics
+
+### 🎯 Sorting Master
+Develop number sense through drag-and-drop sorting challenges:
+- **Intelligent Gap-Filling**: Place cards in the correct sequence
+- **Visual Feedback**: Immediate validation and hints
+- **Scalable Difficulty**: Choose your challenge level
+- **Educational Design**: Reinforces number relationships
+
+### 🎮 Matching Pairs Arena
+Memory game combining visual pattern recognition with numerical understanding:
+
+**Single Player Mode:**
+- 🏆 **Medal System**: Gold (≤1.5× pairs), Silver (≤2× pairs), Bronze (≤3× pairs)
+- 📏 **Four Grid Sizes**: 3×4 (6 pairs), 4×4 (8 pairs), 4×6 (12 pairs), 5×6 (15 pairs)
+- ⚡ **Efficiency Scoring**: Rewards optimal play and quick thinking
+- 🎯 **Smart Validation**: Only allows valid matches (abacus ↔ numeral)
+
+**Two Player Mode:**
+- 👥 **Competitive Multiplayer**: Turn-based gameplay with score tracking
+- ⏱️ **Turn Timers**: Optional 15s/30s/60s time limits with visual countdown
+- 🏆 **Player Indicators**: Color-coded badges show who found each match
+- 🚀 **First Move Grace**: Timer waits for first card flip to begin counting
+- 🎨 **Visual Clarity**: De-emphasized matched cards guide continued play
+
+**Technical Features:**
+- 📱 **Responsive Design**: Scales perfectly on all devices without scrolling
+- 🔄 **One-Click Start**: Integrated mode and grid selection
+- 🎨 **Kid-Friendly UX**: Clear visual feedback prevents confusion
+- ♿ **Accessible**: Keyboard navigation and semantic HTML
 
 ## Configuration
 
