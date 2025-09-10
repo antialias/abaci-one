@@ -550,10 +550,53 @@ def generate_web_flashcards(numbers, config, output_path):
         .quiz-flashcard {{
             background: white;
             border-radius: 12px;
-            padding: 30px;
+            padding: 20px;
             box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-            max-width: 400px;
+            width: min(85vw, 700px);
+            height: min(50vh, 400px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
             transition: transform 0.3s ease;
+        }}
+        
+        /* Ensure quiz game section fits in viewport */
+        #quiz-game {{
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }}
+        
+        /* Responsive adjustments for smaller screens */
+        @media (max-height: 600px) {{
+            .quiz-flashcard {{
+                height: min(40vh, 300px);
+                padding: 15px;
+            }}
+        }}
+        
+        @media (max-height: 500px) {{
+            .quiz-flashcard {{
+                height: min(35vh, 250px);
+                padding: 10px;
+            }}
+            
+            #quiz-game {{
+                min-height: auto;
+                padding: 10px;
+            }}
+        }}
+        
+        .quiz-flashcard svg {{
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
         }}
         
         .quiz-flashcard.pulse {{
@@ -647,36 +690,44 @@ def generate_web_flashcards(numbers, config, output_path):
         
         .smart-input-container {{
             position: relative;
-            margin: 30px 0;
-        }}
-        
-        #smart-input {{
-            width: 100%;
-            max-width: 400px;
-            padding: 15px 20px;
-            font-size: 20px;
-            border: 3px solid #ddd;
-            border-radius: 12px;
+            margin: 40px 0;
             text-align: center;
-            transition: all 0.3s ease;
+        }}
+        
+        .smart-input-prompt {{
+            font-size: 16px;
+            color: #7a8695;
+            margin-bottom: 15px;
+            font-weight: normal;
+        }}
+        
+        .number-display {{
+            min-height: 60px;
+            padding: 20px;
+            font-size: 32px;
+            font-family: 'Courier New', 'Monaco', monospace;
+            text-align: center;
             font-weight: bold;
+            color: #2c3e50;
+            letter-spacing: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
         }}
         
-        #smart-input:focus {{
-            outline: none;
-            border-color: #2c5f76;
-            box-shadow: 0 0 0 3px rgba(44, 95, 118, 0.1);
+        .current-typing {{
+            display: inline-block;
+            transition: all 0.3s ease;
         }}
         
-        #smart-input.correct {{
-            border-color: #28a745;
-            background: rgba(40, 167, 69, 0.1);
+        .number-display.correct .current-typing {{
+            color: #28a745;
             animation: successPulse 0.5s ease;
         }}
         
-        #smart-input.incorrect {{
-            border-color: #dc3545;
-            background: rgba(220, 53, 69, 0.1);
+        .number-display.incorrect .current-typing {{
+            color: #dc3545;
             animation: errorShake 0.5s ease;
         }}
         
@@ -2071,8 +2122,11 @@ def generate_web_flashcards(numbers, config, output_path):
                 </div>
                 
                 <div class="smart-input-container">
-                    <input type="text" id="smart-input" placeholder="Type any number you remember..." autocomplete="off">
-                    <div class="input-feedback" id="input-feedback"></div>
+                    <div class="smart-input-prompt">Type the numbers you remember:</div>
+                    <div class="number-display" id="number-display">
+                        <span class="current-typing" id="current-typing"></span>
+                    </div>
+                    <input type="text" id="smart-input" style="position: absolute; left: -9999px; opacity: 0; pointer-events: none;" autocomplete="off">
                 </div>
                 
                 <div class="found-numbers" id="found-numbers">
@@ -2372,6 +2426,7 @@ def generate_web_flashcards(numbers, config, output_path):
             this.correctAnswers = [];
             this.guessesRemaining = 0;
             this.currentInput = '';
+            this.incorrectGuesses = 0;
             this.finishButtonsBound = false;
             
             this.initializeCards();
@@ -2573,7 +2628,11 @@ def generate_web_flashcards(numbers, config, output_path):
             
             // Setup smart input
             const smartInput = document.getElementById('smart-input');
+            const display = document.getElementById('number-display');
             smartInput.value = '';
+            document.getElementById('current-typing').textContent = '';
+            
+            // Focus the hidden input and make sure it captures keyboard events
             smartInput.focus();
             
             // Remove any existing event listeners to prevent duplicates
@@ -2582,6 +2641,13 @@ def generate_web_flashcards(numbers, config, output_path):
             
             // Add input event listener for real-time validation
             newSmartInput.addEventListener('input', (e) => this.handleSmartInput(e));
+            
+            // Make the display area clickable to maintain focus
+            display.addEventListener('click', () => {{
+                newSmartInput.focus();
+            }});
+            
+            // Keep focus on the hidden input
             newSmartInput.focus();
             
             // Bind finish buttons (they exist now that quiz-input is shown)
@@ -2625,9 +2691,14 @@ def generate_web_flashcards(numbers, config, output_path):
         handleSmartInput(event) {{
             const input = event.target;
             const value = input.value.trim();
+            const display = document.getElementById('number-display');
+            const typingSpan = document.getElementById('current-typing');
             
             // Reset visual feedback
-            input.classList.remove('correct', 'incorrect');
+            display.classList.remove('correct', 'incorrect');
+            
+            // Update the visual display
+            typingSpan.textContent = value;
             
             // Check if input is empty
             if (!value) {{
@@ -2646,19 +2717,19 @@ def generate_web_flashcards(numbers, config, output_path):
             // Check if this number is in our correct answers and not already found
             if (this.correctAnswers.includes(number) && !this.foundNumbers.includes(number)) {{
                 // Correct number found!
-                this.acceptCorrectNumber(number, input);
+                this.acceptCorrectNumber(number, input, display);
             }} else if (value.length >= 2 && !this.correctAnswers.includes(number)) {{
                 // Wrong number (only trigger after at least 2 digits to avoid false positives)
-                this.handleIncorrectGuess(input);
+                this.handleIncorrectGuess(input, display);
             }}
         }}
         
-        acceptCorrectNumber(number, input) {{
+        acceptCorrectNumber(number, input, display) {{
             // Add to found numbers
             this.foundNumbers.push(number);
             
             // Visual success feedback
-            input.classList.add('correct');
+            display.classList.add('correct');
             
             // Update stats
             document.getElementById('numbers-found').textContent = this.foundNumbers.length;
@@ -2669,6 +2740,7 @@ def generate_web_flashcards(numbers, config, output_path):
             // Clear input immediately for fast entry
             setTimeout(() => {{
                 input.value = '';
+                document.getElementById('current-typing').textContent = '';
                 this.currentInput = '';
                 
                 // Check if we're done
@@ -2682,22 +2754,24 @@ def generate_web_flashcards(numbers, config, output_path):
             
             // Remove success visual feedback after animation completes
             setTimeout(() => {{
-                input.classList.remove('correct');
+                display.classList.remove('correct');
             }}, 500);
         }}
         
-        handleIncorrectGuess(input) {{
+        handleIncorrectGuess(input, display) {{
             // Only penalize if we have guesses remaining
             if (this.guessesRemaining > 0) {{
                 this.guessesRemaining--;
+                this.incorrectGuesses++; // Track incorrect guesses for scoring
                 document.getElementById('guesses-remaining').textContent = this.guessesRemaining;
                 
                 // Visual error feedback
-                input.classList.add('incorrect');
+                display.classList.add('incorrect');
                 
                 // Clear input quickly for rapid entry
                 setTimeout(() => {{
                     input.value = '';
+                    document.getElementById('current-typing').textContent = '';
                     this.currentInput = '';
                     
                     // Check if we're out of guesses
@@ -2709,7 +2783,7 @@ def generate_web_flashcards(numbers, config, output_path):
                 
                 // Remove error visual feedback after animation completes
                 setTimeout(() => {{
-                    input.classList.remove('incorrect');
+                    display.classList.remove('incorrect');
                 }}, 500);
             }}
         }}
@@ -2772,8 +2846,10 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
         
         showResults() {{
-            const correct = this.calculateScore();
-            const percentage = Math.round((correct.length / this.correctAnswers.length) * 100);
+            const scoreData = this.calculateScore();
+            const correct = scoreData.correct;
+            const finalScore = scoreData.finalScore;
+            const percentage = Math.round(finalScore);
             
             // Update score display
             document.getElementById('score-percentage').textContent = percentage + '%';
@@ -2781,8 +2857,8 @@ def generate_web_flashcards(numbers, config, output_path):
             document.getElementById('score-total').textContent = this.correctAnswers.length;
             document.getElementById('result-timing').textContent = this.displayTime.toFixed(1) + 's';
             
-            // Show detailed results
-            this.showDetailedResults(correct);
+            // Show detailed results with penalty info
+            this.showDetailedResults(correct, scoreData);
             
             // Hide input, show results
             this.hideQuizSections();
@@ -2801,15 +2877,40 @@ def generate_web_flashcards(numbers, config, output_path):
                 }}
             }});
             
-            return correct;
+            // Calculate base score as percentage of correct answers
+            const baseScore = (correct.length / this.correctAnswers.length) * 100;
+            
+            // Calculate penalty: lose 5 points per incorrect guess, minimum 0%
+            const penalty = this.incorrectGuesses * 5;
+            const finalScore = Math.max(0, baseScore - penalty);
+            
+            return {{
+                correct: correct,
+                baseScore: baseScore,
+                penalty: penalty,
+                incorrectGuesses: this.incorrectGuesses,
+                finalScore: finalScore
+            }};
         }}
         
-        showDetailedResults(correct) {{
+        showDetailedResults(correct, scoreData) {{
             const resultsEl = document.getElementById('results-list');
             const correctSet = new Set(correct);
             const answerSet = new Set(this.answers);
             
             let html = '';
+            
+            // Show scoring breakdown if there were penalties
+            if (scoreData && scoreData.incorrectGuesses > 0) {{
+                html += `<div class="result-item score-breakdown">
+                    <div style="margin-bottom: 10px; font-weight: bold; color: #2c5f76;">Score Breakdown:</div>
+                    <div style="font-size: 0.9em; color: #666;">
+                        Base Score: ${{Math.round(scoreData.baseScore)}}% (${{correct.length}} of ${{this.correctAnswers.length}} correct)<br>
+                        Penalty: -${{scoreData.penalty}}% (${{scoreData.incorrectGuesses}} wrong guess${{scoreData.incorrectGuesses > 1 ? 'es' : ''}} × 5 points each)<br>
+                        <strong style="color: #2c5f76;">Final Score: ${{Math.round(scoreData.finalScore)}}%</strong>
+                    </div>
+                </div>`;
+            }}
             
             // Show all correct answers and whether user got them
             this.correctAnswers.forEach(num => {{
@@ -2826,8 +2927,8 @@ def generate_web_flashcards(numbers, config, output_path):
             const extraAnswers = this.answers.filter(a => !correctSet.has(a) && this.correctAnswers.includes(a) === false);
             extraAnswers.forEach(num => {{
                 html += `<div class="result-item">
-                    <span>Extra answer: ${{num}}</span>
-                    <span class="result-incorrect">✗ Not in quiz</span>
+                    <span>Wrong guess: ${{num}}</span>
+                    <span class="result-incorrect">✗ Not in quiz (-5 points)</span>
                 </div>`;
             }});
             
@@ -2848,6 +2949,7 @@ def generate_web_flashcards(numbers, config, output_path):
             this.foundNumbers = [];
             this.guessesRemaining = 0;
             this.currentInput = '';
+            this.incorrectGuesses = 0;
             this.finishButtonsBound = false;
             
             // Clear smart input
