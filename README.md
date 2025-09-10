@@ -167,7 +167,7 @@ python3 src/generate.py --format web --range 0-50 --shuffle
   - Turn-based timers and player indicators for multiplayer games
   - Efficiency-based medal system (Gold/Silver/Bronze achievements)
 - **📱 Responsive Design**: Works on desktop, tablet, and mobile
-- **🖨️ Print Support**: CSS optimized for printing physical cards
+- **🖨️ PDF Integration**: Automatically suggests high-quality PDF format when printing is attempted
 - **♿ Accessible**: Keyboard navigation, semantic HTML, ARIA labels
 - **🎨 Full Customization**: All color schemes, bead shapes, and display options supported
 

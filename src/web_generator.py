@@ -6,7 +6,19 @@ Generates static HTML with inline SVG abacus representations using existing Typs
 
 import tempfile
 import json
+import subprocess
+import os
+import sys
 from pathlib import Path
+
+# Import PDF generation functionality
+try:
+    from generate import generate_typst_file
+except ImportError:
+    # If running as a standalone script, try relative import
+    import sys
+    sys.path.append(str(Path(__file__).parent))
+    from generate import generate_typst_file
 
 
 def get_colored_numeral_html(number, config):
@@ -193,6 +205,62 @@ def generate_card_svgs(numbers, config):
                 card_data[number] = f'<svg width="300" height="200"><text x="150" y="100" text-anchor="middle" font-size="48">{number}</text></svg>'
         
         return card_data
+
+
+def generate_companion_pdf(numbers, config, output_path):
+    """Generate a PDF version alongside the web flashcards for print functionality."""
+    
+    # Ensure output_path is a Path object
+    output_path = Path(output_path)
+    
+    # Use PDF-optimized config
+    pdf_config = config.copy()
+    pdf_config.update({
+        'cards_per_page': 6,  # Standard 6 cards per page for printing
+        'show_cut_marks': True,  # Always show cut marks for printing
+        'show_registration': True,  # Always show registration marks
+        'paper_size': 'us-letter',  # Standard paper size
+        'orientation': 'portrait',  # Standard orientation
+        'margins': {'top': '0.5in', 'bottom': '0.5in', 'left': '0.5in', 'right': '0.5in'},
+        'gutter': '5mm'
+    })
+    
+    # Generate Typst file
+    project_root = Path(__file__).parent.parent
+    temp_typst = project_root / 'temp_web_companion.typ'
+    generate_typst_file(numbers, pdf_config, temp_typst)
+    
+    # Set up font path
+    font_args = []
+    if os.path.exists(str(project_root / 'fonts')):
+        font_args = ['--font-path', str(project_root / 'fonts')]
+    
+    # Compile with Typst - use absolute paths to ensure correct location
+    result = subprocess.run(
+        ['typst', 'compile'] + font_args + [str(temp_typst), str(output_path.resolve())],
+        capture_output=True,
+        text=True,
+        cwd=str(project_root)
+    )
+    
+    if result.returncode != 0:
+        raise RuntimeError(f"Typst compilation failed: {result.stderr}")
+    
+    # Clean up temp file
+    temp_typst.unlink(missing_ok=True)
+    
+    # Linearize PDF for web delivery
+    try:
+        linearized_path = output_path.with_name(f"{output_path.stem}_linearized.pdf")
+        result = subprocess.run(
+            ['qpdf', '--linearize', str(output_path), str(linearized_path)],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            linearized_path.replace(output_path)  # Replace original with linearized
+    except FileNotFoundError:
+        pass  # qpdf not available, skip linearization
 
 
 def generate_web_flashcards(numbers, config, output_path):
@@ -2812,25 +2880,6 @@ def generate_web_flashcards(numbers, config, output_path):
             to {{ transform: scale(1) translateY(0); opacity: 1; }}
         }}
         
-        @media print {{
-            body {{
-                background-color: white;
-            }}
-            .flashcard {{
-                box-shadow: none;
-                border: 1px solid #ddd;
-                break-inside: avoid;
-            }}
-            .numeral {{
-                opacity: 0.5;
-                background: transparent;
-                border: none;
-                box-shadow: none;
-            }}
-            .quiz-section, .quiz-game, .quiz-input, .quiz-results, .sorting-section {{
-                display: none !important;
-            }}
-        }}
     </style>
 </head>
 <body>
@@ -3260,7 +3309,7 @@ def generate_web_flashcards(numbers, config, output_path):
         </div>
         
         <div class="instructions">
-            <p><em>Tip: You can print these cards for offline practice. Numbers will be faintly visible in print mode.</em></p>
+            <p><em>Interactive flashcards for digital learning. Use the left/right arrow keys or click the cards to flip them.</em></p>
         </div>
     </div>
 
@@ -5797,12 +5846,188 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
     }}
     
+    // Function to handle print requests by opening PDF in print dialog
+    function handlePrintRequest() {{
+        console.log('Print request intercepted!');
+        // Get the companion PDF URL
+        const pdfUrl = window.location.href.replace(/\.html$/, '.pdf');
+        
+        // Create a modal overlay explaining the situation
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 500px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        `;
+        
+        const title = document.createElement('h3');
+        title.textContent = 'Print High-Quality Flashcards';
+        title.style.margin = '0 0 20px 0';
+        title.style.color = '#333';
+        
+        const explanation = document.createElement('p');
+        explanation.innerHTML = 'The web version is not optimized for printing.<br>For best results, download the PDF version which includes:<br><br>• Proper card sizing and layout<br>• Cut marks for easy trimming<br>• Registration marks for alignment';
+        explanation.style.textAlign = 'left';
+        explanation.style.margin = '0 0 25px 0';
+        explanation.style.lineHeight = '1.6';
+        explanation.style.color = '#555';
+        
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = 'display: flex; gap: 15px;';
+        
+        const downloadButton = document.createElement('button');
+        downloadButton.textContent = '📄 Open PDF';
+        downloadButton.style.cssText = `
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+        `;
+        
+        const cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Cancel';
+        cancelButton.style.cssText = `
+            padding: 12px 24px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        `;
+        
+        // Download button handler
+        downloadButton.onclick = function() {{
+            showNotification('📄 Opening PDF in new tab...');
+            window.open(pdfUrl, '_blank');
+            modal.remove();
+        }};
+        
+        // Cancel button handler
+        cancelButton.onclick = function() {{
+            modal.remove();
+        }};
+        
+        // Close on backdrop click
+        modal.onclick = function(e) {{
+            if (e.target === modal) {{
+                modal.remove();
+            }}
+        }};
+        
+        // Prevent clicks inside content from closing modal
+        content.onclick = function(e) {{
+            e.stopPropagation();
+        }};
+        
+        // Assemble the modal
+        buttonContainer.appendChild(downloadButton);
+        buttonContainer.appendChild(cancelButton);
+        content.appendChild(title);
+        content.appendChild(explanation);
+        content.appendChild(buttonContainer);
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+    }}
+    
+    // Fallback function to download PDF
+    function downloadPDF(pdfUrl) {{
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = pdfUrl.split('/').pop();
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }}
+    
+    // Function to show brief notifications
+    function showNotification(message) {{
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10000;
+            animation: slideInFromRight 0.3s ease-out;
+        `;
+        notification.textContent = message;
+        
+        // Add animation styles
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInFromRight {{
+                from {{ transform: translateX(100%); opacity: 0; }}
+                to {{ transform: translateX(0); opacity: 1; }}
+            }}
+        `;
+        document.head.appendChild(style);
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {{
+            notification.style.animation = 'slideInFromRight 0.3s ease-out reverse';
+            setTimeout(() => {{
+                if (notification.parentNode) {{
+                    document.body.removeChild(notification);
+                }}
+                if (style.parentNode) {{
+                    document.head.removeChild(style);
+                }}
+            }}, 300);
+        }}, 3000);
+    }}
+    
     // Initialize quiz and sorting when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {{
         new ModalManager();
         new SorobanQuiz();
         new SortingChallenge();
         new MatchingChallenge();
+        
+        // Intercept print attempts and download PDF instead
+        window.addEventListener('beforeprint', (e) => {{
+            e.preventDefault();
+            handlePrintRequest();
+        }});
+        
+        // Also intercept Ctrl+P / Cmd+P
+        document.addEventListener('keydown', (e) => {{
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {{
+                e.preventDefault();
+                handlePrintRequest();
+            }}
+        }});
     }});
     </script>
 </body>
@@ -5825,4 +6050,15 @@ def generate_web_flashcards(numbers, config, output_path):
         f.write(html_content)
     
     print(f"Generated web flashcards: {output_path}")
+    
+    # Also generate a PDF version for print functionality
+    pdf_path = Path(output_path).with_suffix('.pdf')
+    try:
+        print(f"Generating companion PDF for print functionality...")
+        generate_companion_pdf(numbers, config, pdf_path)
+        print(f"Generated companion PDF: {pdf_path}")
+    except Exception as e:
+        print(f"Warning: Could not generate companion PDF: {e}")
+        print("Print functionality will show instructions instead of downloading PDF")
+    
     return output_path
