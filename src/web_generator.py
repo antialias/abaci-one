@@ -390,7 +390,7 @@ def generate_web_flashcards(numbers, config, output_path):
             }}
             
             .flashcard {{
-                min-height: 200px;
+                min-height: 120px;
                 padding: 15px;
             }}
             
@@ -560,6 +560,17 @@ def generate_web_flashcards(numbers, config, output_path):
             transform: scale(1.05);
         }}
         
+        .quiz-flashcard.card-exit-warning {{
+            border-color: #dc3545;
+            box-shadow: 0 0 15px rgba(220, 53, 69, 0.4);
+        }}
+        
+        .quiz-flashcard.card-fade-out {{
+            opacity: 0.3;
+            transform: scale(0.95);
+            transition: all 0.1s ease;
+        }}
+        
         .countdown {{
             position: absolute;
             top: 50%;
@@ -580,12 +591,187 @@ def generate_web_flashcards(numbers, config, output_path):
             color: #ffc107;
         }}
         
+        .countdown.new-card-flash {{
+            color: #17a2b8;
+            font-size: 24px;
+            animation: flashIn 0.15s ease;
+        }}
+        
+        @keyframes flashIn {{
+            from {{
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }}
+            to {{
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }}
+        }}
+        
         /* Quiz Input */
         .quiz-input {{
             text-align: center;
             padding: 40px 20px;
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto;
+        }}
+        
+        .quiz-stats {{
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }}
+        
+        .stats-item {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }}
+        
+        .stats-label {{
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }}
+        
+        .stats-item span:last-child {{
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c5f76;
+        }}
+        
+        .smart-input-container {{
+            position: relative;
+            margin: 30px 0;
+        }}
+        
+        #smart-input {{
+            width: 100%;
+            max-width: 400px;
+            padding: 15px 20px;
+            font-size: 20px;
+            border: 3px solid #ddd;
+            border-radius: 12px;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }}
+        
+        #smart-input:focus {{
+            outline: none;
+            border-color: #2c5f76;
+            box-shadow: 0 0 0 3px rgba(44, 95, 118, 0.1);
+        }}
+        
+        #smart-input.correct {{
+            border-color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+            animation: successPulse 0.5s ease;
+        }}
+        
+        #smart-input.incorrect {{
+            border-color: #dc3545;
+            background: rgba(220, 53, 69, 0.1);
+            animation: errorShake 0.5s ease;
+        }}
+        
+        @keyframes successPulse {{
+            0%, 100% {{ transform: scale(1); }}
+            50% {{ transform: scale(1.05); }}
+        }}
+        
+        @keyframes errorShake {{
+            0%, 100% {{ transform: translateX(0); }}
+            25% {{ transform: translateX(-10px); }}
+            75% {{ transform: translateX(10px); }}
+        }}
+        
+        .input-feedback {{
+            margin-top: 10px;
+            font-weight: bold;
+            min-height: 20px;
+        }}
+        
+        .input-feedback.success {{
+            color: #28a745;
+        }}
+        
+        .input-feedback.error {{
+            color: #dc3545;
+        }}
+        
+        .found-numbers {{
+            margin: 30px 0;
+            min-height: 60px;
+        }}
+        
+        .found-number {{
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 15px;
+            background: #28a745;
+            color: white;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 18px;
+            animation: slideIn 0.3s ease;
+        }}
+        
+        @keyframes slideIn {{
+            from {{
+                opacity: 0;
+                transform: translateY(-20px);
+            }}
+            to {{
+                opacity: 1;
+                transform: translateY(0);
+            }}
+        }}
+        
+        .finish-btn {{
+            background: #2c5f76;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }}
+        
+        .finish-btn:hover {{
+            background: #1e4a5c;
+            transform: translateY(-2px);
+        }}
+        
+        .quiz-finish-buttons {{
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }}
+        
+        .give-up-btn {{
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }}
+        
+        .give-up-btn:hover {{
+            background: #138496;
+            transform: translateY(-2px);
         }}
         
         .input-container {{
@@ -889,11 +1075,278 @@ def generate_web_flashcards(numbers, config, output_path):
             margin-top: 20px;
         }}
         
-        .sorting-game-actions {{
+        /* Setup modal body for sticky positioning */
+        .modal-body {{
+            position: relative;
+        }}
+        
+        /* Sticky header within modal body */
+        .sorting-header {{
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e1e5e9;
+            border-radius: 8px 8px 0 0;
+            z-index: 50;
+            padding: 12px 20px;
+            margin: 0 -20px 15px -20px; /* Extend to edges of modal body */
+        }}
+        
+        .sorting-header-content {{
             display: flex;
+            justify-content: space-between;
+            align-items: center;
             flex-wrap: wrap;
+            gap: 15px;
+        }}
+        
+        .sorting-status-group {{
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }}
+        
+        .sorting-timer {{
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c5f76;
+        }}
+        
+        .sorting-controls {{
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }}
+        
+        .header-btn {{
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }}
+        
+        .check-btn {{
+            background: #28a745;
+            color: white;
+        }}
+        
+        .check-btn:hover {{
+            background: #218838;
+        }}
+        
+        .reveal-btn {{
+            background: #ffc107;
+            color: #212529;
+        }}
+        
+        .reveal-btn:hover {{
+            background: #e0a800;
+        }}
+        
+        .new-btn {{
+            background: #007bff;
+            color: white;
+        }}
+        
+        .new-btn:hover {{
+            background: #0056b3;
+        }}
+        
+        .end-btn {{
+            background: #dc3545;
+            color: white;
+        }}
+        
+        .end-btn:hover {{
+            background: #c82333;
+        }}
+        
+        .sorting-game-actions {{
+            display: none; /* Hide old action buttons */
+        }}
+        
+        /* Score Modal Styles */
+        .score-modal {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            display: flex;
             justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }}
+        
+        .score-modal-content {{
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease;
+        }}
+        
+        .score-modal-header {{
+            padding: 20px 30px;
+            border-bottom: 1px solid #e1e5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        
+        .score-modal-header h3 {{
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }}
+        
+        .score-modal-close {{
+            background: none;
+            border: none;
+            font-size: 32px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            transition: all 0.2s ease;
+        }}
+        
+        .score-modal-close:hover {{
+            background: #f8f9fa;
+            color: #333;
+        }}
+        
+        .score-modal-body {{
+            padding: 30px;
+        }}
+        
+        .score-modal-body .feedback-score {{
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #28a745;
+        }}
+        
+        .score-modal-body .feedback-message {{
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 15px;
+            color: #333;
+        }}
+        
+        .score-modal-body .feedback-time {{
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 25px;
+            color: #666;
+            font-weight: bold;
+        }}
+        
+        .score-modal-body .feedback-breakdown {{
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
             margin: 20px 0;
+        }}
+        
+        .score-modal-body .score-component {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }}
+        
+        .score-modal-body .score-component:last-child {{
+            border-bottom: none;
+        }}
+        
+        .score-modal-body .component-label {{
+            font-weight: bold;
+            color: #333;
+        }}
+        
+        .score-modal-body .component-score {{
+            font-weight: bold;
+            color: #007bff;
+        }}
+        
+        .score-modal-body .component-weight {{
+            color: #666;
+            font-size: 14px;
+        }}
+        
+        .score-modal-body .feedback-details {{
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 16px;
+            color: #495057;
+        }}
+        
+        .score-modal-footer {{
+            padding: 20px 30px;
+            border-top: 1px solid #e1e5e9;
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }}
+        
+        .modal-btn {{
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }}
+        
+        .new-game-btn {{
+            background: #007bff;
+            color: white;
+        }}
+        
+        .new-game-btn:hover {{
+            background: #0056b3;
+        }}
+        
+        .close-btn {{
+            background: #6c757d;
+            color: white;
+        }}
+        
+        .close-btn:hover {{
+            background: #545b62;
+        }}
+        
+        @keyframes fadeIn {{
+            from {{ opacity: 0; }}
+            to {{ opacity: 1; }}
+        }}
+        
+        @keyframes slideIn {{
+            from {{ 
+                transform: translateY(-50px);
+                opacity: 0;
+            }}
+            to {{ 
+                transform: translateY(0);
+                opacity: 1;
+            }}
         }}
         
         .sort-start-btn, .sort-check-btn, .sort-reveal-btn, .sort-new-btn {{
@@ -951,34 +1404,68 @@ def generate_web_flashcards(numbers, config, output_path):
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }}
         
+        /* Horizontal layout for sorting game */
+        .sorting-game-layout {{
+            display: flex;
+            gap: 30px;
+            margin: 20px 0;
+        }}
+        
+        .available-cards-section {{
+            flex: 1;
+        }}
+        
+        .sorting-slots-section {{
+            flex: 2;
+        }}
+        
+        .available-cards-section h4,
+        .sorting-slots-section h4 {{
+            margin: 0 0 15px 0;
+            color: #2c5f76;
+            font-size: 18px;
+            text-align: center;
+        }}
+        
         .sorting-area {{
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 10px;
             justify-content: center;
-            margin: 20px 0;
-            padding: 20px;
+            padding: 15px;
             background: rgba(255,255,255,0.5);
             border-radius: 8px;
-            min-height: 150px;
+            min-height: 120px;
+            border: 2px dashed #2c5f76;
+        }}
+        
+        @media (max-width: 768px) {{
+            .sorting-game-layout {{
+                flex-direction: column;
+                gap: 20px;
+            }}
+            
+            .available-cards-section,
+            .sorting-slots-section {{
+                flex: none;
+            }}
         }}
         
         .position-slots {{
             display: flex;
             flex-wrap: wrap;
-            gap: 5px;
+            gap: 8px;
             justify-content: center;
             align-items: center;
-            margin: 20px 0;
-            padding: 20px;
+            padding: 15px;
             background: rgba(255,255,255,0.7);
             border-radius: 8px;
             border: 2px dashed #2c5f76;
         }}
         
         .insert-button {{
-            width: 40px;
-            height: 60px;
+            width: 32px;
+            height: 50px;
             background: #2c5f76;
             color: white;
             border: none;
@@ -1011,8 +1498,8 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
         
         .position-slot {{
-            width: 120px;
-            height: 140px;
+            width: 90px;
+            height: 110px;
             border: 2px solid #2c5f76;
             border-radius: 8px;
             background: #fff;
@@ -1023,6 +1510,11 @@ def generate_web_flashcards(numbers, config, output_path):
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
+        }}
+        
+        .position-slot.gradient-bg {{
+            color: white;
+            border-color: rgba(255,255,255,0.3);
         }}
         
         .position-slot:hover {{
@@ -1037,21 +1529,13 @@ def generate_web_flashcards(numbers, config, output_path):
             box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
         }}
         
-        .position-slot .slot-number {{
-            font-size: 18px;
-            font-weight: bold;
-            color: #2c5f76;
-            margin-bottom: 5px;
-        }}
-        
-        .position-slot.filled .slot-number {{
-            display: none;
-        }}
         
         .position-slot .slot-label {{
             font-size: 12px;
-            color: #666;
             text-align: center;
+            font-weight: 500;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            /* Color will be set dynamically based on background */
         }}
         
         .position-slot.filled .slot-label {{
@@ -1059,15 +1543,15 @@ def generate_web_flashcards(numbers, config, output_path):
             bottom: 8px;
             left: 8px;
             right: 8px;
-            color: white;
-            background: rgba(0,0,0,0.8);
+            color: #2c3e50;
+            text-shadow: none;
+            font-size: 11px;
+            font-weight: 600;
             opacity: 0;
             transition: opacity 0.3s ease;
-            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 4px;
             padding: 4px 8px;
-            font-size: 11px;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-            backdrop-filter: blur(2px);
         }}
         
         .position-slot.filled:hover .slot-label {{
@@ -1114,16 +1598,16 @@ def generate_web_flashcards(numbers, config, output_path):
         
         .sort-card {{
             background: white;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 3px solid transparent;
+            border: 2px solid transparent;
             position: relative;
             user-select: none;
-            width: 120px;
-            height: 120px;
+            width: 90px;
+            height: 90px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1571,10 +2055,33 @@ def generate_web_flashcards(numbers, config, output_path):
             <!-- Quiz Input Phase (hidden initially) -->
             <div id="quiz-input" class="quiz-input" style="display: none;">
                 <h3>Enter the Numbers You Remember</h3>
-                <p>Type the numbers you saw, separated by commas or spaces:</p>
-                <div class="input-container">
-                    <textarea id="answer-input" placeholder="e.g., 23, 45, 67 or 23 45 67"></textarea>
-                    <button id="submit-answers">Submit Answers</button>
+                <div class="quiz-stats">
+                    <div class="stats-item">
+                        <span class="stats-label">Cards shown:</span>
+                        <span id="cards-shown-count">0</span>
+                    </div>
+                    <div class="stats-item">
+                        <span class="stats-label">Guesses left:</span>
+                        <span id="guesses-remaining">0</span>
+                    </div>
+                    <div class="stats-item">
+                        <span class="stats-label">Found:</span>
+                        <span id="numbers-found">0</span>
+                    </div>
+                </div>
+                
+                <div class="smart-input-container">
+                    <input type="text" id="smart-input" placeholder="Type any number you remember..." autocomplete="off">
+                    <div class="input-feedback" id="input-feedback"></div>
+                </div>
+                
+                <div class="found-numbers" id="found-numbers">
+                    <!-- Accepted numbers will appear here -->
+                </div>
+                
+                <div class="quiz-finish-buttons">
+                    <button id="finish-quiz" class="finish-btn" style="display: none;">Finish Quiz</button>
+                    <button id="give-up-quiz" class="give-up-btn" style="display: none;">Can't Remember More</button>
                 </div>
             </div>
 
@@ -1636,34 +2143,68 @@ def generate_web_flashcards(numbers, config, output_path):
                 </div>
             </div>
             
-            <!-- Game Action Buttons (outside controls so they remain visible during gameplay) -->
+            <!-- Game Action Buttons (now moved to sticky header) -->
             <div class="sorting-game-actions" style="display: none;">
-                <button id="check-sorting" class="sort-check-btn">Check My Solution</button>
-                <button id="reveal-numbers" class="sort-reveal-btn">Reveal Numbers</button>
-                <button id="new-sorting" class="sort-new-btn">New Challenge</button>
-                <button id="end-sorting" class="end-game-btn">End Sorting</button>
+                <!-- Buttons moved to sticky header -->
             </div>
             
+            <!-- Sorting Game Header (Sticky) -->
+            <div id="sorting-header" class="sorting-header" style="display: none;">
+                <div class="sorting-header-content">
+                    <div class="sorting-status-group">
+                        <span id="sorting-status">Ready to start</span>
+                        <div class="sorting-timer" id="sorting-timer">0:00</div>
+                    </div>
+                    <div class="sorting-controls">
+                        <button id="check-sorting" class="header-btn check-btn">Check Solution</button>
+                        <button id="reveal-numbers" class="header-btn reveal-btn">Show Numbers</button>
+                        <button id="new-sorting" class="header-btn new-btn">New Challenge</button>
+                        <button id="end-sorting" class="header-btn end-btn">End Game</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Sorting Game Area -->
             <div id="sorting-game" style="display: none;">
                 <div class="sorting-instructions">
-                    <p><strong>Place cards:</strong> Click a card, then click a position or + button to insert</p>
-                    <p><strong>Move cards:</strong> Click any placed card to move it back to available cards</p>
-                    <div class="sorting-progress">
-                        <span id="sorting-status">Ready to start</span>
+                    <p><strong>Instructions:</strong> Click a card → Click position or + button to place. Click placed cards to move back.</p>
+                </div>
+                
+                <div class="sorting-game-layout">
+                    <div class="available-cards-section">
+                        <h4>Available Cards</h4>
+                        <div id="sorting-area" class="sorting-area">
+                            <!-- Available cards will be shown here -->
+                        </div>
                     </div>
-                </div>
-                
-                <div id="position-slots" class="position-slots">
-                    <!-- Position slots will be created here -->
-                </div>
-                
-                <div id="sorting-area" class="sorting-area">
-                    <!-- Available cards will be shown here -->
+                    
+                    <div class="sorting-slots-section">
+                        <h4>Sorting Positions (Smallest → Largest)</h4>
+                        <div id="position-slots" class="position-slots">
+                            <!-- Position slots will be created here -->
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="sorting-feedback" id="sorting-feedback" style="display: none;">
                     <!-- Feedback will be shown here -->
+                </div>
+            </div>
+
+            <!-- Score Report Modal -->
+            <div id="score-modal" class="score-modal" style="display: none;">
+                <div class="score-modal-content">
+                    <div class="score-modal-header">
+                        <h3>🎯 Sorting Challenge Results</h3>
+                        <button class="score-modal-close">&times;</button>
+                    </div>
+                    <div id="score-modal-body" class="score-modal-body">
+                        <!-- Score content will be inserted here -->
+                    </div>
+                    <div class="score-modal-footer">
+                        <button id="score-modal-new-game" class="modal-btn new-game-btn">New Challenge</button>
+                        <button id="score-modal-close-btn" class="modal-btn close-btn">Close</button>
+                    </div>
                 </div>
             </div>
                 </div>
@@ -1827,8 +2368,11 @@ def generate_web_flashcards(numbers, config, output_path):
             this.currentCardIndex = 0;
             this.displayTime = 2.0;
             this.selectedCount = 15;
-            this.answers = [];
+            this.foundNumbers = [];
             this.correctAnswers = [];
+            this.guessesRemaining = 0;
+            this.currentInput = '';
+            this.finishButtonsBound = false;
             
             this.initializeCards();
             this.bindEvents();
@@ -1867,10 +2411,9 @@ def generate_web_flashcards(numbers, config, output_path):
                 this.startQuiz();
             }});
             
-            // Submit answers button
-            document.getElementById('submit-answers').addEventListener('click', () => {{
-                this.submitAnswers();
-            }});
+            // Note: Submit answers button replaced by smart input system
+            
+            // Note: Finish quiz buttons are bound later in showInputPhase() when they become visible
             
             // End quiz button
             document.getElementById('end-quiz').addEventListener('click', () => {{
@@ -1924,20 +2467,45 @@ def generate_web_flashcards(numbers, config, output_path):
             document.querySelector('.progress-fill').style.width = progress + '%';
             document.getElementById('current-card').textContent = this.currentCardIndex + 1;
             
-            // Show countdown
-            await this.showCountdown();
+            // Only show countdown for the very first card
+            if (this.currentCardIndex === 0) {{
+                await this.showCountdown();
+            }} else {{
+                // Subtle "new card" indicator for subsequent cards
+                await this.showNewCardIndicator();
+            }}
             
             // Show card
             await this.displayCard(card);
             
             this.currentCardIndex++;
             
-            // Small delay before next card
+            // Minimal delay before next card (just enough for the exit animation)
             setTimeout(() => {{
                 this.showNextCard();
-            }}, 200);
+            }}, 100);
         }}
         
+        async showNewCardIndicator() {{
+            return new Promise(resolve => {{
+                const countdownEl = document.getElementById('quiz-countdown');
+                const cardEl = document.getElementById('quiz-card');
+                
+                // Hide card temporarily
+                cardEl.style.display = 'none';
+                countdownEl.style.display = 'block';
+                
+                // Brief flash to indicate new card
+                countdownEl.textContent = 'Next';
+                countdownEl.className = 'quiz-countdown new-card-flash';
+                
+                setTimeout(() => {{
+                    countdownEl.style.display = 'none';
+                    resolve();
+                }}, 150); // Very brief indication
+            }});
+        }}
+
         async showCountdown() {{
             const countdownEl = document.getElementById('quiz-countdown');
             const cardEl = document.getElementById('quiz-card');
@@ -1963,16 +2531,25 @@ def generate_web_flashcards(numbers, config, output_path):
             const cardEl = document.getElementById('quiz-card');
             const countdownEl = document.getElementById('quiz-countdown');
             
-            // Show card content
+            // Show card content with entry animation
             cardEl.innerHTML = card.svg;
+            cardEl.style.display = 'block';
             cardEl.style.visibility = 'visible';
             cardEl.classList.add('pulse');
             
-            // Display for the specified time
-            await this.delay(this.displayTime * 1000);
+            // Display for most of the time
+            await this.delay((this.displayTime * 1000) - 300);
             
-            // Hide card
-            cardEl.classList.remove('pulse');
+            // Subtle exit signal - brief red border flash
+            cardEl.classList.add('card-exit-warning');
+            await this.delay(200);
+            
+            // Quick fade out
+            cardEl.classList.add('card-fade-out');
+            await this.delay(100);
+            
+            // Hide card and reset classes
+            cardEl.classList.remove('pulse', 'card-exit-warning', 'card-fade-out');
             cardEl.style.visibility = 'hidden';
         }}
         
@@ -1980,10 +2557,203 @@ def generate_web_flashcards(numbers, config, output_path):
             // Complete progress bar
             document.querySelector('.progress-fill').style.width = '100%';
             
+            // Initialize smart input system
+            this.correctAnswers = this.quizCards.map(card => card.number);
+            this.foundNumbers = [];
+            this.guessesRemaining = this.selectedCount + Math.floor(this.selectedCount / 2); // Allow 50% extra guesses
+            
+            // Update stats display
+            document.getElementById('cards-shown-count').textContent = this.quizCards.length;
+            document.getElementById('guesses-remaining').textContent = this.guessesRemaining;
+            document.getElementById('numbers-found').textContent = '0';
+            
             // Hide quiz game, show input
             this.hideQuizSections();
             document.getElementById('quiz-input').style.display = 'block';
-            document.getElementById('answer-input').focus();
+            
+            // Setup smart input
+            const smartInput = document.getElementById('smart-input');
+            smartInput.value = '';
+            smartInput.focus();
+            
+            // Remove any existing event listeners to prevent duplicates
+            const newSmartInput = smartInput.cloneNode(true);
+            smartInput.parentNode.replaceChild(newSmartInput, smartInput);
+            
+            // Add input event listener for real-time validation
+            newSmartInput.addEventListener('input', (e) => this.handleSmartInput(e));
+            newSmartInput.focus();
+            
+            // Bind finish buttons (they exist now that quiz-input is shown)
+            this.bindFinishButtons();
+            
+            // Show finish button when all numbers found or guesses exhausted
+            this.updateFinishButtonVisibility();
+        }}
+        
+        bindFinishButtons() {{
+            // Bind finish quiz buttons - called when input phase starts and buttons are visible
+            // Only bind once to prevent duplicate listeners
+            if (this.finishButtonsBound) return;
+            
+            const finishBtn = document.getElementById('finish-quiz');
+            const giveUpBtn = document.getElementById('give-up-quiz');
+            
+            if (finishBtn) {{
+                finishBtn.addEventListener('click', () => {{
+                    console.log('Finish quiz button clicked');
+                    this.finishQuiz();
+                }});
+                console.log('Finish button event listener added');
+            }} else {{
+                console.error('finish-quiz button not found in DOM');
+            }}
+            
+            if (giveUpBtn) {{
+                giveUpBtn.addEventListener('click', () => {{
+                    console.log('Give up button clicked');
+                    this.finishQuiz();
+                }});
+                console.log('Give up button event listener added');
+            }} else {{
+                console.error('give-up-quiz button not found in DOM');
+            }}
+            
+            this.finishButtonsBound = true;
+        }}
+        
+        handleSmartInput(event) {{
+            const input = event.target;
+            const value = input.value.trim();
+            
+            // Reset visual feedback
+            input.classList.remove('correct', 'incorrect');
+            
+            // Check if input is empty
+            if (!value) {{
+                this.currentInput = '';
+                return;
+            }}
+            
+            // Check if it's a valid number
+            const number = parseInt(value);
+            if (isNaN(number)) {{
+                return; // Wait for more input
+            }}
+            
+            this.currentInput = value;
+            
+            // Check if this number is in our correct answers and not already found
+            if (this.correctAnswers.includes(number) && !this.foundNumbers.includes(number)) {{
+                // Correct number found!
+                this.acceptCorrectNumber(number, input);
+            }} else if (value.length >= 2 && !this.correctAnswers.includes(number)) {{
+                // Wrong number (only trigger after at least 2 digits to avoid false positives)
+                this.handleIncorrectGuess(input);
+            }}
+        }}
+        
+        acceptCorrectNumber(number, input) {{
+            // Add to found numbers
+            this.foundNumbers.push(number);
+            
+            // Visual success feedback
+            input.classList.add('correct');
+            
+            // Update stats
+            document.getElementById('numbers-found').textContent = this.foundNumbers.length;
+            
+            // Add to found numbers display
+            this.addFoundNumberDisplay(number);
+            
+            // Clear input immediately for fast entry
+            setTimeout(() => {{
+                input.value = '';
+                this.currentInput = '';
+                
+                // Check if we're done
+                this.updateFinishButtonVisibility();
+                
+                // If all numbers found, auto-finish
+                if (this.foundNumbers.length === this.correctAnswers.length) {{
+                    setTimeout(() => this.finishQuiz(), 1000);
+                }}
+            }}, 150); // Much shorter delay - just enough to show the success feedback
+            
+            // Remove success visual feedback after animation completes
+            setTimeout(() => {{
+                input.classList.remove('correct');
+            }}, 500);
+        }}
+        
+        handleIncorrectGuess(input) {{
+            // Only penalize if we have guesses remaining
+            if (this.guessesRemaining > 0) {{
+                this.guessesRemaining--;
+                document.getElementById('guesses-remaining').textContent = this.guessesRemaining;
+                
+                // Visual error feedback
+                input.classList.add('incorrect');
+                
+                // Clear input quickly for rapid entry
+                setTimeout(() => {{
+                    input.value = '';
+                    this.currentInput = '';
+                    
+                    // Check if we're out of guesses
+                    this.updateFinishButtonVisibility();
+                    if (this.guessesRemaining === 0) {{
+                        setTimeout(() => this.finishQuiz(), 1000);
+                    }}
+                }}, 150); // Same fast clearing as correct numbers
+                
+                // Remove error visual feedback after animation completes
+                setTimeout(() => {{
+                    input.classList.remove('incorrect');
+                }}, 500);
+            }}
+        }}
+        
+        addFoundNumberDisplay(number) {{
+            const foundContainer = document.getElementById('found-numbers');
+            const numberElement = document.createElement('span');
+            numberElement.className = 'found-number';
+            numberElement.textContent = number;
+            foundContainer.appendChild(numberElement);
+        }}
+        
+        updateFinishButtonVisibility() {{
+            const finishBtn = document.getElementById('finish-quiz');
+            const giveUpBtn = document.getElementById('give-up-quiz');
+            
+            const hasFoundSome = this.foundNumbers.length > 0;
+            const hasFoundAll = this.foundNumbers.length === this.correctAnswers.length;
+            const outOfGuesses = this.guessesRemaining === 0;
+            const hasGuessesLeft = this.guessesRemaining > 0;
+            
+            if (hasFoundAll || outOfGuesses) {{
+                // Show finish button when all found or no guesses left
+                finishBtn.style.display = 'block';
+                giveUpBtn.style.display = 'none';
+                finishBtn.textContent = hasFoundAll ? 'Finish Quiz' : 'Show Results';
+            }} else if (hasFoundSome && hasGuessesLeft) {{
+                // Show both buttons when user has found some but could find more
+                finishBtn.style.display = 'block';
+                giveUpBtn.style.display = 'block';
+                finishBtn.textContent = 'Show Results';
+            }} else {{
+                // No buttons when user hasn't found any yet
+                finishBtn.style.display = 'none';
+                giveUpBtn.style.display = 'none';
+            }}
+        }}
+        
+        finishQuiz() {{
+            console.log('finishQuiz called, foundNumbers:', this.foundNumbers);
+            // Use found numbers as answers and show results
+            this.answers = [...this.foundNumbers];
+            console.log('About to call showResults with answers:', this.answers);
+            this.showResults();
         }}
         
         submitAnswers() {{
@@ -2075,9 +2845,32 @@ def generate_web_flashcards(numbers, config, output_path):
             this.answers = [];
             this.correctAnswers = [];
             this.quizCards = [];
+            this.foundNumbers = [];
+            this.guessesRemaining = 0;
+            this.currentInput = '';
+            this.finishButtonsBound = false;
             
-            // Clear input
-            document.getElementById('answer-input').value = '';
+            // Clear smart input
+            const smartInput = document.getElementById('smart-input');
+            if (smartInput) {{
+                smartInput.value = '';
+                smartInput.classList.remove('correct', 'incorrect');
+            }}
+            
+            // Clear found numbers display
+            const foundContainer = document.getElementById('found-numbers');
+            if (foundContainer) {{
+                foundContainer.innerHTML = '';
+            }}
+            
+            // Reset stats display
+            document.getElementById('cards-shown-count').textContent = '0';
+            document.getElementById('guesses-remaining').textContent = '0';
+            document.getElementById('numbers-found').textContent = '0';
+            
+            // Hide finish buttons
+            document.getElementById('finish-quiz').style.display = 'none';
+            document.getElementById('give-up-quiz').style.display = 'none';
             
             // Reset to initial quiz state (hide all sections, show controls)
             this.hideQuizSections();
@@ -2142,6 +2935,21 @@ def generate_web_flashcards(numbers, config, output_path):
             document.getElementById('reveal-numbers').addEventListener('click', () => this.revealNumbers());
             document.getElementById('new-sorting').addEventListener('click', () => this.newChallenge());
             document.getElementById('end-sorting').addEventListener('click', () => this.endSorting());
+            
+            // Score modal event listeners
+            document.querySelector('.score-modal-close').addEventListener('click', () => this.hideScoreModal());
+            document.getElementById('score-modal-close-btn').addEventListener('click', () => this.hideScoreModal());
+            document.getElementById('score-modal-new-game').addEventListener('click', () => {{
+                this.hideScoreModal();
+                this.newChallenge();
+            }});
+            
+            // Close modal when clicking outside
+            document.getElementById('score-modal').addEventListener('click', (e) => {{
+                if (e.target.id === 'score-modal') {{
+                    this.hideScoreModal();
+                }}
+            }});
         }}
         
         startSorting() {{
@@ -2153,19 +2961,42 @@ def generate_web_flashcards(numbers, config, output_path):
             // Shuffle the display order
             this.currentOrder = [...this.sortingCards].sort(() => Math.random() - 0.5);
             
+            // Initialize revealed state
+            this.numbersRevealed = false;
+            
             // Hide configuration controls, show only game
             document.querySelector('.sorting-controls').style.display = 'none';
             
-            // Show sorting game
+            // Show sorting game and sticky header
             document.getElementById('sorting-game').style.display = 'block';
+            document.getElementById('sorting-header').style.display = 'block';
+            
             this.renderSortingCards();
             this.updateSortingStatus(`Arrange the ${{this.selectedCount}} cards in ascending order (smallest to largest)`);
             
-            // Update buttons - show game controls
+            // Start timer
+            this.startTimer();
+            
+            // Reset reveal numbers button for new game
+            document.getElementById('reveal-numbers').style.display = 'inline-block';
+            
+            // Update buttons - hide old controls, sticky header is now visible
             document.getElementById('start-sorting').style.display = 'none';
-            document.querySelector('.sorting-game-actions').style.display = 'block';
+            document.querySelector('.sorting-game-actions').style.display = 'none';
         }}
         
+        getSequenceStyle(position, totalSlots) {{
+            // Generate neutral warm gray gradient that won't clash with abacus colors
+            // Position 0 (first) = darkest, last position = lightest
+            const intensity = position / (totalSlots - 1); // 0 to 1
+            const lightness = 30 + (intensity * 45); // 30% to 75% lightness for better contrast
+            return {{
+                background: `hsl(220, 8%, ${{lightness}}%)`, // Very subtle blue-gray, low saturation
+                color: lightness > 60 ? '#2c3e50' : '#ffffff', // High contrast text
+                borderColor: lightness > 60 ? '#2c5f76' : 'rgba(255,255,255,0.4)'
+            }};
+        }}
+
         renderSortingCards() {{
             this.createPositionSlots();
             this.renderAvailableCards();
@@ -2192,9 +3023,14 @@ def generate_web_flashcards(numbers, config, output_path):
                 slot.className = 'position-slot';
                 slot.dataset.position = i;
                 
+                // Apply gradient to entire slot background
+                const style = this.getSequenceStyle(i, this.selectedCount);
+                slot.style.background = style.background;
+                slot.style.color = style.color;
+                slot.style.borderColor = style.borderColor;
+                
                 slot.innerHTML = `
-                    <div class="slot-number">${{i + 1}}</div>
-                    <div class="slot-label">${{i === 0 ? 'Smallest' : i === this.selectedCount - 1 ? 'Largest' : ''}}</div>
+                    <div class="slot-label" style="color: ${{style.color}}">${{i === 0 ? 'Smallest' : i === this.selectedCount - 1 ? 'Largest' : ''}}</div>
                 `;
                 
                 slot.addEventListener('click', (e) => this.handleSlotClick(i));
@@ -2241,6 +3077,11 @@ def generate_web_flashcards(numbers, config, output_path):
                 const cardEl = document.createElement('div');
                 cardEl.className = 'sort-card';
                 cardEl.dataset.number = card.number;
+                
+                // Apply revealed state if numbers were previously revealed
+                if (this.numbersRevealed) {{
+                    cardEl.classList.add('revealed');
+                }}
                 
                 cardEl.innerHTML = `
                     <div class="revealed-number">${{card.number}}</div>
@@ -2391,8 +3232,11 @@ def generate_web_flashcards(numbers, config, output_path):
                 
                 if (card) {{
                     slot.classList.add('filled');
+                    // Reset to white background when filled
+                    slot.style.background = '#fff';
+                    slot.style.color = '#333';
+                    slot.style.borderColor = '#2c5f76';
                     slot.innerHTML = `
-                        <div class="slot-number">${{position + 1}}</div>
                         <div class="slot-card">
                             <div class="card-svg">${{card.svg}}</div>
                         </div>
@@ -2400,9 +3244,13 @@ def generate_web_flashcards(numbers, config, output_path):
                     `;
                 }} else {{
                     slot.classList.remove('filled');
+                    // Apply gradient to empty slot
+                    const style = this.getSequenceStyle(position, this.selectedCount);
+                    slot.style.background = style.background;
+                    slot.style.color = style.color;
+                    slot.style.borderColor = style.borderColor;
                     slot.innerHTML = `
-                        <div class="slot-number">${{position + 1}}</div>
-                        <div class="slot-label">${{position === 0 ? 'Smallest' : position === this.selectedCount - 1 ? 'Largest' : ''}}</div>
+                        <div class="slot-label" style="color: ${{style.color}}">${{position === 0 ? 'Smallest' : position === this.selectedCount - 1 ? 'Largest' : ''}}</div>
                     `;
                 }}
             }});
@@ -2489,8 +3337,11 @@ def generate_web_flashcards(numbers, config, output_path):
             
             // Update slot appearance
             slot.classList.add('filled');
+            // Reset to white background when filled
+            slot.style.background = '#fff';
+            slot.style.color = '#333';
+            slot.style.borderColor = '#2c5f76';
             slot.innerHTML = `
-                <div class="slot-number">${{position + 1}}</div>
                 <div class="slot-card">
                     <div class="card-svg">${{this.selectedCard.svg}}</div>
                 </div>
@@ -2933,9 +3784,77 @@ def generate_web_flashcards(numbers, config, output_path):
                 message = '💪 Keep practicing! Focus on reading each abacus carefully.';
             }}
             
-            feedbackEl.innerHTML = `
+            // Show score in modal instead of inline
+            this.showScoreModal({{
+                finalScore,
+                message,
+                relativeOrderScore,
+                exactScore,
+                inversionScore,
+                lcsLength,
+                correctSeq,
+                exactMatches,
+                feedbackClass,
+                elapsedTime: this.getElapsedTime()
+            }});
+            
+            // Keep inline feedback hidden
+            feedbackEl.style.display = 'none';
+            
+            this.updateSortingStatus(isPerfect ? 'Perfect solution!' : `${{finalScore}}% score`);
+        }}
+        
+        revealNumbers() {{
+            // Track revealed state
+            this.numbersRevealed = true;
+            
+            document.querySelectorAll('.sort-card').forEach(card => {{
+                card.classList.add('revealed');
+            }});
+            
+            document.getElementById('reveal-numbers').style.display = 'none';
+            this.updateSortingStatus('Numbers revealed - now you can see the correct order!');
+        }}
+        
+        startTimer() {{
+            this.startTime = Date.now();
+            this.timerInterval = setInterval(() => {{
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('sorting-timer').textContent = 
+                    `${{minutes}}:${{seconds.toString().padStart(2, '0')}}`;
+            }}, 1000);
+        }}
+        
+        stopTimer() {{
+            if (this.timerInterval) {{
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }}
+        }}
+        
+        getElapsedTime() {{
+            if (this.startTime) {{
+                return Math.floor((Date.now() - this.startTime) / 1000);
+            }}
+            return 0;
+        }}
+        
+        showScoreModal(scoreData) {{
+            const {{ 
+                finalScore, message, relativeOrderScore, exactScore, inversionScore,
+                lcsLength, correctSeq, exactMatches, feedbackClass, elapsedTime 
+            }} = scoreData;
+            
+            const minutes = Math.floor(elapsedTime / 60);
+            const seconds = elapsedTime % 60;
+            const timeDisplay = `${{minutes}}:${{seconds.toString().padStart(2, '0')}}`;
+            
+            document.getElementById('score-modal-body').innerHTML = `
                 <div class="feedback-score">${{finalScore}}%</div>
                 <div class="feedback-message">${{message}}</div>
+                <div class="feedback-time">⏱️ Time: ${{timeDisplay}}</div>
                 <div class="feedback-breakdown">
                     <div class="score-component">
                         <span class="component-label">Sequence Order:</span>
@@ -2959,21 +3878,13 @@ def generate_web_flashcards(numbers, config, output_path):
                 </div>
             `;
             
-            feedbackEl.className = `sorting-feedback ${{feedbackClass}}`;
-            feedbackEl.style.display = 'block';
-            
-            this.updateSortingStatus(isPerfect ? 'Perfect solution!' : `${{finalScore}}% score`);
+            document.getElementById('score-modal').style.display = 'flex';
         }}
         
-        revealNumbers() {{
-            document.querySelectorAll('.sort-card').forEach(card => {{
-                card.classList.add('revealed');
-            }});
-            
-            document.getElementById('reveal-numbers').style.display = 'none';
-            this.updateSortingStatus('Numbers revealed - now you can see the correct order!');
+        hideScoreModal() {{
+            document.getElementById('score-modal').style.display = 'none';
         }}
-        
+
         endSorting() {{
             // End the current sorting and return to configuration
             this.resetSorting();
@@ -2990,9 +3901,13 @@ def generate_web_flashcards(numbers, config, output_path):
             // Clear feedback
             document.getElementById('sorting-feedback').style.display = 'none';
             
-            // Hide game, show configuration controls
+            // Hide game and sticky header, show configuration controls
             document.getElementById('sorting-game').style.display = 'none';
+            document.getElementById('sorting-header').style.display = 'none';
             document.querySelector('.sorting-controls').style.display = 'block';
+            
+            // Stop timer
+            this.stopTimer();
             
             // Reset buttons
             document.getElementById('start-sorting').style.display = 'inline-block';
@@ -3006,6 +3921,7 @@ def generate_web_flashcards(numbers, config, output_path):
             this.placedCards = [];
             this.selectedCard = null;
             this.selectedCardElement = null;
+            this.numbersRevealed = false;
             
             // Clear feedback
             document.getElementById('sorting-feedback').style.display = 'none';

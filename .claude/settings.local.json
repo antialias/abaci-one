@@ -21,7 +21,10 @@
       "Bash(python -m pytest tests/test_quiz_functionality.py -v)",
       "Bash(python:*)",
       "Bash(git restore:*)",
-      "Bash(open test_heaven_beads.html)"
+      "Bash(open test_heaven_beads.html)",
+      "Bash(open test_scaling.html)",
+      "Read(//private/tmp/**)",
+      "Bash(open test_smart_input.html)"
     ],
     "deny": [],
     "ask": []
