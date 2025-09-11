@@ -263,12 +263,22 @@ def generate_companion_pdf(numbers, config, output_path):
         pass  # qpdf not available, skip linearization
 
 
+def generate_tutorial_svgs(config):
+    """Generate SVG content for tutorial examples."""
+    tutorial_numbers = [0, 1, 3, 5, 7, 9, 23, 67, 158, 456]  # Key examples for tutorial
+    tutorial_svgs = generate_card_svgs(tutorial_numbers, config)
+    return tutorial_svgs
+
 def generate_web_flashcards(numbers, config, output_path):
     """Generate HTML file with flashcard layout."""
     
     # Generate SVG content for all cards
     print(f"Generating SVG content for {len(numbers)} cards...")
     card_svgs = generate_card_svgs(numbers, config)
+    
+    # Generate tutorial SVGs
+    print("Generating tutorial examples...")
+    tutorial_svgs = generate_tutorial_svgs(config)
     
     # Generate individual cards HTML
     cards_html = []
@@ -316,89 +326,200 @@ def generate_web_flashcards(numbers, config, output_path):
         body {{
             font-family: {font_family}, sans-serif;
             margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+            padding: 0;
+            background: #f8fafc;
             line-height: 1.6;
+            color: #2d3748;
         }}
         
         .container {{
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }}
         
-        /* Navigation Styles */
+        /* Beautiful Header */
+        .main-header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 60px 40px 40px;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .main-header::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.15"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }}
+        
+        .main-header h1 {{
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin: 0 0 15px 0;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            letter-spacing: -0.02em;
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .main-header p {{
+            font-size: 1.3rem;
+            margin: 0;
+            opacity: 0.95;
+            font-weight: 300;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
+        }}
+        
+        /* Modern Navigation */
         .page-nav {{
             position: sticky;
             top: 0;
-            background: #fff;
-            border-bottom: 2px solid #e9ecef;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
             z-index: 1000;
-            margin: -20px -20px 30px -20px;
-            padding: 15px 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         }}
         
         .nav-buttons {{
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 8px;
             justify-content: center;
+            max-width: 800px;
+            margin: 0 auto;
+            flex-wrap: wrap;
         }}
         
         .nav-btn {{
-            padding: 10px 20px;
-            border: 2px solid #2c5f76;
-            background: white;
-            color: #2c5f76;
-            border-radius: 6px;
+            padding: 12px 24px;
+            border: none;
+            background: rgba(102, 126, 234, 0.1);
+            color: #4a5568;
+            border-radius: 50px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s ease;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
+            position: relative;
+            overflow: hidden;
+            min-width: 140px;
+            text-align: center;
+        }}
+        
+        .nav-btn::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.6s;
         }}
         
         .nav-btn:hover {{
-            background: #f8f9fa;
-            transform: translateY(-1px);
+            background: rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+        }}
+        
+        .nav-btn:hover::before {{
+            left: 100%;
         }}
         
         .nav-btn.active {{
-            background: #2c5f76;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .nav-btn.active:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
+        }}
+        
+        /* Content Area */
+        .content-area {{
+            background: white;
+            margin: 0;
+            padding: 0;
+            min-height: calc(100vh - 200px);
         }}
         
         /* Section Styles */
         .page-section {{
             display: none;
-            animation: fadeIn 0.3s ease-in-out;
+            animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 60px 40px 80px;
+            max-width: 1200px;
+            margin: 0 auto;
         }}
         
         .page-section.active {{
             display: block;
         }}
         
-        @keyframes fadeIn {{
-            from {{ opacity: 0; transform: translateY(10px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
+        @keyframes fadeInUp {{
+            from {{ 
+                opacity: 0; 
+                transform: translateY(30px);
+            }}
+            to {{ 
+                opacity: 1; 
+                transform: translateY(0);
+            }}
         }}
         
         .section-header {{
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 60px;
+            position: relative;
         }}
         
         .section-title {{
-            font-size: 2rem;
-            color: #2c5f76;
-            margin: 0 0 10px 0;
+            font-size: 2.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0 0 15px 0;
+            letter-spacing: -0.02em;
         }}
         
         .section-subtitle {{
-            color: #666;
-            font-size: 1.1rem;
+            color: #718096;
+            font-size: 1.2rem;
             margin: 0;
+            font-weight: 400;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }}
+        
+        .section-header::after {{
+            content: '';
+            display: block;
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 30px auto 0;
+            border-radius: 2px;
         }}
         
         .header {{
@@ -493,37 +614,325 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
         
         .instructions {{
-            text-align: center;
-            margin: 30px 0;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin: 50px 0;
+            text-align: left;
+            position: relative;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }}
+        
+        .instructions::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
+            border-radius: 20px;
+            pointer-events: none;
         }}
         
         .instructions h3 {{
-            color: #333;
-            margin-bottom: 10px;
+            color: #2d3748;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .instructions h4 {{
+            color: #4a5568;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
         }}
         
         .instructions p {{
-            color: #666;
-            line-height: 1.5;
+            position: relative;
+            z-index: 1;
+            line-height: 1.7;
+            color: #4a5568;
+        }}
+        
+        .instructions ul {{
+            position: relative;
+            z-index: 1;
+            margin: 20px 0;
+            padding-left: 0;
+            list-style: none;
+        }}
+        
+        .instructions li {{
+            padding: 12px 0;
+            padding-left: 35px;
+            position: relative;
+            color: #4a5568;
+            line-height: 1.6;
+        }}
+        
+        .instructions li::before {{
+            content: '✓';
+            position: absolute;
+            left: 0;
+            top: 12px;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }}
+        
+        .instructions p {{
+            position: relative;
+            z-index: 1;
+            line-height: 1.7;
+            color: #4a5568;
         }}
         
         .stats {{
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+            padding: 0;
         }}
         
         .stats div {{
-            background: #f8f9fa;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            font-size: 14px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-align: left;
+        }}
+        
+        .stats div::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }}
+        
+        .stats div:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+        }}
+        
+        .stats div strong {{
+            color: #2d3748;
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }}
+        
+        /* Tutorial Styles */
+        .tutorial-content {{
+            max-width: 1000px;
+            margin: 0 auto;
+        }}
+        
+        .tutorial-step {{
+            background: white;
+            margin-bottom: 40px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }}
+        
+        .step-header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px 40px;
+            color: white;
+        }}
+        
+        .step-header h3 {{
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }}
+        
+        .step-number {{
+            background: rgba(255,255,255,0.2);
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }}
+        
+        .step-content {{
+            padding: 40px;
+        }}
+        
+        .tutorial-grid {{
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 40px;
+            align-items: center;
+        }}
+        
+        .tutorial-text h4 {{
+            color: #2d3748;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }}
+        
+        .tutorial-text ol, .tutorial-text ul {{
+            color: #4a5568;
+            line-height: 1.7;
+        }}
+        
+        .tutorial-text li {{
+            margin-bottom: 8px;
+        }}
+        
+        .tutorial-visual {{
+            text-align: center;
+        }}
+        
+        .example-abacus {{
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 2px solid rgba(102, 126, 234, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 120px;
+        }}
+        
+        .example-abacus svg {{
+            max-width: 100%;
+            height: auto;
+        }}
+        
+        .example-label {{
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 0.95rem;
+        }}
+        
+        .example-breakdown {{
+            font-size: 0.85rem;
+            color: #718096;
+            margin-top: 5px;
+            font-style: italic;
+        }}
+        
+        .examples-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }}
+        
+        .example-item {{
+            text-align: center;
+        }}
+        
+        .example-item .example-abacus {{
+            margin-bottom: 12px;
+            min-height: 100px;
+            padding: 15px;
+        }}
+        
+        .practice-hint {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             padding: 10px 15px;
-            border-radius: 6px;
-            font-size: 0.9em;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            font-style: italic;
+        }}
+        
+        .reveal-btn {{
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }}
+        
+        .reveal-btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        }}
+        
+        .reveal-btn:active {{
+            transform: translateY(0);
+        }}
+        
+        .revealed {{
+            animation: revealAnimation 0.5s ease-out;
+        }}
+        
+        @keyframes revealAnimation {{
+            0% {{ 
+                background: #fff3cd; 
+                transform: scale(1.05); 
+            }}
+            100% {{ 
+                background: #f8fafc; 
+                transform: scale(1); 
+            }}
+        }}
+        
+        @media (max-width: 768px) {{
+            .tutorial-grid {{
+                grid-template-columns: 1fr;
+                gap: 25px;
+            }}
+            
+            .step-content {{
+                padding: 25px;
+            }}
+            
+            .step-header {{
+                padding: 20px 25px;
+            }}
+            
+            .examples-grid {{
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 20px;
+            }}
         }}
         
         @media (max-width: 768px) {{
@@ -2959,11 +3368,11 @@ def generate_web_flashcards(numbers, config, output_path):
 </head>
 <body>
     <div class="container">
-        <!-- Main Page Header -->
-        <div class="header">
+        <!-- Beautiful Main Header -->
+        <header class="main-header">
             <h1>Soroban Flashcards</h1>
             <p>Interactive learning tools for mastering the Japanese abacus</p>
-        </div>
+        </header>
         
         <!-- Navigation -->
         <nav class="page-nav">
@@ -2975,24 +3384,138 @@ def generate_web_flashcards(numbers, config, output_path):
             </div>
         </nav>
         
+        <!-- Content Area -->
+        <div class="content-area">
+        
         <!-- Section 1: Introduction -->
         <section id="introduction" class="page-section active">
             <div class="section-header">
-                <h2 class="section-title">📚 How to Learn with Soroban</h2>
-                <p class="section-subtitle">Master the Japanese abacus through interactive practice</p>
+                <h2 class="section-title">📚 Master the Soroban Abacus</h2>
+                <p class="section-subtitle">Complete visual guide to reading and understanding Japanese abacus patterns</p>
             </div>
             
-            <div class="instructions">
-                <h3>Understanding the Soroban:</h3>
-                <p>The soroban (Japanese abacus) represents numbers using beads arranged in columns. Each column represents a place value (ones, tens, hundreds, etc.). In each column:</p>
-                <ul style="text-align: left; display: inline-block; margin: 20px 0;">
-                    <li><strong>Top bead (heaven):</strong> Represents 5</li>
-                    <li><strong>Bottom beads (earth):</strong> Each represents 1</li>
-                    <li><strong>Active beads:</strong> Pushed toward the horizontal bar</li>
-                </ul>
+            <!-- Tutorial Content -->
+            <div class="tutorial-content">
                 
-                <h3>How to Practice:</h3>
-                <p>Look at each abacus representation and try to determine the number before hovering or clicking to reveal the answer. Start with smaller numbers and work your way up to more complex calculations.</p>
+                <!-- Step 1: Basic Structure -->
+                <div class="tutorial-step">
+                    <div class="step-header">
+                        <h3><span class="step-number">1</span>Understanding the Structure</h3>
+                    </div>
+                    <div class="step-content">
+                        <div class="tutorial-grid">
+                            <div class="tutorial-text">
+                                <p>The soroban has <strong>heaven beads</strong> (top) and <strong>earth beads</strong> (bottom) separated by a horizontal bar.</p>
+                                <ul>
+                                    <li><strong>Heaven bead:</strong> Worth 5 units</li>
+                                    <li><strong>Earth beads:</strong> Worth 1 unit each</li>
+                                    <li><strong>Active position:</strong> Beads pushed toward the bar</li>
+                                </ul>
+                            </div>
+                            <div class="tutorial-visual">
+                                <div class="example-abacus" id="tutorial-structure">
+                                    {tutorial_svg_0}
+                                </div>
+                                <div class="example-label">Zero (0) - All beads away from bar</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 2: Single Digits -->
+                <div class="tutorial-step">
+                    <div class="step-header">
+                        <h3><span class="step-number">2</span>Reading Single Digits (1-9)</h3>
+                    </div>
+                    <div class="step-content">
+                        <div class="examples-grid">
+                            <div class="example-item">
+                                <div class="example-abacus">{tutorial_svg_1}</div>
+                                <div class="example-label">1 = One earth bead up</div>
+                            </div>
+                            <div class="example-item">
+                                <div class="example-abacus">{tutorial_svg_3}</div>
+                                <div class="example-label">3 = Three earth beads up</div>
+                            </div>
+                            <div class="example-item">
+                                <div class="example-abacus">{tutorial_svg_5}</div>
+                                <div class="example-label">5 = Heaven bead down</div>
+                            </div>
+                            <div class="example-item">
+                                <div class="example-abacus">{tutorial_svg_7}</div>
+                                <div class="example-label">7 = Heaven bead + 2 earth beads</div>
+                            </div>
+                            <div class="example-item">
+                                <div class="example-abacus">{tutorial_svg_9}</div>
+                                <div class="example-label">9 = Heaven bead + 4 earth beads</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 3: Multi-digit Numbers -->
+                <div class="tutorial-step">
+                    <div class="step-header">
+                        <h3><span class="step-number">3</span>Multi-Digit Numbers</h3>
+                    </div>
+                    <div class="step-content">
+                        <div class="tutorial-text">
+                            <p>Each column represents a place value. Read from right to left: <strong>ones, tens, hundreds, thousands</strong>.</p>
+                        </div>
+                        <div class="examples-grid">
+                            <div class="example-item">
+                                <div class="example-abacus">{tutorial_svg_23}</div>
+                                <div class="example-label">23 = 2 tens + 3 ones</div>
+                                <div class="example-breakdown">Tens: 2 | Ones: 3</div>
+                            </div>
+                            <div class="example-item">
+                                <div class="example-abacus">{tutorial_svg_67}</div>
+                                <div class="example-label">67 = 6 tens + 7 ones</div>
+                                <div class="example-breakdown">Tens: 6 | Ones: 7</div>
+                            </div>
+                            <div class="example-item">
+                                <div class="example-abacus">{tutorial_svg_158}</div>
+                                <div class="example-label">158 = 1 hundred + 5 tens + 8 ones</div>
+                                <div class="example-breakdown">Hundreds: 1 | Tens: 5 | Ones: 8</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 4: Practice Tips -->
+                <div class="tutorial-step">
+                    <div class="step-header">
+                        <h3><span class="step-number">4</span>Practice Strategy</h3>
+                    </div>
+                    <div class="step-content">
+                        <div class="tutorial-grid">
+                            <div class="tutorial-text">
+                                <h4>Start Simple, Build Complexity</h4>
+                                <ol>
+                                    <li>Master single digits (0-9) first</li>
+                                    <li>Practice two-digit numbers (10-99)</li>
+                                    <li>Advance to three-digit numbers (100-999)</li>
+                                    <li>Challenge yourself with larger numbers</li>
+                                </ol>
+                                
+                                <h4>Reading Strategy</h4>
+                                <p>For each column, count the active beads:</p>
+                                <ul>
+                                    <li>Heaven bead down = add 5</li>
+                                    <li>Earth beads up = add 1 each</li>
+                                    <li>Total the values for each column</li>
+                                </ul>
+                            </div>
+                            <div class="tutorial-visual">
+                                <div class="example-abacus" id="practice-example">{tutorial_svg_example}</div>
+                                <div class="example-label" id="practice-label">Practice Number</div>
+                                <div class="practice-hint">Try to read this number before revealing!</div>
+                                <button class="reveal-btn" id="reveal-answer" onclick="revealAnswer()">Reveal Answer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
             </div>
         </section>
         
@@ -3444,6 +3967,8 @@ def generate_web_flashcards(numbers, config, output_path):
                 <p><em>Interactive flashcards for digital learning. Use the left/right arrow keys or click the cards to flip them.</em></p>
             </div>
         </section>
+        
+        </div> <!-- End Content Area -->
     </div>
 
     <script>
@@ -6187,6 +6712,33 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
     }}
 
+    // Tutorial functionality
+    function revealAnswer() {{
+        const label = document.getElementById('practice-label');
+        const btn = document.getElementById('reveal-answer');
+        const example = document.getElementById('practice-example');
+        
+        if (label && btn && example) {{
+            label.textContent = 'Practice Number: 456';
+            btn.textContent = 'Try Another!';
+            btn.onclick = function() {{
+                // Generate new random number for practice
+                const randomNum = Math.floor(Math.random() * 900) + 100;
+                label.textContent = 'Practice Number';
+                btn.textContent = 'Reveal Answer';
+                btn.onclick = revealAnswer;
+                
+                // Add reveal animation
+                example.classList.add('revealed');
+                setTimeout(() => example.classList.remove('revealed'), 500);
+            }};
+            
+            // Add reveal animation
+            example.classList.add('revealed');
+            setTimeout(() => example.classList.remove('revealed'), 500);
+        }}
+    }}
+
     // Initialize quiz and sorting when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {{
         new ModalManager();
@@ -6222,7 +6774,18 @@ def generate_web_flashcards(numbers, config, output_path):
         color_scheme_description=color_scheme_description,
         bead_shape=config.get('bead_shape', 'diamond').capitalize(),
         card_count=len(numbers),
-        number_range=f"{min(numbers)} - {max(numbers)}" if numbers else "0"
+        number_range=f"{min(numbers)} - {max(numbers)}" if numbers else "0",
+        # Tutorial SVGs
+        tutorial_svg_0=tutorial_svgs.get(0, '<svg><text>Error</text></svg>'),
+        tutorial_svg_1=tutorial_svgs.get(1, '<svg><text>Error</text></svg>'),
+        tutorial_svg_3=tutorial_svgs.get(3, '<svg><text>Error</text></svg>'),
+        tutorial_svg_5=tutorial_svgs.get(5, '<svg><text>Error</text></svg>'),
+        tutorial_svg_7=tutorial_svgs.get(7, '<svg><text>Error</text></svg>'),
+        tutorial_svg_9=tutorial_svgs.get(9, '<svg><text>Error</text></svg>'),
+        tutorial_svg_23=tutorial_svgs.get(23, '<svg><text>Error</text></svg>'),
+        tutorial_svg_67=tutorial_svgs.get(67, '<svg><text>Error</text></svg>'),
+        tutorial_svg_158=tutorial_svgs.get(158, '<svg><text>Error</text></svg>'),
+        tutorial_svg_example=tutorial_svgs.get(456, '<svg><text>Error</text></svg>')
     )
     
     # Write HTML file
