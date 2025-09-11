@@ -5075,6 +5075,7 @@ def generate_web_flashcards(numbers, config, output_path):
             this.currentInput = '';
             this.incorrectGuesses = 0;
             this.finishButtonsBound = false;
+            this.prefixAcceptanceTimeout = null; // Timeout management for prefix conflicts
             
             this.initializeCards();
             this.bindEvents();
@@ -5341,6 +5342,12 @@ def generate_web_flashcards(numbers, config, output_path):
             const display = document.getElementById('number-display');
             const typingSpan = document.getElementById('current-typing');
             
+            // Always clear any existing timeout first
+            if (this.prefixAcceptanceTimeout) {{
+                clearTimeout(this.prefixAcceptanceTimeout);
+                this.prefixAcceptanceTimeout = null;
+            }}
+            
             // Reset visual feedback
             display.classList.remove('correct', 'incorrect');
             
@@ -5363,12 +5370,25 @@ def generate_web_flashcards(numbers, config, output_path):
             
             // Check if this number is in our correct answers and not already found
             if (this.correctAnswers.includes(number) && !this.foundNumbers.includes(number)) {{
-                // Correct number found!
-                this.acceptCorrectNumber(number, input, display);
+                // Check if this input is a prefix of any other correct answers
+                if (!this.isPrefix(value, this.correctAnswers)) {{
+                    // Safe to auto-accept immediately - no timeout needed
+                    this.acceptCorrectNumber(number, input, display);
+                }} else {{
+                    // Brief delay for potential prefixes - store timeout ID
+                    this.prefixAcceptanceTimeout = setTimeout(() => {{
+                        this.prefixAcceptanceTimeout = null; // Clear reference
+                        this.acceptCorrectNumber(number, input, display);
+                    }}, 500);
+                }}
             }} else if (value.length >= 2 && !this.correctAnswers.includes(number)) {{
                 // Wrong number (only trigger after at least 2 digits to avoid false positives)
                 this.handleIncorrectGuess(input, display);
             }}
+        }}
+        
+        isPrefix(input, numbers) {{
+            return numbers.some(n => n.toString().startsWith(input) && n.toString() !== input);
         }}
         
         acceptCorrectNumber(number, input, display) {{
@@ -5584,6 +5604,7 @@ def generate_web_flashcards(numbers, config, output_path):
         
         endQuiz() {{
             // Stop the current quiz and return to configuration
+            this.cleanupQuizState();
             this.resetQuiz();
         }}
         
@@ -5598,6 +5619,18 @@ def generate_web_flashcards(numbers, config, output_path):
             this.currentInput = '';
             this.incorrectGuesses = 0;
             this.finishButtonsBound = false;
+            
+            // Clean up any pending timeouts
+            this.cleanupQuizState();
+            
+        }}
+        
+        cleanupQuizState() {{
+            // Clear any pending prefix acceptance timeout
+            if (this.prefixAcceptanceTimeout) {{
+                clearTimeout(this.prefixAcceptanceTimeout);
+                this.prefixAcceptanceTimeout = null;
+            }}
             
             // Clear smart input
             const smartInput = document.getElementById('smart-input');
