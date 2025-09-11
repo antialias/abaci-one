@@ -324,6 +324,81 @@ def generate_web_flashcards(numbers, config, output_path):
         .container {{
             max-width: 1200px;
             margin: 0 auto;
+            padding: 20px;
+        }}
+        
+        /* Navigation Styles */
+        .page-nav {{
+            position: sticky;
+            top: 0;
+            background: #fff;
+            border-bottom: 2px solid #e9ecef;
+            z-index: 1000;
+            margin: -20px -20px 30px -20px;
+            padding: 15px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }}
+        
+        .nav-buttons {{
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }}
+        
+        .nav-btn {{
+            padding: 10px 20px;
+            border: 2px solid #2c5f76;
+            background: white;
+            color: #2c5f76;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }}
+        
+        .nav-btn:hover {{
+            background: #f8f9fa;
+            transform: translateY(-1px);
+        }}
+        
+        .nav-btn.active {{
+            background: #2c5f76;
+            color: white;
+        }}
+        
+        /* Section Styles */
+        .page-section {{
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }}
+        
+        .page-section.active {{
+            display: block;
+        }}
+        
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(10px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        
+        .section-header {{
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        
+        .section-title {{
+            font-size: 2rem;
+            color: #2c5f76;
+            margin: 0 0 10px 0;
+        }}
+        
+        .section-subtitle {{
+            color: #666;
+            font-size: 1.1rem;
+            margin: 0;
         }}
         
         .header {{
@@ -2884,16 +2959,49 @@ def generate_web_flashcards(numbers, config, output_path):
 </head>
 <body>
     <div class="container">
+        <!-- Main Page Header -->
         <div class="header">
             <h1>Soroban Flashcards</h1>
-            <p>Hover over the cards to reveal the numbers</p>
+            <p>Interactive learning tools for mastering the Japanese abacus</p>
         </div>
         
-        <div class="instructions">
-            <h3>How to use these flashcards:</h3>
-            <p>Look at each abacus representation and try to determine the number before hovering to reveal the answer. 
-            The abacus shows numbers using beads: each column represents a place value (ones, tens, hundreds, etc.). 
-            In each column, the top bead represents 5 and the bottom beads each represent 1.</p>
+        <!-- Navigation -->
+        <nav class="page-nav">
+            <div class="nav-buttons">
+                <button class="nav-btn active" data-section="introduction">📚 Introduction</button>
+                <button class="nav-btn" data-section="configuration">⚙️ Configuration</button>
+                <button class="nav-btn" data-section="challenges">🎯 Challenges</button>
+                <button class="nav-btn" data-section="flashcards">🧮 Flashcards</button>
+            </div>
+        </nav>
+        
+        <!-- Section 1: Introduction -->
+        <section id="introduction" class="page-section active">
+            <div class="section-header">
+                <h2 class="section-title">📚 How to Learn with Soroban</h2>
+                <p class="section-subtitle">Master the Japanese abacus through interactive practice</p>
+            </div>
+            
+            <div class="instructions">
+                <h3>Understanding the Soroban:</h3>
+                <p>The soroban (Japanese abacus) represents numbers using beads arranged in columns. Each column represents a place value (ones, tens, hundreds, etc.). In each column:</p>
+                <ul style="text-align: left; display: inline-block; margin: 20px 0;">
+                    <li><strong>Top bead (heaven):</strong> Represents 5</li>
+                    <li><strong>Bottom beads (earth):</strong> Each represents 1</li>
+                    <li><strong>Active beads:</strong> Pushed toward the horizontal bar</li>
+                </ul>
+                
+                <h3>How to Practice:</h3>
+                <p>Look at each abacus representation and try to determine the number before hovering or clicking to reveal the answer. Start with smaller numbers and work your way up to more complex calculations.</p>
+            </div>
+        </section>
+        
+        <!-- Section 2: Configuration -->
+        <section id="configuration" class="page-section">
+            <div class="section-header">
+                <h2 class="section-title">⚙️ Current Configuration</h2>
+                <p class="section-subtitle">Settings used for this flashcard set</p>
+            </div>
             
             <div class="stats">
                 <div><strong>Cards:</strong> {card_count}</div>
@@ -2901,14 +3009,29 @@ def generate_web_flashcards(numbers, config, output_path):
                 <div><strong>Color Scheme:</strong> {color_scheme_description}</div>
                 <div><strong>Bead Shape:</strong> {bead_shape}</div>
             </div>
-        </div>
-        
-        <!-- Challenges Section -->
-        <div class="challenges-section">
-            <div class="section-header">
-                <h2>🎯 Interactive Challenges</h2>
-                <p>Test your soroban skills with engaging games and quizzes</p>
+            
+            <div class="instructions">
+                <h3>Configuration Details:</h3>
+                <p>This flashcard set has been generated with specific settings to help you practice. You can generate new sets with different ranges, color schemes, and visual styles using the command-line tools.</p>
+                
+                <h4>Available Options:</h4>
+                <ul style="text-align: left; display: inline-block; margin: 20px 0;">
+                    <li><strong>Number Ranges:</strong> Practice with any range from 0-99999</li>
+                    <li><strong>Color Schemes:</strong> Monochrome, place-value, heaven-earth, alternating</li>
+                    <li><strong>Bead Shapes:</strong> Diamond, circle, square</li>
+                    <li><strong>Visual Styles:</strong> Multiple colorblind-friendly palettes</li>
+                </ul>
             </div>
+        </section>
+        
+        <!-- Section 3: Challenges -->
+        <section id="challenges" class="page-section">
+            <div class="section-header">
+                <h2 class="section-title">🎯 Interactive Challenges</h2>
+                <p class="section-subtitle">Test your soroban skills with engaging games and quizzes</p>
+            </div>
+            
+            <div class="challenges-section">
             
             <div class="challenges-grid">
                 <div class="challenge-category">
@@ -3303,14 +3426,24 @@ def generate_web_flashcards(numbers, config, output_path):
                 </div>
             </div>
         </div>
+        </section>
 
-        <div class="cards-grid" id="cards-grid">
-            {cards_html}
-        </div>
         
-        <div class="instructions">
-            <p><em>Interactive flashcards for digital learning. Use the left/right arrow keys or click the cards to flip them.</em></p>
-        </div>
+        <!-- Section 4: Flashcards -->
+        <section id="flashcards" class="page-section">
+            <div class="section-header">
+                <h2 class="section-title">🧮 Practice Flashcards</h2>
+                <p class="section-subtitle">Interactive cards for hands-on learning</p>
+            </div>
+            
+            <div class="cards-grid" id="cards-grid">
+                {cards_html}
+            </div>
+            
+            <div class="instructions">
+                <p><em>Interactive flashcards for digital learning. Use the left/right arrow keys or click the cards to flip them.</em></p>
+            </div>
+        </section>
     </div>
 
     <script>
@@ -6008,9 +6141,56 @@ def generate_web_flashcards(numbers, config, output_path):
         }}, 3000);
     }}
     
+    // Section Navigation Manager
+    class SectionNavigator {{
+        constructor() {{
+            this.currentSection = 'introduction';
+            this.setupEventListeners();
+        }}
+        
+        setupEventListeners() {{
+            document.querySelectorAll('.nav-btn').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    const section = e.target.getAttribute('data-section');
+                    this.showSection(section);
+                }});
+            }});
+        }}
+        
+        showSection(sectionId) {{
+            // Hide all sections
+            document.querySelectorAll('.page-section').forEach(section => {{
+                section.classList.remove('active');
+            }});
+            
+            // Remove active from all nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {{
+                btn.classList.remove('active');
+            }});
+            
+            // Show selected section
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {{
+                targetSection.classList.add('active');
+            }}
+            
+            // Activate corresponding nav button
+            const targetBtn = document.querySelector(`[data-section="${{sectionId}}"]`);
+            if (targetBtn) {{
+                targetBtn.classList.add('active');
+            }}
+            
+            this.currentSection = sectionId;
+            
+            // Scroll to top when switching sections
+            window.scrollTo({{ top: 0, behavior: 'smooth' }});
+        }}
+    }}
+
     // Initialize quiz and sorting when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {{
         new ModalManager();
+        new SectionNavigator();
         new SorobanQuiz();
         new SortingChallenge();
         new MatchingChallenge();
