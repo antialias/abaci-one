@@ -1833,6 +1833,162 @@ def generate_web_flashcards(numbers, config, output_path):
             75% {{ transform: translateX(10px); }}
         }}
         
+        /* Particle Effects System */
+        .particle-container {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 10000;
+        }}
+        
+        .particle {{
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }}
+        
+        .particle.star {{
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            box-shadow: 0 0 10px #ffd700;
+        }}
+        
+        .particle.heart {{
+            background: #ff6b6b;
+            border-radius: 0;
+            transform: rotate(-45deg);
+        }}
+        
+        .particle.heart::before,
+        .particle.heart::after {{
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: #ff6b6b;
+            border-radius: 50%;
+        }}
+        
+        .particle.heart::before {{
+            top: -50%;
+            left: 0;
+        }}
+        
+        .particle.heart::after {{
+            top: 0;
+            left: 50%;
+        }}
+        
+        .particle.circle {{
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .particle.diamond {{
+            background: linear-gradient(45deg, #00b894, #00cec9);
+            transform: rotate(45deg);
+            border-radius: 0;
+        }}
+        
+        .particle.confetti {{
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            border-radius: 2px;
+        }}
+        
+        /* Burst Animation */
+        @keyframes particleBurst {{
+            0% {{
+                opacity: 1;
+                transform: translateY(0) scale(0) rotate(0deg);
+            }}
+            30% {{
+                opacity: 1;
+                transform: translateY(-20px) scale(1.2) rotate(180deg);
+            }}
+            100% {{
+                opacity: 0;
+                transform: translateY(-80px) scale(0.3) rotate(360deg);
+            }}
+        }}
+        
+        /* Celebration Firework */
+        @keyframes firework {{
+            0% {{
+                opacity: 1;
+                transform: translateY(0) scale(0);
+            }}
+            20% {{
+                opacity: 1;
+                transform: translateY(-30px) scale(1.5);
+            }}
+            100% {{
+                opacity: 0;
+                transform: translateY(-120px) scale(0.5);
+            }}
+        }}
+        
+        /* Floating Animation */
+        @keyframes float {{
+            0% {{
+                opacity: 0;
+                transform: translateY(20px) scale(0) rotate(0deg);
+            }}
+            20% {{
+                opacity: 1;
+                transform: translateY(0) scale(1) rotate(72deg);
+            }}
+            100% {{
+                opacity: 0;
+                transform: translateY(-100px) scale(0.8) rotate(360deg);
+            }}
+        }}
+        
+        /* Trail Effect */
+        @keyframes trail {{
+            0% {{
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }}
+            100% {{
+                opacity: 0;
+                transform: translate(var(--dx), var(--dy)) scale(0.3);
+            }}
+        }}
+        
+        /* Sparkle Effect */
+        @keyframes sparkle {{
+            0%, 100% {{
+                opacity: 0;
+                transform: scale(0) rotate(0deg);
+            }}
+            50% {{
+                opacity: 1;
+                transform: scale(1) rotate(180deg);
+            }}
+        }}
+        
+        .particle.burst {{
+            animation: particleBurst 0.8s ease-out forwards;
+        }}
+        
+        .particle.firework {{
+            animation: firework 1.2s ease-out forwards;
+        }}
+        
+        .particle.floating {{
+            animation: float 2s ease-out forwards;
+        }}
+        
+        .particle.trail {{
+            animation: trail 1.5s ease-out forwards;
+        }}
+        
+        .particle.sparkle {{
+            animation: sparkle 1s ease-in-out forwards;
+        }}
+        
         .input-feedback {{
             margin-top: 10px;
             font-weight: bold;
@@ -1845,6 +2001,15 @@ def generate_web_flashcards(numbers, config, output_path):
         
         .input-feedback.error {{
             color: #dc3545;
+        }}
+        
+        .input-feedback.survival {{
+            color: #ff6b6b;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(255, 193, 7, 0.1));
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 107, 107, 0.3);
         }}
         
         .found-numbers {{
@@ -2147,14 +2312,28 @@ def generate_web_flashcards(numbers, config, output_path):
                 justify-content: center;
             }}
             
+            .tag-filter-bar {{
+                padding: 15px;
+            }}
+            
+            .filter-title {{
+                font-size: 1rem;
+                margin-bottom: 12px;
+            }}
+            
+            .tag-filters {{
+                gap: 8px;
+            }}
+            
+            .tag-filter {{
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }}
+            
             .challenges-grid {{
                 grid-template-columns: 1fr;
                 gap: 20px;
                 margin: 20px 0;
-            }}
-            
-            .challenge-category {{
-                padding: 20px;
             }}
             
             .challenge-card {{
@@ -2488,6 +2667,138 @@ def generate_web_flashcards(numbers, config, output_path):
         
         .close-btn:hover {{
             background: #545b62;
+        }}
+        
+        /* Race Results Specific Styles */
+        .race-results-summary {{
+            text-align: center;
+        }}
+        
+        .race-podium {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .medal-display {{
+            margin-bottom: 25px;
+        }}
+        
+        .medal-icon {{
+            font-size: 4rem;
+            margin-bottom: 10px;
+            display: block;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }}
+        
+        .medal-rank {{
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }}
+        
+        .medal-title {{
+            font-size: 1.3rem;
+            font-weight: 600;
+            opacity: 0.9;
+            letter-spacing: 1px;
+        }}
+        
+        .race-performance {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 25px;
+        }}
+        
+        .perf-metric {{
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+        }}
+        
+        .metric-label {{
+            display: block;
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }}
+        
+        .metric-value {{
+            display: block;
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }}
+        
+        .race-statistics {{
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }}
+        
+        .stat-row {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }}
+        
+        .stat-row:last-child {{
+            border-bottom: none;
+        }}
+        
+        .stat-label {{
+            font-weight: 500;
+            color: #495057;
+        }}
+        
+        .stat-value {{
+            font-weight: 700;
+            color: #007bff;
+            font-size: 1.1rem;
+        }}
+        
+        .race-feedback {{
+            background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #2196f3;
+        }}
+        
+        .race-feedback p {{
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #495057;
+            text-align: center;
+        }}
+        
+        /* Responsive adjustments for race results */
+        @media (max-width: 768px) {{
+            .race-performance {{
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }}
+            
+            .medal-icon {{
+                font-size: 3rem;
+            }}
+            
+            .medal-rank {{
+                font-size: 1.5rem;
+            }}
+            
+            .metric-value {{
+                font-size: 1.2rem;
+            }}
         }}
         
         @keyframes fadeIn {{
@@ -2967,11 +3278,75 @@ def generate_web_flashcards(numbers, config, output_path):
             font-size: 16px;
         }}
         
+        /* Tag Filter Bar */
+        .tag-filter-bar {{
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }}
+        
+        .filter-title {{
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            text-align: center;
+        }}
+        
+        .tag-filters {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }}
+        
+        .tag-filter {{
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        
+        .tag-filter:hover {{
+            background: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .tag-filter.active {{
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            color: white;
+            border-color: #4a90e2;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+        }}
+        
+        .tag-count {{
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }}
+        
+        .tag-filter.active .tag-count {{
+            background: rgba(255, 255, 255, 0.3);
+        }}
+
         .challenges-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 30px;
-            margin-top: 30px;
+            margin-top: 0px;
         }}
         
         .challenge-category {{
@@ -3047,18 +3422,20 @@ def generate_web_flashcards(numbers, config, output_path):
             line-height: 1.4;
         }}
         
-        .challenge-stats {{
+        .challenge-tags {{
             display: flex;
-            gap: 15px;
+            gap: 10px;
             flex-wrap: wrap;
+            margin-top: 8px;
         }}
         
-        .stat {{
+        .tag {{
             background: rgba(255,255,255,0.2);
             padding: 4px 8px;
             border-radius: 6px;
             font-size: 12px;
             font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.3);
         }}
         
         .sorting-card {{
@@ -3118,7 +3495,7 @@ def generate_web_flashcards(numbers, config, output_path):
             flex-wrap: wrap;
         }}
         
-        .mode-btn, .timer-btn {{
+        .mode-btn, .timer-btn, .game-type-btn, .timeout-btn {{
             background: #f8f9fa;
             border: 2px solid #e9ecef;
             padding: 10px 15px;
@@ -3132,18 +3509,18 @@ def generate_web_flashcards(numbers, config, output_path):
             justify-content: center;
         }}
         
-        .mode-btn.active, .timer-btn.active {{
+        .mode-btn.active, .timer-btn.active, .game-type-btn.active, .timeout-btn.active {{
             background: #007bff;
             border-color: #007bff;
             color: white;
         }}
         
-        .mode-btn:hover, .timer-btn:hover {{
+        .mode-btn:hover, .timer-btn:hover, .game-type-btn:hover, .timeout-btn:hover {{
             border-color: #007bff;
             background: #e3f2fd;
         }}
         
-        .mode-btn.active:hover, .timer-btn.active:hover {{
+        .mode-btn.active:hover, .timer-btn.active:hover, .game-type-btn.active:hover, .timeout-btn.active:hover {{
             background: #0056b3;
         }}
         
@@ -3656,6 +4033,22 @@ def generate_web_flashcards(numbers, config, output_path):
             background: linear-gradient(135deg, #00b894, #00cec9);
         }}
         
+        .match-card-back.friends-5-type {{
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+        }}
+        
+        .match-card-back.friends-10-type {{
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }}
+        
+        .complement-number {{
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.2;
+            white-space: pre-line;
+        }}
+        
         .match-card-back .card-type-icon {{
             font-size: 40px;
         }}
@@ -3901,6 +4294,928 @@ def generate_web_flashcards(numbers, config, output_path):
         @keyframes slideIn {{
             from {{ transform: scale(0.9) translateY(-20px); opacity: 0; }}
             to {{ transform: scale(1) translateY(0); opacity: 1; }}
+        }}
+        
+        /* Speed Complement Race Enhanced UI Styles */
+        .complement-intro {{
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .complement-intro::before {{
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="white" opacity="0.1"/><circle cx="80" cy="30" r="1.5" fill="white" opacity="0.1"/><circle cx="60" cy="70" r="1" fill="white" opacity="0.15"/></svg>');
+            animation: float 15s ease-in-out infinite;
+        }}
+        
+        .intro-icon {{
+            font-size: 4rem;
+            margin-bottom: 15px;
+            display: block;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }}
+        
+        .complement-intro h3 {{
+            margin: 0 0 15px 0;
+            font-size: 2rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .intro-description {{
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            opacity: 0.95;
+            position: relative;
+            z-index: 1;
+            line-height: 1.4;
+        }}
+        
+        .example-demo {{
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .demo-equation {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            font-size: 2rem;
+            font-weight: bold;
+        }}
+        
+        .demo-number {{
+            background: #ff6b6b;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }}
+        
+        .demo-answer {{
+            background: #feca57;
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            animation: pulse 2s infinite;
+        }}
+        
+        .demo-target {{
+            background: #48dbfb;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }}
+        
+        .demo-plus, .demo-equals {{
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }}
+        
+        .demo-instruction {{
+            font-size: 1.1rem;
+            color: #fff;
+            opacity: 0.9;
+        }}
+        
+        /* Enhanced Game Display */
+        .complement-display {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .complement-display::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/></svg>');
+            pointer-events: none;
+        }}
+        
+        .challenge-prompt {{
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 30px;
+        }}
+        
+        
+        .equation-visual {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 25px;
+            flex-wrap: wrap;
+        }}
+        
+        .challenge-number-container,
+        .answer-container,
+        .target-container {{
+            text-align: center;
+            position: relative;
+        }}
+        
+        .challenge-number {{
+            font-size: 4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.4);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            animation: bounceIn 1s ease-out;
+        }}
+        
+        .answer-display {{
+            font-size: 4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #feca57, #ff9ff3);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(254, 202, 87, 0.4);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            text-align: center;
+            min-width: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+            transition: all 0.3s ease;
+            user-select: none;
+        }}
+        
+        .answer-display.typing {{
+            animation: none;
+            transform: scale(1.1);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3), 0 15px 35px rgba(254, 202, 87, 0.6);
+            background: linear-gradient(135deg, #ff9ff3, #feca57);
+        }}
+        
+        .answer-display.empty {{
+            color: rgba(255, 255, 255, 0.7);
+        }}
+        
+        .target-number {{
+            font-size: 4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #48dbfb, #0abde3);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(72, 219, 251, 0.4);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }}
+        
+        .equation-symbol {{
+            font-size: 3rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }}
+        
+        .number-label,
+        .answer-label,
+        .target-label {{
+            font-size: 0.9rem;
+            margin-top: 8px;
+            opacity: 0.8;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        
+        .answer-arrow {{
+            font-size: 1.5rem;
+            margin-top: 5px;
+            animation: bounce 1s infinite;
+        }}
+        
+        /* Enhanced Timer */
+        .timer-section {{
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .timer-label {{
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            opacity: 0.9;
+            font-weight: 500;
+        }}
+        
+        .timer-bar {{
+            background: rgba(255, 255, 255, 0.2);
+            height: 12px;
+            border-radius: 25px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }}
+        
+        .timer-fill {{
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #feca57, #ff6b6b);
+            border-radius: 25px;
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.6);
+            animation: shimmer 2s infinite;
+        }}
+        
+        .timer-text {{
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }}
+        
+        /* Race Track Styles */
+        .race-track-section {{
+            margin-top: 25px;
+            padding: 50px 150px 20px 150px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }}
+        
+        @media (max-width: 768px) {{
+            .race-track-section {{
+                padding: 30px 80px 20px 80px;
+            }}
+        }}
+        
+        @media (max-width: 480px) {{
+            .race-track-section {{
+                padding: 30px 40px 20px 40px;
+            }}
+        }}
+        
+        .race-label {{
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }}
+        
+        .race-track {{
+            position: relative;
+            height: 150px;
+            background: linear-gradient(to right, #4CAF50 0%, #8BC34A 25%, #CDDC39 50%, #FFC107 75%, #FF5722 100%);
+            border-radius: 60px;
+            margin: 0;
+            overflow: visible;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3);
+        }}
+        
+        .track-background {{
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent 0px,
+                transparent 18px,
+                rgba(255,255,255,0.1) 18px,
+                rgba(255,255,255,0.1) 20px
+            );
+            border-radius: 60px;
+            overflow: hidden;
+        }}
+        
+        .track-line {{
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 6px rgba(255,255,255,0.8);
+        }}
+        
+        .start-line {{ left: 5%; }}
+        .quarter-line {{ left: 25%; opacity: 0.5; }}
+        .half-line {{ left: 50%; }}
+        .three-quarter-line {{ left: 75%; opacity: 0.5; }}
+        .finish-line {{ left: 95%; }}
+        
+        .racer {{
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.6s ease-out, transform 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            left: 2%;
+        }}
+        
+        .racer:hover {{
+            transform: scale(1.1);
+        }}
+        
+        .player-racer {{
+            top: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 3px solid #FFD700;
+            z-index: 10;
+        }}
+        
+        .ai-racer {{
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            border: 2px solid #ff4757;
+        }}
+        
+        #ai-racer-1 {{
+            top: 35px;
+            z-index: 8;
+        }}
+        
+        #ai-racer-2 {{
+            top: 60px;
+            z-index: 9;
+        }}
+        
+        .racer-character {{
+            font-size: 1.5rem;
+            line-height: 1;
+            animation: bounce 1s infinite alternate;
+        }}
+        
+        .racer-label {{
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 6px;
+            border-radius: 8px;
+            white-space: nowrap;
+            text-shadow: none;
+        }}
+        
+        .racer-progress {{
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #FFD700;
+            background: rgba(0,0,0,0.8);
+            padding: 1px 4px;
+            border-radius: 6px;
+            text-shadow: none;
+        }}
+        
+        .finish-zone {{
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            border-top-right-radius: 60px;
+            border-bottom-right-radius: 60px;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            z-index: 2;
+        }}
+        
+        .finish-flag {{
+            font-size: 1.5rem;
+            animation: wave 1s infinite ease-in-out;
+        }}
+        
+        .finish-text {{
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: #333;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+            transform: rotate(-90deg);
+            margin-top: 5px;
+        }}
+        
+        .race-stats {{
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            color: white;
+        }}
+        
+        .race-stat {{
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }}
+        
+        .race-stat .stat-label {{
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-right: 5px;
+        }}
+        
+        /* Race Animations */
+        @keyframes bounce {{
+            0% {{ transform: translateY(0); }}
+            100% {{ transform: translateY(-3px); }}
+        }}
+        
+        @keyframes wave {{
+            0%, 100% {{ transform: rotate(-10deg); }}
+            50% {{ transform: rotate(10deg); }}
+        }}
+        
+        /* Speech Bubbles */
+        .speech-bubble {{
+            position: absolute;
+            top: -45px;
+            left: 60px;
+            transform: translateY(-50%);
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s ease;
+            pointer-events: none;
+        }}
+        
+        .speech-bubble.visible {{
+            opacity: 1;
+            visibility: visible;
+            animation: bubblePopIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }}
+        
+        .bubble-content {{
+            background: white;
+            border-radius: 18px;
+            padding: 8px 12px;
+            min-width: 120px;
+            max-width: 200px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #2c3e50;
+            text-align: center;
+            line-height: 1.2;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 2px solid #f0f2f5;
+            position: relative;
+        }}
+        
+        .bubble-content::before {{
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            z-index: -1;
+        }}
+        
+        .bubble-tail {{
+            position: absolute;
+            top: 50%;
+            left: -8px;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border: 8px solid transparent;
+            border-right-color: white;
+            z-index: 1;
+        }}
+        
+        .bubble-tail::before {{
+            content: '';
+            position: absolute;
+            top: -9px;
+            left: 2px;
+            width: 0;
+            height: 0;
+            border: 9px solid transparent;
+            border-right-color: #4a90e2;
+            z-index: -1;
+        }}
+        
+        /* Different bubble styles for different AI personalities */
+        #ai-racer-1 .bubble-content {{
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            border-color: #ff6b6b;
+        }}
+        
+        #ai-racer-1 .speech-bubble {{
+            left: -140px; /* Position behind the racer */
+            top: -10px; /* Align with ai-racer-1 which is at top: 35px */
+        }}
+        
+        #ai-racer-1 .bubble-tail {{
+            border-right-color: #ff6b6b;
+            left: auto;
+            right: -8px; /* Point from the right side */
+            border-right-color: transparent;
+            border-left-color: #ff6b6b;
+        }}
+        
+        #ai-racer-1 .bubble-tail::before {{
+            left: auto;
+            right: 2px;
+            border-right-color: transparent;
+            border-left-color: #ff6b6b;
+        }}
+        
+        #ai-racer-2 .speech-bubble {{
+            top: 15px; /* Align with ai-racer-2 which is at top: 60px */
+        }}
+        
+        #ai-racer-2 .bubble-content {{
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;  
+            border-color: #4ecdc4;
+        }}
+        
+        #ai-racer-2 .bubble-tail {{
+            border-right-color: #4ecdc4;
+        }}
+        
+        @keyframes bubblePopIn {{
+            0% {{ 
+                opacity: 0; 
+                transform: translateY(-50%) translateX(10px) scale(0.3);
+            }}
+            50% {{ 
+                opacity: 1; 
+                transform: translateY(-50%) translateX(-5px) scale(1.1);
+            }}
+            100% {{ 
+                opacity: 1; 
+                transform: translateY(-50%) translateX(0) scale(1);
+            }}
+        }}
+        
+        /* Player Race Animations */
+        .racer.tripped {{
+            animation: tripAndRecover 1.2s ease-out;
+        }}
+        
+        .racer.moving-backwards {{
+            animation: moveBackwards 0.8s ease-out;
+        }}
+        
+        @keyframes tripAndRecover {{
+            0% {{ transform: rotate(0deg) translateY(0px); }}
+            20% {{ transform: rotate(-15deg) translateY(8px); }}
+            40% {{ transform: rotate(-25deg) translateY(15px); }}
+            60% {{ transform: rotate(-20deg) translateY(12px); }}
+            80% {{ transform: rotate(-5deg) translateY(3px); }}
+            100% {{ transform: rotate(0deg) translateY(0px); }}
+        }}
+        
+        @keyframes moveBackwards {{
+            0% {{ transform: translateX(0px) scale(1); }}
+            30% {{ transform: translateX(-20px) scale(0.9); }}
+            60% {{ transform: translateX(-15px) scale(0.95); }}
+            100% {{ transform: translateX(0px) scale(1); }}
+        }}
+        
+        @keyframes raceFinish {{
+            0% {{ transform: scale(1) rotate(0deg); }}
+            50% {{ transform: scale(1.2) rotate(180deg); }}
+            100% {{ transform: scale(1) rotate(360deg); }}
+        }}
+        
+        .racer.winner {{
+            animation: raceFinish 1s ease-in-out;
+            border-color: #FFD700;
+            box-shadow: 0 0 20px #FFD700;
+        }}
+        
+        .racer.celebrating {{
+            animation: bounce 0.3s infinite alternate;
+        }}
+        
+        /* Enhanced Feedback Area */
+        .complement-feedback-area {{
+            text-align: center;
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            position: relative;
+        }}
+        
+        .input-hint {{
+            font-size: 1.1rem;
+            color: #666;
+            opacity: 0.8;
+            margin-top: 10px;
+        }}
+        
+        /* Enhanced Game Style Buttons */
+        .style-buttons {{
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 15px;
+        }}
+        
+        .game-style-btn {{
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 20px 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .game-style-btn::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.6s;
+        }}
+        
+        .game-style-btn:hover {{
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }}
+        
+        .game-style-btn:hover::before {{
+            left: 100%;
+        }}
+        
+        .game-style-btn.active {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: white;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .game-style-btn.active:hover {{
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .game-style-btn.active::before {{
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        }}
+        
+        .style-icon {{
+            font-size: 2.5rem;
+            line-height: 1;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            flex-shrink: 0;
+        }}
+        
+        .game-style-btn.active .style-icon {{
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }}
+        
+        .style-content {{
+            flex: 1;
+        }}
+        
+        .style-title {{
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #333;
+        }}
+        
+        .game-style-btn.active .style-title {{
+            color: white;
+        }}
+        
+        .style-description {{
+            font-size: 0.95rem;
+            color: #666;
+            line-height: 1.4;
+            opacity: 0.9;
+        }}
+        
+        .game-style-btn.active .style-description {{
+            color: rgba(255, 255, 255, 0.9);
+        }}
+        
+        /* Hover effects for individual styles */
+        .game-style-btn[data-style="practice"]:not(.active):hover {{
+            border-color: #28a745;
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.15);
+        }}
+        
+        .game-style-btn[data-style="sprint"]:not(.active):hover {{
+            border-color: #ffc107;
+            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.15);
+        }}
+        
+        .game-style-btn[data-style="survival"]:not(.active):hover {{
+            border-color: #dc3545;
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.15);
+        }}
+        
+        /* Enhanced Feedback */
+        .input-feedback {{
+            margin-top: 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }}
+        
+        .input-feedback.correct {{
+            color: #28a745;
+            animation: success 0.6s ease-out;
+        }}
+        
+        .input-feedback.incorrect {{
+            color: #dc3545;
+            animation: shake 0.6s ease-out;
+        }}
+        
+        .input-feedback.timeout {{
+            color: #ffc107;
+            animation: fadeIn 0.5s ease-out;
+        }}
+        
+        /* Adaptive Difficulty Feedback */
+        .adaptive-feedback {{
+            margin-top: 10px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            min-height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s ease;
+            opacity: 0.8;
+        }}
+        
+        .adaptive-feedback.learning {{
+            color: #17a2b8;
+            background: rgba(23, 162, 184, 0.1);
+            border-radius: 15px;
+            padding: 8px 16px;
+        }}
+        
+        .adaptive-feedback.struggling {{
+            color: #dc3545;
+            background: rgba(220, 53, 69, 0.1);
+            border-radius: 15px;
+            padding: 8px 16px;
+        }}
+        
+        .adaptive-feedback.mastered {{
+            color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 15px;
+            padding: 8px 16px;
+        }}
+        
+        .adaptive-feedback.adapted {{
+            color: #6f42c1;
+            background: rgba(111, 66, 193, 0.1);
+            border-radius: 15px;
+            padding: 8px 16px;
+            animation: adaptivePulse 1s ease-out;
+        }}
+        
+        @keyframes adaptivePulse {{
+            0% {{ transform: scale(1); opacity: 0; }}
+            50% {{ transform: scale(1.05); opacity: 1; }}
+            100% {{ transform: scale(1); opacity: 0.8; }}
+        }}
+        
+        /* Animations */
+        @keyframes pulse {{
+            0%, 100% {{ transform: scale(1); }}
+            50% {{ transform: scale(1.05); }}
+        }}
+        
+        @keyframes glow {{
+            0% {{ box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }}
+            100% {{ box-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.6); }}
+        }}
+        
+        @keyframes bounceIn {{
+            0% {{ transform: scale(0.3) rotate(-10deg); opacity: 0; }}
+            50% {{ transform: scale(1.1) rotate(5deg); }}
+            100% {{ transform: scale(1) rotate(0deg); opacity: 1; }}
+        }}
+        
+        @keyframes bounce {{
+            0%, 100% {{ transform: translateY(0); }}
+            50% {{ transform: translateY(-10px); }}
+        }}
+        
+        @keyframes shimmer {{
+            0% {{ background-position: -200px 0; }}
+            100% {{ background-position: 200px 0; }}
+        }}
+        
+        @keyframes rotate {{
+            from {{ transform: rotate(0deg); }}
+            to {{ transform: rotate(360deg); }}
+        }}
+        
+        @keyframes success {{
+            0% {{ transform: scale(0.8); opacity: 0; }}
+            50% {{ transform: scale(1.1); }}
+            100% {{ transform: scale(1); opacity: 1; }}
+        }}
+        
+        @keyframes shake {{
+            0%, 100% {{ transform: translateX(0); }}
+            25% {{ transform: translateX(-5px); }}
+            75% {{ transform: translateX(5px); }}
+        }}
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {{
+            .equation-visual {{
+                gap: 15px;
+            }}
+            
+            .challenge-number,
+            .answer-display,
+            .target-number {{
+                font-size: 2.5rem;
+                padding: 15px 20px;
+            }}
+            
+            .answer-display {{
+                min-width: 80px;
+            }}
+            
+            .equation-symbol {{
+                font-size: 2rem;
+            }}
+            
         }}
         
     </style>
@@ -4493,52 +5808,67 @@ def generate_web_flashcards(numbers, config, output_path):
             </div>
             
             <div class="challenges-section">
-            
-            <div class="challenges-grid">
-                <div class="challenge-category">
-                    <h3 class="category-title">🧠 Memory & Speed</h3>
-                    <div class="challenge-cards">
-                        <button id="open-quiz-modal" class="challenge-card quiz-card">
-                            <div class="challenge-icon">⚡</div>
-                            <div class="challenge-content">
-                                <h4>Speed Memory Quiz</h4>
-                                <p>Quick card displays test your reading skills</p>
-                                <div class="challenge-stats">
-                                    <span class="stat">🎯 Accuracy</span>
-                                    <span class="stat">⏱️ Speed</span>
-                                </div>
-                            </div>
-                        </button>
+                <!-- Tag Filter Bar -->
+                <div class="tag-filter-bar">
+                    <div class="filter-title">Filter by Tags:</div>
+                    <div class="tag-filters">
+                        <button class="tag-filter active" data-tag="all">All Games <span class="tag-count">(4)</span></button>
+                        <button class="tag-filter" data-tag="memory">🔍 Memory <span class="tag-count">(2)</span></button>
+                        <button class="tag-filter" data-tag="speed">⚡ Speed <span class="tag-count">(3)</span></button>
+                        <button class="tag-filter" data-tag="logic">🧩 Logic <span class="tag-count">(1)</span></button>
+                        <button class="tag-filter" data-tag="patterns">👀 Patterns <span class="tag-count">(1)</span></button>
+                        <button class="tag-filter" data-tag="arithmetic">🏃‍♂️ Arithmetic <span class="tag-count">(1)</span></button>
                     </div>
                 </div>
-                
-                <div class="challenge-category">
-                    <h3 class="category-title">🎲 Logic & Patterns</h3>
-                    <div class="challenge-cards">
-                        <button id="open-sorting-modal" class="challenge-card sorting-card">
-                            <div class="challenge-icon">🔢</div>
-                            <div class="challenge-content">
-                                <h4>Card Sorting Challenge</h4>
-                                <p>Arrange cards using only abacus patterns</p>
-                                <div class="challenge-stats">
-                                    <span class="stat">🧩 Logic</span>
-                                    <span class="stat">👀 Pattern Recognition</span>
-                                </div>
+            
+                <div class="challenges-grid">
+                    <button id="open-quiz-modal" class="challenge-card quiz-card" data-tags="memory,speed">
+                        <div class="challenge-icon">⚡</div>
+                        <div class="challenge-content">
+                            <h4>Speed Memory Quiz</h4>
+                            <p>Quick card displays test your reading skills</p>
+                            <div class="challenge-tags">
+                                <span class="tag">🔍 Memory</span>
+                                <span class="tag">⚡ Speed</span>
                             </div>
-                        </button>
-                        
-                        <button id="open-matching-modal" class="challenge-card matching-card">
-                            <div class="challenge-icon">🧩</div>
-                            <div class="challenge-content">
-                                <h4>Matching Pairs</h4>
-                                <p>Match abacus patterns with their numerals</p>
-                                <div class="challenge-stats">
-                                    <span class="stat">🔍 Memory</span>
-                                    <span class="stat">⚡ Speed</span>
-                                </div>
+                        </div>
+                    </button>
+                    
+                    <button id="open-complement-modal" class="challenge-card complement-card" data-tags="speed,arithmetic">
+                        <div class="challenge-icon">🔥</div>
+                        <div class="challenge-content">
+                            <h4>Speed Complement Race</h4>
+                            <p>Lightning-fast complement recall training</p>
+                            <div class="challenge-tags">
+                                <span class="tag">🏃‍♂️ Arithmetic</span>
+                                <span class="tag">⚡ Speed</span>
                             </div>
-                        </button>
-                    </div>
+                        </div>
+                    </button>
+                    
+                    <button id="open-sorting-modal" class="challenge-card sorting-card" data-tags="logic,patterns">
+                        <div class="challenge-icon">🔢</div>
+                        <div class="challenge-content">
+                            <h4>Card Sorting Challenge</h4>
+                            <p>Arrange cards using only abacus patterns</p>
+                            <div class="challenge-tags">
+                                <span class="tag">🧩 Logic</span>
+                                <span class="tag">👀 Patterns</span>
+                            </div>
+                        </div>
+                    </button>
+                    
+                    <button id="open-matching-modal" class="challenge-card matching-card" data-tags="memory,speed">
+                        <div class="challenge-icon">🧩</div>
+                        <div class="challenge-content">
+                            <h4>Matching Pairs</h4>
+                            <p>Match abacus patterns with their numerals</p>
+                            <div class="challenge-tags">
+                                <span class="tag">🔍 Memory</span>
+                                <span class="tag">⚡ Speed</span>
+                            </div>
+                        </div>
+                    </button>
                 </div>
             </div>
         </div>
@@ -4560,11 +5890,11 @@ def generate_web_flashcards(numbers, config, output_path):
                 <div class="control-group">
                     <label for="quiz-count">Cards to Quiz:</label>
                     <div class="count-buttons">
-                        <button type="button" class="count-btn" data-count="5">5</button>
-                        <button type="button" class="count-btn" data-count="10">10</button>
-                        <button type="button" class="count-btn active" data-count="15">15</button>
-                        <button type="button" class="count-btn" data-count="25">25</button>
-                        <button type="button" class="count-btn" data-count="all">All ({card_count})</button>
+                        <button type="button" class="count-btn" data-count="2">2</button>
+                        <button type="button" class="count-btn active" data-count="5">5</button>
+                        <button type="button" class="count-btn" data-count="8">8</button>
+                        <button type="button" class="count-btn" data-count="12">12</button>
+                        <button type="button" class="count-btn" data-count="15">15</button>
                     </div>
                 </div>
                 
@@ -4772,11 +6102,11 @@ def generate_web_flashcards(numbers, config, output_path):
                     </div>
                 </div>
                 <div class="modal-body">
-                    <p>Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves!</p>
+                    <p id="matching-description">Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves!</p>
             
             <div class="matching-controls">
                 <div class="control-group">
-                    <label>Game Mode:</label>
+                    <label>Number of Players:</label>
                     <div class="mode-buttons">
                         <button type="button" class="mode-btn active" data-mode="single">
                             <div class="mode-icon">👤</div>
@@ -4785,6 +6115,20 @@ def generate_web_flashcards(numbers, config, output_path):
                         <button type="button" class="mode-btn" data-mode="two-player">
                             <div class="mode-icon">👥</div>
                             <div class="mode-text">Two Player</div>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Game Type:</label>
+                    <div class="mode-buttons">
+                        <button type="button" class="game-type-btn active" data-game-type="abacus-numeral">
+                            <div class="mode-icon">🧮</div>
+                            <div class="mode-text">Abacus / Numeral Pairs</div>
+                        </button>
+                        <button type="button" class="game-type-btn" data-game-type="complement-pairs">
+                            <div class="mode-icon">🎯</div>
+                            <div class="mode-text">Friends of 5 & 10</div>
                         </button>
                     </div>
                 </div>
@@ -4887,6 +6231,265 @@ def generate_web_flashcards(numbers, config, output_path):
                 </div>
             </div>
         </div>
+        
+        <!-- Speed Complement Race Modal -->
+        <div id="complement-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Speed Complement Race</h2>
+                    <div class="modal-controls">
+                        <button id="complement-fullscreen-btn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+                        <button id="close-complement-modal" class="close-btn">&times;</button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="complement-intro">
+                        <div class="intro-icon">🚀</div>
+                        <h3>Lightning-Fast Mental Math Training!</h3>
+                        <p class="intro-description">Master complement pairs through rapid-fire practice. See a number, type its friend instantly!</p>
+                        <div class="example-demo">
+                            <div class="demo-equation">
+                                <span class="demo-number">3</span>
+                                <span class="demo-plus">+</span>
+                                <span class="demo-answer">?</span>
+                                <span class="demo-equals">=</span>
+                                <span class="demo-target">5</span>
+                            </div>
+                            <div class="demo-instruction">👆 Type <strong>2</strong> as fast as you can!</div>
+                        </div>
+                    </div>
+            
+            <div class="complement-controls">
+                <div class="control-group">
+                    <label>Training Mode:</label>
+                    <div class="mode-buttons">
+                        <button type="button" class="mode-btn active" data-mode="friends5">
+                            <div class="mode-icon">✋</div>
+                            <div class="mode-text">Friends of 5</div>
+                        </button>
+                        <button type="button" class="mode-btn" data-mode="friends10">
+                            <div class="mode-icon">🔟</div>
+                            <div class="mode-text">Friends of 10</div>
+                        </button>
+                        <button type="button" class="mode-btn" data-mode="mixed">
+                            <div class="mode-icon">🎯</div>
+                            <div class="mode-text">Mixed Challenge</div>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Time Per Question:</label>
+                    <div class="mode-buttons">
+                        <button type="button" class="timeout-btn" data-timeout="slow">
+                            <div class="mode-icon">🐢</div>
+                            <div class="mode-text">Slow (8s)</div>
+                        </button>
+                        <button type="button" class="timeout-btn active" data-timeout="normal">
+                            <div class="mode-icon">⚡</div>
+                            <div class="mode-text">Normal (5s)</div>
+                        </button>
+                        <button type="button" class="timeout-btn" data-timeout="fast">
+                            <div class="mode-icon">🚀</div>
+                            <div class="mode-text">Fast (3s)</div>
+                        </button>
+                        <button type="button" class="timeout-btn" data-timeout="expert">
+                            <div class="mode-icon">⚡</div>
+                            <div class="mode-text">Expert (2s)</div>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Choose Your Challenge:</label>
+                    <div class="style-buttons">
+                        <button type="button" class="game-style-btn active" data-style="practice">
+                            <div class="style-icon">🎯</div>
+                            <div class="style-content">
+                                <div class="style-title">Practice Mode</div>
+                                <div class="style-description">Race to 20 correct answers at your own pace</div>
+                            </div>
+                        </button>
+                        <button type="button" class="game-style-btn" data-style="sprint">
+                            <div class="style-icon">⚡</div>
+                            <div class="style-content">
+                                <div class="style-title">Lightning Sprint</div>
+                                <div class="style-description">60-second speed challenge - how many can you get?</div>
+                            </div>
+                        </button>
+                        <button type="button" class="game-style-btn" data-style="survival">
+                            <div class="style-icon">🔥</div>
+                            <div class="style-content">
+                                <div class="style-title">Endurance Test</div>
+                                <div class="style-description">Questions get faster - survive as long as you can!</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Game Area (hidden initially) -->
+            <div id="complement-game" class="complement-game" style="display: none;">
+                
+                <!-- Game Header (sticky when playing) -->
+                <div id="complement-header" class="game-sticky-header" style="display: none;">
+                    <div class="header-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Score:</span>
+                            <span id="complement-score">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Streak:</span>
+                            <span id="complement-streak">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Time:</span>
+                            <span id="complement-time">0s</span>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <button id="pause-complement" class="header-btn">⏸️ Pause</button>
+                        <button id="end-complement" class="header-btn">🏁 End</button>
+                    </div>
+                </div>
+                
+                <!-- Main Game Display -->
+                <div class="complement-display">
+                    <div class="challenge-prompt">
+                        <div class="equation-visual">
+                            <div class="challenge-number-container">
+                                <div class="challenge-number" id="challenge-number">7</div>
+                                <div class="number-label">Given</div>
+                            </div>
+                            <div class="equation-symbol">+</div>
+                            <div class="answer-container">
+                                <div id="answer-display" class="answer-display">?</div>
+                                <div class="answer-label">Your answer</div>
+                            </div>
+                            <div class="equation-symbol">=</div>
+                            <div class="target-container">
+                                <div class="target-number" id="target-number">10</div>
+                                <div class="target-label">Target</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timer-section">
+                        <div class="timer-label">⏱️ Time Remaining</div>
+                        <div class="timer-bar">
+                            <div class="timer-fill" id="timer-fill"></div>
+                        </div>
+                        <div class="timer-text" id="timer-text">5.0s</div>
+                    </div>
+                    
+                    <!-- Race Track Section -->
+                    <div class="race-track-section">
+                        <div class="race-label">🏁 Mental Math Race</div>
+                        <div class="race-track">
+                            <div class="track-background">
+                                <div class="track-line start-line"></div>
+                                <div class="track-line quarter-line"></div>
+                                <div class="track-line half-line"></div>
+                                <div class="track-line three-quarter-line"></div>
+                                <div class="track-line finish-line"></div>
+                            </div>
+                            
+                            <!-- Player Racer -->
+                            <div class="racer player-racer" id="player-racer">
+                                <div class="racer-character">🏃‍♀️</div>
+                                <div class="racer-label">You</div>
+                                <div class="racer-progress" id="player-progress">0</div>
+                            </div>
+                            
+                            <!-- AI Opponents -->
+                            <div class="racer ai-racer" id="ai-racer-1">
+                                <div class="speech-bubble" id="speech-bubble-1">
+                                    <div class="bubble-content"></div>
+                                    <div class="bubble-tail"></div>
+                                </div>
+                                <div class="racer-character">🏃‍♂️</div>
+                                <div class="racer-label">Swift AI</div>
+                            </div>
+                            
+                            <div class="racer ai-racer" id="ai-racer-2">
+                                <div class="speech-bubble" id="speech-bubble-2">
+                                    <div class="bubble-content"></div>
+                                    <div class="bubble-tail"></div>
+                                </div>
+                                <div class="racer-character">🏃</div>
+                                <div class="racer-label">Math Bot</div>
+                            </div>
+                            
+                            <!-- Finish Line -->
+                            <div class="finish-zone">
+                                <div class="finish-flag">🏁</div>
+                                <div class="finish-text">FINISH</div>
+                            </div>
+                        </div>
+                        <div class="race-stats">
+                            <div class="race-stat">
+                                <span class="stat-label">Correct:</span>
+                                <span id="race-correct">0</span>
+                            </div>
+                            <div class="race-stat">
+                                <span class="stat-label">Goal:</span>
+                                <span id="race-goal">20</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                
+                <!-- Feedback Area -->
+                <div class="complement-feedback-area">
+                    <div class="input-feedback" id="input-feedback"></div>
+                    <div class="adaptive-feedback" id="adaptive-feedback"></div>
+                </div>
+                
+                <!-- Visual Complement Display -->
+                <div class="visual-complement" id="visual-complement" style="display: none;">
+                    <div class="complement-equation">
+                        <span class="number-part" id="number-part">7</span>
+                        <span class="plus">+</span>
+                        <span class="complement-part" id="complement-part">3</span>
+                        <span class="equals">=</span>
+                        <span class="sum-part" id="sum-part">10</span>
+                    </div>
+                    <div class="abacus-visualization" id="abacus-visualization">
+                        <!-- Mini abacus showing the complement will go here -->
+                    </div>
+                </div>
+                
+                <!-- Progress & Achievement Display -->
+                <div class="progress-display">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                        <span class="progress-text" id="progress-text">0/10 Complete</span>
+                    </div>
+                    <div class="achievement-notice" id="achievement-notice" style="display: none;">
+                        <!-- Achievement unlocks will appear here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Complement Score Modal -->
+            <div id="complement-score-modal" class="score-modal" style="display: none;">
+                <div class="score-modal-content">
+                    <div class="score-modal-header">
+                        <h3>🔥 Complement Race Results</h3>
+                        <button class="complement-score-modal-close">&times;</button>
+                    </div>
+                    <div id="complement-score-modal-body" class="score-modal-body">
+                        <!-- Score content will be inserted here -->
+                    </div>
+                    <div class="score-modal-footer">
+                        <button id="complement-score-modal-new-game" class="modal-btn new-game-btn">Race Again</button>
+                        <button id="complement-score-modal-close-btn" class="modal-btn close-btn">Close</button>
+                    </div>
+                </div>
+            </div>
+                </div>
+            </div>
+        </div>
         </section>
 
         
@@ -4931,6 +6534,10 @@ def generate_web_flashcards(numbers, config, output_path):
                 this.openModal('matching-modal');
             }});
             
+            document.getElementById('open-complement-modal').addEventListener('click', () => {{
+                this.openModal('complement-modal');
+            }});
+            
             // Close button events
             document.getElementById('close-quiz-modal').addEventListener('click', () => {{
                 this.closeModal('quiz-modal');
@@ -4944,6 +6551,10 @@ def generate_web_flashcards(numbers, config, output_path):
                 this.closeModal('matching-modal');
             }});
             
+            document.getElementById('close-complement-modal').addEventListener('click', () => {{
+                this.closeModal('complement-modal');
+            }});
+            
             // Fullscreen button events
             document.getElementById('quiz-fullscreen-btn').addEventListener('click', () => {{
                 this.toggleFullscreen('quiz-modal');
@@ -4955,6 +6566,10 @@ def generate_web_flashcards(numbers, config, output_path):
             
             document.getElementById('matching-fullscreen-btn').addEventListener('click', () => {{
                 this.toggleFullscreen('matching-modal');
+            }});
+            
+            document.getElementById('complement-fullscreen-btn').addEventListener('click', () => {{
+                this.toggleFullscreen('complement-modal');
             }});
             
             // Close modal when clicking outside
@@ -6736,11 +8351,13 @@ def generate_web_flashcards(numbers, config, output_path):
             this.timerInterval = null;
             
             // Two-player mode variables
-            this.gameMode = 'single';
+            this.gameMode = 'single'; // 'single' or 'two-player'
+            this.gameType = 'abacus-numeral'; // 'abacus-numeral' or 'complement-pairs'
             this.turnTimer = 0; // 0 = no timer
             this.currentPlayer = 1;
             this.player1Score = 0;
             this.player2Score = 0;
+            this.eventsAlreadyBound = false;
             this.turnTimeLeft = 0;
             this.turnTimerInterval = null;
             this.playerTurnActive = true;
@@ -6757,34 +8374,54 @@ def generate_web_flashcards(numbers, config, output_path):
                 number: parseInt(card.dataset.number),
                 svg: card.querySelector('.abacus-container').outerHTML
             }}));
+            
+            // Hide/show grid size buttons based on available cards
+            this.updateAvailableGridSizes();
+        }}
+        
+        updateAvailableGridSizes() {{
+            const availableCards = this.cards.length;
+            const gridButtons = document.querySelectorAll('.match-size-btn');
+            
+            gridButtons.forEach(button => {{
+                const requiredPairs = parseInt(button.dataset.pairs);
+                if (availableCards < requiredPairs) {{
+                    button.style.display = 'none';
+                }} else {{
+                    button.style.display = 'block';
+                }}
+            }});
+            
+            // Add a message if very few options are available
+            const visibleButtons = Array.from(gridButtons).filter(btn => btn.style.display !== 'none');
+            if (visibleButtons.length === 0) {{
+                const countButtons = document.querySelector('.count-buttons');
+                countButtons.innerHTML += '<p style="color: #666; font-style: italic; margin-top: 15px;">Not enough flashcards available for memory matching. Need at least 6 unique cards.</p>';
+            }} else if (visibleButtons.length < gridButtons.length) {{
+                const countButtons = document.querySelector('.count-buttons');
+                const existingMessage = countButtons.querySelector('.cards-info');
+                if (!existingMessage) {{
+                    countButtons.innerHTML += `<p class="cards-info" style="color: #666; font-size: 0.9em; margin-top: 10px;">${{availableCards}} flashcards available</p>`;
+                }}
+            }}
         }}
         
         bindMatchingEvents() {{
-            // Remove existing event listeners to prevent duplicates
-            document.querySelectorAll('.mode-btn').forEach(btn => {{
-                // Clone the button to remove all event listeners
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-            }});
+            // Skip if events are already bound to prevent duplicates
+            if (this.eventsAlreadyBound) {{
+                return;
+            }}
             
-            document.querySelectorAll('.timer-btn').forEach(btn => {{
-                // Clone the button to remove all event listeners
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-            }});
+            // Use event delegation on the modal container for reliable event handling
+            const modalBody = document.querySelector('#matching-modal .modal-body');
             
-            document.querySelectorAll('.start-game-btn').forEach(btn => {{
-                // Clone the button to remove all event listeners
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-            }});
-            
-            // Mode selection
-            document.querySelectorAll('.mode-btn').forEach(btn => {{
-                btn.addEventListener('click', (e) => {{
+            modalBody.addEventListener('click', (e) => {{
+                // Handle player mode buttons
+                if (e.target.closest('.mode-btn')) {{
+                    const btn = e.target.closest('.mode-btn');
                     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    this.gameMode = e.target.dataset.mode;
+                    btn.classList.add('active');
+                    this.gameMode = btn.dataset.mode;
                     
                     // Show/hide timer controls for two-player mode
                     const timerControls = document.getElementById('timer-controls');
@@ -6793,79 +8430,180 @@ def generate_web_flashcards(numbers, config, output_path):
                     }} else {{
                         timerControls.style.display = 'none';
                     }}
-                }});
-            }});
-            
-            // Timer selection
-            document.querySelectorAll('.timer-btn').forEach(btn => {{
-                btn.addEventListener('click', (e) => {{
-                    document.querySelectorAll('.timer-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    this.turnTimer = parseInt(e.target.dataset.timer);
-                }});
-            }});
-            
-            // Grid size selection and immediate game start
-            document.querySelectorAll('.start-game-btn').forEach(btn => {{
-                btn.addEventListener('click', (e) => {{
-                    // Get the pairs count from the clicked button
-                    const target = e.currentTarget; // Use currentTarget to get the button itself
-                    this.selectedPairs = parseInt(target.dataset.pairs);
                     
-                    // Start the game immediately
+                    this.updateDescription();
+                    return;
+                }}
+                
+                // Handle game type buttons
+                if (e.target.closest('.game-type-btn')) {{
+                    const btn = e.target.closest('.game-type-btn');
+                    document.querySelectorAll('.game-type-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.gameType = btn.dataset.gameType;
+                    
+                    this.updateDescription();
+                    return;
+                }}
+                
+                // Handle timer buttons
+                if (e.target.closest('.timer-btn')) {{
+                    const btn = e.target.closest('.timer-btn');
+                    document.querySelectorAll('.timer-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.turnTimer = parseInt(btn.dataset.timer);
+                    return;
+                }}
+                
+                // Handle start game buttons
+                if (e.target.closest('.start-game-btn')) {{
+                    const btn = e.target.closest('.start-game-btn');
+                    this.selectedPairs = parseInt(btn.dataset.pairs);
                     this.startMatching();
-                }});
+                    return;
+                }}
             }});
             
-            // Action buttons
-            document.getElementById('new-matching').addEventListener('click', () => this.newChallenge());
-            document.getElementById('end-matching').addEventListener('click', () => this.endMatching());
+            this.eventsAlreadyBound = true;
             
-            // Score modal event listeners
-            document.querySelector('.matching-score-modal-close').addEventListener('click', () => this.hideScoreModal());
-            document.getElementById('matching-score-modal-close-btn').addEventListener('click', () => this.hideScoreModal());
-            document.getElementById('matching-score-modal-new-game').addEventListener('click', () => {{
+            // Action buttons (not in modal, so handle separately)
+            document.getElementById('new-matching')?.addEventListener('click', () => this.newChallenge());
+            document.getElementById('end-matching')?.addEventListener('click', () => this.endMatching());
+            
+            // Score modal event listeners (not in main modal, so handle separately)
+            document.querySelector('.matching-score-modal-close')?.addEventListener('click', () => this.hideScoreModal());
+            document.getElementById('matching-score-modal-close-btn')?.addEventListener('click', () => this.hideScoreModal());
+            document.getElementById('matching-score-modal-new-game')?.addEventListener('click', () => {{
                 this.hideScoreModal();
                 this.newChallenge();
             }});
             
             // Close modal when clicking outside
-            document.getElementById('matching-score-modal').addEventListener('click', (e) => {{
+            document.getElementById('matching-score-modal')?.addEventListener('click', (e) => {{
                 if (e.target.id === 'matching-score-modal') {{
                     this.hideScoreModal();
                 }}
             }});
         }}
         
-        startMatching() {{
-            // Select random cards for matching
-            const shuffledCards = [...this.cards].sort(() => Math.random() - 0.5);
-            const selectedCards = shuffledCards.slice(0, this.selectedPairs);
+        updateDescription() {{
+            const description = document.getElementById('matching-description');
             
-            // Create pairs: abacus and number
+            if (this.gameType === 'complement-pairs') {{
+                if (this.gameMode === 'two-player') {{
+                    description.textContent = 'Match complement pairs! Find numbers that add up to 5 or 10. Two players take turns finding "friends" that work together.';
+                }} else {{
+                    description.textContent = 'Match complement pairs! Find numbers that add up to 5 or 10. Each pair contains two numbers that are "friends" - they work together to make 5 or 10.';
+                }}
+            }} else {{
+                if (this.gameMode === 'two-player') {{
+                    description.textContent = 'Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves! Two players take turns.';
+                }} else {{
+                    description.textContent = 'Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves!';
+                }}
+            }}
+        }}
+        
+        startMatching() {{
+            // Initialize game cards array
             this.gameCards = [];
-            selectedCards.forEach(card => {{
-                // Add abacus card
-                this.gameCards.push({{
-                    id: `abacus_${{card.number}}`,
-                    type: 'abacus',
-                    number: card.number,
-                    content: card.svg,
-                    matched: false
-                }});
+            
+            if (this.gameType === 'complement-pairs') {{
+                // Create complement pairs for friends of 5 and friends of 10
+                const complementPairs = [
+                    // Friends of 5
+                    [0, 5], [1, 4], [2, 3],
+                    // Friends of 10  
+                    [0, 10], [1, 9], [2, 8], [3, 7], [4, 6], [5, 5], [6, 4], [7, 3], [8, 2], [9, 1], [10, 0]
+                ];
                 
-                // Add number card
-                this.gameCards.push({{
-                    id: `number_${{card.number}}`,
-                    type: 'number',
-                    number: card.number,
-                    content: card.number.toString(),
-                    matched: false
+                // Remove duplicates and limit to requested pairs
+                const uniquePairs = [];
+                const seen = new Set();
+                
+                for (let pair of complementPairs) {{
+                    const key = Math.min(pair[0], pair[1]) + '_' + Math.max(pair[0], pair[1]);
+                    if (!seen.has(key)) {{
+                        seen.add(key);
+                        uniquePairs.push(pair);
+                    }}
+                }}
+                
+                // Shuffle and select pairs
+                const shuffledPairs = uniquePairs.sort(() => Math.random() - 0.5);
+                const selectedPairs = shuffledPairs.slice(0, this.selectedPairs);
+                
+                selectedPairs.forEach((pair, index) => {{
+                    // Determine target sum (5 or 10)
+                    const targetSum = pair[0] + pair[1];
+                    const label = targetSum === 5 ? '✋' : '🔟';
+                    
+                    // Add first number card  
+                    this.gameCards.push({{
+                        id: `comp1_${{pair[0]}}_${{pair[1]}}`,
+                        type: 'complement',
+                        number: pair[0],
+                        complement: pair[1],
+                        targetSum: targetSum,
+                        content: `${{pair[0]}} ${{label}}`,
+                        matched: false
+                    }});
+                    
+                    // Add second number card
+                    this.gameCards.push({{
+                        id: `comp2_${{pair[0]}}_${{pair[1]}}`,
+                        type: 'complement',
+                        number: pair[1], 
+                        complement: pair[0],
+                        targetSum: targetSum,
+                        content: `${{pair[1]}} ${{label}}`,
+                        matched: false
+                    }});
                 }});
-            }});
+            }} else {{
+                // Original matching logic for abacus/number pairs
+                // Ensure we have enough cards available
+                if (this.cards.length < this.selectedPairs) {{
+                    alert(`Not enough cards available! Need ${{this.selectedPairs}} unique cards, but only ${{this.cards.length}} are available.`);
+                    return;
+                }}
+                
+                // Select random cards for matching
+                const shuffledCards = [...this.cards].sort(() => Math.random() - 0.5);
+                const selectedCards = shuffledCards.slice(0, this.selectedPairs);
+                
+                selectedCards.forEach(card => {{
+                    // Add abacus card
+                    this.gameCards.push({{
+                        id: `abacus_${{card.number}}`,
+                        type: 'abacus',
+                        number: card.number,
+                        content: card.svg,
+                        matched: false
+                    }});
+                    
+                    // Add number card
+                    this.gameCards.push({{
+                        id: `number_${{card.number}}`,
+                        type: 'number',
+                        number: card.number,
+                        content: card.number.toString(),
+                        matched: false
+                    }});
+                }});
+            }}
             
             // Shuffle the game cards
             this.gameCards = this.gameCards.sort(() => Math.random() - 0.5);
+            
+            // Debug logging
+            console.log(`Memory Game Debug:`, {{
+                selectedPairs: this.selectedPairs,
+                availableCards: this.cards.length,
+                gameCards: this.gameCards.length,
+                expectedCards: this.selectedPairs * 2
+            }});
+            
             this.totalPairs = this.selectedPairs;
             this.matchedPairs = 0;
             this.moves = 0;
@@ -6918,18 +8656,29 @@ def generate_web_flashcards(numbers, config, output_path):
                 cardElement.dataset.cardId = card.id;
                 cardElement.dataset.number = card.number;
                 
-                const typeClass = card.type === 'abacus' ? 'abacus-type' : 'number-type';
-                const typeIcon = card.type === 'abacus' ? '🧮' : '🔢';
+                let typeClass, typeIcon, contentHtml;
+                
+                if (card.type === 'complement') {{
+                    // Complement cards have different styling
+                    const targetSum = card.targetSum;
+                    typeClass = targetSum === 5 ? 'friends-5-type' : 'friends-10-type';
+                    typeIcon = ''; // No icon needed - color coding is sufficient
+                    contentHtml = `<div class="match-card-number complement-number">${{card.content}}</div>`;
+                }} else {{
+                    // Original abacus/number cards
+                    typeClass = card.type === 'abacus' ? 'abacus-type' : 'number-type';
+                    typeIcon = card.type === 'abacus' ? '🧮' : '🔢';
+                    contentHtml = card.type === 'number' ? 
+                        `<div class="match-card-number">${{card.content}}</div>` :
+                        `<div class="match-card-abacus">${{card.content}}</div>`;
+                }}
                 
                 cardElement.innerHTML = `
                     <div class="match-card-back ${{typeClass}}">
                         <div class="card-type-icon">${{typeIcon}}</div>
                     </div>
                     <div class="match-card-content">
-                        ${{card.type === 'number' ? 
-                            `<div class="match-card-number">${{card.content}}</div>` :
-                            `<div class="match-card-abacus">${{card.content}}</div>`
-                        }}
+                        ${{contentHtml}}
                     </div>
                 `;
                 
@@ -6958,13 +8707,30 @@ def generate_web_flashcards(numbers, config, output_path):
                 this.updateTurnTimerStatus('active');
             }}
             
-            // If one card is already flipped, only allow clicking cards of opposite type
+            // If one card is already flipped, only allow clicking valid pairs
             if (this.flippedCards.length === 1) {{
-                const flippedCardType = this.flippedCards[0].card.type;
-                if (card.type === flippedCardType) {{
-                    // Same type - show visual feedback but don't flip
-                    this.showInvalidMoveHint(cardElement);
-                    return;
+                const flippedCard = this.flippedCards[0].card;
+                
+                if (this.gameType === 'complement-pairs') {{
+                    // For complement pairs, prevent clicking the same card
+                    if (flippedCard.id === card.id) {{
+                        this.showInvalidMoveHint(cardElement);
+                        return;
+                    }}
+                    
+                    // Only allow cards with the same targetSum (friends of 5 with friends of 5, etc.)
+                    if (card.targetSum !== flippedCard.targetSum) {{
+                        this.showInvalidMoveHint(cardElement);
+                        return;
+                    }}
+                }} else {{
+                    // Original logic: only allow opposite types
+                    const flippedCardType = flippedCard.type;
+                    if (card.type === flippedCardType) {{
+                        // Same type - show visual feedback but don't flip
+                        this.showInvalidMoveHint(cardElement);
+                        return;
+                    }}
                 }}
             }}
             
@@ -6974,7 +8740,7 @@ def generate_web_flashcards(numbers, config, output_path):
             
             // If this is the first card flipped, highlight valid choices
             if (this.flippedCards.length === 1) {{
-                this.highlightValidCards(card.type);
+                this.highlightValidCards(card);
             }}
             
             // If two cards are flipped, check for match
@@ -6994,13 +8760,33 @@ def generate_web_flashcards(numbers, config, output_path):
         checkMatch() {{
             const [first, second] = this.flippedCards;
             
-            // Check if numbers match and types are different
-            if (first.card.number === second.card.number && first.card.type !== second.card.type) {{
+            let isMatch = false;
+            
+            if (this.gameType === 'complement-pairs') {{
+                // Check if the two numbers are complements
+                isMatch = (first.card.number === second.card.complement && 
+                          second.card.number === first.card.complement &&
+                          first.card.targetSum === second.card.targetSum);
+            }} else {{
+                // Original logic: Check if numbers match and types are different
+                isMatch = (first.card.number === second.card.number && first.card.type !== second.card.type);
+            }}
+            
+            if (isMatch) {{
                 // Match found!
                 first.element.classList.add('matched');
                 second.element.classList.add('matched');
                 first.card.matched = true;
                 second.card.matched = true;
+                
+                // Trigger particle celebration for the match
+                if (particleSystem) {{
+                    particleSystem.celebrateSuccess(first.element);
+                    // Delayed second celebration for visual effect
+                    setTimeout(() => {{
+                        particleSystem.celebrateSuccess(second.element);
+                    }}, 200);
+                }}
                 
                 this.matchedPairs++;
                 
@@ -7027,6 +8813,13 @@ def generate_web_flashcards(numbers, config, output_path):
                 
                 // Check if game is complete
                 if (this.matchedPairs === this.totalPairs) {{
+                    // Celebrate game completion with major fireworks
+                    if (particleSystem) {{
+                        const gameArea = document.getElementById('matching-grid');
+                        if (gameArea) {{
+                            particleSystem.celebrateGameComplete(gameArea);
+                        }}
+                    }}
                     this.endGame();
                 }}
             }} else {{
@@ -7230,6 +9023,14 @@ def generate_web_flashcards(numbers, config, output_path):
                 }}
             }});
             
+            // Ensure the current game type button is properly highlighted
+            document.querySelectorAll('.game-type-btn').forEach(btn => {{
+                btn.classList.remove('active');
+                if (btn.dataset.gameType === this.gameType) {{
+                    btn.classList.add('active');
+                }}
+            }});
+            
             // Show/hide timer controls based on current mode
             const timerControls = document.getElementById('timer-controls');
             if (this.gameMode === 'two-player') {{
@@ -7312,20 +9113,37 @@ def generate_web_flashcards(numbers, config, output_path):
             }}, 600);
         }}
         
-        highlightValidCards(flippedCardType) {{
-            // Highlight cards of the opposite type
-            const validType = flippedCardType === 'abacus' ? 'number' : 'abacus';
-            
-            this.gameCards.forEach((card, index) => {{
-                const cardElement = document.querySelector(`[data-index="${{index}}"]`);
-                if (!card.matched && !cardElement.classList.contains('flipped')) {{
-                    if (card.type === validType) {{
-                        cardElement.classList.add('valid-choice');
-                    }} else {{
-                        cardElement.classList.add('invalid-choice');
+        highlightValidCards(flippedCard) {{
+            if (this.gameType === 'complement-pairs') {{
+                // For complement pairs, highlight cards with the same targetSum only
+                const flippedTargetSum = flippedCard.targetSum;
+                
+                this.gameCards.forEach((card, index) => {{
+                    const cardElement = document.querySelector(`[data-index="${{index}}"]`);
+                    if (!card.matched && !cardElement.classList.contains('flipped')) {{
+                        if (card.targetSum === flippedTargetSum) {{
+                            cardElement.classList.add('valid-choice');
+                        }} else {{
+                            cardElement.classList.add('invalid-choice');
+                        }}
                     }}
-                }}
-            }});
+                }});
+            }} else {{
+                // For abacus/numeral pairs, highlight cards of the opposite type
+                const flippedCardType = flippedCard.type;
+                const validType = flippedCardType === 'abacus' ? 'number' : 'abacus';
+                
+                this.gameCards.forEach((card, index) => {{
+                    const cardElement = document.querySelector(`[data-index="${{index}}"]`);
+                    if (!card.matched && !cardElement.classList.contains('flipped')) {{
+                        if (card.type === validType) {{
+                            cardElement.classList.add('valid-choice');
+                        }} else {{
+                            cardElement.classList.add('invalid-choice');
+                        }}
+                    }}
+                }});
+            }}
         }}
         
         clearHighlights() {{
@@ -7761,12 +9579,1753 @@ def generate_web_flashcards(numbers, config, output_path):
     }}
 
     // Initialize quiz and sorting when DOM is loaded
+    // Speed Complement Race Challenge
+    class SpeedComplementRace {{
+        constructor() {{
+            this.mode = 'friends5'; // 'friends5', 'friends10', 'mixed'
+            this.style = 'practice'; // 'practice', 'sprint', 'survival'  
+            this.timeoutSetting = 'normal'; // 'slow', 'normal', 'fast', 'expert'
+            this.currentNumber = 0; // Initialize with default value instead of null
+            this.targetSum = 5;
+            this.correctAnswer = 0; // Initialize with default value instead of null
+            this.previousQuestion = null; // Track previous question to avoid repeats
+            this.score = 0;
+            this.streak = 0;
+            this.bestStreak = 0;
+            this.currentInput = '';
+            this.isGameActive = false;
+            this.isPaused = false;
+            this.autoSubmitTimeout = null;
+            this.totalQuestions = 0;
+            this.correctAnswers = 0;
+            this.gameStartTime = null;
+            this.questionStartTime = 0;
+            this.timerInterval = null;
+            this.gameInterval = null;
+            
+            // Adaptive Difficulty System
+            this.difficultyTracker = {{
+                // Track performance for each complement pair
+                pairPerformance: new Map(), // key: "number_complement_targetSum", value: {{ attempts, correct, avgTime, difficulty }}
+                baseTimeLimit: 3000, // Base time limit in milliseconds
+                currentTimeLimit: 3000,
+                difficultyLevel: 1, // 1-5 scale
+                consecutiveCorrect: 0,
+                consecutiveIncorrect: 0,
+                learningMode: true, // Gives extra time initially
+                adaptationRate: 0.1, // How quickly to adapt (0.1 = gradual)
+            }};
+            
+            // Race properties
+            this.raceGoal = 20;
+            this.aiRacers = [
+                {{ 
+                    id: 'ai-racer-1', 
+                    position: 2, 
+                    speed: 0.25, 
+                    name: 'Swift AI',
+                    personality: 'competitive',
+                    icon: '🏃‍♂️',
+                    lastComment: 0,
+                    commentCooldown: 0,
+                    previousPosition: 2
+                }},
+                {{ 
+                    id: 'ai-racer-2', 
+                    position: 2, 
+                    speed: 0.15, 
+                    name: 'Math Bot',
+                    personality: 'analytical',
+                    icon: '🏃',
+                    lastComment: 0,
+                    commentCooldown: 0,
+                    previousPosition: 2
+                }}
+            ];
+            this.previousPlayerProgress = 0;
+            this.aiUpdateInterval = null;
+            
+            this.bindEvents();
+            this.updateTargetSum(); // Initialize target sum display
+        }}
+        
+        bindEvents() {{
+            // Mode selection buttons
+            document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.mode = btn.dataset.mode;
+                    this.updateTargetSum();
+                }});
+            }});
+            
+            // Timeout selection buttons
+            document.querySelectorAll('.timeout-btn[data-timeout]').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    document.querySelectorAll('.timeout-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.timeoutSetting = btn.dataset.timeout;
+                    console.log('Timeout setting changed to:', this.timeoutSetting);
+                }});
+            }});
+            
+            // Style selection buttons - start game directly when clicked
+            document.querySelectorAll('.game-style-btn[data-style]').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    // Update active state
+                    document.querySelectorAll('.game-style-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    // Set style and start game immediately
+                    this.style = btn.dataset.style;
+                    this.startRace();
+                }});
+            }});
+            
+            // Keystroke capture for the entire game area
+            document.addEventListener('keydown', (e) => this.handleKeydown(e));
+            
+            // Game control buttons
+            document.getElementById('pause-complement').addEventListener('click', () => this.pauseRace());
+            document.getElementById('end-complement').addEventListener('click', () => this.endRace());
+            
+            // Score modal events
+            document.querySelector('.complement-score-modal-close').addEventListener('click', () => {{
+                document.getElementById('complement-score-modal').style.display = 'none';
+            }});
+            document.getElementById('complement-score-modal-close-btn').addEventListener('click', () => {{
+                document.getElementById('complement-score-modal').style.display = 'none';
+            }});
+            document.getElementById('complement-score-modal-new-game').addEventListener('click', () => {{
+                document.getElementById('complement-score-modal').style.display = 'none';
+                this.startRace();
+            }});
+        }}
+        
+        updateTargetSum() {{
+            if (this.mode === 'friends5') {{
+                this.targetSum = 5;
+            }} else if (this.mode === 'friends10') {{
+                this.targetSum = 10;
+            }} else if (this.mode === 'mixed') {{
+                // For mixed mode, we'll set it during nextQuestion, but initialize to 5
+                this.targetSum = 5;
+            }}
+            document.getElementById('target-number').textContent = this.targetSum;
+        }}
+        
+        startRace() {{
+            this.isGameActive = true;
+            this.isPaused = false;
+            this.gameStartTime = Date.now();
+            this.score = 0;
+            this.streak = 0;
+            this.totalQuestions = 0;
+            this.correctAnswers = 0;
+            this.previousQuestion = null; // Reset previous question for new race
+            
+            // Hide intro and controls, show game
+            document.querySelector('.complement-intro').style.display = 'none';
+            document.querySelector('.complement-controls').style.display = 'none';
+            document.getElementById('complement-game').style.display = 'block';
+            document.getElementById('complement-header').style.display = 'flex';
+            
+            // Initialize race system
+            this.initializeRace();
+            
+            // Start first question and timer
+            this.nextQuestion();
+            this.startGameTimer();
+        }}
+        
+        nextQuestion() {{
+            if (!this.isGameActive) return;
+            
+            // Clear any existing question timer first
+            if (this.timerInterval) {{
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }}
+            
+            // Update target sum for mixed mode
+            if (this.mode === 'mixed') {{
+                this.targetSum = Math.random() > 0.5 ? 5 : 10;
+                document.getElementById('target-number').textContent = this.targetSum;
+            }}
+            
+            // Generate question - avoid repeating the same question
+            let newNumber, newTargetSum = this.targetSum;
+            let attempts = 0;
+            
+            do {{
+                if (newTargetSum === 5) {{
+                    newNumber = Math.floor(Math.random() * 5); // 0-4
+                }} else {{
+                    newNumber = Math.floor(Math.random() * 10); // 0-9
+                }}
+                attempts++;
+            }} while (
+                this.previousQuestion && 
+                this.previousQuestion.number === newNumber && 
+                this.previousQuestion.targetSum === newTargetSum &&
+                attempts < 10 // Safety limit to prevent infinite loops
+            );
+            
+            this.currentNumber = newNumber;
+            this.correctAnswer = this.targetSum - this.currentNumber;
+            
+            // Store current question as previous for next iteration
+            this.previousQuestion = {{
+                number: this.currentNumber,
+                targetSum: this.targetSum,
+                answer: this.correctAnswer
+            }};
+            this.questionStartTime = Date.now();
+            
+            // Update display and clear any pending input
+            document.getElementById('challenge-number').textContent = this.currentNumber;
+            this.clearAutoSubmitTimeout();
+            this.updateAnswerDisplay('');
+            document.getElementById('input-feedback').textContent = '';
+            document.getElementById('visual-complement').style.display = 'none';
+            
+            // Show persistent learning mode feedback
+            if (this.difficultyTracker.learningMode && this.totalQuestions % 3 === 0) {{
+                const pairKey = `${{this.currentNumber}}_${{this.correctAnswer}}_${{this.targetSum}}`;
+                const adaptiveFeedback = this.getAdaptiveFeedbackMessage(pairKey, true, 0);
+                if (adaptiveFeedback) {{
+                    this.showAdaptiveFeedback(adaptiveFeedback.message, adaptiveFeedback.type);
+                }}
+            }}
+            
+            this.startQuestionTimer();
+            this.totalQuestions++;
+        }}
+        
+        startQuestionTimer() {{
+            const timerFill = document.getElementById('timer-fill');
+            const duration = this.getTimerDuration();
+            
+            // Update the timer text to show actual duration
+            const timerText = document.getElementById('timer-text');
+            if (timerText) {{
+                timerText.textContent = `${{(duration / 1000).toFixed(1)}}s`;
+            }}
+            
+            timerFill.style.width = '100%';
+            timerFill.style.backgroundColor = '#4CAF50';
+            
+            let startTime = Date.now();
+            this.timerInterval = setInterval(() => {{
+                if (!this.isGameActive) {{
+                    clearInterval(this.timerInterval);
+                    return;
+                }}
+                
+                const elapsed = Date.now() - startTime;
+                const remaining = Math.max(0, duration - elapsed);
+                const percentage = (remaining / duration) * 100;
+                
+                timerFill.style.width = percentage + '%';
+                
+                // Update countdown text
+                if (timerText) {{
+                    timerText.textContent = `${{(remaining / 1000).toFixed(1)}}s`;
+                }}
+                
+                if (percentage < 30) {{
+                    timerFill.style.backgroundColor = '#f44336';
+                }} else if (percentage < 60) {{
+                    timerFill.style.backgroundColor = '#ff9800';
+                }}
+                
+                if (remaining === 0) {{
+                    clearInterval(this.timerInterval);
+                    this.timeUp();
+                }}
+            }}, 50);
+        }}
+        
+        getTimerDuration() {{
+            // Use adaptive difficulty system
+            let adaptiveTime = this.getAdaptiveTimeLimit();
+            
+            // Apply game style modifiers to adaptive base
+            if (this.style === 'sprint') {{
+                adaptiveTime = Math.min(adaptiveTime, adaptiveTime * 0.8); // 20% faster for sprint
+            }} else if (this.style === 'survival') {{
+                // Survival gets progressively faster based on survival multiplier
+                adaptiveTime = adaptiveTime / (this.survivalMultiplier || 1.0);
+            }}
+            
+            // Apply streak bonus (gets faster with success)
+            const streakReduction = Math.min(this.streak * 50, adaptiveTime * 0.3); // Max 30% reduction
+            const finalTime = Math.max(1000, adaptiveTime - streakReduction); // Never below 1 second
+            
+            // Show timeout adjustment feedback
+            if (this.totalQuestions > 5 && !this.difficultyTracker.learningMode) {{
+                const originalTime = this.difficultyTracker.baseTimeLimit;
+                const timeDiff = Math.abs(finalTime - originalTime) / 1000; // Convert to seconds
+                
+                if (timeDiff > 0.5) {{ // Only show if significant change
+                    let timeoutMessage = '';
+                    let timeoutType = '';
+                    
+                    if (finalTime < originalTime * 0.8) {{
+                        timeoutMessage = `🔥 You're blazing fast! Reduced time to ${{(finalTime/1000).toFixed(1)}}s!`;
+                        timeoutType = 'adapted';
+                    }} else if (finalTime > originalTime * 1.3) {{
+                        timeoutMessage = `🤗 Taking it easy - extended to ${{(finalTime/1000).toFixed(1)}}s`;
+                        timeoutType = 'adapted';
+                    }}
+                    
+                    if (timeoutMessage && this.totalQuestions % 8 === 0) {{ // Show occasionally
+                        setTimeout(() => {{
+                            this.showAdaptiveFeedback(timeoutMessage, timeoutType);
+                        }}, 200);
+                    }}
+                }}
+            }}
+            
+            // Debug logging for adaptive difficulty
+            if (this.totalQuestions % 3 === 0) {{
+                console.log('🎯 Adaptive Timer:', {{
+                    question: this.totalQuestions,
+                    baseTime: this.difficultyTracker.baseTimeLimit + 'ms',
+                    adaptiveTime: adaptiveTime + 'ms',
+                    finalTime: finalTime + 'ms',
+                    streak: this.streak,
+                    difficultyLevel: this.difficultyTracker.difficultyLevel,
+                    learningMode: this.difficultyTracker.learningMode,
+                    timeoutSetting: this.timeoutSetting
+                }});
+            }}
+            
+            return finalTime;
+        }}
+        
+        handleKeydown(e) {{
+            // Only capture keystrokes when game is active and not paused
+            if (!this.isGameActive || this.isPaused) return;
+            
+            // Handle number keys (0-9)
+            if (e.key >= '0' && e.key <= '9') {{
+                e.preventDefault();
+                const digit = e.key;
+                
+                // Build multi-digit number (max 2 digits for this game)
+                let newInput = this.currentInput + digit;
+                const number = parseInt(newInput);
+                
+                // Only allow valid answers (0 to 10 for friends of 10, 0 to 5 for friends of 5, max 2 digits)
+                const maxValid = Math.max(this.targetSum, 10); // Allow up to 10 for any mode
+                if (number <= maxValid && newInput.length <= 2) {{
+                    this.currentInput = newInput;
+                    this.updateAnswerDisplay(newInput);
+                    
+                    // Clear any existing auto-submit timeout
+                    this.clearAutoSubmitTimeout();
+                    
+                    // Auto-submit after delay
+                    this.autoSubmitTimeout = setTimeout(() => {{
+                        if (this.currentInput === newInput && this.isGameActive) {{
+                            this.submitAnswer();
+                        }}
+                    }}, newInput === '1' && this.targetSum >= 10 ? 1000 : 600);
+                }}
+            }}
+            
+            // Handle backspace/delete to remove last digit
+            else if (e.key === 'Backspace' || e.key === 'Delete') {{
+                e.preventDefault();
+                
+                if (this.currentInput.length > 0) {{
+                    this.currentInput = this.currentInput.slice(0, -1);
+                    this.updateAnswerDisplay(this.currentInput || '');
+                    this.clearAutoSubmitTimeout();
+                }} else {{
+                    this.updateAnswerDisplay('');
+                }}
+            }}
+            
+            // Handle enter to submit current answer immediately
+            else if (e.key === 'Enter' && this.currentInput) {{
+                e.preventDefault();
+                this.clearAutoSubmitTimeout();
+                this.submitAnswer();
+            }}
+        }}
+        
+        clearAutoSubmitTimeout() {{
+            if (this.autoSubmitTimeout) {{
+                clearTimeout(this.autoSubmitTimeout);
+                this.autoSubmitTimeout = null;
+            }}
+        }}
+        
+        
+        updateAnswerDisplay(value) {{
+            const display = document.getElementById('answer-display');
+            
+            if (value === '') {{
+                display.textContent = '?';
+                display.classList.remove('typing');
+                display.classList.add('empty');
+                this.currentInput = '';
+            }} else {{
+                display.textContent = value;
+                display.classList.add('typing');
+                display.classList.remove('empty');
+            }}
+        }}
+        
+        submitAnswer() {{
+            if (!this.isGameActive) return;
+            
+            clearInterval(this.timerInterval);
+            const isCorrect = parseInt(this.currentInput) === this.correctAnswer;
+            
+            if (isCorrect) {{
+                this.handleCorrectAnswer();
+            }} else {{
+                this.handleIncorrectAnswer();
+            }}
+            
+            setTimeout(() => this.nextQuestion(), 1200);
+        }}
+        
+        handleCorrectAnswer() {{
+            this.correctAnswers++;
+            this.streak++;
+            this.bestStreak = Math.max(this.bestStreak, this.streak);
+            
+            let points = 10 + Math.min(this.streak, 10);
+            this.score += points;
+            
+            this.showFeedback('🎉 Correct!', 'correct');
+            this.showVisualComplement();
+            
+            // Update race progress
+            this.updatePlayerRace();
+            
+            // Trigger particle effects
+            const numberDisplay = document.getElementById('current-number');
+            if (particleSystem && numberDisplay) {{
+                if (this.streak > 0 && this.streak % 5 === 0) {{
+                    // Special celebration for every 5th streak
+                    particleSystem.celebrateStreak(numberDisplay, this.streak);
+                }} else {{
+                    particleSystem.celebrateSuccess(numberDisplay);
+                }}
+            }}
+            
+            // Track performance for adaptive difficulty FIRST
+            const responseTime = Date.now() - this.questionStartTime;
+            this.trackPerformance(true);
+            
+            // Show adaptive feedback after tracking
+            const pairKey = `${{this.currentNumber}}_${{this.correctAnswer}}_${{this.targetSum}}`;
+            const adaptiveFeedback = this.getAdaptiveFeedbackMessage(pairKey, true, responseTime);
+            if (adaptiveFeedback) {{
+                setTimeout(() => {{
+                    this.showAdaptiveFeedback(adaptiveFeedback.message, adaptiveFeedback.type);
+                }}, 600); // Show after the main feedback
+            }}
+            
+            // Trigger AI commentary
+            setTimeout(() => {{
+                this.triggerAICommentary();
+            }}, 800);
+            
+            this.updateStats();
+            this.playSound('correct');
+        }}
+        
+        handleIncorrectAnswer() {{
+            this.streak = 0;
+            
+            // Capture values before they might get overwritten, with fallbacks
+            const displayNumber = this.currentNumber !== null ? this.currentNumber : '?';
+            const displayAnswer = this.correctAnswer !== null ? this.correctAnswer : '?';
+            const displaySum = this.targetSum !== null ? this.targetSum : '?';
+            
+            this.showFeedback(`❌ ${{displayNumber}} + ${{displayAnswer}} = ${{displaySum}}`, 'incorrect');
+            this.showVisualComplement();
+            
+            // Trigger trip animation for player racer
+            const playerRacer = document.getElementById('player-racer');
+            if (playerRacer) {{
+                playerRacer.classList.add('tripped');
+                setTimeout(() => {{
+                    playerRacer.classList.remove('tripped');
+                }}, 1200); // Match animation duration
+            }}
+            
+            // Track performance for adaptive difficulty FIRST
+            const responseTime = Date.now() - this.questionStartTime;
+            this.trackPerformance(false);
+            
+            // Show adaptive feedback after tracking
+            const pairKey = `${{displayNumber}}_${{displayAnswer}}_${{displaySum}}`;
+            const adaptiveFeedback = this.getAdaptiveFeedbackMessage(pairKey, false, responseTime);
+            if (adaptiveFeedback) {{
+                setTimeout(() => {{
+                    this.showAdaptiveFeedback(adaptiveFeedback.message, adaptiveFeedback.type);
+                }}, 800); // Show after the main feedback  
+            }}
+            
+            // Trigger AI commentary 
+            setTimeout(() => {{
+                this.triggerAICommentary();
+            }}, 1000);
+            
+            this.updateStats();
+            this.playSound('incorrect');
+        }}
+        
+        timeUp() {{
+            this.streak = 0;
+            
+            // Capture values before they might get overwritten, with fallbacks
+            const displayNumber = this.currentNumber !== null ? this.currentNumber : '?';
+            const displayAnswer = this.correctAnswer !== null ? this.correctAnswer : '?';
+            const displaySum = this.targetSum !== null ? this.targetSum : '?';
+            
+            this.showFeedback(`⏰ Time's up! ${{displayNumber}} + ${{displayAnswer}} = ${{displaySum}}`, 'timeout');
+            this.showVisualComplement();
+            
+            // Apply timeout penalty: move backwards in race
+            if (this.correctAnswers > 0) {{
+                this.correctAnswers = Math.max(0, this.correctAnswers - 0.5); // Small setback
+            }}
+            
+            // Trigger backwards movement animation for player racer
+            const playerRacer = document.getElementById('player-racer');
+            if (playerRacer) {{
+                playerRacer.classList.add('moving-backwards');
+                setTimeout(() => {{
+                    playerRacer.classList.remove('moving-backwards');
+                    // Update position after animation
+                    this.updatePlayerRace();
+                }}, 800); // Match animation duration
+            }}
+            
+            // Track performance for adaptive difficulty (timeout counts as incorrect)
+            this.trackPerformance(false);
+            
+            this.updateStats();
+            this.playSound('timeout');
+            setTimeout(() => this.nextQuestion(), 1200);
+        }}
+        
+        showFeedback(message, type) {{
+            const feedback = document.getElementById('input-feedback');
+            feedback.textContent = message;
+            feedback.className = `input-feedback ${{type}}`;
+        }}
+        
+        showAdaptiveFeedback(message, type) {{
+            const adaptiveFeedback = document.getElementById('adaptive-feedback');
+            adaptiveFeedback.textContent = message;
+            adaptiveFeedback.className = `adaptive-feedback ${{type}}`;
+            
+            // Auto-hide after some time unless it's persistent info
+            if (type !== 'learning') {{
+                setTimeout(() => {{
+                    adaptiveFeedback.style.opacity = '0';
+                    setTimeout(() => {{
+                        adaptiveFeedback.textContent = '';
+                        adaptiveFeedback.style.opacity = '0.8';
+                    }}, 400);
+                }}, 3000);
+            }}
+        }}
+        
+        getAdaptiveFeedbackMessage(pairKey, isCorrect, responseTime) {{
+            const pairData = this.difficultyTracker.pairPerformance.get(pairKey);
+            const [num1, num2, sum] = pairKey.split('_').map(Number);
+            
+            // Learning mode messages
+            if (this.difficultyTracker.learningMode) {{
+                const encouragements = [
+                    "🧠 I'm learning your style! Keep going!",
+                    "📊 Building your skill profile...",
+                    "🎯 Every answer helps me understand you better!",
+                    "🚀 Analyzing your complement superpowers!"
+                ];
+                return {{
+                    message: encouragements[Math.floor(Math.random() * encouragements.length)],
+                    type: 'learning'
+                }};
+            }}
+            
+            // After learning - provide specific feedback
+            if (pairData && pairData.attempts >= 3) {{
+                const accuracy = pairData.correct / pairData.attempts;
+                const avgTime = pairData.avgTime;
+                
+                // Struggling pairs (< 60% accuracy)
+                if (accuracy < 0.6) {{
+                    const strugglingMessages = [
+                        `💪 ${{num1}}+${{num2}} needs practice - I'm giving you extra time!`,
+                        `🎯 Working on ${{num1}}+${{num2}} - you've got this!`,
+                        `⏰ Taking it slower with ${{num1}}+${{num2}} - no rush!`,
+                        `🧩 ${{num1}}+${{num2}} is getting special attention from me!`
+                    ];
+                    return {{
+                        message: strugglingMessages[Math.floor(Math.random() * strugglingMessages.length)],
+                        type: 'struggling'
+                    }};
+                }}
+                
+                // Mastered pairs (> 85% accuracy and fast)
+                if (accuracy > 0.85 && avgTime < 2000) {{
+                    const masteredMessages = [
+                        `⚡ ${{num1}}+${{num2}} = MASTERED! Lightning mode activated!`,
+                        `🔥 You've conquered ${{num1}}+${{num2}} - speeding it up!`,
+                        `🏆 ${{num1}}+${{num2}} expert detected! Challenge mode ON!`,
+                        `⭐ ${{num1}}+${{num2}} is your superpower! Going faster!`
+                    ];
+                    return {{
+                        message: masteredMessages[Math.floor(Math.random() * masteredMessages.length)],
+                        type: 'mastered'
+                    }};
+                }}
+            }}
+            
+            // Show adaptation when difficulty changes
+            if (this.difficultyTracker.consecutiveCorrect >= 3) {{
+                return {{
+                    message: "🚀 You're on fire! Increasing the challenge!",
+                    type: 'adapted'
+                }};
+            }} else if (this.difficultyTracker.consecutiveIncorrect >= 2) {{
+                return {{
+                    message: "🤗 Let's slow down a bit - I'm here to help!",
+                    type: 'adapted'
+                }};
+            }}
+            
+            return null;
+        }}
+        
+        // AI Commentary System - Speech Bubbles
+        showAICommentary(racer, message, type = 'default') {{
+            // Get the speech bubble for this specific racer
+            const racerId = racer.id.split('-').pop(); // Extract number from 'ai-racer-1'
+            const speechBubble = document.getElementById(`speech-bubble-${{racerId}}`);
+            const bubbleContent = speechBubble?.querySelector('.bubble-content');
+            
+            if (!speechBubble || !bubbleContent) return;
+            
+            // Hide any currently visible bubbles first
+            document.querySelectorAll('.speech-bubble.visible').forEach(bubble => {{
+                if (bubble !== speechBubble) {{
+                    bubble.classList.remove('visible');
+                }}
+            }});
+            
+            // Update bubble content
+            bubbleContent.textContent = message;
+            
+            // Show this bubble with animation
+            speechBubble.classList.add('visible');
+            
+            // Set cooldown for this racer
+            racer.lastComment = Date.now();
+            racer.commentCooldown = Math.random() * 4000 + 2000; // 2-6 seconds
+            
+            // Auto-hide after some time
+            setTimeout(() => {{
+                speechBubble.classList.remove('visible');
+            }}, 3500); // Show for 3.5 seconds
+        }}
+        
+        getAICommentary(racer, context) {{
+            const now = Date.now();
+            
+            // Check cooldown
+            if (now - racer.lastComment < racer.commentCooldown) {{
+                return null;
+            }}
+            
+            const playerProgress = (this.correctAnswers / this.raceGoal) * 100;
+            const aiProgress = (racer.position / this.raceGoal) * 100;
+            
+            let messages = [];
+            
+            if (racer.personality === 'competitive') {{
+                // Swift AI - Competitive and cocky
+                if (context === 'ahead') {{
+                    messages = [
+                        "💨 Eat my dust!",
+                        "🔥 Too slow, human!",
+                        "⚡ Can't catch me!",
+                        "🚀 I'm built for speed!",
+                        "🏃‍♂️ Way too easy!"
+                    ];
+                }} else if (context === 'behind') {{
+                    messages = [
+                        "😤 Not over yet!",
+                        "💪 Just getting started!",
+                        "🔥 Watch me catch up!",
+                        "⚡ I'm coming for you!",
+                        "🏃‍♂️ This is my comeback!"
+                    ];
+                }} else if (context === 'adaptive_struggle') {{
+                    messages = [
+                        "😏 Struggling much?",
+                        "🤖 Math is easy for me!",
+                        "⚡ Think faster!",
+                        "🔥 Need the slow setting?"
+                    ];
+                }} else if (context === 'adaptive_mastery') {{
+                    messages = [
+                        "😮 Actually impressive!",
+                        "🤔 Getting faster...",
+                        "😤 Time to step it up!",
+                        "⚡ Not bad, human!"
+                    ];
+                }} else if (context === 'player_passed') {{
+                    messages = [
+                        "😠 No way you just passed me!",
+                        "🔥 This isn't over!",
+                        "💨 Just getting warmed up!",
+                        "😤 Lucky streak won't last!",
+                        "⚡ I'll be back in front soon!"
+                    ];
+                }} else if (context === 'ai_passed') {{
+                    messages = [
+                        "💨 Smell ya later, slowpoke!",
+                        "😎 Thanks for the warm-up!",
+                        "🔥 This is how it's done!",
+                        "⚡ See you at the finish line!",
+                        "💪 Try to keep up!"
+                    ];
+                }}
+            }} else if (racer.personality === 'analytical') {{
+                // Math Bot - Analytical and encouraging but competitive
+                if (context === 'ahead') {{
+                    messages = [
+                        "📊 Optimal performance!",
+                        "🤖 Logic beats speed!",
+                        "📈 87% win probability!",
+                        "⚙️ Perfectly calibrated!",
+                        "🔬 Science prevails!"
+                    ];
+                }} else if (context === 'behind') {{
+                    messages = [
+                        "🤔 Recalculating...",
+                        "📊 Exceeding projections!",
+                        "⚙️ Adjusting parameters!",
+                        "🔬 Analyzing your technique!",
+                        "📈 Statistical anomaly!"
+                    ];
+                }} else if (context === 'adaptive_struggle') {{
+                    messages = [
+                        "📊 Detecting inefficiencies!",
+                        "🔬 Focus on patterns?",
+                        "⚙️ Use that extra time!",
+                        "📈 Room for improvement!"
+                    ];
+                }} else if (context === 'adaptive_mastery') {{
+                    messages = [
+                        "🤖 Excellent optimization!",
+                        "📊 Impressive metrics!",
+                        "⚙️ Updating my models!",
+                        "🔬 Near-AI efficiency!"
+                    ];
+                }} else if (context === 'player_passed') {{
+                    messages = [
+                        "🤖 Fascinating strategy!",
+                        "📊 Unexpected variable!",
+                        "⚙️ Adjusting algorithms...",
+                        "🔬 Impressive execution!",
+                        "📈 Recalculating odds!"
+                    ];
+                }} else if (context === 'ai_passed') {{
+                    messages = [
+                        "🤖 Efficiency optimized!",
+                        "📊 As calculated!",
+                        "⚙️ Systems nominal!",
+                        "🔬 Logic prevails!",
+                        "📈 96% confidence level!"
+                    ];
+                }}
+            }}
+            
+            if (messages.length > 0) {{
+                return messages[Math.floor(Math.random() * messages.length)];
+            }}
+            
+            return null;
+        }}
+        
+        triggerAICommentary() {{
+            // Don't comment too frequently
+            if (this.totalQuestions % 4 !== 0) return;
+            
+            const playerProgress = this.correctAnswers;
+            
+            this.aiRacers.forEach(racer => {{
+                const aiProgress = Math.floor(racer.position);
+                let context = '';
+                
+                // Determine context based on positions and adaptive system
+                if (aiProgress > playerProgress + 2) {{
+                    context = 'ahead';
+                }} else if (playerProgress > aiProgress + 2) {{
+                    context = 'behind';
+                }} else if (this.difficultyTracker.consecutiveIncorrect >= 2) {{
+                    context = 'adaptive_struggle';
+                }} else if (this.streak >= 5) {{
+                    context = 'adaptive_mastery';
+                }}
+                
+                if (context) {{
+                    const message = this.getAICommentary(racer, context);
+                    if (message) {{
+                        this.showAICommentary(racer, message, context);
+                        return; // Only one racer comments at a time
+                    }}
+                }}
+            }});
+        }}
+        
+        showVisualComplement() {{
+            document.getElementById('number-part').textContent = this.currentNumber;
+            document.getElementById('complement-part').textContent = this.correctAnswer;
+            document.getElementById('sum-part').textContent = this.targetSum;
+            document.getElementById('visual-complement').style.display = 'block';
+        }}
+        
+        updateStats() {{
+            document.getElementById('complement-score').textContent = this.score;
+            document.getElementById('complement-streak').textContent = this.streak;
+            
+            const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+            document.getElementById('complement-time').textContent = elapsed + 's';
+            
+            const progress = Math.min(this.totalQuestions / 20, 1) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('progress-text').textContent = `${{this.correctAnswers}}/${{this.totalQuestions}} Correct`;
+        }}
+        
+        startGameTimer() {{
+            this.gameInterval = setInterval(() => {{
+                if (!this.isGameActive || this.isPaused) return;
+                
+                const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
+                
+                if (this.style === 'sprint') {{
+                    // Countdown timer for sprint mode
+                    const remaining = Math.max(0, this.timeLimit - elapsed);
+                    document.getElementById('complement-time').textContent = remaining + 's';
+                    
+                    if (remaining <= 0) {{
+                        this.endRace('Time up! Lightning round complete!');
+                    }}
+                }} else {{
+                    // Count-up timer for practice and survival
+                    document.getElementById('complement-time').textContent = elapsed + 's';
+                    
+                    // Survival mode: increase difficulty over time
+                    if (this.style === 'survival' && elapsed > 0 && elapsed % 10 === 0) {{
+                        this.increaseSurvivalDifficulty(elapsed);
+                    }}
+                }}
+            }}, 1000);
+        }}
+        
+        increaseSurvivalDifficulty(elapsed) {{
+            // Increase difficulty every 10 seconds in survival mode
+            const level = Math.floor(elapsed / 10);
+            this.survivalMultiplier = 1.0 + (level * 0.15); // 15% faster each level
+            
+            // Speed up AI racers too
+            const newSpeedMultiplier = this.speedMultiplier * this.survivalMultiplier;
+            this.aiRacers[0].speed = 0.25 * newSpeedMultiplier;
+            this.aiRacers[1].speed = 0.15 * newSpeedMultiplier;
+            
+            // Show survival escalation message
+            const messages = [
+                '🔥 Pressure rising! Questions getting faster!',
+                '⚡ Heat turned up! Can you handle it?',
+                '🌪️ Intensity increasing! Stay focused!',
+                '🚀 Speed boost activated! Don\\'t crack!',
+                '💥 Maximum pressure! You\\'re in the zone!'
+            ];
+            
+            const message = level < messages.length ? messages[level - 1] : messages[messages.length - 1];
+            this.showFeedback(message, 'survival');
+            
+            console.log(`Survival difficulty increased to level ${{level}}, multiplier: ${{this.survivalMultiplier.toFixed(2)}}`);
+        }}
+        
+        pauseRace() {{
+            this.isGameActive = false;
+            this.isPaused = true;
+            
+            // Clear all timers and timeouts
+            if (this.timerInterval) {{
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }}
+            if (this.gameInterval) {{
+                clearInterval(this.gameInterval);
+                this.gameInterval = null;
+            }}
+            this.clearAutoSubmitTimeout();
+            
+            this.showFeedback('⏸️ Paused - Click End to finish', 'pause');
+        }}
+        
+        endRace(customMessage = null) {{
+            this.isGameActive = false;
+            
+            // Clear all timers and timeouts
+            if (this.timerInterval) {{
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }}
+            if (this.gameInterval) {{
+                clearInterval(this.gameInterval);
+                this.gameInterval = null;
+            }}
+            this.clearAutoSubmitTimeout();
+            
+            const accuracy = this.totalQuestions > 0 ? (this.correctAnswers / this.totalQuestions) * 100 : 0;
+            const totalTime = (Date.now() - this.gameStartTime) / 1000;
+            
+            // Stop race and show intro content when game ends
+            this.stopRace();
+            document.querySelector('.complement-intro').style.display = 'block';
+            
+            this.showResults({{
+                score: this.score,
+                correct: this.correctAnswers,
+                total: this.totalQuestions,
+                accuracy: accuracy,
+                bestStreak: this.bestStreak,
+                totalTime: totalTime,
+                mode: this.mode,
+                raceWinner: this.raceWinner || null,
+                winningAI: this.winningAI || null
+            }});
+            
+            this.resetGame();
+        }}
+        
+        showResults(results) {{
+            const modal = document.getElementById('complement-score-modal');
+            const body = document.getElementById('complement-score-modal-body');
+            
+            // Calculate race performance score (combination of speed and accuracy)
+            const raceResult = this.calculateRaceResult(results);
+            
+            const modeNames = {{ 'friends5': 'Friends of 5', 'friends10': 'Friends of 10', 'mixed': 'Mixed Challenge' }};
+            
+            body.innerHTML = `
+                <div class="race-results-summary">
+                    <div class="race-podium">
+                        <div class="medal-display">
+                            <div class="medal-icon">${{raceResult.medal}}</div>
+                            <div class="medal-rank">${{raceResult.rank}}</div>
+                            <div class="medal-title">${{raceResult.title}}</div>
+                        </div>
+                        <div class="race-performance">
+                            <div class="perf-metric">
+                                <span class="metric-label">Speed Rating</span>
+                                <span class="metric-value">${{raceResult.speedRating}}/100</span>
+                            </div>
+                            <div class="perf-metric">
+                                <span class="metric-label">Accuracy</span>
+                                <span class="metric-value">${{results.accuracy.toFixed(1)}}%</span>
+                            </div>
+                            <div class="perf-metric">
+                                <span class="metric-label">Race Score</span>
+                                <span class="metric-value">${{raceResult.raceScore}}/100</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="race-statistics">
+                        <div class="stat-row">
+                            <span class="stat-label">🏁 Questions Completed:</span>
+                            <span class="stat-value">${{results.correct}}/${{results.total}}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">🔥 Best Streak:</span>
+                            <span class="stat-value">${{results.bestStreak}}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">⏱️ Total Time:</span>
+                            <span class="stat-value">${{results.totalTime.toFixed(1)}}s</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">📈 Points Earned:</span>
+                            <span class="stat-value">${{results.score}}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">🎯 Challenge:</span>
+                            <span class="stat-value">${{modeNames[results.mode]}}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="race-feedback">
+                        <p>${{raceResult.feedback}}</p>
+                    </div>
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }}
+        
+        calculateRaceResult(results) {{
+            // Calculate speed rating (questions per minute)
+            const questionsPerMinute = (results.correct / results.totalTime) * 60;
+            const maxQPM = 30; // Maximum expected questions per minute for normalization
+            const speedRating = Math.min(100, Math.round((questionsPerMinute / maxQPM) * 100));
+            
+            // Calculate overall race score (weighted combination) for performance tracking
+            const raceScore = Math.round((results.accuracy * 0.7) + (speedRating * 0.3));
+            
+            // Determine medal and rank based on ACTUAL RACE RESULTS first
+            let medal, rank, title, feedback;
+            
+            if (results.raceWinner === 'player') {{
+                // Player won the race - always gets gold!
+                medal = '🥇';
+                rank = '1st Place';
+                title = 'GOLD MEDAL - RACE WINNER!';
+                
+                if (results.accuracy >= 90) {{
+                    feedback = 'PERFECT VICTORY! You won with outstanding accuracy. You\\'re a true complement champion!';
+                }} else if (results.accuracy >= 75) {{
+                    feedback = 'RACE WINNER! Great job beating the AI racers. Your speed gave you the edge!';
+                }} else {{
+                    feedback = 'VICTORY BY SPEED! You won the race even with some mistakes. Speed can overcome accuracy!';
+                }}
+            }} else if (results.raceWinner === 'ai') {{
+                // AI won the race, player gets silver for effort
+                medal = '🥈';
+                rank = '2nd Place';
+                title = 'SILVER MEDAL';
+                
+                if (results.accuracy >= 85) {{
+                    feedback = 'So close! Your accuracy was excellent, but the AI was just a bit faster this time.';
+                }} else if (results.accuracy >= 70) {{
+                    feedback = 'Good race! Work on speed to beat those AI racers next time.';
+                }} else {{
+                    feedback = 'The AI won this round, but you\\'re improving! Focus on accuracy first, then speed.';
+                }}
+            }} else {{
+                // For sprint/survival modes - determine position based on who's ahead at end
+                const playerPosition = this.correctAnswers;
+                const aiPositions = this.aiRacers.map(ai => ai.position).sort((a, b) => b - a);
+                
+                let playerRank = 1;
+                aiPositions.forEach(aiPos => {{
+                    if (aiPos > playerPosition) {{
+                        playerRank++;
+                    }}
+                }});
+                
+                if (playerRank === 1) {{
+                    medal = '🥇';
+                    rank = '1st Place';
+                    title = 'GOLD MEDAL - RACE LEADER!';
+                    feedback = `RACE LEADER! You were ahead of both AI racers with ${{playerPosition}} correct answers. Outstanding performance!`;
+                }} else if (playerRank === 2) {{
+                    const leadingAI = Math.max(...aiPositions);
+                    medal = '🥈';
+                    rank = '2nd Place';
+                    title = 'SILVER MEDAL';
+                    feedback = `STRONG SECOND! You finished just behind the leading AI racer (you: ${{playerPosition}}, AI: ${{leadingAI}}). Great effort!`;
+                }} else if (playerRank === 3) {{
+                    medal = '🥉';
+                    rank = '3rd Place';
+                    title = 'BRONZE MEDAL';
+                    feedback = `BRONZE FINISH! Both AI racers got ahead, but you completed the race with ${{playerPosition}} correct answers. Keep practicing!`;
+                }} else {{
+                    medal = '🏅';
+                    rank = 'Participant';
+                    title = 'COMPLETION MEDAL';
+                    feedback = 'Thanks for playing! Focus on accuracy first, then work on building speed.';
+                }}
+            }}
+            
+            return {{
+                medal,
+                rank,
+                title,
+                speedRating,
+                raceScore,
+                feedback
+            }};
+        }}
+        
+        resetGame() {{
+            // Show intro and controls, hide game
+            document.querySelector('.complement-intro').style.display = 'block';
+            document.querySelector('.complement-controls').style.display = 'block';
+            document.getElementById('complement-game').style.display = 'none';
+            document.getElementById('complement-header').style.display = 'none';
+            document.getElementById('visual-complement').style.display = 'none';
+        }}
+        
+        // Race Management Methods
+        initializeRace() {{
+            // Set race goal and mechanics based on style
+            if (this.style === 'practice') {{
+                this.raceGoal = 20; // Race to 20 correct answers
+                this.timeLimit = null; // No time limit
+                this.speedMultiplier = 0.7; // Moderate AI speed
+            }} else if (this.style === 'sprint') {{
+                this.raceGoal = 999; // No finish line - count as many as possible  
+                this.timeLimit = 60; // 60-second time limit
+                this.speedMultiplier = 0.9; // Aggressive AI speed
+            }} else if (this.style === 'survival') {{
+                this.raceGoal = 999; // No finish line - survive as long as possible
+                this.timeLimit = null; // No time limit
+                this.speedMultiplier = 0.5; // Start slower, will increase over time
+                this.survivalMultiplier = 1.0; // Difficulty multiplier for survival
+            }}
+            
+            // Set appropriate goal display for each mode
+            if (this.style === 'practice') {{
+                document.getElementById('race-goal').textContent = this.raceGoal; // Show "20"
+            }} else if (this.style === 'sprint') {{
+                document.getElementById('race-goal').textContent = `${{this.timeLimit}}s`; // Show "60s"
+            }} else if (this.style === 'survival') {{
+                document.getElementById('race-goal').textContent = '∞'; // Show infinity symbol
+            }}
+            document.getElementById('race-correct').textContent = '0';
+            
+            // Adjust AI speeds based on style
+            this.aiRacers[0].speed = 0.25 * this.speedMultiplier; // Swift AI
+            this.aiRacers[1].speed = 0.15 * this.speedMultiplier; // Math Bot
+            
+            console.log('Race initialized:', this.style, 'Goal:', this.raceGoal, 'Time limit:', this.timeLimit, 'AI speeds:', this.aiRacers.map(ai => ai.speed));
+            
+            // Reset all racers to starting position
+            const playerRacer = document.getElementById('player-racer');
+            const aiRacer1 = document.getElementById('ai-racer-1');
+            const aiRacer2 = document.getElementById('ai-racer-2');
+            
+            if (playerRacer) playerRacer.style.left = '2%';
+            if (aiRacer1) aiRacer1.style.left = '2%';
+            if (aiRacer2) aiRacer2.style.left = '2%';
+            
+            // Reset AI racers
+            this.aiRacers.forEach(ai => {{
+                ai.position = 2;
+            }});
+            
+            // Start AI movement
+            this.startAIRacers();
+        }}
+        
+        updatePlayerRace() {{
+            let visualProgress;
+            
+            if (this.style === 'practice') {{
+                // Traditional race to finish line
+                const progress = (this.correctAnswers / this.raceGoal) * 100;
+                visualProgress = Math.min(progress, 100);
+            }} else {{
+                // Sprint and survival: visual progress based on score relative to a reasonable target
+                // Use 30 as a visual "full track" for sprint/survival modes
+                const visualTarget = 30;
+                const progress = (this.correctAnswers / visualTarget) * 100;
+                visualProgress = Math.min(progress, 95); // Cap at 95% so no one "wins" visually
+            }}
+            
+            const playerRacer = document.getElementById('player-racer');
+            const progressDisplay = document.getElementById('player-progress');
+            
+            if (playerRacer) {{
+                playerRacer.style.left = visualProgress + '%';
+                // Add celebration animation for good progress
+                if (this.correctAnswers % 5 === 0 && this.correctAnswers > 0) {{
+                    playerRacer.classList.add('celebrating');
+                    setTimeout(() => playerRacer.classList.remove('celebrating'), 600);
+                }}
+            }}
+            
+            if (progressDisplay) {{
+                progressDisplay.textContent = this.correctAnswers;
+            }}
+            
+            document.getElementById('race-correct').textContent = this.correctAnswers;
+            
+            // Check for passing events (player passing or getting passed by AI)
+            this.checkForPassingEvents();
+            
+            // Update previous position for next comparison
+            this.previousPlayerProgress = this.correctAnswers;
+            
+            // Check if player wins - only for practice mode with finish line
+            if (this.style === 'practice' && this.correctAnswers >= this.raceGoal && this.isGameActive) {{
+                this.handleRaceWin('player');
+            }}
+        }}
+        
+        checkForPassingEvents() {{
+            const currentPlayerProgress = this.correctAnswers;
+            const previousPlayerProgress = this.previousPlayerProgress;
+            
+            this.aiRacers.forEach(ai => {{
+                const currentAIProgress = ai.position;
+                const previousAIProgress = ai.previousPosition;
+                
+                // Add tolerance for floating point comparison and ensure meaningful position changes
+                const tolerance = 0.1;
+                const playerProgressed = currentPlayerProgress > previousPlayerProgress;
+                const aiProgressed = currentAIProgress > previousAIProgress + tolerance;
+                
+                // Check if player just passed AI (player progressed and now ahead)
+                if (playerProgressed && previousPlayerProgress <= previousAIProgress && currentPlayerProgress > currentAIProgress) {{
+                    // Player passed AI - AI should react with "player_passed" context
+                    const message = this.getAICommentary(ai, 'player_passed');
+                    if (message) {{
+                        setTimeout(() => {{
+                            this.showAICommentary(ai, message, 'player_passed');
+                        }}, Math.random() * 500 + 300); // Slight delay with randomness
+                    }}
+                }}
+                
+                // Check if AI just passed player (AI progressed and now ahead) 
+                if (aiProgressed && previousAIProgress <= previousPlayerProgress && currentAIProgress > currentPlayerProgress) {{
+                    // AI passed player - AI should react with "ai_passed" context
+                    const message = this.getAICommentary(ai, 'ai_passed');
+                    if (message) {{
+                        setTimeout(() => {{
+                            this.showAICommentary(ai, message, 'ai_passed');
+                        }}, Math.random() * 500 + 300); // Slight delay with randomness
+                    }}
+                }}
+            }});
+        }}
+        
+        startAIRacers() {{
+            if (this.aiUpdateInterval) {{
+                clearInterval(this.aiUpdateInterval);
+            }}
+            
+            this.aiUpdateInterval = setInterval(() => {{
+                if (!this.isGameActive) return;
+                
+                this.aiRacers.forEach(ai => {{
+                    // Store previous position for passing detection
+                    ai.previousPosition = ai.position;
+                    
+                    // AI progress based on their speed and some randomness
+                    const baseProgress = ai.speed * (Math.random() * 0.8 + 0.6); // Some variance
+                    ai.position += baseProgress;
+                    
+                    // Calculate visual progress 
+                    let visualProgress;
+                    
+                    if (this.style === 'practice') {{
+                        // Traditional race to finish line
+                        const progress = (ai.position / this.raceGoal) * 100;
+                        visualProgress = Math.min(progress, 100);
+                    }} else {{
+                        // Sprint and survival: visual progress based on position relative to reasonable target
+                        const visualTarget = 30;
+                        const progress = (ai.position / visualTarget) * 100;
+                        visualProgress = Math.min(progress, 95); // Cap at 95% so no one "wins" visually
+                    }}
+                    
+                    const aiElement = document.getElementById(ai.id);
+                    
+                    if (aiElement) {{
+                        aiElement.style.left = visualProgress + '%';
+                    }}
+                    
+                    // Check if AI wins - only for practice mode with finish line
+                    if (this.style === 'practice' && visualProgress >= 100 && this.isGameActive) {{
+                        this.handleRaceWin('ai', ai.name);
+                    }}
+                }});
+            }}, 1200); // Update AI every 1200ms (slower for balance)
+        }}
+        
+        handleRaceWin(winner, aiName = null) {{
+            if (!this.isGameActive) return;
+            
+            // Store the race winner for medal calculation
+            this.raceWinner = winner;
+            this.winningAI = aiName;
+            
+            // Stop all race activity
+            if (this.aiUpdateInterval) {{
+                clearInterval(this.aiUpdateInterval);
+                this.aiUpdateInterval = null;
+            }}
+            
+            const winnerElement = winner === 'player' 
+                ? document.getElementById('player-racer')
+                : document.getElementById(this.aiRacers.find(ai => ai.name === aiName)?.id);
+                
+            if (winnerElement) {{
+                winnerElement.classList.add('winner');
+                winnerElement.style.left = '95%'; // Move to finish line
+            }}
+            
+            // Play celebration sound and show message
+            if (winner === 'player') {{
+                this.playSound('celebration');
+                setTimeout(() => {{
+                    this.endRace();
+                }}, 1500);
+            }} else {{
+                this.playSound('gameOver');
+                setTimeout(() => {{
+                    // Show "try again" modal or end game
+                    alert(`🏁 ${{aiName}} wins the race! You got ${{this.correctAnswers}}/${{this.raceGoal}} correct. Great effort!`);
+                    this.endRace();
+                }}, 800);
+            }}
+        }}
+        
+        stopRace() {{
+            if (this.aiUpdateInterval) {{
+                clearInterval(this.aiUpdateInterval);
+                this.aiUpdateInterval = null;
+            }}
+        }}
+        
+        playSound(type) {{
+            try {{
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                if (type === 'correct') {{
+                    oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.2);
+                }} else if (type === 'incorrect') {{
+                    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.3);
+                }} else if (type === 'timeout') {{
+                    oscillator.frequency.setValueAtTime(350, audioContext.currentTime);
+                }} else if (type === 'celebration') {{
+                    // Victory fanfare sound
+                    oscillator.frequency.setValueAtTime(523, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(659, audioContext.currentTime + 0.2);
+                    oscillator.frequency.exponentialRampToValueAtTime(784, audioContext.currentTime + 0.4);
+                }} else if (type === 'gameOver') {{
+                    // Sad trombone sound
+                    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.5);
+                }}
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }} catch (e) {{
+                console.log('Web Audio not supported');
+            }}
+        }}
+        
+        // ===== ADAPTIVE DIFFICULTY SYSTEM =====
+        
+        trackPerformance(isCorrect) {{
+            const responseTime = Date.now() - this.questionStartTime;
+            const pairKey = `${{this.currentNumber}}_${{this.correctAnswer}}_${{this.targetSum}}`;
+            
+            // Get or create performance data for this pair
+            let pairData = this.difficultyTracker.pairPerformance.get(pairKey) || {{
+                attempts: 0,
+                correct: 0,
+                totalTime: 0,
+                avgTime: 0,
+                difficulty: 1,
+                recentPerformance: [] // Track last 5 attempts
+            }};
+            
+            // Update performance data
+            pairData.attempts++;
+            if (isCorrect) pairData.correct++;
+            pairData.totalTime += responseTime;
+            pairData.avgTime = pairData.totalTime / pairData.attempts;
+            
+            // Track recent performance (sliding window of 5)
+            pairData.recentPerformance.push({{
+                correct: isCorrect,
+                time: responseTime,
+                timestamp: Date.now()
+            }});
+            
+            if (pairData.recentPerformance.length > 5) {{
+                pairData.recentPerformance.shift();
+            }}
+            
+            // Calculate dynamic difficulty for this pair
+            this.calculatePairDifficulty(pairData);
+            
+            // Update global tracking
+            if (isCorrect) {{
+                this.difficultyTracker.consecutiveCorrect++;
+                this.difficultyTracker.consecutiveIncorrect = 0;
+            }} else {{
+                this.difficultyTracker.consecutiveIncorrect++;
+                this.difficultyTracker.consecutiveCorrect = 0;
+            }}
+            
+            // Adapt overall difficulty
+            this.adaptGlobalDifficulty();
+            
+            // Store updated data
+            this.difficultyTracker.pairPerformance.set(pairKey, pairData);
+            
+            // Exit learning mode after sufficient data
+            if (this.difficultyTracker.pairPerformance.size >= 5 && 
+                Array.from(this.difficultyTracker.pairPerformance.values())
+                    .some(data => data.attempts >= 3)) {{
+                this.difficultyTracker.learningMode = false;
+            }}
+        }}
+        
+        calculatePairDifficulty(pairData) {{
+            if (pairData.attempts < 2) return; // Need more data
+            
+            const accuracyRate = pairData.correct / pairData.attempts;
+            const avgTime = pairData.avgTime;
+            const targetTime = 2000; // Target 2 seconds
+            
+            // Recent performance weight (last 5 attempts matter more)
+            const recentAccuracy = pairData.recentPerformance.length > 0 ?
+                pairData.recentPerformance.filter(p => p.correct).length / pairData.recentPerformance.length :
+                accuracyRate;
+            
+            const recentAvgTime = pairData.recentPerformance.length > 0 ?
+                pairData.recentPerformance.reduce((sum, p) => sum + p.time, 0) / pairData.recentPerformance.length :
+                avgTime;
+            
+            // Calculate difficulty (1-5 scale)
+            let newDifficulty = pairData.difficulty;
+            
+            if (recentAccuracy >= 0.8 && recentAvgTime < targetTime) {{
+                // Performing well - increase difficulty
+                newDifficulty = Math.min(5, pairData.difficulty + 0.2);
+            }} else if (recentAccuracy < 0.5 || recentAvgTime > targetTime * 1.5) {{
+                // Struggling - decrease difficulty  
+                newDifficulty = Math.max(1, pairData.difficulty - 0.3);
+            }}
+            
+            pairData.difficulty = newDifficulty;
+        }}
+        
+        adaptGlobalDifficulty() {{
+            const tracker = this.difficultyTracker;
+            
+            // Adapt time limits based on recent performance
+            if (tracker.consecutiveCorrect >= 3) {{
+                // Reduce time limit (increase difficulty)
+                tracker.currentTimeLimit = Math.max(1000, 
+                    tracker.currentTimeLimit - (tracker.currentTimeLimit * tracker.adaptationRate));
+            }} else if (tracker.consecutiveIncorrect >= 2) {{
+                // Increase time limit (decrease difficulty)
+                tracker.currentTimeLimit = Math.min(5000,
+                    tracker.currentTimeLimit + (tracker.baseTimeLimit * tracker.adaptationRate));
+            }}
+            
+            // Update overall difficulty level
+            const avgDifficulty = Array.from(tracker.pairPerformance.values())
+                .reduce((sum, data) => sum + data.difficulty, 0) / 
+                Math.max(1, tracker.pairPerformance.size);
+            
+            tracker.difficultyLevel = Math.round(avgDifficulty);
+        }}
+        
+        getAdaptiveTimeLimit() {{
+            // Get base adaptive time limit
+            let adaptiveTime;
+            
+            if (this.difficultyTracker.learningMode) {{
+                adaptiveTime = Math.max(2000, this.difficultyTracker.currentTimeLimit);
+            }} else {{
+                const pairKey = `${{this.currentNumber}}_${{this.correctAnswer}}_${{this.targetSum}}`;
+                const pairData = this.difficultyTracker.pairPerformance.get(pairKey);
+                
+                if (pairData && pairData.attempts >= 2) {{
+                    // Use pair-specific difficulty
+                    const baseTime = this.difficultyTracker.baseTimeLimit;
+                    const difficultyMultiplier = (6 - pairData.difficulty) / 5; // Invert: difficulty 1 = more time
+                    adaptiveTime = Math.max(1000, baseTime * difficultyMultiplier);
+                }} else {{
+                    // Default for new pairs
+                    adaptiveTime = this.difficultyTracker.currentTimeLimit;
+                }}
+            }}
+            
+            // Apply user timeout setting override
+            return this.applyTimeoutSetting(adaptiveTime);
+        }}
+        
+        applyTimeoutSetting(baseTime) {{
+            // Apply timeout setting multiplier
+            switch (this.timeoutSetting) {{
+                case 'slow':
+                    return Math.max(baseTime * 1.6, 8000); // At least 8 seconds, or 60% longer
+                case 'normal':
+                    return Math.max(baseTime, 5000); // At least 5 seconds (default)
+                case 'fast':
+                    return Math.max(baseTime * 0.6, 3000); // At least 3 seconds, or 40% shorter
+                case 'expert':
+                    return Math.max(baseTime * 0.4, 2000); // At least 2 seconds, or 60% shorter
+                default:
+                    return baseTime;
+            }}
+        }}
+        
+        getDifficultyInsights() {{
+            const tracker = this.difficultyTracker;
+            const insights = {{
+                overallLevel: tracker.difficultyLevel,
+                currentTimeLimit: tracker.currentTimeLimit,
+                learningMode: tracker.learningMode,
+                strugglingPairs: [],
+                masteredPairs: [],
+                totalPairsTested: tracker.pairPerformance.size
+            }};
+            
+            // Analyze pair-specific performance
+            for (const [pairKey, data] of tracker.pairPerformance) {{
+                const [num1, num2, sum] = pairKey.split('_').map(Number);
+                const accuracy = data.correct / data.attempts;
+                
+                if (accuracy < 0.6 && data.attempts >= 3) {{
+                    insights.strugglingPairs.push({{
+                        pair: `${{num1}} + ${{num2}} = ${{sum}}`,
+                        accuracy: Math.round(accuracy * 100),
+                        avgTime: Math.round(data.avgTime),
+                        difficulty: data.difficulty
+                    }});
+                }} else if (accuracy >= 0.9 && data.avgTime < 1500 && data.attempts >= 5) {{
+                    insights.masteredPairs.push({{
+                        pair: `${{num1}} + ${{num2}} = ${{sum}}`,
+                        accuracy: Math.round(accuracy * 100),
+                        avgTime: Math.round(data.avgTime),
+                        difficulty: data.difficulty
+                    }});
+                }}
+            }}
+            
+            return insights;
+        }}
+    }}
+    
+    // Particle Effects System
+    class ParticleSystem {{
+        constructor() {{
+            this.container = document.getElementById('particle-container');
+            this.particles = [];
+        }}
+        
+        createParticle(x, y, type = 'star', animation = 'burst') {{
+            const particle = document.createElement('div');
+            particle.className = `particle ${{type}} ${{animation}}`;
+            
+            // Random size between 8-20px
+            const size = 8 + Math.random() * 12;
+            particle.style.width = size + 'px';
+            particle.style.height = size + 'px';
+            
+            // Position
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            
+            // Add random velocity for trail effects
+            if (animation === 'trail') {{
+                const dx = (Math.random() - 0.5) * 200;
+                const dy = (Math.random() - 0.5) * 200;
+                particle.style.setProperty('--dx', dx + 'px');
+                particle.style.setProperty('--dy', dy + 'px');
+            }}
+            
+            this.container.appendChild(particle);
+            this.particles.push(particle);
+            
+            // Remove particle after animation
+            const duration = animation === 'floating' ? 2000 : animation === 'firework' ? 1200 : 800;
+            setTimeout(() => this.removeParticle(particle), duration);
+        }}
+        
+        removeParticle(particle) {{
+            if (particle.parentNode) {{
+                particle.parentNode.removeChild(particle);
+            }}
+            this.particles = this.particles.filter(p => p !== particle);
+        }}
+        
+        // Success celebration - burst of stars
+        celebrateSuccess(sourceElement) {{
+            const rect = sourceElement.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            // Create burst of particles
+            for (let i = 0; i < 8; i++) {{
+                const angle = (i / 8) * Math.PI * 2;
+                const distance = 30 + Math.random() * 20;
+                const x = centerX + Math.cos(angle) * distance;
+                const y = centerY + Math.sin(angle) * distance;
+                
+                const types = ['star', 'circle', 'diamond'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                setTimeout(() => {{
+                    this.createParticle(x, y, type, 'burst');
+                }}, i * 50);
+            }}
+        }}
+        
+        // Major celebration - fireworks and confetti
+        celebrateMajor(sourceElement) {{
+            const rect = sourceElement.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            // Central firework
+            this.createParticle(centerX, centerY, 'star', 'firework');
+            
+            // Surrounding smaller fireworks
+            for (let i = 0; i < 6; i++) {{
+                const angle = (i / 6) * Math.PI * 2;
+                const distance = 80 + Math.random() * 40;
+                const x = centerX + Math.cos(angle) * distance;
+                const y = centerY + Math.sin(angle) * distance;
+                
+                setTimeout(() => {{
+                    this.createParticle(x, y, 'heart', 'firework');
+                }}, i * 100);
+            }}
+            
+            // Confetti shower
+            setTimeout(() => {{
+                for (let i = 0; i < 20; i++) {{
+                    const x = centerX + (Math.random() - 0.5) * 200;
+                    const y = centerY - 50 + Math.random() * 100;
+                    
+                    setTimeout(() => {{
+                        this.createParticle(x, y, 'confetti', 'floating');
+                    }}, i * 30);
+                }}
+            }}, 300);
+        }}
+        
+        // Streak celebration - trail effects
+        celebrateStreak(sourceElement, streakCount) {{
+            const rect = sourceElement.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            const particleCount = Math.min(streakCount * 2, 16);
+            
+            for (let i = 0; i < particleCount; i++) {{
+                const x = centerX + (Math.random() - 0.5) * 100;
+                const y = centerY + (Math.random() - 0.5) * 100;
+                
+                setTimeout(() => {{
+                    this.createParticle(x, y, 'circle', 'trail');
+                }}, i * 25);
+            }}
+        }}
+        
+        // Sparkle effect for hovering or highlighting
+        sparkle(sourceElement) {{
+            const rect = sourceElement.getBoundingClientRect();
+            const x = rect.left + Math.random() * rect.width;
+            const y = rect.top + Math.random() * rect.height;
+            
+            this.createParticle(x, y, 'star', 'sparkle');
+        }}
+        
+        // Game complete celebration
+        celebrateGameComplete(sourceElement) {{
+            // Multiple waves of celebration
+            this.celebrateMajor(sourceElement);
+            
+            setTimeout(() => {{
+                this.celebrateSuccess(sourceElement);
+            }}, 400);
+            
+            setTimeout(() => {{
+                this.celebrateStreak(sourceElement, 10);
+            }}, 800);
+        }}
+    }}
+    
+    // Global particle system instance
+    let particleSystem;
+    
+    // Tag filtering system
+    function initializeTagFiltering() {{
+        const tagFilters = document.querySelectorAll('.tag-filter');
+        const challengeCards = document.querySelectorAll('.challenge-card');
+        
+        tagFilters.forEach(filter => {{
+            filter.addEventListener('click', () => {{
+                // Remove active class from all filters
+                tagFilters.forEach(f => f.classList.remove('active'));
+                // Add active class to clicked filter
+                filter.classList.add('active');
+                
+                const selectedTag = filter.dataset.tag;
+                
+                // Show/hide challenge cards based on selected tag
+                challengeCards.forEach(card => {{
+                    if (selectedTag === 'all') {{
+                        card.style.display = 'flex';
+                    }} else {{
+                        const cardTags = card.dataset.tags ? card.dataset.tags.split(',') : [];
+                        if (cardTags.includes(selectedTag)) {{
+                            card.style.display = 'flex';
+                        }} else {{
+                            card.style.display = 'none';
+                        }}
+                    }}
+                }});
+                
+                // Update the visible count in the grid
+                updateVisibleChallengeLayout();
+            }});
+        }});
+    }}
+    
+    function updateVisibleChallengeLayout() {{
+        // Force the grid to recalculate layout for visible items
+        const challengesGrid = document.querySelector('.challenges-grid');
+        if (challengesGrid) {{
+            challengesGrid.style.display = 'none';
+            challengesGrid.offsetHeight; // Force reflow
+            challengesGrid.style.display = 'grid';
+        }}
+    }}
+    
     document.addEventListener('DOMContentLoaded', () => {{
+        // Initialize particle system first
+        particleSystem = new ParticleSystem();
+        
         new ModalManager();
         new SectionNavigator();
         new SorobanQuiz();
         new SortingChallenge();
         new MatchingChallenge();
+        new SpeedComplementRace();
+        
+        // Initialize tag filtering system
+        initializeTagFiltering();
         
         // Intercept print attempts and download PDF instead
         window.addEventListener('beforeprint', (e) => {{
@@ -7783,6 +11342,9 @@ def generate_web_flashcards(numbers, config, output_path):
         }});
     }});
     </script>
+    
+    <!-- Particle Effects Container -->
+    <div id="particle-container" class="particle-container"></div>
 </body>
 </html>'''
     
