@@ -269,6 +269,12 @@ def generate_tutorial_svgs(config):
     tutorial_svgs = generate_card_svgs(tutorial_numbers, config)
     return tutorial_svgs
 
+def generate_arithmetic_svgs(config):
+    """Generate SVG content for arithmetic examples."""
+    arithmetic_numbers = [23, 27, 37, 47, 55, 75, 89, 85, 92, 84, 21]  # Arithmetic step examples
+    arithmetic_svgs = generate_card_svgs(arithmetic_numbers, config)
+    return arithmetic_svgs
+
 def generate_web_flashcards(numbers, config, output_path):
     """Generate HTML file with flashcard layout."""
     
@@ -279,6 +285,10 @@ def generate_web_flashcards(numbers, config, output_path):
     # Generate tutorial SVGs
     print("Generating tutorial examples...")
     tutorial_svgs = generate_tutorial_svgs(config)
+    
+    # Generate arithmetic SVGs
+    print("Generating arithmetic examples...")
+    arithmetic_svgs = generate_arithmetic_svgs(config)
     
     # Generate individual cards HTML
     cards_html = []
@@ -510,6 +520,244 @@ def generate_web_flashcards(numbers, config, output_path):
             max-width: 600px;
             margin: 0 auto;
             line-height: 1.6;
+        }}
+        
+        /* Welcome Section Styles */
+        .welcome-hero {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: -60px -40px 0;
+            padding: 80px 40px 60px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .welcome-hero::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="white" opacity="0.1"/><circle cx="80" cy="30" r="1.5" fill="white" opacity="0.1"/><circle cx="60" cy="70" r="1" fill="white" opacity="0.15"/><circle cx="30" cy="80" r="2.5" fill="white" opacity="0.08"/><circle cx="90" cy="80" r="1" fill="white" opacity="0.1"/></svg>');
+            animation: float 20s ease-in-out infinite;
+        }}
+        
+        @keyframes float {{
+            0%, 100% {{ transform: translateY(0px); }}
+            50% {{ transform: translateY(-10px); }}
+        }}
+        
+        .welcome-content {{
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+        }}
+        
+        .welcome-title {{
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }}
+        
+        .welcome-subtitle {{
+            font-size: 1.4rem;
+            margin-bottom: 60px;
+            opacity: 0.95;
+            font-weight: 300;
+            line-height: 1.6;
+        }}
+        
+        .feature-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin: 60px 0;
+            padding: 0 20px;
+        }}
+        
+        .feature-card {{
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            color: #333;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }}
+        
+        .feature-card:hover {{
+            transform: translateY(-10px);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+        }}
+        
+        .feature-icon {{
+            font-size: 3rem;
+            margin-bottom: 20px;
+            display: block;
+        }}
+        
+        .feature-card h3 {{
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }}
+        
+        .feature-card p {{
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }}
+        
+        .feature-btn {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }}
+        
+        .feature-btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .quick-start {{
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 50px 40px;
+            margin: 60px 20px 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }}
+        
+        .quick-start h2 {{
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 40px;
+            text-align: center;
+        }}
+        
+        .steps {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }}
+        
+        .step {{
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+        }}
+        
+        .step-number {{
+            background: rgba(255, 255, 255, 0.2);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }}
+        
+        .step-content h4 {{
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }}
+        
+        .step-content p {{
+            opacity: 0.9;
+            line-height: 1.6;
+        }}
+        
+        .stats-preview {{
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 20px 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }}
+        
+        .stats-preview h3 {{
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }}
+        
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }}
+        
+        .stat-item {{
+            text-align: center;
+        }}
+        
+        .stat-number {{
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            display: inline-block;
+            min-width: 80px;
+        }}
+        
+        .stat-label {{
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 500;
+        }}
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {{
+            .welcome-title {{
+                font-size: 2.5rem;
+            }}
+            
+            .welcome-subtitle {{
+                font-size: 1.2rem;
+            }}
+            
+            .feature-grid {{
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 0 10px;
+            }}
+            
+            .quick-start {{
+                margin: 40px 10px 20px;
+                padding: 30px 20px;
+            }}
+            
+            .steps {{
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }}
+            
+            .stats-grid {{
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }}
         }}
         
         .section-header::after {{
@@ -915,6 +1163,279 @@ def generate_web_flashcards(numbers, config, output_path):
             }}
         }}
         
+        /* Arithmetic Section Styles */
+        .arithmetic-intro {{
+            background: rgba(102, 126, 234, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }}
+        
+        .operation-section {{
+            margin: 30px 0;
+            padding: 25px;
+            background: #f8fafc;
+            border-radius: 15px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }}
+        
+        .operation-section h4 {{
+            color: #2d3748;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }}
+        
+        .calculation-example {{
+            margin: 20px 0;
+        }}
+        
+        .calc-step {{
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            align-items: start;
+        }}
+        
+        .step-description {{
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }}
+        
+        .step-description h5 {{
+            color: #667eea;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }}
+        
+        .technique-steps {{
+            margin: 15px 0;
+            padding-left: 20px;
+        }}
+        
+        .technique-steps li {{
+            margin-bottom: 8px;
+            color: #4a5568;
+            line-height: 1.5;
+        }}
+        
+        .calc-visual-sequence {{
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow-x: auto;
+        }}
+        
+        .calc-frame {{
+            text-align: center;
+            min-width: 120px;
+            flex-shrink: 0;
+        }}
+        
+        .frame-label {{
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }}
+        
+        .calc-arrow {{
+            font-size: 0.85rem;
+            color: #667eea;
+            font-weight: 600;
+            text-align: center;
+            min-width: 80px;
+            flex-shrink: 0;
+        }}
+        
+        .technique-box {{
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }}
+        
+        .technique-box h5 {{
+            color: #2d3748;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }}
+        
+        .complement-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+            margin: 15px 0;
+        }}
+        
+        .complement-pair {{
+            background: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #4a5568;
+            border: 1px solid rgba(102, 126, 234, 0.15);
+        }}
+        
+        .mult-layout, .div-layout {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }}
+        
+        .mult-setup, .mult-result, .div-setup, .div-result {{
+            text-align: center;
+        }}
+        
+        .mult-label, .div-label {{
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }}
+        
+        .tips-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }}
+        
+        .tip-card {{
+            background: linear-gradient(135deg, #fff5f5 0%, #f0fff4 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }}
+        
+        .tip-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.15);
+        }}
+        
+        .tip-card h4 {{
+            color: #2d3748;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }}
+        
+        .tip-card p {{
+            color: #4a5568;
+            line-height: 1.6;
+            margin: 0;
+        }}
+        
+        /* Guide Navigation Styles */
+        .guide-nav {{
+            background: rgba(102, 126, 234, 0.05);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }}
+        
+        .guide-nav-buttons {{
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }}
+        
+        .guide-nav-btn {{
+            padding: 12px 24px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }}
+        
+        .guide-nav-btn:hover {{
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .guide-nav-btn.active {{
+            background: #667eea;
+            color: white;
+            box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .guide-content {{
+            position: relative;
+        }}
+        
+        .guide-section {{
+            display: none;
+            animation: fadeInGuide 0.4s ease-out;
+        }}
+        
+        .guide-section.active {{
+            display: block;
+        }}
+        
+        @keyframes fadeInGuide {{
+            from {{ 
+                opacity: 0;
+                transform: translateX(20px);
+            }}
+            to {{ 
+                opacity: 1;
+                transform: translateX(0);
+            }}
+        }}
+        
+        .section-intro {{
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 15px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }}
+        
+        .section-intro h3 {{
+            color: #2d3748;
+            margin: 0 0 15px 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }}
+        
+        .section-intro p {{
+            color: #4a5568;
+            margin: 0;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }}
+        
         @media (max-width: 768px) {{
             .tutorial-grid {{
                 grid-template-columns: 1fr;
@@ -932,6 +1453,24 @@ def generate_web_flashcards(numbers, config, output_path):
             .examples-grid {{
                 grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
                 gap: 20px;
+            }}
+            
+            .calc-step {{
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }}
+            
+            .calc-visual-sequence {{
+                padding: 15px;
+            }}
+            
+            .mult-layout, .div-layout {{
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }}
+            
+            .tips-grid {{
+                grid-template-columns: 1fr;
             }}
         }}
         
@@ -3377,25 +3916,133 @@ def generate_web_flashcards(numbers, config, output_path):
         <!-- Navigation -->
         <nav class="page-nav">
             <div class="nav-buttons">
-                <button class="nav-btn active" data-section="introduction">📚 Introduction</button>
+                <button class="nav-btn active" data-section="welcome">🏠 Welcome</button>
+                <button class="nav-btn" data-section="guide">📚 Complete Guide</button>
                 <button class="nav-btn" data-section="configuration">⚙️ Configuration</button>
                 <button class="nav-btn" data-section="challenges">🎯 Challenges</button>
-                <button class="nav-btn" data-section="flashcards">🧮 Flashcards</button>
+                <button class="nav-btn" data-section="flashcards">📊 Practice</button>
             </div>
         </nav>
         
         <!-- Content Area -->
         <div class="content-area">
         
-        <!-- Section 1: Introduction -->
-        <section id="introduction" class="page-section active">
+        <!-- Section 1: Welcome -->
+        <section id="welcome" class="page-section active">
+            <div class="welcome-hero">
+                <div class="welcome-content">
+                    <h1 class="welcome-title">🏠 Welcome to Soroban Mastery</h1>
+                    <p class="welcome-subtitle">Your complete interactive learning platform for mastering the Japanese abacus</p>
+                    
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">📚</div>
+                            <h3>Complete Guide</h3>
+                            <p>Learn to read numbers and perform arithmetic operations with step-by-step visual tutorials</p>
+                            <button class="feature-btn" data-section="guide">Start Learning →</button>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <div class="feature-icon">🎯</div>
+                            <h3>Interactive Challenges</h3>
+                            <p>Test your skills with engaging games including speed reading challenges and pattern matching</p>
+                            <button class="feature-btn" data-section="challenges">Play Games →</button>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <div class="feature-icon">📊</div>
+                            <h3>Practice Flashcards</h3>
+                            <p>Master number recognition with beautiful, customizable flashcards and printable PDF sets</p>
+                            <button class="feature-btn" data-section="flashcards">Practice Now →</button>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <div class="feature-icon">⚙️</div>
+                            <h3>Customization</h3>
+                            <p>Personalize your learning experience with different color schemes, card layouts, and difficulty levels</p>
+                            <button class="feature-btn" data-section="configuration">Customize →</button>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-start">
+                        <h2>Quick Start Guide</h2>
+                        <div class="steps">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h4>Learn the Basics</h4>
+                                    <p>Start with our complete guide to understand how to read numbers on the soroban</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h4>Practice Recognition</h4>
+                                    <p>Use interactive flashcards to build speed and accuracy in number recognition</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h4>Challenge Yourself</h4>
+                                    <p>Test your skills with timed challenges and competitive games</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h4>Master Arithmetic</h4>
+                                    <p>Learn advanced techniques for addition, subtraction, and more complex operations</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-preview">
+                        <h3>What You Will Learn</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-number">{len_numbers}</div>
+                                <div class="stat-label">Practice Numbers</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">4</div>
+                                <div class="stat-label">Game Modes</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">5</div>
+                                <div class="stat-label">Color Schemes</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number">∞</div>
+                                <div class="stat-label">Skill Levels</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section 2: Complete Guide -->
+        <section id="guide" class="page-section">
             <div class="section-header">
-                <h2 class="section-title">📚 Master the Soroban Abacus</h2>
-                <p class="section-subtitle">Complete visual guide to reading and understanding Japanese abacus patterns</p>
+                <h2 class="section-title">📚 Complete Soroban Mastery Guide</h2>
+                <p class="section-subtitle">From basic reading to advanced arithmetic - everything you need to master the Japanese abacus</p>
             </div>
             
-            <!-- Tutorial Content -->
-            <div class="tutorial-content">
+            <!-- Guide Navigation -->
+            <div class="guide-nav">
+                <div class="guide-nav-buttons">
+                    <button class="guide-nav-btn active" data-guide-section="reading">📖 Reading Numbers</button>
+                    <button class="guide-nav-btn" data-guide-section="arithmetic">🧮 Arithmetic Operations</button>
+                </div>
+            </div>
+            
+            <!-- Guide Content -->
+            <div class="guide-content">
+                
+                <!-- Reading Numbers Section -->
+                <div id="reading" class="guide-section active">
                 
                 <!-- Step 1: Basic Structure -->
                 <div class="tutorial-step">
@@ -3516,7 +4163,298 @@ def generate_web_flashcards(numbers, config, output_path):
                     </div>
                 </div>
                 
-            </div>
+                </div> <!-- End Reading Section -->
+                
+                <!-- Arithmetic Operations Section -->
+                <div id="arithmetic" class="guide-section">
+                
+                <div class="section-intro">
+                    <h3>🧮 Soroban Arithmetic Mastery</h3>
+                    <p>Learn traditional Japanese calculation techniques step-by-step with visual examples</p>
+                </div>
+                
+                <!-- Addition Section -->
+                <div class="tutorial-step">
+                    <div class="step-header">
+                        <h3><span class="step-number">+</span>Addition Techniques</h3>
+                    </div>
+                    <div class="step-content">
+                        <div class="arithmetic-intro">
+                            <p>Addition on the soroban follows specific rules for manipulating beads efficiently. Master these fundamental patterns:</p>
+                        </div>
+                        
+                        <!-- Simple Addition -->
+                        <div class="operation-section">
+                            <h4>Simple Addition (No Carries)</h4>
+                            <div class="calculation-example">
+                                <div class="calc-step">
+                                    <div class="step-description">
+                                        <h5>Example: 23 + 14 = 37</h5>
+                                        <p>Add ones first, then tens. No carrying required.</p>
+                                    </div>
+                                    <div class="calc-visual-sequence">
+                                        <div class="calc-frame">
+                                            <div class="frame-label">Start: 23</div>
+                                            <div class="example-abacus">{arithmetic_svg_23}</div>
+                                        </div>
+                                        <div class="calc-arrow">+4 ones →</div>
+                                        <div class="calc-frame">
+                                            <div class="frame-label">Add 4 to ones: 27</div>
+                                            <div class="example-abacus">{arithmetic_svg_27}</div>
+                                        </div>
+                                        <div class="calc-arrow">+1 ten →</div>
+                                        <div class="calc-frame">
+                                            <div class="frame-label">Final: 37</div>
+                                            <div class="example-abacus">{arithmetic_svg_37}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Addition with Carry -->
+                        <div class="operation-section">
+                            <h4>Addition with Carrying</h4>
+                            <div class="calculation-example">
+                                <div class="calc-step">
+                                    <div class="step-description">
+                                        <h5>Example: 47 + 28 = 75</h5>
+                                        <p>When ones exceed 9, carry to tens column.</p>
+                                        <ol class="technique-steps">
+                                            <li>Start with 47 on the abacus</li>
+                                            <li>Add 8 to ones: 7 + 8 = 15 (carry 1)</li>
+                                            <li>Place 5 in ones, carry 1 to tens</li>
+                                            <li>Add 2 + 1 (carry) = 3 to tens: 4 + 3 = 7</li>
+                                        </ol>
+                                    </div>
+                                    <div class="calc-visual-sequence">
+                                        <div class="calc-frame">
+                                            <div class="frame-label">Start: 47</div>
+                                            <div class="example-abacus">{arithmetic_svg_47}</div>
+                                        </div>
+                                        <div class="calc-arrow">+8 ones<br>(7+8=15) →</div>
+                                        <div class="calc-frame">
+                                            <div class="frame-label">Carry: 55</div>
+                                            <div class="example-abacus">{arithmetic_svg_55}</div>
+                                        </div>
+                                        <div class="calc-arrow">+2 tens →</div>
+                                        <div class="calc-frame">
+                                            <div class="frame-label">Final: 75</div>
+                                            <div class="example-abacus">{arithmetic_svg_75}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Subtraction Section -->
+                <div class="tutorial-step">
+                    <div class="step-header">
+                        <h3><span class="step-number">−</span>Subtraction Techniques</h3>
+                    </div>
+                    <div class="step-content">
+                        <div class="arithmetic-intro">
+                            <p>Subtraction requires understanding complement methods and borrowing. These are traditional soroban techniques.</p>
+                        </div>
+                        
+                        <!-- Simple Subtraction -->
+                        <div class="operation-section">
+                            <h4>Simple Subtraction (No Borrowing)</h4>
+                            <div class="calculation-example">
+                                <div class="calc-step">
+                                    <div class="step-description">
+                                        <h5>Example: 89 - 34 = 55</h5>
+                                        <p>Subtract ones first, then tens. No borrowing needed.</p>
+                                    </div>
+                                    <div class="calc-visual-sequence">
+                                        <div class="calc-frame">
+                                            <div class="frame-label">Start: 89</div>
+                                            <div class="example-abacus">{arithmetic_svg_89}</div>
+                                        </div>
+                                        <div class="calc-arrow">-4 ones →</div>
+                                        <div class="calc-frame">
+                                            <div class="frame-label">After -4: 85</div>
+                                            <div class="example-abacus">{arithmetic_svg_85}</div>
+                                        </div>
+                                        <div class="calc-arrow">-3 tens →</div>
+                                        <div class="calc-frame">
+                                            <div class="frame-label">Final: 55</div>
+                                            <div class="example-abacus">{arithmetic_svg_55}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Complement Method -->
+                        <div class="operation-section">
+                            <h4>Complement Method (Advanced)</h4>
+                            <div class="technique-box">
+                                <h5>Five Complement Rule</h5>
+                                <p>When subtracting from 5, use complement pairs:</p>
+                                <div class="complement-grid">
+                                    <div class="complement-pair">5 - 1 = 4 → Remove heaven, add 4 earth</div>
+                                    <div class="complement-pair">5 - 2 = 3 → Remove heaven, add 3 earth</div>
+                                    <div class="complement-pair">5 - 3 = 2 → Remove heaven, add 2 earth</div>
+                                    <div class="complement-pair">5 - 4 = 1 → Remove heaven, add 1 earth</div>
+                                </div>
+                            </div>
+                            <div class="technique-box">
+                                <h5>Ten Complement Rule</h5>
+                                <p>When borrowing from next column:</p>
+                                <div class="complement-grid">
+                                    <div class="complement-pair">10 - 1 = 9 → Borrow 1, add 9</div>
+                                    <div class="complement-pair">10 - 7 = 3 → Borrow 1, add 3</div>
+                                    <div class="complement-pair">10 - 8 = 2 → Borrow 1, add 2</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Multiplication Section -->
+                <div class="tutorial-step">
+                    <div class="step-header">
+                        <h3><span class="step-number">×</span>Multiplication Methods</h3>
+                    </div>
+                    <div class="step-content">
+                        <div class="arithmetic-intro">
+                            <p>Soroban multiplication uses repeated addition and special column techniques for efficiency.</p>
+                        </div>
+                        
+                        <!-- Single Digit Multiplication -->
+                        <div class="operation-section">
+                            <h4>Single-Digit Multiplication</h4>
+                            <div class="calculation-example">
+                                <div class="calc-step">
+                                    <div class="step-description">
+                                        <h5>Example: 23 × 4 = 92</h5>
+                                        <p>Multiply each digit by 4, handling carries properly.</p>
+                                        <ol class="technique-steps">
+                                            <li>Set up 23 on the left, multiply by 4</li>
+                                            <li>3 × 4 = 12 → Write 2, carry 1</li>
+                                            <li>2 × 4 = 8, plus carry 1 = 9</li>
+                                            <li>Result: 92</li>
+                                        </ol>
+                                    </div>
+                                    <div class="mult-layout">
+                                        <div class="mult-setup">
+                                            <div class="mult-label">Setup: 23 × 4</div>
+                                            <div class="example-abacus">{arithmetic_svg_23}</div>
+                                        </div>
+                                        <div class="mult-result">
+                                            <div class="mult-label">Result: 92</div>
+                                            <div class="example-abacus">{arithmetic_svg_92}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Traditional Method -->
+                        <div class="operation-section">
+                            <h4>Traditional Multiplication Layout</h4>
+                            <div class="technique-box">
+                                <h5>Column Arrangement</h5>
+                                <p>Traditional soroban multiplication uses specific column arrangements:</p>
+                                <ul>
+                                    <li><strong>Multiplicand:</strong> Left side of abacus</li>
+                                    <li><strong>Multiplier:</strong> Right side of abacus</li>
+                                    <li><strong>Product:</strong> Center columns for result</li>
+                                    <li><strong>Working space:</strong> Extra columns for carries</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Division Section -->
+                <div class="tutorial-step">
+                    <div class="step-header">
+                        <h3><span class="step-number">÷</span>Division Techniques</h3>
+                    </div>
+                    <div class="step-content">
+                        <div class="arithmetic-intro">
+                            <p>Division on soroban uses traditional algorithms with quotient estimation and remainder handling.</p>
+                        </div>
+                        
+                        <!-- Simple Division -->
+                        <div class="operation-section">
+                            <h4>Simple Division</h4>
+                            <div class="calculation-example">
+                                <div class="calc-step">
+                                    <div class="step-description">
+                                        <h5>Example: 84 ÷ 4 = 21</h5>
+                                        <p>Divide left to right, estimating quotient digits.</p>
+                                        <ol class="technique-steps">
+                                            <li>Set dividend 84 on left side</li>
+                                            <li>8 ÷ 4 = 2 → Place 2 in quotient</li>
+                                            <li>4 ÷ 4 = 1 → Place 1 in quotient</li>
+                                            <li>Result: 21</li>
+                                        </ol>
+                                    </div>
+                                    <div class="div-layout">
+                                        <div class="div-setup">
+                                            <div class="div-label">Dividend: 84</div>
+                                            <div class="example-abacus">{arithmetic_svg_84}</div>
+                                        </div>
+                                        <div class="div-result">
+                                            <div class="div-label">Quotient: 21</div>
+                                            <div class="example-abacus">{arithmetic_svg_21}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Division Layout -->
+                        <div class="operation-section">
+                            <h4>Traditional Division Layout</h4>
+                            <div class="technique-box">
+                                <h5>Column Organization</h5>
+                                <ul>
+                                    <li><strong>Dividend:</strong> Starting on left columns</li>
+                                    <li><strong>Divisor:</strong> Held in memory or right side</li>
+                                    <li><strong>Quotient:</strong> Built up in designated columns</li>
+                                    <li><strong>Remainder:</strong> Left in dividend columns</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Practice Tips -->
+                <div class="tutorial-step">
+                    <div class="step-header">
+                        <h3><span class="step-number">💡</span>Mastery Tips</h3>
+                    </div>
+                    <div class="step-content">
+                        <div class="tips-grid">
+                            <div class="tip-card">
+                                <h4>🎯 Accuracy First</h4>
+                                <p>Master accuracy before attempting speed. Slow, correct movements build muscle memory for rapid calculation.</p>
+                            </div>
+                            <div class="tip-card">
+                                <h4>🔄 Practice Complements</h4>
+                                <p>Memorize 5-complements (1-4, 2-3) and 10-complements (1-9, 2-8, 3-7, 4-6) for efficient subtraction.</p>
+                            </div>
+                            <div class="tip-card">
+                                <h4>👁️ Visualization</h4>
+                                <p>Learn to see numbers as bead patterns. This enables mental soroban calculation without the physical device.</p>
+                            </div>
+                            <div class="tip-card">
+                                <h4>📚 Progressive Learning</h4>
+                                <p>Master single digits → two digits → three digits. Build complexity gradually for solid foundation.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                </div> <!-- End Arithmetic Section -->
+                
+            </div> <!-- End Guide Content -->
         </section>
         
         <!-- Section 2: Configuration -->
@@ -6669,12 +7607,30 @@ def generate_web_flashcards(numbers, config, output_path):
     // Section Navigation Manager
     class SectionNavigator {{
         constructor() {{
-            this.currentSection = 'introduction';
+            this.currentSection = 'welcome';
+            this.currentGuideSection = 'reading';
             this.setupEventListeners();
         }}
         
         setupEventListeners() {{
+            // Main navigation
             document.querySelectorAll('.nav-btn').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    const section = e.target.getAttribute('data-section');
+                    this.showSection(section);
+                }});
+            }});
+            
+            // Guide navigation
+            document.querySelectorAll('.guide-nav-btn').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    const guideSection = e.target.getAttribute('data-guide-section');
+                    this.showGuideSection(guideSection);
+                }});
+            }});
+            
+            // Feature buttons in welcome section
+            document.querySelectorAll('.feature-btn').forEach(btn => {{
                 btn.addEventListener('click', (e) => {{
                     const section = e.target.getAttribute('data-section');
                     this.showSection(section);
@@ -6709,6 +7665,38 @@ def generate_web_flashcards(numbers, config, output_path):
             
             // Scroll to top when switching sections
             window.scrollTo({{ top: 0, behavior: 'smooth' }});
+        }}
+        
+        showGuideSection(guideSectionId) {{
+            // Hide all guide sections
+            document.querySelectorAll('.guide-section').forEach(section => {{
+                section.classList.remove('active');
+            }});
+            
+            // Remove active from all guide nav buttons
+            document.querySelectorAll('.guide-nav-btn').forEach(btn => {{
+                btn.classList.remove('active');
+            }});
+            
+            // Show selected guide section
+            const targetSection = document.getElementById(guideSectionId);
+            if (targetSection) {{
+                targetSection.classList.add('active');
+            }}
+            
+            // Activate corresponding guide nav button
+            const targetBtn = document.querySelector(`[data-guide-section="${{guideSectionId}}"]`);
+            if (targetBtn) {{
+                targetBtn.classList.add('active');
+            }}
+            
+            this.currentGuideSection = guideSectionId;
+            
+            // Smooth scroll to guide content
+            const guideContent = document.querySelector('.guide-content');
+            if (guideContent) {{
+                guideContent.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+            }}
         }}
     }}
 
@@ -6775,6 +7763,7 @@ def generate_web_flashcards(numbers, config, output_path):
         bead_shape=config.get('bead_shape', 'diamond').capitalize(),
         card_count=len(numbers),
         number_range=f"{min(numbers)} - {max(numbers)}" if numbers else "0",
+        len_numbers=len(numbers),
         # Tutorial SVGs
         tutorial_svg_0=tutorial_svgs.get(0, '<svg><text>Error</text></svg>'),
         tutorial_svg_1=tutorial_svgs.get(1, '<svg><text>Error</text></svg>'),
@@ -6785,7 +7774,19 @@ def generate_web_flashcards(numbers, config, output_path):
         tutorial_svg_23=tutorial_svgs.get(23, '<svg><text>Error</text></svg>'),
         tutorial_svg_67=tutorial_svgs.get(67, '<svg><text>Error</text></svg>'),
         tutorial_svg_158=tutorial_svgs.get(158, '<svg><text>Error</text></svg>'),
-        tutorial_svg_example=tutorial_svgs.get(456, '<svg><text>Error</text></svg>')
+        tutorial_svg_example=tutorial_svgs.get(456, '<svg><text>Error</text></svg>'),
+        # Arithmetic SVGs
+        arithmetic_svg_23=arithmetic_svgs.get(23, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_27=arithmetic_svgs.get(27, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_37=arithmetic_svgs.get(37, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_47=arithmetic_svgs.get(47, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_55=arithmetic_svgs.get(55, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_75=arithmetic_svgs.get(75, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_89=arithmetic_svgs.get(89, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_85=arithmetic_svgs.get(85, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_92=arithmetic_svgs.get(92, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_84=arithmetic_svgs.get(84, '<svg><text>Error</text></svg>'),
+        arithmetic_svg_21=arithmetic_svgs.get(21, '<svg><text>Error</text></svg>')
     )
     
     # Write HTML file
