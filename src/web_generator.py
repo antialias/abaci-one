@@ -994,6 +994,168 @@ def generate_web_flashcards(numbers, config, output_path):
             font-weight: 600;
         }}
         
+        /* Configuration Showcase Styles */
+        .config-showcase {{
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin-top: 30px;
+        }}
+        
+        .config-item {{
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            position: relative;
+            transition: all 0.3s ease;
+        }}
+        
+        .config-item:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.15);
+        }}
+        
+        .config-item::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 2px 0 0 2px;
+        }}
+        
+        .config-label {{
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }}
+        
+        .config-value {{
+            font-size: 18px;
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }}
+        
+        .config-description {{
+            font-size: 14px;
+            color: #718096;
+            line-height: 1.5;
+            margin-top: 8px;
+        }}
+        
+        .color-palette {{
+            display: flex;
+            gap: 12px;
+            margin: 12px 0;
+            align-items: center;
+        }}
+        
+        .color-sample {{
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }}
+        
+        .color-sample:hover {{
+            transform: scale(1.2);
+        }}
+        
+        .color-sample.heaven {{
+            background: #8B4513;
+        }}
+        
+        .color-sample.earth {{
+            background: #F4A460;
+        }}
+        
+        .color-sample.frame {{
+            background: #2F4F4F;
+        }}
+        
+        .bead-examples {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .bead-sample {{
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }}
+        
+        .bead-sample:hover {{
+            transform: scale(1.3);
+        }}
+        
+        .bead-sample.circle {{
+            border-radius: 50%;
+            background: #8B4513;
+        }}
+        
+        .bead-sample.diamond {{
+            transform: rotate(45deg);
+            background: #8B4513;
+        }}
+        
+        .bead-sample.square {{
+            border-radius: 2px;
+            background: #8B4513;
+        }}
+        
+        .shape-label {{
+            font-size: 13px;
+            color: #718096;
+            font-weight: 500;
+        }}
+        
+        .offline-info {{
+            background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid #4fd1c7;
+            margin-top: 40px;
+            text-align: center;
+        }}
+        
+        .offline-info h3 {{
+            color: #234e52;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }}
+        
+        .offline-info p {{
+            color: #2d5a5f;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }}
+        
+        .tech-features {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }}
+        
+        .feature {{
+            background: rgba(255, 255, 255, 0.7);
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #234e52;
+            border: 1px solid rgba(79, 209, 199, 0.3);
+        }}
+        
         /* Tutorial Styles */
         .tutorial-content {{
             max-width: 1000px;
@@ -4818,36 +4980,18 @@ def generate_web_flashcards(numbers, config, output_path):
             border: 2px dashed rgba(255, 215, 0, 0.6);
         }}
         
-        /* Tunnel Digging Visualization for Sprint Mode */
-        .race-track-section.tunnel-digging {{
-            background: linear-gradient(180deg, 
-                #87ceeb 0%,     /* Sky blue at top */
-                #90EE90 15%,    /* Light green for grass */
-                #8B4513 20%,    /* Brown for dirt surface */
-                #654321 100%);  /* Darker brown for deep earth */
-            padding: 40px 20px;
-            height: 300px;     /* Fixed height to prevent scrolling */
-            max-height: 300px;
+        /* Steam Train Journey Visualization for Sprint Mode */
+        .race-track-section.steam-journey {{
+            /* Dynamic sky gradient based on time of day */
+            background: var(--sky-gradient, var(--dawn-gradient));
+            padding: 20px;
+            height: 400px;
+            max-height: 400px;
             position: relative;
-            overflow: hidden;  /* Hide any overflow to prevent scrolling */
+            overflow: hidden;
+            transition: background 2s ease-out;
         }}
         
-        .race-track-section.tunnel-digging::before {{
-            content: '🦊 TUNNEL DIGGING CHALLENGE 🦊';
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 215, 0, 0.95);
-            color: #333;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            letter-spacing: 1px;
-            z-index: 10;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }}
         
         /* Underground tunnel visualization */
         .tunnel-container {{
@@ -5059,6 +5203,360 @@ def generate_web_flashcards(numbers, config, output_path):
             0%, 100% {{ transform: translateX(0); }}
             25% {{ transform: translateX(-2px); }}
             75% {{ transform: translateX(2px); }}
+        }}
+        
+        /* Day/Night Cycle CSS Variables */
+        :root {{
+            /* Dawn (0-17%) */
+            --dawn-gradient: linear-gradient(180deg, 
+                #4a5568 0%, #667eea 20%, #f093fb 40%, #f5deb3 60%, #90EE90 80%, #654321 100%);
+            /* Morning (17-33%) */
+            --morning-gradient: linear-gradient(180deg, 
+                #87ceeb 0%, #f0e68c 20%, #90EE90 50%, #8FBC8F 80%, #654321 100%);
+            /* Midday (33-67%) */
+            --midday-gradient: linear-gradient(180deg, 
+                #87ceeb 0%, #87ceeb 30%, #90EE90 60%, #228B22 80%, #654321 100%);
+            /* Afternoon (67-83%) */
+            --afternoon-gradient: linear-gradient(180deg, 
+                #ff7f50 0%, #ffd700 20%, #90EE90 50%, #8B4513 80%, #654321 100%);
+            /* Dusk (83-92%) */
+            --dusk-gradient: linear-gradient(180deg, 
+                #4b0082 0%, #ff6347 30%, #ffa500 50%, #8B4513 70%, #2f4f4f 100%);
+            /* Night (92-100%) */
+            --night-gradient: linear-gradient(180deg, 
+                #191970 0%, #2f4f4f 40%, #1a1a1a 70%, #000000 100%);
+        }}
+        
+        .steam-journey-header {{
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 215, 0, 0.95);
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }}
+        
+        /* Winding Route Map */
+        .route-map {{
+            position: relative;
+            width: 100%;
+            height: 350px;
+            overflow: hidden;
+        }}
+        
+        .route-path {{
+            position: absolute;
+            width: 800px;
+            height: 600px;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+        }}
+        
+        /* SVG path for the winding route */
+        .train-route {{
+            fill: none;
+            stroke: #8B4513;
+            stroke-width: 8;
+            stroke-dasharray: 15, 5;
+            stroke-linecap: round;
+        }}
+        
+        .train-route-bg {{
+            fill: none;
+            stroke: #654321;
+            stroke-width: 12;
+            stroke-linecap: round;
+        }}
+        
+        /* Train locomotive on the route */
+        .train-locomotive {{
+            position: absolute;
+            width: 60px;
+            height: 40px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            border-radius: 8px;
+            border: 2px solid #1a252f;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+            transition: all 0.3s ease;
+            z-index: 5;
+            /* Start at the beginning of the route */
+            left: 50px;
+            top: 300px;
+            transform: translate(-50%, -50%);
+        }}
+        
+        .train-locomotive::before {{
+            content: '🚂';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.8rem;
+            z-index: 6;
+        }}
+        
+        /* Momentum gauge */
+        .momentum-display {{
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            z-index: 10;
+        }}
+        
+        .momentum-gauge {{
+            width: 100%;
+            height: 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            border: 1px solid #333;
+            overflow: hidden;
+        }}
+        
+        .momentum-bar {{
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c 0%, #f39c12 30%, #27ae60 100%);
+            transition: width 0.3s ease-out;
+            width: 0%;
+        }}
+        
+        .momentum-label {{
+            text-align: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 5px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }}
+        
+        /* City stations along the route */
+        .train-station {{
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #8B4513;
+            border: 2px solid #654321;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 4;
+        }}
+        
+        .train-station::after {{
+            content: attr(data-city);
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            font-weight: 600;
+        }}
+        
+        .train-station.active {{
+            background: #ffd700;
+            border-color: #ffb347;
+            animation: stationPulse 1s ease-in-out infinite alternate;
+        }}
+        
+        @keyframes stationPulse {{
+            0% {{ transform: translate(-50%, -50%) scale(1); }}
+            100% {{ transform: translate(-50%, -50%) scale(1.2); }}
+        }}
+        
+        /* Passenger car display */
+        .passenger-car {{
+            position: absolute;
+            bottom: 60px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 10px;
+            padding: 10px;
+            min-width: 150px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }}
+        
+        .passenger-car h4 {{
+            margin: 0 0 8px 0;
+            font-size: 0.9rem;
+            color: #333;
+        }}
+        
+        .passenger-list {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }}
+        
+        .passenger {{
+            background: #667eea;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }}
+        
+        .passenger.urgent {{
+            background: #e74c3c;
+            animation: passengerUrgent 1s ease-in-out infinite alternate;
+        }}
+        
+        @keyframes passengerUrgent {{
+            0% {{ opacity: 1; }}
+            100% {{ opacity: 0.6; }}
+        }}
+        
+        /* Coal shoveling animation - enhanced */
+        .coal-shoveler {{
+            position: absolute;
+            bottom: 80px;
+            left: 30px;
+            font-size: 2rem;
+            z-index: 6;
+            transition: all 0.3s ease;
+        }}
+        
+        .coal-shoveler.shoveling {{
+            animation: shoveling 0.8s ease-in-out;
+        }}
+        
+        @keyframes shoveling {{
+            0% {{ transform: rotate(0deg) scale(1); }}
+            20% {{ transform: rotate(-25deg) scale(0.9); }}
+            40% {{ transform: rotate(25deg) scale(1.2); filter: brightness(1.3); }}
+            60% {{ transform: rotate(-15deg) scale(1.1); }}
+            80% {{ transform: rotate(10deg) scale(1.05); }}
+            100% {{ transform: rotate(0deg) scale(1); }}
+        }}
+        
+        /* Coal particles effect */
+        .coal-particle {{
+            position: absolute;
+            background: #2c2c2c;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 4;
+        }}
+        
+        @keyframes coalFly {{
+            0% {{
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }}
+            50% {{
+                transform: translate(-20px, -30px) scale(0.8);
+                opacity: 0.8;
+            }}
+            100% {{
+                transform: translate(-40px, -60px) scale(0.3);
+                opacity: 0;
+            }}
+        }}
+        
+        /* Steam puffs from locomotive */
+        .steam-puff {{
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 3;
+        }}
+        
+        @keyframes steamRise {{
+            0% {{
+                transform: translate(0, 0) scale(0.5);
+                opacity: 0.9;
+            }}
+            50% {{
+                transform: translate(10px, -40px) scale(1.2);
+                opacity: 0.6;
+            }}
+            100% {{
+                transform: translate(20px, -80px) scale(2);
+                opacity: 0;
+            }}
+        }}
+        
+        /* Momentum bar flash effect */
+        .momentum-boost {{
+            animation: momentumBoost 0.8s ease-out;
+        }}
+        
+        @keyframes momentumBoost {{
+            0% {{ 
+                box-shadow: 0 0 0px rgba(40, 167, 69, 0.6);
+                transform: scale(1);
+            }}
+            30% {{ 
+                box-shadow: 0 0 20px rgba(40, 167, 69, 0.8);
+                transform: scale(1.05);
+            }}
+            100% {{ 
+                box-shadow: 0 0 5px rgba(40, 167, 69, 0.3);
+                transform: scale(1);
+            }}
+        }}
+        
+        /* Steam effects */
+        .steam-effect {{
+            position: absolute;
+            top: 10px;
+            left: 30px;
+            width: 8px;
+            height: 8px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            animation: steamRise 2s ease-out infinite;
+            z-index: 3;
+        }}
+        
+        @keyframes steamRise {{
+            0% {{
+                opacity: 0.8;
+                transform: translateY(0) scale(0.5);
+            }}
+            100% {{
+                opacity: 0;
+                transform: translateY(-60px) scale(2);
+            }}
+        }}
+        
+        /* Geographical landmarks */
+        .landmark {{
+            position: absolute;
+            font-size: 1.5rem;
+            z-index: 2;
+            opacity: 0.7;
+        }}
+        
+        .landmark.mountain {{ font-size: 2rem; }}
+        .landmark.tree {{ font-size: 1.2rem; }}
+        .landmark.bridge {{ font-size: 1.8rem; }}
+        
+        /* Time of day indicator */
+        .time-display {{
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
         }}
         
         /* Hide linear track elements when in circular mode */
@@ -6258,24 +6756,52 @@ def generate_web_flashcards(numbers, config, output_path):
                 <p class="section-subtitle">Settings used for this flashcard set</p>
             </div>
             
-            <div class="stats">
-                <div><strong>Cards:</strong> {card_count}</div>
-                <div><strong>Range:</strong> {number_range}</div>
-                <div><strong>Color Scheme:</strong> {color_scheme_description}</div>
-                <div><strong>Bead Shape:</strong> {bead_shape}</div>
+            <div class="config-showcase">
+                <div class="config-item">
+                    <div class="config-label"><strong>📊 Cards Generated:</strong></div>
+                    <div class="config-value">{card_count} flashcards</div>
+                </div>
+                
+                <div class="config-item">
+                    <div class="config-label"><strong>🔢 Number Range:</strong></div>
+                    <div class="config-value">{number_range}</div>
+                    <div class="config-description">Learn numbers from {number_range} with authentic soroban bead patterns</div>
+                </div>
+                
+                <div class="config-item">
+                    <div class="config-label"><strong>🎨 Color Scheme:</strong></div>
+                    <div class="config-value">{color_scheme_description}</div>
+                    <div class="color-palette">
+                        <div class="color-sample heaven" title="Heaven beads (5s)"></div>
+                        <div class="color-sample earth" title="Earth beads (1s)"></div>
+                        <div class="color-sample frame" title="Frame"></div>
+                    </div>
+                    <div class="config-description">Colors help distinguish between heaven beads (worth 5) and earth beads (worth 1)</div>
+                </div>
+                
+                <div class="config-item">
+                    <div class="config-label"><strong>⚪ Bead Shape:</strong></div>
+                    <div class="config-value" style="display: flex; align-items: center; gap: 15px;">
+                        {bead_shape}
+                        <div class="bead-examples">
+                            <div class="bead-sample" data-shape="{bead_shape}" title="Current bead shape"></div>
+                            <div class="shape-label">{bead_shape} beads</div>
+                        </div>
+                    </div>
+                    <div class="config-description">Visual style affects readability - choose what works best for you</div>
+                </div>
             </div>
             
-            <div class="instructions">
-                <h3>Configuration Details:</h3>
-                <p>This flashcard set has been generated with specific settings to help you practice. You can generate new sets with different ranges, color schemes, and visual styles using the command-line tools.</p>
+            <div class="offline-info">
+                <h3>📱 Offline Ready</h3>
+                <p>This is a complete, self-contained web page that works without an internet connection. All interactive games, sound effects, and features are built-in. Save this file locally or bookmark it for offline practice anywhere!</p>
                 
-                <h4>Available Options:</h4>
-                <ul style="text-align: left; display: inline-block; margin: 20px 0;">
-                    <li><strong>Number Ranges:</strong> Practice with any range from 0-99999</li>
-                    <li><strong>Color Schemes:</strong> Monochrome, place-value, heaven-earth, alternating</li>
-                    <li><strong>Bead Shapes:</strong> Diamond, circle, square</li>
-                    <li><strong>Visual Styles:</strong> Multiple colorblind-friendly palettes</li>
-                </ul>
+                <div class="tech-features">
+                    <div class="feature">✨ Pure HTML/CSS/JavaScript</div>
+                    <div class="feature">🎵 Generated sound effects</div>
+                    <div class="feature">🎮 Interactive games built-in</div>
+                    <div class="feature">📲 Works on any device</div>
+                </div>
             </div>
         </section>
         
@@ -6760,8 +7286,20 @@ def generate_web_flashcards(numbers, config, output_path):
                 <div class="control-group">
                     <label>Time Per Question:</label>
                     <div class="mode-buttons">
-                        <button type="button" class="timeout-btn" data-timeout="slow">
+                        <button type="button" class="timeout-btn" data-timeout="preschool">
+                            <div class="mode-icon">🧸</div>
+                            <div class="mode-text">Preschool (20s)</div>
+                        </button>
+                        <button type="button" class="timeout-btn" data-timeout="kindergarten">
+                            <div class="mode-icon">🌸</div>
+                            <div class="mode-text">Kindergarten (15s)</div>
+                        </button>
+                        <button type="button" class="timeout-btn" data-timeout="relaxed">
                             <div class="mode-icon">🐢</div>
+                            <div class="mode-text">Relaxed (12s)</div>
+                        </button>
+                        <button type="button" class="timeout-btn" data-timeout="slow">
+                            <div class="mode-icon">🕰️</div>
                             <div class="mode-text">Slow (8s)</div>
                         </button>
                         <button type="button" class="timeout-btn active" data-timeout="normal">
@@ -6905,26 +7443,59 @@ def generate_web_flashcards(numbers, config, output_path):
                             </div>
                         </div>
                         
-                        <!-- Tunnel Digging Visualization (for Sprint Mode) -->
-                        <div class="tunnel-container" style="display: none;">
-                            <div class="tunnel-shaft tunnel-player" id="player-tunnel">
-                                <div class="fox-digger" id="player-fox">🦊</div>
-                                <div class="tunnel-depth" id="player-depth">0</div>
-                            </div>
-                            <div class="tunnel-shaft tunnel-ai" id="ai-tunnel-1">
-                                <div class="fox-digger" id="ai-fox-1">🦝</div>
-                                <div class="tunnel-depth" id="ai-depth-1">0</div>
-                                <div class="speech-bubble tunnel-speech" id="tunnel-speech-1">
-                                    <div class="bubble-content"></div>
-                                    <div class="bubble-tail"></div>
+                        <!-- Steam Train Journey (for Sprint Mode) -->
+                        <div class="route-map" style="display: none;" id="steam-journey">
+                            <div class="steam-journey-header">🚂 STEAM TRAIN JOURNEY 🚂</div>
+                            <div class="time-display" id="time-of-day">Dawn - 5:30 AM</div>
+                            
+                            <!-- SVG Route Path -->
+                            <div class="route-path">
+                                <svg viewBox="0 0 800 600" width="800" height="600">
+                                    <!-- Background route -->
+                                    <path class="train-route-bg" d="M 50 300 Q 200 200 300 250 Q 400 300 500 200 Q 600 100 700 150 Q 750 200 750 300" />
+                                    <!-- Foreground route -->
+                                    <path class="train-route" d="M 50 300 Q 200 200 300 250 Q 400 300 500 200 Q 600 100 700 150 Q 750 200 750 300" />
+                                </svg>
+                                
+                                <!-- Train locomotive -->
+                                <div class="train-locomotive" id="train-position">
+                                    <div class="steam-effect"></div>
+                                    <div class="steam-effect" style="animation-delay: 0.3s;"></div>
+                                    <div class="steam-effect" style="animation-delay: 0.6s;"></div>
                                 </div>
+                                
+                                <!-- Coal shoveler -->
+                                <div class="coal-shoveler" id="coal-worker">👷</div>
+                                
+                                <!-- City stations -->
+                                <div class="train-station" style="left: 50px; top: 300px;" data-city="Depot">🏭</div>
+                                <div class="train-station" style="left: 200px; top: 200px;" data-city="Hillview">🏔️</div>
+                                <div class="train-station" style="left: 300px; top: 250px;" data-city="Riverside">🌊</div>
+                                <div class="train-station" style="left: 500px; top: 200px;" data-city="Summit">⛰️</div>
+                                <div class="train-station" style="left: 700px; top: 150px;" data-city="Goldfield">⚱️</div>
+                                <div class="train-station" style="left: 750px; top: 300px;" data-city="Capital">🏛️</div>
+                                
+                                <!-- Geographic landmarks -->
+                                <div class="landmark mountain" style="left: 150px; top: 180px;">⛰️</div>
+                                <div class="landmark tree" style="left: 250px; top: 270px;">🌲</div>
+                                <div class="landmark bridge" style="left: 350px; top: 280px;">🌉</div>
+                                <div class="landmark mountain" style="left: 550px; top: 120px;">🏔️</div>
+                                <div class="landmark tree" style="left: 680px; top: 170px;">🌳</div>
                             </div>
-                            <div class="tunnel-shaft tunnel-ai" id="ai-tunnel-2">
-                                <div class="fox-digger" id="ai-fox-2">🐺</div>
-                                <div class="tunnel-depth" id="ai-depth-2">0</div>
-                                <div class="speech-bubble tunnel-speech" id="tunnel-speech-2">
-                                    <div class="bubble-content"></div>
-                                    <div class="bubble-tail"></div>
+                            
+                            <!-- Momentum gauge -->
+                            <div class="momentum-display">
+                                <div class="momentum-gauge">
+                                    <div class="momentum-bar" id="momentum-bar"></div>
+                                </div>
+                                <div class="momentum-label" id="momentum-label">Momentum: 0%</div>
+                            </div>
+                            
+                            <!-- Passenger car -->
+                            <div class="passenger-car" id="passenger-display">
+                                <h4>👥 Passengers</h4>
+                                <div class="passenger-list" id="passenger-list">
+                                    <!-- Passengers will be added dynamically -->
                                 </div>
                             </div>
                         </div>
@@ -7124,6 +7695,21 @@ def generate_web_flashcards(numbers, config, output_path):
             }}
             modal.classList.remove('show', 'fullscreen');
             document.body.style.overflow = '';
+            
+            // Stop active games when their modals are closed
+            if (modalId === 'complement-modal' && this.complementRace && this.complementRace.isGameActive) {{
+                console.log('🛑 Stopping active complement race due to modal close');
+                this.complementRace.endRace('Game stopped - modal closed');
+            }} else if (modalId === 'matching-modal' && this.matchingGame && this.matchingGame.gameActive) {{
+                console.log('🛑 Stopping active matching game due to modal close');
+                this.matchingGame.endGame();
+            }} else if (modalId === 'sorting-modal' && this.sortingGame && this.sortingGame.gameActive) {{
+                console.log('🛑 Stopping active sorting game due to modal close');
+                this.sortingGame.endGame();
+            }} else if (modalId === 'quiz-modal' && this.quizGame && this.quizGame.gameActive) {{
+                console.log('🛑 Stopping active quiz game due to modal close');
+                this.quizGame.endGame();
+            }}
         }}
         
         async toggleFullscreen(modalId) {{
@@ -10088,7 +10674,7 @@ def generate_web_flashcards(numbers, config, output_path):
         constructor() {{
             this.mode = 'friends5'; // 'friends5', 'friends10', 'mixed'
             this.style = 'practice'; // 'practice', 'sprint', 'survival'  
-            this.timeoutSetting = 'normal'; // 'slow', 'normal', 'fast', 'expert'
+            this.timeoutSetting = 'normal'; // 'preschool', 'kindergarten', 'relaxed', 'slow', 'normal', 'fast', 'expert'
             this.currentNumber = 0; // Initialize with default value instead of null
             this.targetSum = 5;
             this.correctAnswer = 0; // Initialize with default value instead of null
@@ -10255,15 +10841,16 @@ def generate_web_flashcards(numbers, config, output_path):
                 raceTrack.style.display = 'block';
                 if (tunnelContainer) tunnelContainer.style.display = 'none';
             }} else if (this.style === 'sprint') {{
-                // Switch to tunnel digging visualization for sprint mode
-                raceTrackSection.classList.add('tunnel-digging');
+                // Switch to steam train journey for sprint mode
+                raceTrackSection.classList.add('steam-journey');
                 raceTrackSection.classList.remove('circular-track');
                 raceTrack.classList.remove('circular');
                 raceTrack.style.display = 'none'; // Hide track completely
-                if (tunnelContainer) {{
-                    tunnelContainer.style.display = 'flex';
-                    // Initialize fox breathing animations
-                    setTimeout(() => this.initializeFoxes(), 100);
+                const steamJourney = document.getElementById('steam-journey');
+                if (steamJourney) {{
+                    steamJourney.style.display = 'block';
+                    // Initialize steam train journey
+                    this.initializeSteamJourney();
                 }}
             }} else {{
                 // Use linear track for practice mode
@@ -10595,7 +11182,13 @@ def generate_web_flashcards(numbers, config, output_path):
             let points = 10 + Math.min(this.streak, 10);
             this.score += points;
             
-            this.showFeedback('🎉 Correct!', 'correct');
+            // Show different feedback based on game style
+            if (this.style === 'sprint') {{
+                const config = this.getMomentumConfig();
+                this.showFeedback(`🚂 Coal shoveled! +${{config.momentumGain}}% momentum!`, 'correct');
+            }} else {{
+                this.showFeedback('🎉 Correct!', 'correct');
+            }}
             this.showVisualComplement();
             
             // Update race progress
@@ -10672,6 +11265,11 @@ def generate_web_flashcards(numbers, config, output_path):
             const responseTime = Date.now() - this.questionStartTime;
             this.trackPerformance(false);
             
+            // Handle steam train momentum loss in sprint mode
+            if (this.style === 'sprint') {{
+                this.loseMomentum();
+            }}
+            
             // Show adaptive feedback after tracking
             const pairKey = `${{displayNumber}}_${{displayAnswer}}_${{displaySum}}`;
             const adaptiveFeedback = this.getAdaptiveFeedbackMessage(pairKey, false, responseTime);
@@ -10712,13 +11310,18 @@ def generate_web_flashcards(numbers, config, output_path):
                 playerRacer.classList.add('moving-backwards');
                 setTimeout(() => {{
                     playerRacer.classList.remove('moving-backwards');
-                    // Update position after animation
-                    this.updatePlayerRace();
+                    // Update position after animation (no momentum gain for timeout penalty)
+                    this.updatePlayerRace(false);
                 }}, 800); // Match animation duration
             }}
             
             // Track performance for adaptive difficulty (timeout counts as incorrect)
             this.trackPerformance(false);
+            
+            // Handle steam train momentum loss in sprint mode
+            if (this.style === 'sprint') {{
+                this.loseMomentum();
+            }}
             
             this.updateStats();
             this.playSound('timeout');
@@ -11054,28 +11657,35 @@ def generate_web_flashcards(numbers, config, output_path):
             document.getElementById('complement-score').textContent = this.score;
             document.getElementById('complement-streak').textContent = this.streak;
             
-            const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
-            document.getElementById('complement-time').textContent = elapsed + 's';
-            
+            // Update progress display
             const progress = Math.min(this.totalQuestions / 20, 1) * 100;
             document.getElementById('progress-fill').style.width = progress + '%';
             document.getElementById('progress-text').textContent = `${{this.correctAnswers}}/${{this.totalQuestions}} Correct`;
+            
+            // Start the continuous game timer if not already running
+            if (!this.gameInterval) {{
+                this.startGameTimer();
+            }}
         }}
         
         startGameTimer() {{
+            // Clear any existing game timer first
+            if (this.gameInterval) {{
+                clearInterval(this.gameInterval);
+            }}
+            
+            // Start continuous timer that updates every second
             this.gameInterval = setInterval(() => {{
                 if (!this.isGameActive || this.isPaused) return;
                 
                 const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
                 
                 if (this.style === 'sprint') {{
-                    // Countdown timer for sprint mode
-                    const remaining = Math.max(0, this.timeLimit - elapsed);
-                    document.getElementById('complement-time').textContent = remaining + 's';
+                    // For steam train journey - show elapsed time instead of countdown
+                    document.getElementById('complement-time').textContent = elapsed + 's';
                     
-                    if (remaining <= 0) {{
-                        this.endRace('Time up! Lightning round complete!');
-                    }}
+                    // Check for journey completion conditions instead of time limit
+                    this.checkTrainJourneyCompletion();
                 }} else {{
                     // Count-up timer for practice and survival
                     document.getElementById('complement-time').textContent = elapsed + 's';
@@ -11134,6 +11744,9 @@ def generate_web_flashcards(numbers, config, output_path):
         endRace(customMessage = null) {{
             this.isGameActive = false;
             
+            // Stop all sounds immediately
+            this.stopAllSounds();
+            
             // Clear all timers and timeouts
             if (this.timerInterval) {{
                 clearInterval(this.timerInterval);
@@ -11142,6 +11755,14 @@ def generate_web_flashcards(numbers, config, output_path):
             if (this.gameInterval) {{
                 clearInterval(this.gameInterval);
                 this.gameInterval = null;
+            }}
+            if (this.momentumDecayInterval) {{
+                clearInterval(this.momentumDecayInterval);
+                this.momentumDecayInterval = null;
+            }}
+            if (this.trainMovementInterval) {{
+                clearInterval(this.trainMovementInterval);
+                this.trainMovementInterval = null;
             }}
             this.clearAutoSubmitTimeout();
             
@@ -11421,10 +12042,13 @@ def generate_web_flashcards(numbers, config, output_path):
             this.startAIRacers();
         }}
         
-        updatePlayerRace() {{
+        updatePlayerRace(isCorrectAnswer = true) {{
             if (this.style === 'sprint') {{
-                // Update tunnel digging instead of race track
-                this.updateTunnelDepth('player', this.correctAnswers);
+                // Update steam train journey instead of race track
+                if (isCorrectAnswer) {{
+                    this.shovelsCoal(); // Only shovel coal on correct answers
+                }}
+                this.updateTrainPosition();
                 return;
             }}
             
@@ -11815,6 +12439,50 @@ def generate_web_flashcards(numbers, config, output_path):
             console.log(`🦊 ${{digger}} tunnel depth: ${{correctAnswers}} answers (Level ${{depthLevel}}, ${{isVeryDeep ? 'VERY DEEP' : isDeep ? 'DEEP' : 'SHALLOW'}})`)
         }}
         
+        stopAllSounds() {{
+            // Aggressive sound stopping - multiple approaches to ensure silence
+            try {{
+                console.log('🔇 Stopping all sounds...');
+                
+                // Method 1: Close all tracked audio contexts
+                if (window.audioContexts && window.audioContexts.length > 0) {{
+                    console.log(`🔇 Closing ${{window.audioContexts.length}} tracked audio contexts`);
+                    window.audioContexts.forEach((context, index) => {{
+                        try {{
+                            if (context && context.state !== 'closed') {{
+                                console.log(`🔇 Closing audio context ${{index + 1}}`);
+                                context.close();
+                            }}
+                        }} catch (closeError) {{
+                            console.log(`🔇 Error closing context ${{index + 1}}:`, closeError);
+                        }}
+                    }});
+                    window.audioContexts = [];
+                }}
+                
+                // Method 2: Try to find and stop any remaining AudioContext instances
+                // This is a more aggressive approach for "zombie" sounds
+                try {{
+                    // Force garbage collection of audio contexts if possible
+                    if (window.gc) window.gc();
+                }} catch (gcError) {{
+                    // GC not available, ignore
+                }}
+                
+                // Method 3: Clear any remaining audio-related intervals/timeouts
+                for (let i = 1; i < 1000; i++) {{
+                    clearTimeout(i);
+                    clearInterval(i);
+                }}
+                
+                console.log('🔇 All sounds stopped (aggressive cleanup complete)');
+                
+            }} catch (e) {{
+                console.log('🔇 Sound cleanup error:', e);
+                console.log('🔇 Sound cleanup attempted with errors');
+            }}
+        }}
+        
         addScreenShake() {{
             // Subtle screen shake for deep digging
             const container = document.querySelector('.race-track-section.tunnel-digging');
@@ -11826,15 +12494,473 @@ def generate_web_flashcards(numbers, config, output_path):
             }}
         }}
         
-        initializeFoxes() {{
-            // Set all foxes to idle breathing animation initially
-            const foxes = ['player-fox', 'ai-fox-1', 'ai-fox-2'];
-            foxes.forEach(foxId => {{
-                const foxElement = document.getElementById(foxId);
-                if (foxElement) {{
-                    foxElement.classList.add('idle');
+        initializeSteamJourney() {{
+            // Initialize train journey systems
+            this.momentum = 0;
+            this.trainPosition = 0; // Position along the route (0-100%)
+            this.passengers = [];
+            this.lastCorrectAnswerTime = Date.now(); // Track when we last shoveled coal
+            this.stations = [
+                {{ name: 'Depot', position: 0, emoji: '🏭' }},
+                {{ name: 'Hillview', position: 20, emoji: '🏔️' }},
+                {{ name: 'Riverside', position: 40, emoji: '🌊' }},
+                {{ name: 'Summit', position: 60, emoji: '⛰️' }},
+                {{ name: 'Goldfield', position: 80, emoji: '⚱️' }},
+                {{ name: 'Capital', position: 100, emoji: '🏛️' }}
+            ];
+            this.gameStartTime = Date.now();
+            this.totalScore = 0;
+            
+            // Start the continuous game timer for Lightning Sprint
+            this.startGameTimer();
+            
+            // Initialize day/night cycle
+            this.updateTimeOfDay();
+            
+            // Start momentum decay (friction) - calibrated for different skill levels
+            this.momentumDecayInterval = setInterval(() => {{
+                if (this.momentum > 0) {{
+                    const decayConfig = this.getMomentumConfig();
+                    const timeSinceLastCoal = (Date.now() - this.lastCorrectAnswerTime) / 1000; // seconds
+                    
+                    // Base decay rate increases with higher speeds, but adjusted for skill level
+                    let decayRate = this.momentum > 75 ? decayConfig.highSpeedDecay : 
+                                   this.momentum > 50 ? decayConfig.mediumSpeedDecay : 
+                                   decayConfig.baseDecay;
+                    
+                    // Accelerate decay if no correct answers for a while (but be gentler for kids)
+                    if (timeSinceLastCoal > decayConfig.starvationThreshold) {{
+                        const extraDecay = Math.min(decayConfig.maxExtraDecay, timeSinceLastCoal / decayConfig.starvationRate);
+                        decayRate += extraDecay;
+                    }}
+                    
+                    this.momentum = Math.max(0, this.momentum - decayRate);
+                    this.updateMomentumDisplay();
+                    
+                    if (timeSinceLastCoal > decayConfig.warningThreshold && this.momentum > 0) {{
+                        console.log(`🚂 [${{this.timeoutSetting}}] Train needs coal! ${{Math.round(timeSinceLastCoal)}}s without fuel, decay rate: ${{decayRate.toFixed(1)}}%/s`);
+                    }}
+                }}
+            }}, 1000);
+            
+            // Start continuous train movement based on momentum
+            this.trainMovementInterval = setInterval(() => {{
+                this.updateTrainPosition();
+            }}, 200); // Update train position 5 times per second for smooth movement
+            
+            // Generate initial passengers
+            this.generatePassengers();
+        }}
+        
+        updateTimeOfDay() {{
+            const elapsed = Date.now() - this.gameStartTime;
+            const gameProgress = Math.min(elapsed / (60 * 1000), 1); // 60 seconds = full day
+            
+            let timeString, gradient;
+            
+            if (gameProgress < 0.17) {{
+                timeString = 'Dawn - 5:30 AM';
+                gradient = 'var(--dawn-gradient)';
+            }} else if (gameProgress < 0.33) {{
+                timeString = 'Morning - 8:00 AM';
+                gradient = 'var(--morning-gradient)';
+            }} else if (gameProgress < 0.67) {{
+                timeString = 'Midday - 12:00 PM';
+                gradient = 'var(--midday-gradient)';
+            }} else if (gameProgress < 0.83) {{
+                timeString = 'Afternoon - 4:00 PM';
+                gradient = 'var(--afternoon-gradient)';
+            }} else if (gameProgress < 0.92) {{
+                timeString = 'Dusk - 7:00 PM';
+                gradient = 'var(--dusk-gradient)';
+            }} else {{
+                timeString = 'Night - 10:00 PM';
+                gradient = 'var(--night-gradient)';
+            }}
+            
+            const timeDisplay = document.getElementById('time-of-day');
+            const steamJourney = document.querySelector('.race-track-section.steam-journey');
+            
+            if (timeDisplay) timeDisplay.textContent = timeString;
+            if (steamJourney) steamJourney.style.setProperty('--sky-gradient', gradient);
+        }}
+        
+        updateMomentumDisplay() {{
+            const momentumBar = document.getElementById('momentum-bar');
+            const momentumLabel = document.getElementById('momentum-label');
+            
+            if (momentumBar) {{
+                momentumBar.style.width = this.momentum + '%';
+            }}
+            
+            if (momentumLabel) {{
+                let status = 'Crawling';
+                if (this.momentum > 70) status = 'Full Steam!';
+                else if (this.momentum > 40) status = 'Good Speed';
+                else if (this.momentum > 15) status = 'Building Steam';
+                
+                momentumLabel.textContent = `Momentum: ${{Math.round(this.momentum)}}% - ${{status}}`;
+            }}
+        }}
+        
+        generatePassengers() {{
+            // Generate 3-5 random passengers with destinations
+            const passengerCount = 3 + Math.floor(Math.random() * 3);
+            this.passengers = [];
+            
+            const names = ['Alice', 'Bob', 'Carol', 'Dave', 'Eve', 'Frank', 'Grace', 'Henry'];
+            const usedNames = new Set();
+            
+            for (let i = 0; i < passengerCount; i++) {{
+                let name;
+                do {{
+                    name = names[Math.floor(Math.random() * names.length)];
+                }} while (usedNames.has(name));
+                usedNames.add(name);
+                
+                // Pick a random destination station (not depot)
+                const destinationStations = this.stations.slice(1); // Skip depot
+                const destination = destinationStations[Math.floor(Math.random() * destinationStations.length)];
+                
+                this.passengers.push({{
+                    name: name,
+                    destination: destination.name,
+                    emoji: destination.emoji,
+                    urgent: Math.random() < 0.3 // 30% chance of urgent passenger
+                }});
+            }}
+            
+            this.updatePassengerDisplay();
+        }}
+        
+        updatePassengerDisplay() {{
+            const passengerList = document.getElementById('passenger-list');
+            if (!passengerList) return;
+            
+            passengerList.innerHTML = '';
+            this.passengers.forEach(passenger => {{
+                const passengerDiv = document.createElement('div');
+                passengerDiv.className = 'passenger' + (passenger.urgent ? ' urgent' : '');
+                passengerDiv.textContent = `${{passenger.name}} → ${{passenger.emoji}}`;
+                passengerList.appendChild(passengerDiv);
+            }});
+        }}
+        
+        shovelsCoal() {{
+            // Called when player gets correct answer - adds momentum
+            const coalWorker = document.getElementById('coal-worker');
+            if (coalWorker) {{
+                coalWorker.classList.remove('shoveling');
+                coalWorker.classList.add('shoveling');
+                setTimeout(() => coalWorker.classList.remove('shoveling'), 800);
+            }}
+            
+            // Reset the coal timer - fresh fuel for the train!
+            this.lastCorrectAnswerTime = Date.now();
+            
+            // Create coal particle effects
+            this.createCoalParticles();
+            
+            // Create steam puffs from train
+            this.createSteamPuffs();
+            
+            // Increase momentum (coal gives energy) - adaptive based on difficulty
+            const config = this.getMomentumConfig();
+            this.momentum = Math.min(100, this.momentum + config.momentumGain);
+            this.updateMomentumDisplay();
+            
+            // Flash momentum bar to show boost
+            this.flashMomentumBar();
+            
+            // Update time of day
+            this.updateTimeOfDay();
+            
+            this.playSound('correct');
+        }}
+        
+        createCoalParticles() {{
+            // Create flying coal particles from shoveler to train
+            const routeMap = document.querySelector('.route-map');
+            if (!routeMap) return;
+            
+            for (let i = 0; i < 5; i++) {{
+                const particle = document.createElement('div');
+                particle.className = 'coal-particle';
+                
+                // Random size between 4-8px
+                const size = 4 + Math.random() * 4;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // Start position near coal worker
+                particle.style.left = (60 + Math.random() * 20) + 'px';
+                particle.style.top = (350 + Math.random() * 20) + 'px';
+                
+                // Apply animation with delay
+                particle.style.animation = `coalFly 0.8s ease-out ${{i * 0.1}}s forwards`;
+                
+                routeMap.appendChild(particle);
+                
+                // Remove particle after animation
+                setTimeout(() => {{
+                    if (particle.parentNode) {{
+                        particle.parentNode.removeChild(particle);
+                    }}
+                }}, 800 + (i * 100));
+            }}
+        }}
+        
+        createSteamPuffs() {{
+            // Create steam puffs from the locomotive
+            const routeMap = document.querySelector('.route-map');
+            const locomotive = document.getElementById('train-position');
+            if (!routeMap || !locomotive) return;
+            
+            const trainRect = locomotive.getBoundingClientRect();
+            const mapRect = routeMap.getBoundingClientRect();
+            
+            for (let i = 0; i < 3; i++) {{
+                const puff = document.createElement('div');
+                puff.className = 'steam-puff';
+                
+                // Random size between 15-25px
+                const size = 15 + Math.random() * 10;
+                puff.style.width = size + 'px';
+                puff.style.height = size + 'px';
+                
+                // Position near locomotive chimney
+                const relativeLeft = trainRect.left - mapRect.left - 10 + Math.random() * 20;
+                const relativeTop = trainRect.top - mapRect.top - 15 + Math.random() * 10;
+                
+                puff.style.left = relativeLeft + 'px';
+                puff.style.top = relativeTop + 'px';
+                
+                // Apply animation with delay
+                puff.style.animation = `steamRise 1.2s ease-out ${{i * 0.2}}s forwards`;
+                
+                routeMap.appendChild(puff);
+                
+                // Remove puff after animation
+                setTimeout(() => {{
+                    if (puff.parentNode) {{
+                        puff.parentNode.removeChild(puff);
+                    }}
+                }}, 1200 + (i * 200));
+            }}
+        }}
+        
+        flashMomentumBar() {{
+            // Flash the momentum bar to show boost
+            const momentumBar = document.getElementById('momentum-bar');
+            if (momentumBar) {{
+                momentumBar.classList.remove('momentum-boost');
+                momentumBar.classList.add('momentum-boost');
+                setTimeout(() => momentumBar.classList.remove('momentum-boost'), 800);
+            }}
+        }}
+        
+        getMomentumConfig() {{
+            // Return momentum settings based on difficulty level (timeout setting)
+            switch (this.timeoutSetting) {{
+                case 'preschool': // 4-year-olds like Fern - forgiving but still challenging
+                    return {{
+                        momentumGain: 15,           // More momentum per correct answer
+                        baseDecay: 1.5,             // Noticeable decay to keep it interesting
+                        mediumSpeedDecay: 2.0,      // Momentum matters at medium speed
+                        highSpeedDecay: 2.5,        // High speed requires attention
+                        wrongAnswerPenalty: 3,      // Small penalty for mistakes
+                        starvationThreshold: 25,    // 25 seconds before starvation kicks in
+                        starvationRate: 15,         // Very slow starvation rate
+                        maxExtraDecay: 1.5,         // Gentle extra decay
+                        warningThreshold: 30
+                    }};
+                    
+                case 'kindergarten': // 5-6 year olds - gentle but engaging
+                    return {{
+                        momentumGain: 12,
+                        baseDecay: 1.8,             // Increased from 0.8
+                        mediumSpeedDecay: 2.2,      // Increased from 1.2
+                        highSpeedDecay: 2.8,        // Increased from 1.8
+                        wrongAnswerPenalty: 4,
+                        starvationThreshold: 20,
+                        starvationRate: 12,
+                        maxExtraDecay: 2,           // Increased from 1.5
+                        warningThreshold: 25
+                    }};
+                    
+                case 'relaxed': // Casual players - should still feel momentum pressure
+                    return {{
+                        momentumGain: 10,
+                        baseDecay: 2.0,             // Increased from 1.2
+                        mediumSpeedDecay: 2.5,      // Increased from 1.8
+                        highSpeedDecay: 3.0,        // Increased from 2.2
+                        wrongAnswerPenalty: 5,
+                        starvationThreshold: 15,
+                        starvationRate: 10,
+                        maxExtraDecay: 2.5,         // Increased from 2
+                        warningThreshold: 20
+                    }};
+                    
+                case 'slow': // Learning mode
+                    return {{
+                        momentumGain: 8,
+                        baseDecay: 1.5,
+                        mediumSpeedDecay: 2.0,
+                        highSpeedDecay: 2.5,
+                        wrongAnswerPenalty: 6,
+                        starvationThreshold: 12,
+                        starvationRate: 8,
+                        maxExtraDecay: 2.5,
+                        warningThreshold: 18
+                    }};
+                        
+                case 'normal': // Default balanced
+                    return {{
+                        momentumGain: 8,
+                        baseDecay: 2,
+                        mediumSpeedDecay: 2.5,
+                        highSpeedDecay: 3,
+                        wrongAnswerPenalty: 8,
+                        starvationThreshold: 10,
+                        starvationRate: 5,
+                        maxExtraDecay: 3,
+                        warningThreshold: 15
+                    }};
+                    
+                case 'fast': // Challenge mode
+                    return {{
+                        momentumGain: 6,
+                        baseDecay: 2.5,
+                        mediumSpeedDecay: 3.2,
+                        highSpeedDecay: 4,
+                        wrongAnswerPenalty: 10,
+                        starvationThreshold: 8,
+                        starvationRate: 4,
+                        maxExtraDecay: 4,
+                        warningThreshold: 12
+                    }};
+                    
+                case 'expert': // Expert mode - original aggressive settings
+                    return {{
+                        momentumGain: 5,
+                        baseDecay: 3,
+                        mediumSpeedDecay: 4,
+                        highSpeedDecay: 5,
+                        wrongAnswerPenalty: 12,
+                        starvationThreshold: 6,
+                        starvationRate: 3,
+                        maxExtraDecay: 5,
+                        warningThreshold: 10
+                    }};
+                    
+                default:
+                    return this.getMomentumConfig.call({{timeoutSetting: 'normal'}});
+            }}
+        }}
+
+        loseMomentum() {{
+            // Called when player gets wrong answer or times out - loses momentum due to friction
+            const config = this.getMomentumConfig();
+            const currentPenalty = config.wrongAnswerPenalty;
+            this.momentum = Math.max(0, this.momentum - currentPenalty);
+            this.updateMomentumDisplay();
+            
+            console.log(`🚂 [${{this.timeoutSetting}}] Train losing steam! Lost ${{currentPenalty}}% momentum, now: ${{this.momentum}}%`);
+            this.playSound('incorrect');
+        }}
+        
+        updateTrainPosition() {{
+            // Move train along the route based on momentum
+            if (this.momentum > 0) {{
+                const speed = this.momentum / 100; // Convert to 0-1 speed multiplier
+                this.trainPosition += speed * 0.4; // Continuous movement rate (called 5x per second)
+                this.trainPosition = Math.min(100, this.trainPosition);
+                
+                // Update visual position along the path
+                this.updateTrainVisualization();
+                
+                // Check for station arrivals and passenger deliveries
+                this.checkStationArrivals();
+            }}
+        }}
+        
+        updateTrainVisualization() {{
+            const locomotive = document.getElementById('train-position');
+            if (!locomotive) return;
+            
+            // Get the actual SVG path and use it for precise positioning
+            const routePath = document.querySelector('.train-route');
+            if (!routePath) return;
+            
+            const progress = this.trainPosition / 100;
+            const pathLength = routePath.getTotalLength();
+            const targetLength = progress * pathLength;
+            
+            // Get the exact point on the curved path
+            const point = routePath.getPointAtLength(targetLength);
+            
+            locomotive.style.left = point.x + 'px';
+            locomotive.style.top = point.y + 'px';
+            
+            console.log(`🚂 Train at position ${{Math.round(this.trainPosition)}}% - ${{Math.round(point.x)}}, ${{Math.round(point.y)}} (on track)`);
+        }}
+        
+        checkStationArrivals() {{
+            // Check if we've reached any stations where passengers want to get off
+            this.stations.forEach(station => {{
+                const stationReached = this.trainPosition >= station.position;
+                if (stationReached) {{
+                    // Deliver passengers to this station
+                    const deliveredPassengers = this.passengers.filter(p => p.destination === station.name);
+                    if (deliveredPassengers.length > 0) {{
+                        deliveredPassengers.forEach(passenger => {{
+                            const points = passenger.urgent ? 20 : 10;
+                            this.totalScore += points;
+                            console.log(`🎯 Delivered ${{passenger.name}} to ${{station.name}} for ${{points}} points!`);
+                        }});
+                        
+                        // Remove delivered passengers
+                        this.passengers = this.passengers.filter(p => p.destination !== station.name);
+                        this.updatePassengerDisplay();
+                        
+                        this.playSound('milestone');
+                    }}
                 }}
             }});
+        }}
+        
+        checkTrainJourneyCompletion() {{
+            // Don't check completion in the first 10 seconds to allow game to get started
+            const elapsed = (Date.now() - this.gameStartTime) / 1000;
+            if (elapsed < 10) return;
+            
+            // For Lightning Sprint train mode, ONLY end when train reaches the end of the route
+            const journeyComplete = this.trainPosition >= 100; // Reached the final station (Capital)
+            
+            // Only consider ending early if train is truly stuck (very strict conditions)
+            const config = this.getMomentumConfig();
+            const timeSinceLastCoal = (Date.now() - this.lastCorrectAnswerTime) / 1000;
+            const trainStuck = this.momentum <= 0 && 
+                              this.trainPosition < 5 && 
+                              this.correctAnswers > 5 && 
+                              timeSinceLastCoal > (config.starvationThreshold * 2); // Much longer grace period
+            
+            if (journeyComplete) {{
+                const score = this.totalScore;
+                const deliveredCount = this.correctAnswers; // Questions answered correctly
+                this.endRace(`🎉 Journey Complete! Reached Capital Station! Score: ${{score}} points from ${{deliveredCount}} deliveries!`);
+            }} else if (trainStuck) {{
+                // Train is truly stuck - but this should be very rare now with adaptive difficulty
+                const progress = Math.round(this.trainPosition);
+                console.log(`🚂 Train considered stuck: momentum=${{this.momentum}}, position=${{this.trainPosition}}%, answers=${{this.correctAnswers}}, time since coal=${{Math.round(timeSinceLastCoal)}}s`);
+                this.endRace(`🚂 Train ran out of steam at ${{progress}}% of the journey! Try an easier difficulty mode for more forgiving momentum!`);
+            }}
+            
+            // If all passengers delivered but train hasn't finished route, generate more passengers!
+            if (this.passengers.length === 0 && this.trainPosition < 90) {{
+                console.log(`🚂 Generating more passengers - journey continues! Position: ${{Math.round(this.trainPosition)}}%`);
+                this.generatePassengers();
+            }}
         }}
         
         createDirtParticles(tunnelElement, particleCount = 5) {{
@@ -12123,11 +13249,20 @@ def generate_web_flashcards(numbers, config, output_path):
                 clearInterval(this.aiUpdateInterval);
                 this.aiUpdateInterval = null;
             }}
+            
+            // Stop all sounds when stopping race
+            this.stopAllSounds();
         }}
         
         playSound(type, volume = 0.15) {{
             try {{
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Track audio contexts for cleanup
+                if (!window.audioContexts) {{
+                    window.audioContexts = [];
+                }}
+                window.audioContexts.push(audioContext);
                 
                 if (type === 'correct') {{
                     // Classic 90s "power-up" sound - ascending beeps
@@ -12585,6 +13720,12 @@ def generate_web_flashcards(numbers, config, output_path):
         applyTimeoutSetting(baseTime) {{
             // Apply timeout setting multiplier
             switch (this.timeoutSetting) {{
+                case 'preschool':
+                    return Math.max(baseTime * 4, 20000); // At least 20 seconds - perfect for 4-year-olds!
+                case 'kindergarten':
+                    return Math.max(baseTime * 3, 15000); // At least 15 seconds - great for 5-6 year olds
+                case 'relaxed':
+                    return Math.max(baseTime * 2.4, 12000); // At least 12 seconds - comfortable pace
                 case 'slow':
                     return Math.max(baseTime * 1.6, 8000); // At least 8 seconds, or 60% longer
                 case 'normal':
@@ -12826,6 +13967,13 @@ def generate_web_flashcards(numbers, config, output_path):
     document.addEventListener('DOMContentLoaded', () => {{
         // Initialize particle system first
         particleSystem = new ParticleSystem();
+        
+        // Set bead shape class based on data attribute
+        const beadSample = document.querySelector('.bead-sample[data-shape]');
+        if (beadSample) {{
+            const shape = beadSample.getAttribute('data-shape').toLowerCase();
+            beadSample.classList.add(shape);
+        }}
         
         new ModalManager();
         new SectionNavigator();
