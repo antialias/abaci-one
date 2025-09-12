@@ -4647,6 +4647,7 @@ def generate_web_flashcards(numbers, config, output_path):
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             left: 2%;
+            z-index: 10;
         }}
         
         .racer:hover {{
@@ -4773,6 +4774,357 @@ def generate_web_flashcards(numbers, config, output_path):
         @keyframes wave {{
             0%, 100% {{ transform: rotate(-10deg); }}
             50% {{ transform: rotate(10deg); }}
+        }}
+        
+        /* Circular Track for Survival Mode */
+        .race-track-section.circular-track {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            /* Prevent container from affecting track shape */
+            flex-shrink: 0;
+        }}
+        
+        /* Infinite Mode Track for Sprint Mode */
+        .race-track-section.infinite-mode {{
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+            position: relative;
+        }}
+        
+        .race-track-section.infinite-mode::before {{
+            content: '⚡ TIME-BASED CHALLENGE ⚡';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 215, 0, 0.9);
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            z-index: 10;
+        }}
+        
+        .race-track-section.infinite-mode .race-track {{
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255,255,255,0.1) 10%, 
+                rgba(255,255,255,0.2) 50%, 
+                rgba(255,255,255,0.1) 90%, 
+                transparent 100%);
+            border: 2px dashed rgba(255, 215, 0, 0.6);
+        }}
+        
+        /* Tunnel Digging Visualization for Sprint Mode */
+        .race-track-section.tunnel-digging {{
+            background: linear-gradient(180deg, 
+                #87ceeb 0%,     /* Sky blue at top */
+                #90EE90 15%,    /* Light green for grass */
+                #8B4513 20%,    /* Brown for dirt surface */
+                #654321 100%);  /* Darker brown for deep earth */
+            padding: 40px 20px;
+            height: 300px;     /* Fixed height to prevent scrolling */
+            max-height: 300px;
+            position: relative;
+            overflow: hidden;  /* Hide any overflow to prevent scrolling */
+        }}
+        
+        .race-track-section.tunnel-digging::before {{
+            content: '🦊 TUNNEL DIGGING CHALLENGE 🦊';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 215, 0, 0.95);
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }}
+        
+        /* Underground tunnel visualization */
+        .tunnel-container {{
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding: 60px 40px 20px;
+            height: 100%;
+            position: relative;
+            max-height: 240px; /* Constrain to fit in container */
+        }}
+        
+        .tunnel-shaft {{
+            width: 80px;
+            background: #4a4a4a;
+            border: 3px solid #333;
+            border-radius: 8px;
+            position: relative;
+            min-height: 50px;
+            transition: height 0.3s ease-out;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }}
+        
+        .tunnel-shaft::before {{
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 20px;
+            background: #90EE90;
+            border-radius: 50%;
+            border: 2px solid #6B8E23;
+        }}
+        
+        .fox-digger {{
+            position: absolute;
+            bottom: 10px; /* Position inside tunnel, not at the bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            z-index: 5;
+            transition: all 0.3s ease;
+        }}
+        
+        .fox-digger.digging {{
+            animation: foxDigging 0.6s ease-in-out;
+        }}
+        
+        .fox-digger.idle {{
+            animation: foxBreathe 2s ease-in-out infinite;
+        }}
+        
+        /* Active digging animation */
+        @keyframes foxDigging {{
+            0% {{ 
+                transform: translateX(-50%) translateY(0) rotate(0deg);
+            }}
+            20% {{ 
+                transform: translateX(-50%) translateY(-8px) rotate(-10deg) scaleY(0.9);
+            }}
+            40% {{ 
+                transform: translateX(-50%) translateY(8px) rotate(10deg) scaleY(1.1);
+            }}
+            60% {{ 
+                transform: translateX(-50%) translateY(-5px) rotate(-5deg) scaleY(0.95);
+            }}
+            80% {{ 
+                transform: translateX(-50%) translateY(3px) rotate(5deg) scaleY(1.05);
+            }}
+            100% {{ 
+                transform: translateX(-50%) translateY(0) rotate(0deg);
+            }}
+        }}
+        
+        /* Breathing animation when idle */
+        @keyframes foxBreathe {{
+            0%, 100% {{ 
+                transform: translateX(-50%) scale(1);
+            }}
+            50% {{ 
+                transform: translateX(-50%) scale(1.02);
+            }}
+        }}
+        
+        /* Deeper foxes appear smaller (perspective effect) */
+        .tunnel-shaft.depth-deep .fox-digger {{
+            font-size: 1.8rem;
+            bottom: 15px;
+        }}
+        
+        .tunnel-shaft.depth-very-deep .fox-digger {{
+            font-size: 1.6rem;
+            bottom: 20px;
+            animation: foxDigDeep 0.8s ease-in-out;
+        }}
+        
+        @keyframes foxDigDeep {{
+            0% {{ 
+                transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+            }}
+            25% {{ 
+                transform: translateX(-50%) translateY(-10px) rotate(-15deg) scale(0.9) scaleY(0.8);
+            }}
+            50% {{ 
+                transform: translateX(-50%) translateY(10px) rotate(15deg) scale(1.1) scaleY(1.2);
+            }}
+            75% {{ 
+                transform: translateX(-50%) translateY(-5px) rotate(-8deg) scale(0.95);
+            }}
+            100% {{ 
+                transform: translateX(-50%) translateY(0) rotate(0deg) scale(1);
+            }}
+        }}
+        
+        .tunnel-depth {{
+            position: absolute;
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: center;
+        }}
+        
+        .tunnel-player .tunnel-depth {{
+            background: rgba(34, 197, 94, 0.9);
+            color: white;
+        }}
+        
+        .tunnel-ai .tunnel-depth {{
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+        }}
+        
+        /* Dirt particles effect when digging */
+        @keyframes dirtFly {{
+            0% {{
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }}
+            100% {{
+                opacity: 0;
+                transform: translate(var(--fly-x), var(--fly-y)) scale(0.3);
+            }}
+        }}
+        
+        .dirt-particle {{
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #8B4513;
+            border-radius: 50%;
+            animation: dirtFly 0.6s ease-out forwards;
+            pointer-events: none;
+        }}
+        
+        /* Treasure animations */
+        @keyframes treasureFloat {{
+            0% {{
+                opacity: 0;
+                transform: translate(-50%, 0) scale(0);
+            }}
+            20% {{
+                opacity: 1;
+                transform: translate(-50%, -20px) scale(1.2);
+            }}
+            100% {{
+                opacity: 0;
+                transform: translate(-50%, -80px) scale(0.8);
+            }}
+        }}
+        
+        @keyframes treasureSlideIn {{
+            0% {{
+                opacity: 0;
+                transform: translateX(100px);
+            }}
+            20% {{
+                opacity: 1;
+                transform: translateX(0);
+            }}
+            80% {{
+                opacity: 1;
+                transform: translateX(0);
+            }}
+            100% {{
+                opacity: 0;
+                transform: translateX(-100px);
+            }}
+        }}
+        
+        /* Speech bubbles for tunnel mode */
+        .tunnel-speech {{
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+        }}
+        
+        /* Screen shake animation for deep digging */
+        @keyframes screenShake {{
+            0%, 100% {{ transform: translateX(0); }}
+            25% {{ transform: translateX(-2px); }}
+            75% {{ transform: translateX(2px); }}
+        }}
+        
+        /* Hide linear track elements when in circular mode */
+        .race-track.circular .track-background,
+        .race-track.circular .track-line {{
+            display: none;
+        }}
+        
+        .race-track.circular {{
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            position: relative;
+            /* Maintain circular aspect ratio */
+            flex-shrink: 0;
+            aspect-ratio: 1 / 1;
+            /* Create donut shape with inner and outer borders */
+            background: 
+                radial-gradient(circle at center, transparent 35%, rgba(34, 197, 94, 0.2) 35%, rgba(34, 197, 94, 0.2) 65%, transparent 65%);
+            border: 6px solid rgba(34, 197, 94, 0.6);
+            box-shadow: 
+                inset 0 0 30px rgba(34, 197, 94, 0.3),
+                0 0 20px rgba(0,0,0,0.3);
+        }}
+        
+        /* Responsive circular track for smaller screens */
+        @media (max-width: 768px) {{
+            .race-track.circular {{
+                width: 300px;
+                height: 300px;
+            }}
+        }}
+        
+        @media (max-width: 480px) {{
+            .race-track.circular {{
+                width: 250px;
+                height: 250px;
+            }}
+        }}
+        
+        /* Inner donut hole */
+        .race-track.circular::before {{
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 140px;
+            height: 140px;
+            background: rgba(0,0,0,0.1);
+            border: 4px solid rgba(34, 197, 94, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }}
+        
+        /* Position racers on circular track */
+        .race-track.circular .racer {{
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            transition: all 0.6s ease-out;
+        }}
+        
+        /* Counteract rotation for speech bubbles on circular track */
+        .race-track.circular .racer .speech-bubble {{
+            transform: translateY(-50%) rotate(var(--counter-rotation, 0deg));
         }}
         
         /* Speech Bubbles */
@@ -4941,6 +5293,20 @@ def generate_web_flashcards(numbers, config, output_path):
         
         .racer.celebrating {{
             animation: bounce 0.3s infinite alternate;
+        }}
+        
+        /* Special bounce for circular track that preserves rotation */
+        .race-track.circular .racer.celebrating {{
+            animation: circularBounce 0.3s infinite alternate;
+        }}
+        
+        @keyframes circularBounce {{
+            0% {{ 
+                transform: rotate(var(--racer-rotation, 0deg)) scale(1) translateY(0px);
+            }}
+            100% {{ 
+                transform: rotate(var(--racer-rotation, 0deg)) scale(1.1) translateY(-2px);
+            }}
         }}
         
         /* Enhanced Feedback Area */
@@ -5176,6 +5542,119 @@ def generate_web_flashcards(numbers, config, output_path):
         @keyframes shimmer {{
             0% {{ background-position: -200px 0; }}
             100% {{ background-position: 200px 0; }}
+        }}
+        
+        /* Lapping Celebration Animations */
+        @keyframes lapCelebrationBounce {{
+            0% {{
+                transform: translateX(-50%) scale(0);
+                opacity: 0;
+                rotation: -10deg;
+            }}
+            30% {{
+                transform: translateX(-50%) scale(1.2);
+                opacity: 1;
+                rotation: 5deg;
+            }}
+            60% {{
+                transform: translateX(-50%) scale(0.95);
+                rotation: -2deg;
+            }}
+            100% {{
+                transform: translateX(-50%) scale(1);
+                opacity: 1;
+                rotation: 0deg;
+            }}
+        }}
+        
+        .lapping-celebration {{
+            animation: lappingPulse 1.5s ease-in-out;
+            transform-origin: center;
+        }}
+        
+        @keyframes lappingPulse {{
+            0%, 100% {{ transform: scale(1) rotate(0deg); }}
+            25% {{ transform: scale(1.3) rotate(-5deg); box-shadow: 0 0 25px #ffd700; }}
+            50% {{ transform: scale(1.1) rotate(5deg); box-shadow: 0 0 35px #ffd700; }}
+            75% {{ transform: scale(1.2) rotate(-3deg); box-shadow: 0 0 20px #ffd700; }}
+        }}
+        
+        /* Race Countdown */
+        .race-countdown {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+        }}
+        
+        .countdown-display {{
+            text-align: center;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }}
+        
+        .countdown-number {{
+            font-size: 15rem;
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 0 0 50px rgba(255, 255, 255, 0.5);
+            margin-bottom: 20px;
+            animation: countdownPulse 1s ease-out;
+        }}
+        
+        .countdown-text {{
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }}
+        
+        .countdown-go {{
+            font-size: 20rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 50px rgba(255, 255, 255, 0.8);
+            animation: goAnimation 1s ease-out;
+        }}
+        
+        @keyframes countdownPulse {{
+            0% {{ 
+                transform: scale(0.5);
+                opacity: 0;
+            }}
+            20% {{ 
+                transform: scale(1.2);
+                opacity: 1;
+            }}
+            100% {{ 
+                transform: scale(1);
+                opacity: 1;
+            }}
+        }}
+        
+        @keyframes goAnimation {{
+            0% {{ 
+                transform: scale(0.3) rotate(-10deg);
+                opacity: 0;
+            }}
+            50% {{ 
+                transform: scale(1.2) rotate(5deg);
+                opacity: 1;
+            }}
+            100% {{ 
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }}
         }}
         
         @keyframes rotate {{
@@ -6306,22 +6785,22 @@ def generate_web_flashcards(numbers, config, output_path):
                         <button type="button" class="game-style-btn active" data-style="practice">
                             <div class="style-icon">🎯</div>
                             <div class="style-content">
-                                <div class="style-title">Practice Mode</div>
-                                <div class="style-description">Race to 20 correct answers at your own pace</div>
+                                <div class="style-title">Endurance Race</div>
+                                <div class="style-description">Race to 20 correct answers - has finish line!</div>
                             </div>
                         </button>
                         <button type="button" class="game-style-btn" data-style="sprint">
                             <div class="style-icon">⚡</div>
                             <div class="style-content">
                                 <div class="style-title">Lightning Sprint</div>
-                                <div class="style-description">60-second speed challenge - how many can you get?</div>
+                                <div class="style-description">60-second time attack! Beat the clock, not the finish line!</div>
                             </div>
                         </button>
                         <button type="button" class="game-style-btn" data-style="survival">
                             <div class="style-icon">🔥</div>
                             <div class="style-content">
-                                <div class="style-title">Endurance Test</div>
-                                <div class="style-description">Questions get faster - survive as long as you can!</div>
+                                <div class="style-title">Survival Mode</div>
+                                <div class="style-description">Keep going forever - no finish line, just survive!</div>
                             </div>
                         </button>
                     </div>
@@ -6390,7 +6869,7 @@ def generate_web_flashcards(numbers, config, output_path):
                                 <div class="track-line quarter-line"></div>
                                 <div class="track-line half-line"></div>
                                 <div class="track-line three-quarter-line"></div>
-                                <div class="track-line finish-line"></div>
+                                <div class="track-line finish-line" id="finish-line"></div>
                             </div>
                             
                             <!-- Player Racer -->
@@ -6420,11 +6899,36 @@ def generate_web_flashcards(numbers, config, output_path):
                             </div>
                             
                             <!-- Finish Line -->
-                            <div class="finish-zone">
+                            <div class="finish-zone" id="finish-zone">
                                 <div class="finish-flag">🏁</div>
                                 <div class="finish-text">FINISH</div>
                             </div>
                         </div>
+                        
+                        <!-- Tunnel Digging Visualization (for Sprint Mode) -->
+                        <div class="tunnel-container" style="display: none;">
+                            <div class="tunnel-shaft tunnel-player" id="player-tunnel">
+                                <div class="fox-digger" id="player-fox">🦊</div>
+                                <div class="tunnel-depth" id="player-depth">0</div>
+                            </div>
+                            <div class="tunnel-shaft tunnel-ai" id="ai-tunnel-1">
+                                <div class="fox-digger" id="ai-fox-1">🦝</div>
+                                <div class="tunnel-depth" id="ai-depth-1">0</div>
+                                <div class="speech-bubble tunnel-speech" id="tunnel-speech-1">
+                                    <div class="bubble-content"></div>
+                                    <div class="bubble-tail"></div>
+                                </div>
+                            </div>
+                            <div class="tunnel-shaft tunnel-ai" id="ai-tunnel-2">
+                                <div class="fox-digger" id="ai-fox-2">🐺</div>
+                                <div class="tunnel-depth" id="ai-depth-2">0</div>
+                                <div class="speech-bubble tunnel-speech" id="tunnel-speech-2">
+                                    <div class="bubble-content"></div>
+                                    <div class="bubble-tail"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="race-stats">
                             <div class="race-stat">
                                 <span class="stat-label">Correct:</span>
@@ -9602,6 +10106,13 @@ def generate_web_flashcards(numbers, config, output_path):
             this.questionStartTime = 0;
             this.timerInterval = null;
             this.gameInterval = null;
+            this.isScrolling = false;
+            this.isResetting = false;
+            
+            // Lap tracking for circular race celebrations
+            this.playerLap = 0;
+            this.aiLaps = new Map(); // Track each AI's lap count
+            this.lapCelebrationCooldown = new Set(); // Prevent multiple celebrations for same lap
             
             // Adaptive Difficulty System
             this.difficultyTracker = {{
@@ -9716,9 +10227,9 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
         
         startRace() {{
-            this.isGameActive = true;
+            this.isGameActive = false; // Don't start until countdown finishes
             this.isPaused = false;
-            this.gameStartTime = Date.now();
+            this.gameStartTime = null; // Will be set after countdown
             this.score = 0;
             this.streak = 0;
             this.totalQuestions = 0;
@@ -9731,12 +10242,93 @@ def generate_web_flashcards(numbers, config, output_path):
             document.getElementById('complement-game').style.display = 'block';
             document.getElementById('complement-header').style.display = 'flex';
             
+            // Configure visualization based on game style
+            const raceTrackSection = document.querySelector('.race-track-section');
+            const raceTrack = document.querySelector('.race-track');
+            const tunnelContainer = document.querySelector('.tunnel-container');
+            
+            if (this.style === 'survival') {{
+                // Switch to circular track for survival mode
+                raceTrackSection.classList.add('circular-track');
+                raceTrack.classList.add('circular');
+                raceTrackSection.classList.remove('tunnel-digging');
+                raceTrack.style.display = 'block';
+                if (tunnelContainer) tunnelContainer.style.display = 'none';
+            }} else if (this.style === 'sprint') {{
+                // Switch to tunnel digging visualization for sprint mode
+                raceTrackSection.classList.add('tunnel-digging');
+                raceTrackSection.classList.remove('circular-track');
+                raceTrack.classList.remove('circular');
+                raceTrack.style.display = 'none'; // Hide track completely
+                if (tunnelContainer) {{
+                    tunnelContainer.style.display = 'flex';
+                    // Initialize fox breathing animations
+                    setTimeout(() => this.initializeFoxes(), 100);
+                }}
+            }} else {{
+                // Use linear track for practice mode
+                raceTrackSection.classList.remove('circular-track', 'tunnel-digging');
+                raceTrack.classList.remove('circular');
+                raceTrack.style.display = 'block';
+                if (tunnelContainer) tunnelContainer.style.display = 'none';
+            }}
+            
             // Initialize race system
             this.initializeRace();
             
-            // Start first question and timer
-            this.nextQuestion();
-            this.startGameTimer();
+            // Start countdown before race begins
+            this.startCountdown();
+        }}
+        
+        startCountdown() {{
+            const countdownOverlay = document.getElementById('race-countdown');
+            const countdownNumber = document.getElementById('countdown-number');
+            const countdownText = document.getElementById('countdown-text');
+            
+            // Show countdown overlay
+            countdownOverlay.style.display = 'flex';
+            
+            let count = 3;
+            const raceTypes = {{
+                'practice': 'Practice Race',
+                'sprint': 'Speed Sprint',
+                'survival': 'Survival Challenge'
+            }};
+            
+            countdownText.textContent = `${{raceTypes[this.style]}} Starting...`;
+            
+            const countdownInterval = setInterval(() => {{
+                if (count > 0) {{
+                    countdownNumber.textContent = count;
+                    countdownNumber.className = 'countdown-number';
+                    
+                    // Play countdown sound
+                    this.playSound('countdown', 0.4);
+                    
+                    count--;
+                }} else {{
+                    // Show "GO!" 
+                    countdownNumber.textContent = 'GO!';
+                    countdownNumber.className = 'countdown-go';
+                    countdownText.textContent = 'Race in Progress!';
+                    
+                    // Play start sound
+                    this.playSound('race_start', 0.6);
+                    
+                    // Hide countdown after GO animation
+                    setTimeout(() => {{
+                        countdownOverlay.style.display = 'none';
+                        
+                        // Actually start the race now
+                        this.isGameActive = true;
+                        this.gameStartTime = Date.now();
+                        this.nextQuestion();
+                        this.startGameTimer();
+                    }}, 1000);
+                    
+                    clearInterval(countdownInterval);
+                }}
+            }}, 1000);
         }}
         
         nextQuestion() {{
@@ -9932,7 +10524,7 @@ def generate_web_flashcards(numbers, config, output_path):
                         if (this.currentInput === newInput && this.isGameActive) {{
                             this.submitAnswer();
                         }}
-                    }}, newInput === '1' && this.targetSum >= 10 ? 1000 : 600);
+                    }}, newInput === '1' && this.targetSum >= 10 ? 400 : 200);
                 }}
             }}
             
@@ -9992,7 +10584,7 @@ def generate_web_flashcards(numbers, config, output_path):
                 this.handleIncorrectAnswer();
             }}
             
-            setTimeout(() => this.nextQuestion(), 1200);
+            setTimeout(() => this.nextQuestion(), 50);
         }}
         
         handleCorrectAnswer() {{
@@ -10039,7 +10631,21 @@ def generate_web_flashcards(numbers, config, output_path):
             }}, 800);
             
             this.updateStats();
-            this.playSound('correct');
+            
+            // Play appropriate sound based on performance
+            if (this.streak > 0 && this.streak % 5 === 0) {{
+                // Epic streak sound for every 5th correct answer
+                this.playSound('streak');
+            }} else if (responseTime < 800) {{
+                // Whoosh sound for very fast responses (under 800ms)
+                this.playSound('whoosh');
+            }} else if (responseTime < 1200 && this.streak >= 3) {{
+                // Combo sound for rapid answers while on a streak
+                this.playSound('combo');
+            }} else {{
+                // Regular correct sound
+                this.playSound('correct');
+            }}
         }}
         
         handleIncorrectAnswer() {{
@@ -10116,7 +10722,7 @@ def generate_web_flashcards(numbers, config, output_path):
             
             this.updateStats();
             this.playSound('timeout');
-            setTimeout(() => this.nextQuestion(), 1200);
+            setTimeout(() => this.nextQuestion(), 50);
         }}
         
         showFeedback(message, type) {{
@@ -10260,97 +10866,133 @@ def generate_web_flashcards(numbers, config, output_path):
                 if (context === 'ahead') {{
                     messages = [
                         "💨 Eat my dust!",
-                        "🔥 Too slow, human!",
-                        "⚡ Can't catch me!",
+                        "🔥 Too slow for me!",
+                        "⚡ You can't catch me!",
                         "🚀 I'm built for speed!",
-                        "🏃‍♂️ Way too easy!"
+                        "🏃‍♂️ This is way too easy!"
                     ];
                 }} else if (context === 'behind') {{
                     messages = [
                         "😤 Not over yet!",
-                        "💪 Just getting started!",
-                        "🔥 Watch me catch up!",
+                        "💪 I'm just getting started!",
+                        "🔥 Watch me catch up to you!",
                         "⚡ I'm coming for you!",
                         "🏃‍♂️ This is my comeback!"
                     ];
                 }} else if (context === 'adaptive_struggle') {{
                     messages = [
-                        "😏 Struggling much?",
+                        "😏 You struggling much?",
                         "🤖 Math is easy for me!",
-                        "⚡ Think faster!",
-                        "🔥 Need the slow setting?"
+                        "⚡ You need to think faster!",
+                        "🔥 Need me to slow down?"
                     ];
                 }} else if (context === 'adaptive_mastery') {{
                     messages = [
-                        "😮 Actually impressive!",
-                        "🤔 Getting faster...",
-                        "😤 Time to step it up!",
-                        "⚡ Not bad, human!"
+                        "😮 You're actually impressive!",
+                        "🤔 You're getting faster...",
+                        "😤 Time for me to step it up!",
+                        "⚡ Not bad for a human!"
                     ];
                 }} else if (context === 'player_passed') {{
                     messages = [
                         "😠 No way you just passed me!",
                         "🔥 This isn't over!",
-                        "💨 Just getting warmed up!",
-                        "😤 Lucky streak won't last!",
-                        "⚡ I'll be back in front soon!"
+                        "💨 I'm just getting warmed up!",
+                        "😤 Your lucky streak won't last!",
+                        "⚡ I'll be back in front of you soon!"
                     ];
                 }} else if (context === 'ai_passed') {{
                     messages = [
-                        "💨 Smell ya later, slowpoke!",
+                        "💨 See ya later, slowpoke!",
                         "😎 Thanks for the warm-up!",
                         "🔥 This is how it's done!",
-                        "⚡ See you at the finish line!",
-                        "💪 Try to keep up!"
+                        "⚡ I'll see you at the finish line!",
+                        "💪 Try to keep up with me!"
+                    ];
+                }} else if (context === 'lapped') {{
+                    messages = [
+                        "😡 You just lapped me?! No way!",
+                        "🤬 This is embarrassing for me!",
+                        "😤 I'm not going down without a fight!",
+                        "💢 How did you get so far ahead?!",
+                        "🔥 Time to show you my real speed!",
+                        "😠 You won't stay ahead for long!"
+                    ];
+                }} else if (context === 'desperate_catchup') {{
+                    messages = [
+                        "🚨 TURBO MODE ACTIVATED! I'm coming for you!",
+                        "💥 You forced me to unleash my true power!",
+                        "🔥 NO MORE MR. NICE AI! Time to go all out!",
+                        "⚡ I'm switching to MAXIMUM OVERDRIVE!",
+                        "😤 You made me angry - now you'll see what I can do!",
+                        "🚀 AFTERBURNERS ENGAGED! This isn't over!"
                     ];
                 }}
             }} else if (racer.personality === 'analytical') {{
                 // Math Bot - Analytical and encouraging but competitive
                 if (context === 'ahead') {{
                     messages = [
-                        "📊 Optimal performance!",
-                        "🤖 Logic beats speed!",
-                        "📈 87% win probability!",
-                        "⚙️ Perfectly calibrated!",
-                        "🔬 Science prevails!"
+                        "📊 My performance is optimal!",
+                        "🤖 My logic beats your speed!",
+                        "📈 I have 87% win probability!",
+                        "⚙️ I'm perfectly calibrated!",
+                        "🔬 Science prevails over you!"
                     ];
                 }} else if (context === 'behind') {{
                     messages = [
-                        "🤔 Recalculating...",
-                        "📊 Exceeding projections!",
-                        "⚙️ Adjusting parameters!",
-                        "🔬 Analyzing your technique!",
-                        "📈 Statistical anomaly!"
+                        "🤔 Recalculating my strategy...",
+                        "📊 You're exceeding my projections!",
+                        "⚙️ Adjusting my parameters!",
+                        "🔬 I'm analyzing your technique!",
+                        "📈 You're a statistical anomaly!"
                     ];
                 }} else if (context === 'adaptive_struggle') {{
                     messages = [
-                        "📊 Detecting inefficiencies!",
-                        "🔬 Focus on patterns?",
-                        "⚙️ Use that extra time!",
-                        "📈 Room for improvement!"
+                        "📊 I detect inefficiencies in you!",
+                        "🔬 You should focus on patterns!",
+                        "⚙️ Use that extra time wisely!",
+                        "📈 You have room for improvement!"
                     ];
                 }} else if (context === 'adaptive_mastery') {{
                     messages = [
-                        "🤖 Excellent optimization!",
-                        "📊 Impressive metrics!",
-                        "⚙️ Updating my models!",
-                        "🔬 Near-AI efficiency!"
+                        "🤖 Your optimization is excellent!",
+                        "📊 Your metrics are impressive!",
+                        "⚙️ I'm updating my models because of you!",
+                        "🔬 You have near-AI efficiency!"
                     ];
                 }} else if (context === 'player_passed') {{
                     messages = [
-                        "🤖 Fascinating strategy!",
-                        "📊 Unexpected variable!",
-                        "⚙️ Adjusting algorithms...",
-                        "🔬 Impressive execution!",
-                        "📈 Recalculating odds!"
+                        "🤖 Your strategy is fascinating!",
+                        "📊 You're an unexpected variable!",
+                        "⚙️ I'm adjusting my algorithms...",
+                        "🔬 Your execution is impressive!",
+                        "📈 I'm recalculating the odds!"
                     ];
                 }} else if (context === 'ai_passed') {{
                     messages = [
-                        "🤖 Efficiency optimized!",
-                        "📊 As calculated!",
-                        "⚙️ Systems nominal!",
-                        "🔬 Logic prevails!",
-                        "📈 96% confidence level!"
+                        "🤖 My efficiency is optimized!",
+                        "📊 Just as I calculated!",
+                        "⚙️ All my systems nominal!",
+                        "🔬 My logic prevails over you!",
+                        "📈 I'm at 96% confidence level!"
+                    ];
+                }} else if (context === 'lapped') {{
+                    messages = [
+                        "🤖 Error: You have exceeded my projections!",
+                        "📊 This outcome has 0.3% probability!",
+                        "⚙️ I need to recalibrate my systems!",
+                        "🔬 Your performance is... statistically improbable!",
+                        "📈 My confidence level just dropped to 12%!",
+                        "🤔 I must analyze your methodology!"
+                    ];
+                }} else if (context === 'desperate_catchup') {{
+                    messages = [
+                        "🤖 EMERGENCY PROTOCOL ACTIVATED! Initiating maximum speed!",
+                        "🚨 CRITICAL GAP DETECTED! Engaging catchup algorithms!",
+                        "⚙️ OVERCLOCKING MY PROCESSORS! Prepare for rapid acceleration!",
+                        "📊 PROBABILITY OF FAILURE: UNACCEPTABLE! Switching to turbo mode!",
+                        "🔬 HYPOTHESIS: You're about to see my true potential!",
+                        "📈 CONFIDENCE LEVEL: RISING! My comeback protocol is online!"
                     ];
                 }}
             }}
@@ -10375,6 +11017,8 @@ def generate_web_flashcards(numbers, config, output_path):
                 // Determine context based on positions and adaptive system
                 if (aiProgress > playerProgress + 2) {{
                     context = 'ahead';
+                }} else if (playerProgress > aiProgress + 5) {{
+                    context = 'desperate_catchup'; // AI is way behind and desperate
                 }} else if (playerProgress > aiProgress + 2) {{
                     context = 'behind';
                 }} else if (this.difficultyTracker.consecutiveIncorrect >= 2) {{
@@ -10387,6 +11031,12 @@ def generate_web_flashcards(numbers, config, output_path):
                     const message = this.getAICommentary(racer, context);
                     if (message) {{
                         this.showAICommentary(racer, message, context);
+                        
+                        // Play special turbo sound when AI goes desperate
+                        if (context === 'desperate_catchup') {{
+                            this.playSound('ai_turbo', 0.12);
+                        }}
+                        
                         return; // Only one racer comments at a time
                     }}
                 }}
@@ -10693,13 +11343,20 @@ def generate_web_flashcards(numbers, config, output_path):
                 this.survivalMultiplier = 1.0; // Difficulty multiplier for survival
             }}
             
-            // Set appropriate goal display for each mode
+            // Set appropriate goal display and labels for each mode
+            const raceGoalElement = document.getElementById('race-goal');
+            
             if (this.style === 'practice') {{
-                document.getElementById('race-goal').textContent = this.raceGoal; // Show "20"
+                raceGoalElement.textContent = this.raceGoal; // Show "20"
+                raceGoalElement.setAttribute('title', 'Race to this many correct answers');
             }} else if (this.style === 'sprint') {{
-                document.getElementById('race-goal').textContent = `${{this.timeLimit}}s`; // Show "60s"
+                raceGoalElement.textContent = `${{this.timeLimit}}s`; // Show "60s" 
+                raceGoalElement.setAttribute('title', 'Time-based challenge! Get as many as possible before time runs out');
+                raceGoalElement.style.color = '#ffd700'; // Gold color for time display
+                raceGoalElement.style.fontWeight = 'bold';
             }} else if (this.style === 'survival') {{
-                document.getElementById('race-goal').textContent = '∞'; // Show infinity symbol
+                raceGoalElement.textContent = 'Lap 1'; // Show current lap
+                raceGoalElement.setAttribute('title', 'Survive as long as possible!');
             }}
             document.getElementById('race-correct').textContent = '0';
             
@@ -10709,25 +11366,68 @@ def generate_web_flashcards(numbers, config, output_path):
             
             console.log('Race initialized:', this.style, 'Goal:', this.raceGoal, 'Time limit:', this.timeLimit, 'AI speeds:', this.aiRacers.map(ai => ai.speed));
             
+            // Show/hide finish line based on race mode and update track appearance
+            const finishLine = document.getElementById('finish-line');
+            const finishZone = document.getElementById('finish-zone');
+            const raceTrackSection = document.querySelector('.race-track-section');
+            
+            if (this.style === 'practice') {{
+                // Show finish line for practice mode (endurance test)
+                if (finishLine) finishLine.style.display = 'block';
+                if (finishZone) finishZone.style.display = 'block';
+                if (raceTrackSection) raceTrackSection.classList.remove('infinite-mode');
+            }} else if (this.style === 'sprint') {{
+                // Hide finish line for sprint mode - it's time-based, not distance-based
+                if (finishLine) finishLine.style.display = 'none';
+                if (finishZone) finishZone.style.display = 'none';
+                if (raceTrackSection) raceTrackSection.classList.add('infinite-mode');
+            }} else {{
+                // Hide finish line for survival mode
+                if (finishLine) finishLine.style.display = 'none';
+                if (finishZone) finishZone.style.display = 'none';
+                if (raceTrackSection) raceTrackSection.classList.add('infinite-mode');
+            }}
+            
             // Reset all racers to starting position
             const playerRacer = document.getElementById('player-racer');
             const aiRacer1 = document.getElementById('ai-racer-1');
             const aiRacer2 = document.getElementById('ai-racer-2');
             
-            if (playerRacer) playerRacer.style.left = '2%';
-            if (aiRacer1) aiRacer1.style.left = '2%';
-            if (aiRacer2) aiRacer2.style.left = '2%';
+            if (this.style === 'survival') {{
+                // Position racers on circular track (all at starting position)
+                if (playerRacer) this.updateCircularPosition(playerRacer, 0);
+                if (aiRacer1) this.updateCircularPosition(aiRacer1, 0);
+                if (aiRacer2) this.updateCircularPosition(aiRacer2, 0);
+            }} else {{
+                // Position racers on linear track
+                if (playerRacer) playerRacer.style.left = '2%';
+                if (aiRacer1) aiRacer1.style.left = '2%';
+                if (aiRacer2) aiRacer2.style.left = '2%';
+            }}
             
             // Reset AI racers
             this.aiRacers.forEach(ai => {{
                 ai.position = 2;
             }});
             
+            // Reset lap tracking for circular mode
+            if (this.style === 'survival') {{
+                this.playerLap = 0;
+                this.aiLaps.clear();
+                this.lapCelebrationCooldown.clear();
+            }}
+            
             // Start AI movement
             this.startAIRacers();
         }}
         
         updatePlayerRace() {{
+            if (this.style === 'sprint') {{
+                // Update tunnel digging instead of race track
+                this.updateTunnelDepth('player', this.correctAnswers);
+                return;
+            }}
+            
             let visualProgress;
             
             if (this.style === 'practice') {{
@@ -10736,21 +11436,47 @@ def generate_web_flashcards(numbers, config, output_path):
                 visualProgress = Math.min(progress, 100);
             }} else {{
                 // Sprint and survival: visual progress based on score relative to a reasonable target
-                // Use 30 as a visual "full track" for sprint/survival modes
-                const visualTarget = 30;
-                const progress = (this.correctAnswers / visualTarget) * 100;
-                visualProgress = Math.min(progress, 95); // Cap at 95% so no one "wins" visually
+                if (this.style === 'survival') {{
+                    // For survival mode, let players continue moving forward with cycling
+                    const visualTarget = 50; // Larger target for survival mode
+                    const progress = (this.correctAnswers / visualTarget) * 100;
+                    visualProgress = Math.min(progress, 95); // Allow almost to the end
+                }} else {{
+                    // Sprint mode: visual progress based on score relative to a reasonable target
+                    const visualTarget = 30;
+                    const progress = (this.correctAnswers / visualTarget) * 100;
+                    visualProgress = Math.min(progress, 95); // Cap at 95% so no one "wins" visually
+                }}
             }}
             
             const playerRacer = document.getElementById('player-racer');
             const progressDisplay = document.getElementById('player-progress');
             
             if (playerRacer) {{
+                // Always move players based on their progress
                 playerRacer.style.left = visualProgress + '%';
+                
                 // Add celebration animation for good progress
                 if (this.correctAnswers % 5 === 0 && this.correctAnswers > 0) {{
                     playerRacer.classList.add('celebrating');
                     setTimeout(() => playerRacer.classList.remove('celebrating'), 600);
+                    
+                    // Play milestone sound effect
+                    this.playSound('milestone', 0.18);
+                }}
+                
+                // In survival mode, use circular positioning
+                if (this.style === 'survival') {{
+                    const lapInfo = this.updateCircularPosition(playerRacer, this.correctAnswers);
+                    
+                    // Check if player completed a new lap
+                    if (lapInfo.lap > this.playerLap) {{
+                        this.playerLap = lapInfo.lap;
+                        this.checkForLappingCelebration();
+                        
+                        // Update lap display in goal area
+                        document.getElementById('race-goal').textContent = `Lap ${{this.playerLap + 1}}`; // Show next lap
+                    }}
                 }}
             }}
             
@@ -10768,8 +11494,52 @@ def generate_web_flashcards(numbers, config, output_path):
             
             // Check if player wins - only for practice mode with finish line
             if (this.style === 'practice' && this.correctAnswers >= this.raceGoal && this.isGameActive) {{
+                console.log(`🏁 PLAYER WINS! Correct: ${{this.correctAnswers}}, Goal: ${{this.raceGoal}}, Visual: ${{visualProgress}}%`);
                 this.handleRaceWin('player');
+            }} else if (this.style === 'practice') {{
+                console.log(`🏃 Player progress: ${{this.correctAnswers}}/${{this.raceGoal}} (Visual: ${{visualProgress.toFixed(1)}}%)`);
             }}
+        }}
+        
+        resetInfiniteTrack() {{
+            // Prevent multiple resets at once
+            if (this.isResetting) return;
+            this.isResetting = true;
+            
+            console.log('🔄 Resetting infinite track cycle...');
+            
+            const raceTrackContainer = document.querySelector('.race-track-container');
+            const allRacers = document.querySelectorAll('.racer');
+            
+            if (!raceTrackContainer) return;
+            
+            // Add smooth scrolling animation
+            raceTrackContainer.classList.add('infinite-runner');
+            
+            // After a brief scroll animation, reset all positions
+            setTimeout(() => {{
+                // Reset all racer positions back by 40% to continue the journey
+                const resetAmount = 40;
+                
+                allRacers.forEach((racer, index) => {{
+                    const currentLeft = parseFloat(racer.style.left || '0');
+                    const newLeft = Math.max(10, currentLeft - resetAmount); // Don't go below 10%
+                    racer.style.left = newLeft + '%';
+                    console.log(`🏃 Racer ${{index}} reset: ${{currentLeft}}% → ${{newLeft}}%`);
+                }});
+                
+                // Also adjust AI tracking positions
+                this.aiRacers.forEach(ai => {{
+                    const resetInUnits = (resetAmount / 100) * 50; // Convert % to position units
+                    ai.position = Math.max(2, ai.position - resetInUnits);
+                }});
+                
+                // Remove animation and reset flag
+                raceTrackContainer.classList.remove('infinite-runner');
+                this.isResetting = false;
+                
+                console.log('✅ Infinite track reset complete - journey continues!');
+            }}, 1500); // Short animation duration
         }}
         
         checkForPassingEvents() {{
@@ -10809,6 +11579,411 @@ def generate_web_flashcards(numbers, config, output_path):
             }});
         }}
         
+        updateCircularPosition(racer, progress) {{
+            // Get track size dynamically to support responsive design
+            const track = document.querySelector('.race-track.circular');
+            const trackSize = track ? track.offsetWidth : 400;
+            const trackRadius = (trackSize / 2) - 20; // Track radius minus racer size
+            
+            // Each point of progress moves the player around the track
+            // Complete one full circle every 50 progress points
+            const progressPerLap = 50;
+            const currentLap = Math.floor(progress / progressPerLap);
+            const totalRotation = (progress / progressPerLap) * 360;
+            const angleInRadians = (totalRotation * Math.PI) / 180;
+            
+            // Calculate position on circle (centered at track center)
+            const x = trackRadius * Math.cos(angleInRadians - Math.PI/2); // Start at top
+            const y = trackRadius * Math.sin(angleInRadians - Math.PI/2);
+            
+            // Position racer relative to track center
+            const trackCenter = trackSize / 2;
+            racer.style.left = (trackCenter + x) + 'px';
+            racer.style.top = (trackCenter + y) + 'px';
+            
+            // Add slight rotation to racer to face direction of travel
+            racer.style.transform = `rotate(${{totalRotation}}deg)`;
+            
+            // Set counter-rotation for speech bubbles to keep them upright
+            racer.style.setProperty('--counter-rotation', `${{-totalRotation}}deg`);
+            
+            // Set rotation variable for circular bounce animation
+            racer.style.setProperty('--racer-rotation', `${{totalRotation}}deg`);
+            
+            // Return lap information for celebration detection
+            return {{
+                lap: currentLap,
+                progress: progress,
+                position: {{ x: 200 + x, y: 200 + y }}
+            }};
+        }}
+        
+        checkForLappingCelebration() {{
+            // Check if player has lapped any AI opponents
+            this.aiRacers.forEach(ai => {{
+                const aiLap = this.aiLaps.get(ai.id) || 0;
+                const lapDifference = this.playerLap - aiLap;
+                
+                // If player is a full lap ahead and we haven't celebrated this yet
+                if (lapDifference >= 1) {{
+                    const celebrationKey = `${{ai.id}}_lap_${{this.playerLap}}`;
+                    
+                    if (!this.lapCelebrationCooldown.has(celebrationKey)) {{
+                        this.lapCelebrationCooldown.add(celebrationKey);
+                        
+                        // Trigger celebration effects
+                        this.celebrateLapping(ai.name);
+                        
+                        // Show AI commentary about being lapped
+                        const message = this.getAICommentary(ai, 'lapped');
+                        if (message) {{
+                            setTimeout(() => {{
+                                this.showAICommentary(ai, message, 'lapped');
+                            }}, 800); // Delay to let celebration play
+                        }}
+                        
+                        console.log(`🎉 Player lapped ${{ai.name}}! Player lap: ${{this.playerLap}}, AI lap: ${{aiLap}}`);
+                    }}
+                }}
+            }});
+        }}
+        
+        celebrateLapping(aiName) {{
+            // Visual celebration for lapping an opponent
+            const playerRacer = document.getElementById('player-racer');
+            if (playerRacer) {{
+                // Add special lapping celebration class
+                playerRacer.classList.add('lapping-celebration');
+                setTimeout(() => playerRacer.classList.remove('lapping-celebration'), 1500);
+                
+                // Trigger particle effects
+                if (window.particleSystem) {{
+                    window.particleSystem.celebrateMajor(playerRacer);
+                }}
+                
+                // Show celebration message
+                this.showCelebrationMessage(`🏁 LAPPED ${{aiName.toUpperCase()}}! 🏁`);
+                
+                // Play celebration sound (if available)
+                this.playSound('lap_celebration', 0.6);
+            }}
+        }}
+        
+        showCelebrationMessage(message) {{
+            // Create floating celebration message
+            const celebration = document.createElement('div');
+            celebration.className = 'lap-celebration-message';
+            celebration.textContent = message;
+            celebration.style.cssText = `
+                position: fixed;
+                top: 20%;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #ffd700, #ffed4e);
+                color: #333;
+                padding: 20px 40px;
+                border-radius: 15px;
+                font-size: 1.5rem;
+                font-weight: 700;
+                text-align: center;
+                box-shadow: 0 10px 30px rgba(255, 215, 0, 0.5);
+                z-index: 10000;
+                animation: lapCelebrationBounce 1.5s ease-out forwards;
+                pointer-events: none;
+            `;
+            
+            document.body.appendChild(celebration);
+            
+            // Remove after animation
+            setTimeout(() => {{
+                if (celebration.parentNode) {{
+                    celebration.parentNode.removeChild(celebration);
+                }}
+            }}, 1500);
+        }}
+        
+        // ===== TUNNEL DIGGING SYSTEM FOR SPRINT MODE =====
+        
+        updateTunnelDepth(digger, correctAnswers) {{
+            // Handle different digger ID formats
+            let tunnelId, foxId, depthId;
+            if (digger.startsWith('ai-tunnel-')) {{
+                // AI tunnel format: ai-tunnel-1 -> ai-tunnel-1, ai-fox-1, ai-depth-1
+                const aiNum = digger.split('-')[2];
+                tunnelId = `ai-tunnel-${{aiNum}}`;
+                foxId = `ai-fox-${{aiNum}}`;
+                depthId = `ai-depth-${{aiNum}}`;
+            }} else {{
+                // Player format: player -> player-tunnel, player-fox, player-depth  
+                tunnelId = `${{digger}}-tunnel`;
+                foxId = `${{digger}}-fox`;
+                depthId = `${{digger}}-depth`;
+            }}
+            
+            const tunnelElement = document.getElementById(tunnelId);
+            const foxElement = document.getElementById(foxId);
+            const depthElement = document.getElementById(depthId);
+            
+            console.log(`🔍 Updating tunnel for ${{digger}}: tunnel=${{tunnelId}}, fox=${{foxId}}, depth=${{depthId}}, answers=${{correctAnswers}}`);
+            console.log(`Elements found: tunnel=${{!!tunnelElement}}, fox=${{!!foxElement}}, depth=${{!!depthElement}}`);
+            
+            if (!tunnelElement || !depthElement) return;
+            
+            // Create depth perspective - tunnel shaft stays same size but shows depth visually
+            const visualTunnelHeight = 180; // Fixed tunnel shaft height
+            const actualDepth = correctAnswers; // Real depth for comparison
+            
+            // Calculate depth levels for visual effects
+            const depthLevel = Math.floor(actualDepth / 5); // Every 5 answers = deeper level
+            const isDeep = actualDepth > 10;
+            const isVeryDeep = actualDepth > 20;
+            
+            // Update tunnel with fixed height but depth effects
+            tunnelElement.style.height = visualTunnelHeight + 'px';
+            
+            // Apply depth effects and classes to show how deep we've gone
+            tunnelElement.classList.remove('depth-shallow', 'depth-deep', 'depth-very-deep');
+            
+            if (isVeryDeep) {{
+                // Very deep: dark tunnel with glowing fox
+                tunnelElement.classList.add('depth-very-deep');
+                tunnelElement.style.background = 'linear-gradient(to bottom, #2c3e50 0%, #1a1a1a 70%, #000000 100%)';
+                tunnelElement.style.boxShadow = 'inset 0 0 30px rgba(0,0,0,0.8), 0 0 20px rgba(255,215,0,0.3)';
+                if (foxElement) foxElement.style.filter = 'drop-shadow(0 0 8px #ffd700)';
+            }} else if (isDeep) {{
+                // Deep: darker tunnel
+                tunnelElement.classList.add('depth-deep');
+                tunnelElement.style.background = 'linear-gradient(to bottom, #34495e 0%, #2c3e50 100%)';
+                tunnelElement.style.boxShadow = 'inset 0 0 25px rgba(0,0,0,0.6)';
+                if (foxElement) foxElement.style.filter = 'drop-shadow(0 0 4px #ffa500)';
+            }} else {{
+                // Shallow: normal tunnel
+                tunnelElement.classList.add('depth-shallow');
+                tunnelElement.style.background = '#4a4a4a';
+                tunnelElement.style.boxShadow = 'inset 0 0 20px rgba(0,0,0,0.5)';
+                if (foxElement) foxElement.style.filter = 'none';
+            }}
+            
+            // Show depth counter with visual scaling
+            depthElement.textContent = correctAnswers;
+            if (isVeryDeep) {{
+                depthElement.style.background = 'rgba(255, 215, 0, 0.95)';
+                depthElement.style.color = '#000';
+                depthElement.style.transform = 'translateX(-50%) scale(1.1)';
+                depthElement.style.boxShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
+            }} else if (isDeep) {{
+                depthElement.style.background = 'rgba(255, 152, 0, 0.9)';
+                depthElement.style.transform = 'translateX(-50%) scale(1.05)';
+            }}
+            
+            // Add realistic digging animation to fox
+            if (foxElement) {{
+                // Stop any existing animations
+                foxElement.classList.remove('digging', 'idle', 'foxDigDeep');
+                
+                // Add appropriate digging animation based on depth
+                if (isVeryDeep) {{
+                    foxElement.classList.add('foxDigDeep');
+                    setTimeout(() => {{
+                        foxElement.classList.remove('foxDigDeep');
+                        foxElement.classList.add('idle');
+                    }}, 800);
+                }} else {{
+                    foxElement.classList.add('digging');
+                    setTimeout(() => {{
+                        foxElement.classList.remove('digging');
+                        foxElement.classList.add('idle');
+                    }}, 600);
+                }}
+                
+                // Create dirt particles effect (more particles for deeper tunnels)
+                const particleCount = Math.min(5 + depthLevel, 15);
+                this.createDirtParticles(tunnelElement, particleCount);
+                
+                // Add screen shake for very deep digging
+                if (isVeryDeep) {{
+                    this.addScreenShake();
+                }}
+                
+                // Higher treasure chance for deeper tunnels! 
+                const treasureChance = Math.min(0.15 + (depthLevel * 0.05), 0.4); // Up to 40% for very deep
+                if (correctAnswers > 0 && Math.random() < treasureChance) {{
+                    this.foxFindsMemory(digger, correctAnswers, isVeryDeep);
+                }}
+            }}
+            
+            console.log(`🦊 ${{digger}} tunnel depth: ${{correctAnswers}} answers (Level ${{depthLevel}}, ${{isVeryDeep ? 'VERY DEEP' : isDeep ? 'DEEP' : 'SHALLOW'}})`)
+        }}
+        
+        addScreenShake() {{
+            // Subtle screen shake for deep digging
+            const container = document.querySelector('.race-track-section.tunnel-digging');
+            if (container) {{
+                container.style.animation = 'screenShake 0.4s ease-in-out';
+                setTimeout(() => {{
+                    container.style.animation = '';
+                }}, 400);
+            }}
+        }}
+        
+        initializeFoxes() {{
+            // Set all foxes to idle breathing animation initially
+            const foxes = ['player-fox', 'ai-fox-1', 'ai-fox-2'];
+            foxes.forEach(foxId => {{
+                const foxElement = document.getElementById(foxId);
+                if (foxElement) {{
+                    foxElement.classList.add('idle');
+                }}
+            }});
+        }}
+        
+        createDirtParticles(tunnelElement, particleCount = 5) {{
+            // Create flying dirt particles when digging (more for deeper tunnels)
+            for (let i = 0; i < particleCount; i++) {{
+                const particle = document.createElement('div');
+                particle.className = 'dirt-particle';
+                
+                // Random trajectory
+                const flyX = (Math.random() - 0.5) * 100;
+                const flyY = -30 - Math.random() * 40;
+                particle.style.setProperty('--fly-x', flyX + 'px');
+                particle.style.setProperty('--fly-y', flyY + 'px');
+                
+                // Position at tunnel opening
+                const rect = tunnelElement.getBoundingClientRect();
+                particle.style.left = (rect.left + rect.width / 2) + 'px';
+                particle.style.top = rect.top + 'px';
+                particle.style.position = 'fixed';
+                particle.style.zIndex = '100';
+                
+                document.body.appendChild(particle);
+                
+                // Remove after animation
+                setTimeout(() => {{
+                    if (particle.parentNode) {{
+                        particle.parentNode.removeChild(particle);
+                    }}
+                }}, 600);
+            }}
+        }}
+        
+        foxFindsMemory(digger, correctAnswers, isVeryDeep = false) {{
+            // Different treasures for different depths
+            const shallowTreasures = ['🟡', '🔶', '🟠', '🔸', '✨'];
+            const deepTreasures = ['💎', '⭐', '💰', '🏆', '🎯'];
+            const veryDeepTreasures = ['💎', '👑', '🏆', '⚡', '🌟', '🔥'];
+            
+            const shallowMemories = [
+                'Found a shiny pebble!',
+                'Discovered a small gem!',
+                'Unearthed a crystal!',
+                'Found a gold flake!'
+            ];
+            
+            const deepMemories = [
+                'Discovered an ancient coin!',
+                'Found a golden nugget!',
+                'Discovered buried treasure!',
+                'Unearthed a precious stone!',
+                'Discovered a lucky charm!'
+            ];
+            
+            const veryDeepMemories = [
+                'FOUND A LEGENDARY DIAMOND!',
+                'DISCOVERED ANCIENT TREASURE!',
+                'UNEARTHED A ROYAL CROWN!',
+                'FOUND THE ULTIMATE GEM!',
+                'DISCOVERED MAGICAL ARTIFACT!'
+            ];
+            
+            // Select appropriate treasure and memory based on depth
+            let treasures, memories;
+            if (isVeryDeep) {{
+                treasures = veryDeepTreasures;
+                memories = veryDeepMemories;
+            }} else if (correctAnswers > 10) {{
+                treasures = deepTreasures;
+                memories = deepMemories;
+            }} else {{
+                treasures = shallowTreasures;
+                memories = shallowMemories;
+            }}
+            
+            const treasure = treasures[Math.floor(Math.random() * treasures.length)];
+            const memory = memories[Math.floor(Math.random() * memories.length)];
+            
+            // Create floating treasure with depth-based effects
+            const treasureElement = document.createElement('div');
+            treasureElement.textContent = treasure;
+            const treasureSize = isVeryDeep ? '2rem' : correctAnswers > 10 ? '1.7rem' : '1.5rem';
+            const glowEffect = isVeryDeep ? 'filter: drop-shadow(0 0 10px #ffd700);' : '';
+            
+            treasureElement.style.cssText = `
+                position: fixed;
+                font-size: ${{treasureSize}};
+                z-index: 10000;
+                pointer-events: none;
+                animation: treasureFloat 2s ease-out forwards;
+                ${{glowEffect}}
+            `;
+            
+            // Position at tunnel
+            const tunnelElement = document.getElementById(`${{digger}}-tunnel`);
+            if (tunnelElement) {{
+                const rect = tunnelElement.getBoundingClientRect();
+                treasureElement.style.left = (rect.left + rect.width / 2) + 'px';
+                treasureElement.style.top = rect.top + 'px';
+                
+                document.body.appendChild(treasureElement);
+                
+                // Show discovery message
+                setTimeout(() => {{
+                    if (digger === 'player') {{
+                        this.showTreasureMessage(`🦊 ${{memory}}`);
+                        this.playSound('milestone', 0.25);
+                    }}
+                }}, 200);
+                
+                // Remove treasure element
+                setTimeout(() => {{
+                    if (treasureElement.parentNode) {{
+                        treasureElement.parentNode.removeChild(treasureElement);
+                    }}
+                }}, 2000);
+            }}
+        }}
+        
+        showTreasureMessage(message) {{
+            const treasureMsg = document.createElement('div');
+            treasureMsg.className = 'treasure-message';
+            treasureMsg.textContent = message;
+            treasureMsg.style.cssText = `
+                position: fixed;
+                top: 15%;
+                right: 20px;
+                background: rgba(255, 215, 0, 0.95);
+                color: #333;
+                padding: 12px 18px;
+                border-radius: 20px;
+                font-size: 0.9rem;
+                font-weight: 600;
+                box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+                z-index: 9999;
+                animation: treasureSlideIn 1.5s ease-out forwards;
+                max-width: 200px;
+                text-align: center;
+            `;
+            
+            document.body.appendChild(treasureMsg);
+            
+            // Remove after display
+            setTimeout(() => {{
+                if (treasureMsg.parentNode) {{
+                    treasureMsg.parentNode.removeChild(treasureMsg);
+                }}
+            }}, 1500);
+        }}
+        
         startAIRacers() {{
             if (this.aiUpdateInterval) {{
                 clearInterval(this.aiUpdateInterval);
@@ -10822,7 +11997,40 @@ def generate_web_flashcards(numbers, config, output_path):
                     ai.previousPosition = ai.position;
                     
                     // AI progress based on their speed and some randomness
-                    const baseProgress = ai.speed * (Math.random() * 0.8 + 0.6); // Some variance
+                    let baseProgress = ai.speed * (Math.random() * 0.8 + 0.6); // Some variance
+                    
+                    // Rubber band catchup system - AI speeds up when behind player
+                    const playerProgress = this.correctAnswers;
+                    const gapBehindPlayer = playerProgress - ai.position;
+                    
+                    if (gapBehindPlayer > 0) {{
+                        // AI is behind - apply catchup boost
+                        let catchupMultiplier = 1.0;
+                        
+                        if (gapBehindPlayer >= 8) {{
+                            catchupMultiplier = 2.5; // Massive catchup for big gaps
+                        }} else if (gapBehindPlayer >= 5) {{
+                            catchupMultiplier = 2.0; // Strong catchup for medium gaps
+                        }} else if (gapBehindPlayer >= 3) {{
+                            catchupMultiplier = 1.6; // Moderate catchup for small gaps
+                        }} else if (gapBehindPlayer >= 1) {{
+                            catchupMultiplier = 1.3; // Light catchup for tiny gaps
+                        }}
+                        
+                        // Apply the catchup boost
+                        baseProgress *= catchupMultiplier;
+                        
+                        // Add extra urgency if player is on a streak
+                        if (this.streak >= 5) {{
+                            baseProgress *= 1.3; // AI gets desperate when player is hot
+                        }}
+                        
+                        // Debug logging for catchup
+                        if (gapBehindPlayer >= 3 && this.totalQuestions % 3 === 0) {{
+                            console.log(`🏃 ${{ai.name}} Catchup: Gap=${{Math.round(gapBehindPlayer)}} Boost=${{Math.round(catchupMultiplier * 100)}}% Progress=${{Math.round(baseProgress * 100)/100}}`);
+                        }}
+                    }}
+                    
                     ai.position += baseProgress;
                     
                     // Calculate visual progress 
@@ -10842,7 +12050,26 @@ def generate_web_flashcards(numbers, config, output_path):
                     const aiElement = document.getElementById(ai.id);
                     
                     if (aiElement) {{
-                        aiElement.style.left = visualProgress + '%';
+                        if (this.style === 'survival') {{
+                            // Use circular positioning for survival mode and track laps
+                            const lapInfo = this.updateCircularPosition(aiElement, ai.position);
+                            
+                            // Update AI's lap count
+                            const previousLap = this.aiLaps.get(ai.id) || 0;
+                            if (lapInfo.lap > previousLap) {{
+                                this.aiLaps.set(ai.id, lapInfo.lap);
+                            }}
+                        }} else if (this.style === 'sprint') {{
+                            // Use tunnel digging for sprint mode
+                            const aiNumber = ai.id.includes('1') ? '1' : '2';
+                            const targetTunnel = `ai-tunnel-${{aiNumber}}`;
+                            const aiDepth = Math.floor(ai.position);
+                            console.log(`🦝 ${{ai.name}} (ID: ${{ai.id}}) digging tunnel ${{targetTunnel}} to depth ${{aiDepth}}`);
+                            this.updateTunnelDepth(targetTunnel, aiDepth);
+                        }} else {{
+                            // Use linear positioning for practice mode
+                            aiElement.style.left = visualProgress + '%';
+                        }}
                     }}
                     
                     // Check if AI wins - only for practice mode with finish line
@@ -10898,42 +12125,189 @@ def generate_web_flashcards(numbers, config, output_path):
             }}
         }}
         
-        playSound(type) {{
+        playSound(type, volume = 0.15) {{
             try {{
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
                 
                 if (type === 'correct') {{
-                    oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.2);
+                    // Classic 90s "power-up" sound - ascending beeps
+                    this.play90sSound(audioContext, [
+                        {{freq: 523, time: 0, duration: 0.08}},     // C5
+                        {{freq: 659, time: 0.08, duration: 0.08}},  // E5  
+                        {{freq: 784, time: 0.16, duration: 0.12}}   // G5
+                    ], volume, 'sawtooth');
+                    
                 }} else if (type === 'incorrect') {{
-                    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.3);
+                    // Classic arcade "error" sound - descending buzz
+                    this.play90sSound(audioContext, [
+                        {{freq: 400, time: 0, duration: 0.15}},
+                        {{freq: 300, time: 0.05, duration: 0.15}},
+                        {{freq: 200, time: 0.1, duration: 0.2}}
+                    ], volume * 0.8, 'square');
+                    
                 }} else if (type === 'timeout') {{
-                    oscillator.frequency.setValueAtTime(350, audioContext.currentTime);
+                    // Classic "time's up" alarm
+                    this.play90sSound(audioContext, [
+                        {{freq: 800, time: 0, duration: 0.1}},
+                        {{freq: 600, time: 0.1, duration: 0.1}},
+                        {{freq: 800, time: 0.2, duration: 0.1}},
+                        {{freq: 600, time: 0.3, duration: 0.15}}
+                    ], volume, 'square');
+                    
+                }} else if (type === 'countdown') {{
+                    // Classic arcade countdown beep
+                    this.play90sSound(audioContext, [
+                        {{freq: 800, time: 0, duration: 0.15}}
+                    ], volume * 0.6, 'sine');
+                    
+                }} else if (type === 'race_start') {{
+                    // Epic race start fanfare
+                    this.play90sSound(audioContext, [
+                        {{freq: 523, time: 0, duration: 0.1}},     // C5
+                        {{freq: 659, time: 0.1, duration: 0.1}},   // E5
+                        {{freq: 784, time: 0.2, duration: 0.1}},   // G5
+                        {{freq: 1046, time: 0.3, duration: 0.3}}   // C6 - triumphant!
+                    ], volume * 1.2, 'sawtooth');
+                    
                 }} else if (type === 'celebration') {{
-                    // Victory fanfare sound
-                    oscillator.frequency.setValueAtTime(523, audioContext.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(659, audioContext.currentTime + 0.2);
-                    oscillator.frequency.exponentialRampToValueAtTime(784, audioContext.currentTime + 0.4);
+                    // Classic victory fanfare - like completing a level
+                    this.play90sSound(audioContext, [
+                        {{freq: 523, time: 0, duration: 0.12}},    // C5
+                        {{freq: 659, time: 0.12, duration: 0.12}}, // E5
+                        {{freq: 784, time: 0.24, duration: 0.12}}, // G5
+                        {{freq: 1046, time: 0.36, duration: 0.24}}, // C6
+                        {{freq: 1318, time: 0.6, duration: 0.3}}   // E6 - epic finish!
+                    ], volume * 1.5, 'sawtooth');
+                    
+                }} else if (type === 'lap_celebration') {{
+                    // Radical "bonus achieved" sound
+                    this.play90sSound(audioContext, [
+                        {{freq: 1046, time: 0, duration: 0.08}},   // C6
+                        {{freq: 1318, time: 0.08, duration: 0.08}}, // E6
+                        {{freq: 1568, time: 0.16, duration: 0.08}}, // G6
+                        {{freq: 2093, time: 0.24, duration: 0.15}} // C7 - totally rad!
+                    ], volume * 1.3, 'sawtooth');
+                    
                 }} else if (type === 'gameOver') {{
-                    // Sad trombone sound
-                    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.5);
+                    // Classic "game over" descending tones
+                    this.play90sSound(audioContext, [
+                        {{freq: 400, time: 0, duration: 0.2}},
+                        {{freq: 350, time: 0.2, duration: 0.2}},
+                        {{freq: 300, time: 0.4, duration: 0.2}},
+                        {{freq: 250, time: 0.6, duration: 0.3}},
+                        {{freq: 200, time: 0.9, duration: 0.4}}
+                    ], volume, 'triangle');
+                    
+                }} else if (type === 'ai_turbo') {{
+                    // Sound when AI goes into turbo mode
+                    this.play90sSound(audioContext, [
+                        {{freq: 200, time: 0, duration: 0.05}},
+                        {{freq: 400, time: 0.05, duration: 0.05}},
+                        {{freq: 600, time: 0.1, duration: 0.05}},
+                        {{freq: 800, time: 0.15, duration: 0.1}}
+                    ], volume * 0.7, 'sawtooth');
+                    
+                }} else if (type === 'milestone') {{
+                    // Rad milestone sound - like collecting a power-up
+                    this.play90sSound(audioContext, [
+                        {{freq: 659, time: 0, duration: 0.1}},    // E5
+                        {{freq: 784, time: 0.1, duration: 0.1}},  // G5
+                        {{freq: 880, time: 0.2, duration: 0.1}},  // A5
+                        {{freq: 1046, time: 0.3, duration: 0.15}} // C6 - awesome!
+                    ], volume * 1.1, 'sawtooth');
+                    
+                }} else if (type === 'streak') {{
+                    // Epic streak sound - getting hot!
+                    this.play90sSound(audioContext, [
+                        {{freq: 880, time: 0, duration: 0.06}},   // A5
+                        {{freq: 1046, time: 0.06, duration: 0.06}}, // C6
+                        {{freq: 1318, time: 0.12, duration: 0.08}}, // E6
+                        {{freq: 1760, time: 0.2, duration: 0.1}}  // A6 - on fire!
+                    ], volume * 1.2, 'sawtooth');
+                    
+                }} else if (type === 'combo') {{
+                    // Gnarly combo sound - for rapid correct answers
+                    this.play90sSound(audioContext, [
+                        {{freq: 1046, time: 0, duration: 0.04}}, // C6
+                        {{freq: 1175, time: 0.04, duration: 0.04}}, // D6
+                        {{freq: 1318, time: 0.08, duration: 0.04}}, // E6
+                        {{freq: 1480, time: 0.12, duration: 0.06}} // F#6
+                    ], volume * 0.9, 'square');
+                    
+                }} else if (type === 'whoosh') {{
+                    // Cool whoosh sound for fast responses
+                    const whooshOsc = audioContext.createOscillator();
+                    const whooshGain = audioContext.createGain();
+                    const whooshFilter = audioContext.createBiquadFilter();
+                    
+                    whooshOsc.connect(whooshFilter);
+                    whooshFilter.connect(whooshGain);
+                    whooshGain.connect(audioContext.destination);
+                    
+                    whooshOsc.type = 'sawtooth';
+                    whooshFilter.type = 'highpass';
+                    whooshFilter.frequency.setValueAtTime(1000, audioContext.currentTime);
+                    whooshFilter.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.3);
+                    
+                    whooshOsc.frequency.setValueAtTime(400, audioContext.currentTime);
+                    whooshOsc.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.15);
+                    whooshOsc.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.3);
+                    
+                    whooshGain.gain.setValueAtTime(0, audioContext.currentTime);
+                    whooshGain.gain.exponentialRampToValueAtTime(volume * 0.6, audioContext.currentTime + 0.02);
+                    whooshGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+                    
+                    whooshOsc.start(audioContext.currentTime);
+                    whooshOsc.stop(audioContext.currentTime + 0.3);
                 }}
                 
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.3);
             }} catch (e) {{
-                console.log('Web Audio not supported');
+                console.log('🎵 Web Audio not supported - missing out on rad 90s sounds!');
             }}
+        }}
+        
+        play90sSound(audioContext, notes, volume = 0.15, waveType = 'sine') {{
+            notes.forEach(note => {{
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                const filterNode = audioContext.createBiquadFilter();
+                
+                // Create that classic 90s arcade sound chain
+                oscillator.connect(filterNode);
+                filterNode.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Set wave type for that retro flavor
+                oscillator.type = waveType;
+                
+                // Add some 90s-style filtering
+                filterNode.type = 'lowpass';
+                filterNode.frequency.setValueAtTime(2000, audioContext.currentTime + note.time);
+                filterNode.Q.setValueAtTime(1, audioContext.currentTime + note.time);
+                
+                // Set frequency and add vibrato for that classic arcade wobble
+                oscillator.frequency.setValueAtTime(note.freq, audioContext.currentTime + note.time);
+                if (waveType === 'sawtooth' || waveType === 'square') {{
+                    // Add slight vibrato for extra 90s flavor
+                    oscillator.frequency.exponentialRampToValueAtTime(
+                        note.freq * 1.02, 
+                        audioContext.currentTime + note.time + note.duration * 0.5
+                    );
+                    oscillator.frequency.exponentialRampToValueAtTime(
+                        note.freq, 
+                        audioContext.currentTime + note.time + note.duration
+                    );
+                }}
+                
+                // Classic arcade envelope - quick attack, moderate decay
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime + note.time);
+                gainNode.gain.exponentialRampToValueAtTime(volume, audioContext.currentTime + note.time + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(volume * 0.7, audioContext.currentTime + note.time + note.duration * 0.7);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + note.time + note.duration);
+                
+                oscillator.start(audioContext.currentTime + note.time);
+                oscillator.stop(audioContext.currentTime + note.time + note.duration);
+            }});
         }}
         
         // ===== ADAPTIVE DIFFICULTY SYSTEM =====
@@ -10983,6 +12357,9 @@ def generate_web_flashcards(numbers, config, output_path):
             
             // Adapt overall difficulty
             this.adaptGlobalDifficulty();
+            
+            // Adapt AI speeds based on player performance
+            this.adaptAISpeeds();
             
             // Store updated data
             this.difficultyTracker.pairPerformance.set(pairKey, pairData);
@@ -11045,6 +12422,139 @@ def generate_web_flashcards(numbers, config, output_path):
                 Math.max(1, tracker.pairPerformance.size);
             
             tracker.difficultyLevel = Math.round(avgDifficulty);
+        }}
+        
+        adaptAISpeeds() {{
+            // Don't adapt during learning mode - let player get comfortable first
+            if (this.difficultyTracker.learningMode) return;
+            
+            const tracker = this.difficultyTracker;
+            const playerSuccessRate = this.calculateRecentSuccessRate();
+            const avgResponseTime = this.calculateAverageResponseTime();
+            
+            // Base speed multipliers for each race mode
+            let baseSpeedMultiplier;
+            switch (this.style) {{
+                case 'practice': baseSpeedMultiplier = 0.7; break;
+                case 'sprint': baseSpeedMultiplier = 0.9; break; 
+                case 'survival': baseSpeedMultiplier = this.speedMultiplier * (this.survivalMultiplier || 1.0); break;
+                default: baseSpeedMultiplier = 0.7;
+            }}
+            
+            // Calculate adaptive multiplier based on player performance
+            let adaptiveMultiplier = 1.0;
+            
+            // Success rate factor (0.5x to 1.8x based on 40%-95% success rate)
+            if (playerSuccessRate > 0.85) {{
+                adaptiveMultiplier *= 1.6; // Player doing great - speed up AI significantly
+            }} else if (playerSuccessRate > 0.75) {{
+                adaptiveMultiplier *= 1.3; // Player doing well - speed up AI moderately  
+            }} else if (playerSuccessRate > 0.60) {{
+                adaptiveMultiplier *= 1.0; // Player doing okay - keep AI at base speed
+            }} else if (playerSuccessRate > 0.45) {{
+                adaptiveMultiplier *= 0.75; // Player struggling - slow down AI
+            }} else {{
+                adaptiveMultiplier *= 0.5; // Player really struggling - significantly slow AI
+            }}
+            
+            // Response time factor - faster players get faster AI
+            if (avgResponseTime < 1500) {{
+                adaptiveMultiplier *= 1.2; // Very fast player
+            }} else if (avgResponseTime < 2500) {{
+                adaptiveMultiplier *= 1.1; // Fast player
+            }} else if (avgResponseTime > 4000) {{
+                adaptiveMultiplier *= 0.9; // Slow player
+            }}
+            
+            // Streak bonus - players on hot streaks get more challenge
+            if (this.streak >= 8) {{
+                adaptiveMultiplier *= 1.3;
+            }} else if (this.streak >= 5) {{
+                adaptiveMultiplier *= 1.15;
+            }}
+            
+            // Apply bounds to prevent extreme values
+            adaptiveMultiplier = Math.max(0.3, Math.min(2.0, adaptiveMultiplier));
+            
+            // Update AI speeds with adaptive multiplier
+            const finalSpeedMultiplier = baseSpeedMultiplier * adaptiveMultiplier;
+            
+            if (this.aiRacers && this.aiRacers.length >= 2) {{
+                // Swift AI (more aggressive, varies more)
+                this.aiRacers[0].speed = 0.25 * finalSpeedMultiplier;
+                // Math Bot (more consistent, varies less)
+                this.aiRacers[1].speed = 0.15 * finalSpeedMultiplier;
+                
+                // Show player feedback for significant AI speed changes
+                this.showAIAdaptationFeedback(adaptiveMultiplier, playerSuccessRate);
+                
+                // Debug logging for AI adaptation
+                if (this.totalQuestions % 5 === 0) {{
+                    console.log('🤖 AI Speed Adaptation:', {{
+                        playerSuccessRate: Math.round(playerSuccessRate * 100) + '%',
+                        avgResponseTime: Math.round(avgResponseTime) + 'ms',
+                        streak: this.streak,
+                        adaptiveMultiplier: Math.round(adaptiveMultiplier * 100) / 100,
+                        swiftAISpeed: Math.round(this.aiRacers[0].speed * 1000) / 1000,
+                        mathBotSpeed: Math.round(this.aiRacers[1].speed * 1000) / 1000
+                    }});
+                }}
+            }}
+        }}
+        
+        calculateRecentSuccessRate() {{
+            // Calculate success rate from last 10 questions, or all questions if less than 10
+            const recentQuestions = Math.min(10, this.totalQuestions);
+            if (recentQuestions === 0) return 0.5; // Default for first question
+            
+            // Use global tracking for recent performance
+            const recentCorrect = Math.max(0, this.correctAnswers - Math.max(0, this.totalQuestions - recentQuestions));
+            return recentCorrect / recentQuestions;
+        }}
+        
+        calculateAverageResponseTime() {{
+            // Calculate average response time from recent pair performance data
+            const recentPairs = Array.from(this.difficultyTracker.pairPerformance.values())
+                .filter(data => data.attempts >= 1)
+                .slice(-5); // Last 5 different pairs encountered
+            
+            if (recentPairs.length === 0) return 3000; // Default for learning mode
+            
+            const totalTime = recentPairs.reduce((sum, data) => sum + data.avgTime, 0);
+            return totalTime / recentPairs.length;
+        }}
+        
+        showAIAdaptationFeedback(adaptiveMultiplier, playerSuccessRate) {{
+            // Only show feedback for significant changes and not too frequently
+            if (this.totalQuestions < 8) return; // Wait for some data
+            if (this.totalQuestions % 7 !== 0) return; // Don't show too often
+            
+            let message = '';
+            let type = '';
+            
+            if (adaptiveMultiplier >= 1.4) {{
+                const messages = [
+                    "🔥 You're crushing it! AI opponents stepping up their game!",
+                    "⚡ Impressive speed! The AI is now in competition mode!",
+                    "🚀 You're on fire! AI racers are feeling the pressure!",
+                    "💪 Amazing performance! AI opponents are now racing seriously!"
+                ];
+                message = messages[Math.floor(Math.random() * messages.length)];
+                type = 'ai_speeding_up';
+            }} else if (adaptiveMultiplier <= 0.7) {{
+                const messages = [
+                    "🤗 Take your time! AI opponents are giving you space to learn!",
+                    "📚 Learning mode active! AI racers are being more patient!",
+                    "🎯 No rush! AI opponents are matching your learning pace!",
+                    "🌟 Perfect! AI racers are helping you build confidence!"
+                ];
+                message = messages[Math.floor(Math.random() * messages.length)];
+                type = 'ai_slowing_down';
+            }}
+            
+            if (message) {{
+                this.showAdaptiveFeedback(message, type);
+            }}
         }}
         
         getAdaptiveTimeLimit() {{
@@ -11342,6 +12852,14 @@ def generate_web_flashcards(numbers, config, output_path):
         }});
     }});
     </script>
+    
+    <!-- Race Countdown Overlay -->
+    <div id="race-countdown" class="race-countdown">
+        <div class="countdown-display">
+            <div id="countdown-text" class="countdown-text">Get Ready!</div>
+            <div id="countdown-number" class="countdown-number">3</div>
+        </div>
+    </div>
     
     <!-- Particle Effects Container -->
     <div id="particle-container" class="particle-container"></div>
