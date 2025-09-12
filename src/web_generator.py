@@ -10828,6 +10828,16 @@ def generate_web_flashcards(numbers, config, output_path):
             document.getElementById('complement-game').style.display = 'block';
             document.getElementById('complement-header').style.display = 'flex';
             
+            // Hide timer bar for train variant - use pressure system instead
+            const timerSection = document.querySelector('.timer-section');
+            if (timerSection) {{
+                if (this.style === 'sprint') {{
+                    timerSection.style.display = 'none';
+                }} else {{
+                    timerSection.style.display = 'block';
+                }}
+            }}
+            
             // Configure visualization based on game style
             const raceTrackSection = document.querySelector('.race-track-section');
             const raceTrack = document.querySelector('.race-track');
