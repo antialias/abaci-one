@@ -4609,55 +4609,6 @@ def generate_web_flashcards(numbers, config, output_path):
             margin-bottom: 30px;
         }}
         
-        /* Floating Speech Bubble for Train Mode */
-        .floating-math-display {{
-            position: absolute;
-            background: rgba(255, 255, 255, 0.95);
-            border: 3px solid #4a90e2;
-            border-radius: 20px;
-            padding: 15px 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            z-index: 100;
-            display: none;
-            min-width: 200px;
-            text-align: center;
-            color: #333;
-            font-weight: 600;
-            transform: translate(-50%, -100%);
-            pointer-events: none;
-            animation: floatGently 3s ease-in-out infinite;
-        }}
-        
-        .floating-math-display::after {{
-            content: '';
-            position: absolute;
-            bottom: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-top: 15px solid #4a90e2;
-        }}
-        
-        .floating-math-display::before {{
-            content: '';
-            position: absolute;
-            bottom: -12px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 12px solid transparent;
-            border-right: 12px solid transparent;
-            border-top: 12px solid rgba(255, 255, 255, 0.95);
-        }}
-        
-        @keyframes floatGently {{
-            0%, 100% {{ transform: translate(-50%, -100%) translateY(0px); }}
-            50% {{ transform: translate(-50%, -100%) translateY(-5px); }}
-        }}
         
         /* Coal Spilling Animation */
         @keyframes coalSpill {{
@@ -5491,7 +5442,7 @@ def generate_web_flashcards(numbers, config, output_path):
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) scaleX(-1);
             font-size: 1.8rem;
             z-index: 6;
         }}
@@ -7732,10 +7683,6 @@ def generate_web_flashcards(numbers, config, output_path):
                                     <div class="steam-effect" style="animation-delay: 0.6s;"></div>
                                 </div>
                                 
-                                <!-- Floating Math Display Speech Bubble -->
-                                <div class="floating-math-display" id="floating-math-display">
-                                    <div class="floating-challenge-text" id="floating-challenge-text">Find the complement of 7</div>
-                                </div>
                                 
                                 <!-- Coal shoveler -->
                                 <div class="coal-shoveler" id="coal-worker">👷</div>
@@ -11298,6 +11245,11 @@ def generate_web_flashcards(numbers, config, output_path):
             document.getElementById('input-feedback').textContent = '';
             document.getElementById('visual-complement').style.display = 'none';
             
+            // Reset display moving flag for new question
+            if (document.querySelector('.route-path')) {{
+                this.isDisplayMoving = false;
+            }}
+            
             // Handle display switching for train mode (static → floating after delay)
             this.handleDisplaySwitching();
             
@@ -13559,8 +13511,14 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
         
         handleRouteCompletion() {{
-            // Celebrate completing the current route!
+            // Prevent multiple calls during transition
+            if (this.isRouteSwitching) return;
+            this.isRouteSwitching = true;
+            
             console.log(`🎉 ROUTE COMPLETED! Moving to new world (Route ${{this.currentRoute + 1}})`);
+            
+            // CRITICAL: Clean up all timers to prevent chaos
+            this.cleanupRouteTimers();
             
             // Play celebration whistle
             this.playSound('train_whistle', 0.6);
@@ -13585,6 +13543,35 @@ def generate_web_flashcards(numbers, config, output_path):
             setTimeout(() => {{
                 this.generateNewRoute();
             }}, 3000);
+        }}
+        
+        cleanupRouteTimers() {{
+            // Stop all running intervals to prevent chaos during route transition
+            console.log('🧹 Cleaning up route timers...');
+            
+            if (this.momentumDecayInterval) {{
+                clearInterval(this.momentumDecayInterval);
+                this.momentumDecayInterval = null;
+            }}
+            
+            if (this.trainMovementInterval) {{
+                clearInterval(this.trainMovementInterval);
+                this.trainMovementInterval = null;
+            }}
+            
+            if (this.displaySwitchTimeout) {{
+                clearTimeout(this.displaySwitchTimeout);
+                this.displaySwitchTimeout = null;
+            }}
+            
+            // Clear any auto-submit timeouts
+            this.clearAutoSubmitTimeout();
+            
+            // Clear celebration timeouts to prevent overlapping
+            if (this.celebrationTimeout) {{
+                clearTimeout(this.celebrationTimeout);
+                this.celebrationTimeout = null;
+            }}
         }}
         
         showRouteCompletionCelebration() {{
@@ -13632,12 +13619,49 @@ def generate_web_flashcards(numbers, config, output_path):
             // Generate new passengers for this route
             this.generatePassengers();
             
+            // Restart essential timers for new route
+            this.restartRouteTimers();
+            
             console.log(`🌟 NEW ROUTE GENERATED! Welcome to Route ${{this.currentRoute}} - ${{this.getRouteThemeName()}}`);
             
             // Play "all aboard" whistle
             setTimeout(() => {{
                 this.playSound('train_whistle', 0.4);
             }}, 500);
+            
+            // Clear route switching flag
+            this.isRouteSwitching = false;
+        }}
+        
+        restartRouteTimers() {{
+            // Restart momentum decay interval
+            this.momentumDecayInterval = setInterval(() => {{
+                if (this.momentum > 0) {{
+                    const decayConfig = this.getMomentumConfig();
+                    const timeSinceLastCoal = (Date.now() - this.lastCorrectAnswerTime) / 1000;
+                    
+                    // Base decay rate increases with higher speeds, but adjusted for skill level
+                    let decayRate = this.momentum > 75 ? decayConfig.highSpeedDecay : 
+                                   this.momentum > 50 ? decayConfig.mediumSpeedDecay : 
+                                   decayConfig.lowSpeedDecay;
+                    
+                    // Exponential penalty after coal starvation threshold
+                    if (timeSinceLastCoal > decayConfig.starvationThreshold) {{
+                        const starvationMultiplier = Math.pow(1.5, Math.floor(timeSinceLastCoal / decayConfig.starvationThreshold));
+                        decayRate *= Math.min(starvationMultiplier, 10); // Cap at 10x
+                    }}
+                    
+                    this.momentum = Math.max(0, this.momentum - decayRate);
+                    this.updateMomentumDisplay();
+                }}
+            }}, 1000);
+            
+            // Restart train movement interval
+            this.trainMovementInterval = setInterval(() => {{
+                this.updateTrainPosition();
+            }}, 200); // Update train position 5 times per second for smooth movement
+            
+            console.log('🔄 Route timers restarted successfully');
         }}
         
         updateRouteProgressDisplay() {{
@@ -13709,10 +13733,43 @@ def generate_web_flashcards(numbers, config, output_path):
             locomotive.style.transformOrigin = 'center center';
             
             // Update floating math display position to follow the train
-            const floatingDisplay = document.getElementById('floating-math-display');
-            if (floatingDisplay) {{
-                floatingDisplay.style.left = point.x + 'px';
-                floatingDisplay.style.top = (point.y - 50) + 'px'; // Position above the train
+            // Position floating math display above the train if it's moving with the train
+            if (this.isDisplayMoving) {{
+                let floatingMath = document.getElementById('floating-train-math');
+                if (!floatingMath) {{
+                    // Create floating math display
+                    floatingMath = document.createElement('div');
+                    floatingMath.id = 'floating-train-math';
+                    floatingMath.style.cssText = `
+                        position: absolute;
+                        background: rgba(255, 255, 255, 0.95);
+                        border: 2px solid #4a90e2;
+                        border-radius: 15px;
+                        padding: 10px 15px;
+                        font-size: 1.4rem;
+                        font-weight: bold;
+                        color: #333;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                        z-index: 20;
+                        pointer-events: none;
+                        white-space: nowrap;
+                        transform: translate(-50%, -100%);
+                    `;
+                    document.body.appendChild(floatingMath);
+                }}
+                
+                // Update position and content
+                const challengeNum = document.getElementById('challenge-number').textContent;
+                const targetNum = document.getElementById('target-number').textContent;
+                floatingMath.textContent = `${{challengeNum}} + ? = ${{targetNum}}`;
+                floatingMath.style.left = point.x + 'px';
+                floatingMath.style.top = (point.y - 30) + 'px';
+            }} else {{
+                // Remove floating display when not following train
+                const floatingMath = document.getElementById('floating-train-math');
+                if (floatingMath) {{
+                    floatingMath.remove();
+                }}
             }}
             
             console.log(`🚂 Train at position ${{Math.round(this.trainPosition)}}% - ${{Math.round(point.x)}}, ${{Math.round(point.y)}} (on track)`);
@@ -13754,34 +13811,14 @@ def generate_web_flashcards(numbers, config, output_path):
             // Only apply display switching logic in Lightning Sprint train mode
             if (!document.querySelector('.route-path')) return;
             
-            // Find the specific challenge text elements, not the entire complement display
-            const challengePrompt = document.querySelector('.complement-display .challenge-prompt');
-            const floatingDisplay = document.getElementById('floating-math-display');
-            const floatingText = document.getElementById('floating-challenge-text');
-            
-            if (!challengePrompt || !floatingDisplay || !floatingText) return;
-            
-            // Clear any existing timeout
+            // After 2 seconds, enable train-following mode for math display
             if (this.displaySwitchTimeout) {{
                 clearTimeout(this.displaySwitchTimeout);
             }}
             
-            // Initially show static challenge prompt and hide floating display
-            challengePrompt.style.opacity = '1';
-            floatingDisplay.style.display = 'none';
-            
-            // Update floating display content to match current question
-            const challengeNumber = document.getElementById('challenge-number');
-            const targetNumber = document.getElementById('target-number');
-            if (challengeNumber && targetNumber) {{
-                floatingText.textContent = `Find the complement of ${{challengeNumber.textContent}} (target: ${{targetNumber.textContent}})`;
-            }}
-            
-            // After 2 seconds, fade out static prompt and show floating display
             this.displaySwitchTimeout = setTimeout(() => {{
-                challengePrompt.style.opacity = '0.2'; // Fade but keep visible for reference
-                floatingDisplay.style.display = 'block';
-                console.log('🎈 Switched to floating math display following train');
+                this.isDisplayMoving = true;
+                console.log('🎈 Math problem now following train');
             }}, 2000);
         }}
         
@@ -13841,9 +13878,20 @@ def generate_web_flashcards(numbers, config, output_path):
                 }}
             }} else if (trainStuck) {{
                 // Train is truly stuck - but this should be very rare now with adaptive difficulty
-                const progress = Math.round(this.trainPosition);
-                console.log(`🚂 Train considered stuck: momentum=${{this.momentum}}, position=${{this.trainPosition}}%, answers=${{this.correctAnswers}}, time since coal=${{Math.round(timeSinceLastCoal)}}s`);
-                this.endRace(`🚂 Train ran out of steam at ${{progress}}% of the journey! Try an easier difficulty mode for more forgiving momentum!`);
+                const isEndlessSteamJourney = document.querySelector('.route-path');
+                
+                if (isEndlessSteamJourney) {{
+                    console.log('🚂 Train stuck detected but endless mode active - generating momentum boost');
+                    // In endless mode, give a momentum boost instead of ending
+                    this.momentum = Math.max(10, this.momentum + 5); // Small boost to keep going
+                    this.updateMomentumDisplay();
+                    return;
+                }} else {{
+                    // Regular race mode - end normally
+                    const progress = Math.round(this.trainPosition);
+                    console.log(`🚂 Train considered stuck: momentum=${{this.momentum}}, position=${{this.trainPosition}}%, answers=${{this.correctAnswers}}, time since coal=${{Math.round(timeSinceLastCoal)}}s`);
+                    this.endRace(`🚂 Train ran out of steam at ${{progress}}% of the journey! Try an easier difficulty mode for more forgiving momentum!`);
+                }}
             }}
             
             // If all passengers delivered but train hasn't finished route, generate more passengers!
@@ -14122,11 +14170,23 @@ def generate_web_flashcards(numbers, config, output_path):
             if (winner === 'player') {{
                 this.playSound('celebration');
                 setTimeout(() => {{
+                    // Check if we're in endless steam journey mode
+                    const isEndlessSteamJourney = document.querySelector('.route-path');
+                    if (isEndlessSteamJourney) {{
+                        console.log('🚂 AI race completion detected but endless mode active - route progression will handle');
+                        return;
+                    }}
                     this.endRace();
                 }}, 1500);
             }} else {{
                 this.playSound('gameOver');
                 setTimeout(() => {{
+                    // Check if we're in endless steam journey mode
+                    const isEndlessSteamJourney = document.querySelector('.route-path');
+                    if (isEndlessSteamJourney) {{
+                        console.log('🚂 AI race completion detected but endless mode active - route progression will handle');
+                        return;
+                    }}
                     // Show "try again" modal or end game
                     alert(`🏁 ${{aiName}} wins the race! You got ${{this.correctAnswers}}/${{this.raceGoal}} correct. Great effort!`);
                     this.endRace();
