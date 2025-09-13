@@ -5477,7 +5477,8 @@ def generate_web_flashcards(numbers, config, output_path):
             border-radius: 8px;
             border: 2px solid #1a252f;
             box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-            transition: all 0.3s ease;
+            transition: transform 0.2s ease-out, left 0.1s linear, top 0.1s linear;
+            transform-origin: center center;
             z-index: 5;
             /* Start at the beginning of the route */
             left: 50px;
@@ -13691,8 +13692,21 @@ def generate_web_flashcards(numbers, config, output_path):
             // Get the exact point on the curved path
             const point = routePath.getPointAtLength(targetLength);
             
+            // Calculate train rotation based on path direction
+            const lookAheadDistance = Math.min(5, pathLength - targetLength); // Look 5 units ahead (or to end)
+            const nextPoint = routePath.getPointAtLength(targetLength + lookAheadDistance);
+            
+            // Calculate angle between current point and next point
+            const deltaX = nextPoint.x - point.x;
+            const deltaY = nextPoint.y - point.y;
+            const angleRadians = Math.atan2(deltaY, deltaX);
+            const angleDegrees = angleRadians * (180 / Math.PI);
+            
+            // Apply position and rotation to locomotive
             locomotive.style.left = point.x + 'px';
             locomotive.style.top = point.y + 'px';
+            locomotive.style.transform = `translate(-50%, -50%) rotate(${{angleDegrees}}deg)`;
+            locomotive.style.transformOrigin = 'center center';
             
             // Update floating math display position to follow the train
             const floatingDisplay = document.getElementById('floating-math-display');
