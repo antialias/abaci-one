@@ -13741,21 +13741,23 @@ def generate_web_flashcards(numbers, config, output_path):
                     floatingMath = document.createElement('div');
                     floatingMath.id = 'floating-train-math';
                     floatingMath.style.cssText = `
-                        position: absolute;
-                        background: rgba(255, 255, 255, 0.95);
-                        border: 2px solid #4a90e2;
+                        position: fixed;
+                        background: rgba(255, 255, 255, 0.98);
+                        border: 3px solid #ff6b6b;
                         border-radius: 15px;
-                        padding: 10px 15px;
-                        font-size: 1.4rem;
+                        padding: 12px 18px;
+                        font-size: 1.6rem;
                         font-weight: bold;
                         color: #333;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                        z-index: 20;
+                        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+                        z-index: 9999;
                         pointer-events: none;
                         white-space: nowrap;
-                        transform: translate(-50%, -100%);
+                        transform: translate(-50%, -120%);
+                        font-family: Arial, sans-serif;
                     `;
                     document.body.appendChild(floatingMath);
+                    console.log('🎈 Created floating math display');
                 }}
                 
                 // Update position and content
@@ -13764,11 +13766,13 @@ def generate_web_flashcards(numbers, config, output_path):
                 floatingMath.textContent = `${{challengeNum}} + ? = ${{targetNum}}`;
                 floatingMath.style.left = point.x + 'px';
                 floatingMath.style.top = (point.y - 30) + 'px';
+                console.log(`🎈 Floating math at (${{point.x}}, ${{point.y - 30}}): ${{floatingMath.textContent}}`);
             }} else {{
                 // Remove floating display when not following train
                 const floatingMath = document.getElementById('floating-train-math');
                 if (floatingMath) {{
                     floatingMath.remove();
+                    console.log('🎈 Removed floating math display');
                 }}
             }}
             
@@ -13818,7 +13822,7 @@ def generate_web_flashcards(numbers, config, output_path):
             
             this.displaySwitchTimeout = setTimeout(() => {{
                 this.isDisplayMoving = true;
-                console.log('🎈 Math problem now following train');
+                console.log('🎈 Display switching activated - math will follow train in 2 seconds');
             }}, 2000);
         }}
         
