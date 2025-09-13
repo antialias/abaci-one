@@ -5447,6 +5447,23 @@ def generate_web_flashcards(numbers, config, output_path):
             z-index: 6;
         }}
         
+        .train-math-display {{
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #4a90e2;
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 7;
+            pointer-events: none;
+            white-space: nowrap;
+            transform: translate(-50%, -100%);
+            font-family: 'Arial', sans-serif;
+        }}
+        
         /* Steam Pressure Instrument Panel */
         .instrument-panel {{
             position: absolute;
@@ -13733,46 +13750,36 @@ def generate_web_flashcards(numbers, config, output_path):
             locomotive.style.transformOrigin = 'center center';
             
             // Update floating math display position to follow the train
-            // Position floating math display above the train if it's moving with the train
+            // Position train math display above the locomotive if following mode is active
             if (this.isDisplayMoving) {{
-                let floatingMath = document.getElementById('floating-train-math');
-                if (!floatingMath) {{
-                    // Create floating math display
-                    floatingMath = document.createElement('div');
-                    floatingMath.id = 'floating-train-math';
-                    floatingMath.style.cssText = `
-                        position: fixed;
-                        background: rgba(255, 255, 255, 0.98);
-                        border: 3px solid #ff6b6b;
-                        border-radius: 15px;
-                        padding: 12px 18px;
-                        font-size: 1.6rem;
-                        font-weight: bold;
-                        color: #333;
-                        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-                        z-index: 9999;
-                        pointer-events: none;
-                        white-space: nowrap;
-                        transform: translate(-50%, -120%);
-                        font-family: Arial, sans-serif;
-                    `;
-                    document.body.appendChild(floatingMath);
-                    console.log('🎈 Created floating math display');
+                let trainMath = document.getElementById('train-math-display');
+                if (!trainMath) {{
+                    // Create train math display element
+                    trainMath = document.createElement('div');
+                    trainMath.id = 'train-math-display';
+                    trainMath.className = 'train-math-display';
+                    
+                    // Add to same container as the train
+                    const journeyContainer = document.querySelector('.journey-container');
+                    if (journeyContainer) {{
+                        journeyContainer.appendChild(trainMath);
+                        console.log('🎈 Created train math display attached to train');
+                    }}
                 }}
                 
-                // Update position and content
-                const challengeNum = document.getElementById('challenge-number').textContent;
-                const targetNum = document.getElementById('target-number').textContent;
-                floatingMath.textContent = `${{challengeNum}} + ? = ${{targetNum}}`;
-                floatingMath.style.left = point.x + 'px';
-                floatingMath.style.top = (point.y - 30) + 'px';
-                console.log(`🎈 Floating math at (${{point.x}}, ${{point.y - 30}}): ${{floatingMath.textContent}}`);
+                if (trainMath) {{
+                    // Update content and position
+                    const challengeNum = document.getElementById('challenge-number').textContent;
+                    const targetNum = document.getElementById('target-number').textContent;
+                    trainMath.textContent = `${{challengeNum}} + ? = ${{targetNum}}`;
+                    trainMath.style.left = point.x + 'px';
+                    trainMath.style.top = (point.y - 60) + 'px';
+                }}
             }} else {{
-                // Remove floating display when not following train
-                const floatingMath = document.getElementById('floating-train-math');
-                if (floatingMath) {{
-                    floatingMath.remove();
-                    console.log('🎈 Removed floating math display');
+                // Remove train math display when not following train
+                const trainMath = document.getElementById('train-math-display');
+                if (trainMath) {{
+                    trainMath.remove();
                 }}
             }}
             
