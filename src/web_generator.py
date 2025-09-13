@@ -4700,6 +4700,81 @@ def generate_web_flashcards(numbers, config, output_path):
             }}
         }}
         
+        /* Route Completion Celebration */
+        .route-completion-celebration {{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: celebrationFadeIn 0.5s ease-out;
+        }}
+        
+        .celebration-content {{
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+            color: #333;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(255, 215, 0, 0.3);
+            animation: celebrationBounce 0.8s ease-out;
+            max-width: 400px;
+        }}
+        
+        .celebration-content h2 {{
+            margin: 0 0 15px 0;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }}
+        
+        .celebration-content p {{
+            margin: 0 0 20px 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }}
+        
+        .progress-stats {{
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }}
+        
+        .progress-stats div {{
+            background: rgba(255, 255, 255, 0.3);
+            padding: 8px 12px;
+            border-radius: 8px;
+        }}
+        
+        @keyframes celebrationFadeIn {{
+            from {{
+                opacity: 0;
+            }}
+            to {{
+                opacity: 1;
+            }}
+        }}
+        
+        @keyframes celebrationBounce {{
+            0% {{
+                transform: scale(0.3) rotate(-10deg);
+                opacity: 0;
+            }}
+            50% {{
+                transform: scale(1.05) rotate(2deg);
+            }}
+            100% {{
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }}
+        }}
+        
         
         .equation-visual {{
             display: flex;
@@ -5349,6 +5424,15 @@ def generate_web_flashcards(numbers, config, output_path):
             letter-spacing: 1px;
             z-index: 10;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            text-align: center;
+        }}
+        
+        .route-progress {{
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 4px;
+            opacity: 0.8;
+            letter-spacing: 0.5px;
         }}
         
         /* Winding Route Map */
@@ -7628,7 +7712,10 @@ def generate_web_flashcards(numbers, config, output_path):
                         
                         <!-- Steam Train Journey (for Sprint Mode) -->
                         <div class="route-map" style="display: none;" id="steam-journey">
-                            <div class="steam-journey-header">🚂 STEAM TRAIN JOURNEY 🚂</div>
+                            <div class="steam-journey-header">
+                                🚂 STEAM TRAIN JOURNEY 🚂
+                                <div class="route-progress" id="route-progress">Route 1 - Mountain Valley Express</div>
+                            </div>
                             <div class="time-display" id="time-of-day">Dawn - 5:30 AM</div>
                             
                             <!-- SVG Route Path -->
@@ -13452,7 +13539,12 @@ def generate_web_flashcards(numbers, config, output_path):
             if (this.momentum > 0) {{
                 const speed = this.momentum / 100; // Convert to 0-1 speed multiplier
                 this.trainPosition += speed * 0.4; // Continuous movement rate (called 5x per second)
-                this.trainPosition = Math.min(100, this.trainPosition);
+                
+                // Check for route completion before capping at 100
+                if (this.trainPosition >= 100) {{
+                    this.handleRouteCompletion();
+                    return; // Route completion will reset position
+                }}
                 
                 // Update visual position along the path
                 this.updateTrainVisualization();
@@ -13462,6 +13554,125 @@ def generate_web_flashcards(numbers, config, output_path):
                 
                 // Check for station arrivals and passenger deliveries
                 this.checkStationArrivals();
+            }}
+        }}
+        
+        handleRouteCompletion() {{
+            // Celebrate completing the current route!
+            console.log(`🎉 ROUTE COMPLETED! Moving to new world (Route ${{this.currentRoute + 1}})`);
+            
+            // Play celebration whistle
+            this.playSound('train_whistle', 0.6);
+            setTimeout(() => {{
+                this.playSound('celebration', 0.4);
+            }}, 800);
+            
+            // Initialize route progression if not set
+            if (!this.currentRoute) {{
+                this.currentRoute = 1;
+                this.totalDistance = 0;
+            }}
+            
+            // Track progress
+            this.currentRoute++;
+            this.totalDistance += 100; // Each route is 100 units
+            
+            // Show route completion celebration
+            this.showRouteCompletionCelebration();
+            
+            // Generate new route after brief celebration
+            setTimeout(() => {{
+                this.generateNewRoute();
+            }}, 3000);
+        }}
+        
+        showRouteCompletionCelebration() {{
+            // Create celebration overlay
+            const routeContainer = document.querySelector('.route-path');
+            if (!routeContainer) return;
+            
+            const celebration = document.createElement('div');
+            celebration.className = 'route-completion-celebration';
+            celebration.innerHTML = `
+                <div class="celebration-content">
+                    <h2>🎉 ROUTE COMPLETED! 🎉</h2>
+                    <p>Excellent work! Moving to Route ${{this.currentRoute}}</p>
+                    <div class="progress-stats">
+                        <div>📍 Total Distance: ${{this.totalDistance}} km</div>
+                        <div>🚂 Routes Completed: ${{this.currentRoute - 1}}</div>
+                        <div>✅ Correct Answers: ${{this.correctAnswers}}</div>
+                    </div>
+                </div>
+            `;
+            
+            routeContainer.appendChild(celebration);
+            
+            // Remove celebration after animation
+            setTimeout(() => {{
+                if (celebration.parentNode) {{
+                    celebration.parentNode.removeChild(celebration);
+                }}
+            }}, 2800);
+        }}
+        
+        generateNewRoute() {{
+            // Reset train position to start of new route
+            this.trainPosition = 0;
+            
+            // Generate new track layout with different theme
+            this.generateDynamicTrack();
+            
+            // Update route theme/scenery
+            this.updateRouteTheme();
+            
+            // Update route progress display
+            this.updateRouteProgressDisplay();
+            
+            // Generate new passengers for this route
+            this.generatePassengers();
+            
+            console.log(`🌟 NEW ROUTE GENERATED! Welcome to Route ${{this.currentRoute}} - ${{this.getRouteThemeName()}}`);
+            
+            // Play "all aboard" whistle
+            setTimeout(() => {{
+                this.playSound('train_whistle', 0.4);
+            }}, 500);
+        }}
+        
+        updateRouteProgressDisplay() {{
+            const routeProgressEl = document.getElementById('route-progress');
+            if (routeProgressEl) {{
+                const routeName = this.getRouteThemeName();
+                routeProgressEl.textContent = `Route ${{this.currentRoute}} - ${{routeName}}`;
+            }}
+        }}
+        
+        getRouteThemeName() {{
+            const themes = [
+                "Mountain Valley Express",
+                "Coastal Railway Adventure", 
+                "Forest Journey Trail",
+                "Desert Oasis Line",
+                "Prairie Meadow Route",
+                "Riverside Scenic Railway",
+                "Highland Express",
+                "Lakeside Loop",
+                "Countryside Connection",
+                "Sunset Mesa Line"
+            ];
+            return themes[(this.currentRoute - 1) % themes.length] || "Mystery Route";
+        }}
+        
+        updateRouteTheme() {{
+            // Cycle through different time-of-day themes for variety
+            const themes = ['dawn', 'morning', 'midday', 'afternoon', 'dusk'];
+            const themeIndex = (this.currentRoute - 1) % themes.length;
+            const themeName = themes[themeIndex];
+            
+            const steamJourney = document.querySelector('.race-track-section.steam-journey');
+            if (steamJourney) {{
+                steamJourney.style.setProperty('--sky-gradient', `var(--${{themeName}}-gradient)`);
+                console.log(`🎨 Route theme set to: ${{themeName}}`);
             }}
         }}
         
