@@ -4592,6 +4592,97 @@ def generate_web_flashcards(numbers, config, output_path):
             margin-bottom: 30px;
         }}
         
+        /* Floating Speech Bubble for Train Mode */
+        .floating-math-display {{
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            border: 3px solid #4a90e2;
+            border-radius: 20px;
+            padding: 15px 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            display: none;
+            min-width: 200px;
+            text-align: center;
+            color: #333;
+            font-weight: 600;
+            transform: translate(-50%, -100%);
+            pointer-events: none;
+            animation: floatGently 3s ease-in-out infinite;
+        }}
+        
+        .floating-math-display::after {{
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 15px solid #4a90e2;
+        }}
+        
+        .floating-math-display::before {{
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 12px solid rgba(255, 255, 255, 0.95);
+        }}
+        
+        @keyframes floatGently {{
+            0%, 100% {{ transform: translate(-50%, -100%) translateY(0px); }}
+            50% {{ transform: translate(-50%, -100%) translateY(-5px); }}
+        }}
+        
+        /* Coal Spilling Animation */
+        @keyframes coalSpill {{
+            0% {{
+                transform: translateY(0px) rotate(0deg);
+                opacity: 1;
+            }}
+            50% {{
+                transform: translateY(40px) translateX(20px) rotate(180deg);
+                opacity: 0.8;
+            }}
+            100% {{
+                transform: translateY(80px) translateX(40px) rotate(360deg);
+                opacity: 0;
+            }}
+        }}
+        
+        .coal-chunk {{
+            color: #2c2c2c;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }}
+        
+        /* Pressure Alarm Animation */
+        @keyframes pressureAlarm {{
+            0%, 100% {{
+                filter: brightness(1) saturate(1);
+                transform: scale(1);
+            }}
+            25% {{
+                filter: brightness(1.5) saturate(2) hue-rotate(0deg);
+                transform: scale(1.05);
+            }}
+            50% {{
+                filter: brightness(2) saturate(3) hue-rotate(15deg);
+                transform: scale(1.1);
+            }}
+            75% {{
+                filter: brightness(1.5) saturate(2) hue-rotate(-15deg);
+                transform: scale(1.05);
+            }}
+        }}
+        
         
         .equation-visual {{
             display: flex;
@@ -5301,6 +5392,81 @@ def generate_web_flashcards(numbers, config, output_path):
             transform: translate(-50%, -50%);
             font-size: 1.8rem;
             z-index: 6;
+        }}
+        
+        /* Steam Pressure Instrument Panel */
+        .instrument-panel {{
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 10;
+        }}
+        
+        .panel-frame {{
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: 3px solid #5a67d8;
+            border-radius: 20px;
+            padding: 18px;
+            box-shadow: 
+                0 10px 30px rgba(102, 126, 234, 0.3),
+                inset 0 2px 8px rgba(255, 255, 255, 0.2);
+            position: relative;
+        }}
+        
+        .panel-background {{
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            right: 6px;
+            bottom: 6px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }}
+        
+        .pressure-gauge-container {{
+            position: relative;
+            z-index: 2;
+            text-align: center;
+        }}
+        
+        .pressure-gauge {{
+            display: block;
+            margin: 0 auto 10px auto;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }}
+        
+        .gauge-background {{
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+        }}
+        
+        .gauge-progress {{
+            transition: stroke-dashoffset 0.5s ease-out;
+            filter: drop-shadow(0 0 8px rgba(231, 76, 60, 0.6));
+        }}
+        
+        .pressure-needle {{
+            transition: transform 0.5s ease-out;
+            transform-origin: 100px 100px;
+        }}
+        
+        .gauge-title {{
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }}
+        
+        .gauge-value {{
+            color: #ffd700;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 0.9rem;
+            font-weight: 800;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }}
         
         /* Momentum gauge */
@@ -7451,10 +7617,7 @@ def generate_web_flashcards(numbers, config, output_path):
                             <!-- SVG Route Path -->
                             <div class="route-path">
                                 <svg viewBox="0 0 800 600" width="800" height="600">
-                                    <!-- Background route -->
-                                    <path class="train-route-bg" d="M 50 300 Q 200 200 300 250 Q 400 300 500 200 Q 600 100 700 150 Q 750 200 750 300" />
-                                    <!-- Foreground route -->
-                                    <path class="train-route" d="M 50 300 Q 200 200 300 250 Q 400 300 500 200 Q 600 100 700 150 Q 750 200 750 300" />
+                                    <!-- Dynamic track elements will be generated here -->
                                 </svg>
                                 
                                 <!-- Train locomotive -->
@@ -7462,6 +7625,11 @@ def generate_web_flashcards(numbers, config, output_path):
                                     <div class="steam-effect"></div>
                                     <div class="steam-effect" style="animation-delay: 0.3s;"></div>
                                     <div class="steam-effect" style="animation-delay: 0.6s;"></div>
+                                </div>
+                                
+                                <!-- Floating Math Display Speech Bubble -->
+                                <div class="floating-math-display" id="floating-math-display">
+                                    <div class="floating-challenge-text" id="floating-challenge-text">Find the complement of 7</div>
                                 </div>
                                 
                                 <!-- Coal shoveler -->
@@ -7483,12 +7651,58 @@ def generate_web_flashcards(numbers, config, output_path):
                                 <div class="landmark tree" style="left: 680px; top: 170px;">🌳</div>
                             </div>
                             
-                            <!-- Momentum gauge -->
-                            <div class="momentum-display">
-                                <div class="momentum-gauge">
-                                    <div class="momentum-bar" id="momentum-bar"></div>
+                            <!-- Steam Pressure Instrument Panel -->
+                            <div class="instrument-panel">
+                                <div class="panel-frame">
+                                    <div class="panel-background"></div>
+                                    <div class="pressure-gauge-container">
+                                        <svg class="pressure-gauge" viewBox="0 0 200 120" width="160" height="96">
+                                            <!-- Gauge background arc -->
+                                            <path class="gauge-background" 
+                                                  d="M 20 100 A 80 80 0 0 1 180 100" 
+                                                  fill="none" 
+                                                  stroke="rgba(255, 255, 255, 0.3)" 
+                                                  stroke-width="12"/>
+                                            
+                                            <!-- Gauge progress arc -->
+                                            <path class="gauge-progress" 
+                                                  id="pressure-arc"
+                                                  d="M 20 100 A 80 80 0 0 1 180 100" 
+                                                  fill="none" 
+                                                  stroke="#ff6b6b" 
+                                                  stroke-width="10"
+                                                  stroke-dasharray="251.2"
+                                                  stroke-dashoffset="251.2"/>
+                                            
+                                            <!-- Gauge tick marks -->
+                                            <g class="gauge-ticks">
+                                                <line x1="100" y1="20" x2="100" y2="30" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+                                                <line x1="150" y1="35" x2="145" y2="43" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+                                                <line x1="180" y1="100" x2="170" y2="100" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+                                                <line x1="150" y1="165" x2="145" y2="157" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+                                                <line x1="50" y1="35" x2="55" y2="43" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+                                                <line x1="20" y1="100" x2="30" y2="100" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+                                                <line x1="50" y1="165" x2="55" y2="157" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+                                            </g>
+                                            
+                                            <!-- Pressure indicator needle (narrow isosceles triangle) -->
+                                            <g class="pressure-needle" id="pressure-needle" transform="rotate(0 100 100)">
+                                                <polygon points="100,95 98,100 102,100" 
+                                                         fill="#ffd700" 
+                                                         stroke="#ffed4e" 
+                                                         stroke-width="1"/>
+                                                <circle cx="100" cy="100" r="6" fill="rgba(255,255,255,0.9)" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+                                            </g>
+                                            
+                                            <!-- Gauge labels -->
+                                            <text x="30" y="105" fill="rgba(255,255,255,0.7)" font-family="sans-serif" font-size="10" font-weight="600">0</text>
+                                            <text x="95" y="25" fill="rgba(255,255,255,0.7)" font-family="sans-serif" font-size="10" font-weight="600">50</text>
+                                            <text x="175" y="105" fill="rgba(255,255,255,0.7)" font-family="sans-serif" font-size="10" font-weight="600">100</text>
+                                        </svg>
+                                        <div class="gauge-title">🚂 Steam Power</div>
+                                        <div class="gauge-value" id="pressure-value">0 PSI</div>
+                                    </div>
                                 </div>
-                                <div class="momentum-label" id="momentum-label">Momentum: 0%</div>
                             </div>
                             
                             <!-- Passenger car -->
@@ -10979,6 +11193,9 @@ def generate_web_flashcards(numbers, config, output_path):
             document.getElementById('input-feedback').textContent = '';
             document.getElementById('visual-complement').style.display = 'none';
             
+            // Handle display switching for train mode (static → floating after delay)
+            this.handleDisplaySwitching();
+            
             // Show persistent learning mode feedback
             if (this.difficultyTracker.learningMode && this.totalQuestions % 3 === 0) {{
                 const pairKey = `${{this.currentNumber}}_${{this.correctAnswer}}_${{this.targetSum}}`;
@@ -12048,8 +12265,216 @@ def generate_web_flashcards(numbers, config, output_path):
                 this.lapCelebrationCooldown.clear();
             }}
             
+            // Generate dynamic track for train variant
+            if (this.style === 'sprint') {{
+                this.generateDynamicTrack();
+            }}
+            
             // Start AI movement
             this.startAIRacers();
+        }}
+        
+        generateDynamicTrack() {{
+            // Generate a dynamic curved railroad track with interesting topology
+            const svg = document.querySelector('.route-path svg');
+            if (!svg) return;
+            
+            // Clear existing track elements
+            svg.innerHTML = '';
+            
+            // Generate track waypoints with some randomness for variety
+            const waypoints = this.generateTrackWaypoints();
+            
+            // Generate smooth curved path through waypoints
+            const pathData = this.generateSmoothPath(waypoints);
+            
+            // Create main reference path for train positioning
+            const referencePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            referencePath.setAttribute('class', 'train-route');
+            referencePath.setAttribute('d', pathData);
+            referencePath.setAttribute('fill', 'none');
+            referencePath.setAttribute('stroke', 'transparent');
+            referencePath.setAttribute('stroke-width', '2');
+            
+            // Create railroad bed/ballast
+            const ballast = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            ballast.setAttribute('class', 'railroad-ballast');
+            ballast.setAttribute('d', pathData);
+            ballast.setAttribute('fill', 'none');
+            ballast.setAttribute('stroke', '#8B7355');
+            ballast.setAttribute('stroke-width', '24');
+            ballast.setAttribute('stroke-linecap', 'round');
+            
+            // Create containers for ties and rails
+            const tiesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            tiesGroup.setAttribute('class', 'railroad-ties');
+            
+            const railsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            railsGroup.setAttribute('class', 'railroad-rails');
+            
+            // Add elements to SVG in correct order
+            svg.appendChild(ballast);
+            svg.appendChild(tiesGroup);
+            svg.appendChild(railsGroup); 
+            svg.appendChild(referencePath);
+            
+            // Generate ties and rails properly
+            this.generateRailroadTiesAndRails();
+            
+            console.log('🛤️ Generated dynamic curved railroad track with proper rail construction');
+        }}
+        
+        generateTrackWaypoints() {{
+            // Create interesting waypoints for a scenic railroad journey
+            const waypoints = [
+                {{ x: 50, y: 300 }},   // Start at depot
+                {{ x: 150, y: 220 }},  // Climb into hills
+                {{ x: 280, y: 180 }},  // Mountain pass
+                {{ x: 420, y: 240 }},  // Descent to valley
+                {{ x: 550, y: 160 }},  // Bridge over canyon
+                {{ x: 680, y: 200 }},  // Rolling hills
+                {{ x: 750, y: 280 }}   // Arrive at destination
+            ];
+            
+            // Add some controlled randomness for variety (but keep it playable)
+            return waypoints.map((point, index) => {{
+                if (index === 0 || index === waypoints.length - 1) {{
+                    return point; // Keep start/end points fixed
+                }}
+                
+                return {{
+                    x: point.x + (Math.random() - 0.5) * 30,
+                    y: point.y + (Math.random() - 0.5) * 40
+                }};
+            }});
+        }}
+        
+        generateSmoothPath(waypoints) {{
+            // Generate smooth cubic bezier curves through waypoints
+            if (waypoints.length < 2) return '';
+            
+            let pathData = `M ${{waypoints[0].x}} ${{waypoints[0].y}}`;
+            
+            for (let i = 1; i < waypoints.length; i++) {{
+                const current = waypoints[i];
+                const previous = waypoints[i - 1];
+                
+                // Calculate control points for smooth curves
+                const dx = current.x - previous.x;
+                const dy = current.y - previous.y;
+                
+                const cp1x = previous.x + dx * 0.3;
+                const cp1y = previous.y + dy * 0.2;
+                const cp2x = current.x - dx * 0.3;
+                const cp2y = current.y - dy * 0.2;
+                
+                pathData += ` C ${{cp1x}} ${{cp1y}}, ${{cp2x}} ${{cp2y}}, ${{current.x}} ${{current.y}}`;
+            }}
+            
+            return pathData;
+        }}
+        
+        offsetPath(pathData, offset) {{
+            // Simplified path offset - in a full implementation would use proper path offsetting
+            // For now, just offset the waypoints and regenerate
+            const points = this.extractPointsFromPath(pathData);
+            const offsetPoints = points.map(point => ({{
+                x: point.x + (Math.random() - 0.5) * 2, // Slight randomness
+                y: point.y + offset
+            }}));
+            
+            return this.generateSmoothPath(offsetPoints);
+        }}
+        
+        extractPointsFromPath(pathData) {{
+            // Extract key points from path data (simplified)
+            const matches = pathData.match(/(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/g);
+            if (!matches) return [];
+            
+            return matches.map(match => {{
+                const [x, y] = match.split(/\s+/).map(Number);
+                return {{ x, y }};
+            }});
+        }}
+        
+        generateRailroadTiesAndRails() {{
+            // Generate railroad properly: ties first, then rails connecting the tie ends
+            const tiesContainer = document.querySelector('.railroad-ties');
+            const railsContainer = document.querySelector('.railroad-rails');
+            const routePath = document.querySelector('.train-route');
+            
+            if (!tiesContainer || !railsContainer || !routePath) return;
+            
+            // Clear existing elements
+            tiesContainer.innerHTML = '';
+            railsContainer.innerHTML = '';
+            
+            const pathLength = routePath.getTotalLength();
+            const tieSpacing = 12; // Distance between ties
+            const tieCount = Math.floor(pathLength / tieSpacing);
+            const gaugeWidth = 15; // Standard gauge (tie extends 15px each side)
+            
+            const leftRailPoints = [];
+            const rightRailPoints = [];
+            
+            // Generate ties and collect rail points
+            for (let i = 0; i < tieCount; i++) {{
+                const distance = i * tieSpacing;
+                const point = routePath.getPointAtLength(distance);
+                
+                // Calculate perpendicular angle for tie orientation
+                const nextDistance = Math.min(distance + 2, pathLength);
+                const nextPoint = routePath.getPointAtLength(nextDistance);
+                const angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x);
+                const perpAngle = angle + Math.PI / 2;
+                
+                // Calculate tie end points
+                const leftX = point.x + Math.cos(perpAngle) * gaugeWidth;
+                const leftY = point.y + Math.sin(perpAngle) * gaugeWidth;
+                const rightX = point.x - Math.cos(perpAngle) * gaugeWidth;
+                const rightY = point.y - Math.sin(perpAngle) * gaugeWidth;
+                
+                // Create railroad tie
+                const tie = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                tie.setAttribute('x1', leftX);
+                tie.setAttribute('y1', leftY);
+                tie.setAttribute('x2', rightX);
+                tie.setAttribute('y2', rightY);
+                tie.setAttribute('stroke', '#654321');
+                tie.setAttribute('stroke-width', '3');
+                tie.setAttribute('stroke-linecap', 'round');
+                tie.setAttribute('opacity', '0.8');
+                
+                tiesContainer.appendChild(tie);
+                
+                // Collect points for rails
+                leftRailPoints.push(`${{leftX}},${{leftY}}`);
+                rightRailPoints.push(`${{rightX}},${{rightY}}`);
+            }}
+            
+            // Create left rail by connecting left ends of ties
+            if (leftRailPoints.length > 1) {{
+                const leftRail = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                leftRail.setAttribute('points', leftRailPoints.join(' '));
+                leftRail.setAttribute('fill', 'none');
+                leftRail.setAttribute('stroke', '#C0C0C0');
+                leftRail.setAttribute('stroke-width', '3');
+                leftRail.setAttribute('stroke-linecap', 'round');
+                railsContainer.appendChild(leftRail);
+            }}
+            
+            // Create right rail by connecting right ends of ties
+            if (rightRailPoints.length > 1) {{
+                const rightRail = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                rightRail.setAttribute('points', rightRailPoints.join(' '));
+                rightRail.setAttribute('fill', 'none');
+                rightRail.setAttribute('stroke', '#C0C0C0');
+                rightRail.setAttribute('stroke-width', '3');
+                rightRail.setAttribute('stroke-linecap', 'round');
+                railsContainer.appendChild(rightRail);
+            }}
+            
+            console.log(`🛤️ Generated ${{tieCount}} ties and connected rails properly`);
         }}
         
         updatePlayerRace(isCorrectAnswer = true) {{
@@ -12611,6 +13036,40 @@ def generate_web_flashcards(numbers, config, output_path):
                 
                 momentumLabel.textContent = `Momentum: ${{Math.round(this.momentum)}}% - ${{status}}`;
             }}
+            
+            // Update pressure gauge
+            this.updatePressureGauge();
+        }}
+        
+        updatePressureGauge() {{
+            const pressureArc = document.getElementById('pressure-arc');
+            const pressureNeedle = document.getElementById('pressure-needle');
+            const pressureValue = document.getElementById('pressure-value');
+            
+            if (pressureArc && pressureNeedle && pressureValue) {{
+                // Convert momentum (0-100) to gauge values
+                const pressure = Math.round(this.momentum);
+                const psi = Math.round(pressure * 1.5); // Scale to 0-150 PSI range
+                
+                // Update arc progress (circumference is ~251.2 pixels)
+                const circumference = 251.2;
+                const offset = circumference - (pressure / 100) * circumference;
+                pressureArc.style.strokeDashoffset = offset;
+                
+                // Update needle rotation (-90 to +90 degrees for half-circle)
+                const rotation = -90 + (pressure / 100) * 180;
+                pressureNeedle.style.transform = `rotate(${{rotation}}deg)`;
+                
+                // Update pressure value display
+                pressureValue.textContent = `${{psi}} PSI`;
+                
+                // Change gauge color based on pressure (playful colors)
+                let gaugeColor = '#ff6b6b'; // Coral red for low pressure
+                if (pressure > 70) gaugeColor = '#4ecdc4'; // Turquoise for high pressure  
+                else if (pressure > 40) gaugeColor = '#feca57'; // Sunny yellow for medium pressure
+                
+                pressureArc.style.stroke = gaugeColor;
+            }}
         }}
         
         generatePassengers() {{
@@ -12869,14 +13328,86 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
 
         loseMomentum() {{
-            // Called when player gets wrong answer or times out - loses momentum due to friction
-            const config = this.getMomentumConfig();
-            const currentPenalty = config.wrongAnswerPenalty;
-            this.momentum = Math.max(0, this.momentum - currentPenalty);
-            this.updateMomentumDisplay();
+            // Called when player gets wrong answer or times out - DRAMATIC CONSEQUENCES!
+            // Wrong answers cause complete momentum loss and coal spilling
+            const previousMomentum = this.momentum;
+            this.momentum = 0; // Complete momentum loss for wrong answers!
             
-            console.log(`🚂 [${{this.timeoutSetting}}] Train losing steam! Lost ${{currentPenalty}}% momentum, now: ${{this.momentum}}%`);
-            this.playSound('incorrect');
+            // Trigger dramatic coal spilling animation
+            this.triggerCoalSpilling();
+            
+            // Update displays
+            this.updateMomentumDisplay();
+            this.updatePressureGauge();
+            
+            console.log(`💥 COAL SPILLING! Train momentum dropped from ${{previousMomentum}}% to 0% (DRAMATIC CONSEQUENCES)`);
+            
+            // Play coal spilling sound with multiple chunks
+            this.playCoalSpillingSounds();
+        }}
+        
+        triggerCoalSpilling() {{
+            // Create dramatic coal spilling visual effects
+            const routeContainer = document.querySelector('.route-path');
+            if (!routeContainer) return;
+            
+            // Get train position for coal spilling location
+            const locomotive = document.getElementById('train-position');
+            if (!locomotive) return;
+            
+            const trainRect = locomotive.getBoundingClientRect();
+            const containerRect = routeContainer.getBoundingClientRect();
+            
+            // Create multiple coal chunks that spill from the train
+            for (let i = 0; i < 8; i++) {{
+                const coalChunk = document.createElement('div');
+                coalChunk.className = 'coal-chunk';
+                coalChunk.textContent = '⬛';
+                coalChunk.style.position = 'absolute';
+                coalChunk.style.fontSize = '1.2rem';
+                coalChunk.style.zIndex = '50';
+                coalChunk.style.pointerEvents = 'none';
+                
+                // Start position near the train
+                const startX = (trainRect.left - containerRect.left) + (Math.random() - 0.5) * 30;
+                const startY = (trainRect.top - containerRect.top) + (Math.random() - 0.5) * 20;
+                coalChunk.style.left = startX + 'px';
+                coalChunk.style.top = startY + 'px';
+                
+                // Add dramatic spilling animation
+                coalChunk.style.animation = `coalSpill ${{0.8 + Math.random() * 0.4}}s ease-out forwards`;
+                coalChunk.style.animationDelay = `${{i * 0.1}}s`;
+                
+                routeContainer.appendChild(coalChunk);
+                
+                // Remove chunk after animation
+                setTimeout(() => {{
+                    if (coalChunk.parentNode) {{
+                        coalChunk.parentNode.removeChild(coalChunk);
+                    }}
+                }}, 1500 + (i * 100));
+            }}
+            
+            // Flash pressure gauge red to show dramatic failure
+            const pressureGauge = document.querySelector('.pressure-gauge-container');
+            if (pressureGauge) {{
+                pressureGauge.style.animation = 'pressureAlarm 0.8s ease-in-out';
+                setTimeout(() => {{
+                    pressureGauge.style.animation = '';
+                }}, 800);
+            }}
+        }}
+        
+        playCoalSpillingSounds() {{
+            // Play multiple coal chunk falling sounds in sequence
+            const sounds = ['incorrect', 'timeout']; // Using available sound types
+            sounds.forEach((sound, index) => {{
+                setTimeout(() => {{
+                    this.playSound(sound);
+                }}, index * 200); // Staggered sound effects
+            }});
+            
+            console.log('🔊 Playing coal spilling sound effects');
         }}
         
         updateTrainPosition() {{
@@ -12912,7 +13443,48 @@ def generate_web_flashcards(numbers, config, output_path):
             locomotive.style.left = point.x + 'px';
             locomotive.style.top = point.y + 'px';
             
+            // Update floating math display position to follow the train
+            const floatingDisplay = document.getElementById('floating-math-display');
+            if (floatingDisplay) {{
+                floatingDisplay.style.left = point.x + 'px';
+                floatingDisplay.style.top = (point.y - 50) + 'px'; // Position above the train
+            }}
+            
             console.log(`🚂 Train at position ${{Math.round(this.trainPosition)}}% - ${{Math.round(point.x)}}, ${{Math.round(point.y)}} (on track)`);
+        }}
+        
+        handleDisplaySwitching() {{
+            // Only apply display switching logic in Lightning Sprint train mode
+            if (!document.querySelector('.route-path')) return;
+            
+            const staticDisplay = document.querySelector('.complement-display');
+            const floatingDisplay = document.getElementById('floating-math-display');
+            const floatingText = document.getElementById('floating-challenge-text');
+            
+            if (!staticDisplay || !floatingDisplay || !floatingText) return;
+            
+            // Clear any existing timeout
+            if (this.displaySwitchTimeout) {{
+                clearTimeout(this.displaySwitchTimeout);
+            }}
+            
+            // Initially show static display and hide floating display
+            staticDisplay.style.display = 'block';
+            floatingDisplay.style.display = 'none';
+            
+            // Update floating display content to match current question
+            const challengeNumber = document.getElementById('challenge-number');
+            const targetNumber = document.getElementById('target-number');
+            if (challengeNumber && targetNumber) {{
+                floatingText.textContent = `Find the complement of ${{challengeNumber.textContent}} (target: ${{targetNumber.textContent}})`;
+            }}
+            
+            // After 2 seconds, switch to floating display that follows the train
+            this.displaySwitchTimeout = setTimeout(() => {{
+                staticDisplay.style.display = 'none';
+                floatingDisplay.style.display = 'block';
+                console.log('🎈 Switched to floating math display following train');
+            }}, 2000);
         }}
         
         checkStationArrivals() {{
