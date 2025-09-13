@@ -333,6 +333,23 @@ def generate_web_flashcards(numbers, config, output_path):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Soroban Flashcards</title>
     <style>
+        /* CSS @property declarations for smooth gradient transitions */
+        @property --sky-gradient {{
+            syntax: '<image>';
+            inherits: false;
+            initial-value: linear-gradient(135deg, #ffb347 0%, #ffcc5c 50%, #87ceeb 100%);
+        }}
+        
+        /* Time-of-day gradient definitions */
+        :root {{
+            --dawn-gradient: linear-gradient(135deg, #ffb347 0%, #ffcc5c 30%, #87ceeb 70%, #98d8e8 100%);
+            --morning-gradient: linear-gradient(135deg, #87ceeb 0%, #98d8e8 30%, #b6e2ff 70%, #cce7ff 100%);
+            --midday-gradient: linear-gradient(135deg, #87ceeb 0%, #a8d8ea 30%, #c7e2f7 70%, #e3f2fd 100%);
+            --afternoon-gradient: linear-gradient(135deg, #ffecd2 0%, #fcb69f 30%, #ff8a65 70%, #ff7043 100%);
+            --dusk-gradient: linear-gradient(135deg, #ff8a65 0%, #ff7043 30%, #8e44ad 70%, #5b2c87 100%);
+            --night-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 30%, #1a252f 70%, #0f1419 100%);
+        }}
+
         body {{
             font-family: {font_family}, sans-serif;
             margin: 0;
@@ -5073,14 +5090,14 @@ def generate_web_flashcards(numbers, config, output_path):
         
         /* Steam Train Journey Visualization for Sprint Mode */
         .race-track-section.steam-journey {{
-            /* Dynamic sky gradient based on time of day */
+            /* Dynamic sky gradient based on time of day with smooth transitions */
             background: var(--sky-gradient, var(--dawn-gradient));
+            transition: --sky-gradient 3s ease-in-out, background 2s ease-out;
             padding: 20px;
             height: 400px;
             max-height: 400px;
             position: relative;
             overflow: hidden;
-            transition: background 2s ease-out;
         }}
         
         
@@ -13144,6 +13161,22 @@ def generate_web_flashcards(numbers, config, output_path):
             // Update time of day
             this.updateTimeOfDay();
             
+            // Play train whistle for celebrations and milestones
+            if (this.streak >= 5 && this.streak % 3 === 0) {{
+                // Major milestone - play train whistle
+                setTimeout(() => {{
+                    this.playSound('train_whistle', 0.4);
+                }}, 200);
+                console.log(`🚂💨 TOOT TOOT! Milestone whistle for streak of ${{this.streak}}!`);
+            }} else if (this.momentum >= 90) {{
+                // High momentum celebration - occasional whistle
+                if (Math.random() < 0.3) {{
+                    setTimeout(() => {{
+                        this.playSound('train_whistle', 0.25);
+                    }}, 150);
+                }}
+            }}
+            
             this.playSound('correct');
         }}
         
@@ -13399,15 +13432,19 @@ def generate_web_flashcards(numbers, config, output_path):
         }}
         
         playCoalSpillingSounds() {{
-            // Play multiple coal chunk falling sounds in sequence
-            const sounds = ['incorrect', 'timeout']; // Using available sound types
-            sounds.forEach((sound, index) => {{
+            // Play realistic coal chunk falling sounds
+            for (let i = 0; i < 4; i++) {{
                 setTimeout(() => {{
-                    this.playSound(sound);
-                }}, index * 200); // Staggered sound effects
-            }});
+                    this.playSound('coal_spill', 0.3);
+                }}, i * 150); // Staggered coal chunks falling
+            }}
             
-            console.log('🔊 Playing coal spilling sound effects');
+            // Add a final "clatter" with incorrect sound
+            setTimeout(() => {{
+                this.playSound('incorrect', 0.2);
+            }}, 600);
+            
+            console.log('🔊 Playing realistic coal spilling sound effects');
         }}
         
         updateTrainPosition() {{
@@ -13419,6 +13456,9 @@ def generate_web_flashcards(numbers, config, output_path):
                 
                 // Update visual position along the path
                 this.updateTrainVisualization();
+                
+                // Play momentum-based train sounds (chuffing varies with speed)
+                this.updateMomentumBasedAudio(speed);
                 
                 // Check for station arrivals and passenger deliveries
                 this.checkStationArrivals();
@@ -13451,6 +13491,38 @@ def generate_web_flashcards(numbers, config, output_path):
             }}
             
             console.log(`🚂 Train at position ${{Math.round(this.trainPosition)}}% - ${{Math.round(point.x)}}, ${{Math.round(point.y)}} (on track)`);
+        }}
+        
+        updateMomentumBasedAudio(speed) {{
+            // Play chuffing sounds that vary with train speed/momentum
+            const now = Date.now();
+            
+            // Initialize chuff timing if not set
+            if (!this.lastChuffTime) {{
+                this.lastChuffTime = now;
+                this.chuffInterval = 1000; // Start with slow chuffing
+            }}
+            
+            // Calculate chuffing interval based on speed (faster train = faster chuffs)
+            // Speed range: 0-1, chuff interval: 2000ms (slow) to 300ms (fast)
+            this.chuffInterval = Math.max(300, 2000 - (speed * 1700));
+            
+            // Play chuff sound if enough time has passed
+            if (now - this.lastChuffTime >= this.chuffInterval) {{
+                // Higher speed = louder chuffs (more steam)
+                const chuffVolume = Math.min(0.4, 0.1 + (speed * 0.3));
+                this.playSound('train_chuff', chuffVolume);
+                
+                // Occasionally add steam hiss at high speeds
+                if (speed > 0.7 && Math.random() < 0.3) {{
+                    setTimeout(() => {{
+                        this.playSound('steam_hiss', chuffVolume * 0.5);
+                    }}, 100);
+                }}
+                
+                this.lastChuffTime = now;
+                console.log(`🚂 Chuff! Speed: ${{Math.round(speed * 100)}}%, Interval: ${{Math.round(this.chuffInterval)}}ms`);
+            }}
         }}
         
         handleDisplaySwitching() {{
@@ -13976,6 +14048,90 @@ def generate_web_flashcards(numbers, config, output_path):
                     
                     whooshOsc.start(audioContext.currentTime);
                     whooshOsc.stop(audioContext.currentTime + 0.3);
+                    
+                }} else if (type === 'train_chuff') {{
+                    // Realistic steam train chuffing sound
+                    const chuffOsc = audioContext.createOscillator();
+                    const chuffGain = audioContext.createGain();
+                    const chuffFilter = audioContext.createBiquadFilter();
+                    
+                    chuffOsc.connect(chuffFilter);
+                    chuffFilter.connect(chuffGain);
+                    chuffGain.connect(audioContext.destination);
+                    
+                    chuffOsc.type = 'sawtooth';
+                    chuffFilter.type = 'bandpass';
+                    chuffFilter.frequency.setValueAtTime(150, audioContext.currentTime);
+                    chuffFilter.Q.setValueAtTime(5, audioContext.currentTime);
+                    
+                    chuffOsc.frequency.setValueAtTime(80, audioContext.currentTime);
+                    chuffOsc.frequency.exponentialRampToValueAtTime(120, audioContext.currentTime + 0.05);
+                    chuffOsc.frequency.exponentialRampToValueAtTime(60, audioContext.currentTime + 0.2);
+                    
+                    chuffGain.gain.setValueAtTime(0, audioContext.currentTime);
+                    chuffGain.gain.exponentialRampToValueAtTime(volume * 0.8, audioContext.currentTime + 0.01);
+                    chuffGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+                    
+                    chuffOsc.start(audioContext.currentTime);
+                    chuffOsc.stop(audioContext.currentTime + 0.2);
+                    
+                }} else if (type === 'train_whistle') {{
+                    // Classic steam train whistle
+                    this.play90sSound(audioContext, [
+                        {{freq: 523, time: 0, duration: 0.3}},    // C5 - long whistle
+                        {{freq: 659, time: 0.1, duration: 0.4}},  // E5 - harmony  
+                        {{freq: 523, time: 0.3, duration: 0.2}}   // C5 - fade out
+                    ], volume * 1.2, 'sine');
+                    
+                }} else if (type === 'coal_spill') {{
+                    // Coal chunks spilling sound effect
+                    const coalOsc = audioContext.createOscillator();
+                    const coalGain = audioContext.createGain();
+                    const coalFilter = audioContext.createBiquadFilter();
+                    
+                    coalOsc.connect(coalFilter);
+                    coalFilter.connect(coalGain);
+                    coalGain.connect(audioContext.destination);
+                    
+                    coalOsc.type = 'square';
+                    coalFilter.type = 'lowpass';
+                    coalFilter.frequency.setValueAtTime(300, audioContext.currentTime);
+                    
+                    // Simulate coal chunks falling with random frequency bursts
+                    coalOsc.frequency.setValueAtTime(200 + Math.random() * 100, audioContext.currentTime);
+                    coalOsc.frequency.exponentialRampToValueAtTime(100 + Math.random() * 50, audioContext.currentTime + 0.1);
+                    coalOsc.frequency.exponentialRampToValueAtTime(80 + Math.random() * 40, audioContext.currentTime + 0.3);
+                    
+                    coalGain.gain.setValueAtTime(0, audioContext.currentTime);
+                    coalGain.gain.exponentialRampToValueAtTime(volume * 0.6, audioContext.currentTime + 0.01);
+                    coalGain.gain.exponentialRampToValueAtTime(volume * 0.3, audioContext.currentTime + 0.15);
+                    coalGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.4);
+                    
+                    coalOsc.start(audioContext.currentTime);
+                    coalOsc.stop(audioContext.currentTime + 0.4);
+                    
+                }} else if (type === 'steam_hiss') {{
+                    // Steam hissing sound for locomotive
+                    const steamOsc = audioContext.createOscillator();
+                    const steamGain = audioContext.createGain();
+                    const steamFilter = audioContext.createBiquadFilter();
+                    
+                    steamOsc.connect(steamFilter);
+                    steamFilter.connect(steamGain);
+                    steamGain.connect(audioContext.destination);
+                    
+                    steamOsc.type = 'triangle';
+                    steamFilter.type = 'highpass';
+                    steamFilter.frequency.setValueAtTime(2000, audioContext.currentTime);
+                    
+                    steamOsc.frequency.setValueAtTime(4000 + Math.random() * 1000, audioContext.currentTime);
+                    
+                    steamGain.gain.setValueAtTime(0, audioContext.currentTime);
+                    steamGain.gain.exponentialRampToValueAtTime(volume * 0.4, audioContext.currentTime + 0.02);
+                    steamGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.6);
+                    
+                    steamOsc.start(audioContext.currentTime);
+                    steamOsc.stop(audioContext.currentTime + 0.6);
                 }}
                 
             }} catch (e) {{
