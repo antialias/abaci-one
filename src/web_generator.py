@@ -13812,9 +13812,19 @@ def generate_web_flashcards(numbers, config, output_path):
                               timeSinceLastCoal > (config.starvationThreshold * 2); // Much longer grace period
             
             if (journeyComplete) {{
-                const score = this.totalScore;
-                const deliveredCount = this.correctAnswers; // Questions answered correctly
-                this.endRace(`🎉 Journey Complete! Reached Capital Station! Score: ${{score}} points from ${{deliveredCount}} deliveries!`);
+                // Check if we're in endless steam journey mode or regular race mode
+                const isEndlessSteamJourney = document.querySelector('.route-path'); // Steam journey has route-path
+                
+                if (isEndlessSteamJourney) {{
+                    // Don't end race - let the endless route progression handle this
+                    console.log('🚂 Journey complete detected but endless mode active - route progression will handle');
+                    return;
+                }} else {{
+                    // Regular race mode - end normally
+                    const score = this.totalScore;
+                    const deliveredCount = this.correctAnswers;
+                    this.endRace(`🎉 Journey Complete! Reached Capital Station! Score: ${{score}} points from ${{deliveredCount}} deliveries!`);
+                }}
             }} else if (trainStuck) {{
                 // Train is truly stuck - but this should be very rare now with adaptive difficulty
                 const progress = Math.round(this.trainPosition);
