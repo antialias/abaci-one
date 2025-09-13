@@ -70,7 +70,8 @@
       "Bash(find:*)",
       "Bash(open test_lightning_sprint.html)",
       "Bash(open debug_tunnel_digging.html)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
