@@ -13529,19 +13529,20 @@ def generate_web_flashcards(numbers, config, output_path):
             // Only apply display switching logic in Lightning Sprint train mode
             if (!document.querySelector('.route-path')) return;
             
-            const staticDisplay = document.querySelector('.complement-display');
+            // Find the specific challenge text elements, not the entire complement display
+            const challengePrompt = document.querySelector('.complement-display .challenge-prompt');
             const floatingDisplay = document.getElementById('floating-math-display');
             const floatingText = document.getElementById('floating-challenge-text');
             
-            if (!staticDisplay || !floatingDisplay || !floatingText) return;
+            if (!challengePrompt || !floatingDisplay || !floatingText) return;
             
             // Clear any existing timeout
             if (this.displaySwitchTimeout) {{
                 clearTimeout(this.displaySwitchTimeout);
             }}
             
-            // Initially show static display and hide floating display
-            staticDisplay.style.display = 'block';
+            // Initially show static challenge prompt and hide floating display
+            challengePrompt.style.opacity = '1';
             floatingDisplay.style.display = 'none';
             
             // Update floating display content to match current question
@@ -13551,9 +13552,9 @@ def generate_web_flashcards(numbers, config, output_path):
                 floatingText.textContent = `Find the complement of ${{challengeNumber.textContent}} (target: ${{targetNumber.textContent}})`;
             }}
             
-            // After 2 seconds, switch to floating display that follows the train
+            // After 2 seconds, fade out static prompt and show floating display
             this.displaySwitchTimeout = setTimeout(() => {{
-                staticDisplay.style.display = 'none';
+                challengePrompt.style.opacity = '0.2'; // Fade but keep visible for reference
                 floatingDisplay.style.display = 'block';
                 console.log('🎈 Switched to floating math display following train');
             }}, 2000);
