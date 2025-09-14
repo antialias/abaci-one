@@ -1,10 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SorobanGenerator } from '@soroban/core'
+import { spawn } from 'child_process'
 import path from 'path'
 
 // Initialize generator with correct absolute path to packages/core
 const corePackagePath = path.resolve(process.cwd(), '../../packages/core')
-const generator = new SorobanGenerator(corePackagePath)
+
+// Function to call Python bridge directly for SVG generation
+async function generateSVGFromPython(config: any): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const pythonProcess = spawn('python3', [path.join(corePackagePath, 'src/bridge.py')], {
+      cwd: corePackagePath,
+      stdio: ['pipe', 'pipe', 'pipe']
+    })
+
+    let stdout = ''
+    let stderr = ''
+
+    pythonProcess.stdout.on('data', (data) => {
+      stdout += data.toString()
+    })
+
+    pythonProcess.stderr.on('data', (data) => {
+      stderr += data.toString()
+    })
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Python process failed with code ${code}: ${stderr}`))
+        return
+      }
+
+      try {
+        const result = JSON.parse(stdout.trim())
+        if (result.error) {
+          reject(new Error(result.error))
+        } else {
+          resolve(result.pdf) // This contains the SVG content when format=svg
+        }
+      } catch (error) {
+        reject(new Error(`Failed to parse Python output: ${error}`))
+      }
+    })
+
+    pythonProcess.on('error', (error) => {
+      reject(new Error(`Failed to start Python process: ${error}`))
+    })
+
+    // Send config to Python bridge
+    pythonProcess.stdin.write(JSON.stringify(config) + '\n')
+    pythonProcess.stdin.end()
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,21 +87,24 @@ export async function POST(request: NextRequest) {
       for (const number of numbers) {
         try {
           const singleCardConfig = {
-            ...previewConfig,
             mode: 'single-card',
             number: number,
-            format: 'svg'
+            format: 'svg',
+            beadShape: previewConfig.beadShape || 'diamond',
+            colorScheme: previewConfig.colorScheme || 'place-value',
+            hideInactiveBeads: previewConfig.hideInactiveBeads || false,
+            scaleFactor: 4.0 // Larger scale for preview visibility
           }
           console.log(`🔍 Generating single-card SVG for number ${number}`)
-          const result = await generator.generate(singleCardConfig)
-          console.log(`✅ Generated single-card SVG for ${number}, length: ${result.pdf?.length || 0}`)
+          const svgContent = await generateSVGFromPython(singleCardConfig)
+          console.log(`✅ Generated single-card SVG for ${number}, length: ${svgContent.length}`)
           samples.push({
             number,
-            front: result.pdf || '',
+            front: svgContent,
             back: number.toString()
           })
         } catch (error) {
-          console.error(`❌ Failed to generate SVG for number ${number}:`, error.message)
+          console.error(`❌ Failed to generate SVG for number ${number}:`, error instanceof Error ? error.message : error)
           samples.push({
             number,
             front: generateMockSorobanSVG(number),
@@ -71,7 +120,7 @@ export async function POST(request: NextRequest) {
       })
 
     } catch (error) {
-      console.error('⚠️ Real SVG generation failed, using fallback preview:', error.message)
+      console.error('⚠️ Real SVG generation failed, using fallback preview:', error instanceof Error ? error.message : error)
       return NextResponse.json(getMockPreviewData(config))
     }
 
