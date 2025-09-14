@@ -198,7 +198,7 @@ def generate_single_card_json(config_json):
     if number is None:
         return json.dumps({'error': 'Missing number parameter'})
 
-    # Build Typst config
+    # Build Typst config optimized for preview display
     typst_config = {
         'bead_shape': config.get('beadShape', 'diamond'),
         'color_scheme': config.get('colorScheme', 'monochrome'),
@@ -208,11 +208,11 @@ def generate_single_card_json(config_json):
         'show_empty_columns': config.get('showEmptyColumns', False),
         'columns': config.get('columns', 'auto'),
         'transparent': config.get('transparent', False),
-        'card_width': config.get('cardWidth', '3.5in'),
-        'card_height': config.get('cardHeight', '2.5in'),
+        'card_width': '120pt',    # Smaller card for larger abacus
+        'card_height': '160pt',   # Smaller card for larger abacus
         'font_size': config.get('fontSize', '48pt'),
         'font_family': config.get('fontFamily', 'DejaVu Sans'),
-        'scale_factor': config.get('scaleFactor', 1.0),
+        'scale_factor': config.get('scaleFactor', 4.0),  # Much larger scale for preview visibility
     }
 
     # Generate in core package directory

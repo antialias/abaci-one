@@ -3,11 +3,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { css } from '../../styled-system/css'
 import { stack, hstack, grid } from '../../styled-system/patterns'
-import { FlashcardConfig } from '@/app/create/page'
+import { FlashcardConfig, FlashcardFormState } from '@/app/create/page'
 import { Eye, RefreshCw } from 'lucide-react'
 
 interface LivePreviewProps {
-  config: FlashcardConfig
+  config: FlashcardFormState
 }
 
 interface PreviewData {
@@ -24,10 +24,16 @@ export function LivePreview({ config }: LivePreviewProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Debug: Log config changes
+  console.log('🔧 LivePreview config changed:', config)
+
   // Debounced preview generation
-  const debouncedConfig = useDebounce(config, 1000)
+  const debouncedConfig = useDebounce(config, 500)
+  console.log('🕐 Debounced config:', debouncedConfig)
 
   useEffect(() => {
+    console.log('🚀 useEffect triggered with debouncedConfig:', debouncedConfig)
+
     const generatePreview = async () => {
       setIsLoading(true)
       setError(null)
@@ -50,6 +56,9 @@ export function LivePreview({ config }: LivePreviewProps) {
 
         if (response.ok) {
           const data = await response.json()
+          console.log('🔍 Preview data received:', data)
+          console.log('🔍 First sample SVG length:', data.samples?.[0]?.front?.length || 'No SVG')
+          console.log('🔍 First sample SVG preview:', data.samples?.[0]?.front?.substring(0, 100) || 'No SVG')
           setPreviewData(data)
         } else {
           throw new Error('Preview generation failed')
@@ -117,9 +126,9 @@ export function LivePreview({ config }: LivePreviewProps) {
           columns: { base: 1, md: 2, lg: 3 },
           gap: '4'
         })}>
-          {previewData.samples.map((card, i) => (
+          {previewData.samples.map((card) => (
             <FlashcardPreview
-              key={i}
+              key={card.number}
               number={card.number}
               frontSvg={card.front}
               backContent={card.back}
@@ -145,7 +154,7 @@ export function LivePreview({ config }: LivePreviewProps) {
           Configuration Summary
         </h4>
         <div className={grid({ columns: 2, gap: '3' })}>
-          <ConfigSummaryItem label="Range" value={config.range} />
+          <ConfigSummaryItem label="Range" value={config.range || '0-99'} />
           <ConfigSummaryItem label="Cards per page" value={config.cardsPerPage?.toString() || '6'} />
           <ConfigSummaryItem label="Color scheme" value={config.colorScheme || 'place-value'} />
           <ConfigSummaryItem label="Bead shape" value={config.beadShape || 'diamond'} />
@@ -165,6 +174,18 @@ function FlashcardPreview({
   backContent: string
 }) {
   const [showBack, setShowBack] = useState(false)
+
+  // Reset to front when new SVG data comes in
+  useEffect(() => {
+    if (frontSvg && frontSvg.trim()) {
+      setShowBack(false)
+    }
+  }, [frontSvg])
+
+  // Debug logging (simple)
+  if (!frontSvg || !frontSvg.trim()) {
+    console.warn(`⚠️ No SVG for number ${number}`)
+  }
 
   return (
     <div
@@ -229,11 +250,32 @@ function FlashcardPreview({
           alignItems: 'center',
           justifyContent: 'center'
         })}>
-          {frontSvg ? (
-            <div
-              dangerouslySetInnerHTML={{ __html: frontSvg }}
-              className={css({ maxW: 'full', maxH: 'full' })}
-            />
+          {frontSvg && frontSvg.trim() ? (
+            <div className={css({
+              maxW: 'full',
+              maxH: 'full',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden'
+            })}>
+              <div
+                dangerouslySetInnerHTML={{ __html: frontSvg }}
+                className={css({
+                  maxW: 'full',
+                  maxH: 'full',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  '& svg': {
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    width: 'auto',
+                    height: 'auto'
+                  }
+                })}
+              />
+            </div>
           ) : (
             <SorobanPlaceholder number={number} />
           )}
@@ -331,23 +373,25 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue
 }
 
-function getPreviewRange(range: string): string {
+function getPreviewRange(range: string | undefined): string {
   // For preview, limit to a few sample numbers
-  if (range.includes('-')) {
-    const [start] = range.split('-')
+  const safeRange = range || '0-99' // Default fallback for undefined range
+
+  if (safeRange.includes('-')) {
+    const [start] = safeRange.split('-')
     const startNum = parseInt(start) || 0
     return `${startNum}-${startNum + 2}`
   }
 
-  if (range.includes(',')) {
-    const numbers = range.split(',').slice(0, 3)
+  if (safeRange.includes(',')) {
+    const numbers = safeRange.split(',').slice(0, 3)
     return numbers.join(',')
   }
 
-  return range
+  return safeRange
 }
 
-function getMockPreviewData(config: FlashcardConfig): PreviewData {
+function getMockPreviewData(config: FlashcardFormState): PreviewData {
   // Mock data for development/fallback
   return {
     count: 3,

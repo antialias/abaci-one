@@ -10,6 +10,7 @@ import { LivePreview } from '@/components/LivePreview'
 import { GenerationProgress } from '@/components/GenerationProgress'
 import { DownloadCard } from '@/components/DownloadCard'
 
+// Complete, validated configuration ready for generation
 export interface FlashcardConfig {
   range: string
   step?: number
@@ -39,6 +40,66 @@ export interface FlashcardConfig {
   format?: 'pdf' | 'html' | 'png' | 'svg'
 }
 
+// Partial form state during editing (may have undefined values)
+export interface FlashcardFormState {
+  range?: string
+  step?: number
+  cardsPerPage?: number
+  paperSize?: 'us-letter' | 'a4' | 'a3' | 'a5'
+  orientation?: 'portrait' | 'landscape'
+  margins?: {
+    top?: string
+    bottom?: string
+    left?: string
+    right?: string
+  }
+  gutter?: string
+  shuffle?: boolean
+  seed?: number
+  showCutMarks?: boolean
+  showRegistration?: boolean
+  fontFamily?: string
+  fontSize?: string
+  columns?: string | number
+  showEmptyColumns?: boolean
+  hideInactiveBeads?: boolean
+  beadShape?: 'diamond' | 'circle' | 'square'
+  colorScheme?: 'monochrome' | 'place-value' | 'heaven-earth' | 'alternating'
+  coloredNumerals?: boolean
+  scaleFactor?: number
+  format?: 'pdf' | 'html' | 'png' | 'svg'
+}
+
+// Validation function to convert form state to complete config
+function validateAndCompleteConfig(formState: FlashcardFormState): FlashcardConfig {
+  return {
+    // Required fields with defaults
+    range: formState.range || '0-99',
+
+    // Optional fields with defaults
+    step: formState.step ?? 1,
+    cardsPerPage: formState.cardsPerPage ?? 6,
+    paperSize: formState.paperSize ?? 'us-letter',
+    orientation: formState.orientation ?? 'portrait',
+    gutter: formState.gutter ?? '5mm',
+    shuffle: formState.shuffle ?? false,
+    seed: formState.seed,
+    showCutMarks: formState.showCutMarks ?? false,
+    showRegistration: formState.showRegistration ?? false,
+    fontFamily: formState.fontFamily ?? 'DejaVu Sans',
+    fontSize: formState.fontSize ?? '48pt',
+    columns: formState.columns ?? 'auto',
+    showEmptyColumns: formState.showEmptyColumns ?? false,
+    hideInactiveBeads: formState.hideInactiveBeads ?? false,
+    beadShape: formState.beadShape ?? 'diamond',
+    colorScheme: formState.colorScheme ?? 'place-value',
+    coloredNumerals: formState.coloredNumerals ?? false,
+    scaleFactor: formState.scaleFactor ?? 0.9,
+    format: formState.format ?? 'pdf',
+    margins: formState.margins
+  }
+}
+
 type GenerationStatus = 'idle' | 'generating' | 'success' | 'error'
 
 interface GenerationResult {
@@ -58,7 +119,7 @@ export default function CreatePage() {
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const form = useForm<FlashcardConfig>({
+  const form = useForm<FlashcardFormState>({
     defaultValues: {
       range: '0-99',
       step: 1,
@@ -82,11 +143,14 @@ export default function CreatePage() {
     }
   })
 
-  const handleGenerate = async (config: FlashcardConfig) => {
+  const handleGenerate = async (formState: FlashcardFormState) => {
     setGenerationStatus('generating')
     setError(null)
 
     try {
+      // Validate and complete the configuration
+      const config = validateAndCompleteConfig(formState)
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
@@ -203,7 +267,10 @@ export default function CreatePage() {
               shadow: 'card',
               p: '8'
             })}>
-              <LivePreview config={form.state.values} />
+              <form.Subscribe
+                selector={(state) => state.values}
+                children={(values) => <LivePreview config={values} />}
+              />
             </div>
 
             {/* Generation Status */}
