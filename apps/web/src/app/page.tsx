@@ -34,6 +34,20 @@ export default function HomePage() {
                 Guide
               </Link>
               <Link
+                href="/games"
+                className={css({
+                  px: '4',
+                  py: '2',
+                  color: 'brand.600',
+                  rounded: 'lg',
+                  fontWeight: 'medium',
+                  transition: 'all',
+                  _hover: { bg: 'brand.50' }
+                })}
+              >
+                Games
+              </Link>
+              <Link
                 href="/create"
                 className={css({
                   px: '4',

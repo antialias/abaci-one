@@ -214,6 +214,20 @@ export default function CreatePage() {
               >
                 Guide
               </Link>
+              <Link
+                href="/games"
+                className={css({
+                  px: '4',
+                  py: '2',
+                  color: 'brand.600',
+                  fontWeight: 'medium',
+                  rounded: 'lg',
+                  transition: 'all',
+                  _hover: { bg: 'brand.50' }
+                })}
+              >
+                Games
+              </Link>
             </div>
           </div>
         </div>
