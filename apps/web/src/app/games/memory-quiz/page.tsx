@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { css } from '../../../styled-system/css'
-import { grid } from '../../../styled-system/patterns'
+import { css } from '../../../../styled-system/css'
+import { grid } from '../../../../styled-system/patterns'
 import { ServerSorobanSVG } from '../../../components/ServerSorobanSVG'
 
 interface GameConfig {
