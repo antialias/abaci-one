@@ -1,0 +1,47 @@
+{
+  "name": "soroban-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Beautiful Soroban Flashcard Generator - Monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "packageManager": "pnpm@8.0.0",
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  },
+  "scripts": {
+    "setup": "./setup-dev.sh",
+    "dev": "turbo run dev",
+    "dev:setup": "./scripts/dev.sh",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:python": "cd packages/core && source venv/bin/activate && python -m pytest",
+    "lint": "turbo run lint",
+    "format": "prettier --write .",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "python:api": "cd packages/core && source venv/bin/activate && python src/api.py"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^1.10.0",
+    "typescript": "^5.0.0",
+    "concurrently": "^8.0.0"
+  },
+  "keywords": [
+    "soroban",
+    "abacus",
+    "flashcards",
+    "education",
+    "math",
+    "nextjs",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT"
+}
