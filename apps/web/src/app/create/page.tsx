@@ -294,8 +294,8 @@ export default function CreatePage() {
               </div>
 
               <form.Subscribe
-                selector={(state) => state.values}
-                children={(values) => <StyleControls form={form} />}
+                selector={(state) => state}
+                children={(state) => <StyleControls form={form} />}
               />
             </div>
           </div>
@@ -309,8 +309,8 @@ export default function CreatePage() {
           })}>
             <div className={stack({ gap: '6' })}>
               <form.Subscribe
-                selector={(state) => state.values}
-                children={(values) => <LivePreview config={values} />}
+                selector={(state) => state}
+                children={(state) => <LivePreview config={state.values} />}
               />
 
               {/* Generate Button within Preview */}
