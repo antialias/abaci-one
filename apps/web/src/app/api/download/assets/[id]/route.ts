@@ -8,7 +8,7 @@ export async function GET(
   try {
     const { id } = params
 
-    const asset = assetStore.get(id)
+    const asset = await assetStore.get(id)
     if (!asset) {
       return NextResponse.json(
         { error: 'Asset not found' },

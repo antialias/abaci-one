@@ -9,10 +9,10 @@ export async function GET(
     const { id } = params
 
     console.log('🔍 Looking for asset:', id)
-    console.log('📦 Available assets:', Array.from(assetStore.keys()))
+    console.log('📦 Available assets:', await assetStore.keys())
 
     // Get asset from store
-    const asset = assetStore.get(id)
+    const asset = await assetStore.get(id)
     if (!asset) {
       console.log('❌ Asset not found in store')
       return NextResponse.json({
