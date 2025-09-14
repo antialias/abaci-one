@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { css } from '../../styled-system/css'
-import { grid } from '../../styled-system/patterns'
+import { css } from '../../../styled-system/css'
+import { grid } from '../../../styled-system/patterns'
 
 export default function GamesPage() {
   return (
