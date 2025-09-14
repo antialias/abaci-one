@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Memory Quiz - Soroban</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        .game-controls {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 8px;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .quiz-display {
+            text-align: center;
+            padding: 40px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .quiz-card {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px;
+            min-width: 200px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        .input-section {
+            margin-top: 24px;
+        }
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+        .input-field {
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 18px;
+            text-align: center;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        .results {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 24px;
+            margin-top: 24px;
+        }
+        .score {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 16px;
+        }
+        .hidden { display: none; }
+        .settings {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 8px 0;
+        }
+        .setting-input {
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>🧠 Speed Memory Quiz</h1>
+            <p>Cards will flash briefly - memorize the numbers and input them back</p>
+        </div>
+
+        <div id="settings-panel" class="settings">
+            <div class="setting-row">
+                <label>Number of Cards:</label>
+                <input type="number" id="card-count" class="setting-input" value="5" min="3" max="10">
+            </div>
+            <div class="setting-row">
+                <label>Display Time (seconds):</label>
+                <input type="number" id="display-time" class="setting-input" value="2" min="0.5" max="5" step="0.5">
+            </div>
+            <div class="setting-row">
+                <label>Number Range:</label>
+                <select id="number-range" class="setting-input" style="width: auto;">
+                    <option value="1-9">1-9</option>
+                    <option value="10-99" selected>10-99</option>
+                    <option value="100-999">100-999</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="game-controls">
+            <button id="start-btn" class="btn">Start Quiz</button>
+            <button id="reset-btn" class="btn" style="background: #f44336;">Reset</button>
+        </div>
+
+        <div id="quiz-display" class="quiz-display hidden">
+            <div id="progress-info"></div>
+            <div id="current-card" class="quiz-card"></div>
+            <div id="countdown"></div>
+        </div>
+
+        <div id="input-section" class="input-section hidden">
+            <h3>Enter the numbers you remember:</h3>
+            <div id="input-grid" class="input-grid"></div>
+            <div style="text-align: center; margin-top: 16px;">
+                <button id="submit-btn" class="btn">Submit Answers</button>
+            </div>
+        </div>
+
+        <div id="results-section" class="results hidden">
+            <div id="score-display" class="score"></div>
+            <div id="detailed-results"></div>
+            <div style="text-align: center; margin-top: 16px;">
+                <button id="play-again-btn" class="btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SorobanQuiz {
+            constructor() {
+                this.quizCards = [];
+                this.currentCardIndex = 0;
+                this.userAnswers = [];
+                this.isPlaying = false;
+
+                this.initializeElements();
+                this.attachEventListeners();
+            }
+
+            initializeElements() {
+                this.startBtn = document.getElementById('start-btn');
+                this.resetBtn = document.getElementById('reset-btn');
+                this.submitBtn = document.getElementById('submit-btn');
+                this.playAgainBtn = document.getElementById('play-again-btn');
+
+                this.settingsPanel = document.getElementById('settings-panel');
+                this.quizDisplay = document.getElementById('quiz-display');
+                this.inputSection = document.getElementById('input-section');
+                this.resultsSection = document.getElementById('results-section');
+
+                this.progressInfo = document.getElementById('progress-info');
+                this.currentCard = document.getElementById('current-card');
+                this.countdown = document.getElementById('countdown');
+                this.inputGrid = document.getElementById('input-grid');
+                this.scoreDisplay = document.getElementById('score-display');
+                this.detailedResults = document.getElementById('detailed-results');
+
+                this.cardCountInput = document.getElementById('card-count');
+                this.displayTimeInput = document.getElementById('display-time');
+                this.numberRangeSelect = document.getElementById('number-range');
+            }
+
+            attachEventListeners() {
+                this.startBtn.addEventListener('click', () => this.startQuiz());
+                this.resetBtn.addEventListener('click', () => this.resetQuiz());
+                this.submitBtn.addEventListener('click', () => this.submitAnswers());
+                this.playAgainBtn.addEventListener('click', () => this.resetQuiz());
+            }
+
+            generateRandomNumber(min, max) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            getNumberRange() {
+                const range = this.numberRangeSelect.value;
+                switch(range) {
+                    case '1-9': return {min: 1, max: 9};
+                    case '10-99': return {min: 10, max: 99};
+                    case '100-999': return {min: 100, max: 999};
+                    default: return {min: 10, max: 99};
+                }
+            }
+
+            startQuiz() {
+                if (this.isPlaying) return;
+
+                this.isPlaying = true;
+                this.currentCardIndex = 0;
+                this.userAnswers = [];
+
+                // Get settings
+                const cardCount = parseInt(this.cardCountInput.value);
+                const range = this.getNumberRange();
+
+                // Generate quiz cards
+                this.quizCards = [];
+                for (let i = 0; i < cardCount; i++) {
+                    this.quizCards.push({
+                        number: this.generateRandomNumber(range.min, range.max),
+                        id: i
+                    });
+                }
+
+                // Hide settings and show quiz
+                this.settingsPanel.classList.add('hidden');
+                this.quizDisplay.classList.remove('hidden');
+                this.startBtn.disabled = true;
+
+                // Start displaying cards
+                this.showNextCard();
+            }
+
+            showNextCard() {
+                if (this.currentCardIndex >= this.quizCards.length) {
+                    this.showInputSection();
+                    return;
+                }
+
+                const card = this.quizCards[this.currentCardIndex];
+                const displayTime = parseFloat(this.displayTimeInput.value) * 1000;
+
+                // Update progress
+                this.progressInfo.textContent = `Card ${this.currentCardIndex + 1} of ${this.quizCards.length}`;
+
+                // Show the number
+                this.currentCard.textContent = card.number;
+                this.countdown.textContent = '';
+
+                // Start countdown after display time
+                setTimeout(() => {
+                    let timeLeft = Math.ceil(displayTime / 1000);
+                    this.currentCard.textContent = '?';
+
+                    const countdownInterval = setInterval(() => {
+                        if (timeLeft <= 0) {
+                            clearInterval(countdownInterval);
+                            this.currentCardIndex++;
+                            this.showNextCard();
+                        } else {
+                            this.countdown.textContent = `Next card in ${timeLeft}s`;
+                            timeLeft--;
+                        }
+                    }, 1000);
+
+                }, displayTime);
+            }
+
+            showInputSection() {
+                this.quizDisplay.classList.add('hidden');
+                this.inputSection.classList.remove('hidden');
+
+                // Create input fields
+                this.inputGrid.innerHTML = '';
+                for (let i = 0; i < this.quizCards.length; i++) {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'input-field';
+                    input.placeholder = `Card ${i + 1}`;
+                    input.dataset.index = i;
+
+                    // Auto-focus next input on Enter
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' && i < this.quizCards.length - 1) {
+                            this.inputGrid.children[i + 1].focus();
+                        }
+                    });
+
+                    this.inputGrid.appendChild(input);
+                }
+
+                // Focus first input
+                if (this.inputGrid.children.length > 0) {
+                    this.inputGrid.children[0].focus();
+                }
+            }
+
+            submitAnswers() {
+                // Collect answers
+                this.userAnswers = [];
+                const inputs = this.inputGrid.querySelectorAll('.input-field');
+
+                inputs.forEach((input, index) => {
+                    this.userAnswers.push({
+                        cardIndex: index,
+                        answer: input.value ? parseInt(input.value) : null,
+                        correct: this.quizCards[index].number
+                    });
+                });
+
+                this.showResults();
+            }
+
+            showResults() {
+                this.inputSection.classList.add('hidden');
+                this.resultsSection.classList.remove('hidden');
+
+                // Calculate score
+                let correct = 0;
+                this.userAnswers.forEach(answer => {
+                    if (answer.answer === answer.correct) correct++;
+                });
+
+                const percentage = Math.round((correct / this.quizCards.length) * 100);
+
+                // Show score
+                this.scoreDisplay.innerHTML = `
+                    Score: ${correct}/${this.quizCards.length} (${percentage}%)
+                    ${percentage >= 80 ? '🎉' : percentage >= 60 ? '👍' : '💪'}
+                `;
+
+                // Show detailed results
+                let detailsHTML = '<div style="margin-top: 16px;"><h4>Review:</h4>';
+                this.userAnswers.forEach((answer, index) => {
+                    const isCorrect = answer.answer === answer.correct;
+                    const status = isCorrect ? '✅' : '❌';
+                    const answerText = answer.answer !== null ? answer.answer : '(empty)';
+
+                    detailsHTML += `
+                        <div style="margin: 8px 0; padding: 8px; background: ${isCorrect ? '#e8f5e8' : '#ffe8e8'}; border-radius: 4px;">
+                            ${status} Card ${index + 1}: ${answer.correct} | Your answer: ${answerText}
+                        </div>
+                    `;
+                });
+                detailsHTML += '</div>';
+
+                this.detailedResults.innerHTML = detailsHTML;
+            }
+
+            resetQuiz() {
+                this.isPlaying = false;
+                this.currentCardIndex = 0;
+                this.userAnswers = [];
+                this.quizCards = [];
+
+                // Show settings, hide others
+                this.settingsPanel.classList.remove('hidden');
+                this.quizDisplay.classList.add('hidden');
+                this.inputSection.classList.add('hidden');
+                this.resultsSection.classList.add('hidden');
+
+                // Re-enable start button
+                this.startBtn.disabled = false;
+
+                // Clear displays
+                this.currentCard.textContent = '';
+                this.countdown.textContent = '';
+                this.inputGrid.innerHTML = '';
+            }
+        }
+
+        // Initialize the quiz when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new SorobanQuiz();
+        });
+    </script>
+</body>
+</html>
