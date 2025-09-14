@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Effects - Test Suite</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .test-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .test-btn {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .test-btn.success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .test-btn.streak {
+            background: linear-gradient(135deg, #007bff, #6610f2);
+        }
+
+        .test-btn.major {
+            background: linear-gradient(135deg, #fd7e14, #e83e8c);
+        }
+
+        .test-btn.sparkle {
+            background: linear-gradient(135deg, #ffd700, #ffed4e);
+        }
+
+        /* Particle Effects System */
+        .particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 10000;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .particle.star {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            box-shadow: 0 0 10px #ffd700;
+        }
+
+        .particle.heart {
+            background: #ff6b6b;
+            border-radius: 0;
+            transform: rotate(-45deg);
+        }
+
+        .particle.heart::before,
+        .particle.heart::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: #ff6b6b;
+            border-radius: 50%;
+        }
+
+        .particle.heart::before {
+            top: -50%;
+            left: 0;
+        }
+
+        .particle.heart::after {
+            top: 0;
+            left: 50%;
+        }
+
+        .particle.circle {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .particle.diamond {
+            background: linear-gradient(45deg, #00b894, #00cec9);
+            transform: rotate(45deg);
+            border-radius: 0;
+        }
+
+        .particle.confetti {
+            background: linear-gradient(45deg, #ff6b6b, #feca57);
+            border-radius: 2px;
+        }
+
+        /* Burst Animation */
+        @keyframes particleBurst {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(0) rotate(0deg);
+            }
+            30% {
+                opacity: 1;
+                transform: translateY(-20px) scale(1.2) rotate(180deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) scale(0.3) rotate(360deg);
+            }
+        }
+
+        /* Celebration Firework */
+        @keyframes firework {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(0);
+            }
+            20% {
+                opacity: 1;
+                transform: translateY(-30px) scale(1.5);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-120px) scale(0.5);
+            }
+        }
+
+        /* Floating Animation */
+        @keyframes float {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0) rotate(0deg);
+            }
+            20% {
+                opacity: 1;
+                transform: translateY(0) scale(1) rotate(72deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(0.8) rotate(360deg);
+            }
+        }
+
+        /* Trail Effect */
+        @keyframes trail {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--dx), var(--dy)) scale(0.3);
+            }
+        }
+
+        /* Sparkle Effect */
+        @keyframes sparkle {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1) rotate(180deg);
+            }
+        }
+
+        .particle.burst {
+            animation: particleBurst 0.8s ease-out forwards;
+        }
+
+        .particle.firework {
+            animation: firework 1.2s ease-out forwards;
+        }
+
+        .particle.floating {
+            animation: float 2s ease-out forwards;
+        }
+
+        .particle.trail {
+            animation: trail 1.5s ease-out forwards;
+        }
+
+        .particle.sparkle {
+            animation: sparkle 1s ease-in-out forwards;
+        }
+
+        .demo-area {
+            height: 200px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border: 2px dashed #dee2e6;
+        }
+
+        .demo-target {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            width: 100px;
+            height: 100px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .demo-target:hover {
+            transform: scale(1.1);
+        }
+
+        .sparkle-area {
+            width: 300px;
+            height: 150px;
+            background: #e3f2fd;
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1976d2;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Particle Effects System - Interactive Test</h1>
+        
+        <div class="test-info">
+            <p><strong>Test all particle effects:</strong> Click the buttons below to trigger different particle animations. The particle system generates beautiful effects entirely with CSS and JavaScript - no external assets needed!</p>
+        </div>
+
+        <div class="demo-area">
+            <div class="demo-target" id="demo-target">🎯</div>
+        </div>
+
+        <div class="test-buttons">
+            <button class="test-btn success" onclick="testSuccess()">
+                ✨ Success Burst
+            </button>
+            <button class="test-btn streak" onclick="testStreak()">
+                🔥 Streak Trails
+            </button>
+            <button class="test-btn major" onclick="testMajor()">
+                🎆 Major Celebration
+            </button>
+            <button class="test-btn sparkle" onclick="testGameComplete()">
+                🎊 Game Complete
+            </button>
+        </div>
+
+        <div class="test-info">
+            <p><strong>Sparkle Test Area:</strong> Move your mouse over the area below to trigger continuous sparkle effects!</p>
+        </div>
+
+        <div class="demo-area">
+            <div class="sparkle-area" id="sparkle-area">
+                ✨ Hover for Sparkles ✨
+            </div>
+        </div>
+
+        <div class="test-info">
+            <h3>🎮 How It Works in the Games:</h3>
+            <ul style="text-align: left; max-width: 600px; margin: 0 auto;">
+                <li><strong>Success Burst:</strong> Triggers when you get a correct answer in Speed Complement Race</li>
+                <li><strong>Streak Trails:</strong> Special effect every 5th correct answer in a row</li>
+                <li><strong>Major Celebration:</strong> When you match cards in the Matching Game</li>
+                <li><strong>Game Complete:</strong> Epic fireworks when you finish a complete game</li>
+                <li><strong>Sparkles:</strong> Subtle effects for highlighting and interactions</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Particle Effects Container -->
+    <div id="particle-container" class="particle-container"></div>
+
+    <script>
+        // Particle Effects System
+        class ParticleSystem {
+            constructor() {
+                this.container = document.getElementById('particle-container');
+                this.particles = [];
+            }
+            
+            createParticle(x, y, type = 'star', animation = 'burst') {
+                const particle = document.createElement('div');
+                particle.className = `particle ${type} ${animation}`;
+                
+                // Random size between 8-20px
+                const size = 8 + Math.random() * 12;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // Position
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                
+                // Add random velocity for trail effects
+                if (animation === 'trail') {
+                    const dx = (Math.random() - 0.5) * 200;
+                    const dy = (Math.random() - 0.5) * 200;
+                    particle.style.setProperty('--dx', dx + 'px');
+                    particle.style.setProperty('--dy', dy + 'px');
+                }
+                
+                this.container.appendChild(particle);
+                this.particles.push(particle);
+                
+                // Remove particle after animation
+                const duration = animation === 'floating' ? 2000 : animation === 'firework' ? 1200 : 800;
+                setTimeout(() => this.removeParticle(particle), duration);
+            }
+            
+            removeParticle(particle) {
+                if (particle.parentNode) {
+                    particle.parentNode.removeChild(particle);
+                }
+                this.particles = this.particles.filter(p => p !== particle);
+            }
+            
+            // Success celebration - burst of stars
+            celebrateSuccess(sourceElement) {
+                const rect = sourceElement.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                // Create burst of particles
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const distance = 30 + Math.random() * 20;
+                    const x = centerX + Math.cos(angle) * distance;
+                    const y = centerY + Math.sin(angle) * distance;
+                    
+                    const types = ['star', 'circle', 'diamond'];
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    
+                    setTimeout(() => {
+                        this.createParticle(x, y, type, 'burst');
+                    }, i * 50);
+                }
+            }
+            
+            // Major celebration - fireworks and confetti
+            celebrateMajor(sourceElement) {
+                const rect = sourceElement.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                // Central firework
+                this.createParticle(centerX, centerY, 'star', 'firework');
+                
+                // Surrounding smaller fireworks
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i / 6) * Math.PI * 2;
+                    const distance = 80 + Math.random() * 40;
+                    const x = centerX + Math.cos(angle) * distance;
+                    const y = centerY + Math.sin(angle) * distance;
+                    
+                    setTimeout(() => {
+                        this.createParticle(x, y, 'heart', 'firework');
+                    }, i * 100);
+                }
+                
+                // Confetti shower
+                setTimeout(() => {
+                    for (let i = 0; i < 20; i++) {
+                        const x = centerX + (Math.random() - 0.5) * 200;
+                        const y = centerY - 50 + Math.random() * 100;
+                        
+                        setTimeout(() => {
+                            this.createParticle(x, y, 'confetti', 'floating');
+                        }, i * 30);
+                    }
+                }, 300);
+            }
+            
+            // Streak celebration - trail effects
+            celebrateStreak(sourceElement, streakCount) {
+                const rect = sourceElement.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                const particleCount = Math.min(streakCount * 2, 16);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const x = centerX + (Math.random() - 0.5) * 100;
+                    const y = centerY + (Math.random() - 0.5) * 100;
+                    
+                    setTimeout(() => {
+                        this.createParticle(x, y, 'circle', 'trail');
+                    }, i * 25);
+                }
+            }
+            
+            // Sparkle effect for hovering or highlighting
+            sparkle(sourceElement) {
+                const rect = sourceElement.getBoundingClientRect();
+                const x = rect.left + Math.random() * rect.width;
+                const y = rect.top + Math.random() * rect.height;
+                
+                this.createParticle(x, y, 'star', 'sparkle');
+            }
+            
+            // Game complete celebration
+            celebrateGameComplete(sourceElement) {
+                // Multiple waves of celebration
+                this.celebrateMajor(sourceElement);
+                
+                setTimeout(() => {
+                    this.celebrateSuccess(sourceElement);
+                }, 400);
+                
+                setTimeout(() => {
+                    this.celebrateStreak(sourceElement, 10);
+                }, 800);
+            }
+        }
+
+        // Initialize particle system
+        let particleSystem;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            particleSystem = new ParticleSystem();
+            
+            // Set up sparkle area
+            const sparkleArea = document.getElementById('sparkle-area');
+            let sparkleInterval;
+            
+            sparkleArea.addEventListener('mouseenter', () => {
+                sparkleInterval = setInterval(() => {
+                    particleSystem.sparkle(sparkleArea);
+                }, 200);
+            });
+            
+            sparkleArea.addEventListener('mouseleave', () => {
+                if (sparkleInterval) {
+                    clearInterval(sparkleInterval);
+                }
+            });
+        });
+
+        // Test functions
+        function testSuccess() {
+            const target = document.getElementById('demo-target');
+            particleSystem.celebrateSuccess(target);
+        }
+
+        function testStreak() {
+            const target = document.getElementById('demo-target');
+            particleSystem.celebrateStreak(target, 8);
+        }
+
+        function testMajor() {
+            const target = document.getElementById('demo-target');
+            particleSystem.celebrateMajor(target);
+        }
+
+        function testGameComplete() {
+            const target = document.getElementById('demo-target');
+            particleSystem.celebrateGameComplete(target);
+        }
+    </script>
+</body>
+</html>

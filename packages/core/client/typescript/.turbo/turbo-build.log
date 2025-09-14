@@ -1,0 +1,16 @@
+
+> @soroban/client@1.0.0 build /Users/antialias/projects/soroban-abacus-flashcards/packages/core/client/typescript
+> tsup src/index.ts --format cjs,esm --dts
+
+CLI Building entry: src/index.ts
+CLI tsup v7.0.0
+CLI Target: node16
+CJS Build start
+ESM Build start
+CJS dist/index.js 4.54 KB
+CJS ⚡️ Build success in 32ms
+ESM dist/index.mjs 3.51 KB
+ESM ⚡️ Build success in 32ms
+DTS Build start
+DTS ⚡️ Build success in 329ms
+DTS dist/index.d.ts 1.61 KB

@@ -1,0 +1,19 @@
+{
+  "name": "soroban-flashcards-browser",
+  "version": "1.0.0",
+  "description": "Browser-based Soroban Flashcard Generator using Typst.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@myriaddreamin/typst-ts-web-compiler": "^0.6.0",
+    "@myriaddreamin/typst-ts-renderer": "^0.6.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "typescript": "^5.0.0"
+  }
+}

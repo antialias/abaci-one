@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug: AI Tunnel Digging Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .debug-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 15px 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 10px;
+        }
+
+        .debug-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
+        }
+
+        .console-output {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐛 Debug: AI Tunnel Digging Issue</h1>
+        
+        <div class="test-info">
+            <h3>⚠️ Problem Report:</h3>
+            <p><strong>Issue:</strong> "The other characters don't seem to be digging at all"</p>
+            <p><strong>Expected:</strong> AI foxes (🦝 raccoon, 🐺 wolf) should dig tunnels as they get correct answers</p>
+            <p><strong>Debug Approach:</strong> Check console logs and element targeting</p>
+        </div>
+
+        <div class="instructions">
+            <h3>🔍 Debug Steps:</h3>
+            <ol>
+                <li>Open browser developer console (F12)</li>
+                <li>Click "Start Lightning Sprint Debug" below</li>
+                <li>Select Lightning Sprint mode and start game</li>
+                <li>Look for console messages starting with:</li>
+                <ul>
+                    <li><code>🦝 Swift AI (ID: ai-racer-1) digging tunnel...</code></li>
+                    <li><code>🔍 Updating tunnel for ai-tunnel-1...</code></li>
+                    <li><code>Elements found: tunnel=true, fox=true, depth=true</code></li>
+                </ul>
+                <li>Report what console messages appear (or don't appear)</li>
+            </ol>
+        </div>
+
+        <button class="debug-btn" onclick="openDebugMode()">
+            🐛 Start Lightning Sprint Debug
+        </button>
+
+        <button class="debug-btn" onclick="showExpectedBehavior()">
+            ✅ Show Expected Tunnel Behavior
+        </button>
+
+        <div class="console-output" id="debug-output">
+            Console output will appear here when you test...
+        </div>
+
+        <div class="test-info">
+            <h3>🎯 What Should Happen:</h3>
+            <ul>
+                <li><strong>Player Fox (🦊):</strong> Digs deeper with each correct answer</li>
+                <li><strong>AI Raccoon (🦝):</strong> Should auto-dig every 1.2 seconds based on their speed</li>
+                <li><strong>AI Wolf (🐺):</strong> Should auto-dig every 1.2 seconds based on their speed</li>
+                <li><strong>Visual Effect:</strong> All three tunnels should grow deeper over time</li>
+                <li><strong>Dirt Particles:</strong> Should fly out when any fox digs</li>
+                <li><strong>Treasure Finds:</strong> All foxes have 15% chance to find gems/treasures</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function openDebugMode() {
+            console.log('🐛 Opening debug mode for tunnel digging...');
+            
+            // Add console capture
+            const originalLog = console.log;
+            const outputDiv = document.getElementById('debug-output');
+            
+            console.log = function(...args) {
+                originalLog.apply(console, args);
+                
+                // Display in our debug output
+                const message = args.join(' ');
+                if (message.includes('🦝') || message.includes('🔍') || message.includes('tunnel') || message.includes('Elements found')) {
+                    outputDiv.innerHTML += message + '<br>';
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                }
+            };
+            
+            // Open the main game
+            window.open('./flashcards_en.html', '_blank');
+        }
+
+        function showExpectedBehavior() {
+            const outputDiv = document.getElementById('debug-output');
+            outputDiv.innerHTML = `
+<strong>Expected Console Output:</strong><br>
+🦝 Swift AI (ID: ai-racer-1) digging tunnel ai-tunnel-1 to depth 1<br>
+🔍 Updating tunnel for ai-tunnel-1: tunnel=ai-tunnel-1, fox=ai-fox-1, depth=ai-depth-1, answers=1<br>
+Elements found: tunnel=true, fox=true, depth=true<br>
+🦊 ai-tunnel-1 tunnel depth: 1 answers (⬇️ 62px)<br>
+<br>
+🦝 Math Bot (ID: ai-racer-2) digging tunnel ai-tunnel-2 to depth 1<br>
+🔍 Updating tunnel for ai-tunnel-2: tunnel=ai-tunnel-2, fox=ai-fox-2, depth=ai-depth-2, answers=1<br>
+Elements found: tunnel=true, fox=true, depth=true<br>
+🦊 ai-tunnel-2 tunnel depth: 1 answers (⬇️ 62px)<br>
+<br>
+<strong>If you see "Elements found: tunnel=false" that's the problem!</strong>
+            `;
+        }
+    </script>
+</body>
+</html>
