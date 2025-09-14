@@ -374,13 +374,63 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 function getPreviewRange(range: string | undefined): string {
-  // For preview, limit to a few sample numbers
-  const safeRange = range || '0-99' // Default fallback for undefined range
+  // For preview, show diverse examples that demonstrate different abacus states
+  const safeRange = range || '0-99'
 
   if (safeRange.includes('-')) {
-    const [start] = safeRange.split('-')
-    const startNum = parseInt(start) || 0
-    return `${startNum}-${startNum + 2}`
+    const [start, end] = safeRange.split('-').map(n => parseInt(n) || 0)
+    const examples = []
+
+    // For larger ranges, distribute examples more evenly across the range
+    const rangeSize = end - start + 1
+
+    if (rangeSize > 50) {
+      // Large range: show low, middle, and high examples with interesting patterns
+      const lowCandidates = [4, 5, 9, 13, 17].filter(n => n >= start && n <= end)
+      const midCandidates = [23, 37, 42, 58, 67].filter(n => n >= start && n <= end)
+      const highCandidates = [84, 95, 123, 156, 178].filter(n => n >= start && n <= end)
+
+      // Pick one from each range if available
+      if (lowCandidates.length > 0) examples.push(lowCandidates[0])
+      if (midCandidates.length > 0) examples.push(midCandidates[0])
+      if (highCandidates.length > 0) examples.push(highCandidates[0])
+
+      // Fill remaining with calculated spread
+      if (examples.length < 3) {
+        const third = Math.floor(rangeSize / 3)
+        const candidates = [
+          start + third,
+          start + (2 * third),
+          end - Math.floor(third / 2)
+        ].filter(n => n >= start && n <= end && !examples.includes(n))
+
+        examples.push(...candidates.slice(0, 3 - examples.length))
+      }
+    } else {
+      // Smaller range: use original logic with candidates
+      if (start <= end) examples.push(start)
+
+      const candidates = [4, 5, 9, 13, 17, 23, 37, 42, 58, 67, 84, 95]
+      for (const num of candidates) {
+        if (num >= start && num <= end && examples.length < 3) {
+          examples.push(num)
+        }
+      }
+
+      // Fill remaining slots with strategic numbers
+      if (examples.length < 3) {
+        const mid = Math.floor((start + end) / 2)
+        const quarter = Math.floor((end - start) / 4)
+
+        if (mid >= start && mid <= end && !examples.includes(mid)) examples.push(mid)
+        if (examples.length < 3 && start + quarter <= end && !examples.includes(start + quarter)) examples.push(start + quarter)
+        if (examples.length < 3 && end - quarter >= start && !examples.includes(end - quarter)) examples.push(end - quarter)
+      }
+    }
+
+    // Remove duplicates and sort
+    const uniqueExamples = [...new Set(examples)].sort((a, b) => a - b).slice(0, 3)
+    return uniqueExamples.join(',')
   }
 
   if (safeRange.includes(',')) {
@@ -392,13 +442,13 @@ function getPreviewRange(range: string | undefined): string {
 }
 
 function getMockPreviewData(config: FlashcardFormState): PreviewData {
-  // Mock data for development/fallback
+  // Mock data for development/fallback - show diverse examples
   return {
     count: 3,
     samples: [
-      { number: 7, front: '', back: '7' },
-      { number: 23, front: '', back: '23' },
-      { number: 156, front: '', back: '156' }
+      { number: 5, front: '', back: '5' },    // Shows heaven bead usage
+      { number: 23, front: '', back: '23' },  // Shows multi-digit with variety
+      { number: 67, front: '', back: '67' }   // Shows different bead combinations
     ]
   }
 }
