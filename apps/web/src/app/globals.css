@@ -1,0 +1,12 @@
+@layer reset, base, tokens, recipes, utilities;
+
+/* Import Panda CSS generated styles */
+@import '../../styled-system/styles.css';
+
+/* Custom global styles */
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
