@@ -153,8 +153,116 @@ var SorobanGenerator = class {
 async function expressExample() {
   const generator = new SorobanGenerator();
 }
+
+// src/soroban-generator-bridge.ts
+import { PythonShell } from "python-shell";
+import * as path2 from "path";
+var SorobanGenerator2 = class {
+  pythonShell = null;
+  projectRoot;
+  constructor(projectRoot) {
+    this.projectRoot = projectRoot || path2.join(__dirname, "../../");
+  }
+  /**
+   * Initialize persistent Python process for better performance
+   */
+  async initialize() {
+    if (this.pythonShell)
+      return;
+    this.pythonShell = new PythonShell(
+      path2.join(this.projectRoot, "src", "bridge.py"),
+      {
+        mode: "json",
+        pythonPath: "python3",
+        pythonOptions: ["-u"],
+        // Unbuffered
+        scriptPath: this.projectRoot
+      }
+    );
+  }
+  /**
+   * Generate flashcards - clean function interface
+   */
+  async generate(config) {
+    if (!this.pythonShell) {
+      return new Promise((resolve, reject) => {
+        PythonShell.run(
+          path2.join(this.projectRoot, "src", "bridge.py"),
+          {
+            mode: "json",
+            pythonPath: "python3",
+            scriptPath: this.projectRoot,
+            args: []
+          },
+          (err, results) => {
+            if (err) {
+              reject(err);
+            } else if (results && results[0]) {
+              const result = results[0];
+              if (result.error) {
+                reject(new Error(result.error));
+              } else {
+                resolve(result);
+              }
+            } else {
+              reject(new Error("No result from Python"));
+            }
+          }
+        );
+        PythonShell.defaultOptions = {};
+        const shell = new PythonShell(
+          path2.join(this.projectRoot, "src", "bridge.py"),
+          {
+            mode: "json",
+            pythonPath: "python3",
+            scriptPath: this.projectRoot
+          }
+        );
+        shell.send(config);
+        shell.end((err, code, signal) => {
+          if (err)
+            console.error(err);
+        });
+      });
+    }
+    return new Promise((resolve, reject) => {
+      if (!this.pythonShell) {
+        reject(new Error("Not initialized"));
+        return;
+      }
+      const handler = (message) => {
+        if (message.error) {
+          reject(new Error(message.error));
+        } else {
+          resolve(message);
+        }
+        this.pythonShell?.removeListener("message", handler);
+      };
+      this.pythonShell.on("message", handler);
+      this.pythonShell.send(config);
+    });
+  }
+  /**
+   * Generate and return as Buffer
+   */
+  async generateBuffer(config) {
+    const result = await this.generate(config);
+    return Buffer.from(result.pdf, "base64");
+  }
+  /**
+   * Clean up Python process
+   */
+  async close() {
+    if (this.pythonShell) {
+      this.pythonShell.end(() => {
+      });
+      this.pythonShell = null;
+    }
+  }
+};
 export {
   SorobanGenerator,
+  SorobanGenerator2 as SorobanGeneratorBridge,
   SorobanGenerator as default,
   expressExample
 };
