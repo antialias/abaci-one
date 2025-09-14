@@ -1,29 +1,42 @@
-# Generated output
-out/
-*.pdf
+# Dependencies
+node_modules/
+.pnpm-store/
 
-# Temporary files
-*.typ.tmp
-temp_*.typ
+# Build outputs
+.next/
+dist/
+*.tsbuildinfo
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv
+# Environment
+.env*
 
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Editor
+# Cache
+.turbo/
+.cache/
+*.cache
+
+# IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Claude settings (keep local only)
+.claude/settings.local.json
