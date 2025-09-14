@@ -217,37 +217,84 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   }
 
   return (
-    <div className="quiz-section">
-      <h2>🧠 Speed Memory Quiz</h2>
-      <p>Test your soroban reading skills! Cards will be shown briefly, then you'll enter the numbers you remember.</p>
+    <div className={css({
+      textAlign: 'center',
+      padding: '20px',
+      maxWidth: '800px',
+      margin: '0 auto'
+    })}>
+      <h2 className={css({ color: 'gray.700', marginBottom: '10px' })}>🧠 Speed Memory Quiz</h2>
+      <p className={css({ color: 'gray.600', marginBottom: '20px' })}>Test your soroban reading skills! Cards will be shown briefly, then you'll enter the numbers you remember.</p>
 
-      <div className="quiz-controls">
-        <div className="control-group">
-          <label>Difficulty Level:</label>
-          <div className="difficulty-buttons">
+      <div className={css({ maxWidth: '600px', margin: '0 auto' })}>
+        <div className={css({ margin: '20px 0' })}>
+          <label className={css({ display: 'block', fontWeight: 'bold', marginBottom: '10px', color: 'gray.600' })}>Difficulty Level:</label>
+          <div className={css({
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '12px',
+            justifyContent: 'center'
+          })}>
             {Object.entries(DIFFICULTY_LEVELS).map(([key, level]) => (
               <button
                 key={key}
                 type="button"
-                className={`difficulty-btn ${state.selectedDifficulty === key ? 'active' : ''}`}
+                className={css({
+                  background: state.selectedDifficulty === key ? 'blue.500' : 'white',
+                  color: state.selectedDifficulty === key ? 'white' : 'gray.800',
+                  border: '2px solid',
+                  borderColor: state.selectedDifficulty === key ? 'blue.500' : 'gray.300',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  _hover: {
+                    background: state.selectedDifficulty === key ? 'blue.600' : 'gray.50',
+                    borderColor: 'blue.400',
+                    transform: 'translateY(-1px)'
+                  }
+                })}
                 onClick={() => handleDifficultySelect(key as DifficultyLevel)}
                 title={level.description}
               >
-                <div className="difficulty-name">{level.name}</div>
-                <div className="difficulty-range">{level.description}</div>
+                <div className={css({ fontWeight: 'bold', fontSize: '14px' })}>{level.name}</div>
+                <div className={css({ fontSize: '11px', opacity: 0.8 })}>{level.description}</div>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="control-group">
-          <label>Cards to Quiz:</label>
-          <div className="count-buttons">
+        <div className={css({ margin: '20px 0' })}>
+          <label className={css({ display: 'block', fontWeight: 'bold', marginBottom: '10px', color: 'gray.600' })}>Cards to Quiz:</label>
+          <div className={css({
+            display: 'flex',
+            gap: '10px',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          })}>
             {[2, 5, 8, 12, 15].map(count => (
               <button
                 key={count}
                 type="button"
-                className={`count-btn ${state.selectedCount === count ? 'active' : ''}`}
+                className={css({
+                  background: state.selectedCount === count ? 'blue.500' : 'white',
+                  color: state.selectedCount === count ? 'white' : 'gray.800',
+                  border: '2px solid',
+                  borderColor: state.selectedCount === count ? 'blue.500' : 'gray.300',
+                  borderRadius: '8px',
+                  padding: '10px 20px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  fontSize: '16px',
+                  _hover: {
+                    background: state.selectedCount === count ? 'blue.600' : 'gray.50',
+                    borderColor: 'blue.400'
+                  }
+                })}
                 onClick={() => handleCountSelect(count)}
               >
                 {count}
@@ -256,9 +303,14 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
           </div>
         </div>
 
-        <div className="control-group">
-          <label>Display Time per Card:</label>
-          <div className="slider-container">
+        <div className={css({ margin: '20px 0' })}>
+          <label className={css({ display: 'block', fontWeight: 'bold', marginBottom: '10px', color: 'gray.600' })}>Display Time per Card:</label>
+          <div className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '15px'
+          })}>
             <input
               type="range"
               min="0.5"
@@ -266,12 +318,35 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               step="0.5"
               value={state.displayTime}
               onChange={(e) => handleTimeChange(parseFloat(e.target.value))}
+              className={css({
+                flex: 1,
+                maxWidth: '300px'
+              })}
             />
-            <span className="slider-value">{state.displayTime.toFixed(1)}s</span>
+            <span className={css({
+              fontWeight: 'bold',
+              color: 'blue.500',
+              minWidth: '50px'
+            })}>{state.displayTime.toFixed(1)}s</span>
           </div>
         </div>
 
-        <button className="quiz-start-btn" onClick={handleStartQuiz}>
+        <button
+          className={css({
+            background: 'green.500',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '15px 30px',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'background 0.2s ease',
+            marginTop: '20px',
+            _hover: { background: 'green.600' }
+          })}
+          onClick={handleStartQuiz}
+        >
           Start Quiz
         </button>
       </div>
@@ -336,21 +411,60 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
   }, [state.currentCardIndex, state.displayTime, state.quizCards.length, dispatch])
 
   return (
-    <div className="quiz-game">
-      <div className="quiz-header">
-        <div className="quiz-progress">
-          <div className="progress-bar">
+    <div className={css({
+      textAlign: 'center',
+      padding: '40px 20px',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      boxSizing: 'border-box'
+    })}>
+      <div className={css({ position: 'relative', width: '100%', marginBottom: '30px' })}>
+        <div className={css({ marginBottom: '30px' })}>
+          <div className={css({
+            width: '100%',
+            height: '10px',
+            background: 'gray.200',
+            borderRadius: '5px',
+            overflow: 'hidden',
+            marginBottom: '10px'
+          })}>
             <div
-              className="progress-fill"
+              className={css({
+                height: '100%',
+                background: 'linear-gradient(90deg, #28a745, #20c997)',
+                borderRadius: '5px',
+                width: '0%',
+                transition: 'width 0.5s ease'
+              })}
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
-          <span className="progress-text">
+          <span className={css({
+            fontSize: '16px',
+            fontWeight: 'bold',
+            color: 'gray.700'
+          })}>
             Card {state.currentCardIndex + 1} of {state.quizCards.length}
           </span>
         </div>
         <button
-          className="end-game-btn"
+          className={css({
+            position: 'absolute',
+            top: '-20px',
+            right: '20px',
+            background: 'red.500',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '8px 16px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            transition: 'background 0.2s ease',
+            _hover: { background: 'red.600' }
+          })}
           onClick={() => dispatch({ type: 'RESET_QUIZ' })}
         >
           End Quiz
@@ -358,13 +472,35 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
       </div>
 
       {countdown && (
-        <div className={`countdown ${countdown === 'GO!' ? 'go' : ''}`}>
+        <div className={css({
+          fontSize: '3rem',
+          fontWeight: 'bold',
+          color: countdown === 'GO!' ? 'green.500' : 'blue.500',
+          margin: '20px 0',
+          textShadow: '2px 2px 4px rgba(0,0,0,0.1)',
+          animation: countdown === 'GO!' ? 'pulse 0.3s ease' : undefined
+        })}>
           {countdown}
         </div>
       )}
 
       {showCard && currentCard && (
-        <div className="quiz-flashcard">
+        <div className={css({
+          width: 'min(85vw, 700px)',
+          height: 'min(50vh, 400px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto',
+          transition: 'transform 0.3s ease',
+          '& svg': {
+            width: '100%',
+            height: '100%',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain'
+          }
+        })}>
           {currentCard.svgComponent}
         </div>
       )}
@@ -377,25 +513,90 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
   if (state.quizCards.length === 0) return null
 
   return (
-    <div className="card-grid">
-      <h4 className="card-grid-title">Cards shown to you:</h4>
-      <div className="card-grid-container">
+    <div className={css({
+      marginTop: '32px',
+      padding: '20px',
+      background: 'gray.50',
+      borderRadius: '12px',
+      border: '2px solid',
+      borderColor: 'gray.200'
+    })}>
+      <h4 className={css({
+        textAlign: 'center',
+        color: 'gray.700',
+        marginBottom: '20px',
+        fontSize: '18px',
+        fontWeight: '600'
+      })}>Cards shown to you:</h4>
+      <div className={css({
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: '16px',
+        maxWidth: '800px',
+        margin: '0 auto'
+      })}>
         {state.quizCards.map((card, index) => {
           const isRevealed = state.foundNumbers.includes(card.number)
           return (
             <div
               key={`card-${index}-${card.number}`}
-              className={`memory-card ${isRevealed ? 'revealed' : 'hidden'}`}
+              className={css({
+                perspective: '1000px',
+                height: '180px'
+              })}
             >
-              <div className="card-inner">
+              <div className={css({
+                position: 'relative',
+                width: '100%',
+                height: '100%',
+                textAlign: 'center',
+                transition: 'transform 0.8s',
+                transformStyle: 'preserve-3d',
+                transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)'
+              })}>
                 {/* Card back (hidden state) */}
-                <div className="card-back">
-                  <div className="card-pattern">?</div>
+                <div className={css({
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  backfaceVisibility: 'hidden',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                  background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
+                  color: 'white',
+                  fontSize: '48px',
+                  fontWeight: 'bold',
+                  textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+                  border: '3px solid #5f3dc4'
+                })}>
+                  <div className={css({ opacity: 0.8 })}>?</div>
                 </div>
 
                 {/* Card front (revealed state) - using ServerSorobanSVG */}
-                <div className="card-front">
-                  <div className="card-abacus">
+                <div className={css({
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  backfaceVisibility: 'hidden',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                  background: 'white',
+                  border: '3px solid #28a745',
+                  transform: 'rotateY(180deg)'
+                })}>
+                  <div className={css({
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  })}>
                     <ServerSorobanSVG
                       number={card.number}
                       width={120}
@@ -517,34 +718,126 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   const showFinishButtons = hasFoundAll || outOfGuesses || hasFoundSome
 
   return (
-    <div className="quiz-input">
-      <h3>Enter the Numbers You Remember</h3>
-      <div className="quiz-stats">
-        <div className="stats-item">
-          <span className="stats-label">Cards shown:</span>
-          <span>{state.quizCards.length}</span>
+    <div className={css({
+      textAlign: 'center',
+      padding: '40px 20px',
+      maxWidth: '700px',
+      margin: '0 auto'
+    })}>
+      <h3 className={css({ marginBottom: '20px', color: 'gray.800' })}>Enter the Numbers You Remember</h3>
+      <div className={css({
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '30px',
+        marginBottom: '30px',
+        padding: '20px',
+        background: 'gray.50',
+        borderRadius: '12px'
+      })}>
+        <div className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        })}>
+          <span className={css({
+            fontSize: '14px',
+            color: 'gray.600',
+            fontWeight: '500'
+          })}>Cards shown:</span>
+          <span className={css({
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: 'gray.800'
+          })}>{state.quizCards.length}</span>
         </div>
-        <div className="stats-item">
-          <span className="stats-label">Guesses left:</span>
-          <span>{state.guessesRemaining}</span>
+        <div className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        })}>
+          <span className={css({
+            fontSize: '14px',
+            color: 'gray.600',
+            fontWeight: '500'
+          })}>Guesses left:</span>
+          <span className={css({
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: 'gray.800'
+          })}>{state.guessesRemaining}</span>
         </div>
-        <div className="stats-item">
-          <span className="stats-label">Found:</span>
-          <span>{state.foundNumbers.length}</span>
+        <div className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        })}>
+          <span className={css({
+            fontSize: '14px',
+            color: 'gray.600',
+            fontWeight: '500'
+          })}>Found:</span>
+          <span className={css({
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: 'gray.800'
+          })}>{state.foundNumbers.length}</span>
         </div>
       </div>
 
-      <div className="smart-input-container">
-        <div className="smart-input-prompt">
+      <div className={css({
+        position: 'relative',
+        margin: '40px 0',
+        textAlign: 'center'
+      })}>
+        <div className={css({
+          fontSize: '16px',
+          color: 'gray.600',
+          marginBottom: '15px',
+          fontWeight: 'normal'
+        })}>
           {state.guessesRemaining === 0
             ? 'Out of guesses!'
             : 'Just start typing numbers on your keyboard:'
           }
         </div>
         <div
-          className={`number-display ${displayFeedback} ${state.guessesRemaining === 0 ? 'disabled' : ''}`}
+          className={css({
+            minHeight: '80px',
+            padding: '24px',
+            fontSize: '36px',
+            fontFamily: 'Courier New, Monaco, monospace',
+            textAlign: 'center',
+            fontWeight: 'bold',
+            color: state.guessesRemaining === 0 ? 'gray.500' : 'gray.800',
+            letterSpacing: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.3s ease',
+            background: displayFeedback === 'correct'
+              ? 'linear-gradient(45deg, #d4edda, #c3e6cb)'
+              : displayFeedback === 'incorrect'
+              ? 'linear-gradient(45deg, #f8d7da, #f1b0b7)'
+              : state.guessesRemaining === 0
+              ? 'gray.200'
+              : 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
+            border: displayFeedback === 'correct'
+              ? '2px solid #28a745'
+              : displayFeedback === 'incorrect'
+              ? '2px solid #dc3545'
+              : state.guessesRemaining === 0
+              ? '2px solid #6c757d'
+              : '3px solid #adb5bd',
+            borderRadius: '12px',
+            boxShadow: displayFeedback === 'correct'
+              ? '0 0 20px rgba(40, 167, 69, 0.3)'
+              : displayFeedback === 'incorrect'
+              ? '0 0 20px rgba(220, 53, 69, 0.3)'
+              : '0 4px 6px rgba(0, 0, 0, 0.1)',
+            cursor: state.guessesRemaining === 0 ? 'not-allowed' : 'default'
+          })}
         >
-          <span className="current-typing">
+          <span className={css({ opacity: 1 })}>
             {state.guessesRemaining === 0
               ? 'No more guesses'
               : state.currentInput || (
@@ -557,9 +850,30 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         </div>
       </div>
 
-      <div className="found-numbers">
+      <div className={css({
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: '10px',
+        margin: '20px 0',
+        minHeight: '60px',
+        padding: '15px',
+        background: 'gray.50',
+        borderRadius: '8px'
+      })}>
         {state.foundNumbers.map((number, index) => (
-          <span key={`${number}-${index}`} className="found-number">
+          <span
+            key={`${number}-${index}`}
+            className={css({
+              background: 'green.500',
+              color: 'white',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              fontWeight: 'bold',
+              fontSize: '18px',
+              animation: 'fadeInScale 0.3s ease'
+            })}
+          >
             {number}
           </span>
         ))}
@@ -569,25 +883,73 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       <CardGrid state={state} />
 
       {/* Wrong guess explosion animations */}
-      <div className="wrong-guess-explosions">
+      <div className={css({
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        pointerEvents: 'none',
+        zIndex: 1000
+      })}>
         {state.wrongGuessAnimations.map((animation) => (
-          <div key={animation.id} className="exploding-number">
+          <div
+            key={animation.id}
+            className={css({
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              fontSize: '72px',
+              fontWeight: 'bold',
+              color: 'red.500',
+              textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+              animation: 'explode 1.5s ease-out forwards'
+            })}
+          >
             {animation.number}
           </div>
         ))}
       </div>
 
       {showFinishButtons && (
-        <div className="quiz-finish-buttons">
+        <div className={css({
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '15px',
+          marginTop: '20px'
+        })}>
           <button
-            className="finish-btn"
+            className={css({
+              padding: '12px 24px',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              background: 'blue.500',
+              color: 'white',
+              _hover: { background: 'blue.600' }
+            })}
             onClick={() => dispatch({ type: 'SHOW_RESULTS' })}
           >
             {hasFoundAll ? 'Finish Quiz' : 'Show Results'}
           </button>
           {hasFoundSome && !hasFoundAll && !outOfGuesses && (
             <button
-              className="give-up-btn"
+              className={css({
+                padding: '12px 24px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                background: 'gray.500',
+                color: 'white',
+                _hover: { background: 'gray.600' }
+              })}
               onClick={() => dispatch({ type: 'SHOW_RESULTS' })}
             >
               Can't Remember More
@@ -606,52 +968,108 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
   const percentage = Math.round((correct / total) * 100)
 
   return (
-    <div className="quiz-results">
-      <h3>Quiz Results</h3>
-      <div className="score-display">
-        <div className="score-circle">
+    <div className={css({
+      textAlign: 'center',
+      padding: '40px 20px',
+      maxWidth: '700px',
+      margin: '0 auto'
+    })}>
+      <h3 className={css({ marginBottom: '30px', color: 'gray.800' })}>Quiz Results</h3>
+      <div className={css({
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '30px',
+        marginBottom: '30px',
+        padding: '20px',
+        background: 'gray.50',
+        borderRadius: '12px'
+      })}>
+        <div className={css({
+          width: '120px',
+          height: '120px',
+          borderRadius: '50%',
+          background: 'linear-gradient(45deg, #007bff, #0056b3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: '24px',
+          fontWeight: 'bold'
+        })}>
           <span>{percentage}%</span>
         </div>
-        <div className="score-details">
-          <div className="score-item">
-            <span className="score-label">Correct:</span>
-            <span>{correct}</span>
+        <div className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        })}>
+          <div className={css({
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '20px',
+            fontSize: '18px'
+          })}>
+            <span className={css({ fontWeight: '500', color: 'gray.600' })}>Correct:</span>
+            <span className={css({ fontWeight: 'bold' })}>{correct}</span>
           </div>
-          <div className="score-item">
-            <span className="score-label">Total:</span>
-            <span>{total}</span>
+          <div className={css({
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '20px',
+            fontSize: '18px'
+          })}>
+            <span className={css({ fontWeight: '500', color: 'gray.600' })}>Total:</span>
+            <span className={css({ fontWeight: 'bold' })}>{total}</span>
           </div>
         </div>
       </div>
 
-      <div style={{ marginTop: '16px' }}>
-        <h4>Detailed Results:</h4>
+      <div className={css({ marginTop: '16px' })}>
+        <h4 className={css({ marginBottom: '16px', color: 'gray.700' })}>Detailed Results:</h4>
         {state.correctAnswers.map(number => {
           const found = state.foundNumbers.includes(number)
           const status = found ? '✅' : '❌'
-          const color = found ? '#d4edda' : '#f8d7da'
           return (
             <div
               key={number}
-              style={{
+              className={css({
                 margin: '8px 0',
                 padding: '8px',
-                background: color,
+                background: found ? 'green.50' : 'red.50',
                 borderRadius: '4px',
                 display: 'flex',
-                justifyContent: 'space-between'
-              }}
+                justifyContent: 'space-between',
+                border: '1px solid',
+                borderColor: found ? 'green.200' : 'red.200'
+              })}
             >
-              <span>{number}</span>
+              <span className={css({ fontWeight: '500' })}>{number}</span>
               <span>{status}</span>
             </div>
           )
         })}
       </div>
 
-      <div className="results-actions">
+      <div className={css({
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '15px',
+        marginTop: '20px'
+      })}>
         <button
-          className="retry-btn"
+          className={css({
+            padding: '12px 24px',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            background: 'green.500',
+            color: 'white',
+            _hover: { background: 'green.600' }
+          })}
           onClick={() => {
             dispatch({ type: 'RESET_QUIZ' })
             const quizCards = generateQuizCards(state.selectedCount, state.selectedDifficulty)
@@ -661,7 +1079,18 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
           Try Again
         </button>
         <button
-          className="back-btn"
+          className={css({
+            padding: '12px 24px',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            background: 'gray.500',
+            color: 'white',
+            _hover: { background: 'gray.600' }
+          })}
           onClick={() => dispatch({ type: 'RESET_QUIZ' })}
         >
           Back to Cards
@@ -671,588 +1100,17 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
   )
 }
 
-const originalGameStyles = `
-/* Original styles from web_generator.py template */
-.quiz-section {
-  text-align: center;
-  padding: 20px;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.quiz-section h2 {
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.quiz-controls {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.control-group {
-  margin: 20px 0;
-}
-
-.control-group label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 10px;
-  color: #555;
-}
-
-.count-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.count-btn {
-  background: white;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  padding: 10px 20px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 16px;
-}
-
-.count-btn:hover {
-  background: #f0f0f0;
-  border-color: #4a90e2;
-}
-
-.count-btn.active {
-  background: #4a90e2;
-  color: white;
-  border-color: #4a90e2;
-}
-
-.difficulty-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  justify-content: center;
-}
-
-.difficulty-btn {
-  background: white;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  padding: 12px 16px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.difficulty-btn:hover {
-  background: #f0f0f0;
-  border-color: #4a90e2;
-  transform: translateY(-1px);
-}
-
-.difficulty-btn.active {
-  background: #4a90e2;
-  color: white;
-  border-color: #4a90e2;
-}
-
-.difficulty-name {
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.difficulty-range {
-  font-size: 11px;
-  opacity: 0.8;
-}
-
-.slider-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-}
-
-.slider-container input[type="range"] {
-  flex: 1;
-  max-width: 300px;
-}
-
-.slider-value {
-  font-weight: bold;
-  color: #4a90e2;
-  min-width: 50px;
-}
-
-.quiz-start-btn {
-  background: #28a745;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 15px 30px;
-  font-size: 18px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  margin-top: 20px;
-}
-
-.quiz-start-btn:hover {
-  background: #218838;
-}
-
-/* Quiz Game Area */
-.quiz-game {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.quiz-progress {
-  margin-bottom: 30px;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 10px;
-  background: #e9ecef;
-  border-radius: 5px;
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #28a745, #20c997);
-  border-radius: 5px;
-  width: 0%;
-  transition: width 0.5s ease;
-}
-
-.progress-text {
-  font-size: 16px;
-  font-weight: bold;
-  color: #495057;
-}
-
-.end-game-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.end-game-btn:hover {
-  background: #c82333;
-}
-
-.quiz-flashcard {
-  width: min(85vw, 700px);
-  height: min(50vh, 400px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  transition: transform 0.3s ease;
-}
-
-#quiz-game {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-.quiz-flashcard svg {
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-.countdown {
-  font-size: 3rem;
-  font-weight: bold;
-  color: #007bff;
-  margin: 20px 0;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-}
-
-.countdown.go {
-  color: #28a745;
-  animation: pulse 0.3s ease;
-}
-
+// CSS animations that need to be global
+const globalAnimations = `
 @keyframes pulse {
   0% { transform: scale(1); }
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
 
-/* Quiz Input */
-.quiz-input {
-  text-align: center;
-  padding: 40px 20px;
-  max-width: 700px;
-  margin: 0 auto;
-}
-
-.quiz-stats {
-  display: flex;
-  justify-content: center;
-  gap: 30px;
-  margin-bottom: 30px;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
-}
-
-.stats-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stats-label {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
-}
-
-.stats-item span:last-child {
-  font-size: 24px;
-  font-weight: bold;
-  color: #2c5f76;
-}
-
-.smart-input-container {
-  position: relative;
-  margin: 40px 0;
-  text-align: center;
-}
-
-.smart-input-prompt {
-  font-size: 16px;
-  color: #7a8695;
-  margin-bottom: 15px;
-  font-weight: normal;
-}
-
-.number-display {
-  min-height: 80px;
-  padding: 24px;
-  font-size: 36px;
-  font-family: 'Courier New', 'Monaco', monospace;
-  text-align: center;
-  font-weight: bold;
-  color: #2c3e50;
-  letter-spacing: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border: 3px solid #adb5bd;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  position: relative;
-}
-
-.number-display .current-typing {
-  opacity: 1;
-}
-
-.number-display.correct {
-  background: linear-gradient(45deg, #d4edda, #c3e6cb);
-  border: 2px solid #28a745;
-  border-radius: 8px;
-  box-shadow: 0 0 20px rgba(40, 167, 69, 0.3);
-}
-
-.number-display.incorrect {
-  background: linear-gradient(45deg, #f8d7da, #f1b0b7);
-  border: 2px solid #dc3545;
-  border-radius: 8px;
-  box-shadow: 0 0 20px rgba(220, 53, 69, 0.3);
-}
-
-.number-display.disabled {
-  background: #e9ecef;
-  border: 2px solid #6c757d;
-  color: #6c757d;
-  cursor: not-allowed;
-}
-
-.found-numbers {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin: 20px 0;
-  min-height: 60px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-.found-number {
-  background: #28a745;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-weight: bold;
-  font-size: 18px;
-  animation: fadeInScale 0.3s ease;
-}
-
 @keyframes fadeInScale {
   from { opacity: 0; transform: scale(0.8); }
   to { opacity: 1; transform: scale(1); }
-}
-
-.quiz-finish-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  margin-top: 20px;
-}
-
-.finish-btn, .give-up-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.finish-btn {
-  background: #007bff;
-  color: white;
-}
-
-.finish-btn:hover {
-  background: #0056b3;
-}
-
-.give-up-btn {
-  background: #6c757d;
-  color: white;
-}
-
-.give-up-btn:hover {
-  background: #545b62;
-}
-
-/* Quiz Results */
-.quiz-results {
-  text-align: center;
-  padding: 40px 20px;
-  max-width: 700px;
-  margin: 0 auto;
-}
-
-.score-display {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 30px;
-  margin-bottom: 30px;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
-}
-
-.score-circle {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: linear-gradient(45deg, #007bff, #0056b3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.score-details {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.score-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  font-size: 18px;
-}
-
-.score-label {
-  font-weight: 500;
-  color: #666;
-}
-
-.results-actions {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  margin-top: 20px;
-}
-
-.retry-btn, .back-btn {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.retry-btn {
-  background: #28a745;
-  color: white;
-}
-
-.retry-btn:hover {
-  background: #218838;
-}
-
-.back-btn {
-  background: #6c757d;
-  color: white;
-}
-
-.back-btn:hover {
-  background: #545b62;
-}
-
-.hidden {
-  display: none !important;
-}
-
-/* Card Grid Styles */
-.card-grid {
-  margin-top: 32px;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border: 2px solid #e9ecef;
-}
-
-.card-grid-title {
-  text-align: center;
-  color: #495057;
-  margin-bottom: 20px;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.card-grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.memory-card {
-  perspective: 1000px;
-  height: 180px;
-}
-
-.card-inner {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  text-align: center;
-  transition: transform 0.8s;
-  transform-style: preserve-3d;
-}
-
-.memory-card.revealed .card-inner {
-  transform: rotateY(180deg);
-}
-
-.card-front,
-.card-back {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.card-back {
-  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-  color: white;
-  font-size: 48px;
-  font-weight: bold;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  border: 3px solid #5f3dc4;
-}
-
-.card-front {
-  background: white;
-  border: 3px solid #28a745;
-  transform: rotateY(180deg);
-}
-
-.card-abacus {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.card-pattern {
-  opacity: 0.8;
-}
-
-/* Wrong Guess Explosion Animations */
-.wrong-guess-explosions {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-.exploding-number {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 72px;
-  font-weight: bold;
-  color: #dc3545;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  animation: explode 1.5s ease-out forwards;
 }
 
 @keyframes explode {
@@ -1285,7 +1143,7 @@ export default function MemoryQuizPage() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: originalGameStyles }} />
+      <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
 
       <div className={css({
         minH: 'screen',
