@@ -63,8 +63,7 @@ export function ServerSorobanSVG({
       } catch (err) {
         console.error(`Failed to generate SVG for ${number}:`, err)
         setError('Unable to generate SVG')
-        // Use fallback placeholder
-        setSvgContent(generateFallbackSVG(number, width, height))
+        throw new Error(`Failed to generate SVG for number ${number}: ${err instanceof Error ? err.message : 'Unknown error'}`)
       } finally {
         setIsLoading(false)
       }

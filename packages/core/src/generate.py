@@ -415,7 +415,11 @@ def main():
             print(f"Generated: {output_path}")
             
             # Clean up temp file
-            temp_typst.unlink()
+            try:
+                temp_typst.unlink()
+            except FileNotFoundError:
+                # Temp file may have already been cleaned up or not created
+                pass
             
             # Add duplex printing hints and linearize if requested
             if args.linearize:
