@@ -71,7 +71,21 @@
       "Bash(open test_lightning_sprint.html)",
       "Bash(open debug_tunnel_digging.html)",
       "Bash(git stash:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(open test_endrace_fix.html)",
+      "Bash(grep:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm --filter @soroban/core install)",
+      "Bash(pnpm --filter @soroban/core build)",
+      "Bash(pnpm --filter @soroban/client build)",
+      "Bash(pnpm panda:*)",
+      "Bash(pnpm turbo run:*)",
+      "Bash(pnpm --filter @soroban/web type-check)",
+      "Bash(sed:*)",
+      "Bash(pnpm type-check:*)",
+      "Bash(git bisect:*)"
     ],
     "deny": [],
     "ask": []
