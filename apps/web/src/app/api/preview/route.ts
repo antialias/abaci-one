@@ -1,56 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { spawn } from 'child_process'
+import { SorobanGeneratorBridge } from '@soroban/core'
 import path from 'path'
 
-// Initialize generator with correct absolute path to packages/core
-const corePackagePath = path.resolve(process.cwd(), '../../packages/core')
-
-// Function to call Python bridge directly for SVG generation
-async function generateSVGFromPython(config: any): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python3', [path.join(corePackagePath, 'src/bridge.py')], {
-      cwd: corePackagePath,
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
-
-    let stdout = ''
-    let stderr = ''
-
-    pythonProcess.stdout.on('data', (data) => {
-      stdout += data.toString()
-    })
-
-    pythonProcess.stderr.on('data', (data) => {
-      stderr += data.toString()
-    })
-
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        reject(new Error(`Python process failed with code ${code}: ${stderr}`))
-        return
-      }
-
-      try {
-        const result = JSON.parse(stdout.trim())
-        if (result.error) {
-          reject(new Error(result.error))
-        } else {
-          resolve(result.pdf) // This contains the SVG content when format=svg
-        }
-      } catch (error) {
-        reject(new Error(`Failed to parse Python output: ${error}`))
-      }
-    })
-
-    pythonProcess.on('error', (error) => {
-      reject(new Error(`Failed to start Python process: ${error}`))
-    })
-
-    // Send config to Python bridge
-    pythonProcess.stdin.write(JSON.stringify(config) + '\n')
-    pythonProcess.stdin.end()
-  })
-}
+// Initialize generator (let it figure out its own path)
+const generator = new SorobanGeneratorBridge()
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,14 +46,15 @@ export async function POST(request: NextRequest) {
             beadShape: previewConfig.beadShape || 'diamond',
             colorScheme: previewConfig.colorScheme || 'place-value',
             hideInactiveBeads: previewConfig.hideInactiveBeads || false,
-            scaleFactor: 4.0 // Larger scale for preview visibility
+            scaleFactor: 4.0, // Larger scale for preview visibility
+            range: number.toString() // Bridge needs range parameter
           }
           console.log(`🔍 Generating single-card SVG for number ${number}`)
-          const svgContent = await generateSVGFromPython(singleCardConfig)
-          console.log(`✅ Generated single-card SVG for ${number}, length: ${svgContent.length}`)
+          const result = await generator.generate(singleCardConfig)
+          console.log(`✅ Generated single-card SVG for ${number}, length: ${result.pdf.length}`)
           samples.push({
             number,
-            front: svgContent,
+            front: result.pdf, // Contains SVG content when format=svg
             back: number.toString()
           })
         } catch (error) {

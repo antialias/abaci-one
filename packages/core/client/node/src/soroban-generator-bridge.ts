@@ -32,10 +32,13 @@ export interface FlashcardConfig {
   colorScheme?: 'monochrome' | 'place-value' | 'heaven-earth' | 'alternating';
   coloredNumerals?: boolean;
   scaleFactor?: number;
+  format?: 'pdf' | 'svg';
+  mode?: 'single-card' | 'flashcards';
+  number?: number;
 }
 
 export interface FlashcardResult {
-  pdf: string;  // base64 encoded
+  pdf: string;  // base64 encoded PDF or SVG content (depending on format)
   count: number;
   numbers: number[];
 }
