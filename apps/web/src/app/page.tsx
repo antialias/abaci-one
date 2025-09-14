@@ -20,6 +20,20 @@ export default function HomePage() {
             </h1>
             <div className={hstack({ gap: '4' })}>
               <Link
+                href="/guide"
+                className={css({
+                  px: '4',
+                  py: '2',
+                  color: 'brand.600',
+                  rounded: 'lg',
+                  fontWeight: 'medium',
+                  transition: 'all',
+                  _hover: { bg: 'brand.50' }
+                })}
+              >
+                Guide
+              </Link>
+              <Link
                 href="/create"
                 className={css({
                   px: '4',
@@ -90,7 +104,7 @@ export default function HomePage() {
               </Link>
 
               <Link
-                href="/gallery"
+                href="/guide"
                 className={css({
                   px: '8',
                   py: '4',
@@ -109,7 +123,7 @@ export default function HomePage() {
                   }
                 })}
               >
-                🖼️ View Examples
+                📚 Learn Soroban
               </Link>
             </div>
           </div>

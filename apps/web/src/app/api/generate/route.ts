@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SorobanGenerator } from '@soroban/core'
-import { assetStore } from '@/lib/asset-store'
 import path from 'path'
-import crypto from 'crypto'
 
 // Global generator instance for better performance
 let generator: SorobanGenerator | null = null
@@ -50,40 +48,31 @@ export async function POST(request: NextRequest) {
 
     // Generate flashcards using Python via TypeScript bindings
     console.log('🚀 Generating flashcards with config:', JSON.stringify(config, null, 2))
-    const pdfBuffer = await gen.generate(config)
-
-    // Create unique ID for this generated asset
-    const assetId = crypto.randomUUID()
-
-    // For now, only PDF format is supported by the core generator
-    const format = 'pdf'
-    const mimeType = 'application/pdf'
-    const filename = `soroban-flashcards-${config.range || 'cards'}.pdf`
-
-    // Store the generated asset temporarily
-    assetStore.set(assetId, {
-      data: pdfBuffer,
-      filename,
-      mimeType,
-      createdAt: new Date()
+    const result = await gen.generate(config)
+    console.log('📦 Generation result:', {
+      pdfLength: result.pdf?.length || 0,
+      count: result.count,
+      numbersLength: result.numbers?.length || 0
     })
 
-    // Calculate metadata from config
-    const cardCount = calculateCardCount(config.range || '0', config.step || 1)
-    const numbers = generateNumbersFromRange(config.range || '0', config.step || 1)
+    if (!result.pdf) {
+      throw new Error('No PDF data received from generator')
+    }
 
-    // Return metadata and download URL
-    return NextResponse.json({
-      id: assetId,
-      downloadUrl: `/api/download/${assetId}`,
-      metadata: {
-        cardCount,
-        numbers: numbers.slice(0, 20), // Show first 20 numbers for preview
-        format,
-        filename,
-        fileSize: pdfBuffer.length
-      },
-      success: true
+    // Convert base64 PDF string to Buffer
+    const pdfBuffer = Buffer.from(result.pdf, 'base64')
+    console.log('📄 PDF buffer size:', pdfBuffer.length, 'bytes')
+
+    // Create filename for download
+    const filename = `soroban-flashcards-${config.range || 'cards'}.pdf`
+
+    // Return PDF directly as download
+    return new NextResponse(pdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': pdfBuffer.length.toString()
+      }
     })
 
   } catch (error) {
@@ -137,8 +126,7 @@ export async function GET() {
 
     return NextResponse.json({
       status: 'healthy',
-      dependencies: deps,
-      assetsInMemory: assetStore.size
+      dependencies: deps
     })
   } catch (error) {
     return NextResponse.json({

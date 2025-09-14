@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import * as Progress from '@radix-ui/react-progress'
 import { css } from '../../styled-system/css'
 import { stack, hstack } from '../../styled-system/patterns'
-import { FlashcardConfig } from '@/app/create/page'
+import { FlashcardConfig, FlashcardFormState } from '@/app/create/page'
 import { Sparkles, Zap, CheckCircle } from 'lucide-react'
 
 interface GenerationProgressProps {
-  config: FlashcardConfig
+  config: FlashcardFormState
 }
 
 interface ProgressStep {
@@ -291,8 +291,8 @@ export function GenerationProgress({ config }: GenerationProgressProps) {
 }
 
 // Helper functions
-function getEstimatedCardCount(config: FlashcardConfig): number {
-  const range = config.range
+function getEstimatedCardCount(config: FlashcardFormState): number {
+  const range = config.range || '0-99' // Safe default for form state
 
   if (range.includes('-')) {
     const [start, end] = range.split('-').map(n => parseInt(n) || 0)
@@ -306,7 +306,7 @@ function getEstimatedCardCount(config: FlashcardConfig): number {
   return 1
 }
 
-function getEstimatedTime(config: FlashcardConfig): number {
+function getEstimatedTime(config: FlashcardFormState): number {
   const cardCount = getEstimatedCardCount(config)
   const baseTime = 3 // Base generation time
   const cardTime = Math.max(cardCount * 0.1, 1)
@@ -320,7 +320,7 @@ function getEstimatedTime(config: FlashcardConfig): number {
   return Math.round((baseTime + cardTime) * formatMultiplier)
 }
 
-function getFunFact(config: FlashcardConfig): string {
+function getFunFact(config: FlashcardFormState): string {
   const facts = [
     'The soroban is a Japanese counting tool that dates back over 400 years!',
     'Master soroban users can calculate faster than electronic calculators.',

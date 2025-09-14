@@ -7,25 +7,19 @@ import * as Select from '@radix-ui/react-select'
 import * as RadioGroup from '@radix-ui/react-radio-group'
 import * as Switch from '@radix-ui/react-switch'
 import * as Slider from '@radix-ui/react-slider'
-import { ChevronDown, Download, Sparkles } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { css } from '../../styled-system/css'
 import { stack, hstack, grid } from '../../styled-system/patterns'
 import { FlashcardFormState } from '@/app/create/page'
+import { FormatSelectField } from './FormatSelectField'
 
 interface ConfigurationFormProps {
   form: FormApi<FlashcardFormState>
-  onGenerate: (formState: FlashcardFormState) => Promise<void>
-  isGenerating: boolean
 }
 
-export function ConfigurationForm({ form, onGenerate, isGenerating }: ConfigurationFormProps) {
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onGenerate(form.state.values)
-  }
-
+export function ConfigurationFormWithoutGenerate({ form }: ConfigurationFormProps) {
   return (
-    <form onSubmit={handleSubmit} className={stack({ gap: '6' })}>
+    <div className={stack({ gap: '6' })}>
       <div className={stack({ gap: '2' })}>
         <h2 className={css({
           fontSize: '2xl',
@@ -41,7 +35,14 @@ export function ConfigurationForm({ form, onGenerate, isGenerating }: Configurat
         </p>
       </div>
 
-      <Tabs.Root defaultValue="content" className={css({ w: 'full' })}>
+      <form.Field name="format">
+        {(formatField) => {
+          const isPdf = formatField.state.value === 'pdf'
+          // Auto-switch away from layout tab if format changed to non-PDF
+          const defaultTab = !isPdf ? 'content' : 'content'
+
+          return (
+            <Tabs.Root defaultValue={defaultTab} className={css({ w: 'full' })}>
         <Tabs.List className={css({
           display: 'flex',
           gap: '1',
@@ -51,7 +52,6 @@ export function ConfigurationForm({ form, onGenerate, isGenerating }: Configurat
         })}>
           {[
             { value: 'content', label: '📝 Content', icon: '🔢' },
-            { value: 'layout', label: '📐 Layout', icon: '📐' },
             { value: 'output', label: '💾 Output', icon: '💾' }
           ].map((tab) => (
             <Tabs.Trigger
@@ -135,99 +135,6 @@ export function ConfigurationForm({ form, onGenerate, isGenerating }: Configurat
         </Tabs.Content>
 
 
-        {/* Layout Tab */}
-        <Tabs.Content value="layout" className={css({ mt: '6' })}>
-          <div className={stack({ gap: '6' })}>
-            <div className={grid({ columns: 2, gap: '4' })}>
-              <FormField
-                label="Cards Per Page"
-                description="Number of flashcards on each page"
-              >
-                <form.Field name="cardsPerPage">
-                  {(field) => (
-                    <SliderField
-                      value={[field.state.value || 6]}
-                      onValueChange={([value]) => field.handleChange(value)}
-                      min={1}
-                      max={12}
-                      step={1}
-                      formatValue={(value) => `${value} cards`}
-                    />
-                  )}
-                </form.Field>
-              </FormField>
-
-              <FormField
-                label="Paper Size"
-                description="Output paper dimensions"
-              >
-                <form.Field name="paperSize">
-                  {(field) => (
-                    <SelectField
-                      value={field.state.value || 'us-letter'}
-                      onValueChange={(value) => field.handleChange(value as any)}
-                      options={[
-                        { value: 'us-letter', label: 'US Letter (8.5×11")' },
-                        { value: 'a4', label: 'A4 (210×297mm)' },
-                        { value: 'a3', label: 'A3 (297×420mm)' },
-                        { value: 'a5', label: 'A5 (148×210mm)' }
-                      ]}
-                    />
-                  )}
-                </form.Field>
-              </FormField>
-            </div>
-
-            <FormField
-              label="Orientation"
-              description="Page layout direction"
-            >
-              <form.Field name="orientation">
-                {(field) => (
-                  <RadioGroupField
-                    value={field.state.value || 'portrait'}
-                    onValueChange={(value) => field.handleChange(value as any)}
-                    options={[
-                      { value: 'portrait', label: '📄 Portrait', desc: 'Taller than wide' },
-                      { value: 'landscape', label: '📃 Landscape', desc: 'Wider than tall' }
-                    ]}
-                  />
-                )}
-              </form.Field>
-            </FormField>
-
-            <div className={grid({ columns: 2, gap: '4' })}>
-              <FormField
-                label="Show Cut Marks"
-                description="Add guides for cutting cards"
-              >
-                <form.Field name="showCutMarks">
-                  {(field) => (
-                    <SwitchField
-                      checked={field.state.value || false}
-                      onCheckedChange={field.handleChange}
-                    />
-                  )}
-                </form.Field>
-              </FormField>
-
-              <FormField
-                label="Registration Marks"
-                description="Alignment guides for duplex printing"
-              >
-                <form.Field name="showRegistration">
-                  {(field) => (
-                    <SwitchField
-                      checked={field.state.value || false}
-                      onCheckedChange={field.handleChange}
-                    />
-                  )}
-                </form.Field>
-              </FormField>
-            </div>
-          </div>
-        </Tabs.Content>
-
         {/* Output Tab */}
         <Tabs.Content value="output" className={css({ mt: '6' })}>
           <div className={stack({ gap: '6' })}>
@@ -237,19 +144,138 @@ export function ConfigurationForm({ form, onGenerate, isGenerating }: Configurat
             >
               <form.Field name="format">
                 {(field) => (
-                  <RadioGroupField
+                  <FormatSelectField
                     value={field.state.value || 'pdf'}
                     onValueChange={(value) => field.handleChange(value as any)}
-                    options={[
-                      { value: 'pdf', label: '📄 PDF', desc: 'Print-ready vector document' },
-                      { value: 'html', label: '🌐 HTML', desc: 'Interactive web flashcards' },
-                      { value: 'svg', label: '🖼️ SVG', desc: 'Scalable vector images' },
-                      { value: 'png', label: '📷 PNG', desc: 'High-resolution images' }
-                    ]}
                   />
                 )}
               </form.Field>
             </FormField>
+
+            {/* PDF-Specific Options */}
+            <form.Field name="format">
+              {(formatField) => {
+                const isPdf = formatField.state.value === 'pdf'
+
+                return isPdf ? (
+                  <div className={stack({ gap: '6' })}>
+                    <div className={css({
+                      p: '4',
+                      bg: 'blue.50',
+                      border: '1px solid',
+                      borderColor: 'blue.200',
+                      rounded: 'xl'
+                    })}>
+                      <div className={stack({ gap: '4' })}>
+                        <div className={stack({ gap: '2' })}>
+                          <h3 className={css({
+                            fontSize: 'md',
+                            fontWeight: 'semibold',
+                            color: 'blue.800'
+                          })}>
+                            📄 PDF Layout Options
+                          </h3>
+                          <p className={css({
+                            fontSize: 'sm',
+                            color: 'blue.700'
+                          })}>
+                            Configure page layout and printing options for your PDF
+                          </p>
+                        </div>
+
+                        <div className={grid({ columns: 2, gap: '4' })}>
+                          <FormField
+                            label="Cards Per Page"
+                            description="Number of flashcards on each page"
+                          >
+                            <form.Field name="cardsPerPage">
+                              {(field) => (
+                                <SliderField
+                                  value={[field.state.value || 6]}
+                                  onValueChange={([value]) => field.handleChange(value)}
+                                  min={1}
+                                  max={12}
+                                  step={1}
+                                  formatValue={(value) => `${value} cards`}
+                                />
+                              )}
+                            </form.Field>
+                          </FormField>
+
+                          <FormField
+                            label="Paper Size"
+                            description="Output paper dimensions"
+                          >
+                            <form.Field name="paperSize">
+                              {(field) => (
+                                <SelectField
+                                  value={field.state.value || 'us-letter'}
+                                  onValueChange={(value) => field.handleChange(value as any)}
+                                  options={[
+                                    { value: 'us-letter', label: 'US Letter (8.5×11")' },
+                                    { value: 'a4', label: 'A4 (210×297mm)' },
+                                    { value: 'a3', label: 'A3 (297×420mm)' },
+                                    { value: 'a5', label: 'A5 (148×210mm)' }
+                                  ]}
+                                />
+                              )}
+                            </form.Field>
+                          </FormField>
+                        </div>
+
+                        <FormField
+                          label="Orientation"
+                          description="Page layout direction"
+                        >
+                          <form.Field name="orientation">
+                            {(field) => (
+                              <RadioGroupField
+                                value={field.state.value || 'portrait'}
+                                onValueChange={(value) => field.handleChange(value as any)}
+                                options={[
+                                  { value: 'portrait', label: '📄 Portrait', desc: 'Taller than wide' },
+                                  { value: 'landscape', label: '📃 Landscape', desc: 'Wider than tall' }
+                                ]}
+                              />
+                            )}
+                          </form.Field>
+                        </FormField>
+
+                        <div className={grid({ columns: 2, gap: '4' })}>
+                          <FormField
+                            label="Show Cut Marks"
+                            description="Add guides for cutting cards"
+                          >
+                            <form.Field name="showCutMarks">
+                              {(field) => (
+                                <SwitchField
+                                  checked={field.state.value || false}
+                                  onCheckedChange={field.handleChange}
+                                />
+                              )}
+                            </form.Field>
+                          </FormField>
+
+                          <FormField
+                            label="Registration Marks"
+                            description="Alignment guides for duplex printing"
+                          >
+                            <form.Field name="showRegistration">
+                              {(field) => (
+                                <SwitchField
+                                  checked={field.state.value || false}
+                                  onCheckedChange={field.handleChange}
+                                />
+                              )}
+                            </form.Field>
+                          </FormField>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null
+              }}
+            </form.Field>
 
             <FormField
               label="Scale Factor"
@@ -271,56 +297,10 @@ export function ConfigurationForm({ form, onGenerate, isGenerating }: Configurat
           </div>
         </Tabs.Content>
       </Tabs.Root>
-
-      {/* Generate Button */}
-      <div className={css({ pt: '6', borderTop: '1px solid', borderColor: 'gray.200' })}>
-        <button
-          type="submit"
-          disabled={isGenerating}
-          className={css({
-            w: 'full',
-            px: '6',
-            py: '4',
-            bg: 'brand.600',
-            color: 'white',
-            fontSize: 'lg',
-            fontWeight: 'semibold',
-            rounded: 'xl',
-            shadow: 'card',
-            transition: 'all',
-            cursor: isGenerating ? 'not-allowed' : 'pointer',
-            opacity: isGenerating ? '0.7' : '1',
-            _hover: isGenerating ? {} : {
-              bg: 'brand.700',
-              transform: 'translateY(-1px)',
-              shadow: 'modal'
-            }
-          })}
-        >
-          <span className={hstack({ gap: '3', justify: 'center' })}>
-            {isGenerating ? (
-              <>
-                <div className={css({
-                  w: '5',
-                  h: '5',
-                  border: '2px solid',
-                  borderColor: 'white',
-                  borderTopColor: 'transparent',
-                  rounded: 'full',
-                  animation: 'spin 1s linear infinite'
-                })} />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Sparkles size={20} />
-                Generate Flashcards
-              </>
-            )}
-          </span>
-        </button>
-      </div>
-    </form>
+          )
+        }}
+      </form.Field>
+    </div>
   )
 }
 
