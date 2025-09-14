@@ -63,7 +63,6 @@ export function ServerSorobanSVG({
       } catch (err) {
         console.error(`Failed to generate SVG for ${number}:`, err)
         setError('Unable to generate SVG')
-        throw new Error(`Failed to generate SVG for number ${number}: ${err instanceof Error ? err.message : 'Unknown error'}`)
       } finally {
         setIsLoading(false)
       }
@@ -136,7 +135,7 @@ function processSVGForDisplay(svgContent: string, targetWidth: number, targetHei
     }
 
     // Get the bounding box of all actual content
-    let bounds = calculateSVGContentBounds(svgElement)
+    let bounds = calculateSVGContentBounds(svgElement as unknown as SVGSVGElement)
 
     if (!bounds) {
       // Fallback to original if we can't calculate bounds
@@ -253,7 +252,7 @@ function extractPathCoordinates(pathData: string): { x: number; y: number }[] {
 }
 
 function applyElementTransforms(point: { x: number; y: number }, element: Element, rootSVG: SVGSVGElement): { x: number; y: number } {
-  let current = element
+  let current: Element | null = element
   let transformedPoint = { ...point }
 
   // Apply transforms from element up to root
