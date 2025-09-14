@@ -767,7 +767,7 @@ function ArithmeticOperationsGuide() {
           </h4>
           <ol className={css({
             pl: '6',
-            space: 'y-2',
+            gap: '2',
             color: 'gray.700'
           })}>
             <li className={css({ mb: '2' })}>1. Set the first number on the soroban</li>
@@ -843,7 +843,7 @@ function ArithmeticOperationsGuide() {
           </h4>
           <ol className={css({
             pl: '6',
-            space: 'y-2',
+            gap: '2',
             color: 'gray.700'
           })}>
             <li className={css({ mb: '2' })}>1. Set the minuend (first number) on the soroban</li>
