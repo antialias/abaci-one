@@ -379,7 +379,7 @@ function getPreviewRange(range: string | undefined): string {
 
   if (safeRange.includes('-')) {
     const [start, end] = safeRange.split('-').map(n => parseInt(n) || 0)
-    const examples = []
+    const examples: number[] = []
 
     // For larger ranges, distribute examples more evenly across the range
     const rangeSize = end - start + 1
