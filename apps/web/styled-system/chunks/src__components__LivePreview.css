@@ -52,10 +52,6 @@
     border-color: var(--colors-gray-200)
     }
 
-  .overflow_hidden {
-    overflow: hidden
-    }
-
   .cursor_pointer {
     cursor: pointer
     }
@@ -118,6 +114,10 @@
     padding: var(--spacing-4)
     }
 
+  .overflow_hidden {
+    overflow: hidden
+    }
+
   .max-w_full {
     max-width: var(--sizes-full)
     }
@@ -125,6 +125,18 @@
   .max-h_full {
     max-height: var(--sizes-full)
     }
+    .\[\&_svg\]\:max-w_100\% svg {
+      max-width: 100%
+        }
+    .\[\&_svg\]\:max-h_100\% svg {
+      max-height: 100%
+        }
+    .\[\&_svg\]\:w_auto svg {
+      width: auto
+        }
+    .\[\&_svg\]\:h_auto svg {
+      height: auto
+        }
 
   .w_full {
     width: var(--sizes-full)

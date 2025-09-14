@@ -52,8 +52,8 @@
     color: var(--colors-gray-900)
     }
 
-  .fs_lg {
-    font-size: var(--font-sizes-lg)
+  .fs_sm {
+    font-size: var(--font-sizes-sm)
     }
 
   .text_gray\.600 {
@@ -64,8 +64,101 @@
     background: var(--colors-white)
     }
 
+  .p_6 {
+    padding: var(--spacing-6)
+    }
+
+  .border-t_1px_solid {
+    border-top: 1px solid
+    }
+
+  .border_gray\.200 {
+    border-color: var(--colors-gray-200)
+    }
+
+  .pt_6 {
+    padding-top: var(--spacing-6)
+    }
+
+  .mb_4 {
+    margin-bottom: var(--spacing-4)
+    }
+
+  .cursor_not-allowed {
+    cursor: not-allowed
+    }
+
+  .cursor_pointer {
+    cursor: pointer
+    }
+
+  .opacity_0\.7 {
+    opacity: 0.7
+    }
+
+  .opacity_1 {
+    opacity: 1
+    }
+    .hover\:bg_brand\.700:is(:hover, [data-hover]) {
+      background: var(--colors-brand-700)
+        }
+    .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
+      transform: translateY(-1px)
+        }
+    .hover\:shadow_modal:is(:hover, [data-hover]) {
+      box-shadow: var(--shadows-modal)
+        }
+
+  .w_full {
+    width: var(--sizes-full)
+    }
+
+  .px_6 {
+    padding-inline: var(--spacing-6)
+    }
+
+  .bg_brand\.600 {
+    background: var(--colors-brand-600)
+    }
+
+  .fs_lg {
+    font-size: var(--font-sizes-lg)
+    }
+
+  .rounded_xl {
+    border-radius: var(--radii-xl)
+    }
+
   .shadow_card {
     box-shadow: var(--shadows-card)
+    }
+
+  .w_5 {
+    width: var(--sizes-5)
+    }
+
+  .h_5 {
+    height: var(--sizes-5)
+    }
+
+  .border_2px_solid {
+    border: 2px solid
+    }
+
+  .border_white {
+    border-color: var(--colors-white)
+    }
+
+  .border-t_transparent {
+    border-top-color: var(--colors-transparent)
+    }
+
+  .rounded_full {
+    border-radius: var(--radii-full)
+    }
+
+  .animation_spin_1s_linear_infinite {
+    animation: spin 1s linear infinite
     }
 
   .bg_red\.50 {
@@ -86,6 +179,10 @@
 
   .p_8 {
     padding: var(--spacing-8)
+    }
+
+  .mt_8 {
+    margin-top: var(--spacing-8)
     }
 
   .fs_2xl {
@@ -174,6 +271,10 @@
     gap: 10px
     }
 
+  .justify_center {
+    justify-content: center
+    }
+
   .items_center {
     align-items: center
     }
@@ -196,6 +297,10 @@
 
   .text_center {
     text-align: center
+    }
+
+  .gap_1 {
+    gap: var(--spacing-1)
     }
 
   .gap_6 {
@@ -237,8 +342,11 @@
   .hover\:bg_red\.700:is(:hover, [data-hover]) {
     background: var(--colors-red-700)
         }
+    @media screen and (min-width: 64em) {
 
-  @media screen and (min-width: 64em) {
+  .lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
+      grid-template-columns: repeat(3, minmax(0, 1fr))
+    }
     .lg\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(2, minmax(0, 1fr))
     }

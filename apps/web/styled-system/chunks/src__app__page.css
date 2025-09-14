@@ -23,6 +23,9 @@
   .text_brand\.800 {
     color: var(--colors-brand-800)
     }
+    .hover\:bg_brand\.50:is(:hover, [data-hover]) {
+      background: var(--colors-brand-50)
+        }
 
   .py_2 {
     padding-block: var(--spacing-2)
@@ -278,6 +281,7 @@
   .md\:px_6 {
       padding-inline: var(--spacing-6)
     }
+
     .md\:fs_6xl {
       font-size: var(--font-sizes-6xl)
     }

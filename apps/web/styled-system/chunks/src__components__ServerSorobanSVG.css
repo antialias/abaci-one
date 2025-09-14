@@ -1,0 +1,66 @@
+@layer utilities {
+
+  .w_4 {
+    width: var(--sizes-4)
+    }
+
+  .h_4 {
+    height: var(--sizes-4)
+    }
+
+  .border_2px_solid {
+    border: 2px solid
+    }
+
+  .border_gray\.300 {
+    border-color: var(--colors-gray-300)
+    }
+
+  .border-t_transparent {
+    border-top-color: var(--colors-transparent)
+    }
+
+  .rounded_full {
+    border-radius: var(--radii-full)
+    }
+
+  .animation_spin_1s_linear_infinite {
+    animation: spin 1s linear infinite
+    }
+
+  .mr_2 {
+    margin-right: var(--spacing-2)
+    }
+
+  .d_flex {
+    display: flex
+    }
+
+  .flex_column {
+    flex-direction: column
+    }
+
+  .items_center {
+    align-items: center
+    }
+
+  .justify_center {
+    justify-content: center
+    }
+
+  .text_gray\.400 {
+    color: var(--colors-gray-400)
+    }
+
+  .fs_sm {
+    font-size: var(--font-sizes-sm)
+    }
+
+  .gap_1 {
+    gap: var(--spacing-1)
+    }
+
+  .fs_2xl {
+    font-size: var(--font-sizes-2xl)
+    }
+}
