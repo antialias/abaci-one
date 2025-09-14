@@ -58,7 +58,7 @@ export class SorobanGenerator {
     if (this.pythonShell) return;
 
     this.pythonShell = new PythonShell(
-      path.join(this.projectRoot, 'src', 'bridge.py'),
+      path.join('src', 'bridge.py'),
       {
         mode: 'json',
         pythonPath: 'python3',
@@ -75,44 +75,30 @@ export class SorobanGenerator {
     // One-shot mode if not initialized
     if (!this.pythonShell) {
       return new Promise((resolve, reject) => {
-        PythonShell.run(
-          path.join(this.projectRoot, 'src', 'bridge.py'),
+        const shell = new PythonShell(
+          path.join('src', 'bridge.py'),
           {
             mode: 'json',
             pythonPath: 'python3',
             scriptPath: this.projectRoot,
-            args: [],
-          },
-          (err, results) => {
-            if (err) {
-              reject(err);
-            } else if (results && results[0]) {
-              const result = results[0] as any;
-              if (result.error) {
-                reject(new Error(result.error));
-              } else {
-                resolve(result as FlashcardResult);
-              }
-            } else {
-              reject(new Error('No result from Python'));
-            }
           }
         );
 
-        // Send config as JSON
-        PythonShell.defaultOptions = {};
-        const shell = new PythonShell(
-          path.join(this.projectRoot, 'src', 'bridge.py'),
-          {
-            mode: 'json',
-            pythonPath: 'python3',
-            scriptPath: this.projectRoot,
+        shell.on('message', (message: any) => {
+          if (message.error) {
+            reject(new Error(message.error));
+          } else {
+            resolve(message as FlashcardResult);
           }
-        );
-        
+        });
+
+        shell.on('error', (err: any) => {
+          reject(err);
+        });
+
         shell.send(config);
-        shell.end((err, code, signal) => {
-          if (err) console.error(err);
+        shell.end((err: any, code: any, signal: any) => {
+          if (err) reject(err);
         });
       });
     }
@@ -189,8 +175,8 @@ async function example() {
 // Express example - clean function calls
 export function expressRoute(app: any) {
   const generator = new SorobanGenerator();
-  
-  app.post('/api/flashcards', async (req, res) => {
+
+  app.post('/api/flashcards', async (req: any, res: any) => {
     try {
       // Just pass the config object directly!
       const result = await generator.generate(req.body);
@@ -204,7 +190,7 @@ export function expressRoute(app: any) {
         res.send(pdfBuffer);
       }
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: (error as Error).message });
     }
   });
 }

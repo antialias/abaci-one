@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { SorobanGeneratorBridge } from '@soroban/core'
 import path from 'path'
 
-// Initialize generator (let it figure out its own path)
-const generator = new SorobanGeneratorBridge()
+// Initialize generator with correct path to Python scripts
+const projectRoot = path.join(process.cwd(), '../../packages/core')
+const generator = new SorobanGeneratorBridge(projectRoot)
 
 export async function POST(request: NextRequest) {
   try {

@@ -85,7 +85,8 @@
       "Bash(pnpm --filter @soroban/web type-check)",
       "Bash(sed:*)",
       "Bash(pnpm type-check:*)",
-      "Bash(git bisect:*)"
+      "Bash(git bisect:*)",
+      "Bash(pnpm --filter @soroban/web dev)"
     ],
     "deny": [],
     "ask": []

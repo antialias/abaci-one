@@ -209,7 +209,7 @@ var SorobanGenerator2 = class {
     if (this.pythonShell)
       return;
     this.pythonShell = new import_python_shell.PythonShell(
-      path2.join(this.projectRoot, "src", "bridge.py"),
+      path2.join("src", "bridge.py"),
       {
         mode: "json",
         pythonPath: "python3",
@@ -225,42 +225,28 @@ var SorobanGenerator2 = class {
   async generate(config) {
     if (!this.pythonShell) {
       return new Promise((resolve, reject) => {
-        import_python_shell.PythonShell.run(
-          path2.join(this.projectRoot, "src", "bridge.py"),
-          {
-            mode: "json",
-            pythonPath: "python3",
-            scriptPath: this.projectRoot,
-            args: []
-          },
-          (err, results) => {
-            if (err) {
-              reject(err);
-            } else if (results && results[0]) {
-              const result = results[0];
-              if (result.error) {
-                reject(new Error(result.error));
-              } else {
-                resolve(result);
-              }
-            } else {
-              reject(new Error("No result from Python"));
-            }
-          }
-        );
-        import_python_shell.PythonShell.defaultOptions = {};
         const shell = new import_python_shell.PythonShell(
-          path2.join(this.projectRoot, "src", "bridge.py"),
+          path2.join("src", "bridge.py"),
           {
             mode: "json",
             pythonPath: "python3",
             scriptPath: this.projectRoot
           }
         );
+        shell.on("message", (message) => {
+          if (message.error) {
+            reject(new Error(message.error));
+          } else {
+            resolve(message);
+          }
+        });
+        shell.on("error", (err) => {
+          reject(err);
+        });
         shell.send(config);
         shell.end((err, code, signal) => {
           if (err)
-            console.error(err);
+            reject(err);
         });
       });
     }
