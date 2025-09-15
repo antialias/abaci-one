@@ -29,7 +29,7 @@ export default function TestTypstPage() {
               fontSize: 'lg',
               color: 'gray.600'
             })}>
-              Testing browser-native Soroban SVG generation with typst.ts
+              Testing browser-only Soroban SVG generation (no server fallback)
             </p>
             <div className={hstack({ gap: '6', justify: 'center' })}>
               <div className={css({
@@ -144,7 +144,8 @@ export default function TestTypstPage() {
                 number={selectedNumber}
                 width="200pt"
                 height="250pt"
-                enableServerFallback={true}
+                enableServerFallback={false}
+                lazy={false}
                 onSuccess={() => setGenerationCount(prev => prev + 1)}
                 onError={() => setErrorCount(prev => prev + 1)}
                 className={css({
@@ -173,7 +174,7 @@ export default function TestTypstPage() {
               columns: { base: 2, md: 3, lg: 5 },
               gap: '4'
             })}>
-              {testNumbers.map((num) => (
+              {testNumbers.map((num, index) => (
                 <div
                   key={num}
                   className={css({
@@ -192,16 +193,22 @@ export default function TestTypstPage() {
                     borderColor: 'gray.200',
                     textAlign: 'center',
                     fontSize: 'sm',
-                    fontWeight: 'medium'
+                    fontWeight: 'medium',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '1'
                   })}>
                     {num}
+                    {index > 1 && <span className={css({ fontSize: 'xs', color: 'blue.600' })}>lazy</span>}
                   </div>
                   <div className={css({ p: '2', h: 'full' })}>
                     <TypstSoroban
                       number={num}
                       width="100pt"
                       height="120pt"
-                      enableServerFallback={true}
+                      enableServerFallback={false}
+                      lazy={index > 1} // Make the last 3 components lazy
                       onSuccess={() => setGenerationCount(prev => prev + 1)}
                       onError={() => setErrorCount(prev => prev + 1)}
                       className={css({ w: 'full', h: 'full' })}
@@ -236,7 +243,10 @@ export default function TestTypstPage() {
                 • No Python bridge required - everything runs natively in TypeScript/WebAssembly
               </p>
               <p className={css({ color: 'blue.800', fontSize: 'sm' })}>
-                • Uses the same Typst templates as the existing system for consistency
+                • WASM preloading starts automatically in background for better performance
+              </p>
+              <p className={css({ color: 'blue.800', fontSize: 'sm' })}>
+                • Lazy loading demo: Last 3 grid items show placeholders until clicked (progressive enhancement)
               </p>
               <p className={css({ color: 'blue.800', fontSize: 'sm' })}>
                 • Global abacus display settings are automatically applied
