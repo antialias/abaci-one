@@ -319,115 +319,133 @@ export function InteractiveAbacus({
               }
             })}
           >
-            <TypstSoroban
-              number={currentValue}
-              width={compact ? "144pt" : "180pt"}
-              height={compact ? "192pt" : "240pt"}
-              className={css({
-                width: '100%',
-                height: '100%',
-                transition: 'all 0.3s ease',
-                cursor: 'pointer',
-                '& [data-bead-type]': {
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    filter: 'brightness(1.2)',
-                    transform: 'scale(1.05)'
-                  }
-                }
-              })}
-            />
+            {/* Aspect ratio container for proper SVG cropping */}
+            <div className={css({
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden'
+            })}>
+              <div className={css({
+                transform: compact ? 'scale(2.0)' : 'scale(2.4)',
+                transformOrigin: 'center'
+              })}>
+                <TypstSoroban
+                  number={currentValue}
+                  width="120pt"
+                  height="200pt"
+                  className={css({
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                    '& [data-bead-type]': {
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      _hover: {
+                        filter: 'brightness(1.2)',
+                        transform: 'scale(1.05)'
+                      }
+                    },
+                    '& svg': {
+                      width: '100%',
+                      height: '100%',
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain'
+                    }
+                  })}
+                />
+              </div>
+            </div>
           </animated.div>
 
-          {/* Integrated Value Display with Always-Available Input */}
+          {/* Column-based Value Display */}
           {showValue && (
             <div
               className={css({
                 position: 'absolute',
-                bottom: compact ? '-50px' : '-60px',
+                bottom: compact ? '-35px' : '-40px',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '2',
-                bg: 'white',
-                border: '2px solid',
-                borderColor: 'blue.200',
-                rounded: 'xl',
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
-                px: '3',
-                py: '2',
-                minW: '160px'
+                gap: '0',
+                width: compact ? '240px' : '300px',
+                justifyContent: 'center'
               })}
             >
-              {/* Single Unified Number Display/Input */}
-              <div
-                ref={numberRef}
-                tabIndex={showManualInput ? 0 : -1}
-                onClick={handleNumberClick}
-                onKeyDown={handleKeyDown}
-                onBlur={handleNumberBlur}
-                className={css({
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  flex: '1',
-                  outline: 'none',
-                  cursor: showManualInput ? 'pointer' : 'default'
-                })}
-                title={showManualInput ? "Click to edit, type numbers, Enter to confirm" : undefined}
-              >
-                <NumberFlow
-                  value={isEditing ? parseInt(editingValue) || 0 : currentValue}
-                  animated={!disableAnimation}
-                  style={{
-                    fontSize: compact ? '1.5rem' : '1.875rem',
-                    fontWeight: 'bold',
-                    color: isEditing ? '#1d4ed8' : '#2563eb', // Slightly darker when editing
-                    textAlign: 'center',
-                    minWidth: '80px',
-                    width: '100%'
-                  }}
-                />
+              {/* Position digits above their respective columns */}
+              {Array.from({ length: columns }, (_, colIndex) => {
+                const placeValue = columns - 1 - colIndex // rightmost is 0 (ones), leftmost is highest
+                const digit = Math.floor((isEditing ? parseInt(editingValue) || 0 : currentValue) / Math.pow(10, placeValue)) % 10
+                const columnWidth = compact ? (240 / columns) : (300 / columns)
 
-                {/* Visual editing indicator */}
-                {isEditing && (
-                  <div className={css({
-                    position: 'absolute',
-                    bottom: '-2px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '80%',
-                    height: '2px',
-                    bg: 'blue.400',
-                    rounded: 'full',
-                    animation: 'pulse 1s infinite'
-                  })} />
-                )}
-              </div>
+                return (
+                  <div
+                    key={colIndex}
+                    className={css({
+                      position: 'relative',
+                      width: `${columnWidth}px`,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    })}
+                  >
+                    <div
+                      ref={colIndex === 0 && showManualInput ? numberRef : undefined}
+                      tabIndex={showManualInput && colIndex === 0 ? 0 : -1}
+                      onClick={showManualInput ? handleNumberClick : undefined}
+                      onKeyDown={showManualInput && colIndex === 0 ? handleKeyDown : undefined}
+                      onBlur={showManualInput && colIndex === 0 ? handleNumberBlur : undefined}
+                      className={css({
+                        bg: 'white',
+                        border: '2px solid',
+                        borderColor: 'blue.200',
+                        rounded: 'xl',
+                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                        px: '2',
+                        py: '1',
+                        minW: compact ? '32px' : '40px',
+                        position: 'relative',
+                        outline: 'none',
+                        cursor: showManualInput ? 'pointer' : 'default',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      })}
+                      title={showManualInput && colIndex === 0 ? "Click to edit, type numbers, Enter to confirm" : undefined}
+                    >
+                      <NumberFlow
+                        value={digit}
+                        animated={!disableAnimation && !isEditing}
+                        style={{
+                          fontSize: compact ? '1.25rem' : '1.5rem',
+                          fontWeight: 'bold',
+                          color: isEditing ? '#1d4ed8' : '#2563eb',
+                          textAlign: 'center',
+                          minWidth: compact ? '20px' : '24px'
+                        }}
+                      />
 
-              {/* Input Indicator */}
-              {showManualInput && (
-                <div
-                  className={css({
-                    p: '1',
-                    rounded: 'full',
-                    bg: 'blue.50',
-                    color: 'blue.600',
-                    fontSize: 'xs',
-                    w: '6',
-                    h: '6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  })}
-                  title="Click the number to edit directly"
-                >
-                  ✏️
-                </div>
-              )}
+                      {/* Visual editing indicator - only show on first column when editing */}
+                      {isEditing && colIndex === 0 && (
+                        <div className={css({
+                          position: 'absolute',
+                          bottom: '-2px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: '80%',
+                          height: '2px',
+                          bg: 'blue.400',
+                          rounded: 'full',
+                          animation: 'pulse 1s infinite'
+                        })} />
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
