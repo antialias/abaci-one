@@ -158,6 +158,8 @@
     #place(top + left)[
       #for (idx, digit) in display-digits.enumerate() [
         #let x-offset = idx * column-spacing + column-spacing / 2
+        // Calculate place value (0=ones, 1=tens, 2=hundreds, etc.) for stable column IDs
+        #let place-value = display-digits.len() - idx - 1
         
         // Decompose digit into heaven (5s) and earth (1s) beads
         #let heaven-active = if digit >= 5 { 1 } else { 0 }
@@ -237,7 +239,7 @@
             heaven-y,
             bead-shape,
             bead-color,
-            "heaven-col" + str(idx) + "-active" + str(heaven-active)
+            "heaven-col" + str(place-value) + "-active" + str(heaven-active)
           )
         ]
         
@@ -274,7 +276,7 @@
               earth-y,
               bead-shape,
               earth-bead-color,
-              "earth-col" + str(idx) + "-pos" + str(i) + "-active" + str(if is-active { 1 } else { 0 })
+              "earth-col" + str(place-value) + "-pos" + str(i) + "-active" + str(if is-active { 1 } else { 0 })
             )
           ]
         ]

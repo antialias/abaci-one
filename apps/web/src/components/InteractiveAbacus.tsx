@@ -68,7 +68,7 @@ export function InteractiveAbacus({
 
     if (beadType === 'earth') {
       const position = parseInt(beadPosition || '0')
-      const placeValue = columns - 1 - beadColumn
+      const placeValue = beadColumn
       const columnPower = Math.pow(10, placeValue)
       const currentDigit = Math.floor(currentValue / columnPower) % 10
       const heavenContribution = Math.floor(currentDigit / 5) * 5
@@ -86,9 +86,8 @@ export function InteractiveAbacus({
 
     if (beadType === 'heaven') {
       // Toggle heaven bead (worth 5)
-      // Column indexing: 0=leftmost, but place values are rightmost=ones
-      // For 3 columns: col 0=hundreds(10^2), col 1=tens(10^1), col 2=ones(10^0)
-      const placeValue = columns - 1 - beadColumn
+      // Now using place-value based column numbering: 0=ones, 1=tens, 2=hundreds
+      const placeValue = beadColumn
       const columnPower = Math.pow(10, placeValue)
       const heavenValue = 5 * columnPower
 
@@ -104,8 +103,8 @@ export function InteractiveAbacus({
     } else if (beadType === 'earth' && beadPosition) {
       // Toggle earth bead (worth 1 each)
       const position = parseInt(beadPosition) // 0-3 where 0 is top (closest to bar), 3 is bottom
-      // Column indexing: 0=leftmost, but place values are rightmost=ones
-      const placeValue = columns - 1 - beadColumn
+      // Now using place-value based column numbering: 0=ones, 1=tens, 2=hundreds
+      const placeValue = beadColumn
       const columnPower = Math.pow(10, placeValue)
 
       // Calculate current digit in this column
