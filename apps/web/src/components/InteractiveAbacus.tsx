@@ -32,6 +32,7 @@ export function InteractiveAbacus({
   const [previousValue, setPreviousValue] = useState(initialValue)
   const [isEditing, setIsEditing] = useState(false)
   const [editingValue, setEditingValue] = useState('')
+  const [disableAnimation, setDisableAnimation] = useState(false)
   const svgRef = useRef<HTMLDivElement>(null)
   const numberRef = useRef<HTMLDivElement>(null)
 
@@ -220,9 +221,13 @@ export function InteractiveAbacus({
           return // Don't update if exceeds max
         }
       }
+      // Disable animation for keyboard input changes
+      setDisableAnimation(true)
       // Update abacus immediately
       const liveValue = parseInt(newEditingValue) || 0
       setCurrentValue(liveValue)
+      // Re-enable animation after a brief delay
+      setTimeout(() => setDisableAnimation(false), 100)
     } else if (event.key === 'Backspace') {
       event.preventDefault()
       if (isEditing) {
@@ -233,9 +238,12 @@ export function InteractiveAbacus({
           newEditingValue = '0'
         }
         setEditingValue(newEditingValue)
-        // Update abacus immediately
+        // Disable animation for potentially jarring backspace changes
+        setDisableAnimation(true)
         const liveValue = parseInt(newEditingValue) || 0
         setCurrentValue(liveValue)
+        // Re-enable animation after a brief delay
+        setTimeout(() => setDisableAnimation(false), 100)
       }
     } else if (event.key === 'Enter' || event.key === 'Escape') {
       event.preventDefault()
@@ -248,8 +256,12 @@ export function InteractiveAbacus({
       event.preventDefault()
       setEditingValue('0')
       setIsEditing(true)
+      // Disable animation for potentially jarring delete changes
+      setDisableAnimation(true)
       // Update abacus immediately
       setCurrentValue(0)
+      // Re-enable animation after a brief delay
+      setTimeout(() => setDisableAnimation(false), 100)
     }
   }, [showManualInput, isEditing, editingValue, columns])
 
@@ -368,6 +380,7 @@ export function InteractiveAbacus({
               >
                 <NumberFlow
                   value={isEditing ? parseInt(editingValue) || 0 : currentValue}
+                  animated={!disableAnimation}
                   style={{
                     fontSize: compact ? '1.5rem' : '1.875rem',
                     fontWeight: 'bold',
