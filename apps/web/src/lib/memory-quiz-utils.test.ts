@@ -40,10 +40,10 @@ describe('Memory Quiz Utils', () => {
       const targets = [55, 555, 123]
       const found = [55] // 55 is already found
 
-      // After finding 55, typing "55" again should not be considered a prefix of 555
-      expect(isPrefix('55', targets, found)).toBe(false)
+      // After finding 55, typing "55" should still be a prefix of unfound 555
+      expect(isPrefix('55', targets, found)).toBe(true) // prefix of 555
 
-      // But "5" should still be a prefix of 555 (since 555 is not found)
+      // "5" should also be a prefix of 555 (since 555 is not found)
       expect(isPrefix('5', targets, found)).toBe(true)
     })
 
@@ -51,7 +51,7 @@ describe('Memory Quiz Utils', () => {
       const targets = [5, 55, 555, 5555]
       const found = [5, 55] // First two are found
 
-      // "5" and "55" should still be prefixes of the remaining unfound numbers
+      // Found numbers can still be prefixes of unfound numbers
       expect(isPrefix('5', targets, found)).toBe(true) // prefix of 555, 5555
       expect(isPrefix('55', targets, found)).toBe(true) // prefix of 555, 5555
       expect(isPrefix('555', targets, found)).toBe(true) // prefix of 5555
@@ -240,9 +240,9 @@ describe('Memory Quiz Utils', () => {
       expect(isPrefix('5', targets, found)).toBe(true) // still prefix of 555
       expect(shouldTriggerIncorrectGuess('5', targets, found)).toBe(false)
 
-      // Then "55" - should NOT be considered prefix anymore since 55 is found
-      expect(isPrefix('55', targets, found)).toBe(false) // 55 is found, not prefix of remaining
-      expect(shouldTriggerIncorrectGuess('55', targets, found)).toBe(false) // but still correct answer
+      // Then "55" - should still be considered prefix of 555
+      expect(isPrefix('55', targets, found)).toBe(true) // still prefix of 555
+      expect(shouldTriggerIncorrectGuess('55', targets, found)).toBe(false) // and still correct answer
 
       // Finally "555" - should be accepted
       expect(isCorrectAndAvailable(555, targets, found)).toBe(true)
@@ -264,7 +264,7 @@ describe('Memory Quiz Utils', () => {
       // Check prefixes with some found
       expect(isPrefix('1', targets, found)).toBe(true) // still prefix of 12, 1234
       expect(isPrefix('12', targets, found)).toBe(true) // still prefix of 12, 1234
-      expect(isPrefix('123', targets, found)).toBe(true) // still prefix of 1234 (123 is found but 1234 isn't)
+      expect(isPrefix('123', targets, found)).toBe(true) // still prefix of 1234
     })
   })
 })

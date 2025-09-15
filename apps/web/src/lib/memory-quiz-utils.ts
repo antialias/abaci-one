@@ -7,6 +7,7 @@
  * excluding already found numbers
  */
 export function isPrefix(input: string, targetNumbers: number[], foundNumbers: number[]): boolean {
+  // Original logic: check if input is a prefix of any unfound numbers
   return targetNumbers
     .filter(n => !foundNumbers.includes(n)) // Only consider unfound numbers
     .some(n => n.toString().startsWith(input) && n.toString() !== input)
@@ -33,9 +34,7 @@ export function isCompleteWrongNumber(
   const isNotTarget = !targetNumbers.includes(number)
   const cannotBePrefix = !couldBePrefix(input, targetNumbers)
 
-  // It's a complete wrong number if:
-  // 1. It's not a target AND it cannot be a prefix of any target, OR
-  // 2. It's not a target AND it's long enough AND can be a prefix (but since it's not exact, it's wrong)
+  // It's a complete wrong number if it's not a target AND it cannot be a prefix of any target
   return isNotTarget && cannotBePrefix
 }
 
@@ -58,8 +57,8 @@ export function shouldTriggerIncorrectGuess(
 
   const couldBeValidPrefix = couldBePrefix(input, targetNumbers)
 
-  // Trigger if it's clearly wrong (length >= 2 or can't be any prefix)
-  return input.length >= 2 || !couldBeValidPrefix
+  // Trigger if it clearly cannot be a valid prefix, OR if it's a multi-digit partial input
+  return !couldBeValidPrefix || (input.length >= 2 && !targetNumbers.includes(number))
 }
 
 /**
