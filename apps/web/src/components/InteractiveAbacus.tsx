@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useSpring, animated } from '@react-spring/web'
+import NumberFlow from '@number-flow/react'
 import { css } from '../../styled-system/css'
 import { TypstSoroban } from './TypstSoroban'
 
@@ -27,11 +28,7 @@ export function InteractiveAbacus({
   const [previousValue, setPreviousValue] = useState(initialValue)
   const svgRef = useRef<HTMLDivElement>(null)
 
-  // Animated value display
-  const valueSpring = useSpring({
-    value: currentValue,
-    config: { tension: 300, friction: 26 }
-  })
+  // Remove the old spring animation since we're using NumberFlow now
 
   // Container animation for feedback
   const containerSpring = useSpring({
@@ -249,7 +246,7 @@ export function InteractiveAbacus({
 
         {/* Value Display */}
         {showValue && (
-          <animated.div
+          <div
             className={css({
               fontSize: '3xl',
               fontWeight: 'bold',
@@ -265,8 +262,15 @@ export function InteractiveAbacus({
               boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)'
             })}
           >
-            {valueSpring.value.to(val => Math.round(val))}
-          </animated.div>
+            <NumberFlow
+              value={currentValue}
+              style={{
+                fontSize: 'inherit',
+                fontWeight: 'inherit',
+                color: 'inherit'
+              }}
+            />
+          </div>
         )}
 
         {/* Controls */}
