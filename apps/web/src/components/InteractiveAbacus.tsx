@@ -287,32 +287,41 @@ export function InteractiveAbacus({
     }
   }, [isEditing])
 
-  // Generate and crop SVG for better display
-  useEffect(() => {
-    const generateCroppedSVG = async () => {
-      try {
-        const config: SorobanConfig = {
-          number: currentValue,
-          width: compact ? "240px" : "300px",
-          height: compact ? "320px" : "400px",
-          beadShape: globalConfig.beadShape,
-          colorScheme: globalConfig.colorScheme,
-          hideInactiveBeads: globalConfig.hideInactiveBeads,
-          coloredNumerals: globalConfig.coloredNumerals,
-          scaleFactor: globalConfig.scaleFactor
-        }
+  // Temporarily disable custom SVG cropping to use TypstSoroban fallback
+  // useEffect(() => {
+  //   const generateCroppedSVG = async () => {
+  //     try {
+  //       console.log('🔄 Generating cropped SVG for value:', currentValue)
+  //       const config: SorobanConfig = {
+  //         number: currentValue,
+  //         width: compact ? "240px" : "300px",
+  //         height: compact ? "320px" : "400px",
+  //         beadShape: globalConfig.beadShape,
+  //         colorScheme: globalConfig.colorScheme,
+  //         hideInactiveBeads: globalConfig.hideInactiveBeads,
+  //         coloredNumerals: globalConfig.coloredNumerals,
+  //         scaleFactor: globalConfig.scaleFactor
+  //       }
 
-        const svg = await generateSorobanSVG(config)
-        const processed = processSVGForDisplay(svg, compact ? 240 : 300, compact ? 320 : 400)
-        setCroppedSVG(processed)
-      } catch (error) {
-        console.error('Failed to generate cropped SVG:', error)
-        setCroppedSVG(null)
-      }
-    }
+  //       const svg = await generateSorobanSVG(config)
+  //       console.log('✅ SVG generated, length:', svg?.length || 0)
 
-    generateCroppedSVG()
-  }, [currentValue, compact, globalConfig])
+  //       if (svg) {
+  //         const processed = processSVGForDisplay(svg, compact ? 240 : 300, compact ? 320 : 400)
+  //         console.log('✅ SVG processed, length:', processed?.length || 0)
+  //         setCroppedSVG(processed)
+  //       } else {
+  //         console.warn('⚠️ No SVG generated')
+  //         setCroppedSVG(null)
+  //       }
+  //     } catch (error) {
+  //       console.error('❌ Failed to generate cropped SVG:', error)
+  //       setCroppedSVG(null)
+  //     }
+  //   }
+
+  //   generateCroppedSVG()
+  // }, [currentValue, compact, globalConfig])
 
   // SVG processing functions (copied from ServerSorobanSVG)
   function processSVGForDisplay(svgContent: string, targetWidth: number, targetHeight: number): string {
@@ -521,34 +530,56 @@ export function InteractiveAbacus({
               }
             })}
           >
-            {/* Properly cropped SVG display */}
-            <div
-              className={css({
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.3s ease',
-                cursor: 'pointer',
-                '& [data-bead-type]': {
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    filter: 'brightness(1.2)',
-                    transform: 'scale(1.05)'
-                  }
-                },
-                '& svg': {
+            {/* Fallback to TypstSoroban if cropped SVG fails */}
+            {croppedSVG ? (
+              <div
+                className={css({
                   width: '100%',
                   height: '100%',
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  objectFit: 'contain'
-                }
-              })}
-              dangerouslySetInnerHTML={{ __html: croppedSVG || '' }}
-            />
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.3s ease',
+                  cursor: 'pointer',
+                  '& [data-bead-type]': {
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    _hover: {
+                      filter: 'brightness(1.2)',
+                      transform: 'scale(1.05)'
+                    }
+                  },
+                  '& svg': {
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain'
+                  }
+                })}
+                dangerouslySetInnerHTML={{ __html: croppedSVG }}
+              />
+            ) : (
+              <TypstSoroban
+                number={currentValue}
+                width={compact ? "144pt" : "180pt"}
+                height={compact ? "192pt" : "240pt"}
+                className={css({
+                  width: '100%',
+                  height: '100%',
+                  transition: 'all 0.3s ease',
+                  cursor: 'pointer',
+                  '& [data-bead-type]': {
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    _hover: {
+                      filter: 'brightness(1.2)',
+                      transform: 'scale(1.05)'
+                    }
+                  }
+                })}
+              />
+            )}
           </animated.div>
 
           {/* Column-based Value Display */}
