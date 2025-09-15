@@ -117,6 +117,10 @@
   .justify_center {
     justify-content: center
     }
+
+  .overflow_hidden {
+    overflow: hidden
+    }
     .\[\&_svg\]\:w_100\% svg {
       width: 100%
         }
@@ -128,6 +132,9 @@
         }
     .\[\&_svg\]\:max-h_100\% svg {
       max-height: 100%
+        }
+    .\[\&_svg\]\:object_contain svg {
+      object-fit: contain
         }
 
   .hover\:bg_green\.50:is(:hover, [data-hover]) {
