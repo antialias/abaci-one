@@ -4,6 +4,7 @@ import Link from 'next/link'
 import React, { useEffect, useReducer, useRef, useCallback, useMemo, useState } from 'react'
 import { css } from '../../../../styled-system/css'
 import { TypstSoroban } from '../../../components/TypstSoroban'
+import { isPrefix } from '../../../lib/memory-quiz-utils'
 
 interface QuizCard {
   number: number
@@ -705,18 +706,216 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
   )
 }
 
+// Results card grid that reuses CardGrid with all cards revealed and success/failure indicators
+function ResultsCardGrid({ state }: { state: SorobanQuizState }) {
+  if (state.quizCards.length === 0) return null
+
+  // Create a modified state where all cards are revealed for results display
+  const resultsState = {
+    ...state,
+    revealedCards: state.quizCards.map(card => card.number) // Reveal all cards
+  }
+
+  // Calculate optimal grid layout based on number of cards (same as CardGrid)
+  const cardCount = state.quizCards.length
+
+  // Define static grid classes that Panda can generate (same as CardGrid)
+  const getGridClass = (count: number) => {
+    if (count <= 2) return 'repeat(2, 1fr)'
+    if (count <= 4) return 'repeat(2, 1fr)'
+    if (count <= 6) return 'repeat(3, 1fr)'
+    if (count <= 9) return 'repeat(3, 1fr)'
+    if (count <= 12) return 'repeat(4, 1fr)'
+    return 'repeat(5, 1fr)'
+  }
+
+  const getCardSize = (count: number) => {
+    if (count <= 2) return { minSize: '180px', cardHeight: '160px' }
+    if (count <= 4) return { minSize: '160px', cardHeight: '150px' }
+    if (count <= 6) return { minSize: '140px', cardHeight: '140px' }
+    if (count <= 9) return { minSize: '120px', cardHeight: '130px' }
+    if (count <= 12) return { minSize: '110px', cardHeight: '120px' }
+    return { minSize: '100px', cardHeight: '110px' }
+  }
+
+  const gridClass = getGridClass(cardCount)
+  const cardSize = getCardSize(cardCount)
+
+  return (
+    <div>
+      <div
+        className={css({
+          display: 'grid',
+          gap: '12px',
+          padding: '8px',
+          justifyContent: 'center',
+          maxWidth: '100%',
+          margin: '0 auto'
+        })}
+        style={{
+          gridTemplateColumns: gridClass
+        }}
+      >
+        {state.quizCards.map((card, index) => {
+          const isRevealed = true // All cards revealed in results
+          const wasFound = state.foundNumbers.includes(card.number)
+
+          return (
+            <div
+              key={`${card.number}-${index}`}
+              className={css({
+                perspective: '1000px',
+                position: 'relative',
+                aspectRatio: '3/4',
+                '@media (min-width: 1024px)': {
+                  aspectRatio: '3/4',
+                  height: '120px',
+                  minWidth: '90px'
+                }
+              })}
+              style={{
+                height: cardSize.cardHeight,
+                minWidth: cardSize.minSize
+              }}
+            >
+              <div className={css({
+                position: 'relative',
+                width: '100%',
+                height: '100%',
+                textAlign: 'center',
+                transition: 'transform 0.8s',
+                transformStyle: 'preserve-3d',
+                transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)'
+              })}>
+                {/* Card back (hidden state) - not visible in results */}
+                <div className={css({
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  backfaceVisibility: 'hidden',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                  background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
+                  color: 'white',
+                  fontSize: '48px',
+                  '@media (max-width: 768px)': {
+                    fontSize: '40px'
+                  },
+                  '@media (max-width: 480px)': {
+                    fontSize: '32px'
+                  },
+                  fontWeight: 'bold',
+                  textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+                  border: '3px solid #5f3dc4'
+                })}>
+                  <div className={css({ opacity: 0.8 })}>?</div>
+                </div>
+
+                {/* Card front (revealed state) with success/failure indicators */}
+                <div className={css({
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  backfaceVisibility: 'hidden',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                  background: 'white',
+                  border: '3px solid',
+                  borderColor: wasFound ? 'green.500' : 'red.500',
+                  transform: 'rotateY(180deg)'
+                })}>
+                  <div className={css({
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden'
+                  })}>
+                    <TypstSoroban
+                      number={card.number}
+                      width="120pt"
+                      height="160pt"
+                    />
+                  </div>
+
+                  {/* Right/Wrong indicator overlay */}
+                  <div className={css({
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: wasFound ? 'green.500' : 'red.500',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                  })}>
+                    {wasFound ? '✓' : '✗'}
+                  </div>
+
+                  {/* Number label overlay */}
+                  <div className={css({
+                    position: 'absolute',
+                    bottom: '8px',
+                    left: '8px',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  })}>
+                    {card.number}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Summary row for large numbers of cards (same as CardGrid) */}
+      {cardCount > 8 && (
+        <div className={css({
+          marginTop: '12px',
+          padding: '8px 12px',
+          background: 'blue.50',
+          borderRadius: '8px',
+          border: '1px solid',
+          borderColor: 'blue.200',
+          textAlign: 'center',
+          fontSize: '14px',
+          color: 'blue.700'
+        })}>
+          <strong>{state.foundNumbers.length}</strong> of <strong>{cardCount}</strong> cards found
+          {state.foundNumbers.length > 0 && (
+            <span className={css({ marginLeft: '8px', fontWeight: 'normal' })}>
+              ({Math.round((state.foundNumbers.length / cardCount) * 100)}% complete)
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // React component for the input phase
 function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: React.Dispatch<QuizAction> }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [displayFeedback, setDisplayFeedback] = useState<'neutral' | 'correct' | 'incorrect'>('neutral')
 
-  const isPrefix = useCallback((input: string, numbers: number[], foundNumbers: number[]) => {
-    return numbers.some(n =>
-      n.toString().startsWith(input) &&
-      n.toString() !== input &&
-      !foundNumbers.includes(n)
-    )
-  }, [])
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     // Only handle if input phase is active and guesses remain
@@ -1136,30 +1335,9 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
         </div>
       </div>
 
-      <div className={css({ marginTop: '16px' })}>
-        <h4 className={css({ marginBottom: '16px', color: 'gray.700' })}>Detailed Results:</h4>
-        {state.correctAnswers.map(number => {
-          const found = state.foundNumbers.includes(number)
-          const status = found ? '✅' : '❌'
-          return (
-            <div
-              key={number}
-              className={css({
-                margin: '8px 0',
-                padding: '8px',
-                background: found ? 'green.50' : 'red.50',
-                borderRadius: '4px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                border: '1px solid',
-                borderColor: found ? 'green.200' : 'red.200'
-              })}
-            >
-              <span className={css({ fontWeight: '500' })}>{number}</span>
-              <span>{status}</span>
-            </div>
-          )
-        })}
+      {/* Results card grid - reuse CardGrid but with all cards revealed and status indicators */}
+      <div className={css({ marginTop: '16px', flex: 1, overflow: 'auto' })}>
+        <ResultsCardGrid state={state} />
       </div>
 
       <div className={css({
