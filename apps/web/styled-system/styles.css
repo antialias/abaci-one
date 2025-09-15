@@ -25,6 +25,10 @@
     padding: 12px 16px
     }
 
+  .gap_4px {
+    gap: 4px
+    }
+
   .fs_11px {
     font-size: 11px
     }
@@ -35,6 +39,10 @@
 
   .p_10px_20px {
     padding: 10px 20px
+    }
+
+  .max-w_300px {
+    max-width: 300px
     }
 
   .min-w_50px {
@@ -75,6 +83,14 @@
 
   .transition_width_0\.5s_ease {
     transition: width 0.5s ease
+    }
+
+  .justify_flex-end {
+    justify-content: flex-end
+    }
+
+  .rounded_6px {
+    border-radius: 6px
     }
 
   .p_8px_16px {
@@ -318,6 +334,10 @@
     box-shadow: 0 8px 25px rgba(40, 167, 69, 0.2)
     }
 
+  .min-h_60px {
+    min-height: 60px
+    }
+
   .p_16px_20px {
     padding: 16px 20px
     }
@@ -407,8 +427,24 @@
     width: 100vw
     }
 
+  .pointer-events_none {
+    pointer-events: none
+    }
+
   .z_1000 {
     z-index: 1000
+    }
+
+  .top_50\% {
+    top: 50%
+    }
+
+  .left_50\% {
+    left: 50%
+    }
+
+  .transform_translate\(-50\%\,_-50\%\) {
+    transform: translate(-50%, -50%)
     }
 
   .fs_72px {
@@ -445,6 +481,10 @@
 
   .m_0_auto {
     margin: 0 auto
+    }
+
+  .justify_flex-start {
+    justify-content: flex-start
     }
 
   .text_gray\.800 {
@@ -509,6 +549,10 @@
 
   .p_12px_24px {
     padding: 12px 24px
+    }
+
+  .rounded_8px {
+    border-radius: 8px
     }
 
   .fs_16px {
@@ -617,6 +661,10 @@
 
   .from_indigo\.400 {
     --gradient-from: var(--colors-indigo-400)
+    }
+
+  .text_orange\.600 {
+    color: var(--colors-orange-600)
     }
 
   .ml_2 {
@@ -895,6 +943,10 @@
     width: var(--sizes-20)
     }
 
+  .min-h_300px {
+    min-height: 300px
+    }
+
   .max-w_sm {
     max-width: var(--sizes-sm)
     }
@@ -949,6 +1001,10 @@
 
   .p_6 {
     padding: var(--spacing-6)
+    }
+
+  .max-w_400px {
+    max-width: 400px
     }
 
   .max-h_80vh {
@@ -1306,146 +1362,6 @@
     gap: var(--spacing-0)
     }
 
-  .border_blue\.600 {
-    border-color: var(--colors-blue-600)
-    }
-
-  .min-h_300px {
-    min-height: 300px
-    }
-
-  .\[\&_svg\]\:transition_all_0\.2s_ease svg {
-    transition: all 0.2s ease
-        }
-
-  .mt_2 {
-    margin-top: var(--spacing-2)
-    }
-
-  .min-w_80px {
-    min-width: 80px
-    }
-
-  .max-w_300px {
-    max-width: 300px
-    }
-
-  .w_24px {
-    width: 24px
-    }
-
-  .h_8px {
-    height: 8px
-    }
-
-  .rounded_8px {
-    border-radius: 8px
-    }
-
-  .border_green\.600 {
-    border-color: var(--colors-green-600)
-    }
-
-  .border_gray\.400 {
-    border-color: var(--colors-gray-400)
-    }
-
-  .w_20px {
-    width: 20px
-    }
-
-  .h_6px {
-    height: 6px
-    }
-
-  .rounded_6px {
-    border-radius: 6px
-    }
-
-  .transition_border-color_0\.2s_ease {
-    transition: border-color 0.2s ease
-    }
-
-  .p_16px_8px {
-    padding: 16px 8px
-    }
-
-  .gap_8px {
-    gap: 8px
-    }
-
-  .min-h_60px {
-    min-height: 60px
-    }
-
-  .justify_flex-end {
-    justify-content: flex-end
-    }
-
-  .w_50px {
-    width: 50px
-    }
-
-  .h_4px {
-    height: 4px
-    }
-
-  .bg_gray\.800 {
-    background-color: var(--colors-gray-800)
-    }
-
-  .rounded_2px {
-    border-radius: 2px
-    }
-
-  .gap_4px {
-    gap: 4px
-    }
-
-  .min-h_80px {
-    min-height: 80px
-    }
-
-  .justify_flex-start {
-    justify-content: flex-start
-    }
-
-  .border_amber\.800 {
-    border-color: var(--colors-amber-800)
-    }
-
-  .max-w_400px {
-    max-width: 400px
-    }
-
-  .border_\#d97706 {
-    border-color: #d97706
-    }
-
-  .top_50\% {
-    top: 50%
-    }
-
-  .left_50\% {
-    left: 50%
-    }
-
-  .transform_translate\(-50\%\,_-50\%\) {
-    transform: translate(-50%, -50%)
-    }
-
-  .pointer-events_none {
-    pointer-events: none
-    }
-
-  .text_orange\.600 {
-    color: var(--colors-orange-600)
-    }
-
-  .text-shadow_0_2px_4px_rgba\(0\,0\,0\,0\.2\) {
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2)
-    }
-
   .w_300px {
     width: 300px
     }
@@ -1493,6 +1409,14 @@
   .transition_all_0\.3s_ease {
     transition: all 0.3s ease
     }
+
+  .\[\&_\[data-bead-type\]\]\:cursor_pointer [data-bead-type] {
+    cursor: pointer
+        }
+
+  .\[\&_\[data-bead-type\]\]\:transition_all_0\.2s_ease [data-bead-type] {
+    transition: all 0.2s ease
+        }
 
   .px_6 {
     padding-inline: var(--spacing-6)
@@ -2196,34 +2120,6 @@
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15)
         }
 
-  .hover\:border_blue\.700:is(:hover, [data-hover]) {
-    border-color: var(--colors-blue-700)
-        }
-
-  .hover\:border_green\.700:is(:hover, [data-hover]) {
-    border-color: var(--colors-green-700)
-        }
-
-  .hover\:border_gray\.500:is(:hover, [data-hover]) {
-    border-color: var(--colors-gray-500)
-        }
-
-  .hover\:bg_blue\.200:is(:hover, [data-hover]) {
-    background: var(--colors-blue-200)
-        }
-
-  .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
-    transform: translateY(-1px)
-        }
-
-  .hover\:border_blue\.400:is(:hover, [data-hover]) {
-    border-color: var(--colors-blue-400)
-        }
-
-  .hover\:shadow_0_4px_12px_rgba\(0\,_0\,_0\,_0\.1\):is(:hover, [data-hover]) {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1)
-        }
-
   .hover\:bg_gray\.200:is(:hover, [data-hover]) {
     background: var(--colors-gray-200)
         }
@@ -2232,13 +2128,25 @@
     border-color: var(--colors-gray-400)
         }
 
-  .\[\&\:hover\]\:border_amber\.700:hover {
-    border-color: var(--colors-amber-700)
+  .hover\:bg_blue\.200:is(:hover, [data-hover]) {
+    background: var(--colors-blue-200)
         }
 
-  .\[\&\:hover\]\:transform_scale\(1\.01\):hover {
-    transform: scale(1.01)
+  .hover\:border_blue\.400:is(:hover, [data-hover]) {
+    border-color: var(--colors-blue-400)
         }
+
+  .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
+    transform: translateY(-1px)
+        }
+
+  .\[\&_\[data-bead-type\]\]\:hover\:filter_brightness\(1\.2\) [data-bead-type]:is(:hover, [data-hover]) {
+    filter: brightness(1.2)
+            }
+
+  .\[\&_\[data-bead-type\]\]\:hover\:transform_scale\(1\.05\) [data-bead-type]:is(:hover, [data-hover]) {
+    transform: scale(1.05)
+            }
 
   .hover\:border_brand\.300:is(:hover, [data-hover]) {
     border-color: var(--colors-brand-300)

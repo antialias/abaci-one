@@ -42,6 +42,112 @@ export function InteractiveAbacus({
 
 
 
+  // Handle bead clicks to toggle values
+  const handleBeadClick = useCallback((event: Event) => {
+    const target = event.target as Element
+
+    // Find the closest element with bead data attributes
+    const beadElement = target.closest('[data-bead-type]')
+    if (!beadElement) return
+
+    const beadType = beadElement.getAttribute('data-bead-type')
+    const beadColumn = parseInt(beadElement.getAttribute('data-bead-column') || '0')
+    const beadPosition = beadElement.getAttribute('data-bead-position')
+    const isActive = beadElement.getAttribute('data-bead-active') === '1'
+
+    console.log('Bead clicked:', { beadType, beadColumn, beadPosition, isActive })
+    console.log('Current value before click:', currentValue)
+
+    if (beadType === 'earth') {
+      const position = parseInt(beadPosition || '0')
+      const columnPower = Math.pow(10, beadColumn)
+      const currentDigit = Math.floor(currentValue / columnPower) % 10
+      const heavenContribution = Math.floor(currentDigit / 5) * 5
+      const earthContribution = currentDigit % 5
+      console.log('Earth bead analysis:', {
+        position,
+        columnPower,
+        currentDigit,
+        heavenContribution,
+        earthContribution
+      })
+    }
+
+    if (beadType === 'heaven') {
+      // Toggle heaven bead (worth 5)
+      const columnPower = Math.pow(10, beadColumn)
+      const heavenValue = 5 * columnPower
+
+      if (isActive) {
+        // Deactivate heaven bead - subtract 5 from this column
+        setCurrentValue(prev => Math.max(0, prev - heavenValue))
+      } else {
+        // Activate heaven bead - add 5 to this column
+        setCurrentValue(prev => prev + heavenValue)
+      }
+    } else if (beadType === 'earth' && beadPosition) {
+      // Toggle earth bead (worth 1 each)
+      const position = parseInt(beadPosition) // 0-3 where 0 is top (closest to bar), 3 is bottom
+      const columnPower = Math.pow(10, beadColumn)
+
+      // Calculate current digit in this column
+      const currentDigit = Math.floor(currentValue / columnPower) % 10
+      const heavenContribution = Math.floor(currentDigit / 5) * 5
+      const earthContribution = currentDigit % 5
+
+      let newEarthContribution: number
+
+      // Earth beads are numbered 0-3 from top to bottom (0 is closest to bar)
+      // In traditional abacus logic:
+      // - earthContribution represents how many beads are active (0-4)
+      // - Active beads are positions 0, 1, 2, ... up to (earthContribution - 1)
+      // - When you click a bead: toggle that "level" of activation
+
+      if (isActive) {
+        // This bead is currently active, so we deactivate it and all beads below it
+        // If position 2 is clicked and active, we want positions 0,1 to remain active
+        // So earthContribution should be position (2)
+        newEarthContribution = position
+      } else {
+        // This bead is currently inactive, so we activate it and all beads above it
+        // If position 2 is clicked and inactive, we want positions 0,1,2 to be active
+        // So earthContribution should be position + 1 (3)
+        newEarthContribution = position + 1
+      }
+
+      console.log('Earth bead calculation:', {
+        position,
+        isActive,
+        currentEarthContribution: earthContribution,
+        newEarthContribution
+      })
+
+      // Calculate the new digit for this column
+      const newDigit = heavenContribution + newEarthContribution
+
+      // Calculate the new total value
+      const columnContribution = Math.floor(currentValue / columnPower) % 10 * columnPower
+      const newValue = currentValue - columnContribution + (newDigit * columnPower)
+
+      setCurrentValue(Math.max(0, newValue))
+    }
+
+    // Visual feedback
+    setIsChanging(true)
+    setTimeout(() => setIsChanging(false), 150)
+  }, [currentValue])
+
+  // Add click event listener for bead interactions
+  useEffect(() => {
+    const svgContainer = svgRef.current
+    if (!svgContainer) return
+
+    svgContainer.addEventListener('click', handleBeadClick)
+    return () => {
+      svgContainer.removeEventListener('click', handleBeadClick)
+    }
+  }, [handleBeadClick])
+
   // Notify parent of value changes
   useMemo(() => {
     onValueChange?.(currentValue)
@@ -101,7 +207,16 @@ export function InteractiveAbacus({
             className={css({
               width: '100%',
               height: '100%',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              cursor: 'pointer',
+              '& [data-bead-type]': {
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                _hover: {
+                  filter: 'brightness(1.2)',
+                  transform: 'scale(1.05)'
+                }
+              }
             })}
           />
 
@@ -213,8 +328,9 @@ export function InteractiveAbacus({
           border: '1px solid',
           borderColor: 'gray.200'
         })}>
-          <strong>How to use:</strong> Use the preset buttons below to set different values.
-          The abacus will display the number using traditional soroban bead positions.
+          <strong>How to use:</strong> Click on the beads to activate or deactivate them!
+          Heaven beads (top) are worth 5 each, earth beads (bottom) are worth 1 each.
+          You can also use the preset buttons below.
         </div>
       </div>
     </div>
