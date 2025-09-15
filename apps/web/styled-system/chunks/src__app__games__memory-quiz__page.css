@@ -132,6 +132,30 @@
     height: 160px
     }
 
+  .gap_8px {
+    gap: 8px
+    }
+
+  .m_16px_0 {
+    margin: 16px 0
+    }
+
+  .min-h_40px {
+    min-height: 40px
+    }
+
+  .p_10px {
+    padding: 10px
+    }
+
+  .p_6px_12px {
+    padding: 6px 12px
+    }
+
+  .animation_fadeInScale_0\.3s_ease {
+    animation: fadeInScale 0.3s ease
+    }
+
   .max-w_600px {
     max-width: 600px
     }
@@ -144,8 +168,16 @@
     padding: 12px 16px
     }
 
+  .gap_4px {
+    gap: 4px
+    }
+
   .fs_11px {
     font-size: 11px
+    }
+
+  .flex-wrap_wrap {
+    flex-wrap: wrap
     }
 
   .border_blue\.500 {
@@ -360,6 +392,10 @@
     margin: 24px 0
     }
 
+  .fs_14px {
+    font-size: 14px
+    }
+
   .mb_12px {
     margin-bottom: 12px
     }
@@ -439,6 +475,10 @@
   .transition_all_0\.3s_ease {
     transition: all 0.3s ease
     }
+
+  .rounded_16px {
+    border-radius: 16px
+    }
     .\[\&\:\:before\]\:content_\"\"::before {
       content: ""
         }
@@ -492,46 +532,6 @@
 
   .animation_blink_1s_infinite {
     animation: blink 1s infinite
-    }
-
-  .flex-wrap_wrap {
-    flex-wrap: wrap
-    }
-
-  .gap_8px {
-    gap: 8px
-    }
-
-  .m_16px_0 {
-    margin: 16px 0
-    }
-
-  .min-h_40px {
-    min-height: 40px
-    }
-
-  .p_10px {
-    padding: 10px
-    }
-
-  .p_6px_12px {
-    padding: 6px 12px
-    }
-
-  .rounded_16px {
-    border-radius: 16px
-    }
-
-  .fs_14px {
-    font-size: 14px
-    }
-
-  .animation_fadeInScale_0\.3s_ease {
-    animation: fadeInScale 0.3s ease
-    }
-
-  .gap_4px {
-    gap: 4px
     }
 
   .pos_fixed {
@@ -938,7 +938,7 @@
     color: var(--colors-gray-800)
         }
     @media screen and (min-width: 48em) {
-    .md\:px_4,.md\:px_4 {
+    .md\:px_4,.md\:px_4,.md\:px_4,.md\:px_4 {
       padding-inline: var(--spacing-4)
     }
 

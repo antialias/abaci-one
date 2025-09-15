@@ -887,38 +887,6 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         </div>
       </div>
 
-      <div className={css({
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: '8px',
-        margin: '16px 0',
-        minHeight: '40px',
-        padding: '10px',
-        background: 'gray.50',
-        borderRadius: '8px'
-      })}>
-        {state.foundNumbers.map((number, index) => (
-          <div
-            key={`${number}-${index}`}
-            className={css({
-              background: 'green.500',
-              color: 'white',
-              padding: '6px 12px',
-              borderRadius: '16px',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              animation: 'fadeInScale 0.3s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            })}
-          >
-            <span>✓</span>
-            <span style={{ fontSize: '10px', opacity: 0.8 }}>Card {index + 1}</span>
-          </div>
-        ))}
-      </div>
 
       {/* Visual card grid showing cards the user was shown - now more compact */}
       <div className={css({ marginTop: '16px', flex: 1, overflow: 'auto' })}>
