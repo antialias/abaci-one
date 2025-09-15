@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import React, { useEffect, useReducer, useRef, useCallback, useMemo, useState } from 'react'
 import { css } from '../../../../styled-system/css'
-import { ServerSorobanSVG } from '../../../components/ServerSorobanSVG'
+import { TypstSoroban } from '../../../components/TypstSoroban'
 
 interface QuizCard {
   number: number
@@ -187,12 +187,16 @@ const generateQuizCards = (count: number, difficulty: DifficultyLevel): QuizCard
 
   return numbers.map(number => ({
     number,
-    svgComponent: <ServerSorobanSVG
-      number={number}
-      colorScheme="place-value"
-      width={280}
-      height={360}
-    />,
+    svgComponent: <div style={{
+      transform: 'scale(2.0)',
+      transformOrigin: 'center'
+    }}>
+      <TypstSoroban
+        number={number}
+        width="280pt"
+        height="360pt"
+      />
+    </div>,
     element: null
   }))
 }
@@ -603,13 +607,16 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
                     alignItems: 'center',
                     justifyContent: 'center'
                   })}>
-                    <ServerSorobanSVG
-                      number={card.number}
-                      width={100}
-                      height={130}
-                      colorScheme="place-value"
-                      hideInactiveBeads={false}
-                    />
+                    <div style={{
+                      transform: 'scale(2.8)',
+                      transformOrigin: 'center'
+                    }}>
+                      <TypstSoroban
+                        number={card.number}
+                        width="100pt"
+                        height="130pt"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

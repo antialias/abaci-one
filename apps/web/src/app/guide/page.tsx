@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { css } from '../../../styled-system/css'
 import { container, stack, hstack, grid } from '../../../styled-system/patterns'
-import { ServerSorobanSVG } from '@/components/ServerSorobanSVG'
+import { TypstSoroban } from '@/components/TypstSoroban'
 
 type TabType = 'reading' | 'arithmetic'
 
@@ -334,21 +334,23 @@ function ReadingNumbersGuide() {
                   justifyContent: 'center',
                   overflow: 'hidden'
                 })}>
-                  <ServerSorobanSVG
-                    number={example.num}
-                    width={120}
-                    height={336}
-                    colorScheme="place-value"
-                    className={css({
-                      w: 'full',
-                      h: 'full',
-                      '& svg': {
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain'
-                      }
-                    })}
-                  />
+                  <div className={css({
+                    transform: 'scale(2.2)',
+                    transformOrigin: 'center'
+                  })}>
+                    <TypstSoroban
+                      number={example.num}
+                      width="120pt"
+                      height="200pt"
+                      className={css({
+                        '& svg': {
+                          width: '100%',
+                          height: '100%',
+                          display: 'block'
+                        }
+                      })}
+                    />
+                  </div>
                 </div>
 
                 <p className={css({
@@ -501,21 +503,23 @@ function ReadingNumbersGuide() {
                     justifyContent: 'center',
                     overflow: 'hidden'
                   })}>
-                    <ServerSorobanSVG
-                      number={example.num}
-                      width={180}
-                      height={240}
-                      colorScheme="place-value"
-                      className={css({
-                        w: 'full',
-                        h: 'full',
-                        '& svg': {
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain'
-                        }
-                      })}
-                    />
+                    <div className={css({
+                      transform: 'scale(1.8)',
+                      transformOrigin: 'center'
+                    })}>
+                      <TypstSoroban
+                        number={example.num}
+                        width="180pt"
+                        height="240pt"
+                        className={css({
+                          '& svg': {
+                            width: '100%',
+                            height: '100%',
+                            display: 'block'
+                          }
+                        })}
+                      />
+                    </div>
                   </div>
 
                   <p className={css({
@@ -760,12 +764,16 @@ function ArithmeticOperationsGuide() {
           <div className={grid({ columns: 3, gap: '4', alignItems: 'center' })}>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>Start: 3</p>
-              <ServerSorobanSVG number={3} width={80} height={120} />
+              <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
+                <TypstSoroban number={3} width="80pt" height="120pt" />
+              </div>
             </div>
             <div className={css({ textAlign: 'center', fontSize: '2xl' })}>+</div>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>Result: 7</p>
-              <ServerSorobanSVG number={7} width={80} height={120} />
+              <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
+                <TypstSoroban number={7} width="80pt" height="120pt" />
+              </div>
             </div>
           </div>
         </div>
@@ -836,12 +844,16 @@ function ArithmeticOperationsGuide() {
           <div className={grid({ columns: 3, gap: '4', alignItems: 'center' })}>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>Start: 8</p>
-              <ServerSorobanSVG number={8} width={80} height={120} />
+              <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
+                <TypstSoroban number={8} width="80pt" height="120pt" />
+              </div>
             </div>
             <div className={css({ textAlign: 'center', fontSize: '2xl' })}>-</div>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>Result: 5</p>
-              <ServerSorobanSVG number={5} width={80} height={120} />
+              <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
+                <TypstSoroban number={5} width="80pt" height="120pt" />
+              </div>
             </div>
           </div>
         </div>
