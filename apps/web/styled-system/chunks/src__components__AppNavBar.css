@@ -1,5 +1,9 @@
 @layer utilities {
 
+  .opacity_0\.9 {
+    opacity: 0.9
+    }
+
   .pos_fixed {
     position: fixed
     }
@@ -24,6 +28,36 @@
     transition-property: var(--transition-prop, opacity);
     transition-timing-function: var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
     transition-duration: var(--transition-duration, 150ms)
+    }
+
+  .gap_2 {
+    gap: var(--spacing-2)
+    }
+
+  .border_1px_solid {
+    border: 1px solid
+    }
+
+  .fs_lg {
+    font-size: var(--font-sizes-lg)
+    }
+
+  .transition_transform {
+    transition-property: var(--transition-prop, transform);
+    transition-timing-function: var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
+    transition-duration: var(--transition-duration, 150ms)
+    }
+
+  .w_1px {
+    width: 1px
+    }
+
+  .h_4 {
+    height: var(--sizes-4)
+    }
+
+  .bg_gray\.300 {
+    background: var(--colors-gray-300)
     }
 
   .bg_white {
@@ -102,6 +136,26 @@
     border-radius: var(--radii-lg)
     }
 
+  .text_brand\.600 {
+    color: var(--colors-brand-600)
+    }
+
+  .text_gray\.500 {
+    color: var(--colors-gray-500)
+    }
+
+  .p_1 {
+    padding: var(--spacing-1)
+    }
+
+  .fs_md {
+    font-size: var(--font-sizes-md)
+    }
+
+  .rounded_md {
+    border-radius: var(--radii-md)
+    }
+
   .transition_all {
     transition-property: var(--transition-prop, all);
     transition-timing-function: var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
@@ -112,8 +166,8 @@
     text-decoration: none
     }
 
-  .gap_2 {
-    gap: var(--spacing-2)
+  .gap_3 {
+    gap: var(--spacing-3)
     }
 
   .justify_space-between {
@@ -163,6 +217,18 @@
   .py_3 {
     padding-block: var(--spacing-3)
     }
+
+  .hover\:text_brand\.700:is(:hover, [data-hover]) {
+    color: var(--colors-brand-700)
+        }
+
+  .hover\:text_gray\.700:is(:hover, [data-hover]) {
+    color: var(--colors-gray-700)
+        }
+
+  .hover\:transform_scale\(1\.1\):is(:hover, [data-hover]) {
+    transform: scale(1.1)
+        }
 
   .hover\:opacity_1:is(:hover, [data-hover]) {
     opacity: 1

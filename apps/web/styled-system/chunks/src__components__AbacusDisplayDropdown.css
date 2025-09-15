@@ -12,6 +12,18 @@
     border-radius: var(--radii-lg)
     }
 
+  .shadow_modal {
+    box-shadow: var(--shadows-modal)
+    }
+
+  .z_9999 {
+    z-index: 9999
+    }
+
+  .animation_fadeIn_0\.2s_ease-out {
+    animation: fadeIn 0.2s ease-out
+    }
+
   .transform_rotate\(180deg\) {
     transform: rotate(180deg)
     }
@@ -30,8 +42,8 @@
     border-radius: var(--radii-xl)
     }
 
-  .shadow_modal {
-    box-shadow: var(--shadows-modal)
+  .shadow_lg {
+    box-shadow: var(--shadows-lg)
     }
 
   .border_1px_solid {
@@ -54,12 +66,16 @@
     max-width: 400px
     }
 
-  .z_50 {
-    z-index: 50
+  .max-h_80vh {
+    max-height: 80vh
     }
 
-  .animation_fadeIn_0\.2s_ease-out {
-    animation: fadeIn 0.2s ease-out
+  .overflow-y_auto {
+    overflow-y: auto
+    }
+
+  .z_50 {
+    z-index: 50
     }
 
   .fs_lg {
@@ -211,6 +227,10 @@
 
   .cursor_pointer {
     cursor: pointer
+    }
+
+  .flex_1 {
+    flex: 1 1 0%
     }
 
   .gap_6 {

@@ -142,6 +142,18 @@
     font-weight: var(--font-weights-medium)
     }
 
+  .gap_1 {
+    gap: var(--spacing-1)
+    }
+
+  .fs_xs {
+    font-size: var(--font-sizes-xs)
+    }
+
+  .text_blue\.600 {
+    color: var(--colors-blue-600)
+    }
+
   .p_2 {
     padding: var(--spacing-2)
     }

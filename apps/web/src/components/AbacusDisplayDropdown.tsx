@@ -13,8 +13,13 @@ export function AbacusDisplayDropdown() {
   const [open, setOpen] = useState(false)
   const { config, updateConfig, resetToDefaults } = useAbacusDisplay()
 
+  const handleOpenChange = (isOpen: boolean) => {
+    console.log('Dropdown open change:', isOpen)
+    setOpen(isOpen)
+  }
+
   return (
-    <DropdownMenu.Root open={open} onOpenChange={setOpen}>
+    <DropdownMenu.Root open={open} onOpenChange={handleOpenChange}>
       <DropdownMenu.Trigger asChild>
         <button
           className={css({
@@ -68,14 +73,16 @@ export function AbacusDisplayDropdown() {
           className={css({
             bg: 'white',
             rounded: 'xl',
-            shadow: 'modal',
+            shadow: 'lg',
             border: '1px solid',
             borderColor: 'gray.200',
             p: '6',
             minW: '320px',
             maxW: '400px',
-            zIndex: 50,
-            animation: 'fadeIn 0.2s ease-out'
+            maxH: '80vh',
+            overflowY: 'auto',
+            position: 'relative',
+            zIndex: 50
           })}
           sideOffset={8}
           align="end"
@@ -203,6 +210,7 @@ function SwitchField({
         cursor: 'pointer',
         _hover: { bg: checked ? 'brand.700' : 'gray.400' }
       })}
+      onClick={(e) => e.stopPropagation()} // Prevent dropdown close only on the switch itself
     >
       <Switch.Thumb
         className={css({
@@ -252,6 +260,7 @@ function RadioGroupField({
               _hover: { borderColor: 'brand.400' },
               '&[data-state=checked]': { borderColor: 'brand.600' }
             })}
+            onClick={(e) => e.stopPropagation()} // Prevent dropdown close only on radio button
           >
             <RadioGroup.Indicator
               className={css({
@@ -272,11 +281,15 @@ function RadioGroupField({
               })}
             />
           </RadioGroup.Item>
-          <label className={css({
-            fontSize: 'sm',
-            color: 'gray.900',
-            cursor: 'pointer'
-          })}>
+          <label
+            className={css({
+              fontSize: 'sm',
+              color: 'gray.900',
+              cursor: 'pointer',
+              flex: 1
+            })}
+            onClick={(e) => e.stopPropagation()} // Prevent dropdown close on label click too
+          >
             {option.label}
           </label>
         </div>

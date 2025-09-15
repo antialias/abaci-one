@@ -1,5 +1,9 @@
 @layer utilities {
 
+  .bg_green\.25 {
+    background: green.25
+    }
+
   .w_8 {
     width: var(--sizes-8)
     }
@@ -8,24 +12,12 @@
     height: var(--sizes-8)
     }
 
-  .border_2px_solid {
-    border: 2px solid
-    }
-
   .border_gray\.300 {
     border-color: var(--colors-gray-300)
     }
 
   .border-t_brand\.600 {
     border-top-color: var(--colors-brand-600)
-    }
-
-  .rounded_full {
-    border-radius: var(--radii-full)
-    }
-
-  .animation_spin_1s_linear_infinite {
-    animation: spin 1s linear infinite
     }
 
   .flex_column {
@@ -74,6 +66,64 @@
 
   .mt_1 {
     margin-top: var(--spacing-1)
+    }
+
+  .cursor_pointer {
+    cursor: pointer
+    }
+
+  .fs_4xl {
+    font-size: var(--font-sizes-4xl)
+    }
+
+  .transition_all {
+    transition-property: var(--transition-prop, all);
+    transition-timing-function: var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
+    transition-duration: var(--transition-duration, 150ms)
+    }
+
+  .bg_blue\.25 {
+    background: blue.25
+    }
+
+  .w_6 {
+    width: var(--sizes-6)
+    }
+
+  .h_6 {
+    height: var(--sizes-6)
+    }
+
+  .border_2px_solid {
+    border: 2px solid
+    }
+
+  .border_blue\.200 {
+    border-color: var(--colors-blue-200)
+    }
+
+  .border-t_blue\.500 {
+    border-top-color: var(--colors-blue-500)
+    }
+
+  .rounded_full {
+    border-radius: var(--radii-full)
+    }
+
+  .animation_spin_1s_linear_infinite {
+    animation: spin 1s linear infinite
+    }
+
+  .bg_red\.25 {
+    background: red.25
+    }
+
+  .fs_3xl {
+    font-size: var(--font-sizes-3xl)
+    }
+
+  .opacity_0\.6 {
+    opacity: 0.6
     }
 
   .bg_gray\.50 {
@@ -126,5 +176,21 @@
         }
     .\[\&_svg\]\:h_auto svg {
       height: auto
+        }
+
+  .hover\:bg_green\.50:is(:hover, [data-hover]) {
+    background: var(--colors-green-50)
+        }
+
+  .hover\:bg_gray\.100:is(:hover, [data-hover]) {
+    background: var(--colors-gray-100)
+        }
+
+  .hover\:transform_scale\(1\.02\):is(:hover, [data-hover]) {
+    transform: scale(1.02)
+        }
+
+  .hover\:opacity_0\.8:is(:hover, [data-hover]) {
+    opacity: 0.8
         }
 }

@@ -98,8 +98,8 @@ export function AbacusDisplayProvider({
   // Load from localStorage only after hydration
   useEffect(() => {
     const stored = loadConfigFromStorage()
-    setConfig(prev => ({ ...stored, ...initialConfig }))
-  }, [initialConfig])
+    setConfig(stored)
+  }, [])
 
   // Save to localStorage whenever config changes
   useEffect(() => {
