@@ -40,6 +40,46 @@
     gap: var(--spacing-3)
     }
 
+  .w_120 {
+    width: 120px
+    }
+
+  .h_336 {
+    height: 336px
+    }
+
+  .w_180 {
+    width: 180px
+    }
+
+  .h_240 {
+    height: 240px
+    }
+
+  .color-scheme_place-value {
+    color-scheme: place-value
+    }
+
+  .w_80 {
+    width: var(--sizes-80)
+    }
+
+  .h_120 {
+    height: 120px
+    }
+
+  .w_full {
+    width: var(--sizes-full)
+    }
+
+  .h_full {
+    height: var(--sizes-full)
+    }
+
+  .\[\&_svg\]\:object_contain svg {
+    object-fit: contain
+        }
+
   .bg_linear-gradient\(135deg\,_\#667eea_0\%\,_\#764ba2_100\%\) {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)
     }
@@ -152,6 +192,10 @@
     border-color: var(--colors-gray-300)
     }
 
+  .transform_scale\(2\.2\) {
+    transform: scale(2.2)
+    }
+
   .fs_2xs {
     font-size: var(--font-sizes-2xs)
     }
@@ -212,12 +256,8 @@
     overflow: hidden
     }
 
-  .w_full {
-    width: var(--sizes-full)
-    }
-
-  .h_full {
-    height: var(--sizes-full)
+  .transform_scale\(1\.8\) {
+    transform: scale(1.8)
     }
     .\[\&_svg\]\:w_100\% svg {
       width: 100%
@@ -225,8 +265,8 @@
     .\[\&_svg\]\:h_100\% svg {
       height: 100%
         }
-    .\[\&_svg\]\:object_contain svg {
-      object-fit: contain
+    .\[\&_svg\]\:d_block svg {
+      display: block
         }
 
   .fs_xs {
@@ -351,6 +391,14 @@
 
   .text_red\.700 {
     color: var(--colors-red-700)
+    }
+
+  .transform_scale\(2\.5\) {
+    transform: scale(2.5)
+    }
+
+  .origin_center {
+    transform-origin: center
     }
 
   .shadow_sm {
@@ -515,32 +563,28 @@
     transition-duration: var(--transition-duration, 150ms)
     }
 
-  .w_120 {
-    width: 120px
+  .w_120pt {
+    width: 120pt
     }
 
-  .h_336 {
-    height: 336px
+  .h_200pt {
+    height: 200pt
     }
 
-  .w_180 {
-    width: 180px
+  .w_180pt {
+    width: 180pt
     }
 
-  .h_240 {
-    height: 240px
+  .h_240pt {
+    height: 240pt
     }
 
-  .color-scheme_place-value {
-    color-scheme: place-value
+  .w_80pt {
+    width: 80pt
     }
 
-  .w_80 {
-    width: var(--sizes-80)
-    }
-
-  .h_120 {
-    height: 120px
+  .h_120pt {
+    height: 120pt
     }
 
   .max-w_4xl {
