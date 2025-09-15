@@ -49,20 +49,12 @@ export async function POST(request: NextRequest) {
     // Generate flashcards using Python via TypeScript bindings
     console.log('🚀 Generating flashcards with config:', JSON.stringify(config, null, 2))
     const result = await gen.generate(config)
-    console.log('📦 Generation result:', {
-      pdfLength: result.pdf?.length || 0,
-      count: result.count,
-      numbersLength: result.numbers?.length || 0
-    })
 
-    if (!result.pdf) {
-      throw new Error('No PDF data received from generator')
+    // SorobanGenerator.generate() returns PDF data directly as Buffer
+    if (!Buffer.isBuffer(result)) {
+      throw new Error('Expected PDF Buffer from generator, got: ' + typeof result)
     }
-
-    // Convert base64 PDF string to Buffer
-    const pdfBuffer = Buffer.from(result.pdf, 'base64')
-    console.log('📄 PDF buffer size:', pdfBuffer.length, 'bytes')
-
+    const pdfBuffer = result
     // Create filename for download
     const filename = `soroban-flashcards-${config.range || 'cards'}.pdf`
 

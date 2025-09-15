@@ -12,6 +12,7 @@ interface TypstSorobanProps {
   className?: string
   onError?: (error: string) => void
   onSuccess?: () => void
+  enableServerFallback?: boolean
 }
 
 export function TypstSoroban({
@@ -20,7 +21,8 @@ export function TypstSoroban({
   height = '160pt',
   className,
   onError,
-  onSuccess
+  onSuccess,
+  enableServerFallback = false
 }: TypstSorobanProps) {
   const [svg, setSvg] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -43,7 +45,8 @@ export function TypstSoroban({
           hideInactiveBeads: globalConfig.hideInactiveBeads,
           coloredNumerals: globalConfig.coloredNumerals,
           scaleFactor: globalConfig.scaleFactor,
-          transparent: false
+          transparent: false,
+          enableServerFallback
         }
 
         const generatedSvg = await generateSorobanSVG(config)
@@ -62,7 +65,7 @@ export function TypstSoroban({
     }
 
     generateSVG()
-  }, [number, width, height, globalConfig.beadShape, globalConfig.colorScheme, globalConfig.hideInactiveBeads, globalConfig.coloredNumerals, globalConfig.scaleFactor])
+  }, [number, width, height, globalConfig.beadShape, globalConfig.colorScheme, globalConfig.hideInactiveBeads, globalConfig.coloredNumerals, globalConfig.scaleFactor, enableServerFallback])
 
   if (isLoading) {
     return (

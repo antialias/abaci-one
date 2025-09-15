@@ -15,9 +15,6 @@
   .gap_4px {
     gap: 4px
     }
-    .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
-      transform: translateY(-1px)
-        }
 
   .fs_11px {
     font-size: 11px
@@ -34,9 +31,6 @@
   .border_gray\.300 {
     border-color: var(--colors-gray-300)
     }
-    .hover\:bg_gray\.50:is(:hover, [data-hover]) {
-      background: var(--colors-gray-50)
-        }
 
   .border_2px_solid {
     border: 2px solid
@@ -45,9 +39,6 @@
   .p_10px_20px {
     padding: 10px 20px
     }
-    .hover\:border_blue\.400:is(:hover, [data-hover]) {
-      border-color: var(--colors-blue-400)
-        }
 
   .d_block {
     display: block
@@ -116,9 +107,6 @@
   .transition_background_0\.2s_ease {
     transition: background 0.2s ease
     }
-    .hover\:bg_red\.600:is(:hover, [data-hover]) {
-      background: var(--colors-red-600)
-        }
 
   .text_green\.500 {
     color: var(--colors-green-500)
@@ -461,9 +449,6 @@
   .bg_blue\.500 {
     background: var(--colors-blue-500)
     }
-    .hover\:bg_blue\.600:is(:hover, [data-hover]) {
-      background: var(--colors-blue-600)
-        }
 
   .max-w_800px {
     max-width: 800px
@@ -596,9 +581,6 @@
   .bg_green\.500 {
     background: var(--colors-green-500)
     }
-    .hover\:bg_green\.600:is(:hover, [data-hover]) {
-      background: var(--colors-green-600)
-        }
 
   .p_12px_24px {
     padding: 12px 24px
@@ -635,9 +617,6 @@
   .text_white {
     color: var(--colors-white)
     }
-    .hover\:bg_gray\.600:is(:hover, [data-hover]) {
-      background: var(--colors-gray-600)
-        }
 
   .min-h_screen {
     min-height: 100vh
@@ -706,9 +685,6 @@
   .mb_4 {
     margin-bottom: var(--spacing-4)
     }
-    .hover\:text_gray\.800:is(:hover, [data-hover]) {
-      color: var(--colors-gray-800)
-        }
 
   .bg_white {
     background: var(--colors-white)
@@ -769,9 +745,41 @@
   .h_130pt {
     height: 130pt
     }
-    @media screen and (min-width: 48em) {
 
-  .md\:px_4 {
+  .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
+    transform: translateY(-1px)
+        }
+
+  .hover\:bg_gray\.50:is(:hover, [data-hover]) {
+    background: var(--colors-gray-50)
+        }
+
+  .hover\:border_blue\.400:is(:hover, [data-hover]) {
+    border-color: var(--colors-blue-400)
+        }
+
+  .hover\:bg_red\.600:is(:hover, [data-hover]) {
+    background: var(--colors-red-600)
+        }
+
+  .hover\:bg_blue\.600:is(:hover, [data-hover]) {
+    background: var(--colors-blue-600)
+        }
+
+  .hover\:bg_green\.600:is(:hover, [data-hover]) {
+    background: var(--colors-green-600)
+        }
+
+  .hover\:bg_gray\.600:is(:hover, [data-hover]) {
+    background: var(--colors-gray-600)
+        }
+
+  .hover\:text_gray\.800:is(:hover, [data-hover]) {
+    color: var(--colors-gray-800)
+        }
+
+  @media screen and (min-width: 48em) {
+    .md\:px_4 {
       padding-inline: var(--spacing-4)
     }
         }

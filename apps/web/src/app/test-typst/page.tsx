@@ -144,6 +144,7 @@ export default function TestTypstPage() {
                 number={selectedNumber}
                 width="200pt"
                 height="250pt"
+                enableServerFallback={true}
                 onSuccess={() => setGenerationCount(prev => prev + 1)}
                 onError={() => setErrorCount(prev => prev + 1)}
                 className={css({
@@ -200,6 +201,7 @@ export default function TestTypstPage() {
                       number={num}
                       width="100pt"
                       height="120pt"
+                      enableServerFallback={true}
                       onSuccess={() => setGenerationCount(prev => prev + 1)}
                       onError={() => setErrorCount(prev => prev + 1)}
                       className={css({ w: 'full', h: 'full' })}

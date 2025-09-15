@@ -17,6 +17,7 @@ export interface TypstSVGRequest {
   fontSize?: string
   fontFamily?: string
   transparent?: boolean
+  coloredNumerals?: boolean
 }
 
 // Cache for template content
@@ -51,7 +52,8 @@ function createTypstContent(config: TypstSVGRequest, template: string): string {
     height = '160pt',
     fontSize = '48pt',
     fontFamily = 'DejaVu Sans',
-    transparent = false
+    transparent = false,
+    coloredNumerals = false
   } = config
 
   return `

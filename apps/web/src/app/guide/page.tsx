@@ -342,6 +342,7 @@ function ReadingNumbersGuide() {
                       number={example.num}
                       width="120pt"
                       height="200pt"
+                      enableServerFallback={true}
                       className={css({
                         '& svg': {
                           width: '100%',
@@ -511,6 +512,7 @@ function ReadingNumbersGuide() {
                         number={example.num}
                         width="180pt"
                         height="240pt"
+                        enableServerFallback={true}
                         className={css({
                           '& svg': {
                             width: '100%',
@@ -765,14 +767,14 @@ function ArithmeticOperationsGuide() {
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>Start: 3</p>
               <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
-                <TypstSoroban number={3} width="80pt" height="120pt" />
+                <TypstSoroban number={3} width="80pt" height="120pt" enableServerFallback={true} />
               </div>
             </div>
             <div className={css({ textAlign: 'center', fontSize: '2xl' })}>+</div>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>Result: 7</p>
               <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
-                <TypstSoroban number={7} width="80pt" height="120pt" />
+                <TypstSoroban number={7} width="80pt" height="120pt" enableServerFallback={true} />
               </div>
             </div>
           </div>
@@ -845,14 +847,14 @@ function ArithmeticOperationsGuide() {
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>Start: 8</p>
               <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
-                <TypstSoroban number={8} width="80pt" height="120pt" />
+                <TypstSoroban number={8} width="80pt" height="120pt" enableServerFallback={true} />
               </div>
             </div>
             <div className={css({ textAlign: 'center', fontSize: '2xl' })}>-</div>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>Result: 5</p>
               <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
-                <TypstSoroban number={5} width="80pt" height="120pt" />
+                <TypstSoroban number={5} width="80pt" height="120pt" enableServerFallback={true} />
               </div>
             </div>
           </div>

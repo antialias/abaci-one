@@ -195,6 +195,7 @@ const generateQuizCards = (count: number, difficulty: DifficultyLevel): QuizCard
         number={number}
         width="280pt"
         height="360pt"
+        enableServerFallback={true}
       />
     </div>,
     element: null
@@ -615,6 +616,7 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
                         number={card.number}
                         width="100pt"
                         height="130pt"
+                        enableServerFallback={true}
                       />
                     </div>
                   </div>

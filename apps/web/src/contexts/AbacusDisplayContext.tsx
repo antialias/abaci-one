@@ -91,9 +91,15 @@ export function AbacusDisplayProvider({
   initialConfig = {}
 }: AbacusDisplayProviderProps) {
   const [config, setConfig] = useState<AbacusDisplayConfig>(() => {
-    const stored = loadConfigFromStorage()
-    return { ...stored, ...initialConfig }
+    // Always start with defaults to ensure server/client consistency
+    return { ...DEFAULT_CONFIG, ...initialConfig }
   })
+
+  // Load from localStorage only after hydration
+  useEffect(() => {
+    const stored = loadConfigFromStorage()
+    setConfig(prev => ({ ...stored, ...initialConfig }))
+  }, [initialConfig])
 
   // Save to localStorage whenever config changes
   useEffect(() => {

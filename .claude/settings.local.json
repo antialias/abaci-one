@@ -90,7 +90,12 @@
       "Bash(pnpm --filter @soroban/web panda:*)",
       "Bash(npx @pandacss/dev:*)",
       "Bash(pnpm add:*)",
-      "Bash(pnpm:*)"
+      "Bash(pnpm:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(node:*)",
+      "Read(//tmp/**)",
+      "Bash(open http://localhost:3000/test-typst)",
+      "Bash(open http://localhost:3001/test-typst)"
     ],
     "deny": [],
     "ask": []

@@ -1,29 +1,63 @@
 // TypeScript module for generating Soroban SVGs using typst.ts
 // This replaces the Python bridge with a browser-native solution
 
-// Try different import approach for Next.js compatibility
+// Browser-side typst.ts rendering
 let $typst: any = null
+let isLoading = false
 
 async function getTypstRenderer() {
   if ($typst) return $typst
 
-  try {
-    // Try the ES module import first
-    const typstModule = await import('@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs')
-    $typst = typstModule.$typst
-    return $typst
-  } catch (error) {
-    console.warn('ES module import failed, trying alternative:', error)
-
-    try {
-      // Fallback to dynamic import
-      const typstModule = await import('@myriaddreamin/typst.ts')
-      $typst = typstModule
-      return $typst
-    } catch (fallbackError) {
-      console.error('All typst.ts import methods failed:', fallbackError)
-      throw new Error('Failed to load typst.ts renderer')
+  // Prevent multiple concurrent initializations
+  if (isLoading) {
+    // Wait for the current initialization to complete
+    while (isLoading) {
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
+    if ($typst) return $typst
+    throw new Error('typst.ts initialization failed')
+  }
+
+  isLoading = true
+
+  try {
+    console.log('🚀 Loading typst.ts WASM in browser...')
+
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('Not in browser environment')
+    }
+
+    // Try multiple import strategies for maximum compatibility
+    let typstModule
+    try {
+      // Primary import method
+      typstModule = await import('@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs')
+      $typst = typstModule.$typst
+    } catch (importError) {
+      console.log('Primary import failed, trying alternative...')
+      // Alternative import method
+      typstModule = await import('@myriaddreamin/typst.ts')
+      $typst = typstModule.$typst || typstModule.default?.$typst
+    }
+
+    if (!$typst) {
+      throw new Error('typst.ts renderer not found in module')
+    }
+
+    // Test the renderer with a minimal example
+    console.log('🧪 Testing typst.ts renderer...')
+    await $typst.svg({ mainContent: '#set page(width: 10pt, height: 10pt)\n' })
+
+    console.log('✅ typst.ts WASM loaded and tested successfully!')
+    return $typst
+
+  } catch (error) {
+    console.error('❌ Failed to load typst.ts WASM:', error)
+    $typst = null
+    throw new Error(`Browser typst.ts initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  } finally {
+    isLoading = false
   }
 }
 
@@ -44,6 +78,8 @@ export interface SorobanConfig {
   fontSize?: string
   fontFamily?: string
   transparent?: boolean
+  coloredNumerals?: boolean
+  enableServerFallback?: boolean
 }
 
 // Cache for compiled templates to avoid recompilation
@@ -89,7 +125,9 @@ async function getTypstTemplate(config: SorobanConfig): Promise<string> {
     height = '160pt',
     fontSize = '48pt',
     fontFamily = 'DejaVu Sans',
-    transparent = false
+    transparent = false,
+    coloredNumerals = false,
+    enableServerFallback = false
   } = config
 
   return `
@@ -138,30 +176,11 @@ export async function generateSorobanSVG(config: SorobanConfig): Promise<string>
       return await templateCache.get(cacheKey)!
     }
 
-    // Generate the SVG using the server-side API
-    const response = await fetch('/api/typst-svg', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(config),
-    })
+    // Try browser-side generation first, fallback to server if it fails
+    const generationPromise = generateSVGWithFallback(config)
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-      throw new Error(errorData.error || 'SVG generation failed')
-    }
-
-    const data = await response.json()
-
-    if (!data.success) {
-      throw new Error(data.error || 'SVG generation failed')
-    }
-
-    const svg = data.svg
-
-    // Cache the result
-    templateCache.set(cacheKey, Promise.resolve(svg))
+    // Cache the promise to prevent duplicate generations
+    templateCache.set(cacheKey, generationPromise)
 
     // Clean up the cache if it gets too large (keep last 50 entries)
     if (templateCache.size > 50) {
@@ -171,11 +190,118 @@ export async function generateSorobanSVG(config: SorobanConfig): Promise<string>
       toKeep.forEach(([key, value]) => templateCache.set(key, value))
     }
 
-    return svg
+    return await generationPromise
+
   } catch (error) {
     console.error('Failed to generate Soroban SVG with typst.ts:', error)
     throw new Error(`SVG generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
+}
+
+// Track if browser-side generation has been attempted and failed
+let browserGenerationAvailable: boolean | null = null
+
+// Function to reset browser availability detection (useful for debugging)
+export function resetBrowserGenerationStatus() {
+  browserGenerationAvailable = null
+  $typst = null
+  isLoading = false
+  console.log('🔄 Reset browser generation status - will retry on next generation')
+}
+
+async function generateSVGWithFallback(config: SorobanConfig): Promise<string> {
+  console.log('🔍 generateSVGWithFallback called for number:', config.number)
+  console.log('🔍 browserGenerationAvailable status:', browserGenerationAvailable)
+  console.log('🔍 enableServerFallback:', config.enableServerFallback)
+
+  // If we know browser generation is available, always use it
+  if (browserGenerationAvailable === true) {
+    console.log('🎯 Using confirmed browser-side generation')
+    return await generateSVGInBrowser(config)
+  }
+
+  // If we know browser generation is not available and server fallback is disabled, throw error
+  if (browserGenerationAvailable === false && !config.enableServerFallback) {
+    console.error('❌ Browser-side generation unavailable and server fallback disabled')
+    throw new Error('Browser-side SVG generation failed and server fallback is disabled. Enable server fallback or fix browser WASM loading.')
+  }
+
+  // If we know browser generation is not available, skip to server (only if fallback enabled)
+  if (browserGenerationAvailable === false && config.enableServerFallback) {
+    console.log('🔄 Using server fallback (browser unavailable)')
+    return await generateSVGOnServer(config)
+  }
+
+  // First attempt - try browser-side generation
+  try {
+    console.log('🚀 Attempting browser-side generation for number:', config.number)
+    const result = await generateSVGInBrowser(config)
+    browserGenerationAvailable = true
+    console.log('✅ Browser-side generation successful! Will use for future requests.')
+    return result
+  } catch (browserError) {
+    console.warn('❌ Browser-side generation failed for number:', config.number, browserError)
+    browserGenerationAvailable = false
+
+    // Only fall back to server if explicitly enabled
+    if (config.enableServerFallback) {
+      try {
+        console.log('🔄 Falling back to server-side generation for number:', config.number)
+        return await generateSVGOnServer(config)
+      } catch (serverError) {
+        console.error('❌ Both browser and server generation failed for number:', config.number)
+        throw new Error(`SVG generation failed: ${serverError instanceof Error ? serverError.message : 'Unknown error'}`)
+      }
+    } else {
+      console.error('❌ Browser-side generation failed and server fallback disabled for number:', config.number)
+      throw new Error(`Browser-side SVG generation failed: ${browserError instanceof Error ? browserError.message : 'Unknown error'}. Enable server fallback or fix browser WASM loading.`)
+    }
+  }
+}
+
+async function generateSVGInBrowser(config: SorobanConfig): Promise<string> {
+  // Load typst.ts renderer
+  const $typst = await getTypstRenderer()
+
+  // Get the template content
+  const template = await getFlashcardsTemplate()
+
+  // Create the complete Typst document
+  const typstContent = await getTypstTemplate(config)
+
+  console.log('🎨 Generating SVG in browser for number:', config.number)
+
+  // Generate SVG using typst.ts in the browser
+  const svg = await $typst.svg({ mainContent: typstContent })
+
+  console.log('✅ Generated browser SVG, length:', svg.length)
+
+  return svg
+}
+
+async function generateSVGOnServer(config: SorobanConfig): Promise<string> {
+  // Fallback to server-side API generation
+  const response = await fetch('/api/typst-svg', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+    throw new Error(errorData.error || 'Server SVG generation failed')
+  }
+
+  const data = await response.json()
+
+  if (!data.success) {
+    throw new Error(data.error || 'Server SVG generation failed')
+  }
+
+  console.log('🔄 Generated SVG on server, length:', data.svg.length)
+  return data.svg
 }
 
 export async function generateSorobanPreview(
