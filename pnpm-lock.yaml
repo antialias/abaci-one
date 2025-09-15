@@ -25,6 +25,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@myriaddreamin/typst.ts':
+        specifier: 0.6.1-rc3
+        version: 0.6.1-rc3
       '@pandacss/dev':
         specifier: ^0.20.0
         version: 0.20.1(typescript@5.0.2)
@@ -983,6 +986,20 @@ packages:
 
   /@myriaddreamin/typst-ts-web-compiler@0.6.0:
     resolution: {integrity: sha512-P/eIJ5RnfElj0NYzn5PI296t/IwWtgqUyyTMi5Jm5X3V5kZfskkH+LI7mSQe8tEyxwgCvxbxvFe5adinA3K8Gg==}
+    dev: false
+
+  /@myriaddreamin/typst.ts@0.6.1-rc3:
+    resolution: {integrity: sha512-pGzaJ5SV0JjrNWn14Bicy0nPTtfD5+4kHwGUDYSebSMbfAtNHfi+Et7k4PiXqunwRm7Obkk5iZufiRM2jOlfbg==}
+    peerDependencies:
+      '@myriaddreamin/typst-ts-renderer': ^0.6.1-rc3
+      '@myriaddreamin/typst-ts-web-compiler': ^0.6.1-rc3
+    peerDependenciesMeta:
+      '@myriaddreamin/typst-ts-renderer':
+        optional: true
+      '@myriaddreamin/typst-ts-web-compiler':
+        optional: true
+    dependencies:
+      idb: 7.1.1
     dev: false
 
   /@napi-rs/wasm-runtime@0.2.12:
@@ -4331,6 +4348,10 @@ packages:
     resolution: {integrity: sha512-AXcZb6vzzrFAUE61HnN4mpLqd/cSIwNQjtNWR0euPm6y0iqx3G4gOXaIDdtdDwZmhwe82LA6+zinmW4UBWVePQ==}
     engines: {node: '>=16.17.0'}
     dev: true
+
+  /idb@7.1.1:
+    resolution: {integrity: sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==}
+    dev: false
 
   /ignore@4.0.6:
     resolution: {integrity: sha512-cyFDKrqc/YdcWFniJhzI42+AzS+gNwmUzOSFcRCQYwySuBBBy/KjuxWLZ/FHEH6Moq1NizMOBWyTcv8O4OZIMg==}
