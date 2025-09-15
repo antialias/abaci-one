@@ -76,6 +76,9 @@ importers:
       '@radix-ui/react-toast':
         specifier: ^1.1.5
         version: 1.1.5(@types/react-dom@18.0.0)(@types/react@18.0.0)(react-dom@18.0.0)(react@18.0.0)
+      '@react-spring/web':
+        specifier: ^10.0.2
+        version: 10.0.2(react-dom@18.0.0)(react@18.0.0)
       '@soroban/client':
         specifier: workspace:*
         version: link:../../packages/core/client/typescript
@@ -85,6 +88,9 @@ importers:
       '@tanstack/react-form':
         specifier: ^0.19.0
         version: 0.19.0(@types/react@18.0.0)(react-dom@18.0.0)(react@18.0.0)
+      '@types/jsdom':
+        specifier: ^21.1.7
+        version: 21.1.7
       lucide-react:
         specifier: ^0.294.0
         version: 0.294.0(react@18.0.0)
@@ -2437,6 +2443,59 @@ packages:
       '@babel/runtime': 7.28.4
     dev: false
 
+  /@react-spring/animated@10.0.2(react@18.0.0):
+    resolution: {integrity: sha512-GaVMfinZ6/Aid1v44ESf45H5jOj7cVbDuNVDDkvsVJAPRLgPl8+q8IJsmZGl77+cHpC/nw2X+4B9fOtil+LIOQ==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    dependencies:
+      '@react-spring/shared': 10.0.2(react@18.0.0)
+      '@react-spring/types': 10.0.2
+      react: 18.0.0
+    dev: false
+
+  /@react-spring/core@10.0.2(react@18.0.0):
+    resolution: {integrity: sha512-GTV2I3cHlE1nGqInn2vWHdMD8Wrszlmfq+G5UYrF8TRK/pWu+oMJE+7SI6NbYuCvLPLY9F2cmCiZsKqBSTXXbQ==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    dependencies:
+      '@react-spring/animated': 10.0.2(react@18.0.0)
+      '@react-spring/shared': 10.0.2(react@18.0.0)
+      '@react-spring/types': 10.0.2
+      react: 18.0.0
+    dev: false
+
+  /@react-spring/rafz@10.0.2:
+    resolution: {integrity: sha512-UaLbq3sE80YqBx5/g3PKE6zQ4R24/UGg/jjXbxhSyt4w+O52m3sj3xZxSru6dkXyC2QciXO1pg8sGWqpn8foUg==}
+    dev: false
+
+  /@react-spring/shared@10.0.2(react@18.0.0):
+    resolution: {integrity: sha512-fG8UTo7iTx8+pbMIp41rrAYtBxJ56qqcNs6Sqy4meogbSfPlk5kJSSeKAvF02regPpgzi9rWZA+dR3HL240ilw==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    dependencies:
+      '@react-spring/rafz': 10.0.2
+      '@react-spring/types': 10.0.2
+      react: 18.0.0
+    dev: false
+
+  /@react-spring/types@10.0.2:
+    resolution: {integrity: sha512-BCJyfNrR0CVsyquRjEXvMFCa+jwFMC+qpdRvT8TNepD+JWB+8lsgbDKrrUbbhexUQhy5pTmk2wHTteYpLPEnig==}
+    dev: false
+
+  /@react-spring/web@10.0.2(react-dom@18.0.0)(react@18.0.0):
+    resolution: {integrity: sha512-94Gb91dWdua217UskhLYrX61HEn8Tm0xvlIfDiG7HIxXLHcu6sqVfmX2pp2C/n6MxCsWpYcVejVih1PJ2/y4HQ==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    dependencies:
+      '@react-spring/animated': 10.0.2(react@18.0.0)
+      '@react-spring/core': 10.0.2(react@18.0.0)
+      '@react-spring/shared': 10.0.2(react@18.0.0)
+      '@react-spring/types': 10.0.2
+      react: 18.0.0
+      react-dom: 18.0.0(react@18.0.0)
+    dev: false
+
   /@rolldown/pluginutils@1.0.0-beta.34:
     resolution: {integrity: sha512-LyAREkZHP5pMom7c24meKmJCdhf2hEyvam2q0unr3or9ydwDL+DJ8chTF6Av/RFPb3rH8UFBdMzO5MxTZW97oA==}
     dev: true
@@ -2767,6 +2826,14 @@ packages:
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
     dev: true
 
+  /@types/jsdom@21.1.7:
+    resolution: {integrity: sha512-yOriVnggzrnQ3a9OKOCxaVuSug3w3/SbOj5i7VwXWZEyUNl3bLF9V3MfxGbZKuwqJOQyRfqXyROBB1CoZLFWzA==}
+    dependencies:
+      '@types/node': 20.0.0
+      '@types/tough-cookie': 4.0.5
+      parse5: 7.3.0
+    dev: false
+
   /@types/json5@0.0.29:
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
     dev: true
@@ -2777,7 +2844,6 @@ packages:
 
   /@types/node@20.0.0:
     resolution: {integrity: sha512-cD2uPTDnQQCVpmRefonO98/PPijuOnnEy5oytWJFPY1N9aJCz2wJ5kSGWO+zJoed2cY2JxQh6yBuUq4vIn61hw==}
-    dev: true
 
   /@types/prop-types@15.7.15:
     resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
@@ -2796,6 +2862,10 @@ packages:
 
   /@types/scheduler@0.26.0:
     resolution: {integrity: sha512-WFHp9YUJQ6CKshqoC37iOlHnQSmxNc795UhB26CyBBttrN9svdIrUjl/NjnNmfcwtncN0h/0PPAFWv9ovP8mLA==}
+
+  /@types/tough-cookie@4.0.5:
+    resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
+    dev: false
 
   /@typescript-eslint/parser@6.21.0(eslint@8.0.0)(typescript@5.0.2):
     resolution: {integrity: sha512-tbsV1jPne5CkFQCgPBcDOt30ItF7aJoZL997JSF7MhGQqOeT3svWRYxiqlfA5RUdlHN6Fi+EI9bxqbdyAUZjYQ==}
