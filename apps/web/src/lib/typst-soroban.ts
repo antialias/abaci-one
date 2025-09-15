@@ -587,9 +587,62 @@ async function generateSVGInBrowser(config: SorobanConfig): Promise<string> {
   // Optimize viewBox to crop to actual content bounds
   const optimizedSvg = optimizeSvgViewBox(svg)
 
-  return optimizedSvg
+  // Process bead annotations to convert links to data attributes
+  const annotatedSvg = processBeadAnnotations(optimizedSvg)
+
+  return annotatedSvg
 }
 
+// Function to process bead annotations - converts link elements to data attributes
+function processBeadAnnotations(svg: string): string {
+  console.log('🏷️ Processing bead annotations...')
+
+  const processedSvg = svg.replace(
+    /<a[^>]*xlink:href="bead:\/\/([^"]*)"[^>]*>(.*?)<\/a>/gs,
+    (match, beadId, content) => {
+      // Parse the bead ID to extract metadata
+      const parts = beadId.split('-')
+
+      let beadType = 'unknown'
+      let column = '0'
+      let position = ''
+      let active = '0'
+
+      // Parse heaven beads: "heaven-col0-active1"
+      if (parts[0] === 'heaven' && parts.length >= 3) {
+        beadType = 'heaven'
+        const colMatch = parts[1].match(/col(\d+)/)
+        if (colMatch) column = colMatch[1]
+        const activeMatch = parts[2].match(/active(\d+)/)
+        if (activeMatch) active = activeMatch[1]
+      }
+      // Parse earth beads: "earth-col0-pos1-active1"
+      else if (parts[0] === 'earth' && parts.length >= 4) {
+        beadType = 'earth'
+        const colMatch = parts[1].match(/col(\d+)/)
+        if (colMatch) column = colMatch[1]
+        const posMatch = parts[2].match(/pos(\d+)/)
+        if (posMatch) position = posMatch[1]
+        const activeMatch = parts[3].match(/active(\d+)/)
+        if (activeMatch) active = activeMatch[1]
+      }
+
+      // Construct data attributes
+      const dataAttrs = `data-bead-type="${beadType}" data-bead-column="${column}"${position ? ` data-bead-position="${position}"` : ''} data-bead-active="${active}"`
+
+      // Add data attributes to shapes within the content and remove the link wrapper
+      const processedContent = content.replace(
+        /<(circle|path|rect|polygon|ellipse)([^>]*>)/g,
+        `<$1 ${dataAttrs}$2`
+      )
+
+      return processedContent
+    }
+  )
+
+  console.log('✅ Bead annotations processed')
+  return processedSvg
+}
 
 async function generateSVGOnServer(config: SorobanConfig): Promise<string> {
   // Fallback to server-side API generation
