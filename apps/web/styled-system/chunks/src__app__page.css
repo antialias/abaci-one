@@ -23,9 +23,6 @@
   .text_brand\.800 {
     color: var(--colors-brand-800)
     }
-    .hover\:bg_brand\.50:is(:hover, [data-hover]) {
-      background: var(--colors-brand-50)
-        }
 
   .py_2 {
     padding-block: var(--spacing-2)
@@ -240,6 +237,10 @@
   .max-w_4xl {
     max-width: var(--sizes-4xl)
     }
+
+  .hover\:bg_brand\.50:is(:hover, [data-hover]) {
+    background: var(--colors-brand-50)
+        }
 
   .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
     transform: translateY(-1px)

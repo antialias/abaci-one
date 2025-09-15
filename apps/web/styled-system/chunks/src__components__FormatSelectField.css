@@ -1,4 +1,5 @@
 @layer utilities {
+
   .w_full {
     width: var(--sizes-full)
     }
@@ -15,23 +16,13 @@
     -webkit-user-select: none;
     user-select: none
     }
-    .hover\:border_gray\.400:is(:hover, [data-hover]) {
-      border-color: var(--colors-gray-400)
+
+  .\[\&\[data-state\=open\]\]\:border_brand\.500[data-state=open] {
+    border-color: var(--colors-brand-500)
         }
-    .focus\:ring_none:is(:focus, [data-focus]) {
-      outline: var(--borders-none)
-        }
-    .focus\:border_brand\.500:is(:focus, [data-focus]) {
-      border-color: var(--colors-brand-500)
-        }
-    .focus\:shadow_0_0_0_3px_rgba\(59\,_130\,_246\,_0\.1\):is(:focus, [data-focus]) {
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1)
-        }
-    .\[\&\[data-state\=open\]\]\:border_brand\.500[data-state=open] {
-      border-color: var(--colors-brand-500)
-        }
-    .\[\&\[data-state\=open\]\]\:shadow_0_0_0_3px_rgba\(59\,_130\,_246\,_0\.1\)[data-state=open] {
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1)
+
+  .\[\&\[data-state\=open\]\]\:shadow_0_0_0_3px_rgba\(59\,_130\,_246\,_0\.1\)[data-state=open] {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1)
         }
 
   .justify_space-between {
@@ -127,9 +118,6 @@
   .ring_none {
     outline: var(--borders-none)
     }
-    .hover\:bg_brand\.50:is(:hover, [data-hover]) {
-      background: var(--colors-brand-50)
-        }
     .\[\&\[data-state\=checked\]\]\:bg_brand\.100[data-state=checked] {
       background: var(--colors-brand-100)
         }
@@ -200,4 +188,24 @@
   .flex_1 {
     flex: 1 1 0%
     }
+
+  .focus\:ring_none:is(:focus, [data-focus]) {
+    outline: var(--borders-none)
+        }
+
+  .focus\:border_brand\.500:is(:focus, [data-focus]) {
+    border-color: var(--colors-brand-500)
+        }
+
+  .focus\:shadow_0_0_0_3px_rgba\(59\,_130\,_246\,_0\.1\):is(:focus, [data-focus]) {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1)
+        }
+
+  .hover\:border_gray\.400:is(:hover, [data-hover]) {
+    border-color: var(--colors-gray-400)
+        }
+
+  .hover\:bg_brand\.50:is(:hover, [data-hover]) {
+    background: var(--colors-brand-50)
+        }
 }

@@ -11,12 +11,6 @@
   .bg_gray\.300 {
     background: var(--colors-gray-300)
     }
-    .hover\:bg_brand\.700:is(:hover, [data-hover]) {
-      background: var(--colors-brand-700)
-        }
-    .hover\:bg_gray\.400:is(:hover, [data-hover]) {
-      background: var(--colors-gray-400)
-        }
 
   .w_11 {
     width: var(--sizes-11)
@@ -79,9 +73,6 @@
     transition-timing-function: var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
     transition-duration: var(--transition-duration, 150ms)
     }
-    .hover\:border_brand\.400:is(:hover, [data-hover]) {
-      border-color: var(--colors-brand-400)
-        }
     .\[\&\[data-state\=checked\]\]\:border_brand\.600[data-state=checked] {
       border-color: var(--colors-brand-600)
         }
@@ -199,4 +190,16 @@
   .flex_row {
     flex-direction: row
     }
+
+  .hover\:bg_brand\.700:is(:hover, [data-hover]) {
+    background: var(--colors-brand-700)
+        }
+
+  .hover\:bg_gray\.400:is(:hover, [data-hover]) {
+    background: var(--colors-gray-400)
+        }
+
+  .hover\:border_brand\.400:is(:hover, [data-hover]) {
+    border-color: var(--colors-brand-400)
+        }
 }

@@ -1,4 +1,5 @@
 @layer utilities {
+
   .min-h_screen {
     min-height: 100vh
     }
@@ -50,9 +51,6 @@
   .transition_all_0\.3s {
     transition: all 0.3s
     }
-    .hover\:transform_translateY\(-4px\):is(:hover, [data-hover]) {
-      transform: translateY(-4px)
-        }
 
   .h_full {
     height: var(--sizes-full)
@@ -327,12 +325,6 @@
     transition-timing-function: var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
     transition-duration: var(--transition-duration, 150ms)
     }
-    .hover\:bg_blue\.700:is(:hover, [data-hover]) {
-      background: var(--colors-blue-700)
-        }
-    .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
-      transform: translateY(-1px)
-        }
 
   .d_grid {
     display: grid
@@ -345,6 +337,18 @@
   .gap_8 {
     gap: var(--spacing-8)
     }
+
+  .hover\:transform_translateY\(-4px\):is(:hover, [data-hover]) {
+    transform: translateY(-4px)
+        }
+
+  .hover\:bg_blue\.700:is(:hover, [data-hover]) {
+    background: var(--colors-blue-700)
+        }
+
+  .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
+    transform: translateY(-1px)
+        }
     @media screen and (min-width: 48em) {
 
   .md\:px_6 {
@@ -356,6 +360,18 @@
     }
 
   .md\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
+      grid-template-columns: repeat(2, minmax(0, 1fr))
+    }
+
+    .md\:px_6 {
+      padding-inline: var(--spacing-6)
+    }
+
+    .md\:fs_5xl {
+      font-size: var(--font-sizes-5xl)
+    }
+
+    .md\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(2, minmax(0, 1fr))
     }
         }

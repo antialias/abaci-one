@@ -99,15 +99,6 @@
   .opacity_1 {
     opacity: 1
     }
-    .hover\:bg_brand\.700:is(:hover, [data-hover]) {
-      background: var(--colors-brand-700)
-        }
-    .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
-      transform: translateY(-1px)
-        }
-    .hover\:shadow_modal:is(:hover, [data-hover]) {
-      box-shadow: var(--shadows-modal)
-        }
 
   .w_full {
     width: var(--sizes-full)
@@ -335,6 +326,18 @@
     align-items: start
     }
 
+  .hover\:bg_brand\.700:is(:hover, [data-hover]) {
+    background: var(--colors-brand-700)
+        }
+
+  .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
+    transform: translateY(-1px)
+        }
+
+  .hover\:shadow_modal:is(:hover, [data-hover]) {
+    box-shadow: var(--shadows-modal)
+        }
+
   .hover\:bg_brand\.50:is(:hover, [data-hover]) {
     background: var(--colors-brand-50)
         }
@@ -343,10 +346,10 @@
     background: var(--colors-red-700)
         }
     @media screen and (min-width: 64em) {
-
-  .lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
+    .lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(3, minmax(0, 1fr))
     }
+
     .lg\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(2, minmax(0, 1fr))
     }

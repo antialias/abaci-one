@@ -88,7 +88,9 @@
       "Bash(git bisect:*)",
       "Bash(pnpm --filter @soroban/web dev)",
       "Bash(pnpm --filter @soroban/web panda:*)",
-      "Bash(npx @pandacss/dev:*)"
+      "Bash(npx @pandacss/dev:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm:*)"
     ],
     "deny": [],
     "ask": []

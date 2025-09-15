@@ -1,6 +1,11 @@
 @layer utilities {
+
   .min-h_100vh {
     min-height: 100vh
+    }
+
+  .space_y-2 {
+    space: y-2
     }
 
   .pos_sticky {
@@ -66,18 +71,6 @@
   .bg_transparent {
     background: var(--colors-transparent)
     }
-    .hover\:bg_brand\.50:is(:hover, [data-hover]) {
-      background: var(--colors-brand-50)
-        }
-    .hover\:bg_gray\.50:is(:hover, [data-hover]) {
-      background: var(--colors-gray-50)
-        }
-    .hover\:text_brand\.600:is(:hover, [data-hover]) {
-      color: var(--colors-brand-600)
-        }
-    .hover\:text_gray\.800:is(:hover, [data-hover]) {
-      color: var(--colors-gray-800)
-        }
 
   .border-b_2px_solid {
     border-bottom: 2px solid
@@ -324,10 +317,6 @@
     padding-left: var(--spacing-6)
     }
 
-  .space_y-2 {
-    space: y-2
-    }
-
   .bg_red\.50 {
     background: var(--colors-red-50)
     }
@@ -509,12 +498,6 @@
     transition-timing-function: var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
     transition-duration: var(--transition-duration, 150ms)
     }
-    .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
-      transform: translateY(-1px)
-        }
-    .hover\:shadow_lg:is(:hover, [data-hover]) {
-      box-shadow: var(--shadows-lg)
-        }
 
   .w_120 {
     width: 120px
@@ -635,6 +618,30 @@
   .gap_6 {
     gap: var(--spacing-6)
     }
+
+  .hover\:bg_brand\.50:is(:hover, [data-hover]) {
+    background: var(--colors-brand-50)
+        }
+
+  .hover\:bg_gray\.50:is(:hover, [data-hover]) {
+    background: var(--colors-gray-50)
+        }
+
+  .hover\:text_brand\.600:is(:hover, [data-hover]) {
+    color: var(--colors-brand-600)
+        }
+
+  .hover\:text_gray\.800:is(:hover, [data-hover]) {
+    color: var(--colors-gray-800)
+        }
+
+  .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
+    transform: translateY(-1px)
+        }
+
+  .hover\:shadow_lg:is(:hover, [data-hover]) {
+    box-shadow: var(--shadows-lg)
+        }
     @media screen and (min-width: 48em) {
 
   .md\:p_8 {
@@ -644,14 +651,6 @@
   .md\:fs_3xl {
       font-size: var(--font-sizes-3xl)
     }
-        }
-    @media screen and (min-width: 64em) {
-
-  .lg\:grid-cols_repeat\(5\,_minmax\(0\,_1fr\)\) {
-      grid-template-columns: repeat(5, minmax(0, 1fr))
-    }
-        }
-    @media screen and (min-width: 48em) {
 
   .md\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(3, minmax(0, 1fr))
@@ -659,6 +658,28 @@
 
   .md\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(2, minmax(0, 1fr))
+    }
+
+    .md\:p_8 {
+      padding: var(--spacing-8)
+    }
+
+    .md\:fs_3xl {
+      font-size: var(--font-sizes-3xl)
+    }
+
+    .md\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
+      grid-template-columns: repeat(3, minmax(0, 1fr))
+    }
+
+    .md\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
+      grid-template-columns: repeat(2, minmax(0, 1fr))
+    }
+        }
+
+  @media screen and (min-width: 64em) {
+    .lg\:grid-cols_repeat\(5\,_minmax\(0\,_1fr\)\) {
+      grid-template-columns: repeat(5, minmax(0, 1fr))
     }
         }
 }
