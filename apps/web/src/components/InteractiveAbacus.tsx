@@ -24,6 +24,7 @@ export function InteractiveAbacus({
 }: InteractiveAbacusProps) {
   const [currentValue, setCurrentValue] = useState(initialValue)
   const [isChanging, setIsChanging] = useState(false)
+  const [previousValue, setPreviousValue] = useState(initialValue)
   const svgRef = useRef<HTMLDivElement>(null)
 
   // Animated value display
@@ -37,6 +38,13 @@ export function InteractiveAbacus({
     scale: isChanging ? 1.02 : 1,
     borderColor: isChanging ? '#fbbf24' : '#d97706', // amber-400 vs amber-600
     config: { tension: 400, friction: 25 }
+  })
+
+  // Crossfade animation between old and new SVG states
+  const crossfadeSpring = useSpring({
+    opacity: isChanging ? 0.7 : 1,
+    transform: isChanging ? 'scale(0.98)' : 'scale(1)',
+    config: { tension: 300, friction: 30 }
   })
 
 
@@ -60,12 +68,15 @@ export function InteractiveAbacus({
 
     if (beadType === 'earth') {
       const position = parseInt(beadPosition || '0')
-      const columnPower = Math.pow(10, beadColumn)
+      const placeValue = columns - 1 - beadColumn
+      const columnPower = Math.pow(10, placeValue)
       const currentDigit = Math.floor(currentValue / columnPower) % 10
       const heavenContribution = Math.floor(currentDigit / 5) * 5
       const earthContribution = currentDigit % 5
       console.log('Earth bead analysis:', {
         position,
+        beadColumn,
+        placeValue,
         columnPower,
         currentDigit,
         heavenContribution,
@@ -75,20 +86,27 @@ export function InteractiveAbacus({
 
     if (beadType === 'heaven') {
       // Toggle heaven bead (worth 5)
-      const columnPower = Math.pow(10, beadColumn)
+      // Column indexing: 0=leftmost, but place values are rightmost=ones
+      // For 3 columns: col 0=hundreds(10^2), col 1=tens(10^1), col 2=ones(10^0)
+      const placeValue = columns - 1 - beadColumn
+      const columnPower = Math.pow(10, placeValue)
       const heavenValue = 5 * columnPower
+
+      const maxValue = Math.pow(10, columns) - 1
 
       if (isActive) {
         // Deactivate heaven bead - subtract 5 from this column
         setCurrentValue(prev => Math.max(0, prev - heavenValue))
       } else {
         // Activate heaven bead - add 5 to this column
-        setCurrentValue(prev => prev + heavenValue)
+        setCurrentValue(prev => Math.min(prev + heavenValue, maxValue))
       }
     } else if (beadType === 'earth' && beadPosition) {
       // Toggle earth bead (worth 1 each)
       const position = parseInt(beadPosition) // 0-3 where 0 is top (closest to bar), 3 is bottom
-      const columnPower = Math.pow(10, beadColumn)
+      // Column indexing: 0=leftmost, but place values are rightmost=ones
+      const placeValue = columns - 1 - beadColumn
+      const columnPower = Math.pow(10, placeValue)
 
       // Calculate current digit in this column
       const currentDigit = Math.floor(currentValue / columnPower) % 10
@@ -129,12 +147,19 @@ export function InteractiveAbacus({
       const columnContribution = Math.floor(currentValue / columnPower) % 10 * columnPower
       const newValue = currentValue - columnContribution + (newDigit * columnPower)
 
-      setCurrentValue(Math.max(0, newValue))
+      // Ensure value doesn't exceed maximum for this number of columns
+      const maxValue = Math.pow(10, columns) - 1
+      setCurrentValue(Math.max(0, Math.min(newValue, maxValue)))
     }
 
-    // Visual feedback
+    // Visual feedback with extended timing for smoother transition
     setIsChanging(true)
-    setTimeout(() => setIsChanging(false), 150)
+
+    // Update previous value for crossfade effect
+    setPreviousValue(currentValue)
+
+    // Extended timing to allow for smoother crossfade
+    setTimeout(() => setIsChanging(false), 300)
   }, [currentValue])
 
   // Add click event listener for bead interactions
