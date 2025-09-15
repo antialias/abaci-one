@@ -1,80 +1,23 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { css } from '../../styled-system/css'
 import { stack, hstack, grid } from '../../styled-system/patterns'
 import { FlashcardConfig, FlashcardFormState } from '@/app/create/page'
-import { Eye, RefreshCw } from 'lucide-react'
+import { Eye } from 'lucide-react'
+import { TypstSoroban } from './TypstSoroban'
 
 interface LivePreviewProps {
   config: FlashcardFormState
 }
 
-interface PreviewData {
-  samples: Array<{
-    number: number
-    front: string // SVG content
-    back: string // Numeral
-  }>
-  count: number
-}
-
 export function LivePreview({ config }: LivePreviewProps) {
-  const [previewData, setPreviewData] = useState<PreviewData | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Generate preview numbers directly from config
+  const previewNumbers = useMemo(() => {
+    return getPreviewNumbers(config.range || '1-10')
+  }, [config.range])
 
-  // Debug: Log config changes
-  console.log('🔧 LivePreview config changed:', config)
-
-  // Debounced preview generation
-  const debouncedConfig = useDebounce(config, 500)
-  console.log('🕐 Debounced config:', debouncedConfig)
-
-  useEffect(() => {
-    console.log('🚀 useEffect triggered with debouncedConfig:', debouncedConfig)
-
-    const generatePreview = async () => {
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        // Create a simplified config for quick preview
-        const previewConfig = {
-          ...debouncedConfig,
-          range: getPreviewRange(debouncedConfig.range),
-          format: 'svg' // Always use SVG for preview
-        }
-
-        const response = await fetch('/api/preview', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(previewConfig),
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          console.log('🔍 Preview data received:', data)
-          console.log('🔍 First sample SVG length:', data.samples?.[0]?.front?.length || 'No SVG')
-          console.log('🔍 First sample SVG preview:', data.samples?.[0]?.front?.substring(0, 100) || 'No SVG')
-          setPreviewData(data)
-        } else {
-          throw new Error('Preview generation failed')
-        }
-      } catch (err) {
-        console.error('Preview error:', err)
-        setError('Unable to generate preview')
-        // Set mock data for development
-        setPreviewData(getMockPreviewData(debouncedConfig))
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    generatePreview()
-  }, [debouncedConfig])
+  const previewCount = previewNumbers.length
 
   return (
     <div className={stack({ gap: '6' })}>
@@ -94,14 +37,7 @@ export function LivePreview({ config }: LivePreviewProps) {
             See how your flashcards will look
           </p>
         </div>
-
-        <div className={hstack({ gap: '2', alignItems: 'center' })}>
-          {isLoading && (
-            <RefreshCw
-              size={16}
-              className={css({ animation: 'spin 1s linear infinite', color: 'brand.600' })}
-            />
-          )}
+        <div className={hstack({ gap: '3', alignItems: 'center' })}>
           <div className={css({
             px: '3',
             py: '1',
@@ -111,31 +47,24 @@ export function LivePreview({ config }: LivePreviewProps) {
             fontWeight: 'medium',
             rounded: 'full'
           })}>
-            {previewData?.count || 0} cards • {config.format?.toUpperCase()}
+            {previewCount} cards • {config.format?.toUpperCase()}
           </div>
         </div>
       </div>
 
       {/* Preview Cards */}
-      {isLoading ? (
-        <PreviewSkeleton />
-      ) : error ? (
-        <PreviewError error={error} />
-      ) : previewData ? (
-        <div className={grid({
-          columns: { base: 1, md: 2, lg: 3 },
-          gap: '4'
-        })}>
-          {previewData.samples.map((card) => (
-            <FlashcardPreview
-              key={card.number}
-              number={card.number}
-              frontSvg={card.front}
-              backContent={card.back}
-            />
-          ))}
-        </div>
-      ) : null}
+      <div className={grid({
+        columns: { base: 1, md: 2, lg: 3 },
+        gap: '4'
+      })}>
+        {previewNumbers.map((number) => (
+          <FlashcardPreview
+            key={number}
+            number={number}
+            config={config}
+          />
+        ))}
+      </div>
 
       {/* Configuration Summary */}
       <div className={css({
@@ -149,15 +78,15 @@ export function LivePreview({ config }: LivePreviewProps) {
           fontSize: 'sm',
           fontWeight: 'semibold',
           color: 'gray.900',
-          mb: '3'
+          mb: '2'
         })}>
           Configuration Summary
         </h4>
-        <div className={grid({ columns: 2, gap: '3' })}>
-          <ConfigSummaryItem label="Range" value={config.range || '0-99'} />
-          <ConfigSummaryItem label="Cards per page" value={config.cardsPerPage?.toString() || '6'} />
-          <ConfigSummaryItem label="Color scheme" value={config.colorScheme || 'place-value'} />
-          <ConfigSummaryItem label="Bead shape" value={config.beadShape || 'diamond'} />
+        <div className={grid({ columns: { base: 1, md: 2 }, gap: '3' })}>
+          <ConfigItem label="Range" value={config.range || 'Not set'} />
+          <ConfigItem label="Format" value={config.format?.toUpperCase() || 'PDF'} />
+          <ConfigItem label="Cards per page" value={config.cardsPerPage?.toString() || '6'} />
+          <ConfigItem label="Paper size" value={config.paperSize?.toUpperCase() || 'US-LETTER'} />
         </div>
       </div>
     </div>
@@ -166,36 +95,22 @@ export function LivePreview({ config }: LivePreviewProps) {
 
 function FlashcardPreview({
   number,
-  frontSvg,
-  backContent
+  config
 }: {
   number: number
-  frontSvg: string
-  backContent: string
+  config: FlashcardFormState
 }) {
   const [showBack, setShowBack] = useState(false)
-
-  // Reset to front when new SVG data comes in
-  useEffect(() => {
-    if (frontSvg && frontSvg.trim()) {
-      setShowBack(false)
-    }
-  }, [frontSvg])
-
-  // Debug logging (simple)
-  if (!frontSvg || !frontSvg.trim()) {
-    console.warn(`⚠️ No SVG for number ${number}`)
-  }
 
   return (
     <div
       className={css({
-        position: 'relative',
         aspectRatio: '3/4',
         bg: 'white',
+        rounded: 'xl',
         border: '2px solid',
         borderColor: 'gray.200',
-        rounded: 'xl',
+        position: 'relative',
         overflow: 'hidden',
         cursor: 'pointer',
         transition: 'all',
@@ -241,214 +156,80 @@ function FlashcardPreview({
           </div>
         </div>
       ) : (
-        // Front side - Soroban
+        // Front side - Soroban using React component
         <div className={css({
           w: 'full',
           h: 'full',
-          p: '4',
+          p: '2',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          overflow: 'hidden'
         })}>
-          {frontSvg && frontSvg.trim() ? (
-            <div className={css({
-              maxW: 'full',
-              maxH: 'full',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden'
-            })}>
-              <div
-                dangerouslySetInnerHTML={{ __html: frontSvg }}
-                className={css({
-                  maxW: 'full',
-                  maxH: 'full',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  '& svg': {
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    width: 'auto',
-                    height: 'auto'
-                  }
-                })}
-              />
-            </div>
-          ) : (
-            <SorobanPlaceholder number={number} />
-          )}
+          <div className={css({
+            transform: 'scale(1.8)',
+            transformOrigin: 'center',
+            maxW: '100%',
+            maxH: '100%'
+          })}>
+            <TypstSoroban
+              number={number}
+              width="120pt"
+              height="160pt"
+              className={css({
+                '& svg': {
+                  width: '100%',
+                  height: '100%',
+                  display: 'block'
+                }
+              })}
+            />
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-function SorobanPlaceholder({ number }: { number: number }) {
+function ConfigItem({ label, value }: { label: string; value: string }) {
   return (
     <div className={css({
-      w: 'full',
-      h: 'full',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '2',
-      color: 'gray.400'
+      fontSize: 'xs',
+      color: 'gray.600'
     })}>
-      <div className={css({ fontSize: '3xl' })}>🧮</div>
-      <div className={css({ fontSize: 'sm', fontWeight: 'medium' })}>
-        Soroban for {number}
-      </div>
+      <span className={css({ fontWeight: 'medium' })}>{label}:</span>{' '}
+      <span>{value}</span>
     </div>
   )
 }
 
-function PreviewSkeleton() {
-  return (
-    <div className={grid({
-      columns: { base: 1, md: 2, lg: 3 },
-      gap: '4'
-    })}>
-      {[1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className={css({
-            aspectRatio: '3/4',
-            bg: 'gray.100',
-            rounded: 'xl',
-            animation: 'pulse'
-          })}
-        />
-      ))}
-    </div>
-  )
-}
+// Helper function to extract numbers from range for preview
+function getPreviewNumbers(range?: string): number[] {
+  if (!range) return [1, 2, 3]
 
-function PreviewError({ error }: { error: string }) {
-  return (
-    <div className={css({
-      p: '6',
-      bg: 'amber.50',
-      border: '1px solid',
-      borderColor: 'amber.200',
-      rounded: 'xl',
-      textAlign: 'center'
-    })}>
-      <div className={css({ fontSize: '2xl', mb: '2' })}>⚠️</div>
-      <p className={css({ color: 'amber.800', fontWeight: 'medium' })}>
-        {error}
-      </p>
-      <p className={css({ fontSize: 'sm', color: 'amber.700', mt: '1' })}>
-        Preview will be available when you generate the flashcards
-      </p>
-    </div>
-  )
-}
+  // Handle comma-separated values
+  if (range.includes(',')) {
+    return range
+      .split(',')
+      .slice(0, 3)
+      .map(n => parseInt(n.trim()))
+      .filter(n => !isNaN(n))
+  }
 
-function ConfigSummaryItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={css({ fontSize: 'xs' })}>
-      <span className={css({ color: 'gray.600' })}>{label}:</span>{' '}
-      <span className={css({ fontWeight: 'medium', color: 'gray.900' })}>{value}</span>
-    </div>
-  )
-}
-
-// Utility functions
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-
-    return () => {
-      clearTimeout(handler)
+  // Handle range format like "1-10"
+  if (range.includes('-')) {
+    const [start] = range.split('-').map(n => parseInt(n.trim()))
+    if (!isNaN(start)) {
+      return [start, start + 1, start + 2]
     }
-  }, [value, delay])
-
-  return debouncedValue
-}
-
-function getPreviewRange(range: string | undefined): string {
-  // For preview, show diverse examples that demonstrate different abacus states
-  const safeRange = range || '0-99'
-
-  if (safeRange.includes('-')) {
-    const [start, end] = safeRange.split('-').map(n => parseInt(n) || 0)
-    const examples: number[] = []
-
-    // For larger ranges, distribute examples more evenly across the range
-    const rangeSize = end - start + 1
-
-    if (rangeSize > 50) {
-      // Large range: show low, middle, and high examples with interesting patterns
-      const lowCandidates = [4, 5, 9, 13, 17].filter(n => n >= start && n <= end)
-      const midCandidates = [23, 37, 42, 58, 67].filter(n => n >= start && n <= end)
-      const highCandidates = [84, 95, 123, 156, 178].filter(n => n >= start && n <= end)
-
-      // Pick one from each range if available
-      if (lowCandidates.length > 0) examples.push(lowCandidates[0])
-      if (midCandidates.length > 0) examples.push(midCandidates[0])
-      if (highCandidates.length > 0) examples.push(highCandidates[0])
-
-      // Fill remaining with calculated spread
-      if (examples.length < 3) {
-        const third = Math.floor(rangeSize / 3)
-        const candidates = [
-          start + third,
-          start + (2 * third),
-          end - Math.floor(third / 2)
-        ].filter(n => n >= start && n <= end && !examples.includes(n))
-
-        examples.push(...candidates.slice(0, 3 - examples.length))
-      }
-    } else {
-      // Smaller range: use original logic with candidates
-      if (start <= end) examples.push(start)
-
-      const candidates = [4, 5, 9, 13, 17, 23, 37, 42, 58, 67, 84, 95]
-      for (const num of candidates) {
-        if (num >= start && num <= end && examples.length < 3) {
-          examples.push(num)
-        }
-      }
-
-      // Fill remaining slots with strategic numbers
-      if (examples.length < 3) {
-        const mid = Math.floor((start + end) / 2)
-        const quarter = Math.floor((end - start) / 4)
-
-        if (mid >= start && mid <= end && !examples.includes(mid)) examples.push(mid)
-        if (examples.length < 3 && start + quarter <= end && !examples.includes(start + quarter)) examples.push(start + quarter)
-        if (examples.length < 3 && end - quarter >= start && !examples.includes(end - quarter)) examples.push(end - quarter)
-      }
-    }
-
-    // Remove duplicates and sort
-    const uniqueExamples = [...new Set(examples)].sort((a, b) => a - b).slice(0, 3)
-    return uniqueExamples.join(',')
   }
 
-  if (safeRange.includes(',')) {
-    const numbers = safeRange.split(',').slice(0, 3)
-    return numbers.join(',')
+  // Handle single number
+  const singleNum = parseInt(range)
+  if (!isNaN(singleNum)) {
+    return [singleNum, singleNum + 1, singleNum + 2]
   }
 
-  return safeRange
-}
-
-function getMockPreviewData(config: FlashcardFormState): PreviewData {
-  // Mock data for development/fallback - show diverse examples
-  return {
-    count: 3,
-    samples: [
-      { number: 5, front: '', back: '5' },    // Shows heaven bead usage
-      { number: 23, front: '', back: '23' },  // Shows multi-digit with variety
-      { number: 67, front: '', back: '67' }   // Shows different bead combinations
-    ]
-  }
+  // Fallback
+  return [1, 2, 3]
 }
