@@ -292,11 +292,13 @@ export function TypstSoroban({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          overflow: 'hidden',
           '& svg': {
             width: '100%',
             height: '100%',
             maxWidth: '100%',
-            maxHeight: '100%'
+            maxHeight: '100%',
+            objectFit: 'contain'
           }
         })}
         dangerouslySetInnerHTML={{ __html: svg }}

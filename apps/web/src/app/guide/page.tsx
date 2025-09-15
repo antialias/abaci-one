@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { css } from '../../../styled-system/css'
 import { container, stack, hstack, grid } from '../../../styled-system/patterns'
 import { TypstSoroban } from '@/components/TypstSoroban'
+import { InteractiveAbacus } from '@/components/InteractiveAbacus'
 
 type TabType = 'reading' | 'arithmetic'
 
@@ -667,6 +668,143 @@ function ReadingNumbersGuide() {
           </div>
         </div>
       </div>
+
+      {/* Step 5: Interactive Practice */}
+      <div className={css({
+        border: '1px solid',
+        borderColor: 'gray.200',
+        rounded: 'xl',
+        p: '8'
+      })}>
+        <div className={stack({ gap: '6' })}>
+          <div className={hstack({ gap: '4', alignItems: 'center' })}>
+            <div className={css({
+              w: '12',
+              h: '12',
+              bg: 'brand.600',
+              color: 'white',
+              rounded: 'full',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              fontSize: 'lg'
+            })}>
+              5
+            </div>
+            <h3 className={css({
+              fontSize: '2xl',
+              fontWeight: 'bold',
+              color: 'gray.900'
+            })}>
+              Interactive Practice
+            </h3>
+          </div>
+
+          <p className={css({
+            fontSize: 'lg',
+            color: 'gray.700',
+            lineHeight: 'relaxed'
+          })}>
+            Try the interactive abacus below! Click on the beads to activate them and watch the number change in real-time.
+          </p>
+
+          <div className={css({
+            bg: 'orange.50',
+            border: '1px solid',
+            borderColor: 'orange.200',
+            rounded: 'xl',
+            p: '6'
+          })}>
+            <h4 className={css({
+              fontSize: 'lg',
+              fontWeight: 'semibold',
+              color: 'orange.800',
+              mb: '4',
+              textAlign: 'center'
+            })}>
+              🎮 How to Use the Interactive Abacus
+            </h4>
+            <div className={grid({ columns: { base: 1, md: 2 }, gap: '6' })}>
+              <div>
+                <h5 className={css({ fontWeight: 'semibold', mb: '2', color: 'orange.800' })}>Heaven Beads (Top):</h5>
+                <ul className={css({ fontSize: 'sm', color: 'orange.700', pl: '4' })}>
+                  <li className={css({ mb: '1' })}>• Worth 5 points each</li>
+                  <li className={css({ mb: '1' })}>• Click to toggle on/off</li>
+                  <li>• Blue when active, gray when inactive</li>
+                </ul>
+              </div>
+              <div>
+                <h5 className={css({ fontWeight: 'semibold', mb: '2', color: 'orange.800' })}>Earth Beads (Bottom):</h5>
+                <ul className={css({ fontSize: 'sm', color: 'orange.700', pl: '4' })}>
+                  <li className={css({ mb: '1' })}>• Worth 1 point each</li>
+                  <li className={css({ mb: '1' })}>• Click to activate groups</li>
+                  <li>• Green when active, gray when inactive</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Abacus Component */}
+          <div className={css({
+            bg: 'white',
+            border: '2px solid',
+            borderColor: 'brand.200',
+            rounded: 'xl',
+            p: '6',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)'
+          })}>
+            <InteractiveAbacus
+              initialValue={0}
+              columns={3}
+              className={css({
+                display: 'flex',
+                justifyContent: 'center',
+                width: '100%'
+              })}
+            />
+          </div>
+
+          <div className={css({
+            bg: 'blue.600',
+            color: 'white',
+            rounded: 'xl',
+            p: '6',
+            textAlign: 'center'
+          })}>
+            <h4 className={css({
+              fontSize: 'lg',
+              fontWeight: 'semibold',
+              mb: '3'
+            })}>
+              🚀 Ready to Practice?
+            </h4>
+            <p className={css({
+              mb: '4',
+              opacity: '0.9'
+            })}>
+              Test your newfound knowledge with interactive flashcards
+            </p>
+            <Link
+              href="/create"
+              className={css({
+                display: 'inline-block',
+                px: '6',
+                py: '3',
+                bg: 'white',
+                color: 'blue.600',
+                fontWeight: 'semibold',
+                rounded: 'lg',
+                textDecoration: 'none',
+                transition: 'all',
+                _hover: { transform: 'translateY(-1px)', shadow: 'lg' }
+              })}
+            >
+              Create Practice Flashcards →
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -764,15 +902,63 @@ function ArithmeticOperationsGuide() {
           <div className={grid({ columns: 3, gap: '4', alignItems: 'center' })}>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>Start: 3</p>
-              <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
-                <TypstSoroban number={3} width="80pt" height="120pt" />
+              <div className={css({
+                width: '160px',
+                height: '240px',
+                bg: 'white',
+                border: '1px solid',
+                borderColor: 'gray.300',
+                rounded: 'md',
+                mb: '3',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                mx: 'auto'
+              })}>
+                <TypstSoroban
+                  number={3}
+                  width="120pt"
+                  height="200pt"
+                  className={css({
+                    '& svg': {
+                      width: '100%',
+                      height: '100%',
+                      display: 'block'
+                    }
+                  })}
+                />
               </div>
             </div>
             <div className={css({ textAlign: 'center', fontSize: '2xl' })}>+</div>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>Result: 7</p>
-              <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
-                <TypstSoroban number={7} width="80pt" height="120pt" />
+              <div className={css({
+                width: '160px',
+                height: '240px',
+                bg: 'white',
+                border: '1px solid',
+                borderColor: 'gray.300',
+                rounded: 'md',
+                mb: '3',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                mx: 'auto'
+              })}>
+                <TypstSoroban
+                  number={7}
+                  width="120pt"
+                  height="200pt"
+                  className={css({
+                    '& svg': {
+                      width: '100%',
+                      height: '100%',
+                      display: 'block'
+                    }
+                  })}
+                />
               </div>
             </div>
           </div>
@@ -844,15 +1030,63 @@ function ArithmeticOperationsGuide() {
           <div className={grid({ columns: 3, gap: '4', alignItems: 'center' })}>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>Start: 8</p>
-              <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
-                <TypstSoroban number={8} width="80pt" height="120pt" />
+              <div className={css({
+                width: '160px',
+                height: '240px',
+                bg: 'white',
+                border: '1px solid',
+                borderColor: 'gray.300',
+                rounded: 'md',
+                mb: '3',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                mx: 'auto'
+              })}>
+                <TypstSoroban
+                  number={8}
+                  width="120pt"
+                  height="200pt"
+                  className={css({
+                    '& svg': {
+                      width: '100%',
+                      height: '100%',
+                      display: 'block'
+                    }
+                  })}
+                />
               </div>
             </div>
             <div className={css({ textAlign: 'center', fontSize: '2xl' })}>-</div>
             <div className={css({ textAlign: 'center' })}>
               <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>Result: 5</p>
-              <div className={css({ transform: 'scale(2.5)', transformOrigin: 'center' })}>
-                <TypstSoroban number={5} width="80pt" height="120pt" />
+              <div className={css({
+                width: '160px',
+                height: '240px',
+                bg: 'white',
+                border: '1px solid',
+                borderColor: 'gray.300',
+                rounded: 'md',
+                mb: '3',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                mx: 'auto'
+              })}>
+                <TypstSoroban
+                  number={5}
+                  width="120pt"
+                  height="200pt"
+                  className={css({
+                    '& svg': {
+                      width: '100%',
+                      height: '100%',
+                      display: 'block'
+                    }
+                  })}
+                />
               </div>
             </div>
           </div>

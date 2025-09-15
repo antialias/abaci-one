@@ -22,41 +22,156 @@ if (typeof window !== 'undefined') {
 // SVG viewBox optimization - crops SVG to actual content bounds
 function optimizeSvgViewBox(svgString: string): string {
   try {
+    console.log('🔍 Starting SVG viewBox optimization...')
+
     // Parse SVG to analyze content bounds
     const parser = new DOMParser()
     const doc = parser.parseFromString(svgString, 'image/svg+xml')
     const svgElement = doc.querySelector('svg')
 
-    if (!svgElement) return svgString
+    if (!svgElement) {
+      console.warn('❌ No SVG element found, returning original')
+      return svgString
+    }
+
+    // Extract original viewBox and dimensions for debugging
+    const originalViewBox = svgElement.getAttribute('viewBox')
+    const originalWidth = svgElement.getAttribute('width')
+    const originalHeight = svgElement.getAttribute('height')
+    console.log(`📊 Original SVG - viewBox: ${originalViewBox}, width: ${originalWidth}, height: ${originalHeight}`)
 
     // Create a temporary element to measure bounds
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
     tempDiv.style.visibility = 'hidden'
     tempDiv.style.top = '-9999px'
+    tempDiv.style.left = '-9999px'
     tempDiv.innerHTML = svgString
     document.body.appendChild(tempDiv)
 
     const tempSvg = tempDiv.querySelector('svg')
     if (!tempSvg) {
       document.body.removeChild(tempDiv)
+      console.warn('❌ Could not create temp SVG element')
       return svgString
     }
 
     // Get the bounding box of all content
     try {
-      const bbox = tempSvg.getBBox()
+      // Try multiple methods to get content bounds
+      let bbox: DOMRect | SVGRect
+
+      // Method 1: Try to get bbox of visible content elements (paths, circles, rects, etc.)
+      try {
+        const contentElements = tempSvg.querySelectorAll('path, circle, rect, line, polygon, polyline, text, g[stroke], g[fill]')
+
+        if (contentElements.length > 0) {
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+          let foundValidBounds = false
+
+          contentElements.forEach(element => {
+            try {
+              const elementBBox = (element as SVGGraphicsElement).getBBox()
+              if (elementBBox.width > 0 && elementBBox.height > 0) {
+                minX = Math.min(minX, elementBBox.x)
+                minY = Math.min(minY, elementBBox.y)
+                maxX = Math.max(maxX, elementBBox.x + elementBBox.width)
+                maxY = Math.max(maxY, elementBBox.y + elementBBox.height)
+                foundValidBounds = true
+              }
+            } catch (e) {
+              // Skip elements that can't provide bbox
+            }
+          })
+
+          if (foundValidBounds) {
+            bbox = {
+              x: minX,
+              y: minY,
+              width: maxX - minX,
+              height: maxY - minY
+            } as SVGRect
+            console.log(`📦 Content elements bbox successful: x=${bbox.x}, y=${bbox.y}, width=${bbox.width}, height=${bbox.height}`)
+          } else {
+            throw new Error('No valid content elements found')
+          }
+        } else {
+          throw new Error('No content elements found')
+        }
+      } catch (contentError) {
+        console.warn('⚠️ Content elements bbox failed, trying SVG getBBox():', contentError)
+
+        // Method 2: Try getBBox() on the SVG element
+        try {
+          bbox = tempSvg.getBBox()
+          console.log(`📦 SVG getBBox() successful: x=${bbox.x}, y=${bbox.y}, width=${bbox.width}, height=${bbox.height}`)
+        } catch (getBBoxError) {
+          console.warn('⚠️ SVG getBBox() failed, trying getBoundingClientRect():', getBBoxError)
+
+          // Method 3: Use getBoundingClientRect() as fallback
+          const clientRect = tempSvg.getBoundingClientRect()
+          bbox = {
+            x: 0,
+            y: 0,
+            width: clientRect.width || 200,
+            height: clientRect.height || 280
+          } as SVGRect
+          console.log(`📦 getBoundingClientRect() fallback: width=${bbox.width}, height=${bbox.height}`)
+        }
+      }
+
       document.body.removeChild(tempDiv)
 
-      // Add small padding around content (5% of content dimensions)
-      const padding = Math.max(bbox.width, bbox.height) * 0.05
-      const newX = Math.max(0, bbox.x - padding)
-      const newY = Math.max(0, bbox.y - padding)
-      const newWidth = bbox.width + (2 * padding)
-      const newHeight = bbox.height + (2 * padding)
+      // Validate bounding box
+      if (!bbox || bbox.width <= 0 || bbox.height <= 0) {
+        console.warn(`❌ Invalid bounding box: ${JSON.stringify(bbox)}, returning original`)
+        return svgString
+      }
+
+      // Much more aggressive cropping - minimal padding only
+      const paddingX = Math.max(2, bbox.width * 0.01) // 1% padding, minimum 2 units
+      const paddingY = Math.max(2, bbox.height * 0.01)
+
+      const newX = Math.max(0, bbox.x - paddingX)
+      const newY = Math.max(0, bbox.y - paddingY)
+      const newWidth = bbox.width + (2 * paddingX)
+      const newHeight = bbox.height + (2 * paddingY)
+
+      // Failsafe: If the cropped SVG still has too much wasted space,
+      // use a more aggressive crop based on actual content ratio
+      const originalViewBox = svgElement.getAttribute('viewBox')
+      const originalDimensions = originalViewBox ? originalViewBox.split(' ').map(Number) : [0, 0, 400, 400]
+      const originalWidth = originalDimensions[2]
+      const originalHeight = originalDimensions[3]
+
+      const contentRatioX = bbox.width / originalWidth
+      const contentRatioY = bbox.height / originalHeight
+
+      // If content takes up less than 30% of original space, be even more aggressive
+      if (contentRatioX < 0.3 || contentRatioY < 0.3) {
+        console.log(`🔥 Ultra-aggressive crop: content only ${(contentRatioX*100).toFixed(1)}% x ${(contentRatioY*100).toFixed(1)}% of original`)
+        // Remove almost all padding for tiny content
+        const ultraPaddingX = Math.max(1, bbox.width * 0.005)
+        const ultraPaddingY = Math.max(1, bbox.height * 0.005)
+
+        const ultraX = Math.max(0, bbox.x - ultraPaddingX)
+        const ultraY = Math.max(0, bbox.y - ultraPaddingY)
+        const ultraWidth = bbox.width + (2 * ultraPaddingX)
+        const ultraHeight = bbox.height + (2 * ultraPaddingY)
+
+        const ultraViewBox = `${ultraX.toFixed(2)} ${ultraY.toFixed(2)} ${ultraWidth.toFixed(2)} ${ultraHeight.toFixed(2)}`
+
+        let ultraOptimizedSvg = svgString
+          .replace(/viewBox="[^"]*"/, `viewBox="${ultraViewBox}"`)
+          .replace(/<svg[^>]*width="[^"]*"/, (match) => match.replace(/width="[^"]*"/, ''))
+          .replace(/<svg[^>]*height="[^"]*"/, (match) => match.replace(/height="[^"]*"/, ''))
+
+        console.log(`✅ Ultra-optimized SVG: ${bbox.width.toFixed(1)}×${bbox.height.toFixed(1)} content → viewBox="${ultraViewBox}"`)
+        return ultraOptimizedSvg
+      }
 
       // Update the viewBox to crop to content bounds
-      const newViewBox = `${newX} ${newY} ${newWidth} ${newHeight}`
+      const newViewBox = `${newX.toFixed(2)} ${newY.toFixed(2)} ${newWidth.toFixed(2)} ${newHeight.toFixed(2)}`
 
       // Replace viewBox and remove fixed dimensions to allow CSS scaling
       let optimizedSvg = svgString
@@ -64,16 +179,16 @@ function optimizeSvgViewBox(svgString: string): string {
         .replace(/<svg[^>]*width="[^"]*"/, (match) => match.replace(/width="[^"]*"/, ''))
         .replace(/<svg[^>]*height="[^"]*"/, (match) => match.replace(/height="[^"]*"/, ''))
 
-      console.log(`📐 Optimized SVG: ${bbox.width.toFixed(1)}×${bbox.height.toFixed(1)} content bounds, viewBox optimized for CSS scaling`)
+      console.log(`✅ SVG optimized: ${bbox.width.toFixed(1)}×${bbox.height.toFixed(1)} content → viewBox="${newViewBox}"`)
 
       return optimizedSvg
     } catch (bboxError) {
       document.body.removeChild(tempDiv)
-      console.warn('Could not get SVG bounding box, returning original:', bboxError)
+      console.warn('❌ Could not measure SVG content bounds, returning original:', bboxError)
       return svgString
     }
   } catch (error) {
-    console.warn('SVG optimization failed, returning original:', error)
+    console.error('❌ SVG optimization failed completely, returning original:', error)
     return svgString
   }
 }
@@ -474,6 +589,7 @@ async function generateSVGInBrowser(config: SorobanConfig): Promise<string> {
 
   return optimizedSvg
 }
+
 
 async function generateSVGOnServer(config: SorobanConfig): Promise<string> {
   // Fallback to server-side API generation

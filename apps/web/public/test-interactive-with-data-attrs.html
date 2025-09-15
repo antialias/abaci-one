@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interactive Abacus with Data Attributes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .abacus-container {
+            border: 3px solid #d97706;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px auto;
+            background: linear-gradient(135deg, #fef3c7, #fed7aa);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            height: 400px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .abacus-container:hover {
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+        }
+        .value-display {
+            background: #dbeafe;
+            color: #1e40af;
+            font-size: 2rem;
+            font-weight: bold;
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 2px solid #bfdbfe;
+            min-width: 120px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            margin: 20px auto;
+        }
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-clear {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .btn-clear:hover {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+            transform: translateY(-1px);
+        }
+        .btn-preset {
+            background: #dbeafe;
+            color: #1e40af;
+            border-color: #93c5fd;
+        }
+        .btn-preset:hover {
+            background: #bfdbfe;
+            border-color: #60a5fa;
+            transform: translateY(-1px);
+        }
+        .debug-info {
+            background: #e8f4f8;
+            border: 1px solid #a0c4cc;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .instructions {
+            background: #f9fafb;
+            color: #4b5563;
+            text-align: center;
+            max-width: 450px;
+            line-height: 1.6;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            margin: 20px auto;
+            font-size: 14px;
+        }
+        .click-feedback {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            font-size: 1.5rem;
+            color: #ea580c;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .click-feedback.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Abacus with Data Attributes Test</h1>
+
+        <p>This tests the new data attribute approach for detecting bead clicks.</p>
+
+        <div class="abacus-container" id="abacus-container">
+            <div id="abacus-svg"></div>
+            <div class="click-feedback" id="click-feedback"></div>
+        </div>
+
+        <div class="value-display" id="value-display">0</div>
+
+        <div class="controls">
+            <button class="btn btn-clear" id="btn-clear">Clear</button>
+            <button class="btn btn-preset" data-value="1">1</button>
+            <button class="btn btn-preset" data-value="5">5</button>
+            <button class="btn btn-preset" data-value="10">10</button>
+            <button class="btn btn-preset" data-value="25">25</button>
+            <button class="btn btn-preset" data-value="50">50</button>
+            <button class="btn btn-preset" data-value="99">99</button>
+        </div>
+
+        <div class="instructions">
+            <strong>How to use:</strong> Click directly on the beads in the abacus above!
+            Heaven beads (top, worth 5) toggle on/off. Earth beads (bottom, worth 1 each)
+            activate in groups. Watch for visual feedback and smooth animations as you interact.
+        </div>
+
+        <div class="debug-info" id="debug-info">
+            Waiting for first click...
+        </div>
+    </div>
+
+    <script type="module">
+        import { generateSorobanSVG } from '/src/lib/typst-soroban.ts';
+
+        let currentValue = 0;
+
+        async function updateAbacus(value) {
+            currentValue = value;
+            document.getElementById('value-display').textContent = value;
+
+            try {
+                const svg = await generateSorobanSVG({
+                    number: value,
+                    width: '180pt',
+                    height: '240pt',
+                    beadShape: 'diamond',
+                    colorScheme: 'place-value',
+                    hideInactiveBeads: false,
+                    coloredNumerals: false,
+                    scaleFactor: 1.0
+                });
+
+                const abacusSvg = document.getElementById('abacus-svg');
+                abacusSvg.innerHTML = svg;
+
+                // Add click handlers to elements with data attributes
+                setupClickHandlers();
+
+            } catch (error) {
+                console.error('Failed to generate SVG:', error);
+                document.getElementById('debug-info').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        function setupClickHandlers() {
+            const svgElement = document.querySelector('#abacus-svg svg');
+            if (!svgElement) return;
+
+            // Find all elements with data-bead-type attributes
+            const beadElements = svgElement.querySelectorAll('[data-bead-type]');
+
+            let debugText = `Found ${beadElements.length} bead elements with data attributes:\n`;
+
+            beadElements.forEach((element, index) => {
+                const beadType = element.getAttribute('data-bead-type');
+                const column = parseInt(element.getAttribute('data-column') || '0');
+                const beadIndex = parseInt(element.getAttribute('data-bead-index') || '0');
+
+                debugText += `${index + 1}. ${beadType} bead, column ${column}, index ${beadIndex}\n`;
+
+                // Add click handler
+                element.style.cursor = 'pointer';
+                element.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleBeadClick(beadType, column, beadIndex);
+                });
+
+                // Add hover effect
+                element.addEventListener('mouseenter', () => {
+                    element.style.opacity = '0.8';
+                });
+                element.addEventListener('mouseleave', () => {
+                    element.style.opacity = '1';
+                });
+            });
+
+            document.getElementById('debug-info').textContent = debugText;
+        }
+
+        function handleBeadClick(beadType, columnIndex, beadIndex) {
+            console.log('Bead clicked:', { beadType, columnIndex, beadIndex });
+
+            showClickFeedback(beadType, columnIndex);
+
+            // Calculate new value based on soroban logic
+            const columns = Math.max(2, currentValue.toString().length); // At least 2 columns
+            const newValue = calculateNewValue(currentValue, beadType, columnIndex, beadIndex, columns);
+
+            updateAbacus(newValue);
+        }
+
+        function calculateNewValue(currentValue, beadType, columnIndex, beadIndex, totalColumns) {
+            // Convert current value to digit array
+            const currentStr = currentValue.toString().padStart(totalColumns, '0');
+            const digits = currentStr.split('').map(d => parseInt(d));
+
+            // Get current digit for this column
+            const currentDigit = digits[columnIndex] || 0;
+            let newDigit = currentDigit;
+
+            if (beadType === 'heaven') {
+                // Toggle heaven bead (add/subtract 5)
+                if (currentDigit >= 5) {
+                    newDigit = currentDigit - 5;
+                } else {
+                    newDigit = currentDigit + 5;
+                }
+            } else if (beadType === 'earth') {
+                // Handle earth bead click with proper soroban logic
+                const heavenValue = currentDigit >= 5 ? 5 : 0;
+                const earthValue = currentDigit % 5;
+                const targetEarthValue = beadIndex + 1;
+
+                if (earthValue >= targetEarthValue) {
+                    // Clicking on an active bead - deactivate it and ones above
+                    newDigit = heavenValue + beadIndex;
+                } else {
+                    // Clicking on an inactive bead - activate it and ones below
+                    newDigit = heavenValue + targetEarthValue;
+                }
+            }
+
+            // Ensure digit is valid (0-9)
+            newDigit = Math.max(0, Math.min(9, newDigit));
+
+            // Update the digits array
+            digits[columnIndex] = newDigit;
+
+            // Convert back to number
+            const newValue = parseInt(digits.join('')) || 0;
+            return newValue;
+        }
+
+        function showClickFeedback(beadType, columnIndex) {
+            const feedback = document.getElementById('click-feedback');
+            const emoji = beadType === 'heaven' ? '⚪' : '🔵';
+            feedback.textContent = `${emoji} Column ${columnIndex + 1}`;
+            feedback.classList.add('show');
+
+            setTimeout(() => {
+                feedback.classList.remove('show');
+            }, 800);
+        }
+
+        // Setup button event listeners
+        function setupButtons() {
+            // Clear button
+            document.getElementById('btn-clear').addEventListener('click', () => {
+                updateAbacus(0);
+            });
+
+            // Preset buttons
+            document.querySelectorAll('.btn-preset[data-value]').forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = parseInt(button.getAttribute('data-value'));
+                    updateAbacus(value);
+                });
+            });
+        }
+
+        // Initialize
+        setupButtons();
+        updateAbacus(23);
+    </script>
+</body>
+</html>
