@@ -413,16 +413,23 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
   return (
     <div className={css({
       textAlign: 'center',
-      padding: '40px 20px',
-      minHeight: '100vh',
+      padding: '20px',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'center',
       alignItems: 'center',
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      height: '100%'
     })}>
-      <div className={css({ position: 'relative', width: '100%', marginBottom: '30px' })}>
-        <div className={css({ marginBottom: '30px' })}>
+      <div className={css({
+        position: 'relative',
+        width: '100%',
+        maxWidth: '800px',
+        marginBottom: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px'
+      })}>
+        <div className={css({})}>
           <div className={css({
             width: '100%',
             height: '10px',
@@ -450,25 +457,24 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
             Card {state.currentCardIndex + 1} of {state.quizCards.length}
           </span>
         </div>
-        <button
-          className={css({
-            position: 'absolute',
-            top: '-20px',
-            right: '20px',
-            background: 'red.500',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '8px 16px',
-            fontSize: '14px',
-            cursor: 'pointer',
-            transition: 'background 0.2s ease',
-            _hover: { background: 'red.600' }
-          })}
-          onClick={() => dispatch({ type: 'RESET_QUIZ' })}
-        >
-          End Quiz
-        </button>
+        <div className={css({ display: 'flex', justifyContent: 'flex-end' })}>
+          <button
+            className={css({
+              background: 'red.500',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              cursor: 'pointer',
+              transition: 'background 0.2s ease',
+              _hover: { background: 'red.600' }
+            })}
+            onClick={() => dispatch({ type: 'RESET_QUIZ' })}
+          >
+            End Quiz
+          </button>
+        </div>
       </div>
 
       {countdown && (
@@ -486,8 +492,8 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
 
       {showCard && currentCard && (
         <div className={css({
-          width: 'min(85vw, 700px)',
-          height: 'min(50vh, 400px)',
+          width: 'min(80vw, 600px)',
+          height: 'min(40vh, 350px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -720,9 +726,13 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   return (
     <div className={css({
       textAlign: 'center',
-      padding: '40px 20px',
-      maxWidth: '700px',
-      margin: '0 auto'
+      padding: '20px',
+      maxWidth: '800px',
+      margin: '0 auto',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-start'
     })}>
       <h3 className={css({ marginBottom: '20px', color: 'gray.800' })}>Enter the Numbers You Remember</h3>
       <div className={css({
@@ -970,9 +980,13 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
   return (
     <div className={css({
       textAlign: 'center',
-      padding: '40px 20px',
-      maxWidth: '700px',
-      margin: '0 auto'
+      padding: '20px',
+      maxWidth: '800px',
+      margin: '0 auto',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-start'
     })}>
       <h3 className={css({ marginBottom: '30px', color: 'gray.800' })}>Quiz Results</h3>
       <div className={css({
@@ -1150,10 +1164,23 @@ export default function MemoryQuizPage() {
         bg: 'gradient-to-br',
         gradientFrom: 'green.50',
         gradientTo: 'blue.50',
-        py: '4'
+        py: '4',
+        height: '100vh',
+        overflow: 'auto'
       })}>
-        <div className={css({ maxW: '6xl', mx: 'auto', px: { base: '4', md: '6' } })}>
-          <div className={css({ textAlign: 'center', mb: '6' })}>
+        <div className={css({
+          maxW: '100%',
+          mx: 'auto',
+          px: { base: '2', md: '4' },
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        })}>
+          <div className={css({
+            textAlign: 'center',
+            mb: '4',
+            flexShrink: 0
+          })}>
             <Link
               href="/games"
               className={css({
@@ -1175,12 +1202,23 @@ export default function MemoryQuizPage() {
             shadow: 'xl',
             overflow: 'hidden',
             border: '1px solid',
-            borderColor: 'gray.200'
+            borderColor: 'gray.200',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '100%'
           })}>
-            {state.gamePhase === 'setup' && <SetupPhase state={state} dispatch={dispatch} />}
-            {state.gamePhase === 'display' && <DisplayPhase state={state} dispatch={dispatch} />}
-            {state.gamePhase === 'input' && <InputPhase state={state} dispatch={dispatch} />}
-            {state.gamePhase === 'results' && <ResultsPhase state={state} dispatch={dispatch} />}
+            <div className={css({
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'auto'
+            })}>
+              {state.gamePhase === 'setup' && <SetupPhase state={state} dispatch={dispatch} />}
+              {state.gamePhase === 'display' && <DisplayPhase state={state} dispatch={dispatch} />}
+              {state.gamePhase === 'input' && <InputPhase state={state} dispatch={dispatch} />}
+              {state.gamePhase === 'results' && <ResultsPhase state={state} dispatch={dispatch} />}
+            </div>
           </div>
         </div>
       </div>
