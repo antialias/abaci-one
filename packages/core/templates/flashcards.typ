@@ -98,10 +98,10 @@
   let inactive-color = gray.lighten(70%)
   let active-color = black
   
-  // Function to draw a bead based on shape
+  // Function to draw a bead based on shape with annotation
   // y parameter represents the CENTER of where the bead should be
-  let draw-bead(x, y, shape, fill-color) = {
-    if shape == "diamond" {
+  let draw-bead(x, y, shape, fill-color, annotation-id) = {
+    let bead-element = if shape == "diamond" {
       // Horizontally elongated diamond (rhombus)
       place(
         dx: x - bead-size * 0.7,
@@ -145,6 +145,9 @@
         )
       )
     }
+
+    // Wrap the bead in a link for annotation
+    link("bead://" + annotation-id, bead-element)
   }
   
   // Calculate total width and height
@@ -233,7 +236,8 @@
             x-offset,
             heaven-y,
             bead-shape,
-            bead-color
+            bead-color,
+            "heaven-col" + str(idx) + "-active" + str(heaven-active)
           )
         ]
         
@@ -269,7 +273,8 @@
               x-offset,
               earth-y,
               bead-shape,
-              earth-bead-color
+              earth-bead-color,
+              "earth-col" + str(idx) + "-pos" + str(i) + "-active" + str(if is-active { 1 } else { 0 })
             )
           ]
         ]
