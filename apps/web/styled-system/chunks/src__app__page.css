@@ -8,46 +8,6 @@
     background: gradient-to-br from-brand.50 to-brand.100
     }
 
-  .align_center {
-    align: center
-    }
-
-  .py_6 {
-    padding-block: var(--spacing-6)
-    }
-
-  .fs_2xl {
-    font-size: var(--font-sizes-2xl)
-    }
-
-  .text_brand\.800 {
-    color: var(--colors-brand-800)
-    }
-
-  .py_2 {
-    padding-block: var(--spacing-2)
-    }
-
-  .rounded_lg {
-    border-radius: var(--radii-lg)
-    }
-
-  .font_medium {
-    font-weight: var(--font-weights-medium)
-    }
-
-  .max-w_7xl {
-    max-width: var(--sizes-7xl)
-    }
-
-  .justify_space-between {
-    justify-content: space-between
-    }
-
-  .gap_10px {
-    gap: 10px
-    }
-
   .leading_tight {
     line-height: var(--line-heights-tight)
     }
@@ -238,14 +198,6 @@
     margin-top: var(--spacing-8)
     }
 
-  .hover\:bg_brand\.50:is(:hover, [data-hover]) {
-    background: var(--colors-brand-50)
-        }
-
-  .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
-    transform: translateY(-1px)
-        }
-
   .hover\:bg_brand\.700:is(:hover, [data-hover]) {
     background: var(--colors-brand-700)
         }
@@ -278,7 +230,6 @@
   .md\:grid-cols_3 {
       grid-template-columns: repeat(3, minmax(0, 1fr))
     }
-
     .md\:fs_6xl {
       font-size: var(--font-sizes-6xl)
     }
@@ -289,16 +240,6 @@
 
     .md\:grid-cols_3 {
       grid-template-columns: repeat(3, minmax(0, 1fr))
-    }
-
-    .md\:px_6 {
-      padding-inline: var(--spacing-6)
-    }
-        }
-
-  @media screen and (min-width: 64em) {
-    .lg\:px_8 {
-      padding-inline: var(--spacing-8)
     }
         }
 }

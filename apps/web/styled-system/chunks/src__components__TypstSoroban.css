@@ -4,69 +4,21 @@
     background: green.25
     }
 
-  .w_8 {
-    width: var(--sizes-8)
-    }
+  .\[\&_svg\]\:w_auto svg {
+    width: auto
+        }
 
-  .h_8 {
-    height: var(--sizes-8)
-    }
+  .\[\&_svg\]\:h_auto svg {
+    height: auto
+        }
 
-  .border_gray\.300 {
-    border-color: var(--colors-gray-300)
-    }
+  .\[\&_svg\]\:w_100\%\! svg {
+    width: 100% !important
+        }
 
-  .border-t_brand\.600 {
-    border-top-color: var(--colors-brand-600)
-    }
-
-  .flex_column {
-    flex-direction: column
-    }
-
-  .bg_red\.50 {
-    background: var(--colors-red-50)
-    }
-
-  .border_1px_solid {
-    border: 1px solid
-    }
-
-  .border_red\.200 {
-    border-color: var(--colors-red-200)
-    }
-
-  .p_4 {
-    padding: var(--spacing-4)
-    }
-
-  .fs_2xl {
-    font-size: var(--font-sizes-2xl)
-    }
-
-  .mb_2 {
-    margin-bottom: var(--spacing-2)
-    }
-
-  .text_red\.700 {
-    color: var(--colors-red-700)
-    }
-
-  .text_center {
-    text-align: center
-    }
-
-  .text_red\.600 {
-    color: var(--colors-red-600)
-    }
-
-  .fs_xs {
-    font-size: var(--font-sizes-xs)
-    }
-
-  .mt_1 {
-    margin-top: var(--spacing-1)
-    }
+  .\[\&_svg\]\:h_100\%\! svg {
+    height: 100% !important
+        }
 
   .cursor_pointer {
     cursor: pointer
@@ -165,17 +117,17 @@
   .justify_center {
     justify-content: center
     }
+    .\[\&_svg\]\:w_100\% svg {
+      width: 100%
+        }
+    .\[\&_svg\]\:h_100\% svg {
+      height: 100%
+        }
     .\[\&_svg\]\:max-w_100\% svg {
       max-width: 100%
         }
     .\[\&_svg\]\:max-h_100\% svg {
       max-height: 100%
-        }
-    .\[\&_svg\]\:w_auto svg {
-      width: auto
-        }
-    .\[\&_svg\]\:h_auto svg {
-      height: auto
         }
 
   .hover\:bg_green\.50:is(:hover, [data-hover]) {

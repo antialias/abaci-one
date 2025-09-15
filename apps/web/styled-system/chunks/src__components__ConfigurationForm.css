@@ -8,10 +8,6 @@
     font-weight: var(--font-weights-bold)
     }
 
-  .align_start {
-    align: start
-    }
-
   .bg_gray\.100 {
     background: var(--colors-gray-100)
     }

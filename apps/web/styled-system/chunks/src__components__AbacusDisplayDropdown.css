@@ -12,18 +12,6 @@
     border-radius: var(--radii-lg)
     }
 
-  .shadow_modal {
-    box-shadow: var(--shadows-modal)
-    }
-
-  .z_9999 {
-    z-index: 9999
-    }
-
-  .animation_fadeIn_0\.2s_ease-out {
-    animation: fadeIn 0.2s ease-out
-    }
-
   .transform_rotate\(180deg\) {
     transform: rotate(180deg)
     }

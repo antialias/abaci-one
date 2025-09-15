@@ -362,7 +362,6 @@
   .md\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(2, minmax(0, 1fr))
     }
-
     .md\:px_6 {
       padding-inline: var(--spacing-6)
     }

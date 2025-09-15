@@ -8,46 +8,6 @@
     background: var(--colors-gray-50)
     }
 
-  .sticky_top {
-    sticky: top
-    }
-
-  .align_center {
-    align: center
-    }
-
-  .pos_sticky {
-    position: sticky
-    }
-
-  .top_0 {
-    top: var(--spacing-0)
-    }
-
-  .z_10 {
-    z-index: 10
-    }
-
-  .text_brand\.800 {
-    color: var(--colors-brand-800)
-    }
-
-  .text-decor_none {
-    text-decoration: none
-    }
-
-  .text_brand\.600 {
-    color: var(--colors-brand-600)
-    }
-
-  .justify_space-between {
-    justify-content: space-between
-    }
-
-  .gap_10px {
-    gap: 10px
-    }
-
   .fs_3xl {
     font-size: var(--font-sizes-3xl)
     }
@@ -338,20 +298,13 @@
     box-shadow: var(--shadows-modal)
         }
 
-  .hover\:bg_brand\.50:is(:hover, [data-hover]) {
-    background: var(--colors-brand-50)
-        }
-
   .hover\:bg_red\.700:is(:hover, [data-hover]) {
     background: var(--colors-red-700)
         }
-    @media screen and (min-width: 64em) {
-    .lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\),.lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
-      grid-template-columns: repeat(3, minmax(0, 1fr))
-    }
 
-    .lg\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
-      grid-template-columns: repeat(2, minmax(0, 1fr))
+  @media screen and (min-width: 64em) {
+    .lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
+      grid-template-columns: repeat(3, minmax(0, 1fr))
     }
         }
 }

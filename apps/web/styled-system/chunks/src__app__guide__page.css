@@ -4,82 +4,6 @@
     min-height: 100vh
     }
 
-  .space_y-2 {
-    space: y-2
-    }
-
-  .pos_sticky {
-    position: sticky
-    }
-
-  .top_0 {
-    top: var(--spacing-0)
-    }
-
-  .z_10 {
-    z-index: 10
-    }
-
-  .text_brand\.800 {
-    color: var(--colors-brand-800)
-    }
-
-  .py_2 {
-    padding-block: var(--spacing-2)
-    }
-
-  .justify_space-between {
-    justify-content: space-between
-    }
-
-  .gap_10px {
-    gap: 10px
-    }
-
-  .gap_3 {
-    gap: var(--spacing-3)
-    }
-
-  .w_120 {
-    width: 120px
-    }
-
-  .h_336 {
-    height: 336px
-    }
-
-  .w_180 {
-    width: 180px
-    }
-
-  .h_240 {
-    height: 240px
-    }
-
-  .color-scheme_place-value {
-    color-scheme: place-value
-    }
-
-  .w_80 {
-    width: var(--sizes-80)
-    }
-
-  .h_120 {
-    height: 120px
-    }
-
-  .w_full {
-    width: var(--sizes-full)
-    }
-
-  .h_full {
-    height: var(--sizes-full)
-    }
-
-  .\[\&_svg\]\:object_contain svg {
-    object-fit: contain
-        }
-
   .bg_linear-gradient\(135deg\,_\#667eea_0\%\,_\#764ba2_100\%\) {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)
     }
@@ -703,7 +627,6 @@
   .md\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(2, minmax(0, 1fr))
     }
-
     .md\:p_8 {
       padding: var(--spacing-8)
     }
@@ -711,7 +634,6 @@
     .md\:fs_3xl {
       font-size: var(--font-sizes-3xl)
     }
-
     .md\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(3, minmax(0, 1fr))
     }
