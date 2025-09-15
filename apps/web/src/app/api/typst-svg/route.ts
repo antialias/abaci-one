@@ -38,6 +38,40 @@ async function getFlashcardsTemplate(): Promise<string> {
   }
 }
 
+function processBeadAnnotations(svg: string): string {
+  // Parse bead annotations and add data attributes
+  return svg.replace(
+    /<a[^>]*xlink:href="bead:\/\/([^"]*)"[^>]*>(.*?)<\/a>/gs,
+    (match, beadId, content) => {
+      // Parse the bead ID to extract metadata
+      const parts = beadId.split('-')
+      let beadType = ''
+      let column = ''
+      let position = ''
+      let active = ''
+
+      if (parts[0] === 'heaven') {
+        beadType = 'heaven'
+        column = parts[1].replace('col', '')
+        active = parts[2].replace('active', '')
+      } else if (parts[0] === 'earth') {
+        beadType = 'earth'
+        column = parts[1].replace('col', '')
+        position = parts[2].replace('pos', '')
+        active = parts[3].replace('active', '')
+      }
+
+      // Add data attributes to the content inside the link
+      const annotatedContent = content.replace(
+        /(<(?:path|rect|circle)[^>]*)(\/?>)/g,
+        `$1 data-bead-type="${beadType}" data-bead-column="${column}"${position ? ` data-bead-position="${position}"` : ''} data-bead-active="${active}"$2`
+      )
+
+      return annotatedContent
+    }
+  )
+}
+
 function createTypstContent(config: TypstSVGRequest, template: string): string {
   const {
     number,
@@ -105,9 +139,12 @@ export async function POST(request: NextRequest) {
     const typstContent = createTypstContent(config, template)
 
     // Generate SVG using typst.ts
-    const svg = await $typst.svg({ mainContent: typstContent })
+    const rawSvg = await $typst.svg({ mainContent: typstContent })
 
-    console.log('✅ Generated typst.ts SVG, length:', svg.length)
+    // Post-process to convert bead annotations to data attributes
+    const svg = processBeadAnnotations(rawSvg)
+
+    console.log('✅ Generated and processed typst.ts SVG, length:', svg.length)
 
     return NextResponse.json({
       svg,
