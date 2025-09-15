@@ -39,7 +39,7 @@ async function getFlashcardsTemplate(): Promise<string> {
 }
 
 function processBeadAnnotations(svg: string): string {
-  // Parse bead annotations and add data attributes
+  // Process each bead link and add data attributes to the bead shapes
   return svg.replace(
     /<a[^>]*xlink:href="bead:\/\/([^"]*)"[^>]*>(.*?)<\/a>/gs,
     (match, beadId, content) => {
@@ -61,13 +61,30 @@ function processBeadAnnotations(svg: string): string {
         active = parts[3].replace('active', '')
       }
 
-      // Add data attributes to the content inside the link
-      const annotatedContent = content.replace(
-        /(<(?:path|rect|circle)[^>]*)(\/?>)/g,
-        `$1 data-bead-type="${beadType}" data-bead-column="${column}"${position ? ` data-bead-position="${position}"` : ''} data-bead-active="${active}"$2`
+      // Create data attribute string
+      const dataAttrs = `data-bead-type="${beadType}" data-bead-column="${column}"${position ? ` data-bead-position="${position}"` : ''} data-bead-active="${active}"`
+
+      // Find the actual bead shape path and add data attributes to it
+      // Look for path elements that have the diamond shape pattern (M 0 0 M 8.4 0 L 16.8 6...)
+      let processedContent = content.replace(
+        /(<path[^>]*class="typst-shape"[^>]*d="M 0 0 M 8\.4 0 L 16\.8 6[^"]*"[^>]*)(\/?>)/g,
+        `$1 ${dataAttrs}$2`
       )
 
-      return annotatedContent
+      // Also add to any other path, rect, circle, or polygon elements as fallback
+      processedContent = processedContent.replace(
+        /(<(?:path|rect|circle|polygon)[^>]*class="(?!pseudo-link)[^"]*"[^>]*)(\/?>)/g,
+        (shapeMatch, beforeClosing, closing) => {
+          // Only add if data attributes aren't already present
+          if (beforeClosing.includes('data-bead-type')) {
+            return shapeMatch
+          }
+          return `${beforeClosing} ${dataAttrs}${closing}`
+        }
+      )
+
+      // Return just the content without the <a> wrapper
+      return processedContent
     }
   )
 }
