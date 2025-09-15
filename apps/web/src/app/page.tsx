@@ -7,65 +7,6 @@ import Link from 'next/link'
 export default function HomePage() {
   return (
     <div className={css({ minHeight: '100vh', bg: 'gradient-to-br from-brand.50 to-brand.100' })}>
-      {/* Header */}
-      <header className={css({ py: '6', px: '4' })}>
-        <div className={container({ maxW: '7xl' })}>
-          <nav className={hstack({ justify: 'space-between', alignItems: 'center' })}>
-            <h1 className={css({
-              fontSize: '2xl',
-              fontWeight: 'bold',
-              color: 'brand.800'
-            })}>
-              🧮 Soroban Generator
-            </h1>
-            <div className={hstack({ gap: '4' })}>
-              <Link
-                href="/guide"
-                className={css({
-                  px: '4',
-                  py: '2',
-                  color: 'brand.600',
-                  rounded: 'lg',
-                  fontWeight: 'medium',
-                  transition: 'all',
-                  _hover: { bg: 'brand.50' }
-                })}
-              >
-                Guide
-              </Link>
-              <Link
-                href="/games"
-                className={css({
-                  px: '4',
-                  py: '2',
-                  color: 'brand.600',
-                  rounded: 'lg',
-                  fontWeight: 'medium',
-                  transition: 'all',
-                  _hover: { bg: 'brand.50' }
-                })}
-              >
-                Games
-              </Link>
-              <Link
-                href="/create"
-                className={css({
-                  px: '4',
-                  py: '2',
-                  bg: 'brand.600',
-                  color: 'white',
-                  rounded: 'lg',
-                  fontWeight: 'medium',
-                  transition: 'all',
-                  _hover: { bg: 'brand.700', transform: 'translateY(-1px)' }
-                })}
-              >
-                Create Flashcards
-              </Link>
-            </div>
-          </nav>
-        </div>
-      </header>
 
       {/* Hero Section */}
       <main className={container({ maxW: '6xl', px: '4' })}>

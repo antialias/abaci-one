@@ -7,12 +7,23 @@ import * as Switch from '@radix-ui/react-switch'
 import { css } from '../../styled-system/css'
 import { stack, hstack, grid } from '../../styled-system/patterns'
 import { FlashcardFormState } from '@/app/create/page'
+import { useAbacusDisplay } from '@/contexts/AbacusDisplayContext'
+import { useEffect } from 'react'
 
 interface StyleControlsProps {
   form: FormApi<FlashcardFormState>
 }
 
 export function StyleControls({ form }: StyleControlsProps) {
+  const { config, updateConfig } = useAbacusDisplay()
+
+  // Sync form values with global context
+  useEffect(() => {
+    form.setFieldValue('colorScheme', config.colorScheme)
+    form.setFieldValue('beadShape', config.beadShape)
+    form.setFieldValue('hideInactiveBeads', config.hideInactiveBeads)
+    form.setFieldValue('coloredNumerals', config.coloredNumerals)
+  }, [config, form])
   return (
     <div className={stack({ gap: '4' })}>
       <FormField
@@ -23,7 +34,10 @@ export function StyleControls({ form }: StyleControlsProps) {
           {(field) => (
             <RadioGroupField
               value={field.state.value || 'place-value'}
-              onValueChange={(value) => field.handleChange(value as any)}
+              onValueChange={(value) => {
+                field.handleChange(value as any)
+                updateConfig({ colorScheme: value as any })
+              }}
               options={[
                 { value: 'monochrome', label: 'Monochrome', desc: 'Classic black and white' },
                 { value: 'place-value', label: 'Place Value', desc: 'Colors by digit position' },
@@ -43,7 +57,10 @@ export function StyleControls({ form }: StyleControlsProps) {
           {(field) => (
             <RadioGroupField
               value={field.state.value || 'diamond'}
-              onValueChange={(value) => field.handleChange(value as any)}
+              onValueChange={(value) => {
+                field.handleChange(value as any)
+                updateConfig({ beadShape: value as any })
+              }}
               options={[
                 { value: 'diamond', label: '💎 Diamond', desc: 'Realistic 3D appearance' },
                 { value: 'circle', label: '⭕ Circle', desc: 'Traditional round beads' },
@@ -63,7 +80,10 @@ export function StyleControls({ form }: StyleControlsProps) {
             {(field) => (
               <SwitchField
                 checked={field.state.value || false}
-                onCheckedChange={field.handleChange}
+                onCheckedChange={(checked) => {
+                  field.handleChange(checked)
+                  updateConfig({ coloredNumerals: checked })
+                }}
               />
             )}
           </form.Field>
@@ -77,7 +97,10 @@ export function StyleControls({ form }: StyleControlsProps) {
             {(field) => (
               <SwitchField
                 checked={field.state.value || false}
-                onCheckedChange={field.handleChange}
+                onCheckedChange={(checked) => {
+                  field.handleChange(checked)
+                  updateConfig({ hideInactiveBeads: checked })
+                }}
               />
             )}
           </form.Field>

@@ -36,6 +36,18 @@
     font-weight: var(--font-weights-medium)
     }
 
+  .max-w_7xl {
+    max-width: var(--sizes-7xl)
+    }
+
+  .justify_space-between {
+    justify-content: space-between
+    }
+
+  .gap_10px {
+    gap: 10px
+    }
+
   .leading_tight {
     line-height: var(--line-heights-tight)
     }
@@ -162,10 +174,6 @@
     line-height: var(--line-heights-relaxed)
     }
 
-  .max-w_7xl {
-    max-width: var(--sizes-7xl)
-    }
-
   .pos_relative {
     position: relative
     }
@@ -182,12 +190,36 @@
     padding-inline: var(--spacing-4)
     }
 
-  .justify_space-between {
-    justify-content: space-between
+  .gap_12 {
+    gap: var(--spacing-12)
     }
 
-  .gap_10px {
-    gap: 10px
+  .py_16 {
+    padding-block: var(--spacing-16)
+    }
+
+  .text_center {
+    text-align: center
+    }
+
+  .flex_column {
+    flex-direction: column
+    }
+
+  .gap_6 {
+    gap: var(--spacing-6)
+    }
+
+  .max-w_4xl {
+    max-width: var(--sizes-4xl)
+    }
+
+  .d_flex {
+    display: flex
+    }
+
+  .items_center {
+    align-items: center
     }
 
   .justify_center {
@@ -204,38 +236,6 @@
 
   .mt_8 {
     margin-top: var(--spacing-8)
-    }
-
-  .items_center {
-    align-items: center
-    }
-
-  .gap_12 {
-    gap: var(--spacing-12)
-    }
-
-  .py_16 {
-    padding-block: var(--spacing-16)
-    }
-
-  .text_center {
-    text-align: center
-    }
-
-  .d_flex {
-    display: flex
-    }
-
-  .flex_column {
-    flex-direction: column
-    }
-
-  .gap_6 {
-    gap: var(--spacing-6)
-    }
-
-  .max-w_4xl {
-    max-width: var(--sizes-4xl)
     }
 
   .hover\:bg_brand\.50:is(:hover, [data-hover]) {
@@ -277,10 +277,6 @@
 
   .md\:grid-cols_3 {
       grid-template-columns: repeat(3, minmax(0, 1fr))
-    }
-
-  .md\:px_6 {
-      padding-inline: var(--spacing-6)
     }
 
     .md\:fs_6xl {

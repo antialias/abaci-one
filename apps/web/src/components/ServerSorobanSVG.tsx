@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { css } from '../../styled-system/css'
+import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
 
 interface ServerSorobanSVGProps {
   number: number
@@ -15,13 +16,19 @@ interface ServerSorobanSVGProps {
 
 export function ServerSorobanSVG({
   number,
-  colorScheme = 'place-value',
-  hideInactiveBeads = false,
-  beadShape = 'diamond',
+  colorScheme,
+  hideInactiveBeads,
+  beadShape,
   width = 240,
   height = 320,
   className = ''
 }: ServerSorobanSVGProps) {
+  const globalConfig = useAbacusConfig()
+
+  // Use global config as defaults, allow props to override
+  const actualColorScheme = colorScheme ?? globalConfig.colorScheme
+  const actualHideInactiveBeads = hideInactiveBeads ?? globalConfig.hideInactiveBeads
+  const actualBeadShape = beadShape ?? globalConfig.beadShape
   const [svgContent, setSvgContent] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,9 +41,9 @@ export function ServerSorobanSVG({
       try {
         const config = {
           range: number.toString(),
-          colorScheme,
-          hideInactiveBeads,
-          beadShape,
+          colorScheme: actualColorScheme,
+          hideInactiveBeads: actualHideInactiveBeads,
+          beadShape: actualBeadShape,
           format: 'svg'
         }
 
@@ -69,7 +76,7 @@ export function ServerSorobanSVG({
     }
 
     generateSVG()
-  }, [number, colorScheme, hideInactiveBeads, beadShape])
+  }, [number, actualColorScheme, actualHideInactiveBeads, actualBeadShape])
 
   if (isLoading) {
     return (

@@ -12,41 +12,6 @@ export default function GuidePage() {
   const [activeTab, setActiveTab] = useState<TabType>('reading')
   return (
     <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
-      {/* Header */}
-      <header className={css({ bg: 'white', shadow: 'card', position: 'sticky', top: 0, zIndex: 10 })}>
-        <div className={container({ maxW: '7xl', px: '4', py: '4' })}>
-          <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
-            <Link
-              href="/"
-              className={css({
-                fontSize: 'xl',
-                fontWeight: 'bold',
-                color: 'brand.800',
-                textDecoration: 'none'
-              })}
-            >
-              🧮 Soroban Generator
-            </Link>
-
-            <div className={hstack({ gap: '3' })}>
-              <Link
-                href="/create"
-                className={css({
-                  px: '4',
-                  py: '2',
-                  color: 'brand.600',
-                  fontWeight: 'medium',
-                  rounded: 'lg',
-                  transition: 'all',
-                  _hover: { bg: 'brand.50' }
-                })}
-              >
-                Create Flashcards
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Hero Section */}
       <div className={css({

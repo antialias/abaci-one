@@ -10,6 +10,7 @@ import { ConfigurationFormWithoutGenerate } from '@/components/ConfigurationForm
 import { LivePreview } from '@/components/LivePreview'
 import { GenerationProgress } from '@/components/GenerationProgress'
 import { StyleControls } from '@/components/StyleControls'
+import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
 
 // Complete, validated configuration ready for generation
 export interface FlashcardConfig {
@@ -106,6 +107,7 @@ type GenerationStatus = 'idle' | 'generating' | 'error'
 export default function CreatePage() {
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+  const globalConfig = useAbacusConfig()
 
   const form = useForm<FlashcardFormState>({
     defaultValues: {
@@ -122,11 +124,12 @@ export default function CreatePage() {
       fontSize: '48pt',
       columns: 'auto',
       showEmptyColumns: false,
-      hideInactiveBeads: false,
-      beadShape: 'diamond',
-      colorScheme: 'place-value',
-      coloredNumerals: false,
-      scaleFactor: 0.9,
+      // Use global config for abacus display settings
+      hideInactiveBeads: globalConfig.hideInactiveBeads,
+      beadShape: globalConfig.beadShape,
+      colorScheme: globalConfig.colorScheme,
+      coloredNumerals: globalConfig.coloredNumerals,
+      scaleFactor: globalConfig.scaleFactor,
       format: 'pdf'
     }
   })
@@ -183,55 +186,6 @@ export default function CreatePage() {
 
   return (
     <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
-      {/* Header */}
-      <header className={css({ bg: 'white', shadow: 'card', position: 'sticky', top: 0, zIndex: 10 })}>
-        <div className={container({ maxW: '7xl', px: '4', py: '4' })}>
-          <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
-            <Link
-              href="/"
-              className={css({
-                fontSize: 'xl',
-                fontWeight: 'bold',
-                color: 'brand.800',
-                textDecoration: 'none'
-              })}
-            >
-              🧮 Soroban Generator
-            </Link>
-
-            <div className={hstack({ gap: '3' })}>
-              <Link
-                href="/guide"
-                className={css({
-                  px: '4',
-                  py: '2',
-                  color: 'brand.600',
-                  fontWeight: 'medium',
-                  rounded: 'lg',
-                  transition: 'all',
-                  _hover: { bg: 'brand.50' }
-                })}
-              >
-                Guide
-              </Link>
-              <Link
-                href="/games"
-                className={css({
-                  px: '4',
-                  py: '2',
-                  color: 'brand.600',
-                  fontWeight: 'medium',
-                  rounded: 'lg',
-                  transition: 'all',
-                  _hover: { bg: 'brand.50' }
-                })}
-              >
-                Games
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Main Content */}
       <div className={container({ maxW: '7xl', px: '4', py: '8' })}>

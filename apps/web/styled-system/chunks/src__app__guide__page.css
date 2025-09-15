@@ -28,6 +28,18 @@
     padding-block: var(--spacing-2)
     }
 
+  .justify_space-between {
+    justify-content: space-between
+    }
+
+  .gap_10px {
+    gap: 10px
+    }
+
+  .gap_3 {
+    gap: var(--spacing-3)
+    }
+
   .bg_linear-gradient\(135deg\,_\#667eea_0\%\,_\#764ba2_100\%\) {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)
     }
@@ -70,6 +82,10 @@
 
   .bg_transparent {
     background: var(--colors-transparent)
+    }
+
+  .py_4 {
+    padding-block: var(--spacing-4)
     }
 
   .border-b_2px_solid {
@@ -527,10 +543,6 @@
     height: 120px
     }
 
-  .py_4 {
-    padding-block: var(--spacing-4)
-    }
-
   .max-w_4xl {
     max-width: var(--sizes-4xl)
     }
@@ -557,18 +569,6 @@
 
   .py_12 {
     padding-block: var(--spacing-12)
-    }
-
-  .justify_space-between {
-    justify-content: space-between
-    }
-
-  .gap_10px {
-    gap: 10px
-    }
-
-  .gap_3 {
-    gap: var(--spacing-3)
     }
 
   .gap_0 {

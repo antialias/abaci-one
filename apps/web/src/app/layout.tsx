@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { AbacusDisplayProvider } from '@/contexts/AbacusDisplayContext'
+import { AppNavBar } from '@/components/AppNavBar'
 
 export const metadata: Metadata = {
   title: 'Soroban Flashcard Generator',
@@ -13,7 +15,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AbacusDisplayProvider>
+          <AppNavBar />
+          {children}
+        </AbacusDisplayProvider>
+      </body>
     </html>
   )
 }

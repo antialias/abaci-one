@@ -62,7 +62,12 @@ export async function POST(request: NextRequest) {
           console.error(`❌ Failed to generate SVG for number ${number}:`, error instanceof Error ? error.message : error)
           samples.push({
             number,
-            front: generateMockSorobanSVG(number),
+            front: `<svg width="200" height="300" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+              <rect x="10" y="10" width="180" height="280" fill="none" stroke="#ccc" stroke-width="2"/>
+              <line x1="20" y1="150" x2="180" y2="150" stroke="#ccc" stroke-width="2"/>
+              <text x="100" y="160" text-anchor="middle" font-size="24" fill="#666">SVG Error</text>
+              <text x="100" y="180" text-anchor="middle" font-size="16" fill="#999">${number}</text>
+            </svg>`,
             back: number.toString()
           })
         }
@@ -144,61 +149,15 @@ function getMockPreviewData(config: any) {
     count: numbers.length,
     samples: numbers.map(number => ({
       number,
-      front: generateMockSorobanSVG(number),
+      front: `<svg width="200" height="300" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="10" width="180" height="280" fill="none" stroke="#ccc" stroke-width="2"/>
+        <line x1="20" y1="150" x2="180" y2="150" stroke="#ccc" stroke-width="2"/>
+        <text x="100" y="160" text-anchor="middle" font-size="24" fill="#666">Preview Error</text>
+        <text x="100" y="180" text-anchor="middle" font-size="16" fill="#999">${number}</text>
+      </svg>`,
       back: number.toString()
     }))
   }
-}
-
-// Generate a simple mock soroban SVG for preview
-function generateMockSorobanSVG(number: number): string {
-  const width = 200
-  const height = 300
-  const rodWidth = 4
-  const beadRadius = 8
-  const heavenBeadHeight = 40
-  const earthBeadHeight = 40
-  const rods = 3 // Show 3 rods for preview
-
-  let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`
-
-  // Frame
-  svg += `<rect x="10" y="10" width="${width-20}" height="${height-20}" fill="none" stroke="#8B4513" stroke-width="3"/>`
-
-  // Crossbar (divider between heaven and earth)
-  const crossbarY = height / 2
-  svg += `<line x1="15" y1="${crossbarY}" x2="${width-15}" y2="${crossbarY}" stroke="#8B4513" stroke-width="3"/>`
-
-  // Generate rods and beads based on the number
-  const digits = number.toString().padStart(rods, '0').split('').map(d => parseInt(d))
-
-  for (let i = 0; i < rods; i++) {
-    const rodX = 40 + i * 50
-    const digit = digits[rods - 1 - i] // Rightmost digit first
-
-    // Rod
-    svg += `<line x1="${rodX}" y1="20" x2="${rodX}" y2="${height-20}" stroke="#654321" stroke-width="${rodWidth}"/>`
-
-    // Calculate bead positions for this digit
-    const heavenValue = digit >= 5 ? 1 : 0
-    const earthValue = digit % 5
-
-    // Heaven bead (worth 5)
-    const heavenY = heavenValue > 0 ? crossbarY - 15 : 30
-    const heavenColor = heavenValue > 0 ? '#FF6B6B' : '#DDD'
-    svg += `<circle cx="${rodX}" cy="${heavenY}" r="${beadRadius}" fill="${heavenColor}" stroke="#333" stroke-width="1"/>`
-
-    // Earth beads (worth 1 each)
-    for (let j = 0; j < 4; j++) {
-      const isActive = j < earthValue
-      const earthY = crossbarY + 20 + j * 25
-      const earthColor = isActive ? '#4ECDC4' : '#DDD'
-      svg += `<circle cx="${rodX}" cy="${earthY}" r="${beadRadius}" fill="${earthColor}" stroke="#333" stroke-width="1"/>`
-    }
-  }
-
-  svg += '</svg>'
-  return svg
 }
 
 // Health check endpoint
