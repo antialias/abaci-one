@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { generateSorobanSVG, type SorobanConfig } from '@/lib/typst-soroban'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { generateSorobanSVG, getWasmStatus, triggerWasmPreload, type SorobanConfig } from '@/lib/typst-soroban'
 import { css } from '../../styled-system/css'
 import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
 
@@ -13,6 +13,7 @@ interface TypstSorobanProps {
   onError?: (error: string) => void
   onSuccess?: () => void
   enableServerFallback?: boolean
+  lazy?: boolean // New prop for lazy loading
 }
 
 export function TypstSoroban({
@@ -22,18 +23,36 @@ export function TypstSoroban({
   className,
   onError,
   onSuccess,
-  enableServerFallback = false
+  enableServerFallback = false,
+  lazy = false
 }: TypstSorobanProps) {
   const [svg, setSvg] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(!lazy) // Don't start loading if lazy
   const [error, setError] = useState<string | null>(null)
+  const [shouldLoad, setShouldLoad] = useState(!lazy) // Control when loading starts
   const globalConfig = useAbacusConfig()
 
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   useEffect(() => {
+    if (!shouldLoad) return
+
     async function generateSVG() {
+      // Cancel any previous generation
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+
+      abortControllerRef.current = new AbortController()
+      const signal = abortControllerRef.current.signal
+
       setIsLoading(true)
       setError(null)
-      setSvg(null)
+
+      // Longer delay to prevent flashing for fast renders
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      if (signal.aborted) return
 
       try {
         const config: SorobanConfig = {
@@ -50,22 +69,83 @@ export function TypstSoroban({
         }
 
         const generatedSvg = await generateSorobanSVG(config)
+
+        if (signal.aborted) return
+
         setSvg(generatedSvg)
         // Call success callback after state is set
         setTimeout(() => onSuccess?.(), 0)
       } catch (err) {
+        if (signal.aborted) return
+
         const errorMessage = err instanceof Error ? err.message : 'Unknown error'
         setError(errorMessage)
         console.error('TypstSoroban generation error:', err)
         // Call error callback after state is set
         setTimeout(() => onError?.(errorMessage), 0)
       } finally {
-        setIsLoading(false)
+        if (!signal.aborted) {
+          setIsLoading(false)
+        }
       }
     }
 
     generateSVG()
-  }, [number, width, height, globalConfig.beadShape, globalConfig.colorScheme, globalConfig.hideInactiveBeads, globalConfig.coloredNumerals, globalConfig.scaleFactor, enableServerFallback])
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [shouldLoad, number, width, height, globalConfig.beadShape, globalConfig.colorScheme, globalConfig.hideInactiveBeads, globalConfig.coloredNumerals, globalConfig.scaleFactor, enableServerFallback])
+
+  // Handler to trigger loading on user interaction
+  const handleLoadTrigger = useCallback(() => {
+    if (!shouldLoad && !isLoading && !svg) {
+      setShouldLoad(true)
+      // Also trigger WASM preload if not already started
+      triggerWasmPreload()
+    }
+  }, [shouldLoad, isLoading, svg])
+
+  // Show lazy loading placeholder
+  if (lazy && !shouldLoad && !svg) {
+    const wasmStatus = getWasmStatus()
+
+    return (
+      <div
+        className={className}
+        onClick={handleLoadTrigger}
+        onMouseEnter={handleLoadTrigger}
+      >
+        <div className={css({
+          w: 'full',
+          h: 'full',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bg: wasmStatus.isLoaded ? 'green.25' : 'gray.50',
+          rounded: 'md',
+          minH: '200px',
+          cursor: 'pointer',
+          transition: 'all',
+          _hover: {
+            bg: wasmStatus.isLoaded ? 'green.50' : 'gray.100',
+            transform: 'scale(1.02)'
+          }
+        })}>
+          <div className={css({
+            fontSize: '4xl',
+            opacity: '0.6',
+            transition: 'all',
+            _hover: { opacity: '0.8' }
+          })}>
+            {wasmStatus.isLoaded ? '🚀' : '🧮'}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -76,16 +156,16 @@ export function TypstSoroban({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          bg: 'gray.50',
+          bg: 'blue.25',
           rounded: 'md',
           minH: '200px'
         })}>
           <div className={css({
-            w: '8',
-            h: '8',
+            w: '6',
+            h: '6',
             border: '2px solid',
-            borderColor: 'gray.300',
-            borderTopColor: 'brand.600',
+            borderColor: 'blue.200',
+            borderTopColor: 'blue.500',
             rounded: 'full',
             animation: 'spin 1s linear infinite'
           })} />
@@ -101,23 +181,13 @@ export function TypstSoroban({
           w: 'full',
           h: 'full',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          bg: 'red.50',
-          border: '1px solid',
-          borderColor: 'red.200',
+          bg: 'red.25',
           rounded: 'md',
-          p: '4',
           minH: '200px'
         })}>
-          <div className={css({ fontSize: '2xl', mb: '2' })}>⚠️</div>
-          <p className={css({ color: 'red.700', fontSize: 'sm', textAlign: 'center' })}>
-            Failed to generate soroban
-          </p>
-          <p className={css({ color: 'red.600', fontSize: 'xs', mt: '1' })}>
-            {error}
-          </p>
+          <div className={css({ fontSize: '3xl', opacity: '0.6' })}>⚠️</div>
         </div>
       </div>
     )
