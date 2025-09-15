@@ -25,9 +25,18 @@ importers:
 
   apps/web:
     dependencies:
-      '@myriaddreamin/typst.ts':
+      '@myriaddreamin/typst-all-in-one.ts':
         specifier: 0.6.1-rc3
         version: 0.6.1-rc3
+      '@myriaddreamin/typst-ts-renderer':
+        specifier: 0.6.1-rc3
+        version: 0.6.1-rc3
+      '@myriaddreamin/typst-ts-web-compiler':
+        specifier: 0.6.1-rc3
+        version: 0.6.1-rc3
+      '@myriaddreamin/typst.ts':
+        specifier: 0.6.1-rc3
+        version: 0.6.1-rc3(@myriaddreamin/typst-ts-renderer@0.6.1-rc3)(@myriaddreamin/typst-ts-web-compiler@0.6.1-rc3)
       '@pandacss/dev':
         specifier: ^0.20.0
         version: 0.20.1(jsdom@27.0.0)(typescript@5.0.2)
@@ -1202,15 +1211,27 @@ packages:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  /@myriaddreamin/typst-all-in-one.ts@0.6.1-rc3:
+    resolution: {integrity: sha512-IFkPEDTfE8/IYEpJxeNMRCOqeQ0NP9+30VHk1EmLIGHMiDcqkMJ04MEF1eHdPX5L8XjAuyKI4jPZQvHSXaQRnA==}
+    dev: false
+
   /@myriaddreamin/typst-ts-renderer@0.6.0:
     resolution: {integrity: sha512-56Mids4E5Ob6LeEeXDedvmsVnEWnLmc1qeUOeUSruL/zI3S9QXleF/c3Os1FXwJmLuCFbWTEIq8Quh2cXlnxKw==}
+    dev: false
+
+  /@myriaddreamin/typst-ts-renderer@0.6.1-rc3:
+    resolution: {integrity: sha512-m4OHUXYvxDcE6yEvTIl+s7Y721RMWpVTUDXRN2o08P2ckkgxmtloVwHkdCAbrV5w19b5f/fcSaCW2xbxaw+XnA==}
     dev: false
 
   /@myriaddreamin/typst-ts-web-compiler@0.6.0:
     resolution: {integrity: sha512-P/eIJ5RnfElj0NYzn5PI296t/IwWtgqUyyTMi5Jm5X3V5kZfskkH+LI7mSQe8tEyxwgCvxbxvFe5adinA3K8Gg==}
     dev: false
 
-  /@myriaddreamin/typst.ts@0.6.1-rc3:
+  /@myriaddreamin/typst-ts-web-compiler@0.6.1-rc3:
+    resolution: {integrity: sha512-6KD2QKUI1KVcBpKxh/LQX02224NnjMWlRQy/IqtROekDKUdoCoSlf5PV7aETYyI4bA1mtNrzMkBGdCeum/4frA==}
+    dev: false
+
+  /@myriaddreamin/typst.ts@0.6.1-rc3(@myriaddreamin/typst-ts-renderer@0.6.1-rc3)(@myriaddreamin/typst-ts-web-compiler@0.6.1-rc3):
     resolution: {integrity: sha512-pGzaJ5SV0JjrNWn14Bicy0nPTtfD5+4kHwGUDYSebSMbfAtNHfi+Et7k4PiXqunwRm7Obkk5iZufiRM2jOlfbg==}
     peerDependencies:
       '@myriaddreamin/typst-ts-renderer': ^0.6.1-rc3
@@ -1221,6 +1242,8 @@ packages:
       '@myriaddreamin/typst-ts-web-compiler':
         optional: true
     dependencies:
+      '@myriaddreamin/typst-ts-renderer': 0.6.1-rc3
+      '@myriaddreamin/typst-ts-web-compiler': 0.6.1-rc3
       idb: 7.1.1
     dev: false
 

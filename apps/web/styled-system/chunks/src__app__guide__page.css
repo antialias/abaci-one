@@ -627,6 +627,7 @@
   .md\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(2, minmax(0, 1fr))
     }
+
     .md\:p_8 {
       padding: var(--spacing-8)
     }
@@ -634,6 +635,7 @@
     .md\:fs_3xl {
       font-size: var(--font-sizes-3xl)
     }
+
     .md\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
       grid-template-columns: repeat(3, minmax(0, 1fr))
     }

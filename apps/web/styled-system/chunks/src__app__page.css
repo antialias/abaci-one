@@ -230,6 +230,7 @@
   .md\:grid-cols_3 {
       grid-template-columns: repeat(3, minmax(0, 1fr))
     }
+
     .md\:fs_6xl {
       font-size: var(--font-sizes-6xl)
     }
