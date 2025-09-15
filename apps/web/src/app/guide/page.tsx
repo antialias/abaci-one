@@ -757,6 +757,7 @@ function ReadingNumbersGuide() {
             <InteractiveAbacus
               initialValue={0}
               columns={3}
+              showManualInput={true}
               className={css({
                 display: 'flex',
                 justifyContent: 'center',

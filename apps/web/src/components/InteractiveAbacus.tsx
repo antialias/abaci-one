@@ -13,6 +13,8 @@ interface InteractiveAbacusProps {
   onValueChange?: (value: number) => void
   showValue?: boolean
   showControls?: boolean
+  showManualInput?: boolean
+  compact?: boolean
 }
 
 export function InteractiveAbacus({
@@ -21,12 +23,17 @@ export function InteractiveAbacus({
   className,
   onValueChange,
   showValue = true,
-  showControls = true
+  showControls = true,
+  showManualInput = false,
+  compact = false
 }: InteractiveAbacusProps) {
   const [currentValue, setCurrentValue] = useState(initialValue)
   const [isChanging, setIsChanging] = useState(false)
   const [previousValue, setPreviousValue] = useState(initialValue)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingValue, setEditingValue] = useState('')
   const svgRef = useRef<HTMLDivElement>(null)
+  const numberRef = useRef<HTMLDivElement>(null)
 
   // Remove the old spring animation since we're using NumberFlow now
 
@@ -192,110 +199,252 @@ export function InteractiveAbacus({
     setCurrentValue(value)
   }, [])
 
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (!showManualInput) return
+
+    // Handle number keys and editing
+    if (event.key >= '0' && event.key <= '9') {
+      event.preventDefault()
+      let newEditingValue: string
+      if (!isEditing) {
+        setIsEditing(true)
+        newEditingValue = event.key
+        setEditingValue(newEditingValue)
+      } else {
+        newEditingValue = editingValue + event.key
+        const numValue = parseInt(newEditingValue)
+        const maxValue = Math.pow(10, columns) - 1
+        if (numValue <= maxValue) {
+          setEditingValue(newEditingValue)
+        } else {
+          return // Don't update if exceeds max
+        }
+      }
+      // Update abacus immediately
+      const liveValue = parseInt(newEditingValue) || 0
+      setCurrentValue(liveValue)
+    } else if (event.key === 'Backspace') {
+      event.preventDefault()
+      if (isEditing) {
+        let newEditingValue: string
+        if (editingValue.length > 1) {
+          newEditingValue = editingValue.slice(0, -1)
+        } else {
+          newEditingValue = '0'
+        }
+        setEditingValue(newEditingValue)
+        // Update abacus immediately
+        const liveValue = parseInt(newEditingValue) || 0
+        setCurrentValue(liveValue)
+      }
+    } else if (event.key === 'Enter' || event.key === 'Escape') {
+      event.preventDefault()
+      if (isEditing) {
+        setIsEditing(false)
+        setEditingValue('')
+        // Value is already set from live updates
+      }
+    } else if (event.key === 'Delete') {
+      event.preventDefault()
+      setEditingValue('0')
+      setIsEditing(true)
+      // Update abacus immediately
+      setCurrentValue(0)
+    }
+  }, [showManualInput, isEditing, editingValue, columns])
+
+  const handleNumberClick = useCallback(() => {
+    if (showManualInput && numberRef.current) {
+      numberRef.current.focus()
+      if (!isEditing) {
+        setIsEditing(true)
+        setEditingValue(String(currentValue))
+      }
+    }
+  }, [showManualInput, isEditing, currentValue])
+
+  const handleNumberBlur = useCallback(() => {
+    if (isEditing) {
+      setIsEditing(false)
+      setEditingValue('')
+      // Value is already live-updated, no need to set again
+    }
+  }, [isEditing])
+
   return (
     <div className={className}>
       <div className={css({
         display: 'flex',
-        flexDirection: 'column',
-        gap: '6',
+        flexDirection: compact ? 'row' : 'column',
+        gap: compact ? '4' : '6',
         alignItems: 'center'
       })}>
-        {/* Interactive Abacus using TypstSoroban */}
-        <animated.div
-          ref={svgRef}
-          style={containerSpring}
-          className={css({
-            width: '300px',
-            height: '400px',
-            border: '3px solid',
-            borderRadius: '12px',
-            bg: 'gradient-to-br',
-            gradientFrom: 'amber.50',
-            gradientTo: 'orange.100',
-            padding: '20px',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)',
-            position: 'relative',
-            transition: 'all 0.2s ease',
-            _hover: {
-              boxShadow: '0 12px 32px rgba(0, 0, 0, 0.15)',
-            }
-          })}
-        >
-          <TypstSoroban
-            number={currentValue}
-            width="180pt"
-            height="240pt"
+        {/* Interactive Abacus Container */}
+        <div className={css({
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        })}>
+          {/* Abacus with integrated value display */}
+          <animated.div
+            ref={svgRef}
+            style={containerSpring}
             className={css({
-              width: '100%',
-              height: '100%',
-              transition: 'all 0.3s ease',
-              cursor: 'pointer',
-              '& [data-bead-type]': {
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                _hover: {
-                  filter: 'brightness(1.2)',
-                  transform: 'scale(1.05)'
-                }
+              width: compact ? '240px' : '300px',
+              height: compact ? '320px' : '400px',
+              border: '3px solid',
+              borderRadius: '12px',
+              bg: 'gradient-to-br',
+              gradientFrom: 'amber.50',
+              gradientTo: 'orange.100',
+              padding: compact ? '16px' : '20px',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)',
+              position: 'relative',
+              transition: 'all 0.2s ease',
+              _hover: {
+                boxShadow: '0 12px 32px rgba(0, 0, 0, 0.15)',
               }
             })}
-          />
-
-
-        </animated.div>
-
-        {/* Value Display */}
-        {showValue && (
-          <div
-            className={css({
-              fontSize: '3xl',
-              fontWeight: 'bold',
-              color: 'blue.600',
-              bg: 'blue.50',
-              px: '6',
-              py: '3',
-              rounded: 'xl',
-              border: '2px solid',
-              borderColor: 'blue.200',
-              minW: '120px',
-              textAlign: 'center',
-              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)'
-            })}
           >
-            <NumberFlow
-              value={currentValue}
-              style={{
-                fontSize: 'inherit',
-                fontWeight: 'inherit',
-                color: 'inherit'
-              }}
+            <TypstSoroban
+              number={currentValue}
+              width={compact ? "144pt" : "180pt"}
+              height={compact ? "192pt" : "240pt"}
+              className={css({
+                width: '100%',
+                height: '100%',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                '& [data-bead-type]': {
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  _hover: {
+                    filter: 'brightness(1.2)',
+                    transform: 'scale(1.05)'
+                  }
+                }
+              })}
             />
-          </div>
-        )}
+          </animated.div>
 
-        {/* Controls */}
+          {/* Integrated Value Display with Always-Available Input */}
+          {showValue && (
+            <div
+              className={css({
+                position: 'absolute',
+                bottom: compact ? '-50px' : '-60px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2',
+                bg: 'white',
+                border: '2px solid',
+                borderColor: 'blue.200',
+                rounded: 'xl',
+                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+                px: '3',
+                py: '2',
+                minW: '160px'
+              })}
+            >
+              {/* Single Unified Number Display/Input */}
+              <div
+                ref={numberRef}
+                tabIndex={showManualInput ? 0 : -1}
+                onClick={handleNumberClick}
+                onKeyDown={handleKeyDown}
+                onBlur={handleNumberBlur}
+                className={css({
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  flex: '1',
+                  outline: 'none',
+                  cursor: showManualInput ? 'pointer' : 'default'
+                })}
+                title={showManualInput ? "Click to edit, type numbers, Enter to confirm" : undefined}
+              >
+                <NumberFlow
+                  value={isEditing ? parseInt(editingValue) || 0 : currentValue}
+                  style={{
+                    fontSize: compact ? '1.5rem' : '1.875rem',
+                    fontWeight: 'bold',
+                    color: isEditing ? '#1d4ed8' : '#2563eb', // Slightly darker when editing
+                    textAlign: 'center',
+                    minWidth: '80px',
+                    width: '100%'
+                  }}
+                />
+
+                {/* Visual editing indicator */}
+                {isEditing && (
+                  <div className={css({
+                    position: 'absolute',
+                    bottom: '-2px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '80%',
+                    height: '2px',
+                    bg: 'blue.400',
+                    rounded: 'full',
+                    animation: 'pulse 1s infinite'
+                  })} />
+                )}
+              </div>
+
+              {/* Input Indicator */}
+              {showManualInput && (
+                <div
+                  className={css({
+                    p: '1',
+                    rounded: 'full',
+                    bg: 'blue.50',
+                    color: 'blue.600',
+                    fontSize: 'xs',
+                    w: '6',
+                    h: '6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  })}
+                  title="Click the number to edit directly"
+                >
+                  ✏️
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Compact Controls */}
         {showControls && (
           <div className={css({
             display: 'flex',
+            flexDirection: compact ? 'column' : 'row',
             alignItems: 'center',
-            gap: '3',
-            flexWrap: 'wrap',
-            justifyContent: 'center'
+            gap: '2',
+            flexWrap: compact ? 'nowrap' : 'wrap',
+            justifyContent: 'center',
+            mt: showValue ? (compact ? '0' : '16') : '0'
           })}>
             <button
               onClick={handleReset}
               className={css({
-                px: '4',
+                px: '3',
                 py: '2',
                 bg: 'gray.100',
                 color: 'gray.700',
                 border: '1px solid',
                 borderColor: 'gray.300',
-                rounded: 'lg',
-                fontSize: 'sm',
+                rounded: 'md',
+                fontSize: 'xs',
                 fontWeight: 'medium',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                minW: compact ? '60px' : 'auto',
                 _hover: {
                   bg: 'gray.200',
                   borderColor: 'gray.400',
@@ -309,57 +458,68 @@ export function InteractiveAbacus({
               Clear
             </button>
 
-            {/* Quick preset buttons */}
-            {[1, 5, 10, 25, 50, 99].map(preset => (
-              <button
-                key={preset}
-                onClick={() => handleSetValue(preset)}
-                className={css({
-                  px: '3',
-                  py: '2',
-                  bg: 'blue.100',
-                  color: 'blue.700',
-                  border: '1px solid',
-                  borderColor: 'blue.300',
-                  rounded: 'lg',
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    bg: 'blue.200',
-                    borderColor: 'blue.400',
-                    transform: 'translateY(-1px)'
-                  },
-                  _active: {
-                    transform: 'scale(0.95)'
-                  }
-                })}
-              >
-                {preset}
-              </button>
-            ))}
+            {/* Compact preset buttons */}
+            <div className={css({
+              display: 'flex',
+              flexDirection: compact ? 'column' : 'row',
+              gap: '1',
+              flexWrap: 'wrap'
+            })}>
+              {(compact ? [1, 5, 10, 25] : [1, 5, 10, 25, 50, 99]).map(preset => (
+                <button
+                  key={preset}
+                  onClick={() => handleSetValue(preset)}
+                  className={css({
+                    px: '2',
+                    py: '1',
+                    bg: 'blue.100',
+                    color: 'blue.700',
+                    border: '1px solid',
+                    borderColor: 'blue.300',
+                    rounded: 'md',
+                    fontSize: 'xs',
+                    fontWeight: 'medium',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    minW: compact ? '40px' : '32px',
+                    _hover: {
+                      bg: 'blue.200',
+                      borderColor: 'blue.400',
+                      transform: 'translateY(-1px)'
+                    },
+                    _active: {
+                      transform: 'scale(0.95)'
+                    }
+                  })}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Instructions */}
-        <div className={css({
-          fontSize: 'sm',
-          color: 'gray.600',
-          textAlign: 'center',
-          maxW: '450px',
-          lineHeight: 'relaxed',
-          bg: 'gray.50',
-          px: '4',
-          py: '3',
-          rounded: 'lg',
-          border: '1px solid',
-          borderColor: 'gray.200'
-        })}>
-          <strong>How to use:</strong> Click on the beads to activate or deactivate them!
-          Heaven beads (top) are worth 5 each, earth beads (bottom) are worth 1 each.
-          You can also use the preset buttons below.
-        </div>
+        {/* Compact Instructions */}
+        {!compact && (
+          <div className={css({
+            fontSize: 'sm',
+            color: 'gray.600',
+            textAlign: 'center',
+            maxW: '450px',
+            lineHeight: 'relaxed',
+            bg: 'gray.50',
+            px: '4',
+            py: '3',
+            rounded: 'lg',
+            border: '1px solid',
+            borderColor: 'gray.200',
+            mt: showValue ? '16' : '0'
+          })}>
+            <strong>How to use:</strong> Click on the beads to activate or deactivate them!
+            Heaven beads (top) are worth 5 each, earth beads (bottom) are worth 1 each.
+            {showManualInput && ' You can also click the number to type directly.'}
+          </div>
+        )}
       </div>
     </div>
   )
