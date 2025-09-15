@@ -520,25 +520,25 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
 
   return (
     <div className={css({
-      marginTop: '32px',
-      padding: '20px',
+      marginTop: '16px',
+      padding: '16px',
       background: 'gray.50',
       borderRadius: '12px',
-      border: '2px solid',
+      border: '1px solid',
       borderColor: 'gray.200'
     })}>
       <h4 className={css({
         textAlign: 'center',
         color: 'gray.700',
-        marginBottom: '20px',
-        fontSize: '18px',
+        marginBottom: '12px',
+        fontSize: '16px',
         fontWeight: '600'
-      })}>Cards shown to you:</h4>
+      })}>Cards you saw:</h4>
       <div className={css({
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: '16px',
-        maxWidth: '800px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+        gap: '12px',
+        maxWidth: '100%',
         margin: '0 auto'
       })}>
         {state.quizCards.map((card, index) => {
@@ -548,7 +548,7 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
               key={`card-${index}-${card.number}`}
               className={css({
                 perspective: '1000px',
-                height: '180px'
+                height: '140px'
               })}
             >
               <div className={css({
@@ -605,8 +605,8 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
                   })}>
                     <ServerSorobanSVG
                       number={card.number}
-                      width={120}
-                      height={160}
+                      width={100}
+                      height={130}
                       colorScheme="place-value"
                       hideInactiveBeads={false}
                     />
@@ -796,30 +796,30 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
 
       <div className={css({
         position: 'relative',
-        margin: '40px 0',
+        margin: '24px 0',
         textAlign: 'center'
       })}>
         <div className={css({
-          fontSize: '16px',
+          fontSize: '14px',
           color: 'gray.600',
-          marginBottom: '15px',
-          fontWeight: 'normal'
+          marginBottom: '12px',
+          fontWeight: '500'
         })}>
           {state.guessesRemaining === 0
-            ? 'Out of guesses!'
-            : 'Just start typing numbers on your keyboard:'
+            ? '🚫 No more guesses available'
+            : '⌨️ Type the numbers you remember'
           }
         </div>
         <div
           className={css({
-            minHeight: '80px',
-            padding: '24px',
-            fontSize: '36px',
-            fontFamily: 'Courier New, Monaco, monospace',
+            minHeight: '60px',
+            padding: '16px 20px',
+            fontSize: '28px',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
             textAlign: 'center',
-            fontWeight: 'bold',
+            fontWeight: '600',
             color: state.guessesRemaining === 0 ? 'gray.500' : 'gray.800',
-            letterSpacing: '4px',
+            letterSpacing: '2px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -830,32 +830,59 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               ? 'linear-gradient(45deg, #f8d7da, #f1b0b7)'
               : state.guessesRemaining === 0
               ? 'gray.200'
-              : 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
-            border: displayFeedback === 'correct'
-              ? '2px solid #28a745'
-              : displayFeedback === 'incorrect'
-              ? '2px solid #dc3545'
-              : state.guessesRemaining === 0
-              ? '2px solid #6c757d'
-              : '3px solid #adb5bd',
-            borderRadius: '12px',
+              : 'linear-gradient(135deg, #f0f8ff, #e6f3ff)',
+            borderRadius: '16px',
+            position: 'relative',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '16px',
+              padding: '2px',
+              background: displayFeedback === 'correct'
+                ? 'linear-gradient(45deg, #28a745, #20c997)'
+                : displayFeedback === 'incorrect'
+                ? 'linear-gradient(45deg, #dc3545, #e74c3c)'
+                : state.guessesRemaining === 0
+                ? 'linear-gradient(45deg, #6c757d, #adb5bd)'
+                : 'linear-gradient(45deg, #007bff, #4dabf7)',
+              mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+              maskComposite: 'xor'
+            },
             boxShadow: displayFeedback === 'correct'
-              ? '0 0 20px rgba(40, 167, 69, 0.3)'
+              ? '0 8px 25px rgba(40, 167, 69, 0.2)'
               : displayFeedback === 'incorrect'
-              ? '0 0 20px rgba(220, 53, 69, 0.3)'
-              : '0 4px 6px rgba(0, 0, 0, 0.1)',
-            cursor: state.guessesRemaining === 0 ? 'not-allowed' : 'default'
+              ? '0 8px 25px rgba(220, 53, 69, 0.2)'
+              : '0 6px 20px rgba(0, 123, 255, 0.15)',
+            cursor: state.guessesRemaining === 0 ? 'not-allowed' : 'pointer'
           })}
         >
-          <span className={css({ opacity: 1 })}>
+          <span className={css({ opacity: 1, position: 'relative' })}>
             {state.guessesRemaining === 0
-              ? 'No more guesses'
+              ? '🔒 Game Over'
               : state.currentInput || (
-                  <span style={{ color: '#6c757d', opacity: 0.6, fontStyle: 'italic' }}>
-                    Start typing...
+                  <span style={{
+                    color: '#74c0fc',
+                    opacity: 0.8,
+                    fontStyle: 'normal',
+                    fontSize: '20px'
+                  }}>
+                    💭 Think & Type
                   </span>
                 )
             }
+            {state.currentInput && (
+              <span className={css({
+                position: 'absolute',
+                right: '-8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '2px',
+                height: '24px',
+                background: '#007bff',
+                animation: 'blink 1s infinite'
+              })} />
+            )}
           </span>
         </div>
       </div>
@@ -864,33 +891,39 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         display: 'flex',
         flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: '10px',
-        margin: '20px 0',
-        minHeight: '60px',
-        padding: '15px',
+        gap: '8px',
+        margin: '16px 0',
+        minHeight: '40px',
+        padding: '10px',
         background: 'gray.50',
         borderRadius: '8px'
       })}>
         {state.foundNumbers.map((number, index) => (
-          <span
+          <div
             key={`${number}-${index}`}
             className={css({
               background: 'green.500',
               color: 'white',
-              padding: '8px 16px',
-              borderRadius: '20px',
+              padding: '6px 12px',
+              borderRadius: '16px',
               fontWeight: 'bold',
-              fontSize: '18px',
-              animation: 'fadeInScale 0.3s ease'
+              fontSize: '14px',
+              animation: 'fadeInScale 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
             })}
           >
-            {number}
-          </span>
+            <span>✓</span>
+            <span style={{ fontSize: '10px', opacity: 0.8 }}>Card {index + 1}</span>
+          </div>
         ))}
       </div>
 
-      {/* Visual card grid showing cards the user was shown */}
-      <CardGrid state={state} />
+      {/* Visual card grid showing cards the user was shown - now more compact */}
+      <div className={css({ marginTop: '16px', flex: 1, overflow: 'auto' })}>
+        <CardGrid state={state} />
+      </div>
 
       {/* Wrong guess explosion animations */}
       <div className={css({
@@ -926,8 +959,11 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         <div className={css({
           display: 'flex',
           justifyContent: 'center',
-          gap: '15px',
-          marginTop: '20px'
+          gap: '12px',
+          marginTop: '16px',
+          paddingTop: '16px',
+          borderTop: '1px solid',
+          borderColor: 'gray.200'
         })}>
           <button
             className={css({
@@ -1140,6 +1176,11 @@ const globalAnimations = `
     opacity: 0;
     transform: translate(-50%, -50%) scale(2) rotate(180deg);
   }
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 `
 
