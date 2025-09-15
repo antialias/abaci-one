@@ -5,41 +5,86 @@
 let $typst: any = null
 let isLoading = false
 
+// Promise to track the initialization process
+let typstInitializationPromise: Promise<any> | null = null
+
+// Preloading state
+let isPreloading = false
+let preloadStartTime: number | null = null
+
+// Start preloading WASM as soon as this module is imported
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    preloadTypstWasm()
+  }, 100) // Small delay to avoid blocking initial render
+}
+
+// Preload WASM and template without blocking - starts in background
+async function preloadTypstWasm() {
+  if ($typst || isPreloading || typstInitializationPromise) return
+
+  if (typeof window === 'undefined') return
+
+  isPreloading = true
+  preloadStartTime = performance.now()
+  console.log('🔄 Starting background WASM and template preload...')
+
+  try {
+    // Preload both WASM and template in parallel
+    await Promise.all([
+      getTypstRenderer(),
+      getFlashcardsTemplate()
+    ])
+    const loadTime = Math.round(performance.now() - (preloadStartTime || 0))
+    console.log(`✅ WASM and template preloaded successfully in ${loadTime}ms - ready for instant generation!`)
+  } catch (error) {
+    console.warn('⚠️ Preload failed (will retry on demand):', error)
+  } finally {
+    isPreloading = false
+  }
+}
+
 async function getTypstRenderer() {
   if ($typst) return $typst
 
-  // Prevent multiple concurrent initializations
-  if (isLoading) {
-    // Wait for the current initialization to complete
-    while (isLoading) {
-      await new Promise(resolve => setTimeout(resolve, 100))
-    }
-    if ($typst) return $typst
-    throw new Error('typst.ts initialization failed')
+  // Return the existing initialization promise if one is in progress
+  if (typstInitializationPromise) {
+    return await typstInitializationPromise
   }
 
-  isLoading = true
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined') {
+    throw new Error('Not in browser environment')
+  }
+
+  // Create and cache the initialization promise
+  typstInitializationPromise = initializeTypstRenderer()
 
   try {
-    console.log('🚀 Loading typst.ts WASM in browser...')
+    return await typstInitializationPromise
+  } catch (error) {
+    // Clear the promise on failure so we can retry
+    typstInitializationPromise = null
+    throw error
+  }
+}
 
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined') {
-      throw new Error('Not in browser environment')
-    }
+async function initializeTypstRenderer() {
+  console.log('🚀 Loading typst.ts WASM in browser...')
+  const startTime = performance.now()
 
-    // Try multiple import strategies for maximum compatibility
-    let typstModule
-    try {
-      // Primary import method
-      typstModule = await import('@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs')
-      $typst = typstModule.$typst
-    } catch (importError) {
-      console.log('Primary import failed, trying alternative...')
-      // Alternative import method
-      typstModule = await import('@myriaddreamin/typst.ts')
-      $typst = typstModule.$typst || typstModule.default?.$typst
-    }
+  try {
+    // Import the all-in-one typst package with timeout
+    console.log('📦 Importing typst all-in-one package...')
+
+    const typstModule = await Promise.race([
+      import('@myriaddreamin/typst-all-in-one.ts'),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('WASM module load timeout')), 30000) // 30 second timeout
+      )
+    ]) as any
+
+    $typst = typstModule.$typst
 
     if (!$typst) {
       throw new Error('typst.ts renderer not found in module')
@@ -49,15 +94,14 @@ async function getTypstRenderer() {
     console.log('🧪 Testing typst.ts renderer...')
     await $typst.svg({ mainContent: '#set page(width: 10pt, height: 10pt)\n' })
 
-    console.log('✅ typst.ts WASM loaded and tested successfully!')
+    const loadTime = Math.round(performance.now() - startTime)
+    console.log(`✅ typst.ts WASM loaded and tested successfully in ${loadTime}ms!`)
     return $typst
 
   } catch (error) {
     console.error('❌ Failed to load typst.ts WASM:', error)
     $typst = null
     throw new Error(`Browser typst.ts initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-  } finally {
-    isLoading = false
   }
 }
 
@@ -85,26 +129,100 @@ export interface SorobanConfig {
 // Cache for compiled templates to avoid recompilation
 const templateCache = new Map<string, Promise<string>>()
 
+// Suspense resource for WASM loading
+class TypstResource {
+  private promise: Promise<any> | null = null
+  private renderer: any = null
+  private error: Error | null = null
+
+  read() {
+    if (this.error) {
+      throw this.error
+    }
+
+    if (this.renderer) {
+      return this.renderer
+    }
+
+    if (!this.promise) {
+      this.promise = this.loadTypst()
+    }
+
+    throw this.promise
+  }
+
+  private async loadTypst() {
+    try {
+      const renderer = await getTypstRenderer()
+      this.renderer = renderer
+      return renderer
+    } catch (error) {
+      this.error = error instanceof Error ? error : new Error('WASM loading failed')
+      throw this.error
+    }
+  }
+
+  reset() {
+    this.promise = null
+    this.renderer = null
+    this.error = null
+  }
+}
+
+// Global resource instance
+const typstResource = new TypstResource()
+
+export function resetTypstResource() {
+  typstResource.reset()
+}
+
+export function useTypstRenderer() {
+  return typstResource.read()
+}
+
 // Lazy-loaded template content
 let flashcardsTemplate: string | null = null
+let templateLoadPromise: Promise<string> | null = null
 
 async function getFlashcardsTemplate(): Promise<string> {
   if (flashcardsTemplate) {
     return flashcardsTemplate
   }
 
+  // Return the existing promise if already loading
+  if (templateLoadPromise) {
+    return await templateLoadPromise
+  }
+
+  // Create and cache the loading promise
+  templateLoadPromise = loadTemplateFromAPI()
+
+  try {
+    const template = await templateLoadPromise
+    flashcardsTemplate = template
+    return template
+  } catch (error) {
+    // Clear the promise on failure so we can retry
+    templateLoadPromise = null
+    throw error
+  }
+}
+
+async function loadTemplateFromAPI(): Promise<string> {
+  console.log('📥 Loading typst template from API...')
+
   try {
     const response = await fetch('/api/typst-template')
     const data = await response.json()
 
     if (data.success) {
-      flashcardsTemplate = data.template
-      return flashcardsTemplate
+      console.log('✅ Template loaded successfully')
+      return data.template
     } else {
       throw new Error(data.error || 'Failed to load template')
     }
   } catch (error) {
-    console.error('Failed to fetch typst template:', error)
+    console.error('❌ Failed to fetch typst template:', error)
     throw new Error('Template loading failed')
   }
 }
@@ -207,6 +325,22 @@ export function resetBrowserGenerationStatus() {
   $typst = null
   isLoading = false
   console.log('🔄 Reset browser generation status - will retry on next generation')
+}
+
+// Export preloading utilities
+export function getWasmStatus() {
+  return {
+    isLoaded: !!$typst,
+    isPreloading,
+    isInitializing: !!typstInitializationPromise && !$typst,
+    browserGenerationAvailable
+  }
+}
+
+export function triggerWasmPreload() {
+  if (!isPreloading && !$typst) {
+    preloadTypstWasm()
+  }
 }
 
 async function generateSVGWithFallback(config: SorobanConfig): Promise<string> {
