@@ -14,6 +14,7 @@ interface TypstSorobanProps {
   onSuccess?: () => void
   enableServerFallback?: boolean
   lazy?: boolean // New prop for lazy loading
+  transparent?: boolean // New prop for transparent background
 }
 
 export function TypstSoroban({
@@ -24,7 +25,8 @@ export function TypstSoroban({
   onError,
   onSuccess,
   enableServerFallback = false,
-  lazy = false
+  lazy = false,
+  transparent = false
 }: TypstSorobanProps) {
   const [svg, setSvg] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(!lazy) // Don't start loading if lazy
@@ -66,6 +68,7 @@ export function TypstSoroban({
         hideInactiveBeads: stableConfig.hideInactiveBeads,
         coloredNumerals: stableConfig.coloredNumerals,
         scaleFactor: stableConfig.scaleFactor,
+        transparent,
         enableServerFallback
       }
 
@@ -105,6 +108,7 @@ export function TypstSoroban({
         hideInactiveBeads: stableConfig.hideInactiveBeads,
         coloredNumerals: stableConfig.coloredNumerals,
         scaleFactor: stableConfig.scaleFactor,
+        transparent,
         enableServerFallback
       })
 
@@ -121,7 +125,7 @@ export function TypstSoroban({
           hideInactiveBeads: stableConfig.hideInactiveBeads,
           coloredNumerals: stableConfig.coloredNumerals,
           scaleFactor: stableConfig.scaleFactor,
-          transparent: false,
+          transparent,
           enableServerFallback
         }
 
@@ -162,7 +166,7 @@ export function TypstSoroban({
         abortControllerRef.current.abort()
       }
     }
-  }, [shouldLoad, number, width, height, stableConfig, enableServerFallback])
+  }, [shouldLoad, number, width, height, stableConfig, enableServerFallback, transparent])
 
   // Handler to trigger loading on user interaction
   const handleLoadTrigger = useCallback(() => {
@@ -289,10 +293,10 @@ export function TypstSoroban({
           alignItems: 'center',
           justifyContent: 'center',
           '& svg': {
+            width: '100%',
+            height: '100%',
             maxWidth: '100%',
-            maxHeight: '100%',
-            width: 'auto',
-            height: 'auto'
+            maxHeight: '100%'
           }
         })}
         dangerouslySetInnerHTML={{ __html: svg }}

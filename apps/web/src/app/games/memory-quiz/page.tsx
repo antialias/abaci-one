@@ -187,16 +187,12 @@ const generateQuizCards = (count: number, difficulty: DifficultyLevel): QuizCard
 
   return numbers.map(number => ({
     number,
-    svgComponent: <div style={{
-      transform: 'scale(2.0)',
-      transformOrigin: 'center'
-    }}>
-      <TypstSoroban
-        number={number}
-        width="280pt"
-        height="360pt"
-      />
-    </div>,
+    svgComponent: <TypstSoroban
+      number={number}
+      width="600pt"
+      height="500pt"
+      transparent={true}
+    />,
     element: null
   }))
 }
@@ -496,8 +492,8 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
 
       {showCard && currentCard && (
         <div className={css({
-          width: 'min(80vw, 600px)',
-          height: 'min(40vh, 350px)',
+          width: 'min(90vw, 800px)',
+          height: 'min(70vh, 600px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -518,9 +514,34 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
   )
 }
 
-// Visual card grid component
+// Visual card grid component with adaptive layout
 function CardGrid({ state }: { state: SorobanQuizState }) {
   if (state.quizCards.length === 0) return null
+
+  // Calculate optimal grid layout based on number of cards
+  const cardCount = state.quizCards.length
+
+  // Define static grid classes that Panda can generate
+  const getGridClass = (count: number) => {
+    if (count <= 2) return 'repeat(2, 1fr)'
+    if (count <= 4) return 'repeat(2, 1fr)'
+    if (count <= 6) return 'repeat(3, 1fr)'
+    if (count <= 9) return 'repeat(3, 1fr)'
+    if (count <= 12) return 'repeat(4, 1fr)'
+    return 'repeat(5, 1fr)'
+  }
+
+  const getCardSize = (count: number) => {
+    if (count <= 2) return { minSize: '180px', cardHeight: '160px' }
+    if (count <= 4) return { minSize: '160px', cardHeight: '150px' }
+    if (count <= 6) return { minSize: '140px', cardHeight: '140px' }
+    if (count <= 9) return { minSize: '120px', cardHeight: '130px' }
+    if (count <= 12) return { minSize: '110px', cardHeight: '120px' }
+    return { minSize: '100px', cardHeight: '110px' }
+  }
+
+  const gridClass = getGridClass(cardCount)
+  const cardSize = getCardSize(cardCount)
 
   return (
     <div className={css({
@@ -529,22 +550,38 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
       background: 'gray.50',
       borderRadius: '12px',
       border: '1px solid',
-      borderColor: 'gray.200'
+      borderColor: 'gray.200',
+      maxHeight: '60vh',
+      overflowY: 'auto'
     })}>
       <h4 className={css({
         textAlign: 'center',
         color: 'gray.700',
-        marginBottom: '12px',
+        marginBottom: '16px',
         fontSize: '16px',
         fontWeight: '600'
-      })}>Cards you saw:</h4>
-      <div className={css({
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-        gap: '12px',
-        maxWidth: '100%',
-        margin: '0 auto'
-      })}>
+      })}>Cards you saw ({cardCount}):</h4>
+
+      <div
+        className={css({
+          display: 'grid',
+          gap: '12px',
+          maxWidth: '100%',
+          margin: '0 auto',
+          width: 'fit-content',
+
+          // Responsive overrides with static values
+          '@media (max-width: 768px)': {
+            gap: '10px'
+          },
+          '@media (max-width: 480px)': {
+            gap: '8px'
+          }
+        })}
+        style={{
+          gridTemplateColumns: gridClass
+        }}
+      >
         {state.quizCards.map((card, index) => {
           const isRevealed = state.foundNumbers.includes(card.number)
           return (
@@ -552,8 +589,22 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
               key={`card-${index}-${card.number}`}
               className={css({
                 perspective: '1000px',
-                height: '140px'
+                maxWidth: '200px',
+
+                // Static responsive sizing fallbacks
+                '@media (max-width: 768px)': {
+                  height: '130px',
+                  minWidth: '100px'
+                },
+                '@media (max-width: 480px)': {
+                  height: '120px',
+                  minWidth: '90px'
+                }
               })}
+              style={{
+                height: cardSize.cardHeight,
+                minWidth: cardSize.minSize
+              }}
             >
               <div className={css({
                 position: 'relative',
@@ -578,6 +629,14 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
                   background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
                   color: 'white',
                   fontSize: '48px',
+
+                  // Responsive font sizing
+                  '@media (max-width: 768px)': {
+                    fontSize: '40px'
+                  },
+                  '@media (max-width: 480px)': {
+                    fontSize: '32px'
+                  },
                   fontWeight: 'bold',
                   textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
                   border: '3px solid #5f3dc4'
@@ -585,7 +644,7 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
                   <div className={css({ opacity: 0.8 })}>?</div>
                 </div>
 
-                {/* Card front (revealed state) - using ServerSorobanSVG */}
+                {/* Card front (revealed state) */}
                 <div className={css({
                   position: 'absolute',
                   width: '100%',
@@ -605,18 +664,14 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
                     height: '100%',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    overflow: 'hidden'
                   })}>
-                    <div style={{
-                      transform: 'scale(2.8)',
-                      transformOrigin: 'center'
-                    }}>
-                      <TypstSoroban
-                        number={card.number}
-                        width="100pt"
-                        height="130pt"
-                      />
-                    </div>
+                    <TypstSoroban
+                      number={card.number}
+                      width="120pt"
+                      height="160pt"
+                    />
                   </div>
                 </div>
               </div>
@@ -624,6 +679,28 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
           )
         })}
       </div>
+
+      {/* Summary row for large numbers of cards */}
+      {cardCount > 8 && (
+        <div className={css({
+          marginTop: '12px',
+          padding: '8px 12px',
+          background: 'blue.50',
+          borderRadius: '8px',
+          border: '1px solid',
+          borderColor: 'blue.200',
+          textAlign: 'center',
+          fontSize: '14px',
+          color: 'blue.700'
+        })}>
+          <strong>{state.foundNumbers.length}</strong> of <strong>{cardCount}</strong> cards found
+          {state.foundNumbers.length > 0 && (
+            <span className={css({ marginLeft: '8px', fontWeight: 'normal' })}>
+              ({Math.round((state.foundNumbers.length / cardCount) * 100)}% complete)
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -633,8 +710,12 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   const containerRef = useRef<HTMLDivElement>(null)
   const [displayFeedback, setDisplayFeedback] = useState<'neutral' | 'correct' | 'incorrect'>('neutral')
 
-  const isPrefix = useCallback((input: string, numbers: number[]) => {
-    return numbers.some(n => n.toString().startsWith(input) && n.toString() !== input)
+  const isPrefix = useCallback((input: string, numbers: number[], foundNumbers: number[]) => {
+    return numbers.some(n =>
+      n.toString().startsWith(input) &&
+      n.toString() !== input &&
+      !foundNumbers.includes(n)
+    )
   }, [])
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
@@ -660,7 +741,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
 
     // Check if correct and not already found
     if (state.correctAnswers.includes(number) && !state.foundNumbers.includes(number)) {
-      if (!isPrefix(newInput, state.correctAnswers)) {
+      if (!isPrefix(newInput, state.correctAnswers, state.foundNumbers)) {
         acceptCorrectNumber(number)
       } else {
         const timeout = setTimeout(() => {
@@ -895,8 +976,13 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       </div>
 
 
-      {/* Visual card grid showing cards the user was shown - now more compact */}
-      <div className={css({ marginTop: '16px', flex: 1, overflow: 'auto' })}>
+      {/* Visual card grid showing cards the user was shown */}
+      <div className={css({
+        marginTop: '16px',
+        flex: 1,
+        overflow: 'auto',
+        minHeight: '0' // Allow flex child to shrink
+      })}>
         <CardGrid state={state} />
       </div>
 

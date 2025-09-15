@@ -19,6 +19,65 @@ if (typeof window !== 'undefined') {
   }, 100) // Small delay to avoid blocking initial render
 }
 
+// SVG viewBox optimization - crops SVG to actual content bounds
+function optimizeSvgViewBox(svgString: string): string {
+  try {
+    // Parse SVG to analyze content bounds
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(svgString, 'image/svg+xml')
+    const svgElement = doc.querySelector('svg')
+
+    if (!svgElement) return svgString
+
+    // Create a temporary element to measure bounds
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.visibility = 'hidden'
+    tempDiv.style.top = '-9999px'
+    tempDiv.innerHTML = svgString
+    document.body.appendChild(tempDiv)
+
+    const tempSvg = tempDiv.querySelector('svg')
+    if (!tempSvg) {
+      document.body.removeChild(tempDiv)
+      return svgString
+    }
+
+    // Get the bounding box of all content
+    try {
+      const bbox = tempSvg.getBBox()
+      document.body.removeChild(tempDiv)
+
+      // Add small padding around content (5% of content dimensions)
+      const padding = Math.max(bbox.width, bbox.height) * 0.05
+      const newX = Math.max(0, bbox.x - padding)
+      const newY = Math.max(0, bbox.y - padding)
+      const newWidth = bbox.width + (2 * padding)
+      const newHeight = bbox.height + (2 * padding)
+
+      // Update the viewBox to crop to content bounds
+      const newViewBox = `${newX} ${newY} ${newWidth} ${newHeight}`
+
+      // Replace viewBox and remove fixed dimensions to allow CSS scaling
+      let optimizedSvg = svgString
+        .replace(/viewBox="[^"]*"/, `viewBox="${newViewBox}"`)
+        .replace(/<svg[^>]*width="[^"]*"/, (match) => match.replace(/width="[^"]*"/, ''))
+        .replace(/<svg[^>]*height="[^"]*"/, (match) => match.replace(/height="[^"]*"/, ''))
+
+      console.log(`📐 Optimized SVG: ${bbox.width.toFixed(1)}×${bbox.height.toFixed(1)} content bounds, viewBox optimized for CSS scaling`)
+
+      return optimizedSvg
+    } catch (bboxError) {
+      document.body.removeChild(tempDiv)
+      console.warn('Could not get SVG bounding box, returning original:', bboxError)
+      return svgString
+    }
+  } catch (error) {
+    console.warn('SVG optimization failed, returning original:', error)
+    return svgString
+  }
+}
+
 // Preload WASM and template without blocking - starts in background
 async function preloadTypstWasm() {
   if ($typst || isPreloading || typstInitializationPromise) return
@@ -262,8 +321,8 @@ ${template}
 
 #align(center + horizon)[
   #box(
-    width: ${width} - 2 * (${width} * 0.05),
-    height: ${height} - 2 * (${height} * 0.05)
+    width: ${width},
+    height: ${height}
   )[
     #align(center + horizon)[
       #scale(x: ${scaleFactor * 100}%, y: ${scaleFactor * 100}%)[
@@ -410,7 +469,10 @@ async function generateSVGInBrowser(config: SorobanConfig): Promise<string> {
 
   console.log('✅ Generated browser SVG, length:', svg.length)
 
-  return svg
+  // Optimize viewBox to crop to actual content bounds
+  const optimizedSvg = optimizeSvgViewBox(svg)
+
+  return optimizedSvg
 }
 
 async function generateSVGOnServer(config: SorobanConfig): Promise<string> {
@@ -435,7 +497,11 @@ async function generateSVGOnServer(config: SorobanConfig): Promise<string> {
   }
 
   console.log('🔄 Generated SVG on server, length:', data.svg.length)
-  return data.svg
+
+  // Optimize viewBox to crop to actual content bounds
+  const optimizedSvg = optimizeSvgViewBox(data.svg)
+
+  return optimizedSvg
 }
 
 export async function generateSorobanPreview(
