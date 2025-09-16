@@ -42,8 +42,10 @@ function parseSVGWithTransforms(svgContent) {
 
                 stack.push({ indent, transform, finalTransform });
 
-                // Check if this contains a crop mark
-                if (i + 1 < lines.length && lines[i + 1].includes('fill="#ff4136"')) {
+                // Check if this contains a tiny crop mark point (not the dashed lines)
+                if (i + 1 < lines.length &&
+                    lines[i + 1].includes('fill="#ff4136"') &&
+                    lines[i + 1].includes('0.1 0.1')) {
                     elements.push({
                         type: 'crop-mark',
                         finalTransform,
@@ -125,10 +127,21 @@ function updateSVGViewBox(inputPath, outputPath = null) {
 
     const svgContent = fs.readFileSync(inputPath, 'utf8');
 
-    // Update the viewBox attribute
-    const updatedSVG = svgContent.replace(
+    // Update the viewBox attribute and SVG dimensions to match aspect ratio
+    let updatedSVG = svgContent.replace(
         /viewBox="[^"]*"/,
         `viewBox="${result.viewBox}"`
+    );
+
+    // Update width and height to match the viewBox dimensions for correct aspect ratio
+    updatedSVG = updatedSVG.replace(
+        /width="[^"]*"/,
+        `width="${result.width}pt"`
+    );
+
+    updatedSVG = updatedSVG.replace(
+        /height="[^"]*"/,
+        `height="${result.height}pt"`
     );
 
     const output = outputPath || inputPath.replace('.svg', '-cropped-correct.svg');

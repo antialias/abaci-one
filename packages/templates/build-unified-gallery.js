@@ -171,9 +171,20 @@ function buildUnifiedGallery() {
                             const originalViewBoxMatch = svgContent.match(/viewBox="([^"]*)"/);
                             const originalViewBox = originalViewBoxMatch ? originalViewBoxMatch[1] : 'unknown';
 
-                            const croppedSVG = svgContent.replace(
+                            let croppedSVG = svgContent.replace(
                                 /viewBox="[^"]*"/,
                                 `viewBox="${result.viewBox}"`
+                            );
+
+                            // Update width and height to match the viewBox dimensions for correct aspect ratio
+                            croppedSVG = croppedSVG.replace(
+                                /width="[^"]*"/,
+                                `width="${result.width}pt"`
+                            );
+
+                            croppedSVG = croppedSVG.replace(
+                                /height="[^"]*"/,
+                                `height="${result.height}pt"`
                             );
 
                             cropData = {
@@ -497,11 +508,13 @@ function buildUnifiedGallery() {
         }
 
         .svg-container svg {
-            max-width: 100%;
-            max-height: 300px;
+            width: auto;
+            height: auto;
+            max-height: 400px;
             border: 2px solid rgba(0,0,0,0.1);
             border-radius: 8px;
             background: white;
+            /* Maintain actual proportions to show cropping effect */
         }
 
         .viewbox-info {

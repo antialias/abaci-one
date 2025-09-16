@@ -384,28 +384,28 @@
         #place(
           dx: leftmost-x,
           dy: heaven-earth-gap + bar-thickness / 2 - crop-mark-size / 2,
-          link("crop-mark://left", rect(width: crop-mark-size, height: crop-mark-size, fill: none, stroke: none))
+          link("crop-mark://left", rect(width: 0.1pt, height: 0.1pt, fill: red, stroke: none))
         )
 
         // Right crop mark (small point for algorithm)
         #place(
-          dx: rightmost-x - crop-mark-size,
+          dx: rightmost-x,
           dy: heaven-earth-gap + bar-thickness / 2 - crop-mark-size / 2,
-          link("crop-mark://right", rect(width: crop-mark-size, height: crop-mark-size, fill: none, stroke: none))
+          link("crop-mark://right", rect(width: 0.1pt, height: 0.1pt, fill: red, stroke: none))
         )
 
         // Top crop mark (small point for algorithm)
         #place(
           dx: bar-left + (bar-right - bar-left) / 2 - crop-mark-size / 2,
           dy: topmost-y,
-          link("crop-mark://top", rect(width: crop-mark-size, height: crop-mark-size, fill: none, stroke: none))
+          link("crop-mark://top", rect(width: 0.1pt, height: 0.1pt, fill: red, stroke: none))
         )
 
         // Bottom crop mark (small point for algorithm)
         #place(
           dx: bar-left + (bar-right - bar-left) / 2 - crop-mark-size / 2,
-          dy: bottommost-y - crop-mark-size,
-          link("crop-mark://bottom", rect(width: crop-mark-size, height: crop-mark-size, fill: none, stroke: none))
+          dy: bottommost-y,
+          link("crop-mark://bottom", rect(width: 0.1pt, height: 0.1pt, fill: red, stroke: none))
         )
       ]
 
