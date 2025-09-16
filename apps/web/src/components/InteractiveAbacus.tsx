@@ -320,25 +320,37 @@ export function InteractiveAbacus({
               }
             })}
           >
-            <TypstSoroban
-              number={currentValue}
-              width={compact ? "144pt" : "180pt"}
-              height={compact ? "192pt" : "240pt"}
-              className={css({
-                width: '100%',
-                height: '100%',
-                transition: 'all 0.3s ease',
-                cursor: 'pointer',
-                '& [data-bead-type]': {
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    filter: 'brightness(1.2)',
-                    transform: 'scale(1.05)'
-                  }
-                }
-              })}
-            />
+            <div className={css({
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden'
+            })}>
+              <div className={css({
+                transform: 'scale(2.2)',
+                transformOrigin: 'center'
+              })}>
+                <TypstSoroban
+                  number={currentValue}
+                  width={compact ? "144pt" : "180pt"}
+                  height={compact ? "192pt" : "240pt"}
+                  className={css({
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                    '& [data-bead-type]': {
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      _hover: {
+                        filter: 'brightness(1.2)',
+                        transform: 'scale(1.05)'
+                      }
+                    }
+                  })}
+                />
+              </div>
+            </div>
           </animated.div>
 
           {/* Column-based Value Display */}

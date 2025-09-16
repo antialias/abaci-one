@@ -143,7 +143,9 @@ export function TypstSoroban({
 
         if (signal.aborted) return
 
-        setSvg(generatedSvg)
+        // Crop the SVG to remove whitespace around abacus
+        const croppedSvg = cropSVGToContent(generatedSvg)
+        setSvg(croppedSvg)
         setTimeout(() => onSuccess?.(), 0)
       } catch (err) {
         if (signal.aborted) return
@@ -336,5 +338,68 @@ export function useTypstSoroban(config: SorobanConfig) {
     isLoading,
     error,
     generate
+  }
+}
+
+// SVG cropping function to remove whitespace around abacus content
+function cropSVGToContent(svgContent: string): string {
+  try {
+    const parser = new DOMParser()
+    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml')
+    const svgElement = svgDoc.documentElement
+
+    if (svgElement.tagName !== 'svg') {
+      return svgContent
+    }
+
+    // Get all visible elements and calculate their combined bounding box
+    const elements = svgElement.querySelectorAll('path, circle, rect, line, polygon, ellipse')
+    const bounds: { x: number; y: number; width: number; height: number }[] = []
+
+    elements.forEach(element => {
+      try {
+        const bbox = (element as SVGElement).getBBox()
+        if (bbox.width > 0 && bbox.height > 0) {
+          bounds.push(bbox)
+        }
+      } catch (e) {
+        // Skip elements that can't be measured
+      }
+    })
+
+    if (bounds.length === 0) {
+      return svgContent // No measurable content found
+    }
+
+    // Calculate the combined bounding box
+    const minX = Math.min(...bounds.map(b => b.x))
+    const maxX = Math.max(...bounds.map(b => b.x + b.width))
+    const minY = Math.min(...bounds.map(b => b.y))
+    const maxY = Math.max(...bounds.map(b => b.y + b.height))
+
+    // Add minimal padding
+    const padding = 5
+    const newX = minX - padding
+    const newY = minY - padding
+    const newWidth = (maxX - minX) + (padding * 2)
+    const newHeight = (maxY - minY) + (padding * 2)
+
+    // Create the new viewBox
+    const newViewBox = `${newX} ${newY} ${newWidth} ${newHeight}`
+
+    // Update the SVG viewBox while keeping original width/height
+    let croppedSvg = svgContent.replace(/viewBox="[^"]*"/, `viewBox="${newViewBox}"`)
+
+    // Ensure preserveAspectRatio is set for proper scaling
+    if (!croppedSvg.includes('preserveAspectRatio')) {
+      croppedSvg = croppedSvg.replace('<svg', '<svg preserveAspectRatio="xMidYMid meet"')
+    }
+
+    console.log(`🎯 SVG cropped: ${newWidth.toFixed(1)}x${newHeight.toFixed(1)} content in original SVG`)
+    return croppedSvg
+
+  } catch (error) {
+    console.warn('Failed to crop SVG:', error)
+    return svgContent // Return original if cropping fails
   }
 }
