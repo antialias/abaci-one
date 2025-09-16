@@ -5,8 +5,6 @@ import { useSpring, animated } from '@react-spring/web'
 import NumberFlow from '@number-flow/react'
 import { css } from '../../styled-system/css'
 import { TypstSoroban } from './TypstSoroban'
-import { generateSorobanSVG, type SorobanConfig } from '@/lib/typst-soroban'
-import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
 
 interface InteractiveAbacusProps {
   initialValue?: number
@@ -37,8 +35,6 @@ export function InteractiveAbacus({
   const [disableAnimation, setDisableAnimation] = useState(false)
   const svgRef = useRef<HTMLDivElement>(null)
   const numberRef = useRef<HTMLDivElement>(null)
-  const globalConfig = useAbacusConfig()
-  const [croppedSVG, setCroppedSVG] = useState<string | null>(null)
 
   // Remove the old spring animation since we're using NumberFlow now
 
@@ -287,212 +283,6 @@ export function InteractiveAbacus({
     }
   }, [isEditing])
 
-  // Temporarily disable custom SVG cropping to use TypstSoroban fallback
-  // useEffect(() => {
-  //   const generateCroppedSVG = async () => {
-  //     try {
-  //       console.log('🔄 Generating cropped SVG for value:', currentValue)
-  //       const config: SorobanConfig = {
-  //         number: currentValue,
-  //         width: compact ? "240px" : "300px",
-  //         height: compact ? "320px" : "400px",
-  //         beadShape: globalConfig.beadShape,
-  //         colorScheme: globalConfig.colorScheme,
-  //         hideInactiveBeads: globalConfig.hideInactiveBeads,
-  //         coloredNumerals: globalConfig.coloredNumerals,
-  //         scaleFactor: globalConfig.scaleFactor
-  //       }
-
-  //       const svg = await generateSorobanSVG(config)
-  //       console.log('✅ SVG generated, length:', svg?.length || 0)
-
-  //       if (svg) {
-  //         const processed = processSVGForDisplay(svg, compact ? 240 : 300, compact ? 320 : 400)
-  //         console.log('✅ SVG processed, length:', processed?.length || 0)
-  //         setCroppedSVG(processed)
-  //       } else {
-  //         console.warn('⚠️ No SVG generated')
-  //         setCroppedSVG(null)
-  //       }
-  //     } catch (error) {
-  //       console.error('❌ Failed to generate cropped SVG:', error)
-  //       setCroppedSVG(null)
-  //     }
-  //   }
-
-  //   generateCroppedSVG()
-  // }, [currentValue, compact, globalConfig])
-
-  // SVG processing functions (copied from ServerSorobanSVG)
-  function processSVGForDisplay(svgContent: string, targetWidth: number, targetHeight: number): string {
-    try {
-      // Parse the SVG as DOM to calculate actual content bounds
-      const parser = new DOMParser()
-      const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml')
-      const svgElement = svgDoc.documentElement
-
-      if (svgElement.tagName !== 'svg') {
-        throw new Error('Invalid SVG content')
-      }
-
-      // Get the bounding box of all actual content
-      let bounds = calculateSVGContentBounds(svgElement as unknown as SVGSVGElement)
-
-      if (!bounds) {
-        // Fallback to original if we can't calculate bounds
-        console.warn('Could not calculate SVG bounds, using original')
-        return svgContent
-      }
-
-      // Add reasonable padding around the content
-      const padding = 15
-      const newViewBox = `${bounds.x - padding} ${bounds.y - padding} ${bounds.width + padding * 2} ${bounds.height + padding * 2}`
-
-      // Update the SVG with new dimensions and viewBox
-      let processedSVG = svgContent
-        .replace(/width="[^"]*"/, `width="${targetWidth}"`)
-        .replace(/height="[^"]*"/, `height="${targetHeight}"`)
-        .replace(/viewBox="[^"]*"/, `viewBox="${newViewBox}"`)
-
-      // Ensure responsive scaling
-      if (!processedSVG.includes('preserveAspectRatio')) {
-        processedSVG = processedSVG.replace('<svg', '<svg preserveAspectRatio="xMidYMid meet"')
-      }
-
-      return processedSVG
-    } catch (error) {
-      console.warn('Failed to process SVG:', error)
-      return svgContent // Return original if processing fails
-    }
-  }
-
-  function calculateSVGContentBounds(svgElement: SVGSVGElement): { x: number; y: number; width: number; height: number } | null {
-    try {
-      // For Typst-generated soroban SVGs, we need to manually calculate bounds
-      // because getBBox() doesn't work properly with complex transforms
-
-      // Look for the main content group with the matrix transform
-      const matrixTransform = svgElement.querySelector('[transform*="matrix(4 0 0 4"]')
-
-      if (matrixTransform) {
-        // This is a Typst soroban - calculate bounds based on known structure
-        return calculateTypstSorobanBounds(svgElement, matrixTransform as SVGElement)
-      }
-
-      // For other SVGs, try to get actual bounding box
-      const bbox = svgElement.getBBox()
-      return {
-        x: bbox.x,
-        y: bbox.y,
-        width: bbox.width,
-        height: bbox.height
-      }
-    } catch (error) {
-      console.warn('Error calculating bounds:', error)
-      return null
-    }
-  }
-
-  function calculateTypstSorobanBounds(svgElement: SVGSVGElement, matrixElement: SVGElement): { x: number; y: number; width: number; height: number } {
-    try {
-      // STEP 1: Extract all path elements and calculate their actual coordinates
-      const pathElements = Array.from(svgElement.querySelectorAll('path[d]'))
-      const allPoints: { x: number; y: number }[] = []
-
-      // Parse all path data to get actual coordinates
-      pathElements.forEach(path => {
-        const d = path.getAttribute('d') || ''
-        const coords = extractPathCoordinates(d)
-
-        // Apply all transforms from this path element up to the root
-        const transformedCoords = coords.map(coord => applyElementTransforms(coord, path, svgElement))
-        allPoints.push(...transformedCoords)
-      })
-
-      if (allPoints.length === 0) {
-        // Fallback if no paths found
-        return { x: -50, y: -120, width: 200, height: 350 }
-      }
-
-      // STEP 2: Calculate the bounding box from all transformed points
-      const minX = Math.min(...allPoints.map(p => p.x))
-      const maxX = Math.max(...allPoints.map(p => p.x))
-      const minY = Math.min(...allPoints.map(p => p.y))
-      const maxY = Math.max(...allPoints.map(p => p.y))
-
-      return {
-        x: minX,
-        y: minY,
-        width: maxX - minX,
-        height: maxY - minY
-      }
-    } catch (error) {
-      console.warn('Error in calculateTypstSorobanBounds:', error)
-      // Safe fallback
-      return { x: -50, y: -120, width: 200, height: 350 }
-    }
-  }
-
-  function extractPathCoordinates(pathData: string): { x: number; y: number }[] {
-    const coords: { x: number; y: number }[] = []
-
-    // Simple regex to extract M, L coordinates (handles most soroban paths)
-    const moveToRegex = /M\s*([\d.-]+)\s+([\d.-]+)/g
-    const lineToRegex = /L\s*([\d.-]+)\s+([\d.-]+)/g
-
-    let match
-    while ((match = moveToRegex.exec(pathData)) !== null) {
-      coords.push({ x: parseFloat(match[1]), y: parseFloat(match[2]) })
-    }
-
-    while ((match = lineToRegex.exec(pathData)) !== null) {
-      coords.push({ x: parseFloat(match[1]), y: parseFloat(match[2]) })
-    }
-
-    return coords
-  }
-
-  function applyElementTransforms(point: { x: number; y: number }, element: Element, rootSVG: SVGSVGElement): { x: number; y: number } {
-    let current: Element | null = element
-    let transformedPoint = { ...point }
-
-    // Apply transforms from element up to root
-    while (current && current !== rootSVG) {
-      const transform = current.getAttribute('transform')
-      if (transform) {
-        transformedPoint = applyTransformToPoint(transformedPoint, transform)
-      }
-      current = current.parentElement
-    }
-
-    return transformedPoint
-  }
-
-  function applyTransformToPoint(point: { x: number; y: number }, transformString: string): { x: number; y: number } {
-    let result = { ...point }
-
-    // Handle matrix transform
-    const matrixMatch = transformString.match(/matrix\(([\d.-]+)[\s,]+([\d.-]+)[\s,]+([\d.-]+)[\s,]+([\d.-]+)[\s,]+([\d.-]+)[\s,]+([\d.-]+)\)/)
-    if (matrixMatch) {
-      const [, a, b, c, d, e, f] = matrixMatch.map(Number)
-      result = {
-        x: a * point.x + c * point.y + e,
-        y: b * point.x + d * point.y + f
-      }
-    }
-
-    // Handle translate transform
-    const translateMatch = transformString.match(/translate\(([\d.-]+)[\s,]+([\d.-]+)\)/)
-    if (translateMatch) {
-      const [, tx, ty] = translateMatch.map(Number)
-      result = {
-        x: result.x + tx,
-        y: result.y + ty
-      }
-    }
-
-    return result
-  }
 
   return (
     <div className={className}>
@@ -530,56 +320,25 @@ export function InteractiveAbacus({
               }
             })}
           >
-            {/* Fallback to TypstSoroban if cropped SVG fails */}
-            {croppedSVG ? (
-              <div
-                className={css({
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.3s ease',
+            <TypstSoroban
+              number={currentValue}
+              width={compact ? "144pt" : "180pt"}
+              height={compact ? "192pt" : "240pt"}
+              className={css({
+                width: '100%',
+                height: '100%',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                '& [data-bead-type]': {
                   cursor: 'pointer',
-                  '& [data-bead-type]': {
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    _hover: {
-                      filter: 'brightness(1.2)',
-                      transform: 'scale(1.05)'
-                    }
-                  },
-                  '& svg': {
-                    width: '100%',
-                    height: '100%',
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    objectFit: 'contain'
+                  transition: 'all 0.2s ease',
+                  _hover: {
+                    filter: 'brightness(1.2)',
+                    transform: 'scale(1.05)'
                   }
-                })}
-                dangerouslySetInnerHTML={{ __html: croppedSVG }}
-              />
-            ) : (
-              <TypstSoroban
-                number={currentValue}
-                width={compact ? "144pt" : "180pt"}
-                height={compact ? "192pt" : "240pt"}
-                className={css({
-                  width: '100%',
-                  height: '100%',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer',
-                  '& [data-bead-type]': {
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    _hover: {
-                      filter: 'brightness(1.2)',
-                      transform: 'scale(1.05)'
-                    }
-                  }
-                })}
-              />
-            )}
+                }
+              })}
+            />
           </animated.div>
 
           {/* Column-based Value Display */}
