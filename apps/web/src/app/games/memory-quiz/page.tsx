@@ -500,15 +500,19 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
           justifyContent: 'center',
           margin: '0 auto',
           transition: 'transform 0.3s ease',
-          '& svg': {
-            width: '100%',
-            height: '100%',
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain'
-          }
+          overflow: 'hidden'
         })}>
-          {currentCard.svgComponent}
+          <div className={css({
+            transform: 'scale(1.5)',
+            transformOrigin: 'center'
+          })}>
+            <TypstSoroban
+              number={currentCard.number}
+              width="240pt"
+              height="320pt"
+              transparent={true}
+            />
+          </div>
         </div>
       )}
     </div>
