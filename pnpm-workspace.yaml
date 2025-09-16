@@ -1,5 +1,6 @@
 packages:
   - 'apps/*'
+  - 'packages/templates'
   - 'packages/core/client/node'
   - 'packages/core/client/typescript'
   - 'packages/core/client/browser'
