@@ -414,31 +414,30 @@
         }
 
         async function generateTypstSvg(example) {
-            // Load the actual generated SVG file from gallery/
+            // For local file access, we'll show a clickable link to the SVG
+            // This avoids CORS issues with fetch() on local files
             const svgPath = `gallery/${example.id}.svg`;
 
-            try {
-                const response = await fetch(svgPath);
-                if (!response.ok) {
-                    throw new Error(`Failed to load ${svgPath}: ${response.status}`);
-                }
-                const svgContent = await response.text();
-                return svgContent;
-            } catch (error) {
-                // If we can't load the SVG file, show an error message
-                return `
-                    <div style="text-align: center; padding: 20px; color: #666;">
-                        <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
-                        <div>SVG file not found</div>
-                        <div style="font-size: 0.8rem; margin-top: 5px;">
-                            Run <code>npm run gallery</code> to generate SVGs
+            return `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="border: 2px dashed #ddd; border-radius: 8px; padding: 40px; margin-bottom: 15px;">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">🧮</div>
+                        <div style="font-weight: 600; margin-bottom: 10px;">Soroban for ${example.number}</div>
+                        <div style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+                            ${example.config.bead_shape} beads, ${example.config.color_scheme} colors
                         </div>
-                        <div style="font-size: 0.8rem; color: #999;">
-                            Looking for: ${svgPath}
-                        </div>
+                        <a href="${svgPath}"
+                           target="_blank"
+                           style="display: inline-block; background: #3498db; color: white; padding: 10px 20px;
+                                  border-radius: 5px; text-decoration: none; font-weight: 500;">
+                            📖 Open SVG File
+                        </a>
                     </div>
-                `;
-            }
+                    <div style="font-size: 0.8rem; color: #999;">
+                        File: ${svgPath}
+                    </div>
+                </div>
+            `;
         }
 
 

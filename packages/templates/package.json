@@ -30,8 +30,9 @@
     "examples:node": "node examples/node-example.js",
     "examples:python": "python3 examples/python-example.py",
     "gallery": "node generate-gallery.js",
-    "gallery:open": "npm run gallery && open gallery.html",
-    "gallery:clean": "rm -rf gallery/"
+    "gallery:build": "node build-gallery.js",
+    "gallery:static": "npm run gallery && npm run gallery:build && open gallery-static.html",
+    "gallery:clean": "rm -rf gallery/ gallery-static.html gallery-embedded.html"
   },
   "keywords": [
     "typst",
