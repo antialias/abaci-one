@@ -37,7 +37,20 @@ jobs:
           sudo mv typst-x86_64-unknown-linux-musl/typst /usr/local/bin/
           typst --version
 
-      - name: Generate example SVGs
+      - name: Setup Node.js for gallery generation
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Generate example SVGs and gallery
         working-directory: packages/templates
         run: |
           echo "🎨 Generating fresh example renderings..."
@@ -61,25 +74,36 @@ jobs:
             typst compile --root . --format svg examples/example-single-card.typ examples/example-single-card-{p}.svg
           fi
 
+          echo "🎯 Generating crop mark examples and unified gallery..."
+
+          # Generate comprehensive gallery with crop mark examples
+          node generate-gallery.js
+          node build-unified-gallery.js
+
           echo "✅ Example generation completed"
 
           # List generated files
           echo "📂 Generated files:"
-          ls -la examples/*.svg || echo "No SVG files found"
+          ls -la examples/*.svg 2>/dev/null || echo "No example SVG files found"
+          echo "📂 Gallery files:"
+          ls -la gallery/*.svg 2>/dev/null || echo "No gallery SVG files found"
+          ls -la gallery-unified.html 2>/dev/null || echo "No unified gallery found"
 
       - name: Check for changes
         id: changes
         run: |
-          # Add all SVG files to staging to check for changes
+          # Add all SVG files and gallery to staging to check for changes
           git add packages/templates/examples/*.svg 2>/dev/null || true
+          git add packages/templates/gallery/*.svg 2>/dev/null || true
+          git add packages/templates/gallery-unified.html 2>/dev/null || true
 
           # Check if there are any staged changes
           if git diff --cached --quiet; then
             echo "changed=false" >> $GITHUB_OUTPUT
-            echo "📄 No changes detected in example SVGs"
+            echo "📄 No changes detected in examples or gallery"
           else
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "📄 Changes detected in example SVGs:"
+            echo "📄 Changes detected in examples and gallery:"
             git diff --cached --name-only
             echo ""
             echo "🔍 Detailed changes:"
@@ -94,9 +118,10 @@ jobs:
           git config --local user.name "github-actions[bot]"
 
           # The files are already staged from the previous step
-          git commit -m "🎨 Update template example renderings
+          git commit -m "🎨 Update template examples and crop mark gallery
 
-          Auto-generated fresh SVG examples from latest templates.
+          Auto-generated fresh SVG examples and unified gallery from latest templates.
+          Includes comprehensive crop mark demonstrations with before/after comparisons.
 
           Files updated:
           $(git diff --cached --name-only | sed 's/^/- /')
@@ -119,12 +144,23 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.changes.outputs.changed }}" == "true" ]; then
-            echo "✅ **Examples updated successfully**" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Examples and gallery updated successfully**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The following example SVGs were regenerated:" >> $GITHUB_STEP_SUMMARY
+            echo "The following files were regenerated:" >> $GITHUB_STEP_SUMMARY
+            echo "### 📚 Example SVGs:" >> $GITHUB_STEP_SUMMARY
             echo "- example-5-1.svg (Number 5 with diamond beads)" >> $GITHUB_STEP_SUMMARY
             echo "- example-123-1.svg (Number 123 with circle beads)" >> $GITHUB_STEP_SUMMARY
             echo "- example-single-card-1.svg (Single card for number 42)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ✂️ Crop Mark Gallery:" >> $GITHUB_STEP_SUMMARY
+            echo "- **gallery-unified.html** - Comprehensive gallery with before/after crop comparisons" >> $GITHUB_STEP_SUMMARY
+            echo "- **gallery/*.svg** - Complete set of crop mark demonstration examples" >> $GITHUB_STEP_SUMMARY
+            echo "- Examples include: basic numbers, crop processing demos, debug visualizations" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🔧 Post-Processing Features:" >> $GITHUB_STEP_SUMMARY
+            echo "- **ViewBox optimization** - 60-80% size reduction through crop mark detection" >> $GITHUB_STEP_SUMMARY
+            echo "- **Interactive annotations** - HTML5 data attributes for bead manipulation" >> $GITHUB_STEP_SUMMARY
+            echo "- **Aspect ratio preservation** - Automatic width/height adjustment" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Changes have been committed and pushed to the main branch." >> $GITHUB_STEP_SUMMARY
           else
