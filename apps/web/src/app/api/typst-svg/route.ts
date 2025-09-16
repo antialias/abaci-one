@@ -40,54 +40,15 @@ async function getFlashcardsTemplate(): Promise<string> {
 }
 
 function processBeadAnnotations(svg: string): string {
-  // Process each bead link and add data attributes to the bead shapes
-  return svg.replace(
-    /<a[^>]*xlink:href="bead:\/\/([^"]*)"[^>]*>(.*?)<\/a>/gs,
-    (match, beadId, content) => {
-      // Parse the bead ID to extract metadata
-      const parts = beadId.split('-')
-      let beadType = ''
-      let column = ''
-      let position = ''
-      let active = ''
+  const { extractBeadAnnotations } = require('@soroban/templates')
+  const result = extractBeadAnnotations(svg)
 
-      if (parts[0] === 'heaven') {
-        beadType = 'heaven'
-        column = parts[1].replace('col', '')
-        active = parts[2].replace('active', '')
-      } else if (parts[0] === 'earth') {
-        beadType = 'earth'
-        column = parts[1].replace('col', '')
-        position = parts[2].replace('pos', '')
-        active = parts[3].replace('active', '')
-      }
+  if (result.warnings.length > 0) {
+    console.log('ℹ️ SVG bead processing warnings:', result.warnings)
+  }
 
-      // Create data attribute string
-      const dataAttrs = `data-bead-type="${beadType}" data-bead-column="${column}"${position ? ` data-bead-position="${position}"` : ''} data-bead-active="${active}"`
-
-      // Find the actual bead shape path and add data attributes to it
-      // Look for path elements that have the diamond shape pattern (M 0 0 M 8.4 0 L 16.8 6...)
-      let processedContent = content.replace(
-        /(<path[^>]*class="typst-shape"[^>]*d="M 0 0 M 8\.4 0 L 16\.8 6[^"]*"[^>]*)(\/?>)/g,
-        `$1 ${dataAttrs}$2`
-      )
-
-      // Also add to any other path, rect, circle, or polygon elements as fallback
-      processedContent = processedContent.replace(
-        /(<(?:path|rect|circle|polygon)[^>]*class="(?!pseudo-link)[^"]*"[^>]*)(\/?>)/g,
-        (shapeMatch, beforeClosing, closing) => {
-          // Only add if data attributes aren't already present
-          if (beforeClosing.includes('data-bead-type')) {
-            return shapeMatch
-          }
-          return `${beforeClosing} ${dataAttrs}${closing}`
-        }
-      )
-
-      // Return just the content without the <a> wrapper
-      return processedContent
-    }
-  )
+  console.log(`🔗 Processed ${result.count} bead links into data attributes`)
+  return result.processedSVG
 }
 
 function createTypstContent(config: TypstSVGRequest, template: string): string {
