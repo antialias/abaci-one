@@ -88,6 +88,9 @@ importers:
       '@soroban/core':
         specifier: workspace:*
         version: link:../../packages/core/client/node
+      '@soroban/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
       '@tanstack/react-form':
         specifier: ^0.19.0
         version: 0.19.0(@types/react@18.0.0)(react-dom@18.0.0)(react@18.0.0)
@@ -196,6 +199,8 @@ importers:
       vitest:
         specifier: ^1.0.0
         version: 1.0.0(@types/node@20.0.0)(jsdom@27.0.0)
+
+  packages/templates: {}
 
 packages:
 
