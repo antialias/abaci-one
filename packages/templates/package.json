@@ -28,7 +28,10 @@
     "verify": "npm run test:validate && npm run test:node && npm run test:python",
     "examples": "echo 'Running examples...' && node examples/node-example.js && python3 examples/python-example.py",
     "examples:node": "node examples/node-example.js",
-    "examples:python": "python3 examples/python-example.py"
+    "examples:python": "python3 examples/python-example.py",
+    "gallery": "node generate-gallery.js",
+    "gallery:open": "npm run gallery && open gallery.html",
+    "gallery:clean": "rm -rf gallery/"
   },
   "keywords": [
     "typst",
