@@ -54,7 +54,34 @@ with open(FLASHCARDS_TEMPLATE, 'r') as f:
 - ✅ Monorepo support (PNPM workspaces, uv)
 - ✅ TypeScript definitions included
 
-[Jump to examples →](#-usage-examples) • [See all features →](#-template-features)
+[Jump to examples →](#-usage-examples) • [See renderings →](#-example-renderings) • [See all features →](#-template-features)
+
+## 🎨 Example Renderings
+
+Here are some sample outputs from the templates to show what you can generate:
+
+### Number 5 - Place Value Colors with Diamond Beads
+
+<img src="examples/example-5-1.svg" alt="Soroban representation of number 5 with diamond beads and place-value coloring" width="400"/>
+
+**Template used:** `flashcards.typ`
+**Configuration:** `draw-soroban(5, bead-shape: "diamond", color-scheme: "place-value")`
+
+### Number 123 - Heaven-Earth Colors with Circle Beads
+
+<img src="examples/example-123-1.svg" alt="Soroban representation of number 123 with circle beads and heaven-earth coloring" width="500"/>
+
+**Template used:** `flashcards.typ`
+**Configuration:** `draw-soroban(123, bead-shape: "circle", color-scheme: "heaven-earth")`
+
+### Single Card - Number 42
+
+<img src="examples/example-single-card-1.svg" alt="Single flashcard showing number 42 as soroban" width="280"/>
+
+**Template used:** `single-card.typ`
+**Configuration:** `generate-single-card(42, side: "front", color-scheme: "place-value")`
+
+> 💡 **Tip:** All templates support multiple bead shapes (`diamond`, `circle`, `square`), color schemes (`monochrome`, `place-value`, `heaven-earth`, `alternating`), and various customization options.
 
 ## 📋 Template Features
 

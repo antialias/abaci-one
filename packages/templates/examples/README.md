@@ -1,8 +1,24 @@
 # @soroban/templates - Usage Examples
 
-This directory contains practical examples showing how to use the `@soroban/templates` package in different environments.
+This directory contains practical examples showing how to use the `@soroban/templates` package in different environments, plus visual examples with rendered output.
 
-## 📁 Examples Overview
+## 🎨 Visual Examples
+
+These files demonstrate template rendering with actual output:
+
+| File | Output | Description |
+|------|--------|-------------|
+| [`example-5.typ`](./example-5.typ) | [`example-5-1.svg`](./example-5-1.svg) | Simple number 5 with place-value colors and diamond beads |
+| [`example-123.typ`](./example-123.typ) | [`example-123-1.svg`](./example-123-1.svg) | Number 123 with heaven-earth colors and circle beads |
+| [`example-single-card.typ`](./example-single-card.typ) | [`example-single-card-1.svg`](./example-single-card-1.svg) | Single flashcard format for number 42 |
+
+**To generate your own:**
+```bash
+# From packages/templates directory
+typst compile --root . --format svg examples/example-5.typ examples/my-output-{p}.svg
+```
+
+## 📁 Code Examples Overview
 
 | File | Environment | Description |
 |------|-------------|-------------|
