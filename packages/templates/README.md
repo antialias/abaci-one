@@ -97,6 +97,7 @@ Here are some sample outputs from the templates to show what you can generate:
   - Custom column counts
   - Scale factors
   - Interactive bead annotations
+  - **Crop marks**: Invisible viewBox boundaries for consistent SVG cropping
 
 ### `single-card.typ` - Optimized Single Cards
 
@@ -105,6 +106,120 @@ Here are some sample outputs from the templates to show what you can generate:
 - **PNG Export Ready**: Transparent backgrounds supported
 - **Custom Dimensions**: Configurable width/height
 - **Font Options**: Family, size, colored numerals
+- **Crop marks**: Invisible viewBox boundaries for consistent SVG cropping
+
+## 🎯 Crop Marks & SVG Processing
+
+Both templates include **crop marks** - invisible elements that define precise boundaries for consistent viewBox handling, eliminating the need for manual SVG cropping.
+
+### Crop Marks System
+
+- **Purpose**: Define consistent viewBox boundaries across all generated SVGs
+- **Implementation**: Invisible rectangles placed at the four corners and center
+- **Annotation**: Each crop mark is annotated using `link("crop-mark://position", element)`
+- **Debugging**: Set `show-crop-marks: true` to make marks visible in red
+
+### Usage
+
+```typst
+// flashcards.typ - invisible crop marks (default)
+#draw-soroban(123, show-crop-marks: false, crop-margin: 10pt)
+
+// flashcards.typ - visible crop marks for debugging
+#draw-soroban(123, show-crop-marks: true, crop-margin: 15pt)
+
+// single-card.typ - invisible crop marks (default)
+#generate-single-card(42, show-crop-marks: false, crop-margin: 10pt)
+
+// single-card.typ - visible crop marks for debugging
+#generate-single-card(42, show-crop-marks: true, crop-margin: 15pt)
+```
+
+### Link Annotation System
+
+Both templates use Typst's `link()` function to annotate elements for post-processing:
+
+- **Beads**: `link("bead://column-position-type", bead-element)`
+- **Crop Marks**: `link("crop-mark://position", mark-element)`
+
+**Note**: Link annotations are exported to PDF format but not SVG. For SVG processing, the crop marks work as invisible positioning elements that can be identified by their precise coordinates and styling.
+
+Example annotations in generated PDFs:
+- `bead://col1-ones-heaven` - Heaven bead in column 1, ones position
+- `bead://col2-tens-earth-1` - First earth bead in column 2, tens position
+- `crop-mark://top-left` - Top-left crop boundary
+- `crop-mark://center` - Center reference point
+
+### SVG Crop Mark Processing
+
+For SVG files, crop marks can be identified by their coordinates and used for precise viewBox calculation:
+
+```javascript
+const fs = require('fs');
+const { JSDOM } = require('jsdom');
+
+function findCropMarks(svgPath) {
+  const svgContent = fs.readFileSync(svgPath, 'utf-8');
+  const dom = new JSDOM(svgContent);
+  const document = dom.window.document;
+
+  // Crop marks are invisible rectangles with stroke-width="0"
+  const invisibleRects = document.querySelectorAll('rect[stroke-width="0"]');
+
+  let cropBounds = {
+    minX: Infinity, maxX: -Infinity,
+    minY: Infinity, maxY: -Infinity
+  };
+
+  invisibleRects.forEach(rect => {
+    const parent = rect.closest('g[transform]');
+    if (parent) {
+      const transform = parent.getAttribute('transform');
+      const translateMatch = transform.match(/translate\(([^)]+)\)/);
+
+      if (translateMatch) {
+        const [x, y] = translateMatch[1].split(' ').map(Number);
+        cropBounds.minX = Math.min(cropBounds.minX, x);
+        cropBounds.maxX = Math.max(cropBounds.maxX, x);
+        cropBounds.minY = Math.min(cropBounds.minY, y);
+        cropBounds.maxY = Math.max(cropBounds.maxY, y);
+      }
+    }
+  });
+
+  return cropBounds;
+}
+
+function updateViewBox(svgPath, outputPath) {
+  const bounds = findCropMarks(svgPath);
+  const svgContent = fs.readFileSync(svgPath, 'utf-8');
+
+  // Calculate new viewBox from crop marks
+  const width = bounds.maxX - bounds.minX;
+  const height = bounds.maxY - bounds.minY;
+  const newViewBox = `${bounds.minX} ${bounds.minY} ${width} ${height}`;
+
+  // Update viewBox in SVG
+  const updatedSvg = svgContent.replace(
+    /viewBox="[^"]*"/,
+    `viewBox="${newViewBox}"`
+  );
+
+  fs.writeFileSync(outputPath, updatedSvg);
+  console.log(`Updated viewBox to: ${newViewBox}`);
+}
+
+// Usage
+updateViewBox('soroban.svg', 'cropped-soroban.svg');
+```
+
+**Crop Mark Processing Features:**
+- **Automatic ViewBox**: Calculate precise viewBox from crop mark positions
+- **Consistent Cropping**: Eliminate manual SVG cropping across all generated files
+- **Debugging Support**: Set `show-crop-marks: true` to visually verify boundaries
+- **Flexible Margins**: Adjust `crop-margin` to control boundary spacing
+
+**Example Usage Script:** See `examples/svg-post-processor.js` for a complete implementation
 
 ## 🔧 Installation & Setup
 

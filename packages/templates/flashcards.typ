@@ -1,4 +1,4 @@
-#let draw-soroban(value, columns: auto, show-empty: false, hide-inactive: false, bead-shape: "diamond", color-scheme: "monochrome", color-palette: "default", base-size: 1.0) = {
+#let draw-soroban(value, columns: auto, show-empty: false, hide-inactive: false, bead-shape: "diamond", color-scheme: "monochrome", color-palette: "default", base-size: 1.0, show-crop-marks: false, crop-margin: 10pt) = {
   // Parse the value into digits
   let digits = if type(value) == int {
     str(value).clusters().map(d => int(d))
@@ -293,6 +293,89 @@
           stroke: none
         )
       )
+
+      // Add crop marks for consistent viewBox handling
+      // These marks define the intended crop boundaries
+      #let crop-mark-size = 2pt * base-size
+      #let crop-mark-stroke = if show-crop-marks { 0.5pt } else { 0pt }
+      #let crop-mark-color = if show-crop-marks { red } else { none }
+
+      // Calculate crop boundaries with margin
+      #let crop-left = -crop-margin
+      #let crop-right = total-width + crop-margin
+      #let crop-top = -total-height / 2 - crop-margin
+      #let crop-bottom = total-height / 2 + crop-margin
+
+      // Top-left crop mark
+      #place(
+        dx: crop-left,
+        dy: crop-top,
+        link("crop-mark://top-left",
+          rect(
+            width: crop-mark-size,
+            height: crop-mark-size,
+            fill: crop-mark-color,
+            stroke: crop-mark-stroke + crop-mark-color
+          )
+        )
+      )
+
+      // Top-right crop mark
+      #place(
+        dx: crop-right - crop-mark-size,
+        dy: crop-top,
+        link("crop-mark://top-right",
+          rect(
+            width: crop-mark-size,
+            height: crop-mark-size,
+            fill: crop-mark-color,
+            stroke: crop-mark-stroke + crop-mark-color
+          )
+        )
+      )
+
+      // Bottom-left crop mark
+      #place(
+        dx: crop-left,
+        dy: crop-bottom - crop-mark-size,
+        link("crop-mark://bottom-left",
+          rect(
+            width: crop-mark-size,
+            height: crop-mark-size,
+            fill: crop-mark-color,
+            stroke: crop-mark-stroke + crop-mark-color
+          )
+        )
+      )
+
+      // Bottom-right crop mark
+      #place(
+        dx: crop-right - crop-mark-size,
+        dy: crop-bottom - crop-mark-size,
+        link("crop-mark://bottom-right",
+          rect(
+            width: crop-mark-size,
+            height: crop-mark-size,
+            fill: crop-mark-color,
+            stroke: crop-mark-stroke + crop-mark-color
+          )
+        )
+      )
+
+      // Center reference mark (for debugging alignment)
+      #if show-crop-marks {
+        place(
+          dx: total-width / 2 - crop-mark-size / 2,
+          dy: -crop-mark-size / 2,
+          link("crop-mark://center",
+            circle(
+              radius: crop-mark-size / 2,
+              fill: rgb("#ff6b6b"),
+              stroke: 0.5pt + rgb("#ff6b6b")
+            )
+          )
+        )
+      }
     ]
   ]
 }
