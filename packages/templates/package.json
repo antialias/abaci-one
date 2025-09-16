@@ -29,7 +29,7 @@
     "examples": "echo 'Running examples...' && node examples/node-example.js && python3 examples/python-example.py",
     "examples:node": "node examples/node-example.js",
     "examples:python": "python3 examples/python-example.py",
-    "gallery": "node generate-gallery.js && node build-gallery.js && open gallery-static.html",
+    "gallery": "node generate-gallery.js && node build-unified-gallery.js && open gallery-unified.html",
     "gallery:clean": "rm -rf gallery/ gallery-static.html"
   },
   "keywords": [

@@ -296,52 +296,116 @@
 
       // Draw crop marks if enabled
       #if show-crop-marks [
-        // Calculate actual extremes based on what we just drew
         #let crop-mark-size = 3pt
-        #let bead-half-width = if bead-shape == "diamond" {
-          bead-size * 0.7
+
+        // Calculate bead diameter for positioning rules
+        #let bead-diameter = if bead-shape == "diamond" {
+          bead-size * 1.4  // Diamond width is about 1.4x the base size
         } else {
-          bead-size / 2
+          bead-size  // Circle and square use base size as diameter
         }
 
-        // Redefine gaps for crop mark calculations
-        #let active-gap = 1pt
-        #let inactive-gap = 8pt
+        // Calculate reckoning bar boundaries
+        #let bar-left = 0pt
+        #let bar-right = (display-digits.len() - 1) * column-spacing + column-spacing
+        #let bar-top = heaven-earth-gap
+        #let bar-bottom = heaven-earth-gap + bar-thickness
 
-        // Calculate actual bead boundaries
-        #let leftmost-x = column-spacing / 2 - bead-half-width - crop-margin
-        #let rightmost-x = (display-digits.len() - 1) * column-spacing + column-spacing / 2 + bead-half-width + crop-margin
+        // New positioning rules (unconditional):
+        // Left: one bead diameter to the left of the reckoning bar
+        #let leftmost-x = bar-left - bead-diameter
 
-        // Top and bottom based on actual bead positions (one bead height beyond extremes)
-        #let topmost-y = heaven-earth-gap - inactive-gap - bead-size - crop-margin
-        #let bottommost-y = heaven-earth-gap + bar-thickness + active-gap + 4 * (bead-size + adjacent-spacing) + crop-margin
+        // Right: one bead diameter to the right of the right edge of the reckoning bar
+        #let rightmost-x = bar-right + bead-diameter
 
-        // Left crop mark (at leftmost boundary, centered on reckoning bar)
+        // Top: 2.5 bead diameters from the top of the reckoning bar
+        #let topmost-y = bar-top - 2.5 * bead-diameter
+
+        // Bottom: 5.5 bead diameters from the bottom of the reckoning bar
+        #let bottommost-y = bar-bottom + 5.5 * bead-diameter
+
+        // Calculate SVG bounds for full-width crop lines
+        #let svg-left = -50pt  // Extend well beyond content
+        #let svg-right = total-width + 50pt
+        #let svg-top = -50pt
+        #let svg-bottom = total-height + 50pt
+
+        // Visual dashed crop lines for clarity (no links)
+        // Left crop line - dashed vertical line from top crop to bottom crop
+        #place(
+          dx: leftmost-x,
+          dy: topmost-y,
+          rect(
+            width: 0.5pt,
+            height: bottommost-y - topmost-y,
+            fill: red,
+            stroke: (paint: red, thickness: 0.5pt, dash: "dashed")
+          )
+        )
+
+        // Right crop line - dashed vertical line from top crop to bottom crop
+        #place(
+          dx: rightmost-x,
+          dy: topmost-y,
+          rect(
+            width: 0.5pt,
+            height: bottommost-y - topmost-y,
+            fill: red,
+            stroke: (paint: red, thickness: 0.5pt, dash: "dashed")
+          )
+        )
+
+        // Top crop line - dashed horizontal line from left crop to right crop
+        #place(
+          dx: leftmost-x,
+          dy: topmost-y,
+          rect(
+            width: rightmost-x - leftmost-x,
+            height: 0.5pt,
+            fill: red,
+            stroke: (paint: red, thickness: 0.5pt, dash: "dashed")
+          )
+        )
+
+        // Bottom crop line - dashed horizontal line from left crop to right crop
+        #place(
+          dx: leftmost-x,
+          dy: bottommost-y,
+          rect(
+            width: rightmost-x - leftmost-x,
+            height: 0.5pt,
+            fill: red,
+            stroke: (paint: red, thickness: 0.5pt, dash: "dashed")
+          )
+        )
+
+        // Small point markers for viewBox extraction algorithm (linked)
+        // Left crop mark (small point for algorithm)
         #place(
           dx: leftmost-x,
           dy: heaven-earth-gap + bar-thickness / 2 - crop-mark-size / 2,
-          link("crop-mark://left", rect(width: crop-mark-size, height: crop-mark-size, fill: red, stroke: 0.5pt + red))
+          link("crop-mark://left", rect(width: crop-mark-size, height: crop-mark-size, fill: none, stroke: none))
         )
 
-        // Right crop mark (at rightmost boundary, centered on reckoning bar)
+        // Right crop mark (small point for algorithm)
         #place(
           dx: rightmost-x - crop-mark-size,
           dy: heaven-earth-gap + bar-thickness / 2 - crop-mark-size / 2,
-          link("crop-mark://right", rect(width: crop-mark-size, height: crop-mark-size, fill: red, stroke: 0.5pt + red))
+          link("crop-mark://right", rect(width: crop-mark-size, height: crop-mark-size, fill: none, stroke: none))
         )
 
-        // Top crop mark (above topmost bead, centered on first column)
+        // Top crop mark (small point for algorithm)
         #place(
-          dx: column-spacing / 2 - crop-mark-size / 2,
+          dx: bar-left + (bar-right - bar-left) / 2 - crop-mark-size / 2,
           dy: topmost-y,
-          link("crop-mark://top", rect(width: crop-mark-size, height: crop-mark-size, fill: red, stroke: 0.5pt + red))
+          link("crop-mark://top", rect(width: crop-mark-size, height: crop-mark-size, fill: none, stroke: none))
         )
 
-        // Bottom crop mark (below bottommost bead, centered on last column)
+        // Bottom crop mark (small point for algorithm)
         #place(
-          dx: (display-digits.len() - 1) * column-spacing + column-spacing / 2 - crop-mark-size / 2,
+          dx: bar-left + (bar-right - bar-left) / 2 - crop-mark-size / 2,
           dy: bottommost-y - crop-mark-size,
-          link("crop-mark://bottom", rect(width: crop-mark-size, height: crop-mark-size, fill: red, stroke: 0.5pt + red))
+          link("crop-mark://bottom", rect(width: crop-mark-size, height: crop-mark-size, fill: none, stroke: none))
         )
       ]
 
