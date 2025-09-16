@@ -95,6 +95,9 @@ const FLASHCARDS_TEMPLATE = getTemplatePath('flashcards.typ');
  */
 const SINGLE_CARD_TEMPLATE = getTemplatePath('single-card.typ');
 
+// Import SVG post-processor
+const svgProcessor = require('./svg-crop-processor');
+
 /**
  * Template exports for Node.js/TypeScript environments.
  *
@@ -109,5 +112,17 @@ module.exports = {
   /** @see {SINGLE_CARD_TEMPLATE} */
   SINGLE_CARD_TEMPLATE,
   /** @see {getTemplatePath} */
-  getTemplatePath
+  getTemplatePath,
+
+  // SVG Post-Processing
+  /** @see {svg-crop-processor} */
+  processSVG: svgProcessor.processSVG,
+  /** @see {svg-crop-processor} */
+  processSVGFile: svgProcessor.processSVGFile,
+  /** @see {svg-crop-processor} */
+  extractCropMarks: svgProcessor.extractCropMarks,
+  /** @see {svg-crop-processor} */
+  extractBeadAnnotations: svgProcessor.extractBeadAnnotations,
+  /** @see {svg-crop-processor} */
+  SVGCropError: svgProcessor.SVGCropError
 };
