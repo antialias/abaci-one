@@ -668,11 +668,16 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
                     justifyContent: 'center',
                     overflow: 'hidden'
                   })}>
-                    <TypstSoroban
-                      number={card.number}
-                      width="120pt"
-                      height="160pt"
-                    />
+                    <div className={css({
+                      transform: 'scale(2.2)',
+                      transformOrigin: 'center'
+                    })}>
+                      <TypstSoroban
+                        number={card.number}
+                        width="120pt"
+                        height="160pt"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -838,11 +843,16 @@ function ResultsCardGrid({ state }: { state: SorobanQuizState }) {
                     justifyContent: 'center',
                     overflow: 'hidden'
                   })}>
-                    <TypstSoroban
-                      number={card.number}
-                      width="120pt"
-                      height="160pt"
-                    />
+                    <div className={css({
+                      transform: 'scale(2.2)',
+                      transformOrigin: 'center'
+                    })}>
+                      <TypstSoroban
+                        number={card.number}
+                        width="120pt"
+                        height="160pt"
+                      />
+                    </div>
                   </div>
 
                   {/* Right/Wrong indicator overlay */}
