@@ -228,7 +228,7 @@
             <h1>🧮 Soroban Templates Gallery</h1>
             <p>Interactive showcase of soroban template renderings with different configurations</p>
             <div class="controls">
-                <button onclick="generateAll()" id="generateAllBtn">🎨 Generate All Examples</button>
+                <button onclick="generateAll()" id="generateAllBtn">🎨 Load All Examples</button>
                 <button onclick="clearAll()">🗑️ Clear All</button>
                 <button onclick="exportConfig()">📋 Export Config</button>
             </div>
@@ -355,12 +355,12 @@
                 <div class="card-content" id="content-${example.id}">
                     <div class="placeholder">
                         <div class="icon">🧮</div>
-                        <div>Click generate to render</div>
+                        <div>Click to load SVG</div>
                     </div>
                 </div>
                 <div class="card-actions">
                     <button onclick="generateExample('${example.id}')" id="btn-${example.id}">
-                        🎨 Generate
+                        🎨 Load SVG
                     </button>
                 </div>
             `;
@@ -368,7 +368,7 @@
             return card;
         }
 
-        function generateExample(exampleId) {
+        async function generateExample(exampleId) {
             const example = examples.find(e => e.id === exampleId);
             if (!example) return;
 
@@ -379,159 +379,86 @@
             contentEl.innerHTML = `
                 <div class="loading">
                     <div class="spinner">🔄</div>
-                    <div>Generating soroban...</div>
+                    <div>Loading soroban...</div>
                 </div>
             `;
             btnEl.disabled = true;
-            btnEl.textContent = '⏳ Generating...';
+            btnEl.textContent = '⏳ Loading...';
 
-            updateStatus(`Generating ${example.title}...`);
+            updateStatus(`Loading ${example.title}...`);
 
-            // Simulate generation with a timeout (replace with actual Typst generation)
-            setTimeout(() => {
-                try {
-                    // This is where you'd call your Typst generation
-                    const svg = generateTypstSvg(example);
+            try {
+                // Load the actual generated SVG file
+                const svg = await generateTypstSvg(example);
 
-                    contentEl.innerHTML = `<div class="generated-svg">${svg}</div>`;
-                    btnEl.disabled = false;
-                    btnEl.textContent = '✅ Generated';
+                contentEl.innerHTML = `<div class="generated-svg">${svg}</div>`;
+                btnEl.disabled = false;
+                btnEl.textContent = '✅ Loaded';
 
-                    generatedCount++;
-                    document.getElementById('generatedCount').textContent = generatedCount;
-                    updateStatus(`Generated ${example.title} successfully`);
+                generatedCount++;
+                document.getElementById('generatedCount').textContent = generatedCount;
+                updateStatus(`Loaded ${example.title} successfully`);
 
-                } catch (error) {
-                    contentEl.innerHTML = `
-                        <div class="error">
-                            <div class="icon">❌</div>
-                            <div>Generation failed</div>
-                            <div style="font-size: 0.8rem; margin-top: 5px;">${error.message}</div>
-                        </div>
-                    `;
-                    btnEl.disabled = false;
-                    btnEl.textContent = '🔄 Retry';
-                    updateStatus(`Failed to generate ${example.title}: ${error.message}`);
-                }
-            }, Math.random() * 1000 + 500); // Random delay to simulate real generation
-        }
-
-        function generateTypstSvg(example) {
-            // Placeholder SVG generation - replace this with actual Typst CLI calls
-            // This simulates what the real function would return
-
-            const { number, config } = example;
-            const width = 200 + (String(number).length * 50);
-            const height = 150;
-
-            // Create a simple SVG as a placeholder
-            // In reality, this would execute: typst compile --format svg template.typ output.svg
-            return `
-                <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"
-                     xmlns="http://www.w3.org/2000/svg">
-                    <rect width="100%" height="100%" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
-                    <text x="${width/2}" y="30" text-anchor="middle" font-family="Arial, sans-serif"
-                          font-size="16" font-weight="bold" fill="#2c3e50">
-                        Number: ${number}
-                    </text>
-                    <text x="${width/2}" y="50" text-anchor="middle" font-family="Arial, sans-serif"
-                          font-size="12" fill="#666">
-                        Shape: ${config.bead_shape} | Colors: ${config.color_scheme}
-                    </text>
-                    <g transform="translate(${width/2}, ${height/2})">
-                        <!-- Placeholder soroban visualization -->
-                        <rect x="-60" y="-40" width="120" height="80" fill="none"
-                              stroke="#2c3e50" stroke-width="2"/>
-                        <line x1="-50" y1="-40" x2="-50" y2="40" stroke="#666" stroke-width="1"/>
-                        <line x1="0" y1="-40" x2="0" y2="40" stroke="#666" stroke-width="1"/>
-                        <line x1="50" y1="-40" x2="50" y2="40" stroke="#666" stroke-width="1"/>
-                        <line x1="-60" y1="0" x2="60" y2="0" stroke="#333" stroke-width="2"/>
-
-                        <!-- Sample beads based on config -->
-                        ${generateBeadElements(number, config)}
-                    </g>
-                    <text x="${width/2}" y="${height-10}" text-anchor="middle" font-family="Arial, sans-serif"
-                          font-size="10" fill="#888">
-                        Generated with @soroban/templates
-                    </text>
-                </svg>
-            `;
-        }
-
-        function generateBeadElements(number, config) {
-            // Simplified bead generation for demo
-            const digits = String(number).split('').reverse();
-            let beads = '';
-
-            digits.forEach((digit, col) => {
-                const value = parseInt(digit);
-                const x = col * 50 - 25;
-
-                // Heaven beads (top)
-                const heavenBeads = Math.floor(value / 5);
-                if (heavenBeads > 0) {
-                    const color = getBeadColor(col, config.color_scheme, true);
-                    beads += createBead(x, -25, config.bead_shape, color, true);
-                }
-
-                // Earth beads (bottom)
-                const earthBeads = value % 5;
-                for (let i = 0; i < earthBeads; i++) {
-                    const color = getBeadColor(col, config.color_scheme, false);
-                    beads += createBead(x, 10 + i * 8, config.bead_shape, color, true);
-                }
-            });
-
-            return beads;
-        }
-
-        function createBead(x, y, shape, color, active) {
-            const fillColor = active ? color : '#e6e6e6';
-            const size = 6;
-
-            switch (shape) {
-                case 'circle':
-                    return `<circle cx="${x}" cy="${y}" r="${size}" fill="${fillColor}"
-                            stroke="#333" stroke-width="0.5"/>`;
-                case 'square':
-                    return `<rect x="${x-size}" y="${y-size}" width="${size*2}" height="${size*2}"
-                            fill="${fillColor}" stroke="#333" stroke-width="0.5"/>`;
-                case 'diamond':
-                default:
-                    return `<polygon points="${x},${y-size} ${x+size},${y} ${x},${y+size} ${x-size},${y}"
-                            fill="${fillColor}" stroke="#333" stroke-width="0.5"/>`;
+            } catch (error) {
+                contentEl.innerHTML = `
+                    <div class="error">
+                        <div class="icon">❌</div>
+                        <div>Loading failed</div>
+                        <div style="font-size: 0.8rem; margin-top: 5px;">${error.message}</div>
+                    </div>
+                `;
+                btnEl.disabled = false;
+                btnEl.textContent = '🔄 Retry';
+                updateStatus(`Failed to load ${example.title}: ${error.message}`);
             }
         }
 
-        function getBeadColor(position, scheme, isHeaven) {
-            const colors = {
-                'monochrome': '#333',
-                'place-value': ['#2e86ab', '#a23b72', '#f18f01', '#6a994e', '#bc4b51'][position] || '#333',
-                'heaven-earth': isHeaven ? '#e74c3c' : '#3498db',
-                'alternating': position % 2 === 0 ? '#3498db' : '#e67e22'
-            };
+        async function generateTypstSvg(example) {
+            // Load the actual generated SVG file from gallery/
+            const svgPath = `gallery/${example.id}.svg`;
 
-            return colors[scheme] || '#333';
+            try {
+                const response = await fetch(svgPath);
+                if (!response.ok) {
+                    throw new Error(`Failed to load ${svgPath}: ${response.status}`);
+                }
+                const svgContent = await response.text();
+                return svgContent;
+            } catch (error) {
+                // If we can't load the SVG file, show an error message
+                return `
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
+                        <div>SVG file not found</div>
+                        <div style="font-size: 0.8rem; margin-top: 5px;">
+                            Run <code>npm run gallery</code> to generate SVGs
+                        </div>
+                        <div style="font-size: 0.8rem; color: #999;">
+                            Looking for: ${svgPath}
+                        </div>
+                    </div>
+                `;
+            }
         }
+
 
         async function generateAll() {
             const btn = document.getElementById('generateAllBtn');
             btn.disabled = true;
-            btn.textContent = '⏳ Generating All...';
+            btn.textContent = '⏳ Loading All...';
 
             generatedCount = 0;
             document.getElementById('generatedCount').textContent = generatedCount;
 
             for (const example of examples) {
-                await new Promise(resolve => {
-                    generateExample(example.id);
-                    setTimeout(resolve, 200); // Small delay between generations
-                });
+                await generateExample(example.id);
+                // Small delay between loads for visual feedback
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
 
             btn.disabled = false;
-            btn.textContent = '🎨 Generate All Examples';
-            updateStatus('All examples generated successfully!');
+            btn.textContent = '🎨 Load All Examples';
+            updateStatus('All examples loaded successfully!');
         }
 
         function clearAll() {
@@ -542,7 +469,7 @@
                 contentEl.innerHTML = `
                     <div class="placeholder">
                         <div class="icon">🧮</div>
-                        <div>Click generate to render</div>
+                        <div>Click to load SVG</div>
                     </div>
                 `;
                 btnEl.disabled = false;
