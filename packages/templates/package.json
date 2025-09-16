@@ -1,0 +1,54 @@
+{
+  "name": "@soroban/templates",
+  "version": "0.1.0",
+  "description": "Shared Typst templates for Soroban flashcard generation",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "*.typ",
+    "index.js",
+    "index.d.ts",
+    "__init__.py",
+    "pyproject.toml",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "echo 'Templates package - no build needed'",
+    "dev": "echo 'Templates package - watching for changes'",
+    "test": "npm run test:validate && npm run test:node && npm run test:python && npm run test:integration",
+    "test:node": "node test.js",
+    "test:python": "python3 test.py",
+    "test:validate": "node test-validate.js",
+    "test:integration": "node test-integration.js",
+    "test:ci": "./ci-test.sh",
+    "test:watch": "echo 'Watching templates for changes...' && fswatch -o *.typ | xargs -n1 -I{} npm run test",
+    "docs": "echo 'Documentation available in README.md'",
+    "clean": "rm -rf __pycache__ *.pyc .pytest_cache",
+    "lint": "echo 'No linting configured for templates'",
+    "verify": "npm run test:validate && npm run test:node && npm run test:python",
+    "examples": "echo 'Running examples...' && node examples/node-example.js && python3 examples/python-example.py",
+    "examples:node": "node examples/node-example.js",
+    "examples:python": "python3 examples/python-example.py"
+  },
+  "keywords": [
+    "typst",
+    "templates",
+    "soroban",
+    "abacus",
+    "flashcards",
+    "monorepo",
+    "typescript",
+    "python"
+  ],
+  "author": "Soroban Flashcards Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/soroban-flashcards/soroban-abacus-flashcards",
+    "directory": "packages/templates"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.8"
+  }
+}

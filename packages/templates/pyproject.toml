@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "soroban-templates"
+version = "0.1.0"
+description = "Shared Typst templates for Soroban flashcard generation"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+include = ["*.typ"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# For uv workspace
+[tool.uv.workspace]
+members = ["../core"]

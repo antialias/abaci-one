@@ -25,9 +25,9 @@ async function testSorobanTemplate() {
 
   try {
     // Read our existing flashcards.typ template
-    const templatesDir = path.join(process.cwd(), '../../packages/core/templates');
-    const flashcardsTemplate = fs.readFileSync(path.join(templatesDir, 'flashcards.typ'), 'utf-8');
-    const singleCardTemplate = fs.readFileSync(path.join(templatesDir, 'single-card.typ'), 'utf-8');
+    const { FLASHCARDS_TEMPLATE, SINGLE_CARD_TEMPLATE } = require('@soroban/templates');
+    const flashcardsTemplate = fs.readFileSync(FLASHCARDS_TEMPLATE, 'utf-8');
+    const singleCardTemplate = fs.readFileSync(SINGLE_CARD_TEMPLATE, 'utf-8');
 
     console.log('📁 Templates loaded successfully');
     console.log('📏 flashcards.typ length:', flashcardsTemplate.length);
@@ -66,9 +66,9 @@ async function testSingleCard() {
 
   try {
     // Read templates
-    const templatesDir = path.join(process.cwd(), '../../packages/core/templates');
-    const flashcardsTemplate = fs.readFileSync(path.join(templatesDir, 'flashcards.typ'), 'utf-8');
-    const singleCardTemplate = fs.readFileSync(path.join(templatesDir, 'single-card.typ'), 'utf-8');
+    const { FLASHCARDS_TEMPLATE, SINGLE_CARD_TEMPLATE } = require('@soroban/templates');
+    const flashcardsTemplate = fs.readFileSync(FLASHCARDS_TEMPLATE, 'utf-8');
+    const singleCardTemplate = fs.readFileSync(SINGLE_CARD_TEMPLATE, 'utf-8');
 
     // Extract just the functions we need from single-card.typ and inline them
     // Remove the import line and create an inlined version
