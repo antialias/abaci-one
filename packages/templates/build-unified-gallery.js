@@ -113,22 +113,74 @@ const examples = [
     }
 ];
 
-// Add all crop mark examples
+// Use the same crop examples from build-gallery.js
 const cropExamples = [
-    { id: 'crop-single-1', title: 'Single 1', description: 'Minimal single digit', number: 1, config: { bead_shape: 'diamond', color_scheme: 'monochrome', show_crop_marks: true, crop_margin: '8pt', base_size: 1.0 } },
-    { id: 'crop-single-2', title: 'Single 2', description: 'Tight cropping example', number: 2, config: { bead_shape: 'circle', color_scheme: 'place-value', show_crop_marks: true, crop_margin: '8pt', base_size: 1.8 } },
-    { id: 'crop-single-3', title: 'Single 3', description: 'Square beads showcase', number: 3, config: { bead_shape: 'square', color_scheme: 'alternating', show_crop_marks: true, crop_margin: '5pt', base_size: 2.0 } },
-    { id: 'crop-single-6', title: 'Single 6', description: 'Heaven bead activation', number: 6, config: { bead_shape: 'diamond', color_scheme: 'heaven-earth', show_crop_marks: true, crop_margin: '12pt', base_size: 1.4 } },
-    { id: 'crop-edge-10', title: 'Edge Case 10', description: 'Power of 10 boundaries', number: 10, config: { bead_shape: 'circle', color_scheme: 'place-value', show_crop_marks: true, crop_margin: '10pt', base_size: 1.6 } },
-    { id: 'crop-edge-100', title: 'Edge Case 100', description: 'Three-digit power of 10', number: 100, config: { bead_shape: 'square', color_scheme: 'monochrome', show_crop_marks: true, crop_margin: '6pt', base_size: 1.2 } },
-    { id: 'crop-edge-1000', title: 'Edge Case 1000', description: 'Four-digit milestone', number: 1000, config: { bead_shape: 'diamond', color_scheme: 'alternating', show_crop_marks: true, crop_margin: '8pt', base_size: 1.0 } },
-    { id: 'crop-large-12345', title: 'Large 12345', description: 'Five-digit sequential', number: 12345, config: { bead_shape: 'circle', color_scheme: 'place-value', show_crop_marks: true, crop_margin: '18pt', base_size: 0.9 } },
-    { id: 'crop-large-99999', title: 'Maximum 99999', description: 'Five 9s maximum activation', number: 99999, config: { bead_shape: 'square', color_scheme: 'heaven-earth', show_crop_marks: true, crop_margin: '20pt', base_size: 0.7 } },
-    { id: 'crop-compact-777', title: 'Compact 777', description: 'Minimal margins', number: 777, config: { bead_shape: 'square', color_scheme: 'alternating', show_crop_marks: true, crop_margin: '4pt', base_size: 1.1 } },
-    { id: 'crop-maxmargin-42', title: 'Max Margin 42', description: 'Generous spacing', number: 42, config: { bead_shape: 'diamond', color_scheme: 'place-value', show_crop_marks: true, crop_margin: '25pt', base_size: 1.5 } },
-    { id: 'crop-minmargin-867', title: 'Min Margin 867', description: 'Tight spacing', number: 867, config: { bead_shape: 'circle', color_scheme: 'heaven-earth', show_crop_marks: true, crop_margin: '3pt', base_size: 1.2 } },
-    { id: 'crop-mega-scale-7', title: 'Mega Scale 7', description: 'Maximum scale demo', number: 7, config: { bead_shape: 'square', color_scheme: 'alternating', show_crop_marks: true, crop_margin: '30pt', base_size: 3.0 } },
-    { id: 'crop-tiny-scale-8888', title: 'Tiny Scale 8888', description: 'Miniature representation', number: 8888, config: { bead_shape: 'circle', color_scheme: 'place-value', show_crop_marks: true, crop_margin: '6pt', base_size: 0.6 } }
+    {
+        id: 'crop-single-1',
+        title: 'Crop Marks: Single Digit',
+        description: 'Invisible crop marks for automated viewBox processing',
+        number: 1,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'monochrome',
+            show_crop_marks: true,
+            crop_margin: '10pt',
+            base_size: 1.0
+        }
+    },
+    {
+        id: 'crop-quad-9999',
+        title: 'Crop Marks: Four 9s',
+        description: 'Large four-digit number with crop boundaries',
+        number: 9999,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'place-value',
+            show_crop_marks: true,
+            crop_margin: '15pt',
+            base_size: 0.8
+        }
+    },
+    {
+        id: 'crop-large-scale-0',
+        title: 'Crop Marks: Large Zero',
+        description: 'Zero representation with large scale and crop marks',
+        number: 0,
+        config: {
+            bead_shape: 'square',
+            color_scheme: 'monochrome',
+            show_crop_marks: true,
+            crop_margin: '20pt',
+            base_size: 2.0
+        }
+    },
+    {
+        id: 'crop-hidden-inactive-555',
+        title: 'Crop Marks: Hidden Inactive',
+        description: 'Clean layout with hidden inactive beads and crop marks',
+        number: 555,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'alternating',
+            hide_inactive: true,
+            show_crop_marks: true,
+            crop_margin: '10pt',
+            base_size: 1.5
+        }
+    },
+    {
+        id: 'crop-mixed-geometry-321',
+        title: 'Crop Marks: Mixed Geometry',
+        description: 'Circle beads with heaven-earth colors and crop boundaries',
+        number: 321,
+        config: {
+            bead_shape: 'circle',
+            color_scheme: 'heaven-earth',
+            show_crop_marks: true,
+            crop_margin: '12pt',
+            base_size: 1.3
+        }
+    }
 ];
 
 // Add category to crop examples
