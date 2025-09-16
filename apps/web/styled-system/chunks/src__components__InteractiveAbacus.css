@@ -1,90 +1,40 @@
 @layer utilities {
 
-  .fs_3xl {
-    font-size: var(--font-sizes-3xl)
-    }
-
-  .px_6 {
-    padding-inline: var(--spacing-6)
-    }
-
-  .min-w_120px {
-    min-width: 120px
-    }
-
-  .gap_3 {
-    gap: var(--spacing-3)
-    }
-
-  .min-w_140px {
-    min-width: 140px
-    }
-
-  .w_80px {
-    width: 80px
-    }
-
-  .fs_xl {
-    font-size: var(--font-sizes-xl)
-    }
-
-  .fs_2xl {
-    font-size: var(--font-sizes-2xl)
-    }
-
-  .text_transparent {
-    color: var(--colors-transparent)
-    }
-
-  .fs_1\.5rem {
-    font-size: 1.5rem
-    }
-
-  .fs_1\.875rem {
-    font-size: 1.875rem
-    }
-
-  .top_0 {
-    top: var(--spacing-0)
-    }
-
-  .left_0 {
-    left: var(--spacing-0)
-    }
-
-  .border_none {
-    border: var(--borders-none)
-    }
-
-  .bg_transparent {
-    background: var(--colors-transparent)
-    }
-
-  .font_bold {
-    font-weight: var(--font-weights-bold)
-    }
-
-  .text_\#2563eb {
-    color: #2563eb
-    }
-
-  .appearance_textfield {
-    appearance: textfield;
-    -webkit-appearance: textfield
-    }
-
-  .font_inherit {
-    font-family: inherit
-    }
-
-  .\[\&\:\:-webkit-outer-spin-button\,_\&\:\:-webkit-inner-spin-button\]\:appearance_none::-webkit-outer-spin-button, .\[\&\:\:-webkit-outer-spin-button\,_\&\:\:-webkit-inner-spin-button\]\:appearance_none::-webkit-inner-spin-button {
-    appearance: none;
-    -webkit-appearance: none
+  .\[\&_svg\]\:w_100\% svg {
+    width: 100%
         }
 
-  .\[\&\:\:-webkit-outer-spin-button\,_\&\:\:-webkit-inner-spin-button\]\:m_0::-webkit-outer-spin-button, .\[\&\:\:-webkit-outer-spin-button\,_\&\:\:-webkit-inner-spin-button\]\:m_0::-webkit-inner-spin-button {
-    margin: var(--spacing-0)
+  .\[\&_svg\]\:h_100\% svg {
+    height: 100%
         }
+
+  .\[\&_svg\]\:max-w_100\% svg {
+    max-width: 100%
+        }
+
+  .\[\&_svg\]\:max-h_100\% svg {
+    max-height: 100%
+        }
+
+  .\[\&_svg\]\:object_contain svg {
+    object-fit: contain
+        }
+
+  .w_240 {
+    width: 240px
+    }
+
+  .w_300 {
+    width: 300px
+    }
+
+  .h_320 {
+    height: 320px
+    }
+
+  .h_400 {
+    height: 400px
+    }
 
   .gap_4 {
     gap: var(--spacing-4)
@@ -92,14 +42,6 @@
 
   .gap_6 {
     gap: var(--spacing-6)
-    }
-
-  .w_240px {
-    width: 240px
-    }
-
-  .w_300px {
-    width: 300px
     }
 
   .h_320px {
@@ -150,6 +92,18 @@
     height: 100%
     }
 
+  .overflow_hidden {
+    overflow: hidden
+    }
+
+  .transform_scale\(2\.2\) {
+    transform: scale(2.2)
+    }
+
+  .origin_center {
+    transform-origin: center
+    }
+
   .transition_all_0\.3s_ease {
     transition: all 0.3s ease
     }
@@ -160,12 +114,28 @@
       transition: all 0.2s ease
         }
 
-  .bottom_-50px {
-    bottom: -50px
+  .bottom_-45px {
+    bottom: -45px
     }
 
-  .bottom_-60px {
-    bottom: -60px
+  .bottom_-55px {
+    bottom: -55px
+    }
+
+  .w_240px {
+    width: 240px
+    }
+
+  .w_300px {
+    width: 300px
+    }
+
+  .gap_0 {
+    gap: var(--spacing-0)
+    }
+
+  .cursor_default {
+    cursor: default
     }
 
   .bg_white {
@@ -188,20 +158,8 @@
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15)
     }
 
-  .min-w_160px {
-    min-width: 160px
-    }
-
-  .cursor_default {
-    cursor: default
-    }
-
   .pos_relative {
     position: relative
-    }
-
-  .flex_1 {
-    flex: 1 1 0%
     }
 
   .ring_none {
@@ -236,36 +194,12 @@
     background: var(--colors-blue-400)
     }
 
-  .animation_pulse_1s_infinite {
-    animation: pulse 1s infinite
-    }
-
-  .p_1 {
-    padding: var(--spacing-1)
-    }
-
   .rounded_full {
     border-radius: var(--radii-full)
     }
 
-  .bg_blue\.50 {
-    background: var(--colors-blue-50)
-    }
-
-  .text_blue\.600 {
-    color: var(--colors-blue-600)
-    }
-
-  .w_6 {
-    width: var(--sizes-6)
-    }
-
-  .h_6 {
-    height: var(--sizes-6)
-    }
-
-  .shrink_0 {
-    flex-shrink: 0
+  .animation_pulse_1s_infinite {
+    animation: pulse 1s infinite
     }
 
   .flex-wrap_nowrap {
@@ -447,30 +381,6 @@
   .h_240pt {
     height: 240pt
     }
-
-  .\[\&\:focus\]\:text_blue\.600:focus {
-    color: var(--colors-blue-600)
-        }
-
-  .\[\&\:focus\]\:bg_blue\.50:focus {
-    background: var(--colors-blue-50)
-        }
-
-  .\[\&\:focus\]\:rounded_md:focus {
-    border-radius: var(--radii-md)
-        }
-
-  .\[\&\:focus\]\:ring_none:focus {
-    outline: var(--borders-none)
-        }
-
-  .\[\&\:focus\]\:border_none:focus {
-    border: var(--borders-none)
-        }
-
-  .hover\:bg_blue\.100:is(:hover, [data-hover]) {
-    background: var(--colors-blue-100)
-        }
 
   .hover\:shadow_0_12px_32px_rgba\(0\,_0\,_0\,_0\.15\):is(:hover, [data-hover]) {
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15)
