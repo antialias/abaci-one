@@ -1,0 +1,220 @@
+name: Update Template Examples
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/templates/flashcards.typ'
+      - 'packages/templates/single-card.typ'
+      - 'packages/templates/examples/example-*.typ'
+  workflow_dispatch: # Allow manual triggering
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC to keep examples fresh
+    - cron: '0 2 * * 0'
+
+# Grant write permissions to push changes back to repository
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-examples:
+    name: Regenerate Template Example SVGs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Fetch full history for proper commits
+
+      - name: Install Typst
+        run: |
+          # Install Typst CLI for rendering examples
+          wget https://github.com/typst/typst/releases/latest/download/typst-x86_64-unknown-linux-musl.tar.xz
+          tar -xf typst-x86_64-unknown-linux-musl.tar.xz
+          sudo mv typst-x86_64-unknown-linux-musl/typst /usr/local/bin/
+          typst --version
+
+      - name: Generate example SVGs
+        working-directory: packages/templates
+        run: |
+          echo "🎨 Generating fresh example renderings..."
+
+          # Create examples directory if it doesn't exist
+          mkdir -p examples
+
+          # Generate SVGs from template files
+          if [ -f "examples/example-5.typ" ]; then
+            echo "📐 Rendering example-5.typ..."
+            typst compile --root . --format svg examples/example-5.typ examples/example-5-{p}.svg
+          fi
+
+          if [ -f "examples/example-123.typ" ]; then
+            echo "📐 Rendering example-123.typ..."
+            typst compile --root . --format svg examples/example-123.typ examples/example-123-{p}.svg
+          fi
+
+          if [ -f "examples/example-single-card.typ" ]; then
+            echo "📐 Rendering example-single-card.typ..."
+            typst compile --root . --format svg examples/example-single-card.typ examples/example-single-card-{p}.svg
+          fi
+
+          echo "✅ Example generation completed"
+
+          # List generated files
+          echo "📂 Generated files:"
+          ls -la examples/*.svg || echo "No SVG files found"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          # Add all SVG files to staging to check for changes
+          git add packages/templates/examples/*.svg 2>/dev/null || true
+
+          # Check if there are any staged changes
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "📄 No changes detected in example SVGs"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "📄 Changes detected in example SVGs:"
+            git diff --cached --name-only
+            echo ""
+            echo "🔍 Detailed changes:"
+            git diff --cached --stat
+          fi
+
+      - name: Commit updated examples
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          # Configure git with proper user info
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # The files are already staged from the previous step
+          git commit -m "🎨 Update template example renderings
+
+          Auto-generated fresh SVG examples from latest templates.
+
+          Files updated:
+          $(git diff --cached --name-only | sed 's/^/- /')
+
+          🤖 Generated with GitHub Actions
+
+          Co-Authored-By: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+
+      - name: Push changes
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          # Push changes using git directly for better control
+          echo "🚀 Pushing updated examples to main branch..."
+          git push origin main
+          echo "✅ Successfully pushed changes to main branch"
+
+      - name: Create summary
+        run: |
+          echo "## 🎨 Template Examples Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.changes.outputs.changed }}" == "true" ]; then
+            echo "✅ **Examples updated successfully**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The following example SVGs were regenerated:" >> $GITHUB_STEP_SUMMARY
+            echo "- example-5-1.svg (Number 5 with diamond beads)" >> $GITHUB_STEP_SUMMARY
+            echo "- example-123-1.svg (Number 123 with circle beads)" >> $GITHUB_STEP_SUMMARY
+            echo "- example-single-card-1.svg (Single card for number 42)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Changes have been committed and pushed to the main branch." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ **No updates needed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Example SVGs are already up-to-date with the latest templates." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "_This action runs automatically when templates are modified, and weekly to ensure freshness._" >> $GITHUB_STEP_SUMMARY
+
+  validate-examples:
+    name: Validate Generated Examples
+    runs-on: ubuntu-latest
+    needs: update-examples
+    if: always() # Run even if update-examples fails
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Validate examples exist and are accessible
+        working-directory: packages/templates
+        run: |
+          echo "🔍 Validating example files..."
+
+          # Check that all expected SVG files exist
+          expected_files=(
+            "examples/example-5-1.svg"
+            "examples/example-123-1.svg"
+            "examples/example-single-card-1.svg"
+          )
+
+          missing_files=()
+          for file in "${expected_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              missing_files+=("$file")
+              echo "❌ Missing: $file"
+            else
+              # Check file size (should be > 1KB for valid SVG)
+              size=$(stat -f%z "$file" 2>/dev/null || stat -c%s "$file" 2>/dev/null || echo "0")
+              if [ "$size" -gt 1000 ]; then
+                echo "✅ Valid: $file (${size} bytes)"
+              else
+                echo "⚠️  Suspicious: $file (${size} bytes - too small?)"
+              fi
+            fi
+          done
+
+          if [ ${#missing_files[@]} -gt 0 ]; then
+            echo "❌ Validation failed: ${#missing_files[@]} files missing"
+            exit 1
+          else
+            echo "✅ All example files validated successfully"
+          fi
+
+      - name: Test templates package integration
+        run: |
+          # Quick test that the templates package still works
+          cd packages/templates
+          node -e "
+            const templates = require('./index.js');
+            console.log('✅ Templates package loaded successfully');
+            console.log('📁 Available templates:', Object.keys(templates));
+
+            const fs = require('fs');
+            if (fs.existsSync(templates.FLASHCARDS_TEMPLATE)) {
+              console.log('✅ flashcards.typ accessible');
+            } else {
+              console.error('❌ flashcards.typ not found');
+              process.exit(1);
+            }
+
+            if (fs.existsSync(templates.SINGLE_CARD_TEMPLATE)) {
+              console.log('✅ single-card.typ accessible');
+            } else {
+              console.error('❌ single-card.typ not found');
+              process.exit(1);
+            }
+          "
