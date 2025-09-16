@@ -112,18 +112,6 @@
                                                         <g transform="translate(0 30)">
                                                             <path class="typst-shape" fill="#000000" fill-rule="nonzero" d="M 0 0 L 0 2 L 50 2 L 50 0 Z "/>
                                                         </g>
-                                                        <g transform="translate(-10 -70)">
-                                                            <path class="typst-shape" fill="none" stroke="#000000" stroke-width="0" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0 L 0 2 L 2 2 L 2 0 Z "/>
-                                                        </g>
-                                                        <g transform="translate(58 -70)">
-                                                            <path class="typst-shape" fill="none" stroke="#000000" stroke-width="0" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0 L 0 2 L 2 2 L 2 0 Z "/>
-                                                        </g>
-                                                        <g transform="translate(-10 68)">
-                                                            <path class="typst-shape" fill="none" stroke="#000000" stroke-width="0" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0 L 0 2 L 2 2 L 2 0 Z "/>
-                                                        </g>
-                                                        <g transform="translate(58 68)">
-                                                            <path class="typst-shape" fill="none" stroke="#000000" stroke-width="0" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0 L 0 2 L 2 2 L 2 0 Z "/>
-                                                        </g>
                                                     </g>
                                                 </g>
                                             </g>
@@ -136,16 +124,16 @@
                 </g>
             </g>
         </g>
-        <g transform="translate(-10 183)">
+        <g transform="translate(69 183)">
             <path class="typst-shape" fill="none" stroke="#000000" stroke-width="0" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0 L 0 2 L 2 2 L 2 0 Z "/>
         </g>
-        <g transform="translate(148 183)">
+        <g transform="translate(69 401)">
             <path class="typst-shape" fill="none" stroke="#000000" stroke-width="0" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0 L 0 2 L 2 2 L 2 0 Z "/>
         </g>
-        <g transform="translate(-10 401)">
+        <g transform="translate(-10 292)">
             <path class="typst-shape" fill="none" stroke="#000000" stroke-width="0" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0 L 0 2 L 2 2 L 2 0 Z "/>
         </g>
-        <g transform="translate(148 401)">
+        <g transform="translate(148 292)">
             <path class="typst-shape" fill="none" stroke="#000000" stroke-width="0" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0 L 0 2 L 2 2 L 2 0 Z "/>
         </g>
         <g transform="translate(69 292)">
