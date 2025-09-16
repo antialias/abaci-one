@@ -300,9 +300,9 @@ export function InteractiveAbacus({
           alignItems: 'center'
         })}>
           {/* Abacus with integrated value display */}
-          <animated.div
+          <div
             ref={svgRef}
-            style={containerSpring}
+            style={containerSpring as any}
             className={css({
               width: compact ? '240px' : '300px',
               height: compact ? '320px' : '400px',
@@ -351,7 +351,7 @@ export function InteractiveAbacus({
                 />
               </div>
             </div>
-          </animated.div>
+          </div>
 
           {/* Column-based Value Display */}
           {showValue && (

@@ -358,7 +358,7 @@ function cropSVGToContent(svgContent: string): string {
 
     elements.forEach(element => {
       try {
-        const bbox = (element as SVGElement).getBBox()
+        const bbox = (element as SVGGraphicsElement).getBBox()
         if (bbox.width > 0 && bbox.height > 0) {
           bounds.push(bbox)
         }

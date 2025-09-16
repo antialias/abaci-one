@@ -11,7 +11,7 @@ describe('Memory Quiz Utils', () => {
   describe('isPrefix', () => {
     it('should return true when input is a prefix of target numbers', () => {
       const targets = [555, 123, 789]
-      const found = []
+      const found: number[] = []
 
       expect(isPrefix('5', targets, found)).toBe(true)
       expect(isPrefix('55', targets, found)).toBe(true)
@@ -21,7 +21,7 @@ describe('Memory Quiz Utils', () => {
 
     it('should return false when input is an exact match', () => {
       const targets = [555, 123, 789]
-      const found = []
+      const found: number[] = []
 
       expect(isPrefix('555', targets, found)).toBe(false)
       expect(isPrefix('123', targets, found)).toBe(false)
@@ -29,7 +29,7 @@ describe('Memory Quiz Utils', () => {
 
     it('should return false when input is not a prefix', () => {
       const targets = [555, 123, 789]
-      const found = []
+      const found: number[] = []
 
       expect(isPrefix('6', targets, found)).toBe(false)
       expect(isPrefix('13', targets, found)).toBe(false)
@@ -135,7 +135,7 @@ describe('Memory Quiz Utils', () => {
   describe('shouldTriggerIncorrectGuess', () => {
     it('should not trigger for correct answers', () => {
       const targets = [55, 555, 123]
-      const found = []
+      const found: number[] = []
 
       expect(shouldTriggerIncorrectGuess('55', targets, found)).toBe(false)
       expect(shouldTriggerIncorrectGuess('555', targets, found)).toBe(false)
@@ -152,7 +152,7 @@ describe('Memory Quiz Utils', () => {
 
     it('should trigger for clearly wrong numbers', () => {
       const targets = [55, 555, 123]
-      const found = []
+      const found: number[] = []
 
       expect(shouldTriggerIncorrectGuess('99', targets, found)).toBe(true)
       expect(shouldTriggerIncorrectGuess('999', targets, found)).toBe(true)
@@ -161,7 +161,7 @@ describe('Memory Quiz Utils', () => {
 
     it('should trigger for single digits that cannot be prefixes', () => {
       const targets = [123, 456, 789]
-      const found = []
+      const found: number[] = []
 
       expect(shouldTriggerIncorrectGuess('2', targets, found)).toBe(true)
       expect(shouldTriggerIncorrectGuess('9', targets, found)).toBe(true)
@@ -169,7 +169,7 @@ describe('Memory Quiz Utils', () => {
 
     it('should not trigger for valid prefixes', () => {
       const targets = [555, 123, 789]
-      const found = []
+      const found: number[] = []
 
       expect(shouldTriggerIncorrectGuess('5', targets, found)).toBe(false)
       expect(shouldTriggerIncorrectGuess('55', targets, found)).toBe(false)
@@ -178,7 +178,7 @@ describe('Memory Quiz Utils', () => {
 
     it('should not trigger when no guesses remaining', () => {
       const targets = [123, 456, 789]
-      const found = []
+      const found: number[] = []
 
       expect(shouldTriggerIncorrectGuess('99', targets, found, false)).toBe(false)
     })
@@ -198,7 +198,7 @@ describe('Memory Quiz Utils', () => {
   describe('isCorrectAndAvailable', () => {
     it('should return true for correct unfound numbers', () => {
       const targets = [55, 555, 123]
-      const found = []
+      const found: number[] = []
 
       expect(isCorrectAndAvailable(55, targets, found)).toBe(true)
       expect(isCorrectAndAvailable(555, targets, found)).toBe(true)
@@ -216,7 +216,7 @@ describe('Memory Quiz Utils', () => {
 
     it('should return false for incorrect numbers', () => {
       const targets = [55, 555, 123]
-      const found = []
+      const found: number[] = []
 
       expect(isCorrectAndAvailable(99, targets, found)).toBe(false)
       expect(isCorrectAndAvailable(999, targets, found)).toBe(false)
