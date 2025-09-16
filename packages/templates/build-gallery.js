@@ -74,6 +74,32 @@ const examples = [
             show_empty: true,
             base_size: 1.3
         }
+    },
+    {
+        id: 'debug-crop-marks-89',
+        title: 'Debug: Crop Marks - 89',
+        description: 'Visible red crop marks showing viewBox boundaries',
+        number: 89,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'place-value',
+            show_crop_marks: true,
+            crop_margin: '15pt',
+            base_size: 1.5
+        }
+    },
+    {
+        id: 'debug-crop-marks-456',
+        title: 'Debug: Crop Marks - 456',
+        description: 'Three-digit number with visible crop boundaries',
+        number: 456,
+        config: {
+            bead_shape: 'circle',
+            color_scheme: 'heaven-earth',
+            show_crop_marks: true,
+            crop_margin: '12pt',
+            base_size: 1.2
+        }
     }
 ];
 

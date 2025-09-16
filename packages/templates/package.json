@@ -29,10 +29,8 @@
     "examples": "echo 'Running examples...' && node examples/node-example.js && python3 examples/python-example.py",
     "examples:node": "node examples/node-example.js",
     "examples:python": "python3 examples/python-example.py",
-    "gallery": "node generate-gallery.js",
-    "gallery:build": "node build-gallery.js",
-    "gallery:static": "npm run gallery && npm run gallery:build && open gallery-static.html",
-    "gallery:clean": "rm -rf gallery/ gallery-static.html gallery-embedded.html"
+    "gallery": "node generate-gallery.js && node build-gallery.js && open gallery-static.html",
+    "gallery:clean": "rm -rf gallery/ gallery-static.html"
   },
   "keywords": [
     "typst",

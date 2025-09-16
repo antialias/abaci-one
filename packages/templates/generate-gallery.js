@@ -75,6 +75,32 @@ const examples = [
             show_empty: true,
             base_size: 1.3
         }
+    },
+    {
+        id: 'debug-crop-marks-89',
+        title: 'Debug: Crop Marks - 89',
+        description: 'Visible red crop marks showing viewBox boundaries',
+        number: 89,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'place-value',
+            show_crop_marks: true,
+            crop_margin: '15pt',
+            base_size: 1.5
+        }
+    },
+    {
+        id: 'debug-crop-marks-456',
+        title: 'Debug: Crop Marks - 456',
+        description: 'Three-digit number with visible crop boundaries',
+        number: 456,
+        config: {
+            bead_shape: 'circle',
+            color_scheme: 'heaven-earth',
+            show_crop_marks: true,
+            crop_margin: '12pt',
+            base_size: 1.2
+        }
     }
 ];
 
@@ -99,6 +125,8 @@ function createTypstFile(example) {
     ${config.color_palette ? `color-palette: "${config.color_palette}",` : ''}
     ${config.show_empty ? 'show-empty: true,' : ''}
     ${config.hide_inactive ? 'hide-inactive: true,' : ''}
+    ${config.show_crop_marks ? 'show-crop-marks: true,' : ''}
+    ${config.crop_margin ? `crop-margin: ${config.crop_margin},` : ''}
     base-size: ${config.base_size || 1.0}
   )
 ]`;
@@ -218,7 +246,6 @@ async function main() {
 
     if (successful > 0) {
         console.log('\n🎉 Gallery generation complete!');
-        console.log('   📖 Open gallery.html in your browser to view the gallery');
         console.log('   📁 SVG files are in the gallery/ directory');
 
         // List generated files

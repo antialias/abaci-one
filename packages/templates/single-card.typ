@@ -150,18 +150,18 @@
 
   // Add crop marks for consistent viewBox handling
   // These marks define the intended crop boundaries for both sides
-  #let crop-mark-size = 2pt
-  #let crop-mark-stroke = if show-crop-marks { 0.5pt } else { 0pt }
-  #let crop-mark-color = if show-crop-marks { red } else { none }
+  let crop-mark-size = 2pt
+  let crop-mark-stroke = if show-crop-marks { 0.5pt } else { 0pt }
+  let crop-mark-color = if show-crop-marks { red } else { none }
 
   // Calculate crop boundaries with margin
-  #let crop-left = -crop-margin
-  #let crop-right = width + crop-margin
-  #let crop-top = -crop-margin
-  #let crop-bottom = height + crop-margin
+  let crop-left = -crop-margin
+  let crop-right = width + crop-margin
+  let crop-top = -crop-margin
+  let crop-bottom = height + crop-margin
 
   // Top-left crop mark
-  #place(
+  place(
     dx: crop-left,
     dy: crop-top,
     link("crop-mark://top-left",
@@ -175,7 +175,7 @@
   )
 
   // Top-right crop mark
-  #place(
+  place(
     dx: crop-right - crop-mark-size,
     dy: crop-top,
     link("crop-mark://top-right",
@@ -189,7 +189,7 @@
   )
 
   // Bottom-left crop mark
-  #place(
+  place(
     dx: crop-left,
     dy: crop-bottom - crop-mark-size,
     link("crop-mark://bottom-left",
@@ -203,7 +203,7 @@
   )
 
   // Bottom-right crop mark
-  #place(
+  place(
     dx: crop-right - crop-mark-size,
     dy: crop-bottom - crop-mark-size,
     link("crop-mark://bottom-right",
@@ -217,7 +217,7 @@
   )
 
   // Center reference mark for debugging alignment
-  #place(
+  place(
     dx: width / 2 - crop-mark-size / 2,
     dy: height / 2 - crop-mark-size / 2,
     link("crop-mark://center",
