@@ -100,6 +100,72 @@ const examples = [
             crop_margin: '12pt',
             base_size: 1.2
         }
+    },
+    {
+        id: 'crop-single-1',
+        title: 'Crop Marks: Single Digit',
+        description: 'Invisible crop marks for automated viewBox processing',
+        number: 1,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'monochrome',
+            show_crop_marks: true,
+            crop_margin: '10pt',
+            base_size: 1.0
+        }
+    },
+    {
+        id: 'crop-quad-9999',
+        title: 'Crop Marks: Four 9s',
+        description: 'Large four-digit number with crop boundaries',
+        number: 9999,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'place-value',
+            show_crop_marks: true,
+            crop_margin: '15pt',
+            base_size: 0.8
+        }
+    },
+    {
+        id: 'crop-large-scale-0',
+        title: 'Crop Marks: Large Zero',
+        description: 'Zero representation with large scale and crop marks',
+        number: 0,
+        config: {
+            bead_shape: 'square',
+            color_scheme: 'monochrome',
+            show_crop_marks: true,
+            crop_margin: '20pt',
+            base_size: 2.0
+        }
+    },
+    {
+        id: 'crop-hidden-inactive-555',
+        title: 'Crop Marks: Hidden Inactive',
+        description: 'Clean layout with hidden inactive beads and crop marks',
+        number: 555,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'alternating',
+            hide_inactive: true,
+            show_crop_marks: true,
+            crop_margin: '10pt',
+            base_size: 1.5
+        }
+    },
+    {
+        id: 'crop-mixed-geometry-321',
+        title: 'Crop Marks: Mixed Geometry',
+        description: 'Circle beads with heaven-earth colors and crop boundaries',
+        number: 321,
+        config: {
+            bead_shape: 'circle',
+            color_scheme: 'heaven-earth',
+            show_crop_marks: true,
+            crop_margin: '12pt',
+            base_size: 1.3
+        }
     }
 ];
 
