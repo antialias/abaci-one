@@ -101,6 +101,72 @@ const examples = [
             crop_margin: '12pt',
             base_size: 1.2
         }
+    },
+    {
+        id: 'crop-single-1',
+        title: 'Crop Marks: Single Digit',
+        description: 'Single digit with crop marks for tight cropping',
+        number: 1,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'monochrome',
+            show_crop_marks: true,
+            crop_margin: '8pt',
+            base_size: 1.0
+        }
+    },
+    {
+        id: 'crop-quad-9999',
+        title: 'Crop Marks: Four 9s',
+        description: 'Maximum digit density with crop boundaries',
+        number: 9999,
+        config: {
+            bead_shape: 'square',
+            color_scheme: 'place-value',
+            show_crop_marks: true,
+            crop_margin: '10pt',
+            base_size: 0.8
+        }
+    },
+    {
+        id: 'crop-large-scale-0',
+        title: 'Crop Marks: Large Zero',
+        description: 'Zero with large scale and crop marks',
+        number: 0,
+        config: {
+            bead_shape: 'circle',
+            color_scheme: 'alternating',
+            show_crop_marks: true,
+            crop_margin: '20pt',
+            base_size: 2.0
+        }
+    },
+    {
+        id: 'crop-hidden-inactive-555',
+        title: 'Crop Marks: Hidden Inactive',
+        description: 'Triple 5s with hidden inactive beads and crop marks',
+        number: 555,
+        config: {
+            bead_shape: 'diamond',
+            color_scheme: 'heaven-earth',
+            hide_inactive: true,
+            show_crop_marks: true,
+            crop_margin: '15pt',
+            base_size: 1.4
+        }
+    },
+    {
+        id: 'crop-mixed-geometry-321',
+        title: 'Crop Marks: Mixed Geometry',
+        description: 'Different bead count pattern with tight margins',
+        number: 321,
+        config: {
+            bead_shape: 'circle',
+            color_scheme: 'place-value',
+            show_crop_marks: true,
+            crop_margin: '5pt',
+            base_size: 1.1
+        }
     }
 ];
 
@@ -109,27 +175,38 @@ function createTypstFile(example) {
 
     // Calculate canvas size based on number length and scale
     const digits = String(number).length;
-    const width = Math.max(200, digits * 80 * (config.base_size || 1.0));
-    const height = Math.max(150, 120 * (config.base_size || 1.0));
+    let width = Math.max(200, digits * 80 * (config.base_size || 1.0));
+    let height = Math.max(150, 120 * (config.base_size || 1.0));
+
+    // Add extra space for crop marks if enabled
+    if (config.show_crop_marks && config.crop_margin) {
+        const cropMarginPt = parseFloat(config.crop_margin.replace('pt', ''));
+        width += cropMarginPt * 2;  // Left and right margins
+        height += cropMarginPt * 2; // Top and bottom margins
+    }
 
     const content = `#import "../flashcards.typ": draw-soroban
 
 #set page(width: ${width}pt, height: ${height}pt, margin: 12pt, fill: white)
 
+#let soroban-content = draw-soroban(
+  ${number},
+  columns: ${config.columns || 'auto'},
+  bead-shape: "${config.bead_shape || 'diamond'}",
+  color-scheme: "${config.color_scheme || 'monochrome'}",
+  ${config.color_palette ? `color-palette: "${config.color_palette}",` : ''}
+  ${config.show_empty ? 'show-empty: true,' : ''}
+  ${config.hide_inactive ? 'hide-inactive: true,' : ''}
+  base-size: ${config.base_size || 1.0},
+  ${config.show_crop_marks ? 'show-crop-marks: true,' : ''}
+  ${config.crop_margin ? `crop-margin: ${config.crop_margin},` : ''}
+)
+
 #align(center + horizon)[
-  #draw-soroban(
-    ${number},
-    columns: ${config.columns || 'auto'},
-    bead-shape: "${config.bead_shape || 'diamond'}",
-    color-scheme: "${config.color_scheme || 'monochrome'}",
-    ${config.color_palette ? `color-palette: "${config.color_palette}",` : ''}
-    ${config.show_empty ? 'show-empty: true,' : ''}
-    ${config.hide_inactive ? 'hide-inactive: true,' : ''}
-    ${config.show_crop_marks ? 'show-crop-marks: true,' : ''}
-    ${config.crop_margin ? `crop-margin: ${config.crop_margin},` : ''}
-    base-size: ${config.base_size || 1.0}
-  )
-]`;
+  #soroban-content
+]
+
+`;
 
     return content;
 }

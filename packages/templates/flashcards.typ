@@ -294,88 +294,57 @@
         )
       )
 
-      // Add crop marks for consistent viewBox handling
-      // These marks define the intended crop boundaries
-      #let crop-mark-size = 2pt * base-size
-      #let crop-mark-stroke = if show-crop-marks { 0.5pt } else { 0pt }
-      #let crop-mark-color = if show-crop-marks { red } else { none }
+      // Draw crop marks if enabled
+      #if show-crop-marks [
+        // Calculate actual extremes based on what we just drew
+        #let crop-mark-size = 3pt
+        #let bead-half-width = if bead-shape == "diamond" {
+          bead-size * 0.7
+        } else {
+          bead-size / 2
+        }
 
-      // Calculate crop boundaries with margin
-      #let crop-left = -crop-margin
-      #let crop-right = total-width + crop-margin
-      #let crop-top = -total-height / 2 - crop-margin
-      #let crop-bottom = total-height / 2 + crop-margin
+        // Redefine gaps for crop mark calculations
+        #let active-gap = 1pt
+        #let inactive-gap = 8pt
 
-      // Top-left crop mark
-      #place(
-        dx: crop-left,
-        dy: crop-top,
-        link("crop-mark://top-left",
-          rect(
-            width: crop-mark-size,
-            height: crop-mark-size,
-            fill: crop-mark-color,
-            stroke: crop-mark-stroke + crop-mark-color
-          )
+        // Calculate actual bead boundaries
+        #let leftmost-x = column-spacing / 2 - bead-half-width - crop-margin
+        #let rightmost-x = (display-digits.len() - 1) * column-spacing + column-spacing / 2 + bead-half-width + crop-margin
+
+        // Top and bottom based on actual bead positions (one bead height beyond extremes)
+        #let topmost-y = heaven-earth-gap - inactive-gap - bead-size - crop-margin
+        #let bottommost-y = heaven-earth-gap + bar-thickness + active-gap + 4 * (bead-size + adjacent-spacing) + crop-margin
+
+        // Left crop mark (at leftmost boundary, centered on reckoning bar)
+        #place(
+          dx: leftmost-x,
+          dy: heaven-earth-gap + bar-thickness / 2 - crop-mark-size / 2,
+          link("crop-mark://left", rect(width: crop-mark-size, height: crop-mark-size, fill: red, stroke: 0.5pt + red))
         )
-      )
 
-      // Top-right crop mark
-      #place(
-        dx: crop-right - crop-mark-size,
-        dy: crop-top,
-        link("crop-mark://top-right",
-          rect(
-            width: crop-mark-size,
-            height: crop-mark-size,
-            fill: crop-mark-color,
-            stroke: crop-mark-stroke + crop-mark-color
-          )
+        // Right crop mark (at rightmost boundary, centered on reckoning bar)
+        #place(
+          dx: rightmost-x - crop-mark-size,
+          dy: heaven-earth-gap + bar-thickness / 2 - crop-mark-size / 2,
+          link("crop-mark://right", rect(width: crop-mark-size, height: crop-mark-size, fill: red, stroke: 0.5pt + red))
         )
-      )
 
-      // Bottom-left crop mark
-      #place(
-        dx: crop-left,
-        dy: crop-bottom - crop-mark-size,
-        link("crop-mark://bottom-left",
-          rect(
-            width: crop-mark-size,
-            height: crop-mark-size,
-            fill: crop-mark-color,
-            stroke: crop-mark-stroke + crop-mark-color
-          )
+        // Top crop mark (above topmost bead, centered on first column)
+        #place(
+          dx: column-spacing / 2 - crop-mark-size / 2,
+          dy: topmost-y,
+          link("crop-mark://top", rect(width: crop-mark-size, height: crop-mark-size, fill: red, stroke: 0.5pt + red))
         )
-      )
 
-      // Bottom-right crop mark
-      #place(
-        dx: crop-right - crop-mark-size,
-        dy: crop-bottom - crop-mark-size,
-        link("crop-mark://bottom-right",
-          rect(
-            width: crop-mark-size,
-            height: crop-mark-size,
-            fill: crop-mark-color,
-            stroke: crop-mark-stroke + crop-mark-color
-          )
+        // Bottom crop mark (below bottommost bead, centered on last column)
+        #place(
+          dx: (display-digits.len() - 1) * column-spacing + column-spacing / 2 - crop-mark-size / 2,
+          dy: bottommost-y - crop-mark-size,
+          link("crop-mark://bottom", rect(width: crop-mark-size, height: crop-mark-size, fill: red, stroke: 0.5pt + red))
         )
-      )
+      ]
 
-      // Center reference mark (for debugging alignment)
-      #if show-crop-marks {
-        place(
-          dx: total-width / 2 - crop-mark-size / 2,
-          dy: -crop-mark-size / 2,
-          link("crop-mark://center",
-            circle(
-              radius: crop-mark-size / 2,
-              fill: rgb("#ff6b6b"),
-              stroke: 0.5pt + rgb("#ff6b6b")
-            )
-          )
-        )
-      }
     ]
   ]
 }

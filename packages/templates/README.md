@@ -147,7 +147,10 @@ Both templates use Typst's `link()` function to annotate elements for post-proce
 Example annotations in generated PDFs:
 - `bead://col1-ones-heaven` - Heaven bead in column 1, ones position
 - `bead://col2-tens-earth-1` - First earth bead in column 2, tens position
-- `crop-mark://top-left` - Top-left crop boundary
+- `crop-mark://top` - Top edge crop boundary
+- `crop-mark://bottom` - Bottom edge crop boundary
+- `crop-mark://left` - Left edge crop boundary
+- `crop-mark://right` - Right edge crop boundary
 - `crop-mark://center` - Center reference point
 
 ### SVG Crop Mark Processing
@@ -214,10 +217,12 @@ updateViewBox('soroban.svg', 'cropped-soroban.svg');
 ```
 
 **Crop Mark Processing Features:**
+- **Edge-Based Marking**: Crop marks positioned at top, bottom, left, right edges (not corners)
 - **Automatic ViewBox**: Calculate precise viewBox from crop mark positions
 - **Consistent Cropping**: Eliminate manual SVG cropping across all generated files
 - **Debugging Support**: Set `show-crop-marks: true` to visually verify boundaries
 - **Flexible Margins**: Adjust `crop-margin` to control boundary spacing
+- **Semantic Annotations**: `crop-mark://top`, `crop-mark://bottom`, etc. for clear identification
 
 **Example Usage Script:** See `examples/svg-post-processor.js` for a complete implementation
 

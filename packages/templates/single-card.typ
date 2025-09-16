@@ -160,11 +160,39 @@
   let crop-top = -crop-margin
   let crop-bottom = height + crop-margin
 
-  // Top-left crop mark
+  // Top crop mark (centered on top edge)
+  place(
+    dx: width / 2 - crop-mark-size / 2,
+    dy: crop-top,
+    link("crop-mark://top",
+      rect(
+        width: crop-mark-size,
+        height: crop-mark-size,
+        fill: crop-mark-color,
+        stroke: crop-mark-stroke + crop-mark-color
+      )
+    )
+  )
+
+  // Bottom crop mark (centered on bottom edge)
+  place(
+    dx: width / 2 - crop-mark-size / 2,
+    dy: crop-bottom - crop-mark-size,
+    link("crop-mark://bottom",
+      rect(
+        width: crop-mark-size,
+        height: crop-mark-size,
+        fill: crop-mark-color,
+        stroke: crop-mark-stroke + crop-mark-color
+      )
+    )
+  )
+
+  // Left crop mark (centered on left edge)
   place(
     dx: crop-left,
-    dy: crop-top,
-    link("crop-mark://top-left",
+    dy: height / 2 - crop-mark-size / 2,
+    link("crop-mark://left",
       rect(
         width: crop-mark-size,
         height: crop-mark-size,
@@ -174,39 +202,11 @@
     )
   )
 
-  // Top-right crop mark
+  // Right crop mark (centered on right edge)
   place(
     dx: crop-right - crop-mark-size,
-    dy: crop-top,
-    link("crop-mark://top-right",
-      rect(
-        width: crop-mark-size,
-        height: crop-mark-size,
-        fill: crop-mark-color,
-        stroke: crop-mark-stroke + crop-mark-color
-      )
-    )
-  )
-
-  // Bottom-left crop mark
-  place(
-    dx: crop-left,
-    dy: crop-bottom - crop-mark-size,
-    link("crop-mark://bottom-left",
-      rect(
-        width: crop-mark-size,
-        height: crop-mark-size,
-        fill: crop-mark-color,
-        stroke: crop-mark-stroke + crop-mark-color
-      )
-    )
-  )
-
-  // Bottom-right crop mark
-  place(
-    dx: crop-right - crop-mark-size,
-    dy: crop-bottom - crop-mark-size,
-    link("crop-mark://bottom-right",
+    dy: height / 2 - crop-mark-size / 2,
+    link("crop-mark://right",
       rect(
         width: crop-mark-size,
         height: crop-mark-size,
