@@ -160,7 +160,7 @@ const DIFFICULTY_LEVELS = {
 
 type DifficultyLevel = keyof typeof DIFFICULTY_LEVELS
 
-// Generate quiz cards using ServerSorobanSVG with difficulty-based number ranges
+// Generate quiz cards with difficulty-based number ranges
 const generateQuizCards = (count: number, difficulty: DifficultyLevel): QuizCard[] => {
   const { min, max } = DIFFICULTY_LEVELS[difficulty].range
 
