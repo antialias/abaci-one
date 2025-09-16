@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import fs from 'fs'
-import path from 'path'
+import { getTemplatePath } from '@soroban/templates'
 
 // API endpoint to serve the flashcards.typ template content
 export async function GET() {
   try {
-    const templatesDir = path.join(process.cwd(), '../../packages/core/templates')
-    const flashcardsTemplate = fs.readFileSync(path.join(templatesDir, 'flashcards.typ'), 'utf-8')
+    const templatePath = getTemplatePath('flashcards.typ');
+    const flashcardsTemplate = fs.readFileSync(templatePath, 'utf-8')
 
     return NextResponse.json({
       template: flashcardsTemplate,

@@ -29,8 +29,9 @@ async function getFlashcardsTemplate(): Promise<string> {
   }
 
   try {
-    const templatesDir = path.join(process.cwd(), '../../packages/core/templates')
-    flashcardsTemplate = fs.readFileSync(path.join(templatesDir, 'flashcards.typ'), 'utf-8')
+    const { getTemplatePath } = require('@soroban/templates')
+    const templatePath = getTemplatePath('flashcards.typ')
+    flashcardsTemplate = fs.readFileSync(templatePath, 'utf-8')
     return flashcardsTemplate
   } catch (error) {
     console.error('Failed to load flashcards template:', error)
