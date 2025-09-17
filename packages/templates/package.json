@@ -31,6 +31,7 @@
     "examples:node": "node examples/node-example.js",
     "examples:python": "python3 examples/python-example.py",
     "gallery": "node generate-gallery.js && node build-unified-gallery.js && open gallery-unified.html",
+    "gallery:node": "node generate-gallery-node.js && node build-unified-gallery.js && open gallery-unified.html",
     "gallery:clean": "rm -rf gallery/ gallery-static.html"
   },
   "keywords": [
