@@ -1,65 +1,322 @@
-<svg class="typst-doc" viewBox="0 0 200 300" width="200pt" height="300pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:h5="http://www.w3.org/1999/xhtml">
-    <path class="typst-shape" fill="#ffffff" fill-rule="nonzero" d="M 0 0 L 0 300 L 200 300 L 200 0 Z "/>
-    <g>
-        <g transform="translate(68.75 7.5)">
-            <g class="typst-group">
-                <g>
-                    <g transform="translate(0 0)">
-                        <g class="typst-group">
-                            <g>
-                                <g transform="translate(27.5 44)">
-                                    <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" d="M 0 0 L 0 167.5 L 7.5 167.5 L 7.5 0 Z "/>
-                                </g>
-                                <g transform="translate(10.25 44)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 21 0 L 42 15 L 21 30 L 0 15 Z "/>
+<svg
+    style="overflow: visible"
+    class="typst-doc"
+    viewBox="0 0 200.000 300.000"
+    width="200.000"
+    height="300.000"
+    data-width="200.000"
+    data-height="300.000"
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    xmlns:h5="http://www.w3.org/1999/xhtml"
+>
+    <style type="text/css">
+        .typst-text {
+            pointer-events: bounding-box;
+        }
+
+        .tsel span,
+        .tsel {
+            left: 0;
+            position: fixed;
+            text-align: justify;
+            white-space: nowrap;
+            width: 100%;
+            height: 100%;
+            text-align-last: justify;
+            color: transparent;
+            white-space: pre;
+        }
+        .tsel span::-moz-selection,
+        .tsel::-moz-selection {
+            color: transparent;
+            background: #7db9dea0;
+        }
+        .tsel span::selection,
+        .tsel::selection {
+            color: transparent;
+            background: #7db9dea0;
+        }
+        .pseudo-link {
+            fill: transparent;
+            cursor: pointer;
+            pointer-events: all;
+        }
+        svg {
+            fill: none;
+        }
+
+        .outline_glyph path,
+        path.outline_glyph {
+            fill: var(--glyph_fill);
+            stroke: var(--glyph_stroke);
+        }
+
+        .outline_glyph path,
+        path.outline_glyph {
+            transition: 0.2s fill stroke;
+        }
+        .hover .typst-text {
+            --glyph_fill: #66bab7;
+            --glyph_stroke: #66bab7;
+        }
+
+        .typst-jump-ripple,
+        .typst-debug-react-ripple {
+            width: 0;
+            height: 0;
+            background-color: transparent;
+            position: absolute;
+            border-radius: 50%;
+        }
+        .typst-jump-ripple {
+            border: 1px solid #66bab7;
+        }
+        .typst-debug-react-ripple {
+            border: 1px solid #cb1b45;
+        }
+        @keyframes typst-jump-ripple-effect {
+            to {
+                width: 10vw;
+                height: 10vw;
+                opacity: 0.01;
+                margin: -5vw;
+            }
+        }
+        @keyframes typst-debug-react-ripple-effect {
+            to {
+                width: 3vw;
+                height: 3vw;
+                opacity: 0.01;
+                margin: -1.5vw;
+            }
+        }
+    </style>
+    <defs class="glyph"></defs>
+    <defs class="clip-path"></defs>
+    <style type="text/css"></style>
+    <g
+        class="typst-page"
+        transform="translate(0, 0)"
+        data-tid="pev5Ln/QKko0yNN2qGk57x0"
+        data-page-width="200"
+        data-page-height="300"
+    >
+        <g data-tid="gev5Ln/QKko0yNN2qGk57x0" class="typst-group">
+            <g transform="translate(0.000,0.000)" data-tid="pKPD/0NR1AsUJs4d9dir35k">
+                <g data-tid="gKPD/0NR1AsUJs4d9dir35k">
+                    <path class="typst-shape" d="M 0 0 L 0 300 L 200 300 L 200 0 Z " fill-rule="nonzero" fill="#fff" />
+                </g>
+            </g>
+            <g transform="translate(12.000,7.500)" data-tid="piOQmcHmgl3k57QKPQzwUjc">
+                <g data-tid="giOQmcHmgl3k57QKPQzwUjc" class="typst-group">
+                    <g transform="translate(56.750,0.000)" data-tid="pLYjXwU6wlMMgEv0toao+yQ">
+                        <g data-tid="gLYjXwU6wlMMgEv0toao+yQ" class="typst-group">
+                            <g transform="translate(0.000,0.000)" data-tid="pINTw3HrimmYCxVVKtnBNTY">
+                                <g data-tid="gINTw3HrimmYCxVVKtnBNTY" class="typst-group">
+                                    <g transform="translate(27.500,44.000)" data-tid="pWDN3eI5Wy1svpQKvLFjlAE">
+                                        <g data-tid="gWDN3eI5Wy1svpQKvLFjlAE" class="typst-group">
+                                            <g transform="translate(-0.000,-0.000)" data-tid="pgB3+oHVnSGQhC8LwSBXpO4">
+                                                <g data-tid="ggB3+oHVnSGQhC8LwSBXpO4">
+                                                    <path
+                                                        class="typst-shape"
+                                                        d="M 0 0 L 0 167.5 L 7.5 167.5 L 7.5 0 Z "
+                                                        fill-rule="nonzero"
+                                                        fill="#eee"
+                                                    />
+                                                </g>
+                                            </g>
+                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
+                                                <g
+                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
+                                                    class="typst-content-hint"
+                                                    data-hint="a"
+                                                ></g>
                                             </g>
                                         </g>
                                     </g>
-                                </g>
-                                <g transform="translate(10.25 81)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 21 0 L 42 15 L 21 30 L 0 15 Z "/>
+                                    <g transform="translate(10.250,44.000)" data-tid="pz1eap4S+Y10GX5FYhWJoqo">
+                                        <g data-tid="gz1eap4S+Y10GX5FYhWJoqo" class="typst-group">
+                                            <g transform="translate(0.000,0.000)" data-tid="p1R4txwHv/jQtyLFnRrT7i8">
+                                                <g data-tid="g1R4txwHv/jQtyLFnRrT7i8">
+                                                    <path
+                                                        class="typst-shape"
+                                                        d="M 0 0 M 21 0 L 42 15 L 21 30 L 0 15 Z "
+                                                        stroke-width="0.5"
+                                                        stroke-miterlimit="4"
+                                                        fill-rule="nonzero"
+                                                        fill="#2e86ab"
+                                                        stroke="#000"
+                                                    />
+                                                </g>
+                                            </g>
+                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
+                                                <g
+                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
+                                                    class="typst-content-hint"
+                                                    data-hint="a"
+                                                ></g>
                                             </g>
                                         </g>
                                     </g>
-                                </g>
-                                <g transform="translate(10.25 112.25)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 21 0 L 42 15 L 21 30 L 0 15 Z "/>
+                                    <g transform="translate(10.250,81.000)" data-tid="pz1eap4S+Y10GX5FYhWJoqo">
+                                        <g data-tid="gz1eap4S+Y10GX5FYhWJoqo" class="typst-group">
+                                            <g transform="translate(0.000,0.000)" data-tid="p1R4txwHv/jQtyLFnRrT7i8">
+                                                <g data-tid="g1R4txwHv/jQtyLFnRrT7i8">
+                                                    <path
+                                                        class="typst-shape"
+                                                        d="M 0 0 M 21 0 L 42 15 L 21 30 L 0 15 Z "
+                                                        stroke-width="0.5"
+                                                        stroke-miterlimit="4"
+                                                        fill-rule="nonzero"
+                                                        fill="#2e86ab"
+                                                        stroke="#000"
+                                                    />
+                                                </g>
+                                            </g>
+                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
+                                                <g
+                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
+                                                    class="typst-content-hint"
+                                                    data-hint="a"
+                                                ></g>
                                             </g>
                                         </g>
                                     </g>
-                                </g>
-                                <g transform="translate(10.25 150.25)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 21 0 L 42 15 L 21 30 L 0 15 Z "/>
+                                    <g transform="translate(10.250,112.250)" data-tid="pz1eap4S+Y10GX5FYhWJoqo">
+                                        <g data-tid="gz1eap4S+Y10GX5FYhWJoqo" class="typst-group">
+                                            <g transform="translate(0.000,0.000)" data-tid="p1R4txwHv/jQtyLFnRrT7i8">
+                                                <g data-tid="g1R4txwHv/jQtyLFnRrT7i8">
+                                                    <path
+                                                        class="typst-shape"
+                                                        d="M 0 0 M 21 0 L 42 15 L 21 30 L 0 15 Z "
+                                                        stroke-width="0.5"
+                                                        stroke-miterlimit="4"
+                                                        fill-rule="nonzero"
+                                                        fill="#2e86ab"
+                                                        stroke="#000"
+                                                    />
+                                                </g>
+                                            </g>
+                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
+                                                <g
+                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
+                                                    class="typst-content-hint"
+                                                    data-hint="a"
+                                                ></g>
                                             </g>
                                         </g>
                                     </g>
-                                </g>
-                                <g transform="translate(10.25 181.5)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 21 0 L 42 15 L 21 30 L 0 15 Z "/>
+                                    <g transform="translate(10.250,150.250)" data-tid="p/DZqq9hqyKwET/CgfF+rWA">
+                                        <g data-tid="g/DZqq9hqyKwET/CgfF+rWA" class="typst-group">
+                                            <g transform="translate(0.000,0.000)" data-tid="p+al8hDwsCRAvRzrZK3pyZA">
+                                                <g data-tid="g+al8hDwsCRAvRzrZK3pyZA">
+                                                    <path
+                                                        class="typst-shape"
+                                                        d="M 0 0 M 21 0 L 42 15 L 21 30 L 0 15 Z "
+                                                        stroke-width="0.5"
+                                                        stroke-miterlimit="4"
+                                                        fill-rule="nonzero"
+                                                        fill="#e6e6e6"
+                                                        stroke="#000"
+                                                    />
+                                                </g>
+                                            </g>
+                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
+                                                <g
+                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
+                                                    class="typst-content-hint"
+                                                    data-hint="a"
+                                                ></g>
                                             </g>
                                         </g>
                                     </g>
-                                </g>
-                                <g transform="translate(0 75)">
-                                    <path class="typst-shape" fill="#000000" fill-rule="nonzero" d="M 0 0 L 0 5 L 62.5 5 L 62.5 0 Z "/>
+                                    <g transform="translate(10.250,181.500)" data-tid="p/DZqq9hqyKwET/CgfF+rWA">
+                                        <g data-tid="g/DZqq9hqyKwET/CgfF+rWA" class="typst-group">
+                                            <g transform="translate(0.000,0.000)" data-tid="p+al8hDwsCRAvRzrZK3pyZA">
+                                                <g data-tid="g+al8hDwsCRAvRzrZK3pyZA">
+                                                    <path
+                                                        class="typst-shape"
+                                                        d="M 0 0 M 21 0 L 42 15 L 21 30 L 0 15 Z "
+                                                        stroke-width="0.5"
+                                                        stroke-miterlimit="4"
+                                                        fill-rule="nonzero"
+                                                        fill="#e6e6e6"
+                                                        stroke="#000"
+                                                    />
+                                                </g>
+                                            </g>
+                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
+                                                <g
+                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
+                                                    class="typst-content-hint"
+                                                    data-hint="a"
+                                                ></g>
+                                            </g>
+                                        </g>
+                                    </g>
+                                    <g transform="translate(0.000,75.000)" data-tid="p2OAgUOWQINAgLpV6W+rT0Q">
+                                        <g data-tid="g2OAgUOWQINAgLpV6W+rT0Q" class="typst-group">
+                                            <g transform="translate(-0.000,-0.000)" data-tid="poFikNu5kr40+I9Q+Ih45zQ">
+                                                <g data-tid="goFikNu5kr40+I9Q+Ih45zQ">
+                                                    <path
+                                                        class="typst-shape"
+                                                        d="M 0 0 L 0 5 L 62.5 5 L 62.5 0 Z "
+                                                        fill-rule="nonzero"
+                                                        fill="#000"
+                                                    />
+                                                </g>
+                                            </g>
+                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
+                                                <g
+                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
+                                                    class="typst-content-hint"
+                                                    data-hint="a"
+                                                ></g>
+                                            </g>
+                                        </g>
+                                    </g>
+                                    <g transform="translate(10.250,44.000)" data-tid="pUJ4teRJqMbc8JnbEqguwjk">
+                                        <g data-tid="gUJ4teRJqMbc8JnbEqguwjk">
+                                            <a target="_blank" xlink:href="bead://heaven-col0-active1">
+                                                <rect class="pseudo-link" width="42" height="30"></rect>
+                                            </a>
+                                        </g>
+                                    </g>
+                                    <g transform="translate(10.250,81.000)" data-tid="pXCymXLu2t384DWU4dTFg7k">
+                                        <g data-tid="gXCymXLu2t384DWU4dTFg7k">
+                                            <a target="_blank" xlink:href="bead://earth-col0-pos0-active1">
+                                                <rect class="pseudo-link" width="42" height="30"></rect>
+                                            </a>
+                                        </g>
+                                    </g>
+                                    <g transform="translate(10.250,112.250)" data-tid="plqClpc/oyxUt8d6qonX3yU">
+                                        <g data-tid="glqClpc/oyxUt8d6qonX3yU">
+                                            <a target="_blank" xlink:href="bead://earth-col0-pos1-active1">
+                                                <rect class="pseudo-link" width="42" height="30"></rect>
+                                            </a>
+                                        </g>
+                                    </g>
+                                    <g transform="translate(10.250,150.250)" data-tid="pWvLx0/p8Je46u5ZmZluBFo">
+                                        <g data-tid="gWvLx0/p8Je46u5ZmZluBFo">
+                                            <a target="_blank" xlink:href="bead://earth-col0-pos2-active0">
+                                                <rect class="pseudo-link" width="42" height="30"></rect>
+                                            </a>
+                                        </g>
+                                    </g>
+                                    <g transform="translate(10.250,181.500)" data-tid="pKKten7gKNQQEg2kUtbKSgw">
+                                        <g data-tid="gKKten7gKNQQEg2kUtbKSgw">
+                                            <a target="_blank" xlink:href="bead://earth-col0-pos3-active0">
+                                                <rect class="pseudo-link" width="42" height="30"></rect>
+                                            </a>
+                                        </g>
+                                    </g>
                                 </g>
                             </g>
                         </g>
+                    </g>
+                    <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
+                        <g data-tid="gkX38uhRGUGcTIxmq0NbWuc" class="typst-content-hint" data-hint="a"></g>
                     </g>
                 </g>
             </g>
