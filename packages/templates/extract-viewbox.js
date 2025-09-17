@@ -6,57 +6,88 @@
 const fs = require('fs');
 
 function parseSVGWithTransforms(svgContent) {
-    // Parse SVG structure to build a tree with accumulated transforms
-    const elements = [];
+    // Parse SVG structure to find crop marks in both CLI and Node.js formats
+    const cropMarks = [];
 
-    // Find all elements with their nesting levels and transforms
-    const lines = svgContent.split('\n');
-    const stack = []; // Track parent transforms
+    // Method 1: Look for crop-mark:// links (Node.js format)
+    const linkMatches = svgContent.matchAll(/xlink:href="crop-mark:\/\/(left|right|top|bottom)"/g);
+    const transformRegex = /transform="translate\(([^)]+)\)"/g;
 
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const indent = line.match(/^(\s*)/)[1].length;
+    // Convert content to searchable text for easier parsing
+    const searchableContent = svgContent.replace(/\n/g, ' ').replace(/\s+/g, ' ');
 
-        // Track opening/closing tags to maintain hierarchy
-        if (line.includes('<g ') && line.includes('transform=')) {
-            const transformMatch = line.match(/transform="translate\(([^)]+)\)"/);
-            if (transformMatch) {
-                const coords = transformMatch[1].split(/[,\s]+/).map(Number);
-                const transform = { x: coords[0] || 0, y: coords[1] || 0 };
+    for (const linkMatch of linkMatches) {
+        const direction = linkMatch[1];
+        const beforeLink = searchableContent.substring(0, linkMatch.index);
 
-                // Maintain stack based on indentation level
-                while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
-                    stack.pop();
-                }
+        // Find all transforms before this link
+        let totalX = 0, totalY = 0;
+        let transformMatch;
+        transformRegex.lastIndex = 0; // Reset regex
 
-                // Calculate accumulated transform
-                const accumulated = stack.reduce(
-                    (acc, parent) => ({ x: acc.x + parent.transform.x, y: acc.y + parent.transform.y }),
-                    { x: 0, y: 0 }
-                );
+        while ((transformMatch = transformRegex.exec(beforeLink)) !== null) {
+            const coords = transformMatch[1].split(/[,\s]+/).map(Number);
+            totalX += coords[0] || 0;
+            totalY += coords[1] || 0;
+        }
 
-                const finalTransform = {
-                    x: accumulated.x + transform.x,
-                    y: accumulated.y + transform.y
-                };
+        cropMarks.push({
+            type: 'crop-mark',
+            direction,
+            finalTransform: { x: totalX, y: totalY }
+        });
+    }
 
-                stack.push({ indent, transform, finalTransform });
+    // Method 2: Fallback to CLI format (multi-line with path elements)
+    if (cropMarks.length === 0) {
+        const lines = svgContent.split('\n');
+        const stack = []; // Track parent transforms
 
-                // Check if this contains a tiny crop mark point (not the dashed lines)
-                if (i + 1 < lines.length &&
-                    lines[i + 1].includes('fill="#ff4136"') &&
-                    lines[i + 1].includes('0.1 0.1')) {
-                    elements.push({
-                        type: 'crop-mark',
-                        finalTransform,
-                        line: i
-                    });
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const indent = line.match(/^(\s*)/)[1].length;
+
+            // Track opening/closing tags to maintain hierarchy
+            if (line.includes('<g ') && line.includes('transform=')) {
+                const transformMatch = line.match(/transform="translate\(([^)]+)\)"/);
+                if (transformMatch) {
+                    const coords = transformMatch[1].split(/[,\s]+/).map(Number);
+                    const transform = { x: coords[0] || 0, y: coords[1] || 0 };
+
+                    // Maintain stack based on indentation level
+                    while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
+                        stack.pop();
+                    }
+
+                    // Calculate accumulated transform
+                    const accumulated = stack.reduce(
+                        (acc, parent) => ({ x: acc.x + parent.transform.x, y: acc.y + parent.transform.y }),
+                        { x: 0, y: 0 }
+                    );
+
+                    const finalTransform = {
+                        x: accumulated.x + transform.x,
+                        y: accumulated.y + transform.y
+                    };
+
+                    stack.push({ indent, transform, finalTransform });
+
+                    // Check if this contains a tiny crop mark point (not the dashed lines)
+                    if (i + 1 < lines.length &&
+                        lines[i + 1].includes('fill="#ff4136"') &&
+                        lines[i + 1].includes('0.1 0.1')) {
+                        cropMarks.push({
+                            type: 'crop-mark',
+                            finalTransform,
+                            line: i
+                        });
+                    }
                 }
             }
         }
     }
 
-    return elements;
+    return cropMarks;
 }
 
 function extractViewBoxFromCropMarks(svgPath) {
@@ -79,11 +110,20 @@ function extractViewBoxFromCropMarks(svgPath) {
 
     // Extract positions from accumulated transforms
     const cropMarks = {};
-    const markTypes = ['left', 'right', 'top', 'bottom']; // Expected order from our implementation
 
     cropMarkElements.forEach((element, index) => {
-        if (index < markTypes.length) {
-            const markType = markTypes[index];
+        let markType;
+
+        if (element.direction) {
+            // Node.js format: has explicit direction
+            markType = element.direction;
+        } else {
+            // CLI format: use order-based mapping
+            const markTypes = ['left', 'right', 'top', 'bottom'];
+            markType = markTypes[index];
+        }
+
+        if (markType) {
             const { x, y } = element.finalTransform;
             cropMarks[markType] = { x, y };
             console.log(`  ✅ Found ${markType} at (${x}, ${y}) [accumulated]`);
