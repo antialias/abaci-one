@@ -63,9 +63,13 @@ A complete React component for rendering interactive Soroban (Japanese abacus) S
       control: { type: 'boolean' },
       description: 'Enable react-spring animations',
     },
+    interactive: {
+      control: { type: 'boolean' },
+      description: 'Enable user interactions (gestures and clicks) - when true, users can modify the abacus',
+    },
     gestures: {
       control: { type: 'boolean' },
-      description: 'Enable directional gesture interactions',
+      description: 'Enable directional gesture interactions (legacy prop, use interactive instead)',
     },
     hideInactiveBeads: {
       control: { type: 'boolean' },
@@ -99,7 +103,7 @@ export const BasicNumber: Story = {
     colorScheme: 'monochrome',
     scaleFactor: 1,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -121,7 +125,7 @@ export const MultiColumn: Story = {
     colorPalette: 'default',
     scaleFactor: 1,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -143,7 +147,7 @@ export const CircleBeads: Story = {
     colorPalette: 'default',
     scaleFactor: 1.2,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -164,7 +168,7 @@ export const SquareBeads: Story = {
     colorScheme: 'alternating',
     scaleFactor: 0.8,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -186,7 +190,7 @@ export const MonochromeScheme: Story = {
     colorScheme: 'monochrome',
     scaleFactor: 1,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -208,7 +212,7 @@ export const PlaceValueScheme: Story = {
     colorPalette: 'mnemonic',
     scaleFactor: 0.9,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -229,7 +233,7 @@ export const AlternatingScheme: Story = {
     colorScheme: 'alternating',
     scaleFactor: 1,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -250,7 +254,7 @@ export const HeavenEarthScheme: Story = {
     colorScheme: 'heaven-earth',
     scaleFactor: 1,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -273,7 +277,7 @@ export const EmptyAbacus: Story = {
     scaleFactor: 2,
     hideInactiveBeads: false,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -296,7 +300,7 @@ export const HiddenInactiveBeads: Story = {
     hideInactiveBeads: true,
     scaleFactor: 1.4,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -318,7 +322,7 @@ export const LargeScale: Story = {
     colorPalette: 'default',
     scaleFactor: 2.5,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -341,7 +345,7 @@ export const ColorblindPalette: Story = {
     colorPalette: 'colorblind',
     scaleFactor: 0.8,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -363,7 +367,7 @@ export const GrayscalePalette: Story = {
     colorPalette: 'grayscale',
     scaleFactor: 1,
     animated: true,
-    gestures: true,
+    interactive: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -434,7 +438,7 @@ export const InteractiveExample: Story = {
     colorPalette: 'default',
     scaleFactor: 1.2,
     animated: true,
-    gestures: true,
+    interactive: true,
   },
   parameters: {
     docs: {
@@ -456,7 +460,7 @@ export const DirectionalGestures: Story = {
     colorPalette: 'default',
     scaleFactor: 1.5,
     animated: true,
-    gestures: true,
+    interactive: true,
   },
   parameters: {
     docs: {
@@ -511,7 +515,7 @@ export const SizingDemo: Story = {
     colorScheme: 'place-value',
     scaleFactor: 1,
     animated: true,
-    gestures: true,
+    interactive: true,
   },
   parameters: {
     docs: {
@@ -601,7 +605,7 @@ export const CSSHiddenInactiveBeads: Story = {
     colorPalette: 'default',
     scaleFactor: 1.2,
     animated: true,
-    gestures: true,
+    interactive: true,
   },
   parameters: {
     docs: {
@@ -673,7 +677,7 @@ export const InteractivePlaceValueEditing: Story = {
     colorScheme: 'place-value',
     scaleFactor: 1.2,
     animated: true,
-    gestures: true,
+    interactive: true,
   },
   parameters: {
     docs: {
@@ -732,6 +736,7 @@ export const NumbersToggleable: Story = {
     showNumbers: 'toggleable',
     scaleFactor: 1,
     animated: true,
+    interactive: true,
   },
   parameters: {
     docs: {
@@ -812,6 +817,339 @@ export const SizeComparisonNever: Story = {
     docs: {
       description: {
         story: 'Side-by-side comparison showing the height differences between the three showNumbers modes.',
+      },
+    },
+  },
+};
+
+// Interactive vs Non-Interactive Comparison
+export const InteractiveComparison: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '40px', alignItems: 'flex-start' }}>
+      <div style={{ textAlign: 'center' }}>
+        <h3 style={{ margin: '0 0 20px 0', fontSize: '16px' }}>Interactive Abacus</h3>
+        <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#666' }}>
+          • Click beads to toggle<br/>
+          • Drag gestures enabled<br/>
+          • Grab cursor on beads
+        </p>
+        <div style={{
+          border: '2px dashed #27ae60',
+          display: 'inline-block',
+          padding: '15px',
+          borderRadius: '8px'
+        }}>
+          <AbacusReact
+            value={42}
+            columns={2}
+            beadShape="diamond"
+            colorScheme="place-value"
+            scaleFactor={1.2}
+            interactive={true}
+          />
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center' }}>
+        <h3 style={{ margin: '0 0 20px 0', fontSize: '16px' }}>Display-Only Abacus</h3>
+        <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#666' }}>
+          • No user interactions<br/>
+          • Default cursor<br/>
+          • Pure display component
+        </p>
+        <div style={{
+          border: '2px dashed #e74c3c',
+          display: 'inline-block',
+          padding: '15px',
+          borderRadius: '8px'
+        }}>
+          <AbacusReact
+            value={42}
+            columns={2}
+            beadShape="diamond"
+            colorScheme="place-value"
+            scaleFactor={1.2}
+            interactive={false}
+          />
+        </div>
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'Side-by-side comparison showing the difference between interactive and display-only abacus components. Hover over the beads to see the different cursor behaviors.',
+      },
+    },
+  },
+};
+
+// Hidden Beads Opacity Behavior
+export const HiddenBeadsOpacityDemo: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '40px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>Interactive + Hidden Inactive</h3>
+        <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#666', maxWidth: '200px' }}>
+          • Inactive beads: opacity 0<br/>
+          • Hover abacus: opacity 0.5<br/>
+          • Hover bead: opacity 1<br/>
+          • Click to toggle beads
+        </p>
+        <div style={{
+          border: '2px dashed #3498db',
+          display: 'inline-block',
+          padding: '15px',
+          borderRadius: '8px'
+        }}>
+          <AbacusReact
+            value={123}
+            columns={3}
+            beadShape="diamond"
+            colorScheme="place-value"
+            scaleFactor={1.1}
+            interactive={true}
+            hideInactiveBeads={true}
+          />
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>Display-Only + Hidden Inactive</h3>
+        <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#666', maxWidth: '200px' }}>
+          • Inactive beads: opacity 0<br/>
+          • <strong>No hover effects</strong><br/>
+          • Always stays hidden<br/>
+          • No interactions
+        </p>
+        <div style={{
+          border: '2px dashed #e67e22',
+          display: 'inline-block',
+          padding: '15px',
+          borderRadius: '8px'
+        }}>
+          <AbacusReact
+            value={123}
+            columns={3}
+            beadShape="diamond"
+            colorScheme="place-value"
+            scaleFactor={1.1}
+            interactive={false}
+            hideInactiveBeads={true}
+          />
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>Interactive + All Beads Visible</h3>
+        <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#666', maxWidth: '200px' }}>
+          • All beads always visible<br/>
+          • Inactive beads dimmed<br/>
+          • Click to toggle<br/>
+          • Full interactivity
+        </p>
+        <div style={{
+          border: '2px dashed #27ae60',
+          display: 'inline-block',
+          padding: '15px',
+          borderRadius: '8px'
+        }}>
+          <AbacusReact
+            value={123}
+            columns={3}
+            beadShape="diamond"
+            colorScheme="place-value"
+            scaleFactor={1.1}
+            interactive={true}
+            hideInactiveBeads={false}
+          />
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>Display-Only + All Beads Visible</h3>
+        <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#666', maxWidth: '200px' }}>
+          • All beads always visible<br/>
+          • Inactive beads dimmed<br/>
+          • No interactions<br/>
+          • Static display
+        </p>
+        <div style={{
+          border: '2px dashed #8e44ad',
+          display: 'inline-block',
+          padding: '15px',
+          borderRadius: '8px'
+        }}>
+          <AbacusReact
+            value={123}
+            columns={3}
+            beadShape="diamond"
+            colorScheme="place-value"
+            scaleFactor={1.1}
+            interactive={false}
+            hideInactiveBeads={false}
+          />
+        </div>
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Interactive vs Display-Only Behavior with Hidden Inactive Beads**
+
+This story demonstrates the different opacity behaviors:
+
+1. **Interactive + Hidden Inactive**:
+   - Inactive beads start invisible (opacity 0)
+   - Hover over abacus → inactive beads become semi-transparent (opacity 0.5)
+   - Hover over specific bead → that bead becomes fully visible (opacity 1)
+   - Click beads to toggle their state
+
+2. **Display-Only + Hidden Inactive**:
+   - Inactive beads are always invisible (opacity 0)
+   - No hover effects - they remain hidden at all times
+   - No user interactions possible
+
+3. **All Beads Visible Modes**:
+   - Interactive: Full interaction with visible inactive beads
+   - Display-Only: Static display with no interactions
+
+**Test Instructions**: Hover over each abacus to see the different opacity behaviors!
+        `,
+      },
+    },
+  },
+};
+
+// Interactive Abacus with Always Visible Numbers
+export const InteractiveWithNumbers: Story = {
+  render: () => {
+    const [value, setValue] = React.useState(456);
+    const [beadClicks, setBeadClicks] = React.useState(0);
+    const [valueChanges, setValueChanges] = React.useState(0);
+    const lastValueRef = React.useRef(456);
+
+    const handleBeadClick = (bead: any) => {
+      setBeadClicks(prev => prev + 1);
+    };
+
+    const handleValueChange = (newValue: number) => {
+      setValue(newValue);
+
+      // Only increment counter if the value actually changed
+      if (newValue !== lastValueRef.current) {
+        lastValueRef.current = newValue;
+        setValueChanges(prev => prev + 1);
+      }
+    };
+
+    return (
+      <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+        <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', color: '#2c3e50' }}>
+          🎯 Fully Interactive Abacus with Visible Numbers
+        </h3>
+
+        <div style={{
+          marginBottom: '25px',
+          padding: '15px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px',
+          fontSize: '14px'
+        }}>
+          <div style={{ marginBottom: '10px' }}>
+            <strong>Current Value: <span style={{ color: '#e74c3c', fontSize: '18px' }}>{value}</span></strong>
+          </div>
+          <div style={{ marginBottom: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div><strong>Bead Clicks: {beadClicks}</strong></div>
+            <div><strong>Value Changes: {valueChanges}</strong></div>
+          </div>
+          <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.4' }}>
+            <strong>How to interact:</strong><br/>
+            • <strong>Drag beads</strong> up/down with gestures<br/>
+            • <strong>Click beads</strong> to toggle them<br/>
+            • <strong>Click numbers</strong> below columns to edit directly<br/>
+            • <strong>Use keyboard</strong> (0-9, arrows, Tab, Escape) when editing numbers
+          </div>
+        </div>
+
+        <div style={{
+          border: '3px solid #3498db',
+          display: 'inline-block',
+          padding: '20px',
+          borderRadius: '12px',
+          backgroundColor: '#ffffff',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+        }}>
+          <AbacusReact
+            value={value}
+            columns={3}
+            beadShape="diamond"
+            colorScheme="place-value"
+            scaleFactor={1.3}
+            interactive={true}
+            showNumbers="always"
+            animated={true}
+            onClick={handleBeadClick}
+            onValueChange={handleValueChange}
+          />
+        </div>
+
+        <div style={{
+          marginTop: '20px',
+          fontSize: '12px',
+          color: '#7f8c8d',
+          lineHeight: '1.5'
+        }}>
+          <p><strong>✨ Features Demonstrated:</strong></p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', textAlign: 'left' }}>
+            <div>
+              • Directional drag gestures<br/>
+              • Click-to-toggle beads<br/>
+              • NumberFlow editing
+            </div>
+            <div>
+              • Value change callbacks<br/>
+              • Keyboard navigation<br/>
+              • Visual feedback
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Complete Interactive Abacus Experience**
+
+This story demonstrates the full interactive capabilities when both \`interactive={true}\` and \`showNumbers="always"\` are enabled:
+
+**Bead Interactions:**
+- **Drag Gestures**: Drag beads in natural directions (heaven beads down to activate, earth beads up to activate)
+- **Click Toggle**: Click any bead to toggle its state
+- **Visual Feedback**: Grab cursor on hover, smooth animations
+
+**Number Editing:**
+- **Click to Edit**: Click on any number below a column to enter edit mode
+- **Keyboard Input**: Type 0-9 to change values, use arrows/Tab to navigate
+- **Live Updates**: Changes immediately reflect in both the abacus and the value display
+
+**Callbacks & State Management:**
+- **onValueChange**: Fires whenever the abacus value changes (from any interaction)
+- **onClick**: Fires when beads are clicked (receives bead information)
+- **Real-time Updates**: Both interaction counters and value display update live
+
+**Test Instructions:**
+1. Try dragging beads up and down
+2. Click beads to toggle them
+3. Click the numbers below columns to edit them directly
+4. Use keyboard navigation when editing numbers (Tab, arrows, 0-9, Escape)
+
+This represents the most feature-complete abacus configuration for interactive applications!
+        `,
       },
     },
   },

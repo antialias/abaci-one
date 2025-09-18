@@ -22,6 +22,7 @@ export interface AbacusConfig {
   colorPalette?: 'default' | 'colorblind' | 'mnemonic' | 'grayscale' | 'nature';
   scaleFactor?: number;
   animated?: boolean;
+  interactive?: boolean;
   gestures?: boolean;
   showNumbers?: 'always' | 'never' | 'toggleable';
   onClick?: (bead: BeadConfig) => void;
@@ -103,7 +104,7 @@ export function useAbacusState(initialValue: number = 0) {
 
   // Sync with prop changes
   React.useEffect(() => {
-    console.log(`🔄 Syncing internal state to new prop value: ${initialValue}`);
+    // console.log(`🔄 Syncing internal state to new prop value: ${initialValue}`);
     setColumnStates(initializeFromValue(initialValue));
   }, [initialValue, initializeFromValue]);
 
@@ -452,6 +453,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   colorPalette = 'default',
   scaleFactor = 1,
   animated = true,
+  interactive = false,
   gestures = false,
   showNumbers = 'never',
   onClick,
@@ -464,7 +466,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
   // Debug prop changes
   React.useEffect(() => {
-    console.log(`🔄 Component received value prop: ${value}, internal value: ${currentValue}`);
+    // console.log(`🔄 Component received value prop: ${value}, internal value: ${currentValue}`);
   }, [value, currentValue]);
 
   // Update numbers visibility when showNumbers prop changes
@@ -569,73 +571,73 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   // Keyboard handler
   React.useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      console.log(`🎹 KEY: "${e.key}" | activeColumn: ${activeColumn} | code: ${e.code}`);
+      // console.log(`🎹 KEY: "${e.key}" | activeColumn: ${activeColumn} | code: ${e.code}`);
 
       if (activeColumn === null) {
-        console.log(`❌ activeColumn is null, ignoring`);
+        // console.log(`❌ activeColumn is null, ignoring`);
         return;
       }
 
       if (e.key >= '0' && e.key <= '9') {
-        console.log(`🔢 DIGIT: ${e.key} for column ${activeColumn}`);
+        // console.log(`🔢 DIGIT: ${e.key} for column ${activeColumn}`);
         e.preventDefault();
 
         const digit = parseInt(e.key);
-        console.log(`📝 About to call setColumnValue(${activeColumn}, ${digit})`);
+        // console.log(`📝 About to call setColumnValue(${activeColumn}, ${digit})`);
         setColumnValue(activeColumn, digit);
 
         // Move focus to the next column to the right
         const nextColumn = activeColumn + 1;
         if (nextColumn < effectiveColumns) {
-          console.log(`➡️ Moving focus to next column: ${nextColumn}`);
+          // console.log(`➡️ Moving focus to next column: ${nextColumn}`);
           setActiveColumn(nextColumn);
         } else {
-          console.log(`🏁 Reached last column, staying at: ${activeColumn}`);
+          // console.log(`🏁 Reached last column, staying at: ${activeColumn}`);
         }
       } else if (e.key === 'Backspace' || (e.key === 'Tab' && e.shiftKey)) {
         e.preventDefault();
-        console.log(`⬅️ ${e.key === 'Backspace' ? 'BACKSPACE' : 'SHIFT+TAB'}: moving to previous column`);
+        // console.log(`⬅️ ${e.key === 'Backspace' ? 'BACKSPACE' : 'SHIFT+TAB'}: moving to previous column`);
 
         // Move focus to the previous column to the left
         const prevColumn = activeColumn - 1;
         if (prevColumn >= 0) {
-          console.log(`⬅️ Moving focus to previous column: ${prevColumn}`);
+          // console.log(`⬅️ Moving focus to previous column: ${prevColumn}`);
           setActiveColumn(prevColumn);
         } else {
-          console.log(`🏁 Reached first column, wrapping to last column`);
+          // console.log(`🏁 Reached first column, wrapping to last column`);
           setActiveColumn(effectiveColumns - 1); // Wrap around to last column
         }
       } else if (e.key === 'Tab') {
         e.preventDefault();
-        console.log(`🔄 TAB: moving to next column`);
+        // console.log(`🔄 TAB: moving to next column`);
 
         // Move focus to the next column to the right
         const nextColumn = activeColumn + 1;
         if (nextColumn < effectiveColumns) {
-          console.log(`➡️ Moving focus to next column: ${nextColumn}`);
+          // console.log(`➡️ Moving focus to next column: ${nextColumn}`);
           setActiveColumn(nextColumn);
         } else {
-          console.log(`🏁 Reached last column, wrapping to first column`);
+          // console.log(`🏁 Reached last column, wrapping to first column`);
           setActiveColumn(0); // Wrap around to first column
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        console.log(`🚪 ESCAPE: setting activeColumn to null`);
+        // console.log(`🚪 ESCAPE: setting activeColumn to null`);
         setActiveColumn(null);
       }
     };
 
-    console.log(`🔧 Setting up keyboard listener for activeColumn: ${activeColumn}`);
+    // console.log(`🔧 Setting up keyboard listener for activeColumn: ${activeColumn}`);
     document.addEventListener('keydown', handleKey);
     return () => {
-      console.log(`🗑️ Cleaning up keyboard listener for activeColumn: ${activeColumn}`);
+      // console.log(`🗑️ Cleaning up keyboard listener for activeColumn: ${activeColumn}`);
       document.removeEventListener('keydown', handleKey);
     };
   }, [activeColumn, setColumnValue, effectiveColumns]);
 
   // Debug activeColumn changes
   React.useEffect(() => {
-    console.log(`🎯 activeColumn changed to: ${activeColumn}`);
+    // console.log(`🎯 activeColumn changed to: ${activeColumn}`);
   }, [activeColumn]);
 
   return (
@@ -647,7 +649,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         width={dimensions.width}
         height={dimensions.height}
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
-        className={`abacus-svg ${hideInactiveBeads ? 'hide-inactive-mode' : ''}`}
+        className={`abacus-svg ${hideInactiveBeads ? 'hide-inactive-mode' : ''} ${interactive ? 'interactive' : ''}`}
         style={{ overflow: 'visible', display: 'block' }}
       >
       <defs>
@@ -662,14 +664,19 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             opacity: 0;
           }
 
-          /* When hovering over the abacus, hidden inactive beads become semi-transparent */
-          .abacus-svg.hide-inactive-mode:hover .abacus-bead.hidden-inactive {
+          /* Interactive abacus: When hovering over the abacus, hidden inactive beads become semi-transparent */
+          .abacus-svg.hide-inactive-mode.interactive:hover .abacus-bead.hidden-inactive {
             opacity: 0.5;
           }
 
-          /* When hovering over a specific hidden inactive bead, it becomes fully visible */
-          .hide-inactive-mode .abacus-bead.hidden-inactive:hover {
+          /* Interactive abacus: When hovering over a specific hidden inactive bead, it becomes fully visible */
+          .hide-inactive-mode.interactive .abacus-bead.hidden-inactive:hover {
             opacity: 1 !important;
+          }
+
+          /* Non-interactive abacus: Hidden inactive beads always stay at opacity 0 */
+          .abacus-svg.hide-inactive-mode:not(.interactive) .abacus-bead.hidden-inactive {
+            opacity: 0 !important;
           }
         `}</style>
       </defs>
@@ -754,9 +761,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               shape={beadShape}
               color={color}
               enableAnimation={animated}
-              enableGestures={gestures}
+              enableGestures={interactive || gestures}
               hideInactiveBeads={hideInactiveBeads}
-              onClick={() => handleBeadClick(bead)} // Enable click always - gestures and clicks work together
+              onClick={interactive ? () => handleBeadClick(bead) : undefined}
               onGestureToggle={handleGestureToggle}
               heavenEarthGap={dimensions.heavenEarthGap}
               barY={barY}
@@ -790,46 +797,52 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         );
       })}
 
+      {/* NumberFlow place value displays - inside SVG using foreignObject */}
+      {(showNumbers === 'always' || (showNumbers === 'toggleable' && numbersVisible)) && placeValues.map((value, columnIndex) => {
+        const x = (columnIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
+        // Position numbers within the allocated numbers space (below the baseHeight)
+        const baseHeight = dimensions.heavenEarthGap + 5 * (dimensions.beadSize + 4 * scaleFactor) + 10 * scaleFactor;
+        const y = baseHeight + 25;
+
+        return (
+          <foreignObject
+            key={`place-number-${columnIndex}`}
+            x={x - 12}
+            y={y - 8}
+            width={24}
+            height={16}
+            style={{ pointerEvents: 'none' }}
+          >
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontFamily: 'monospace',
+                fontWeight: 'bold',
+                pointerEvents: 'auto',
+                cursor: 'pointer'
+              }}
+              onClick={() => setActiveColumn(columnIndex)}
+            >
+              <NumberFlow
+                value={value}
+                format={{ style: 'decimal' }}
+                style={{
+                  fontFamily: 'monospace',
+                  fontWeight: 'bold',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+          </foreignObject>
+        );
+      })}
+
     </svg>
-
-    {/* NumberFlow place value displays - positioned over SVG */}
-    {(showNumbers === 'always' || (showNumbers === 'toggleable' && numbersVisible)) && placeValues.map((value, columnIndex) => {
-      const x = (columnIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
-      // Position numbers within the allocated numbers space (below the baseHeight)
-      const baseHeight = dimensions.heavenEarthGap + 5 * (dimensions.beadSize + 4 * scaleFactor) + 10 * scaleFactor;
-      const y = baseHeight + 25;
-
-      return (
-        <div
-          key={`place-number-${columnIndex}`}
-          style={{
-            position: 'absolute',
-            left: `${x - 12}px`,
-            top: `${y - 8}px`,
-            width: '24px',
-            height: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '14px',
-            fontFamily: 'monospace',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-          onClick={() => setActiveColumn(columnIndex)}
-        >
-          <NumberFlow
-            value={value}
-            format={{ style: 'decimal' }}
-            style={{
-              fontFamily: 'monospace',
-              fontWeight: 'bold',
-              fontSize: '14px'
-            }}
-          />
-        </div>
-      );
-    })}
 
     {/* Toggle button for toggleable mode */}
     {showNumbers === 'toggleable' && (
