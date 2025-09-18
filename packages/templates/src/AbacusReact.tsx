@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { useSpring, animated, config, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
+import NumberFlow from '@number-flow/react';
 
 // Types
 export interface BeadConfig {
@@ -93,6 +94,12 @@ export function useAbacusState(initialValue: number = 0) {
   }, []);
 
   const [columnStates, setColumnStates] = useState<ColumnState[]>(() => initializeFromValue(initialValue));
+
+  // Sync with prop changes
+  React.useEffect(() => {
+    console.log(`🔄 Syncing internal state to new prop value: ${initialValue}`);
+    setColumnStates(initializeFromValue(initialValue));
+  }, [initialValue, initializeFromValue]);
 
   // Calculate current value from independent column states
   const value = useMemo(() => {
@@ -445,6 +452,11 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 }) => {
   const { value: currentValue, columnStates, toggleBead, setColumnState } = useAbacusState(value);
 
+  // Debug prop changes
+  React.useEffect(() => {
+    console.log(`🔄 Component received value prop: ${value}, internal value: ${currentValue}`);
+  }, [value, currentValue]);
+
   // Calculate effective columns
   const effectiveColumns = useMemo(() => {
     if (columns === 'auto') {
@@ -515,14 +527,110 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     }
   }, [paddedColumnStates, setColumnState]);
 
+  // Place value editing - FRESH IMPLEMENTATION
+  const [activeColumn, setActiveColumn] = React.useState<number | null>(null);
+
+  // Calculate current place values
+  const placeValues = React.useMemo(() => {
+    return paddedColumnStates.map(state =>
+      (state.heavenActive ? 5 : 0) + state.earthActive
+    );
+  }, [paddedColumnStates]);
+
+  // Update a column from a digit
+  const setColumnValue = React.useCallback((columnIndex: number, digit: number) => {
+    if (digit < 0 || digit > 9) return;
+
+    setColumnState(columnIndex, {
+      heavenActive: digit >= 5,
+      earthActive: digit % 5
+    });
+  }, [setColumnState]);
+
+  // Keyboard handler
+  React.useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      console.log(`🎹 KEY: "${e.key}" | activeColumn: ${activeColumn} | code: ${e.code}`);
+
+      if (activeColumn === null) {
+        console.log(`❌ activeColumn is null, ignoring`);
+        return;
+      }
+
+      if (e.key >= '0' && e.key <= '9') {
+        console.log(`🔢 DIGIT: ${e.key} for column ${activeColumn}`);
+        e.preventDefault();
+
+        const digit = parseInt(e.key);
+        console.log(`📝 About to call setColumnValue(${activeColumn}, ${digit})`);
+        setColumnValue(activeColumn, digit);
+
+        // Move focus to the next column to the right
+        const nextColumn = activeColumn + 1;
+        if (nextColumn < effectiveColumns) {
+          console.log(`➡️ Moving focus to next column: ${nextColumn}`);
+          setActiveColumn(nextColumn);
+        } else {
+          console.log(`🏁 Reached last column, staying at: ${activeColumn}`);
+        }
+      } else if (e.key === 'Backspace' || (e.key === 'Tab' && e.shiftKey)) {
+        e.preventDefault();
+        console.log(`⬅️ ${e.key === 'Backspace' ? 'BACKSPACE' : 'SHIFT+TAB'}: moving to previous column`);
+
+        // Move focus to the previous column to the left
+        const prevColumn = activeColumn - 1;
+        if (prevColumn >= 0) {
+          console.log(`⬅️ Moving focus to previous column: ${prevColumn}`);
+          setActiveColumn(prevColumn);
+        } else {
+          console.log(`🏁 Reached first column, wrapping to last column`);
+          setActiveColumn(effectiveColumns - 1); // Wrap around to last column
+        }
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        console.log(`🔄 TAB: moving to next column`);
+
+        // Move focus to the next column to the right
+        const nextColumn = activeColumn + 1;
+        if (nextColumn < effectiveColumns) {
+          console.log(`➡️ Moving focus to next column: ${nextColumn}`);
+          setActiveColumn(nextColumn);
+        } else {
+          console.log(`🏁 Reached last column, wrapping to first column`);
+          setActiveColumn(0); // Wrap around to first column
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        console.log(`🚪 ESCAPE: setting activeColumn to null`);
+        setActiveColumn(null);
+      }
+    };
+
+    console.log(`🔧 Setting up keyboard listener for activeColumn: ${activeColumn}`);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      console.log(`🗑️ Cleaning up keyboard listener for activeColumn: ${activeColumn}`);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [activeColumn, setColumnValue, effectiveColumns]);
+
+  // Debug activeColumn changes
+  React.useEffect(() => {
+    console.log(`🎯 activeColumn changed to: ${activeColumn}`);
+  }, [activeColumn]);
+
   return (
-    <svg
-      width={dimensions.width}
-      height={dimensions.height}
-      viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
-      className={`abacus-svg ${hideInactiveBeads ? 'hide-inactive-mode' : ''}`}
-      style={{ overflow: 'visible' }}
+    <div
+      className="abacus-container"
+      style={{ display: 'inline-block', textAlign: 'center', position: 'relative' }}
     >
+      <svg
+        width={dimensions.width}
+        height={dimensions.height + 40}
+        viewBox={`0 0 ${dimensions.width} ${dimensions.height + 40}`}
+        className={`abacus-svg ${hideInactiveBeads ? 'hide-inactive-mode' : ''}`}
+        style={{ overflow: 'visible', display: 'block' }}
+      >
       <defs>
         <style>{`
           /* CSS-based opacity system for hidden inactive beads */
@@ -638,7 +746,67 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         })
       )}
 
+      {/* Background rectangles for place values - in SVG */}
+      {placeValues.map((value, columnIndex) => {
+        const x = (columnIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
+        const y = dimensions.height + 20;
+        const isActive = activeColumn === columnIndex;
+
+        return (
+          <rect
+            key={`place-bg-${columnIndex}`}
+            x={x - 12}
+            y={y - 12}
+            width={24}
+            height={24}
+            fill={isActive ? '#e3f2fd' : '#f5f5f5'}
+            stroke={isActive ? '#2196f3' : '#ccc'}
+            strokeWidth={isActive ? 2 : 1}
+            rx={3}
+            style={{ cursor: 'pointer' }}
+            onClick={() => setActiveColumn(columnIndex)}
+          />
+        );
+      })}
+
     </svg>
+
+    {/* NumberFlow place value displays - positioned over SVG */}
+    {placeValues.map((value, columnIndex) => {
+      const x = (columnIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
+      const y = dimensions.height + 20;
+
+      return (
+        <div
+          key={`place-number-${columnIndex}`}
+          style={{
+            position: 'absolute',
+            left: `${x - 12}px`,
+            top: `${y - 8}px`,
+            width: '24px',
+            height: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            fontSize: '14px',
+            fontFamily: 'monospace',
+            fontWeight: 'bold'
+          }}
+        >
+          <NumberFlow
+            value={value}
+            format={{ style: 'decimal' }}
+            style={{
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              fontSize: '14px'
+            }}
+          />
+        </div>
+      );
+    })}
+    </div>
   );
 };
 

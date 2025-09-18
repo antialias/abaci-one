@@ -624,3 +624,56 @@ This implementation uses pure CSS for smooth opacity transitions:
   },
 };
 
+// Interactive Place Value Editing
+export const InteractivePlaceValueEditing: Story = {
+  render: (args) => {
+    const [value, setValue] = useState(args.value || 123);
+
+    const handleBeadClick = (bead: any) => {
+      action('bead-clicked')(bead);
+    };
+
+    const handleValueChange = (newValue: number) => {
+      setValue(newValue);
+      action('value-changed')(newValue);
+    };
+
+    return (
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <h3>Interactive Place Value Editing</h3>
+          <p><strong>Instructions:</strong> Click on the number displays below each column to edit them directly!</p>
+          <p>Current Value: <strong>{value}</strong></p>
+        </div>
+
+        <AbacusReact
+          {...args}
+          value={value}
+          onClick={handleBeadClick}
+          onValueChange={handleValueChange}
+        />
+
+        <div style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
+          <p><strong>How to use:</strong> Click numbers below columns → Type 0-9 → Press Enter/Esc</p>
+        </div>
+      </div>
+    );
+  },
+  args: {
+    value: 123,
+    columns: 3,
+    beadShape: 'diamond',
+    colorScheme: 'place-value',
+    scaleFactor: 1.2,
+    animated: true,
+    gestures: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'SVG-based interactive place value editing with perfect alignment to abacus columns.',
+      },
+    },
+  },
+};
+
