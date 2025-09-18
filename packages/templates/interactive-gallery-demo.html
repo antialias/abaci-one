@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧮 Interactive Soroban Gallery - Demo</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/react-spring@9.7.0/dist/react-spring.umd.js"></script>
+    <script src="https://unpkg.com/@use-gesture/react@10.3.0/dist/index.umd.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f5f5f5;
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        #root {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">🧮 Loading Interactive Soroban Gallery...</div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useCallback, useMemo, useEffect } = React;
+        const { useSpring, animated, config } = window.ReactSpring;
+        const { useDrag } = window.ReactUseGesture;
+
+        // AbacusReact component implementation
+        function useAbacusDimensions(columns, scaleFactor = 1) {
+            return useMemo(() => {
+                const baseBeadSize = 12 * scaleFactor;
+                const baseRodSpacing = 25 * scaleFactor;
+                const baseMargin = 20 * scaleFactor;
+                const heavenEarthGap = 30 * scaleFactor;
+                const barThickness = 2 * scaleFactor;
+
+                const width = (columns * baseRodSpacing) + (2 * baseMargin);
+                const height = (baseBeadSize * 6) + heavenEarthGap + barThickness + (2 * baseMargin);
+
+                return { width, height, rodSpacing: baseRodSpacing, beadSize: baseBeadSize };
+            }, [columns, scaleFactor]);
+        }
+
+        function useAbacusState(initialValue = 0) {
+            const [value, setValue] = useState(initialValue);
+
+            const getColumnValue = useCallback((columnIndex, totalColumns) => {
+                const digits = value.toString().padStart(totalColumns, '0').split('').map(Number);
+                return digits[columnIndex] || 0;
+            }, [value]);
+
+            const toggleBead = useCallback((bead, totalColumns) => {
+                const currentColumnValue = getColumnValue(bead.columnIndex, totalColumns);
+                let newColumnValue;
+
+                if (bead.type === 'heaven') {
+                    newColumnValue = bead.active ? currentColumnValue - 5 : currentColumnValue + 5;
+                } else {
+                    if (bead.active) {
+                        newColumnValue = Math.min(currentColumnValue, bead.position);
+                    } else {
+                        newColumnValue = Math.max(currentColumnValue, bead.position + 1);
+                    }
+                }
+
+                const digits = value.toString().padStart(totalColumns, '0').split('').map(Number);
+                digits[bead.columnIndex] = Math.max(0, Math.min(9, newColumnValue));
+                const newTotal = parseInt(digits.join(''), 10);
+                setValue(newTotal);
+            }, [value, getColumnValue]);
+
+            return { value, setValue, toggleBead };
+        }
+
+        const COLOR_PALETTES = {
+            default: ['#2E86AB', '#A23B72', '#F18F01', '#6A994E', '#BC4B51'],
+            colorblind: ['#0173B2', '#DE8F05', '#CC78BC', '#029E73', '#D55E00'],
+            mnemonic: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'],
+            grayscale: ['#000000', '#404040', '#808080', '#b0b0b0', '#d0d0d0'],
+            nature: ['#4E79A7', '#F28E2C', '#E15759', '#76B7B2', '#59A14F']
+        };
+
+        function getBeadColor(bead, totalColumns, colorScheme, colorPalette) {
+            const inactiveColor = '#d3d3d3';
+            if (!bead.active) return inactiveColor;
+
+            switch (colorScheme) {
+                case 'place-value': {
+                    const placeIndex = totalColumns - bead.columnIndex - 1;
+                    const colors = COLOR_PALETTES[colorPalette] || COLOR_PALETTES.default;
+                    return colors[placeIndex % colors.length];
+                }
+                case 'alternating':
+                    return bead.columnIndex % 2 === 0 ? '#1E88E5' : '#43A047';
+                case 'heaven-earth':
+                    return bead.type === 'heaven' ? '#E53E3E' : '#3182CE';
+                default:
+                    return '#000000';
+            }
+        }
+
+        function calculateBeadStates(value, columns) {
+            const digits = value.toString().padStart(columns, '0').split('').map(Number);
+
+            return digits.map((digit, columnIndex) => {
+                const beads = [];
+
+                const heavenActive = digit >= 5;
+                beads.push({
+                    type: 'heaven',
+                    value: 5,
+                    active: heavenActive,
+                    position: 0,
+                    columnIndex
+                });
+
+                const earthValue = digit % 5;
+                for (let i = 0; i < 4; i++) {
+                    beads.push({
+                        type: 'earth',
+                        value: 1,
+                        active: i < earthValue,
+                        position: i,
+                        columnIndex
+                    });
+                }
+
+                return beads;
+            });
+        }
+
+        const Bead = ({ bead, x, y, size, shape, color, animated, draggable, onClick }) => {
+            const [{ x: springX, y: springY }, api] = useSpring(() => ({ x, y }));
+
+            const bind = useDrag(({ movement: [mx, my], down }) => {
+                if (!draggable) return;
+                if (down) {
+                    api.start({ x: x + mx, y: y + my, immediate: true });
+                } else {
+                    api.start({ x, y });
+                }
+            }, { enabled: draggable });
+
+            useEffect(() => {
+                if (animated) {
+                    api.start({ x, y, config: config.gentle });
+                } else {
+                    api.set({ x, y });
+                }
+            }, [x, y, animated, api]);
+
+            const renderShape = () => {
+                const halfSize = size / 2;
+                switch (shape) {
+                    case 'diamond':
+                        return React.createElement('polygon', {
+                            points: `${size * 0.7},0 ${size * 1.4},${halfSize} ${size * 0.7},${size} 0,${halfSize}`,
+                            fill: color,
+                            stroke: '#000',
+                            strokeWidth: '0.5'
+                        });
+                    case 'square':
+                        return React.createElement('rect', {
+                            width: size,
+                            height: size,
+                            fill: color,
+                            stroke: '#000',
+                            strokeWidth: '0.5',
+                            rx: '1'
+                        });
+                    case 'circle':
+                    default:
+                        return React.createElement('circle', {
+                            cx: halfSize,
+                            cy: halfSize,
+                            r: halfSize,
+                            fill: color,
+                            stroke: '#000',
+                            strokeWidth: '0.5'
+                        });
+                }
+            };
+
+            const AnimatedG = animated.g;
+
+            return React.createElement(AnimatedG, {
+                transform: animated ? undefined : `translate(${x - size/2}, ${y - size/2})`,
+                style: animated ? {
+                    transform: springX.to((x, y) => `translate(${x - size/2}px, ${y - size/2}px)`)
+                } : undefined,
+                ...bind(),
+                onClick,
+                style: { cursor: draggable ? 'grab' : onClick ? 'pointer' : 'default' }
+            }, renderShape());
+        };
+
+        const AbacusReact = ({
+            value = 0,
+            columns = 'auto',
+            showEmptyColumns = false,
+            hideInactiveBeads = false,
+            beadShape = 'diamond',
+            colorScheme = 'monochrome',
+            colorPalette = 'default',
+            scaleFactor = 1,
+            animated = true,
+            draggable = false,
+            onClick,
+            onValueChange
+        }) => {
+            const { value: currentValue, toggleBead } = useAbacusState(value);
+
+            const effectiveColumns = useMemo(() => {
+                if (columns === 'auto') {
+                    return Math.max(1, currentValue.toString().length);
+                }
+                return columns;
+            }, [columns, currentValue]);
+
+            const dimensions = useAbacusDimensions(effectiveColumns, scaleFactor);
+            const beadStates = useMemo(
+                () => calculateBeadStates(currentValue, effectiveColumns),
+                [currentValue, effectiveColumns]
+            );
+
+            const margin = 20 * scaleFactor;
+            const heavenEarthGap = 30 * scaleFactor;
+            const barY = margin + dimensions.beadSize * 1.5 + heavenEarthGap / 2;
+            const beadSpacing = 4 * scaleFactor;
+
+            const handleBeadClick = useCallback((bead) => {
+                onClick?.(bead);
+                toggleBead(bead, effectiveColumns);
+                onValueChange?.(currentValue);
+            }, [onClick, toggleBead, currentValue, effectiveColumns, onValueChange]);
+
+            const rods = [];
+            for (let colIndex = 0; colIndex < effectiveColumns; colIndex++) {
+                const x = margin + (colIndex * dimensions.rodSpacing);
+                rods.push(React.createElement('line', {
+                    key: `rod-${colIndex}`,
+                    x1: x,
+                    y1: margin,
+                    x2: x,
+                    y2: dimensions.height - margin,
+                    stroke: '#8B4513',
+                    strokeWidth: 3 * scaleFactor
+                }));
+            }
+
+            const bar = React.createElement('rect', {
+                x: margin - 10 * scaleFactor,
+                y: barY,
+                width: dimensions.width - 2 * margin + 20 * scaleFactor,
+                height: 2 * scaleFactor,
+                fill: '#8B4513'
+            });
+
+            const beads = [];
+            beadStates.forEach((columnBeads, colIndex) => {
+                columnBeads.forEach((bead, beadIndex) => {
+                    if (hideInactiveBeads && !bead.active) return;
+
+                    const x = margin + (colIndex * dimensions.rodSpacing);
+                    let y;
+
+                    if (bead.type === 'heaven') {
+                        y = margin + dimensions.beadSize / 2;
+                    } else {
+                        const earthStartY = barY + (2 * scaleFactor) + dimensions.beadSize / 2 + beadSpacing;
+                        y = earthStartY + (bead.position * (dimensions.beadSize + beadSpacing));
+                    }
+
+                    const color = getBeadColor(bead, effectiveColumns, colorScheme, colorPalette);
+
+                    beads.push(React.createElement(Bead, {
+                        key: `bead-${colIndex}-${bead.type}-${beadIndex}`,
+                        bead,
+                        x,
+                        y,
+                        size: dimensions.beadSize,
+                        shape: beadShape,
+                        color,
+                        animated,
+                        draggable,
+                        onClick: () => handleBeadClick(bead)
+                    }));
+                });
+            });
+
+            return React.createElement('svg', {
+                width: dimensions.width,
+                height: dimensions.height,
+                viewBox: `0 0 ${dimensions.width} ${dimensions.height}`,
+                style: { overflow: 'visible' }
+            }, ...rods, bar, ...beads);
+        };
+
+        // Gallery Examples (simplified version)
+        const GALLERY_EXAMPLES = [
+            {
+                id: 'basic-5',
+                title: 'Basic Number 5',
+                subtitle: 'Simple representation of 5',
+                value: 5,
+                config: { columns: 1, beadShape: 'diamond', colorScheme: 'monochrome', scaleFactor: 1, animated: true, draggable: true }
+            },
+            {
+                id: 'colorful-123',
+                title: 'Colorful 123',
+                subtitle: 'Multi-column with place value colors',
+                value: 123,
+                config: { columns: 3, beadShape: 'diamond', colorScheme: 'place-value', colorPalette: 'default', scaleFactor: 1, animated: true, draggable: true }
+            },
+            {
+                id: 'circles-42',
+                title: 'Circle Beads - 42',
+                subtitle: 'Different bead shape demonstration',
+                value: 42,
+                config: { columns: 2, beadShape: 'circle', colorScheme: 'place-value', colorPalette: 'default', scaleFactor: 1.2, animated: true, draggable: true }
+            },
+            {
+                id: 'compact-999',
+                title: 'Compact 999',
+                subtitle: 'Square beads with alternating colors',
+                value: 999,
+                config: { columns: 3, beadShape: 'square', colorScheme: 'alternating', scaleFactor: 0.8, animated: true, draggable: true }
+            }
+        ];
+
+        const InteractiveAbacusCard = ({ example }) => {
+            const [currentValue, setCurrentValue] = useState(example.value);
+            const [clickCount, setClickCount] = useState(0);
+
+            const dimensions = useAbacusDimensions(example.config.columns, example.config.scaleFactor || 1);
+
+            const handleValueChange = useCallback((newValue) => {
+                setCurrentValue(newValue);
+            }, []);
+
+            const handleBeadClick = useCallback((bead) => {
+                setClickCount(prev => prev + 1);
+            }, []);
+
+            const resetValue = useCallback(() => {
+                setCurrentValue(example.value);
+                setClickCount(0);
+            }, [example.value]);
+
+            return React.createElement('div', {
+                style: {
+                    background: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease',
+                    margin: '20px'
+                }
+            },
+                React.createElement('div', {
+                    style: {
+                        padding: '20px',
+                        borderBottom: '1px solid #eee',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start'
+                    }
+                },
+                    React.createElement('div', null,
+                        React.createElement('h3', { style: { margin: '0 0 5px 0', color: '#2c3e50', fontSize: '1.3rem' } }, example.title),
+                        React.createElement('p', { style: { margin: 0, color: '#666', fontSize: '0.9rem' } }, example.subtitle)
+                    ),
+                    React.createElement('div', {
+                        style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }
+                    },
+                        React.createElement('div', { style: { fontSize: '0.85rem', color: '#666' } }, `Value: ${currentValue}`),
+                        React.createElement('div', { style: { fontSize: '0.85rem', color: '#666' } }, `Clicks: ${clickCount}`),
+                        React.createElement('button', {
+                            onClick: resetValue,
+                            style: {
+                                background: '#3498db',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '5px 10px',
+                                cursor: 'pointer',
+                                fontSize: '1.2rem'
+                            }
+                        }, '↻')
+                    )
+                ),
+                React.createElement('div', {
+                    style: {
+                        padding: '30px',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        minHeight: '200px',
+                        background: '#fafafa'
+                    }
+                },
+                    React.createElement('div', {
+                        style: {
+                            width: `${dimensions.width}px`,
+                            height: `${dimensions.height}px`,
+                            border: '2px solid rgba(0,0,0,0.1)',
+                            borderRadius: '8px',
+                            background: 'white',
+                            padding: '10px'
+                        }
+                    },
+                        React.createElement(AbacusReact, {
+                            value: currentValue,
+                            ...example.config,
+                            onClick: handleBeadClick,
+                            onValueChange: handleValueChange
+                        })
+                    )
+                )
+            );
+        };
+
+        const InteractiveGallery = () => {
+            const [totalClicks, setTotalClicks] = useState(0);
+
+            return React.createElement('div', {
+                style: {
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    lineHeight: 1.6,
+                    color: '#333',
+                    background: '#f5f5f5',
+                    padding: '20px',
+                    minHeight: '100vh'
+                }
+            },
+                React.createElement('div', {
+                    style: {
+                        maxWidth: '1400px',
+                        margin: '0 auto'
+                    }
+                },
+                    React.createElement('div', {
+                        style: {
+                            textAlign: 'center',
+                            marginBottom: '40px',
+                            padding: '40px 20px',
+                            background: 'white',
+                            borderRadius: '12px',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                        }
+                    },
+                        React.createElement('h1', {
+                            style: {
+                                fontSize: '2.5rem',
+                                marginBottom: '10px',
+                                color: '#2c3e50'
+                            }
+                        }, '🧮 Interactive Soroban Gallery'),
+                        React.createElement('p', {
+                            style: {
+                                fontSize: '1.1rem',
+                                color: '#666',
+                                marginBottom: '20px'
+                            }
+                        }, 'Click and drag the beads to explore how a Japanese abacus works!')
+                    ),
+                    React.createElement('div', {
+                        style: {
+                            background: '#e8f4fd',
+                            border: '1px solid #bee5eb',
+                            borderRadius: '8px',
+                            padding: '20px',
+                            marginBottom: '20px',
+                            textAlign: 'center'
+                        }
+                    },
+                        React.createElement('h3', {
+                            style: {
+                                color: '#0c5460',
+                                marginBottom: '10px'
+                            }
+                        }, '🎯 How to Interact'),
+                        React.createElement('p', {
+                            style: {
+                                color: '#0c5460',
+                                margin: 0
+                            }
+                        }, 'Click beads to toggle their positions • Drag beads for tactile feedback • Reset button restores original values')
+                    ),
+                    React.createElement('div', {
+                        style: {
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+                            gap: '0px'
+                        }
+                    },
+                        ...GALLERY_EXAMPLES.map(example =>
+                            React.createElement(InteractiveAbacusCard, {
+                                key: example.id,
+                                example
+                            })
+                        )
+                    )
+                )
+            );
+        };
+
+        // Hide loading and render gallery
+        document.getElementById('loading').style.display = 'none';
+        ReactDOM.render(React.createElement(InteractiveGallery), document.getElementById('root'));
+    </script>
+</body>
+</html>

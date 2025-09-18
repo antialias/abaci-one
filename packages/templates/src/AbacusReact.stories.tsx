@@ -514,3 +514,113 @@ export const SizingDemo: Story = {
     },
   },
 };
+
+// CSS-based Hidden Inactive Beads Testing
+export const CSSHiddenInactiveBeads: Story = {
+  render: (args) => {
+    const [value, setValue] = useState(args.value || 555);
+
+    const handleBeadClick = (bead: any) => {
+      action('bead-clicked')(bead);
+    };
+
+    const handleValueChange = (newValue: number) => {
+      setValue(newValue);
+      action('value-changed')(newValue);
+    };
+
+    const resetValue = () => {
+      setValue(args.value || 555);
+    };
+
+    return (
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <h3>CSS-Based Hidden Inactive Beads</h3>
+          <p><strong>Instructions:</strong> Click beads to make them inactive, then hover over the abacus to see smooth opacity transitions!</p>
+          <p>Current Value: <strong>{value}</strong></p>
+          <button
+            onClick={resetValue}
+            style={{
+              background: '#3498db',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              marginBottom: '10px'
+            }}
+          >
+            Reset to 555
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', alignItems: 'flex-start' }}>
+          <div>
+            <h4>Normal Mode</h4>
+            <AbacusReact
+              {...args}
+              value={value}
+              hideInactiveBeads={false}
+              onClick={handleBeadClick}
+              onValueChange={handleValueChange}
+            />
+          </div>
+
+          <div>
+            <h4>CSS Hidden Inactive Mode</h4>
+            <p style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+              • Inactive beads: opacity 0<br/>
+              • Hover abacus: opacity 0.5<br/>
+              • Hover bead: opacity 1
+            </p>
+            <AbacusReact
+              {...args}
+              value={value}
+              hideInactiveBeads={true}
+              onClick={handleBeadClick}
+              onValueChange={handleValueChange}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  },
+  args: {
+    value: 555,
+    columns: 3,
+    beadShape: 'diamond',
+    colorScheme: 'place-value',
+    colorPalette: 'default',
+    scaleFactor: 1.2,
+    animated: true,
+    gestures: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**CSS-Based Hidden Inactive Beads System**
+
+This implementation uses pure CSS for smooth opacity transitions:
+
+1. **Default State**: Inactive beads have \`opacity: 0\` (completely hidden)
+2. **Abacus Hover**: All inactive beads get \`opacity: 0.5\` (semi-transparent)
+3. **Individual Bead Hover**: Specific inactive bead gets \`opacity: 1\` (fully visible)
+4. **Smooth Transitions**: All opacity changes use \`transition: opacity 0.2s ease-in-out\`
+
+**Features**:
+- ✅ Clean CSS-only implementation
+- ✅ Smooth opacity transitions (0.2s ease-in-out)
+- ✅ No JavaScript hover state management
+- ✅ No cursor flickering issues
+- ✅ Inactive beads remain clickable when visible
+- ✅ Works with all existing gesture and click functionality
+
+**Testing**: Click beads to make them inactive, then hover over the abacus to see the smooth opacity transitions in action!
+        `,
+      },
+    },
+  },
+};
+

@@ -247,6 +247,7 @@ interface BeadProps {
   color: string;
   enableAnimation: boolean;
   enableGestures?: boolean;
+  hideInactiveBeads?: boolean;
   onClick?: () => void;
   onGestureToggle?: (bead: BeadConfig, direction: 'activate' | 'deactivate') => void;
   heavenEarthGap: number;
@@ -262,6 +263,7 @@ const Bead: React.FC<BeadProps> = ({
   color,
   enableAnimation,
   enableGestures = false,
+  hideInactiveBeads = false,
   onClick,
   onGestureToggle,
   heavenEarthGap,
@@ -396,17 +398,20 @@ const Bead: React.FC<BeadProps> = ({
   return (
     <AnimatedG
       {...(enableGestures ? bind() : {})}
+      className={`abacus-bead ${bead.active ? 'active' : 'inactive'} ${hideInactiveBeads && !bead.active ? 'hidden-inactive' : ''}`}
       transform={enableAnimation ? undefined : `translate(${x - getXOffset()}, ${y - getYOffset()})`}
       style={
         enableAnimation
           ? {
               transform: to([springX, springY], (sx, sy) => `translate(${sx - getXOffset()}px, ${sy - getYOffset()}px)`),
               cursor: enableGestures ? 'grab' : (onClick ? 'pointer' : 'default'),
-              touchAction: 'none'
+              touchAction: 'none',
+              transition: 'opacity 0.2s ease-in-out'
             }
           : {
               cursor: enableGestures ? 'grab' : (onClick ? 'pointer' : 'default'),
-              touchAction: 'none'
+              touchAction: 'none',
+              transition: 'opacity 0.2s ease-in-out'
             }
       }
       onClick={(e) => {
@@ -515,8 +520,32 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       width={dimensions.width}
       height={dimensions.height}
       viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
+      className={`abacus-svg ${hideInactiveBeads ? 'hide-inactive-mode' : ''}`}
       style={{ overflow: 'visible' }}
     >
+      <defs>
+        <style>{`
+          /* CSS-based opacity system for hidden inactive beads */
+          .abacus-bead {
+            transition: opacity 0.2s ease-in-out;
+          }
+
+          /* Hidden inactive beads are invisible by default */
+          .hide-inactive-mode .abacus-bead.hidden-inactive {
+            opacity: 0;
+          }
+
+          /* When hovering over the abacus, hidden inactive beads become semi-transparent */
+          .abacus-svg.hide-inactive-mode:hover .abacus-bead.hidden-inactive {
+            opacity: 0.5;
+          }
+
+          /* When hovering over a specific hidden inactive bead, it becomes fully visible */
+          .hide-inactive-mode .abacus-bead.hidden-inactive:hover {
+            opacity: 1 !important;
+          }
+        `}</style>
+      </defs>
       {/* Rods - positioned as rectangles like in Typst */}
       {Array.from({ length: effectiveColumns }, (_, colIndex) => {
         const x = (colIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
@@ -551,7 +580,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       {/* Beads */}
       {beadStates.map((columnBeads, colIndex) =>
         columnBeads.map((bead, beadIndex) => {
-          if (hideInactiveBeads && !bead.active) return null;
+          // Render all beads - CSS handles visibility for inactive beads
 
           // x-offset calculation matching Typst (line 160)
           const x = (colIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
@@ -599,6 +628,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               color={color}
               enableAnimation={animated}
               enableGestures={gestures}
+              hideInactiveBeads={hideInactiveBeads}
               onClick={() => handleBeadClick(bead)} // Enable click always - gestures and clicks work together
               onGestureToggle={handleGestureToggle}
               heavenEarthGap={dimensions.heavenEarthGap}
@@ -607,8 +637,10 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
           );
         })
       )}
+
     </svg>
   );
 };
+
 
 export default AbacusReact;

@@ -1,1040 +1,185 @@
-<svg
-    style="overflow: visible"
-    class="typst-doc"
-    viewBox="0 0 274.000 160.000"
-    width="274.000"
-    height="160.000"
-    data-width="274.000"
-    data-height="160.000"
-    xmlns="http://www.w3.org/2000/svg"
-    xmlns:xlink="http://www.w3.org/1999/xlink"
-    xmlns:h5="http://www.w3.org/1999/xhtml"
->
-    <style type="text/css">
-        .typst-text {
-            pointer-events: bounding-box;
-        }
-
-        .tsel span,
-        .tsel {
-            left: 0;
-            position: fixed;
-            text-align: justify;
-            white-space: nowrap;
-            width: 100%;
-            height: 100%;
-            text-align-last: justify;
-            color: transparent;
-            white-space: pre;
-        }
-        .tsel span::-moz-selection,
-        .tsel::-moz-selection {
-            color: transparent;
-            background: #7db9dea0;
-        }
-        .tsel span::selection,
-        .tsel::selection {
-            color: transparent;
-            background: #7db9dea0;
-        }
-        .pseudo-link {
-            fill: transparent;
-            cursor: pointer;
-            pointer-events: all;
-        }
-        svg {
-            fill: none;
-        }
-
-        .outline_glyph path,
-        path.outline_glyph {
-            fill: var(--glyph_fill);
-            stroke: var(--glyph_stroke);
-        }
-
-        .outline_glyph path,
-        path.outline_glyph {
-            transition: 0.2s fill stroke;
-        }
-        .hover .typst-text {
-            --glyph_fill: #66bab7;
-            --glyph_stroke: #66bab7;
-        }
-
-        .typst-jump-ripple,
-        .typst-debug-react-ripple {
-            width: 0;
-            height: 0;
-            background-color: transparent;
-            position: absolute;
-            border-radius: 50%;
-        }
-        .typst-jump-ripple {
-            border: 1px solid #66bab7;
-        }
-        .typst-debug-react-ripple {
-            border: 1px solid #cb1b45;
-        }
-        @keyframes typst-jump-ripple-effect {
-            to {
-                width: 10vw;
-                height: 10vw;
-                opacity: 0.01;
-                margin: -5vw;
-            }
-        }
-        @keyframes typst-debug-react-ripple-effect {
-            to {
-                width: 3vw;
-                height: 3vw;
-                opacity: 0.01;
-                margin: -1.5vw;
-            }
-        }
-    </style>
-    <defs class="glyph"></defs>
-    <defs class="clip-path"></defs>
-    <style type="text/css"></style>
-    <g
-        class="typst-page"
-        transform="translate(0, 0)"
-        data-tid="p+9B4P3DDg8QIlw1fwe48v0"
-        data-page-width="274"
-        data-page-height="160"
-    >
-        <g data-tid="g+9B4P3DDg8QIlw1fwe48v0" class="typst-group">
-            <g transform="translate(0.000,0.000)" data-tid="p+cQ/pXGu5two6EdzuwqOTE">
-                <g data-tid="g+cQ/pXGu5two6EdzuwqOTE">
-                    <path class="typst-shape" d="M 0 0 L 0 160 L 274 160 L 274 0 Z " fill-rule="nonzero" fill="#fff" />
-                </g>
-            </g>
-            <g transform="translate(12.000,14.500)" data-tid="piUAczzxEH3wpa43wsuO/sM">
-                <g data-tid="giUAczzxEH3wpa43wsuO/sM" class="typst-group">
-                    <g transform="translate(83.750,0.000)" data-tid="pAe3uSrEIefANMUzM1ODw0c">
-                        <g data-tid="gAe3uSrEIefANMUzM1ODw0c" class="typst-group">
-                            <g transform="translate(0.000,0.000)" data-tid="pxHvtmOavgbAI9sBnXzVUnY">
-                                <g data-tid="gxHvtmOavgbAI9sBnXzVUnY" class="typst-group">
-                                    <g transform="translate(12.100,11.800)" data-tid="p/cP8+QS0Z/EuawrXUAAMEs">
-                                        <g data-tid="g/cP8+QS0Z/EuawrXUAAMEs" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pGix3/neynmsknq1tIT4vAQ">
-                                                <g data-tid="gGix3/neynmsknq1tIT4vAQ">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 86.3 L 3.3 86.3 L 3.3 0 Z "
-                                                        fill-rule="nonzero"
-                                                        fill="#eee"
-                                                    />
-                                                </g>
+<svg class="typst-doc" viewBox="0 0 274 160" width="274pt" height="160pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:h5="http://www.w3.org/1999/xhtml">
+    <path class="typst-shape" fill="#ffffff" fill-rule="nonzero" d="M 0 0 L 0 160 L 274 160 L 274 0 Z "/>
+    <g>
+        <g transform="translate(95.75 14.5)">
+            <g class="typst-group">
+                <g>
+                    <g transform="translate(0 0)">
+                        <g class="typst-group">
+                            <g>
+                                <g transform="translate(12.100000000000001 11.8)">
+                                    <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" d="M 0 0 L 0 86.3 L 3.3 86.3 L 3.3 0 Z "/>
+                                </g>
+                                <g transform="translate(7.150000000000001 11.8)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
                                             </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,11.800)" data-tid="pAoEVShTBO3kqtHG8QnBwOQ">
-                                        <g data-tid="gAoEVShTBO3kqtHG8QnBwOQ" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pZNiFYEWBV48VGA9QggVStE">
-                                                <g data-tid="gZNiFYEWBV48VGA9QggVStE" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="p09rl3P8q6hg4/Bxq8Cdtng"
-                                                    >
-                                                        <g data-tid="g09rl3P8q6hg4/Bxq8Cdtng">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#e6e6e6"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,36.200)" data-tid="pMGDY2VQqKKoLkAzjC04ylo">
-                                        <g data-tid="gMGDY2VQqKKoLkAzjC04ylo" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pMwe+10BWgUEZS2K5+q3soA">
-                                                <g data-tid="gMwe+10BWgUEZS2K5+q3soA" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="pyHEswUJlrFMXool4sN/4nc"
-                                                    >
-                                                        <g data-tid="gyHEswUJlrFMXool4sN/4nc">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#f18f01"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,49.950)" data-tid="pMGDY2VQqKKoLkAzjC04ylo">
-                                        <g data-tid="gMGDY2VQqKKoLkAzjC04ylo" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pMwe+10BWgUEZS2K5+q3soA">
-                                                <g data-tid="gMwe+10BWgUEZS2K5+q3soA" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="pyHEswUJlrFMXool4sN/4nc"
-                                                    >
-                                                        <g data-tid="gyHEswUJlrFMXool4sN/4nc">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#f18f01"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,63.700)" data-tid="pMGDY2VQqKKoLkAzjC04ylo">
-                                        <g data-tid="gMGDY2VQqKKoLkAzjC04ylo" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pMwe+10BWgUEZS2K5+q3soA">
-                                                <g data-tid="gMwe+10BWgUEZS2K5+q3soA" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="pyHEswUJlrFMXool4sN/4nc"
-                                                    >
-                                                        <g data-tid="gyHEswUJlrFMXool4sN/4nc">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#f18f01"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,84.900)" data-tid="pAoEVShTBO3kqtHG8QnBwOQ">
-                                        <g data-tid="gAoEVShTBO3kqtHG8QnBwOQ" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pZNiFYEWBV48VGA9QggVStE">
-                                                <g data-tid="gZNiFYEWBV48VGA9QggVStE" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="p09rl3P8q6hg4/Bxq8Cdtng"
-                                                    >
-                                                        <g data-tid="g09rl3P8q6hg4/Bxq8Cdtng">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#e6e6e6"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(39.600,11.800)" data-tid="p/cP8+QS0Z/EuawrXUAAMEs">
-                                        <g data-tid="g/cP8+QS0Z/EuawrXUAAMEs" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pGix3/neynmsknq1tIT4vAQ">
-                                                <g data-tid="gGix3/neynmsknq1tIT4vAQ">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 86.3 L 3.3 86.3 L 3.3 0 Z "
-                                                        fill-rule="nonzero"
-                                                        fill="#eee"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,11.800)" data-tid="pAoEVShTBO3kqtHG8QnBwOQ">
-                                        <g data-tid="gAoEVShTBO3kqtHG8QnBwOQ" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pZNiFYEWBV48VGA9QggVStE">
-                                                <g data-tid="gZNiFYEWBV48VGA9QggVStE" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="p09rl3P8q6hg4/Bxq8Cdtng"
-                                                    >
-                                                        <g data-tid="g09rl3P8q6hg4/Bxq8Cdtng">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#e6e6e6"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,36.200)" data-tid="pWs8R7R8/v20lDTZb9Okzck">
-                                        <g data-tid="gWs8R7R8/v20lDTZb9Okzck" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pd93OIlRI80QDqiRcWfrbS8">
-                                                <g data-tid="gd93OIlRI80QDqiRcWfrbS8" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="pqKUGUnzhxWgL10EgCEBui0"
-                                                    >
-                                                        <g data-tid="gqKUGUnzhxWgL10EgCEBui0">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#a23b72"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,49.950)" data-tid="pWs8R7R8/v20lDTZb9Okzck">
-                                        <g data-tid="gWs8R7R8/v20lDTZb9Okzck" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pd93OIlRI80QDqiRcWfrbS8">
-                                                <g data-tid="gd93OIlRI80QDqiRcWfrbS8" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="pqKUGUnzhxWgL10EgCEBui0"
-                                                    >
-                                                        <g data-tid="gqKUGUnzhxWgL10EgCEBui0">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#a23b72"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,71.150)" data-tid="pAoEVShTBO3kqtHG8QnBwOQ">
-                                        <g data-tid="gAoEVShTBO3kqtHG8QnBwOQ" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pZNiFYEWBV48VGA9QggVStE">
-                                                <g data-tid="gZNiFYEWBV48VGA9QggVStE" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="p09rl3P8q6hg4/Bxq8Cdtng"
-                                                    >
-                                                        <g data-tid="g09rl3P8q6hg4/Bxq8Cdtng">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#e6e6e6"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,84.900)" data-tid="pAoEVShTBO3kqtHG8QnBwOQ">
-                                        <g data-tid="gAoEVShTBO3kqtHG8QnBwOQ" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pZNiFYEWBV48VGA9QggVStE">
-                                                <g data-tid="gZNiFYEWBV48VGA9QggVStE" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="p09rl3P8q6hg4/Bxq8Cdtng"
-                                                    >
-                                                        <g data-tid="g09rl3P8q6hg4/Bxq8Cdtng">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#e6e6e6"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(67.100,11.800)" data-tid="p/cP8+QS0Z/EuawrXUAAMEs">
-                                        <g data-tid="g/cP8+QS0Z/EuawrXUAAMEs" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pGix3/neynmsknq1tIT4vAQ">
-                                                <g data-tid="gGix3/neynmsknq1tIT4vAQ">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 86.3 L 3.3 86.3 L 3.3 0 Z "
-                                                        fill-rule="nonzero"
-                                                        fill="#eee"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,11.800)" data-tid="pAoEVShTBO3kqtHG8QnBwOQ">
-                                        <g data-tid="gAoEVShTBO3kqtHG8QnBwOQ" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pZNiFYEWBV48VGA9QggVStE">
-                                                <g data-tid="gZNiFYEWBV48VGA9QggVStE" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="p09rl3P8q6hg4/Bxq8Cdtng"
-                                                    >
-                                                        <g data-tid="g09rl3P8q6hg4/Bxq8Cdtng">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#e6e6e6"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,36.200)" data-tid="pfHVJnI6tuUssJiKEkDuqBk">
-                                        <g data-tid="gfHVJnI6tuUssJiKEkDuqBk" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pDYn3pQmKPOQQLtxZMXDIEc">
-                                                <g data-tid="gDYn3pQmKPOQQLtxZMXDIEc" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="pcNXp6pFDbhIEcnjnsd09hY"
-                                                    >
-                                                        <g data-tid="gcNXp6pFDbhIEcnjnsd09hY">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#2e86ab"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,57.400)" data-tid="pAoEVShTBO3kqtHG8QnBwOQ">
-                                        <g data-tid="gAoEVShTBO3kqtHG8QnBwOQ" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pZNiFYEWBV48VGA9QggVStE">
-                                                <g data-tid="gZNiFYEWBV48VGA9QggVStE" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="p09rl3P8q6hg4/Bxq8Cdtng"
-                                                    >
-                                                        <g data-tid="g09rl3P8q6hg4/Bxq8Cdtng">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#e6e6e6"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,71.150)" data-tid="pAoEVShTBO3kqtHG8QnBwOQ">
-                                        <g data-tid="gAoEVShTBO3kqtHG8QnBwOQ" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pZNiFYEWBV48VGA9QggVStE">
-                                                <g data-tid="gZNiFYEWBV48VGA9QggVStE" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="p09rl3P8q6hg4/Bxq8Cdtng"
-                                                    >
-                                                        <g data-tid="g09rl3P8q6hg4/Bxq8Cdtng">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#e6e6e6"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,84.900)" data-tid="pAoEVShTBO3kqtHG8QnBwOQ">
-                                        <g data-tid="gAoEVShTBO3kqtHG8QnBwOQ" class="typst-group">
-                                            <g transform="translate(0.000,0.000)" data-tid="pZNiFYEWBV48VGA9QggVStE">
-                                                <g data-tid="gZNiFYEWBV48VGA9QggVStE" class="typst-group">
-                                                    <g
-                                                        transform="translate(-0.000,-0.000)"
-                                                        data-tid="p09rl3P8q6hg4/Bxq8Cdtng"
-                                                    >
-                                                        <g data-tid="g09rl3P8q6hg4/Bxq8Cdtng">
-                                                            <path
-                                                                class="typst-shape"
-                                                                d="M 0 0 M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "
-                                                                stroke-width="0.5"
-                                                                stroke-miterlimit="4"
-                                                                fill-rule="nonzero"
-                                                                fill="#e6e6e6"
-                                                                stroke="#000"
-                                                            />
-                                                        </g>
-                                                    </g>
-                                                    <g
-                                                        transform="translate(0.000,0.000)"
-                                                        data-tid="pkX38uhRGUGcTIxmq0NbWuc"
-                                                    >
-                                                        <g
-                                                            data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                            class="typst-content-hint"
-                                                            data-hint="a"
-                                                        ></g>
-                                                    </g>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(0.000,33.000)" data-tid="pIyDiY0x3ZcU4UIEr//yB1c">
-                                        <g data-tid="gIyDiY0x3ZcU4UIEr//yB1c" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pBAJehBs9828MgaswX2+dvg">
-                                                <g data-tid="gBAJehBs9828MgaswX2+dvg">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 2.2 L 82.5 2.2 L 82.5 0 Z "
-                                                        fill-rule="nonzero"
-                                                        fill="#000"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(-13.200,0.000)" data-tid="pyTmp0ShOCoQ0MmQwcNl+Yg">
-                                        <g data-tid="gyTmp0ShOCoQ0MmQwcNl+Yg" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pzSWi4eAgG4coytrP9HFL0M">
-                                                <g data-tid="gzSWi4eAgG4coytrP9HFL0M">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 107.8 L 0.5 107.8 L 0.5 0 Z "
-                                                        stroke-dashoffset="0"
-                                                        stroke-dasharray="3 3"
-                                                        stroke-width="0.5"
-                                                        stroke-miterlimit="4"
-                                                        fill-rule="nonzero"
-                                                        fill="#ff4136"
-                                                        stroke="#ff4136"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(95.700,0.000)" data-tid="pyTmp0ShOCoQ0MmQwcNl+Yg">
-                                        <g data-tid="gyTmp0ShOCoQ0MmQwcNl+Yg" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pzSWi4eAgG4coytrP9HFL0M">
-                                                <g data-tid="gzSWi4eAgG4coytrP9HFL0M">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 107.8 L 0.5 107.8 L 0.5 0 Z "
-                                                        stroke-dashoffset="0"
-                                                        stroke-dasharray="3 3"
-                                                        stroke-width="0.5"
-                                                        stroke-miterlimit="4"
-                                                        fill-rule="nonzero"
-                                                        fill="#ff4136"
-                                                        stroke="#ff4136"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(-13.200,0.000)" data-tid="pJjBA150nrBE9LJ4Mw3YQJo">
-                                        <g data-tid="gJjBA150nrBE9LJ4Mw3YQJo" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pP+u+9ZxOHe0uqT9K7oDNTM">
-                                                <g data-tid="gP+u+9ZxOHe0uqT9K7oDNTM">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 0.5 L 108.9 0.5 L 108.9 0 Z "
-                                                        stroke-dashoffset="0"
-                                                        stroke-dasharray="3 3"
-                                                        stroke-width="0.5"
-                                                        stroke-miterlimit="4"
-                                                        fill-rule="nonzero"
-                                                        fill="#ff4136"
-                                                        stroke="#ff4136"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(-13.200,107.800)" data-tid="pJjBA150nrBE9LJ4Mw3YQJo">
-                                        <g data-tid="gJjBA150nrBE9LJ4Mw3YQJo" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pP+u+9ZxOHe0uqT9K7oDNTM">
-                                                <g data-tid="gP+u+9ZxOHe0uqT9K7oDNTM">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 0.5 L 108.9 0.5 L 108.9 0 Z "
-                                                        stroke-dashoffset="0"
-                                                        stroke-dasharray="3 3"
-                                                        stroke-width="0.5"
-                                                        stroke-miterlimit="4"
-                                                        fill-rule="nonzero"
-                                                        fill="#ff4136"
-                                                        stroke="#ff4136"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(-13.200,32.600)" data-tid="pdKwY6mPNB3EuomKqhJF1Go">
-                                        <g data-tid="gdKwY6mPNB3EuomKqhJF1Go" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pP/IAUV0dltsd1ChJPR3qJA">
-                                                <g data-tid="gP/IAUV0dltsd1ChJPR3qJA">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "
-                                                        fill-rule="nonzero"
-                                                        fill="#ff4136"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pCRglf38WMC4hGS/iW28DI8">
-                                                <g data-tid="gCRglf38WMC4hGS/iW28DI8">
-                                                    <a target="_blank" xlink:href="crop-mark://left">
-                                                        <rect class="pseudo-link" width="0.1" height="0.1"></rect>
-                                                    </a>
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(95.700,32.600)" data-tid="pWHDt7C4MrHMEgfsWkdxdcA">
-                                        <g data-tid="gWHDt7C4MrHMEgfsWkdxdcA" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pP/IAUV0dltsd1ChJPR3qJA">
-                                                <g data-tid="gP/IAUV0dltsd1ChJPR3qJA">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "
-                                                        fill-rule="nonzero"
-                                                        fill="#ff4136"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pYZZHpTrvt+ofJ442w5zxVs">
-                                                <g data-tid="gYZZHpTrvt+ofJ442w5zxVs">
-                                                    <a target="_blank" xlink:href="crop-mark://right">
-                                                        <rect class="pseudo-link" width="0.1" height="0.1"></rect>
-                                                    </a>
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(39.750,0.000)" data-tid="ptEPvW3c8lwktZmyZweMefQ">
-                                        <g data-tid="gtEPvW3c8lwktZmyZweMefQ" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pP/IAUV0dltsd1ChJPR3qJA">
-                                                <g data-tid="gP/IAUV0dltsd1ChJPR3qJA">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "
-                                                        fill-rule="nonzero"
-                                                        fill="#ff4136"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pEq0+gSsPhGAbXtpriCi41A">
-                                                <g data-tid="gEq0+gSsPhGAbXtpriCi41A">
-                                                    <a target="_blank" xlink:href="crop-mark://top">
-                                                        <rect class="pseudo-link" width="0.1" height="0.1"></rect>
-                                                    </a>
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(39.750,107.800)" data-tid="pz6u+VStBaUsWn+uMIPgSpY">
-                                        <g data-tid="gz6u+VStBaUsWn+uMIPgSpY" class="typst-group">
-                                            <g transform="translate(-0.000,-0.000)" data-tid="pP/IAUV0dltsd1ChJPR3qJA">
-                                                <g data-tid="gP/IAUV0dltsd1ChJPR3qJA">
-                                                    <path
-                                                        class="typst-shape"
-                                                        d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "
-                                                        fill-rule="nonzero"
-                                                        fill="#ff4136"
-                                                    />
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pl4gwTLLlZoof/K2+Y0Dm7U">
-                                                <g data-tid="gl4gwTLLlZoof/K2+Y0Dm7U">
-                                                    <a target="_blank" xlink:href="crop-mark://bottom">
-                                                        <rect class="pseudo-link" width="0.1" height="0.1"></rect>
-                                                    </a>
-                                                </g>
-                                            </g>
-                                            <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                                                <g
-                                                    data-tid="gkX38uhRGUGcTIxmq0NbWuc"
-                                                    class="typst-content-hint"
-                                                    data-hint="a"
-                                                ></g>
-                                            </g>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,11.800)" data-tid="pnp24p8EoyEgRS7BrjR3IMA">
-                                        <g data-tid="gnp24p8EoyEgRS7BrjR3IMA">
-                                            <a target="_blank" xlink:href="bead://heaven-col2-active0">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,36.200)" data-tid="pBVrXqGmF0XcLvvezgBUNUc">
-                                        <g data-tid="gBVrXqGmF0XcLvvezgBUNUc">
-                                            <a target="_blank" xlink:href="bead://earth-col2-pos0-active1">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,49.950)" data-tid="pP0kqiWCULE4+1z+sumtttE">
-                                        <g data-tid="gP0kqiWCULE4+1z+sumtttE">
-                                            <a target="_blank" xlink:href="bead://earth-col2-pos1-active1">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,63.700)" data-tid="p4kkfrPJ0wvcNpntfzwYdwI">
-                                        <g data-tid="g4kkfrPJ0wvcNpntfzwYdwI">
-                                            <a target="_blank" xlink:href="bead://earth-col2-pos2-active1">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(7.150,84.900)" data-tid="py33eiC0+pp0QbVmVG5Bs78">
-                                        <g data-tid="gy33eiC0+pp0QbVmVG5Bs78">
-                                            <a target="_blank" xlink:href="bead://earth-col2-pos3-active0">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,11.800)" data-tid="pMlzVf7g6a4w5GFTPz5H/Po">
-                                        <g data-tid="gMlzVf7g6a4w5GFTPz5H/Po">
-                                            <a target="_blank" xlink:href="bead://heaven-col1-active0">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,36.200)" data-tid="ppi7k59Dzhn84AbXiBwUi4k">
-                                        <g data-tid="gpi7k59Dzhn84AbXiBwUi4k">
-                                            <a target="_blank" xlink:href="bead://earth-col1-pos0-active1">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,49.950)" data-tid="p1OzpxNNU6pArDuh3YckuUY">
-                                        <g data-tid="g1OzpxNNU6pArDuh3YckuUY">
-                                            <a target="_blank" xlink:href="bead://earth-col1-pos1-active1">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,71.150)" data-tid="pDJGxzUxopKcaSYvs7uSdlY">
-                                        <g data-tid="gDJGxzUxopKcaSYvs7uSdlY">
-                                            <a target="_blank" xlink:href="bead://earth-col1-pos2-active0">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(34.650,84.900)" data-tid="pPuGk4Gwr+/YVH/P7ZdUwac">
-                                        <g data-tid="gPuGk4Gwr+/YVH/P7ZdUwac">
-                                            <a target="_blank" xlink:href="bead://earth-col1-pos3-active0">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,11.800)" data-tid="picQghnjYTGQ7aoxXQhwquQ">
-                                        <g data-tid="gicQghnjYTGQ7aoxXQhwquQ">
-                                            <a target="_blank" xlink:href="bead://heaven-col0-active0">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,36.200)" data-tid="pMeFl46pKxmc6zGfb4qK0cs">
-                                        <g data-tid="gMeFl46pKxmc6zGfb4qK0cs">
-                                            <a target="_blank" xlink:href="bead://earth-col0-pos0-active1">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,57.400)" data-tid="pHfHCgy9cy88G4Jh6ueuSvE">
-                                        <g data-tid="gHfHCgy9cy88G4Jh6ueuSvE">
-                                            <a target="_blank" xlink:href="bead://earth-col0-pos1-active0">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,71.150)" data-tid="p9UfKmLU4RU8rA2bpx9irPI">
-                                        <g data-tid="g9UfKmLU4RU8rA2bpx9irPI">
-                                            <a target="_blank" xlink:href="bead://earth-col0-pos2-active0">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
-                                        </g>
-                                    </g>
-                                    <g transform="translate(62.150,84.900)" data-tid="phHlXPio6maA7NnGI78tFoY">
-                                        <g data-tid="ghHlXPio6maA7NnGI78tFoY">
-                                            <a target="_blank" xlink:href="bead://earth-col0-pos3-active0">
-                                                <rect class="pseudo-link" width="13.2" height="13.2"></rect>
-                                            </a>
                                         </g>
                                     </g>
                                 </g>
+                                <g transform="translate(7.150000000000001 36.199999999999996)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#f18f01" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(7.150000000000001 49.949999999999996)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#f18f01" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(7.150000000000001 63.69999999999999)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#f18f01" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(7.150000000000001 84.89999999999999)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(39.60000000000001 11.8)">
+                                    <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" d="M 0 0 L 0 86.3 L 3.3 86.3 L 3.3 0 Z "/>
+                                </g>
+                                <g transform="translate(34.650000000000006 11.8)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(34.650000000000006 36.199999999999996)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#a23b72" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(34.650000000000006 49.949999999999996)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#a23b72" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(34.650000000000006 71.14999999999999)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(34.650000000000006 84.89999999999999)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(67.10000000000002 11.8)">
+                                    <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" d="M 0 0 L 0 86.3 L 3.3 86.3 L 3.3 0 Z "/>
+                                </g>
+                                <g transform="translate(62.15000000000001 11.8)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(62.15000000000001 36.199999999999996)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(62.15000000000001 57.39999999999999)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(62.15000000000001 71.14999999999999)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(62.15000000000001 84.89999999999999)">
+                                    <g class="typst-group">
+                                        <g>
+                                            <g transform="translate(-0 -0)">
+                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 6.6 C 0 2.9582255 2.9582255 0 6.6 0 C 10.241775 0 13.2 2.9582255 13.2 6.6 C 13.2 10.241775 10.241775 13.2 6.6 13.2 C 2.9582255 13.2 0 10.241775 0 6.6 "/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                <g transform="translate(0 33)">
+                                    <path class="typst-shape" fill="#000000" fill-rule="nonzero" d="M 0 0 L 0 2.2 L 82.5 2.2 L 82.5 0 Z "/>
+                                </g>
+                                <g transform="translate(-13.200000000000001 0)">
+                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" d="M 0 0 L 0 107.8 L 0.5 107.8 L 0.5 0 Z "/>
+                                </g>
+                                <g transform="translate(95.70000000000002 0)">
+                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" d="M 0 0 L 0 107.8 L 0.5 107.8 L 0.5 0 Z "/>
+                                </g>
+                                <g transform="translate(-13.200000000000001 0)">
+                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" d="M 0 0 L 0 0.5 L 108.9 0.5 L 108.9 0 Z "/>
+                                </g>
+                                <g transform="translate(-13.200000000000001 107.8)">
+                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" d="M 0 0 L 0 0.5 L 108.9 0.5 L 108.9 0 Z "/>
+                                </g>
+                                <g transform="translate(-13.200000000000001 32.6)">
+                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "/>
+                                </g>
+                                <g transform="translate(95.70000000000002 32.6)">
+                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "/>
+                                </g>
+                                <g transform="translate(39.75000000000001 0)">
+                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "/>
+                                </g>
+                                <g transform="translate(39.75000000000001 107.8)">
+                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "/>
+                                </g>
                             </g>
                         </g>
-                    </g>
-                    <g transform="translate(0.000,0.000)" data-tid="pkX38uhRGUGcTIxmq0NbWuc">
-                        <g data-tid="gkX38uhRGUGcTIxmq0NbWuc" class="typst-content-hint" data-hint="a"></g>
                     </g>
                 </g>
             </g>

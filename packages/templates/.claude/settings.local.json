@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(typst:*)",
+      "Read(//Users/antialias/projects/soroban-abacus-flashcards/packages/**)",
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npm run gallery:node:*)",
+      "Bash(node:*)",
+      "Bash(pnpm info:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm search:*)",
+      "Bash(pnpm run:*)",
+      "Bash(npm run gallery:*)",
+      "Bash(cp:*)",
+      "Bash(/dev/null)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Read(//Users/antialias/projects/soroban-abacus-flashcards/**)",
+      "Bash(pnpm install:*)",
+      "Bash(pkill:*)",
+      "Bash(timeout 30s pnpm run build-storybook)",
+      "Bash(timeout 60s pnpm run build-storybook)",
+      "Bash(curl:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(pnpm list:*)",
+      "Bash(git reset:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
