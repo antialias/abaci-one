@@ -259,7 +259,7 @@ const Bead: React.FC<BeadProps> = ({
         api.start({ x: x + mx, y: y + my, immediate: true });
         onDrag?.({ x: mx, y: my });
       } else {
-        api.start({ x, y });
+        api.start({ x, y, config: { tension: 400, friction: 30, mass: 0.8 } }); // Fast snap-back
       }
     },
     { enabled: draggable }
@@ -267,7 +267,7 @@ const Bead: React.FC<BeadProps> = ({
 
   React.useEffect(() => {
     if (enableAnimation) {
-      api.start({ x, y, config: config.gentle });
+      api.start({ x, y, config: { tension: 400, friction: 30, mass: 0.8 } }); // Fast, snappy abacus animation
     } else {
       api.set({ x, y });
     }
