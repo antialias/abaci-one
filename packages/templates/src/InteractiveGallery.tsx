@@ -14,7 +14,7 @@ const GALLERY_EXAMPLES = [
       colorScheme: 'monochrome' as const,
       scaleFactor: 1,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -29,7 +29,7 @@ const GALLERY_EXAMPLES = [
       colorPalette: 'default' as const,
       scaleFactor: 1,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -44,7 +44,7 @@ const GALLERY_EXAMPLES = [
       colorPalette: 'default' as const,
       scaleFactor: 1.2,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -59,7 +59,7 @@ const GALLERY_EXAMPLES = [
       colorPalette: 'default' as const,
       scaleFactor: 2,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -73,7 +73,7 @@ const GALLERY_EXAMPLES = [
       colorScheme: 'alternating' as const,
       scaleFactor: 0.8,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -88,7 +88,7 @@ const GALLERY_EXAMPLES = [
       colorPalette: 'mnemonic' as const,
       scaleFactor: 0.9,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -102,7 +102,7 @@ const GALLERY_EXAMPLES = [
       colorScheme: 'monochrome' as const,
       scaleFactor: 0.8,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -117,7 +117,7 @@ const GALLERY_EXAMPLES = [
       colorPalette: 'colorblind' as const,
       scaleFactor: 0.9,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -132,7 +132,7 @@ const GALLERY_EXAMPLES = [
       scaleFactor: 2,
       hideInactiveBeads: false,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -148,7 +148,7 @@ const GALLERY_EXAMPLES = [
       hideInactiveBeads: true,
       scaleFactor: 1.4,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -163,7 +163,7 @@ const GALLERY_EXAMPLES = [
       colorPalette: 'colorblind' as const,
       scaleFactor: 1.1,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -178,7 +178,7 @@ const GALLERY_EXAMPLES = [
       colorPalette: 'default' as const,
       scaleFactor: 1,
       animated: true,
-      draggable: true
+      gestures: true
     }
   },
   {
@@ -193,7 +193,7 @@ const GALLERY_EXAMPLES = [
       colorPalette: 'default' as const,
       scaleFactor: 0.8,
       animated: true,
-      draggable: true
+      gestures: true
     }
   }
 ];
@@ -574,7 +574,7 @@ const InteractiveGallery: React.FC = () => {
       <div className="container">
         <div className="header">
           <h1>🧮 Interactive Soroban Gallery</h1>
-          <p>Click and drag the beads to explore how a Japanese abacus works!</p>
+          <p>Click or drag the beads in natural directions to explore how a Japanese abacus works!</p>
 
           <div className="global-stats">
             <div className="stat-item">
@@ -591,7 +591,7 @@ const InteractiveGallery: React.FC = () => {
         <div className="stats">
           <div className="stats-info">
             <strong>{GALLERY_EXAMPLES.length}</strong> interactive examples
-            • All abaci are fully interactive with drag and click support
+            • All abaci are fully interactive with click and directional gesture support
             • Generated with React + TypeScript
           </div>
         </div>
@@ -599,7 +599,7 @@ const InteractiveGallery: React.FC = () => {
         <div className="tutorial-box">
           <h3>🎯 How to Interact</h3>
           <p>
-            <strong>Click</strong> beads to toggle their positions • <strong>Drag</strong> beads for tactile feedback •
+            <strong>Click</strong> beads to toggle their positions • <strong>Drag</strong> beads toward/away from the center bar •
             <strong>Reset</strong> button restores original values • Each interaction updates the value in real-time
           </p>
         </div>

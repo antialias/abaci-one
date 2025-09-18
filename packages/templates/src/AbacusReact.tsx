@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { useSpring, animated, config, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
 
@@ -21,7 +21,7 @@ export interface AbacusConfig {
   colorPalette?: 'default' | 'colorblind' | 'mnemonic' | 'grayscale' | 'nature';
   scaleFactor?: number;
   animated?: boolean;
-  draggable?: boolean;
+  gestures?: boolean;
   onClick?: (bead: BeadConfig) => void;
   onValueChange?: (newValue: number) => void;
 }
@@ -223,6 +223,20 @@ function calculateBeadStates(columnStates: ColumnState[]): BeadConfig[][] {
   });
 }
 
+// Calculate numeric value from column states
+function calculateValueFromColumnStates(columnStates: ColumnState[], totalColumns: number): number {
+  let value = 0;
+
+  columnStates.forEach((columnState, index) => {
+    const placeValue = Math.pow(10, totalColumns - 1 - index);
+    const columnValue = (columnState.heavenActive ? 5 : 0) + columnState.earthActive;
+    value += columnValue * placeValue;
+  });
+
+  return value;
+}
+
+
 // Components
 interface BeadProps {
   bead: BeadConfig;
@@ -232,9 +246,11 @@ interface BeadProps {
   shape: 'diamond' | 'square' | 'circle';
   color: string;
   enableAnimation: boolean;
-  draggable: boolean;
+  enableGestures?: boolean;
   onClick?: () => void;
-  onDrag?: (offset: { x: number; y: number }) => void;
+  onGestureToggle?: (bead: BeadConfig, direction: 'activate' | 'deactivate') => void;
+  heavenEarthGap: number;
+  barY: number;
 }
 
 const Bead: React.FC<BeadProps> = ({
@@ -245,53 +261,76 @@ const Bead: React.FC<BeadProps> = ({
   shape,
   color,
   enableAnimation,
-  draggable,
+  enableGestures = false,
   onClick,
-  onDrag
+  onGestureToggle,
+  heavenEarthGap,
+  barY
 }) => {
   const [{ x: springX, y: springY }, api] = useSpring(() => ({ x, y }));
+  const gestureStateRef = useRef({
+    isDragging: false,
+    lastDirection: null as 'activate' | 'deactivate' | null,
+    startY: 0,
+    threshold: size * 0.3 // Minimum movement to trigger toggle
+  });
 
+  // Calculate gesture direction based on bead type and position
+  const getGestureDirection = useCallback((deltaY: number) => {
+    const movement = Math.abs(deltaY);
+    if (movement < gestureStateRef.current.threshold) return null;
+
+    if (bead.type === 'heaven') {
+      // Heaven bead: down toward bar = activate, up away from bar = deactivate
+      return deltaY > 0 ? 'activate' : 'deactivate';
+    } else {
+      // Earth bead: up toward bar = activate, down away from bar = deactivate
+      return deltaY < 0 ? 'activate' : 'deactivate';
+    }
+  }, [bead.type]);
+
+  // Directional gesture handler
   const bind = useDrag(
-    ({ movement: [mx, my], down, velocity: [vx, vy] }) => {
-      if (!draggable) return;
+    ({
+      event,
+      movement: [, deltaY],
+      first,
+      active
+    }) => {
+      if (first) {
+        event?.preventDefault();
+        gestureStateRef.current.isDragging = true;
+        gestureStateRef.current.lastDirection = null;
+        return;
+      }
 
-      if (down) {
-        // Constrain movement to vertical only (beads slide on rods)
-        const constrainedY = y + my;
-        api.start({ x, y: constrainedY, immediate: true });
-        onDrag?.({ x: 0, y: my }); // Report only vertical movement
-      } else {
-        // Determine snap behavior based on bead type and drag direction
-        const dragThreshold = size; // Minimum drag distance to trigger toggle
-        const wasSignificantDrag = Math.abs(my) > dragThreshold;
-
-        if (wasSignificantDrag) {
-          // Toggle bead state based on drag direction and current state
-          if (bead.type === 'heaven') {
-            // Heaven bead: drag toward/away from reckoning bar toggles state
-            const dragTowardBar = my > 0; // positive Y is toward bar
-            if ((dragTowardBar && !bead.active) || (!dragTowardBar && bead.active)) {
-              onClick?.(); // Toggle the bead
-            }
-          } else {
-            // Earth bead: drag toward bar activates, away deactivates
-            const dragTowardBar = my < 0; // negative Y is toward bar for earth beads
-            if ((dragTowardBar && !bead.active) || (!dragTowardBar && bead.active)) {
-              onClick?.(); // Toggle the bead
-            }
-          }
+      // Only process during active drag, ignore drag end
+      if (!active || !gestureStateRef.current.isDragging) {
+        if (!active) {
+          // Clean up on drag end but don't revert state
+          gestureStateRef.current.isDragging = false;
+          gestureStateRef.current.lastDirection = null;
         }
+        return;
+      }
 
-        // Always snap back to proper position
-        api.start({ x, y, config: { tension: 400, friction: 30, mass: 0.8 } });
+      const currentDirection = getGestureDirection(deltaY);
+
+      // Only trigger toggle on direction change or first significant movement
+      if (currentDirection && currentDirection !== gestureStateRef.current.lastDirection) {
+        gestureStateRef.current.lastDirection = currentDirection;
+        onGestureToggle?.(bead, currentDirection);
       }
     },
-    { enabled: draggable }
+    {
+      enabled: enableGestures,
+      preventDefault: true
+    }
   );
 
   React.useEffect(() => {
     if (enableAnimation) {
-      api.start({ x, y, config: { tension: 400, friction: 30, mass: 0.8 } }); // Fast, snappy abacus animation
+      api.start({ x, y, config: { tension: 400, friction: 30, mass: 0.8 } });
     } else {
       api.set({ x, y });
     }
@@ -349,17 +388,21 @@ const Bead: React.FC<BeadProps> = ({
 
   return (
     <AnimatedG
+      {...(enableGestures ? bind() : {})}
       transform={enableAnimation ? undefined : `translate(${x - getXOffset()}, ${y - getYOffset()})`}
       style={
         enableAnimation
           ? {
               transform: to([springX, springY], (sx, sy) => `translate(${sx - getXOffset()}px, ${sy - getYOffset()}px)`),
-              cursor: draggable ? 'grab' : onClick ? 'pointer' : 'default'
+              cursor: enableGestures ? 'grab' : (onClick ? 'pointer' : 'default'),
+              touchAction: 'none'
             }
-          : { cursor: draggable ? 'grab' : onClick ? 'pointer' : 'default' }
+          : {
+              cursor: enableGestures ? 'grab' : (onClick ? 'pointer' : 'default'),
+              touchAction: 'none'
+            }
       }
-      {...(draggable ? bind() : {})}
-      onClick={onClick}
+      onClick={enableGestures ? undefined : onClick} // Disable click when gestures are enabled
     >
       {renderShape()}
     </AnimatedG>
@@ -377,11 +420,11 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   colorPalette = 'default',
   scaleFactor = 1,
   animated = true,
-  draggable = false,
+  gestures = false,
   onClick,
   onValueChange
 }) => {
-  const { value: currentValue, columnStates, toggleBead } = useAbacusState(value);
+  const { value: currentValue, columnStates, toggleBead, setColumnState } = useAbacusState(value);
 
   // Calculate effective columns
   const effectiveColumns = useMemo(() => {
@@ -412,13 +455,46 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   // In Typst, the reckoning bar is positioned at heaven-earth-gap from the top
   const barY = dimensions.heavenEarthGap;
 
+
+  // Notify about value changes
+  React.useEffect(() => {
+    onValueChange?.(currentValue);
+  }, [currentValue, onValueChange]);
+
   const handleBeadClick = useCallback((bead: BeadConfig) => {
     onClick?.(bead);
-
-    const newValue = { ...currentValue };
     toggleBead(bead, effectiveColumns);
-    onValueChange?.(newValue);
-  }, [onClick, toggleBead, currentValue, effectiveColumns, onValueChange]);
+  }, [onClick, toggleBead, effectiveColumns]);
+
+  const handleGestureToggle = useCallback((bead: BeadConfig, direction: 'activate' | 'deactivate') => {
+    const currentState = paddedColumnStates[bead.columnIndex];
+
+    if (bead.type === 'heaven') {
+      // Heaven bead: directly set the state based on direction
+      const newHeavenActive = direction === 'activate';
+      setColumnState(bead.columnIndex, {
+        ...currentState,
+        heavenActive: newHeavenActive
+      });
+    } else {
+      // Earth bead: set the correct number of active earth beads
+      const shouldActivate = direction === 'activate';
+      let newEarthActive;
+
+      if (shouldActivate) {
+        // When activating, ensure this bead position and all below are active
+        newEarthActive = Math.max(currentState.earthActive, bead.position + 1);
+      } else {
+        // When deactivating, ensure this bead position and all above are inactive
+        newEarthActive = Math.min(currentState.earthActive, bead.position);
+      }
+
+      setColumnState(bead.columnIndex, {
+        ...currentState,
+        earthActive: newEarthActive
+      });
+    }
+  }, [paddedColumnStates, setColumnState]);
 
   return (
     <svg
@@ -508,8 +584,11 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               shape={beadShape}
               color={color}
               enableAnimation={animated}
-              draggable={draggable}
-              onClick={() => handleBeadClick(bead)}
+              enableGestures={gestures}
+              onClick={gestures ? undefined : () => handleBeadClick(bead)} // Only enable click when gestures are disabled
+              onGestureToggle={handleGestureToggle}
+              heavenEarthGap={dimensions.heavenEarthGap}
+              barY={barY}
             />
           );
         })

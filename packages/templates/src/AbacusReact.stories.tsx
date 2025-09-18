@@ -13,12 +13,13 @@ const meta: Meta<typeof AbacusReact> = {
         component: `
 # AbacusReact Component
 
-A complete React component for rendering interactive Soroban (Japanese abacus) SVGs with animations, drag interactions, and comprehensive configuration options.
+A complete React component for rendering interactive Soroban (Japanese abacus) SVGs with animations and directional gesture interactions.
 
 ## Features
 
 - 🎨 **Framework-free SVG rendering** - Complete control over all elements and viewBox
-- 🎯 **Interactive beads** - Click to toggle or drag with @use-gesture/react
+- 🎯 **Interactive beads** - Click to toggle or use directional gestures
+- 🔄 **Directional gestures** - Drag beads in natural directions to activate/deactivate
 - 🌈 **Multiple color schemes** - Monochrome, place-value, alternating, heaven-earth
 - 🎭 **Bead shapes** - Diamond, square, or circle beads
 - ⚡ **React Spring animations** - Smooth bead movements and transitions
@@ -62,9 +63,9 @@ A complete React component for rendering interactive Soroban (Japanese abacus) S
       control: { type: 'boolean' },
       description: 'Enable react-spring animations',
     },
-    draggable: {
+    gestures: {
       control: { type: 'boolean' },
-      description: 'Enable drag interactions with @use-gesture/react',
+      description: 'Enable directional gesture interactions',
     },
     hideInactiveBeads: {
       control: { type: 'boolean' },
@@ -91,7 +92,7 @@ export const BasicNumber: Story = {
     colorScheme: 'monochrome',
     scaleFactor: 1,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -113,7 +114,7 @@ export const MultiColumn: Story = {
     colorPalette: 'default',
     scaleFactor: 1,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -135,7 +136,7 @@ export const CircleBeads: Story = {
     colorPalette: 'default',
     scaleFactor: 1.2,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -156,7 +157,7 @@ export const SquareBeads: Story = {
     colorScheme: 'alternating',
     scaleFactor: 0.8,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -178,7 +179,7 @@ export const MonochromeScheme: Story = {
     colorScheme: 'monochrome',
     scaleFactor: 1,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -200,7 +201,7 @@ export const PlaceValueScheme: Story = {
     colorPalette: 'mnemonic',
     scaleFactor: 0.9,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -221,7 +222,7 @@ export const AlternatingScheme: Story = {
     colorScheme: 'alternating',
     scaleFactor: 1,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -242,7 +243,7 @@ export const HeavenEarthScheme: Story = {
     colorScheme: 'heaven-earth',
     scaleFactor: 1,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -265,7 +266,7 @@ export const EmptyAbacus: Story = {
     scaleFactor: 2,
     hideInactiveBeads: false,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -288,7 +289,7 @@ export const HiddenInactiveBeads: Story = {
     hideInactiveBeads: true,
     scaleFactor: 1.4,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -310,7 +311,7 @@ export const LargeScale: Story = {
     colorPalette: 'default',
     scaleFactor: 2.5,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -333,7 +334,7 @@ export const ColorblindPalette: Story = {
     colorPalette: 'colorblind',
     scaleFactor: 0.8,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -355,7 +356,7 @@ export const GrayscalePalette: Story = {
     colorPalette: 'grayscale',
     scaleFactor: 1,
     animated: true,
-    draggable: true,
+    gestures: true,
     onClick: action('bead-clicked'),
     onValueChange: action('value-changed'),
   },
@@ -426,18 +427,49 @@ export const InteractiveExample: Story = {
     colorPalette: 'default',
     scaleFactor: 1.2,
     animated: true,
-    draggable: true,
+    gestures: true,
   },
   parameters: {
     docs: {
       description: {
-        story: 'Fully interactive example with click counter and reset functionality. Try clicking the beads!',
+        story: 'Fully interactive example with click counter and reset functionality. Click the beads to toggle their states!',
       },
     },
   },
 };
 
 // Sizing Demo
+// Gesture Testing
+export const DirectionalGestures: Story = {
+  args: {
+    value: 123,
+    columns: 3,
+    beadShape: 'diamond',
+    colorScheme: 'place-value',
+    colorPalette: 'default',
+    scaleFactor: 1.5,
+    animated: true,
+    gestures: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Directional Gesture Testing**
+
+Test the new directional gesture system:
+- **Heaven beads**: Drag down toward the bar to activate, drag up away from bar to deactivate
+- **Earth beads**: Drag up toward the bar to activate, drag down away from bar to deactivate
+- **Direction reversals**: Change drag direction mid-gesture and watch the bead follow
+- **Independent behavior**: Each bead responds only to its own gesture, beads don't push each other
+
+The gesture system tracks cursor movement direction and toggles beads based on natural abacus movements.
+        `,
+      },
+    },
+  },
+};
+
 export const SizingDemo: Story = {
   render: (args) => {
     const dimensions = useAbacusDimensions(3, args.scaleFactor || 1);
@@ -472,7 +504,7 @@ export const SizingDemo: Story = {
     colorScheme: 'place-value',
     scaleFactor: 1,
     animated: true,
-    draggable: true,
+    gestures: true,
   },
   parameters: {
     docs: {
