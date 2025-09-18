@@ -31,6 +31,12 @@ export interface AbacusDimensions {
   height: number;
   rodSpacing: number;
   beadSize: number;
+  rodWidth: number;
+  barThickness: number;
+  heavenEarthGap: number;
+  activeGap: number;
+  inactiveGap: number;
+  adjacentSpacing: number;
 }
 
 // Hooks
@@ -39,20 +45,33 @@ export function useAbacusDimensions(
   scaleFactor: number = 1
 ): AbacusDimensions {
   return useMemo(() => {
-    const baseBeadSize = 12 * scaleFactor;
-    const baseRodSpacing = 25 * scaleFactor;
-    const baseMargin = 20 * scaleFactor;
+    // Exact Typst parameters (lines 33-39 in flashcards.typ)
+    const rodWidth = 3 * scaleFactor;
+    const beadSize = 12 * scaleFactor;
+    const adjacentSpacing = 0.5 * scaleFactor;  // Minimal spacing for adjacent beads of same type
+    const columnSpacing = 25 * scaleFactor;     // rod spacing
     const heavenEarthGap = 30 * scaleFactor;
     const barThickness = 2 * scaleFactor;
 
-    const width = (columns * baseRodSpacing) + (2 * baseMargin);
-    const height = (baseBeadSize * 6) + heavenEarthGap + barThickness + (2 * baseMargin);
+    // Positioning gaps (lines 169-170 in flashcards.typ)
+    const activeGap = 1 * scaleFactor;         // Gap between active beads and reckoning bar
+    const inactiveGap = 8 * scaleFactor;       // Gap between inactive beads and active beads/bar
+
+    // Calculate total dimensions based on Typst logic (line 154-155)
+    const totalWidth = columns * columnSpacing;
+    const totalHeight = heavenEarthGap + 5 * (beadSize + 4 * scaleFactor) + 10 * scaleFactor;
 
     return {
-      width,
-      height,
-      rodSpacing: baseRodSpacing,
-      beadSize: baseBeadSize
+      width: totalWidth,
+      height: totalHeight,
+      rodSpacing: columnSpacing,
+      beadSize,
+      rodWidth,
+      barThickness,
+      heavenEarthGap,
+      activeGap,
+      inactiveGap,
+      adjacentSpacing
     };
   }, [columns, scaleFactor]);
 }
@@ -157,7 +176,7 @@ function getBeadColor(
   colorScheme: string,
   colorPalette: string
 ): string {
-  const inactiveColor = '#d3d3d3';
+  const inactiveColor = 'rgb(211, 211, 211)'; // Typst uses gray.lighten(70%)
 
   if (!bead.active) return inactiveColor;
 
@@ -170,7 +189,7 @@ function getBeadColor(
     case 'alternating':
       return bead.columnIndex % 2 === 0 ? '#1E88E5' : '#43A047';
     case 'heaven-earth':
-      return bead.type === 'heaven' ? '#E53E3E' : '#3182CE';
+      return bead.type === 'heaven' ? '#F18F01' : '#2E86AB'; // Exact Typst colors (lines 228, 265)
     default:
       return '#000000';
   }
@@ -295,13 +314,22 @@ const Bead: React.FC<BeadProps> = ({
 
   const AnimatedG = animated.g;
 
+  // Calculate correct offset based on shape (matching Typst positioning)
+  const getXOffset = () => {
+    return shape === 'diamond' ? size * 0.7 : size / 2;
+  };
+
+  const getYOffset = () => {
+    return size / 2; // Y offset is always size/2 for all shapes
+  };
+
   return (
     <AnimatedG
-      transform={enableAnimation ? undefined : `translate(${x - size/2}, ${y - size/2})`}
+      transform={enableAnimation ? undefined : `translate(${x - getXOffset()}, ${y - getYOffset()})`}
       style={
         enableAnimation
           ? {
-              transform: to([springX, springY], (sx, sy) => `translate(${sx - size/2}px, ${sy - size/2}px)`),
+              transform: to([springX, springY], (sx, sy) => `translate(${sx - getXOffset()}px, ${sy - getYOffset()}px)`),
               cursor: draggable ? 'grab' : onClick ? 'pointer' : 'default'
             }
           : { cursor: draggable ? 'grab' : onClick ? 'pointer' : 'default' }
@@ -356,13 +384,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     [paddedColumnStates]
   );
 
-  // Layout calculations matching Typst positioning
-  const margin = 20 * scaleFactor;
-  const heavenEarthGap = 30 * scaleFactor;
-  const barY = margin + heavenEarthGap;
-  const activeGap = 1 * scaleFactor;      // Gap between active beads and reckoning bar
-  const inactiveGap = 8 * scaleFactor;    // Gap between inactive beads and active beads/bar
-  const adjacentSpacing = 0.5 * scaleFactor; // Minimal spacing for adjacent beads of same type
+  // Layout calculations using exact Typst positioning
+  // In Typst, the reckoning bar is positioned at heaven-earth-gap from the top
+  const barY = dimensions.heavenEarthGap;
 
   const handleBeadClick = useCallback((bead: BeadConfig) => {
     onClick?.(bead);
@@ -379,29 +403,35 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
       style={{ overflow: 'visible' }}
     >
-      {/* Rods */}
+      {/* Rods - positioned as rectangles like in Typst */}
       {Array.from({ length: effectiveColumns }, (_, colIndex) => {
-        const x = margin + (colIndex * dimensions.rodSpacing);
+        const x = (colIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
+
+        // Calculate rod bounds based on visible beads (matching Typst logic)
+        const rodStartY = 0; // Start from top for now, will be refined
+        const rodEndY = dimensions.height; // End at bottom for now, will be refined
+
         return (
-          <line
+          <rect
             key={`rod-${colIndex}`}
-            x1={x}
-            y1={margin}
-            x2={x}
-            y2={dimensions.height - margin}
-            stroke="#8B4513"
-            strokeWidth={3 * scaleFactor}
+            x={x - dimensions.rodWidth / 2}
+            y={rodStartY}
+            width={dimensions.rodWidth}
+            height={rodEndY - rodStartY}
+            fill="rgb(0, 0, 0, 0.1)" // Typst uses gray.lighten(80%)
+            stroke="none"
           />
         );
       })}
 
-      {/* Horizontal bar */}
+      {/* Reckoning bar - matching Typst implementation */}
       <rect
-        x={margin - 10 * scaleFactor}
+        x={0}
         y={barY}
-        width={dimensions.width - 2 * margin + 20 * scaleFactor}
-        height={2 * scaleFactor}
-        fill="#8B4513"
+        width={dimensions.width}
+        height={dimensions.barThickness}
+        fill="black" // Typst uses black
+        stroke="none"
       />
 
       {/* Beads */}
@@ -409,35 +439,35 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         columnBeads.map((bead, beadIndex) => {
           if (hideInactiveBeads && !bead.active) return null;
 
-          const x = margin + (colIndex * dimensions.rodSpacing);
+          // x-offset calculation matching Typst (line 160)
+          const x = (colIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
           let y: number;
 
           if (bead.type === 'heaven') {
-            // Heaven bead positioning matching Typst logic
+            // Heaven bead positioning - exact Typst formulas (lines 173-179)
             if (bead.active) {
-              // Active heaven bead: positioned close to reckoning bar
-              y = barY - dimensions.beadSize / 2 - activeGap;
+              // Active heaven bead: positioned close to reckoning bar (line 175)
+              y = dimensions.heavenEarthGap - dimensions.beadSize / 2 - dimensions.activeGap;
             } else {
-              // Inactive heaven bead: positioned away from reckoning bar
-              y = barY - inactiveGap - dimensions.beadSize / 2;
+              // Inactive heaven bead: positioned away from reckoning bar (line 178)
+              y = dimensions.heavenEarthGap - dimensions.inactiveGap - dimensions.beadSize / 2;
             }
           } else {
-            // Earth bead positioning matching Typst logic
+            // Earth bead positioning - exact Typst formulas (lines 249-261)
             const columnState = paddedColumnStates[colIndex];
             const earthActive = columnState.earthActive;
 
             if (bead.active) {
-              // Active beads: positioned near reckoning bar, clustered with adjacent spacing
-              y = barY + (2 * scaleFactor) + activeGap + dimensions.beadSize / 2 + bead.position * (dimensions.beadSize + adjacentSpacing);
+              // Active beads: positioned near reckoning bar, adjacent beads touch (line 251)
+              y = dimensions.heavenEarthGap + dimensions.barThickness + dimensions.activeGap + dimensions.beadSize / 2 + bead.position * (dimensions.beadSize + dimensions.adjacentSpacing);
             } else {
-              // Inactive beads: positioned after active beads + gap, or after reckoning bar + gap if no active beads
+              // Inactive beads: positioned after active beads + gap (lines 254-261)
               if (earthActive > 0) {
-                // Position after the last active bead + gap, then adjacent inactive beads touch
-                const lastActiveY = barY + (2 * scaleFactor) + activeGap + dimensions.beadSize / 2 + (earthActive - 1) * (dimensions.beadSize + adjacentSpacing);
-                y = lastActiveY + dimensions.beadSize / 2 + inactiveGap + dimensions.beadSize / 2 + (bead.position - earthActive) * (dimensions.beadSize + adjacentSpacing);
+                // Position after the last active bead + gap, then adjacent inactive beads touch (line 256)
+                y = dimensions.heavenEarthGap + dimensions.barThickness + dimensions.activeGap + dimensions.beadSize / 2 + (earthActive - 1) * (dimensions.beadSize + dimensions.adjacentSpacing) + dimensions.beadSize / 2 + dimensions.inactiveGap + dimensions.beadSize / 2 + (bead.position - earthActive) * (dimensions.beadSize + dimensions.adjacentSpacing);
               } else {
-                // No active beads: position after reckoning bar + gap, adjacent inactive beads touch
-                y = barY + (2 * scaleFactor) + inactiveGap + dimensions.beadSize / 2 + bead.position * (dimensions.beadSize + adjacentSpacing);
+                // No active beads: position after reckoning bar + gap, adjacent inactive beads touch (line 259)
+                y = dimensions.heavenEarthGap + dimensions.barThickness + dimensions.inactiveGap + dimensions.beadSize / 2 + bead.position * (dimensions.beadSize + dimensions.adjacentSpacing);
               }
             }
           }
