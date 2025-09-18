@@ -6,6 +6,7 @@ import { stack, hstack, grid } from '../../styled-system/patterns'
 import { FlashcardConfig, FlashcardFormState } from '@/app/create/page'
 import { Eye } from 'lucide-react'
 import { TypstSoroban } from './TypstSoroban'
+import { AbacusReact } from '@soroban/abacus-react'
 
 interface LivePreviewProps {
   config: FlashcardFormState
@@ -166,25 +167,17 @@ function FlashcardPreview({
           justifyContent: 'center',
           overflow: 'hidden'
         })}>
-          <div className={css({
-            transform: 'scale(1.8)',
-            transformOrigin: 'center',
-            maxW: '100%',
-            maxH: '100%'
-          })}>
-            <TypstSoroban
-              number={number}
-              width="120pt"
-              height="160pt"
-              className={css({
-                '& svg': {
-                  width: '100%',
-                  height: '100%',
-                  display: 'block'
-                }
-              })}
-            />
-          </div>
+          <AbacusReact
+            value={number}
+            columns={'auto'}
+            beadShape={(config.beadShape as any) || 'diamond'}
+            colorScheme={(config.colorScheme as any) || 'place-value'}
+            scaleFactor={(config.scaleFactor || 1) * 1.2}
+            interactive={false}
+            showNumbers="never"
+            animated={true}
+            hideInactiveBeads={config.hideInactiveBeads}
+          />
         </div>
       )}
     </div>

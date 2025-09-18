@@ -6,6 +6,7 @@ import { css } from '../../../styled-system/css'
 import { container, stack, hstack, grid } from '../../../styled-system/patterns'
 import { TypstSoroban } from '@/components/TypstSoroban'
 import { InteractiveAbacus } from '@/components/InteractiveAbacus'
+import { AbacusReact } from '@soroban/abacus-react'
 
 type TabType = 'reading' | 'arithmetic'
 
@@ -335,23 +336,16 @@ function ReadingNumbersGuide() {
                   justifyContent: 'center',
                   overflow: 'hidden'
                 })}>
-                  <div className={css({
-                    transform: 'scale(2.2)',
-                    transformOrigin: 'center'
-                  })}>
-                    <TypstSoroban
-                      number={example.num}
-                      width="120pt"
-                      height="200pt"
-                      className={css({
-                        '& svg': {
-                          width: '100%',
-                          height: '100%',
-                          display: 'block'
-                        }
-                      })}
-                    />
-                  </div>
+                  <AbacusReact
+                    value={example.num}
+                    columns={1}
+                    beadShape="diamond"
+                    colorScheme="monochrome"
+                    scaleFactor={0.8}
+                    interactive={false}
+                    showNumbers="never"
+                    animated={true}
+                  />
                 </div>
 
                 <p className={css({
@@ -504,23 +498,16 @@ function ReadingNumbersGuide() {
                     justifyContent: 'center',
                     overflow: 'hidden'
                   })}>
-                    <div className={css({
-                      transform: 'scale(1.8)',
-                      transformOrigin: 'center'
-                    })}>
-                      <TypstSoroban
-                        number={example.num}
-                        width="180pt"
-                        height="240pt"
-                        className={css({
-                          '& svg': {
-                            width: '100%',
-                            height: '100%',
-                            display: 'block'
-                          }
-                        })}
-                      />
-                    </div>
+                    <AbacusReact
+                      value={example.num}
+                      columns={'auto'}
+                      beadShape="diamond"
+                      colorScheme="place-value"
+                      scaleFactor={0.9}
+                      interactive={false}
+                      showNumbers="never"
+                      animated={true}
+                    />
                   </div>
 
                   <p className={css({
@@ -752,17 +739,20 @@ function ReadingNumbersGuide() {
             borderColor: 'brand.200',
             rounded: 'xl',
             p: '6',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)'
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+            display: 'flex',
+            justifyContent: 'center',
+            width: '100%'
           })}>
-            <InteractiveAbacus
-              initialValue={0}
+            <AbacusReact
+              value={0}
               columns={3}
-              showManualInput={true}
-              className={css({
-                display: 'flex',
-                justifyContent: 'center',
-                width: '100%'
-              })}
+              beadShape="diamond"
+              colorScheme="place-value"
+              scaleFactor={1.5}
+              interactive={true}
+              showNumbers="toggleable"
+              animated={true}
             />
           </div>
 
@@ -917,17 +907,15 @@ function ArithmeticOperationsGuide() {
                 overflow: 'hidden',
                 mx: 'auto'
               })}>
-                <TypstSoroban
-                  number={3}
-                  width="120pt"
-                  height="200pt"
-                  className={css({
-                    '& svg': {
-                      width: '100%',
-                      height: '100%',
-                      display: 'block'
-                    }
-                  })}
+                <AbacusReact
+                  value={3}
+                  columns={1}
+                  beadShape="diamond"
+                  colorScheme="place-value"
+                  scaleFactor={1.2}
+                  interactive={false}
+                  showNumbers="never"
+                  animated={true}
                 />
               </div>
             </div>
@@ -948,17 +936,15 @@ function ArithmeticOperationsGuide() {
                 overflow: 'hidden',
                 mx: 'auto'
               })}>
-                <TypstSoroban
-                  number={7}
-                  width="120pt"
-                  height="200pt"
-                  className={css({
-                    '& svg': {
-                      width: '100%',
-                      height: '100%',
-                      display: 'block'
-                    }
-                  })}
+                <AbacusReact
+                  value={7}
+                  columns={1}
+                  beadShape="diamond"
+                  colorScheme="place-value"
+                  scaleFactor={1.2}
+                  interactive={false}
+                  showNumbers="never"
+                  animated={true}
                 />
               </div>
             </div>
@@ -1045,17 +1031,15 @@ function ArithmeticOperationsGuide() {
                 overflow: 'hidden',
                 mx: 'auto'
               })}>
-                <TypstSoroban
-                  number={8}
-                  width="120pt"
-                  height="200pt"
-                  className={css({
-                    '& svg': {
-                      width: '100%',
-                      height: '100%',
-                      display: 'block'
-                    }
-                  })}
+                <AbacusReact
+                  value={8}
+                  columns={1}
+                  beadShape="diamond"
+                  colorScheme="place-value"
+                  scaleFactor={1.2}
+                  interactive={false}
+                  showNumbers="never"
+                  animated={true}
                 />
               </div>
             </div>
@@ -1076,17 +1060,15 @@ function ArithmeticOperationsGuide() {
                 overflow: 'hidden',
                 mx: 'auto'
               })}>
-                <TypstSoroban
-                  number={5}
-                  width="120pt"
-                  height="200pt"
-                  className={css({
-                    '& svg': {
-                      width: '100%',
-                      height: '100%',
-                      display: 'block'
-                    }
-                  })}
+                <AbacusReact
+                  value={5}
+                  columns={1}
+                  beadShape="diamond"
+                  colorScheme="place-value"
+                  scaleFactor={1.2}
+                  interactive={false}
+                  showNumbers="never"
+                  animated={true}
                 />
               </div>
             </div>
