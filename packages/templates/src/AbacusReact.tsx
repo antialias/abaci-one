@@ -272,7 +272,8 @@ const Bead: React.FC<BeadProps> = ({
     isDragging: false,
     lastDirection: null as 'activate' | 'deactivate' | null,
     startY: 0,
-    threshold: size * 0.3 // Minimum movement to trigger toggle
+    threshold: size * 0.3, // Minimum movement to trigger toggle
+    hasGestureTriggered: false // Track if a gesture has triggered to avoid click conflicts
   });
 
   // Calculate gesture direction based on bead type and position
@@ -301,6 +302,7 @@ const Bead: React.FC<BeadProps> = ({
         event?.preventDefault();
         gestureStateRef.current.isDragging = true;
         gestureStateRef.current.lastDirection = null;
+        gestureStateRef.current.hasGestureTriggered = false;
         return;
       }
 
@@ -310,6 +312,10 @@ const Bead: React.FC<BeadProps> = ({
           // Clean up on drag end but don't revert state
           gestureStateRef.current.isDragging = false;
           gestureStateRef.current.lastDirection = null;
+          // Reset the gesture trigger flag after a short delay to allow clicks
+          setTimeout(() => {
+            gestureStateRef.current.hasGestureTriggered = false;
+          }, 100);
         }
         return;
       }
@@ -319,6 +325,7 @@ const Bead: React.FC<BeadProps> = ({
       // Only trigger toggle on direction change or first significant movement
       if (currentDirection && currentDirection !== gestureStateRef.current.lastDirection) {
         gestureStateRef.current.lastDirection = currentDirection;
+        gestureStateRef.current.hasGestureTriggered = true;
         onGestureToggle?.(bead, currentDirection);
       }
     },
@@ -402,7 +409,14 @@ const Bead: React.FC<BeadProps> = ({
               touchAction: 'none'
             }
       }
-      onClick={enableGestures ? undefined : onClick} // Disable click when gestures are enabled
+      onClick={(e) => {
+        // Prevent click if a gesture just triggered to avoid double-toggling
+        if (enableGestures && gestureStateRef.current.hasGestureTriggered) {
+          e.preventDefault();
+          return;
+        }
+        onClick?.(e);
+      }} // Enable click with gesture conflict prevention
     >
       {renderShape()}
     </AnimatedG>
@@ -585,7 +599,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               color={color}
               enableAnimation={animated}
               enableGestures={gestures}
-              onClick={gestures ? undefined : () => handleBeadClick(bead)} // Only enable click when gestures are disabled
+              onClick={() => handleBeadClick(bead)} // Enable click always - gestures and clicks work together
               onGestureToggle={handleGestureToggle}
               heavenEarthGap={dimensions.heavenEarthGap}
               barY={barY}
