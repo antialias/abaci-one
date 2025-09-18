@@ -252,14 +252,38 @@ const Bead: React.FC<BeadProps> = ({
   const [{ x: springX, y: springY }, api] = useSpring(() => ({ x, y }));
 
   const bind = useDrag(
-    ({ movement: [mx, my], down }) => {
+    ({ movement: [mx, my], down, velocity: [vx, vy] }) => {
       if (!draggable) return;
 
       if (down) {
-        api.start({ x: x + mx, y: y + my, immediate: true });
-        onDrag?.({ x: mx, y: my });
+        // Constrain movement to vertical only (beads slide on rods)
+        const constrainedY = y + my;
+        api.start({ x, y: constrainedY, immediate: true });
+        onDrag?.({ x: 0, y: my }); // Report only vertical movement
       } else {
-        api.start({ x, y, config: { tension: 400, friction: 30, mass: 0.8 } }); // Fast snap-back
+        // Determine snap behavior based on bead type and drag direction
+        const dragThreshold = size; // Minimum drag distance to trigger toggle
+        const wasSignificantDrag = Math.abs(my) > dragThreshold;
+
+        if (wasSignificantDrag) {
+          // Toggle bead state based on drag direction and current state
+          if (bead.type === 'heaven') {
+            // Heaven bead: drag toward/away from reckoning bar toggles state
+            const dragTowardBar = my > 0; // positive Y is toward bar
+            if ((dragTowardBar && !bead.active) || (!dragTowardBar && bead.active)) {
+              onClick?.(); // Toggle the bead
+            }
+          } else {
+            // Earth bead: drag toward bar activates, away deactivates
+            const dragTowardBar = my < 0; // negative Y is toward bar for earth beads
+            if ((dragTowardBar && !bead.active) || (!dragTowardBar && bead.active)) {
+              onClick?.(); // Toggle the bead
+            }
+          }
+        }
+
+        // Always snap back to proper position
+        api.start({ x, y, config: { tension: 400, friction: 30, mass: 0.8 } });
       }
     },
     { enabled: draggable }
