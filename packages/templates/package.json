@@ -6,6 +6,7 @@
   "types": "index.d.ts",
   "files": [
     "*.typ",
+    "*.tsx",
     "index.js",
     "index.d.ts",
     "svg-crop-processor.js",
@@ -32,7 +33,9 @@
     "examples:python": "python3 examples/python-example.py",
     "gallery": "node generate-gallery.js && node build-unified-gallery.js && open gallery-unified.html",
     "gallery:node": "node generate-gallery-node.js && node build-unified-gallery.js && open gallery-unified.html",
-    "gallery:clean": "rm -rf gallery/ gallery-static.html"
+    "gallery:clean": "rm -rf gallery/ gallery-static.html",
+    "storybook": "storybook dev -p 6007",
+    "build-storybook": "storybook build"
   },
   "keywords": [
     "typst",
@@ -42,8 +45,36 @@
     "flashcards",
     "monorepo",
     "typescript",
-    "python"
+    "python",
+    "react",
+    "svg",
+    "animations"
   ],
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@react-spring/web": "^9.7.0",
+    "@use-gesture/react": "^10.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.0.0",
+    "@storybook/addon-actions": "^7.6.0",
+    "@storybook/addon-essentials": "^7.6.0",
+    "@storybook/addon-interactions": "^7.6.0",
+    "@storybook/addon-links": "^7.6.0",
+    "@storybook/addon-controls": "^7.6.0",
+    "@storybook/addon-docs": "^7.6.0",
+    "@storybook/blocks": "^7.6.0",
+    "@storybook/react": "^7.6.0",
+    "@storybook/react-vite": "^7.6.0",
+    "@storybook/testing-library": "^0.2.2",
+    "storybook": "^7.6.0",
+    "vite": "^4.5.0"
+  },
   "author": "Soroban Flashcards Team",
   "license": "MIT",
   "repository": {
