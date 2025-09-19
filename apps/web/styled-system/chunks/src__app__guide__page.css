@@ -4,16 +4,8 @@
     min-height: 100vh
     }
 
-  .transform_scale\(2\.5\) {
-    transform: scale(2.5)
-    }
-
-  .w_80pt {
-    width: 80pt
-    }
-
-  .h_120pt {
-    height: 120pt
+  .color-scheme_place-value {
+    color-scheme: place-value
     }
 
   .bg_linear-gradient\(135deg\,_\#667eea_0\%\,_\#764ba2_100\%\) {
@@ -124,10 +116,6 @@
     max-width: 120px
     }
 
-  .transform_scale\(2\.2\) {
-    transform: scale(2.2)
-    }
-
   .fs_2xs {
     font-size: var(--font-sizes-2xs)
     }
@@ -170,14 +158,6 @@
 
   .border_blue\.200 {
     border-color: var(--colors-blue-200)
-    }
-
-  .transform_scale\(1\.8\) {
-    transform: scale(1.8)
-    }
-
-  .origin_center {
-    transform-origin: center
     }
 
   .fs_xs {
@@ -343,15 +323,6 @@
   .overflow_hidden {
     overflow: hidden
     }
-    .\[\&_svg\]\:w_100\% svg {
-      width: 100%
-        }
-    .\[\&_svg\]\:h_100\% svg {
-      height: 100%
-        }
-    .\[\&_svg\]\:d_block svg {
-      display: block
-        }
 
   .shadow_sm {
     box-shadow: var(--shadows-sm)
@@ -515,24 +486,16 @@
     transition-duration: var(--transition-duration, 150ms)
     }
 
-  .w_180pt {
-    width: 180pt
-    }
-
-  .h_240pt {
-    height: 240pt
-    }
-
-  .w_120pt {
-    width: 120pt
-    }
-
-  .h_200pt {
-    height: 200pt
+  .columns_auto {
+    columns: auto
     }
 
   .columns_3 {
     columns: 3
+    }
+
+  .columns_1 {
+    columns: 1
     }
 
   .max-w_4xl {

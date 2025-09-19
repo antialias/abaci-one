@@ -24,7 +24,11 @@
       "Bash(curl:*)",
       "WebFetch(domain:localhost)",
       "Bash(pnpm list:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git checkout:*)",
+      "Bash(cat:*)",
+      "Bash(git log:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

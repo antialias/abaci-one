@@ -7,6 +7,7 @@ import { container, stack, hstack, grid } from '../../../styled-system/patterns'
 import { TypstSoroban } from '@/components/TypstSoroban'
 import { InteractiveAbacus } from '@/components/InteractiveAbacus'
 import { AbacusReact } from '@soroban/abacus-react'
+import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
 
 type TabType = 'reading' | 'arithmetic'
 
@@ -111,6 +112,8 @@ export default function GuidePage() {
 }
 
 function ReadingNumbersGuide() {
+  const appConfig = useAbacusConfig()
+
   return (
     <div className={stack({ gap: '12' })}>
       {/* Section Introduction */}
@@ -339,12 +342,13 @@ function ReadingNumbersGuide() {
                   <AbacusReact
                     value={example.num}
                     columns={1}
-                    beadShape="diamond"
-                    colorScheme="monochrome"
+                    beadShape={appConfig.beadShape}
+                    colorScheme={appConfig.colorScheme}
+                    hideInactiveBeads={appConfig.hideInactiveBeads}
                     scaleFactor={0.8}
                     interactive={false}
-                    showNumbers="always"
-                    animated={true}
+                    showNumbers={false}
+                    animated={appConfig.animated}
                   />
                 </div>
 
@@ -501,12 +505,13 @@ function ReadingNumbersGuide() {
                     <AbacusReact
                       value={example.num}
                       columns={'auto'}
-                      beadShape="diamond"
-                      colorScheme="place-value"
+                      beadShape={appConfig.beadShape}
+                      colorScheme={appConfig.colorScheme}
+                      hideInactiveBeads={appConfig.hideInactiveBeads}
                       scaleFactor={0.9}
                       interactive={false}
-                      showNumbers="always"
-                      animated={true}
+                      showNumbers={false}
+                      animated={appConfig.animated}
                     />
                   </div>
 
@@ -747,12 +752,13 @@ function ReadingNumbersGuide() {
             <AbacusReact
               value={0}
               columns={3}
-              beadShape="diamond"
-              colorScheme="place-value"
+              beadShape={appConfig.beadShape}
+              colorScheme={appConfig.colorScheme}
+              hideInactiveBeads={appConfig.hideInactiveBeads}
               scaleFactor={1.5}
               interactive={true}
-              showNumbers="toggleable"
-              animated={true}
+              showNumbers={true}
+              animated={appConfig.animated}
             />
           </div>
 
@@ -801,6 +807,8 @@ function ReadingNumbersGuide() {
 }
 
 function ArithmeticOperationsGuide() {
+  const appConfig = useAbacusConfig()
+
   return (
     <div className={css({ maxW: '4xl', mx: 'auto' })}>
       <div className={css({
@@ -910,12 +918,13 @@ function ArithmeticOperationsGuide() {
                 <AbacusReact
                   value={3}
                   columns={1}
-                  beadShape="diamond"
-                  colorScheme="place-value"
+                  beadShape={appConfig.beadShape}
+                  colorScheme={appConfig.colorScheme}
+                  hideInactiveBeads={appConfig.hideInactiveBeads}
                   scaleFactor={1.2}
                   interactive={false}
-                  showNumbers="always"
-                  animated={true}
+                  showNumbers={true}
+                  animated={appConfig.animated}
                 />
               </div>
             </div>
@@ -939,12 +948,13 @@ function ArithmeticOperationsGuide() {
                 <AbacusReact
                   value={7}
                   columns={1}
-                  beadShape="diamond"
-                  colorScheme="place-value"
+                  beadShape={appConfig.beadShape}
+                  colorScheme={appConfig.colorScheme}
+                  hideInactiveBeads={appConfig.hideInactiveBeads}
                   scaleFactor={1.2}
                   interactive={false}
-                  showNumbers="always"
-                  animated={true}
+                  showNumbers={true}
+                  animated={appConfig.animated}
                 />
               </div>
             </div>
@@ -1034,12 +1044,13 @@ function ArithmeticOperationsGuide() {
                 <AbacusReact
                   value={8}
                   columns={1}
-                  beadShape="diamond"
-                  colorScheme="place-value"
+                  beadShape={appConfig.beadShape}
+                  colorScheme={appConfig.colorScheme}
+                  hideInactiveBeads={appConfig.hideInactiveBeads}
                   scaleFactor={1.2}
                   interactive={false}
-                  showNumbers="always"
-                  animated={true}
+                  showNumbers={true}
+                  animated={appConfig.animated}
                 />
               </div>
             </div>
@@ -1063,12 +1074,13 @@ function ArithmeticOperationsGuide() {
                 <AbacusReact
                   value={5}
                   columns={1}
-                  beadShape="diamond"
-                  colorScheme="place-value"
+                  beadShape={appConfig.beadShape}
+                  colorScheme={appConfig.colorScheme}
+                  hideInactiveBeads={appConfig.hideInactiveBeads}
                   scaleFactor={1.2}
                   interactive={false}
-                  showNumbers="always"
-                  animated={true}
+                  showNumbers={true}
+                  animated={appConfig.animated}
                 />
               </div>
             </div>

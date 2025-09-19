@@ -4,6 +4,42 @@
     font-size: var(--font-sizes-xl)
     }
 
+  .transform_scale\(1\.8\) {
+    transform: scale(1.8)
+    }
+
+  .origin_center {
+    transform-origin: center
+    }
+
+  .max-w_100\% {
+    max-width: 100%
+    }
+
+  .max-h_100\% {
+    max-height: 100%
+    }
+
+  .\[\&_svg\]\:w_100\% svg {
+    width: 100%
+        }
+
+  .\[\&_svg\]\:h_100\% svg {
+    height: 100%
+        }
+
+  .\[\&_svg\]\:d_block svg {
+    display: block
+        }
+
+  .w_120pt {
+    width: 120pt
+    }
+
+  .h_160pt {
+    height: 160pt
+    }
+
   .px_3 {
     padding-inline: var(--spacing-3)
     }
@@ -142,31 +178,6 @@
     overflow: hidden
     }
 
-  .transform_scale\(1\.8\) {
-    transform: scale(1.8)
-    }
-
-  .origin_center {
-    transform-origin: center
-    }
-
-  .max-w_100\% {
-    max-width: 100%
-    }
-
-  .max-h_100\% {
-    max-height: 100%
-    }
-    .\[\&_svg\]\:w_100\% svg {
-      width: 100%
-        }
-    .\[\&_svg\]\:h_100\% svg {
-      height: 100%
-        }
-    .\[\&_svg\]\:d_block svg {
-      display: block
-        }
-
   .fs_xs {
     font-size: var(--font-sizes-xs)
     }
@@ -179,12 +190,12 @@
     font-weight: var(--font-weights-medium)
     }
 
-  .w_120pt {
-    width: 120pt
+  .color-scheme_place-value {
+    color-scheme: place-value
     }
 
-  .h_160pt {
-    height: 160pt
+  .columns_auto {
+    columns: auto
     }
 
   .gap_6 {
