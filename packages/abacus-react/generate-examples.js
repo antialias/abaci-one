@@ -250,7 +250,15 @@ async function generateSVGExamples() {
 
       // Extract just the SVG content from the rendered HTML
       const svgMatch = fullMarkup.match(/<svg[^>]*>.*<\/svg>/s);
-      const svgMarkup = svgMatch ? svgMatch[0] : fullMarkup;
+      let svgMarkup = svgMatch ? svgMatch[0] : fullMarkup;
+
+      // Add required xmlns attributes for GitHub compatibility
+      if (svgMarkup.includes('<svg')) {
+        svgMarkup = svgMarkup.replace(
+          /<svg([^>]*)>/,
+          '<svg$1 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:h5="http://www.w3.org/1999/xhtml">'
+        );
+      }
 
       // Add metadata as comments
       const svgWithMetadata = `<!-- ${example.description} -->
@@ -540,7 +548,7 @@ ${examples.map(example => `
 
 ${example.description}
 
-![${example.title}](./examples/${example.name}.svg)
+<img src="https://raw.githubusercontent.com/antialias/soroban-abacus-flashcards/main/packages/abacus-react/examples/${example.name}.svg" alt="${example.title}">
 
 \`\`\`tsx
 ${example.code}

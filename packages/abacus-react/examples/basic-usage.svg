@@ -6,7 +6,7 @@
   "scaleFactor": 1,
   "animated": false
 } -->
-<svg width="75" height="160" viewBox="0 0 75 160" class="abacus-svg  " style="overflow:visible;display:block"><defs><style>
+<svg width="75" height="160" viewBox="0 0 75 160" class="abacus-svg  " style="overflow:visible;display:block" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:h5="http://www.w3.org/1999/xhtml"><defs><style>
           /* CSS-based opacity system for hidden inactive beads */
           .abacus-bead {
             transition: opacity 0.2s ease-in-out;
