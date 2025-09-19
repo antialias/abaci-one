@@ -1,7 +1,10 @@
+'use client'
+
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { useSpring, animated, config, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
 import NumberFlow from '@number-flow/react';
+import { useAbacusConfig, getDefaultAbacusConfig } from './AbacusContext';
 
 // Types
 export interface BeadConfig {
@@ -12,7 +15,121 @@ export interface BeadConfig {
   columnIndex: number;
 }
 
+// Comprehensive styling system
+export interface BeadStyle {
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  opacity?: number;
+  cursor?: string;
+  className?: string;
+}
+
+export interface ColumnPostStyle {
+  stroke?: string;
+  strokeWidth?: number;
+  opacity?: number;
+  className?: string;
+}
+
+export interface ReckoningBarStyle {
+  stroke?: string;
+  strokeWidth?: number;
+  opacity?: number;
+  className?: string;
+}
+
+export interface NumeralStyle {
+  color?: string;
+  backgroundColor?: string;
+  fontSize?: string;
+  fontFamily?: string;
+  fontWeight?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  borderRadius?: number;
+  className?: string;
+}
+
+export interface AbacusCustomStyles {
+  // Global defaults
+  heavenBeads?: BeadStyle;
+  earthBeads?: BeadStyle;
+  activeBeads?: BeadStyle;
+  inactiveBeads?: BeadStyle;
+  columnPosts?: ColumnPostStyle;
+  reckoningBar?: ReckoningBarStyle;
+  numerals?: NumeralStyle;
+  numeralContainers?: NumeralStyle;
+
+  // Column-specific overrides (by column index)
+  columns?: {
+    [columnIndex: number]: {
+      heavenBeads?: BeadStyle;
+      earthBeads?: BeadStyle;
+      activeBeads?: BeadStyle;
+      inactiveBeads?: BeadStyle;
+      columnPost?: ColumnPostStyle;
+      numerals?: NumeralStyle;
+      numeralContainer?: NumeralStyle;
+    };
+  };
+
+  // Individual bead overrides (by column and bead position)
+  beads?: {
+    [columnIndex: number]: {
+      heaven?: BeadStyle;
+      earth?: {
+        [position: number]: BeadStyle; // position 0-3 for earth beads
+      };
+    };
+  };
+}
+
+// Event system
+export interface BeadClickEvent {
+  bead: BeadConfig;
+  columnIndex: number;
+  beadType: 'heaven' | 'earth';
+  position: number;
+  active: boolean;
+  value: number;
+  event: React.MouseEvent;
+}
+
+export interface AbacusCallbacks {
+  onBeadClick?: (event: BeadClickEvent) => void;
+  onBeadHover?: (event: BeadClickEvent) => void;
+  onBeadLeave?: (event: BeadClickEvent) => void;
+  onColumnClick?: (columnIndex: number, event: React.MouseEvent) => void;
+  onNumeralClick?: (columnIndex: number, value: number, event: React.MouseEvent) => void;
+  onValueChange?: (newValue: number) => void;
+  onBeadRef?: (bead: BeadConfig, element: SVGElement | null) => void;
+  // Legacy callback for backward compatibility
+  onClick?: (bead: BeadConfig) => void;
+}
+
+// Overlay and injection system
+export interface AbacusOverlay {
+  id: string;
+  type: 'tooltip' | 'arrow' | 'highlight' | 'custom';
+  target: {
+    type: 'bead' | 'column' | 'numeral' | 'bar' | 'coordinates';
+    columnIndex?: number;
+    beadType?: 'heaven' | 'earth';
+    beadPosition?: number; // for earth beads
+    x?: number; // for coordinate-based positioning
+    y?: number;
+  };
+  content: React.ReactNode;
+  style?: React.CSSProperties;
+  className?: string;
+  offset?: { x: number; y: number };
+  visible?: boolean;
+}
+
 export interface AbacusConfig {
+  // Basic configuration
   value?: number;
   columns?: number | 'auto';
   showEmptyColumns?: boolean;
@@ -24,7 +141,20 @@ export interface AbacusConfig {
   animated?: boolean;
   interactive?: boolean;
   gestures?: boolean;
-  showNumbers?: 'always' | 'never' | 'toggleable';
+  showNumbers?: boolean;
+
+  // Advanced customization
+  customStyles?: AbacusCustomStyles;
+  callbacks?: AbacusCallbacks;
+  overlays?: AbacusOverlay[];
+
+  // Tutorial and accessibility features
+  highlightColumns?: number[]; // Highlight specific columns
+  highlightBeads?: Array<{ columnIndex: number; beadType: 'heaven' | 'earth'; position?: number }>;
+  disabledColumns?: number[]; // Disable interaction on specific columns
+  disabledBeads?: Array<{ columnIndex: number; beadType: 'heaven' | 'earth'; position?: number }>;
+
+  // Legacy callbacks for backward compatibility
   onClick?: (bead: BeadConfig) => void;
   onValueChange?: (newValue: number) => void;
 }
@@ -46,7 +176,7 @@ export interface AbacusDimensions {
 export function useAbacusDimensions(
   columns: number,
   scaleFactor: number = 1,
-  showNumbers: 'always' | 'never' | 'toggleable' = 'never'
+  showNumbers: boolean = false
 ): AbacusDimensions {
   return useMemo(() => {
     // Exact Typst parameters (lines 33-39 in flashcards.typ)
@@ -65,9 +195,9 @@ export function useAbacusDimensions(
     const totalWidth = columns * columnSpacing;
     const baseHeight = heavenEarthGap + 5 * (beadSize + 4 * scaleFactor) + 10 * scaleFactor;
 
-    // Add space for numbers if they could be visible (always or toggleable)
+    // Add space for numbers if they are visible
     const numbersSpace = 40 * scaleFactor; // Space for NumberFlow components
-    const totalHeight = showNumbers === 'never' ? baseHeight : baseHeight + numbersSpace;
+    const totalHeight = showNumbers ? baseHeight + numbersSpace : baseHeight;
 
     return {
       width: totalWidth,
@@ -174,6 +304,149 @@ export function useAbacusState(initialValue: number = 0) {
   };
 }
 
+// Utility functions for customization system
+function mergeBeadStyles(
+  baseStyle: BeadStyle,
+  customStyles?: AbacusCustomStyles,
+  columnIndex?: number,
+  beadType?: 'heaven' | 'earth',
+  position?: number,
+  isActive?: boolean
+): BeadStyle {
+  let mergedStyle = { ...baseStyle };
+
+  // Apply global bead type styles
+  if (customStyles?.heavenBeads && beadType === 'heaven') {
+    mergedStyle = { ...mergedStyle, ...customStyles.heavenBeads };
+  }
+  if (customStyles?.earthBeads && beadType === 'earth') {
+    mergedStyle = { ...mergedStyle, ...customStyles.earthBeads };
+  }
+
+  // Apply active/inactive styles
+  if (isActive && customStyles?.activeBeads) {
+    mergedStyle = { ...mergedStyle, ...customStyles.activeBeads };
+  }
+  if (!isActive && customStyles?.inactiveBeads) {
+    mergedStyle = { ...mergedStyle, ...customStyles.inactiveBeads };
+  }
+
+  // Apply column-specific styles
+  if (columnIndex !== undefined && customStyles?.columns?.[columnIndex]) {
+    const columnStyles = customStyles.columns[columnIndex];
+    if (columnStyles.heavenBeads && beadType === 'heaven') {
+      mergedStyle = { ...mergedStyle, ...columnStyles.heavenBeads };
+    }
+    if (columnStyles.earthBeads && beadType === 'earth') {
+      mergedStyle = { ...mergedStyle, ...columnStyles.earthBeads };
+    }
+    if (isActive && columnStyles.activeBeads) {
+      mergedStyle = { ...mergedStyle, ...columnStyles.activeBeads };
+    }
+    if (!isActive && columnStyles.inactiveBeads) {
+      mergedStyle = { ...mergedStyle, ...columnStyles.inactiveBeads };
+    }
+  }
+
+  // Apply individual bead styles (highest specificity)
+  if (columnIndex !== undefined && customStyles?.beads?.[columnIndex]) {
+    const beadStyles = customStyles.beads[columnIndex];
+    if (beadType === 'heaven' && beadStyles.heaven) {
+      mergedStyle = { ...mergedStyle, ...beadStyles.heaven };
+    }
+    if (beadType === 'earth' && position !== undefined && beadStyles.earth?.[position]) {
+      mergedStyle = { ...mergedStyle, ...beadStyles.earth[position] };
+    }
+  }
+
+  return mergedStyle;
+}
+
+function isBeadHighlighted(
+  columnIndex: number,
+  beadType: 'heaven' | 'earth',
+  position: number | undefined,
+  highlightBeads?: Array<{ columnIndex: number; beadType: 'heaven' | 'earth'; position?: number }>
+): boolean {
+  return highlightBeads?.some(highlight =>
+    highlight.columnIndex === columnIndex &&
+    highlight.beadType === beadType &&
+    (highlight.position === undefined || highlight.position === position)
+  ) || false;
+}
+
+function isBeadDisabled(
+  columnIndex: number,
+  beadType: 'heaven' | 'earth',
+  position: number | undefined,
+  disabledColumns?: number[],
+  disabledBeads?: Array<{ columnIndex: number; beadType: 'heaven' | 'earth'; position?: number }>
+): boolean {
+  // Check if entire column is disabled
+  if (disabledColumns?.includes(columnIndex)) {
+    return true;
+  }
+
+  // Check if specific bead is disabled
+  return disabledBeads?.some(disabled =>
+    disabled.columnIndex === columnIndex &&
+    disabled.beadType === beadType &&
+    (disabled.position === undefined || disabled.position === position)
+  ) || false;
+}
+
+function calculateOverlayPosition(
+  overlay: AbacusOverlay,
+  dimensions: AbacusDimensions,
+  columnIndex?: number,
+  beadPosition?: { x: number; y: number }
+): { x: number; y: number } {
+  let x = 0;
+  let y = 0;
+
+  switch (overlay.target.type) {
+    case 'coordinates':
+      x = overlay.target.x || 0;
+      y = overlay.target.y || 0;
+      break;
+
+    case 'bead':
+      if (beadPosition) {
+        x = beadPosition.x;
+        y = beadPosition.y;
+      }
+      break;
+
+    case 'column':
+      if (overlay.target.columnIndex !== undefined) {
+        x = (overlay.target.columnIndex * dimensions.rodSpacing) + (dimensions.rodSpacing / 2);
+        y = dimensions.height / 2;
+      }
+      break;
+
+    case 'numeral':
+      if (overlay.target.columnIndex !== undefined) {
+        x = (overlay.target.columnIndex * dimensions.rodSpacing) + (dimensions.rodSpacing / 2);
+        const baseHeight = dimensions.heavenEarthGap + 5 * (dimensions.beadSize + 4) + 10;
+        y = baseHeight + 25;
+      }
+      break;
+
+    case 'bar':
+      x = dimensions.width / 2;
+      y = dimensions.heavenEarthGap;
+      break;
+  }
+
+  // Apply offset
+  if (overlay.offset) {
+    x += overlay.offset.x;
+    y += overlay.offset.y;
+  }
+
+  return { x, y };
+}
+
 // Color palettes
 const COLOR_PALETTES = {
   default: ['#2E86AB', '#A23B72', '#F18F01', '#6A994E', '#BC4B51'],
@@ -259,11 +532,17 @@ interface BeadProps {
   size: number;
   shape: 'diamond' | 'square' | 'circle';
   color: string;
+  customStyle?: BeadStyle;
+  isHighlighted?: boolean;
+  isDisabled?: boolean;
   enableAnimation: boolean;
   enableGestures?: boolean;
   hideInactiveBeads?: boolean;
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent) => void;
+  onHover?: (event: React.MouseEvent) => void;
+  onLeave?: (event: React.MouseEvent) => void;
   onGestureToggle?: (bead: BeadConfig, direction: 'activate' | 'deactivate') => void;
+  onRef?: (element: SVGElement | null) => void;
   heavenEarthGap: number;
   barY: number;
 }
@@ -275,11 +554,17 @@ const Bead: React.FC<BeadProps> = ({
   size,
   shape,
   color,
+  customStyle,
+  isHighlighted = false,
+  isDisabled = false,
   enableAnimation,
   enableGestures = false,
   hideInactiveBeads = false,
   onClick,
+  onHover,
+  onLeave,
   onGestureToggle,
+  onRef,
   heavenEarthGap,
   barY
 }) => {
@@ -411,6 +696,7 @@ const Bead: React.FC<BeadProps> = ({
 
   return (
     <AnimatedG
+      ref={onRef}
       {...(enableGestures ? bind() : {})}
       className={`abacus-bead ${bead.active ? 'active' : 'inactive'} ${hideInactiveBeads && !bead.active ? 'hidden-inactive' : ''}`}
       transform={enableAnimation ? undefined : `translate(${x - getXOffset()}, ${y - getYOffset()})`}
@@ -434,7 +720,7 @@ const Bead: React.FC<BeadProps> = ({
           e.preventDefault();
           return;
         }
-        onClick?.();
+        onClick?.(e);
       }} // Enable click with gesture conflict prevention
     >
       {renderShape()}
@@ -447,36 +733,56 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   value = 0,
   columns = 'auto',
   showEmptyColumns = false,
-  hideInactiveBeads = false,
-  beadShape = 'diamond',
-  colorScheme = 'monochrome',
-  colorPalette = 'default',
-  scaleFactor = 1,
-  animated = true,
-  interactive = false,
-  gestures = false,
-  showNumbers = 'never',
+  hideInactiveBeads,
+  beadShape,
+  colorScheme,
+  colorPalette,
+  scaleFactor,
+  animated,
+  interactive,
+  gestures,
+  showNumbers,
+  // Advanced customization props
+  customStyles,
+  callbacks,
+  overlays = [],
+  highlightColumns = [],
+  highlightBeads = [],
+  disabledColumns = [],
+  disabledBeads = [],
+  // Legacy callbacks
   onClick,
   onValueChange
 }) => {
+  // Try to use context config, fallback to defaults if no context
+  let contextConfig;
+  try {
+    contextConfig = useAbacusConfig();
+  } catch {
+    // No context provider, use defaults
+    contextConfig = getDefaultAbacusConfig();
+  }
+
+  // Use props if provided, otherwise fall back to context config
+  const finalConfig = {
+    hideInactiveBeads: hideInactiveBeads ?? contextConfig.hideInactiveBeads,
+    beadShape: beadShape ?? contextConfig.beadShape,
+    colorScheme: colorScheme ?? contextConfig.colorScheme,
+    colorPalette: colorPalette ?? contextConfig.colorPalette,
+    scaleFactor: scaleFactor ?? contextConfig.scaleFactor,
+    animated: animated ?? contextConfig.animated,
+    interactive: interactive ?? contextConfig.interactive,
+    gestures: gestures ?? contextConfig.gestures,
+    showNumbers: showNumbers ?? contextConfig.showNumbers
+  };
   const { value: currentValue, columnStates, toggleBead, setColumnState } = useAbacusState(value);
 
-  // State for toggleable numbers display
-  const [numbersVisible, setNumbersVisible] = useState(showNumbers === 'always');
 
   // Debug prop changes
   React.useEffect(() => {
     // console.log(`🔄 Component received value prop: ${value}, internal value: ${currentValue}`);
   }, [value, currentValue]);
 
-  // Update numbers visibility when showNumbers prop changes
-  React.useEffect(() => {
-    if (showNumbers === 'always') {
-      setNumbersVisible(true);
-    } else if (showNumbers === 'never') {
-      setNumbersVisible(false);
-    }
-  }, [showNumbers]);
 
   // Calculate effective columns
   const effectiveColumns = useMemo(() => {
@@ -487,7 +793,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     return columns;
   }, [columns, currentValue, showEmptyColumns, columnStates.length]);
 
-  const dimensions = useAbacusDimensions(effectiveColumns, scaleFactor, showNumbers);
+  const dimensions = useAbacusDimensions(effectiveColumns, finalConfig.scaleFactor, finalConfig.showNumbers);
 
   // Ensure we have enough column states for the effective columns
   const paddedColumnStates = useMemo(() => {
@@ -513,10 +819,40 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     onValueChange?.(currentValue);
   }, [currentValue, onValueChange]);
 
-  const handleBeadClick = useCallback((bead: BeadConfig) => {
+  const handleBeadClick = useCallback((bead: BeadConfig, event?: React.MouseEvent) => {
+    // Check if bead is disabled
+    const isDisabled = isBeadDisabled(
+      bead.columnIndex,
+      bead.type,
+      bead.type === 'earth' ? bead.position : undefined,
+      disabledColumns,
+      disabledBeads
+    );
+
+    if (isDisabled) {
+      return;
+    }
+
+    // Create enhanced event object
+    const beadClickEvent: BeadClickEvent = {
+      bead,
+      columnIndex: bead.columnIndex,
+      beadType: bead.type,
+      position: bead.position,
+      active: bead.active,
+      value: bead.value,
+      event: event!
+    };
+
+    // Call new callback system
+    callbacks?.onBeadClick?.(beadClickEvent);
+
+    // Legacy callback for backward compatibility
     onClick?.(bead);
+
+    // Toggle the bead
     toggleBead(bead, effectiveColumns);
-  }, [onClick, toggleBead, effectiveColumns]);
+  }, [onClick, callbacks, toggleBead, effectiveColumns, disabledColumns, disabledBeads]);
 
   const handleGestureToggle = useCallback((bead: BeadConfig, direction: 'activate' | 'deactivate') => {
     const currentState = paddedColumnStates[bead.columnIndex];
@@ -568,8 +904,19 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     });
   }, [setColumnState]);
 
-  // Keyboard handler
+  // Keyboard handler - only active when interactive
   React.useEffect(() => {
+    // Clear activeColumn if abacus becomes non-interactive
+    if (!finalConfig.interactive && activeColumn !== null) {
+      setActiveColumn(null);
+      return;
+    }
+
+    // Only set up keyboard listener when interactive
+    if (!finalConfig.interactive) {
+      return;
+    }
+
     const handleKey = (e: KeyboardEvent) => {
       // console.log(`🎹 KEY: "${e.key}" | activeColumn: ${activeColumn} | code: ${e.code}`);
 
@@ -633,7 +980,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       // console.log(`🗑️ Cleaning up keyboard listener for activeColumn: ${activeColumn}`);
       document.removeEventListener('keydown', handleKey);
     };
-  }, [activeColumn, setColumnValue, effectiveColumns]);
+  }, [activeColumn, setColumnValue, effectiveColumns, finalConfig.interactive]);
 
   // Debug activeColumn changes
   React.useEffect(() => {
@@ -649,7 +996,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         width={dimensions.width}
         height={dimensions.height}
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
-        className={`abacus-svg ${hideInactiveBeads ? 'hide-inactive-mode' : ''} ${interactive ? 'interactive' : ''}`}
+        className={`abacus-svg ${finalConfig.hideInactiveBeads ? 'hide-inactive-mode' : ''} ${finalConfig.interactive ? 'interactive' : ''}`}
         style={{ overflow: 'visible', display: 'block' }}
       >
       <defs>
@@ -749,7 +1096,34 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             }
           }
 
-          const color = getBeadColor(bead, effectiveColumns, colorScheme, colorPalette);
+          const color = getBeadColor(bead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette);
+
+          // Apply custom styling
+          const beadStyle = mergeBeadStyles(
+            { fill: color },
+            customStyles,
+            bead.columnIndex,
+            bead.type,
+            bead.type === 'earth' ? bead.position : undefined,
+            bead.active
+          );
+
+          // Check if bead is highlighted
+          const isHighlighted = isBeadHighlighted(
+            bead.columnIndex,
+            bead.type,
+            bead.type === 'earth' ? bead.position : undefined,
+            highlightBeads
+          );
+
+          // Check if bead is disabled
+          const isDisabled = isBeadDisabled(
+            bead.columnIndex,
+            bead.type,
+            bead.type === 'earth' ? bead.position : undefined,
+            disabledColumns,
+            disabledBeads
+          );
 
           return (
             <Bead
@@ -758,13 +1132,41 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               x={x}
               y={y}
               size={dimensions.beadSize}
-              shape={beadShape}
-              color={color}
-              enableAnimation={animated}
-              enableGestures={interactive || gestures}
-              hideInactiveBeads={hideInactiveBeads}
-              onClick={interactive ? () => handleBeadClick(bead) : undefined}
+              shape={finalConfig.beadShape}
+              color={beadStyle.fill || color}
+              customStyle={beadStyle}
+              isHighlighted={isHighlighted}
+              isDisabled={isDisabled}
+              enableAnimation={finalConfig.animated}
+              enableGestures={finalConfig.interactive || finalConfig.gestures}
+              hideInactiveBeads={finalConfig.hideInactiveBeads}
+              onClick={finalConfig.interactive && !isDisabled ? (event) => handleBeadClick(bead, event) : undefined}
+              onHover={callbacks?.onBeadHover ? (event) => {
+                const beadClickEvent: BeadClickEvent = {
+                  bead,
+                  columnIndex: bead.columnIndex,
+                  beadType: bead.type,
+                  position: bead.position,
+                  active: bead.active,
+                  value: bead.value,
+                  event
+                };
+                callbacks.onBeadHover?.(beadClickEvent);
+              } : undefined}
+              onLeave={callbacks?.onBeadLeave ? (event) => {
+                const beadClickEvent: BeadClickEvent = {
+                  bead,
+                  columnIndex: bead.columnIndex,
+                  beadType: bead.type,
+                  position: bead.position,
+                  active: bead.active,
+                  value: bead.value,
+                  event
+                };
+                callbacks.onBeadLeave?.(beadClickEvent);
+              } : undefined}
               onGestureToggle={handleGestureToggle}
+              onRef={callbacks?.onBeadRef ? (element) => callbacks.onBeadRef(bead, element) : undefined}
               heavenEarthGap={dimensions.heavenEarthGap}
               barY={barY}
             />
@@ -773,44 +1175,44 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       )}
 
       {/* Background rectangles for place values - in SVG */}
-      {(showNumbers === 'always' || (showNumbers === 'toggleable' && numbersVisible)) && placeValues.map((value, columnIndex) => {
+      {finalConfig.showNumbers && placeValues.map((value, columnIndex) => {
         const x = (columnIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
         // Position background rectangles to match the text positioning
-        const baseHeight = dimensions.heavenEarthGap + 5 * (dimensions.beadSize + 4 * scaleFactor) + 10 * scaleFactor;
+        const baseHeight = dimensions.heavenEarthGap + 5 * (dimensions.beadSize + 4 * finalConfig.scaleFactor) + 10 * finalConfig.scaleFactor;
         const y = baseHeight + 25;
         const isActive = activeColumn === columnIndex;
 
         return (
           <rect
             key={`place-bg-${columnIndex}`}
-            x={x - 12}
-            y={y - 12}
-            width={24}
-            height={24}
+            x={x - (12 * finalConfig.scaleFactor)}
+            y={y - (12 * finalConfig.scaleFactor)}
+            width={24 * finalConfig.scaleFactor}
+            height={24 * finalConfig.scaleFactor}
             fill={isActive ? '#e3f2fd' : '#f5f5f5'}
             stroke={isActive ? '#2196f3' : '#ccc'}
-            strokeWidth={isActive ? 2 : 1}
-            rx={3}
-            style={{ cursor: 'pointer' }}
-            onClick={() => setActiveColumn(columnIndex)}
+            strokeWidth={isActive ? 2 * finalConfig.scaleFactor : 1 * finalConfig.scaleFactor}
+            rx={3 * finalConfig.scaleFactor}
+            style={{ cursor: finalConfig.interactive ? 'pointer' : 'default' }}
+            onClick={finalConfig.interactive ? () => setActiveColumn(columnIndex) : undefined}
           />
         );
       })}
 
       {/* NumberFlow place value displays - inside SVG using foreignObject */}
-      {(showNumbers === 'always' || (showNumbers === 'toggleable' && numbersVisible)) && placeValues.map((value, columnIndex) => {
+      {finalConfig.showNumbers && placeValues.map((value, columnIndex) => {
         const x = (columnIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
         // Position numbers within the allocated numbers space (below the baseHeight)
-        const baseHeight = dimensions.heavenEarthGap + 5 * (dimensions.beadSize + 4 * scaleFactor) + 10 * scaleFactor;
+        const baseHeight = dimensions.heavenEarthGap + 5 * (dimensions.beadSize + 4 * finalConfig.scaleFactor) + 10 * finalConfig.scaleFactor;
         const y = baseHeight + 25;
 
         return (
           <foreignObject
             key={`place-number-${columnIndex}`}
-            x={x - 12}
-            y={y - 8}
-            width={24}
-            height={16}
+            x={x - (12 * finalConfig.scaleFactor)}
+            y={y - (8 * finalConfig.scaleFactor)}
+            width={24 * finalConfig.scaleFactor}
+            height={16 * finalConfig.scaleFactor}
             style={{ pointerEvents: 'none' }}
           >
             <div
@@ -820,13 +1222,13 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '14px',
+                fontSize: `${Math.max(8, 14 * finalConfig.scaleFactor)}px`,
                 fontFamily: 'monospace',
                 fontWeight: 'bold',
-                pointerEvents: 'auto',
-                cursor: 'pointer'
+                pointerEvents: finalConfig.interactive ? 'auto' : 'none',
+                cursor: finalConfig.interactive ? 'pointer' : 'default'
               }}
-              onClick={() => setActiveColumn(columnIndex)}
+              onClick={finalConfig.interactive ? () => setActiveColumn(columnIndex) : undefined}
             >
               <NumberFlow
                 value={value}
@@ -834,7 +1236,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                 style={{
                   fontFamily: 'monospace',
                   fontWeight: 'bold',
-                  fontSize: '14px'
+                  fontSize: `${Math.max(8, 14 * finalConfig.scaleFactor)}px`
                 }}
               />
             </div>
@@ -842,30 +1244,73 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         );
       })}
 
+      {/* Overlay system for tooltips, arrows, highlights, etc. */}
+      {overlays.map(overlay => {
+        if (overlay.visible === false) return null;
+
+        let position = { x: 0, y: 0 };
+
+        // Calculate overlay position based on target
+        if (overlay.target.type === 'bead') {
+          // Find the bead position
+          const targetColumn = overlay.target.columnIndex;
+          const targetBeadType = overlay.target.beadType;
+          const targetBeadPosition = overlay.target.beadPosition;
+
+          if (targetColumn !== undefined && targetBeadType) {
+            const x = (targetColumn * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
+            let y = 0;
+
+            if (targetBeadType === 'heaven') {
+              const columnState = paddedColumnStates[targetColumn];
+              y = columnState.heavenActive
+                ? dimensions.heavenEarthGap - dimensions.beadSize / 2 - dimensions.activeGap
+                : dimensions.heavenEarthGap - dimensions.inactiveGap - dimensions.beadSize / 2;
+            } else if (targetBeadType === 'earth' && targetBeadPosition !== undefined) {
+              const columnState = paddedColumnStates[targetColumn];
+              const earthActive = columnState.earthActive;
+              const isActive = targetBeadPosition < earthActive;
+
+              if (isActive) {
+                y = dimensions.heavenEarthGap + dimensions.barThickness + dimensions.activeGap + dimensions.beadSize / 2 + targetBeadPosition * (dimensions.beadSize + dimensions.adjacentSpacing);
+              } else {
+                if (earthActive > 0) {
+                  y = dimensions.heavenEarthGap + dimensions.barThickness + dimensions.activeGap + dimensions.beadSize / 2 + (earthActive - 1) * (dimensions.beadSize + dimensions.adjacentSpacing) + dimensions.beadSize / 2 + dimensions.inactiveGap + dimensions.beadSize / 2 + (targetBeadPosition - earthActive) * (dimensions.beadSize + dimensions.adjacentSpacing);
+                } else {
+                  y = dimensions.heavenEarthGap + dimensions.barThickness + dimensions.inactiveGap + dimensions.beadSize / 2 + targetBeadPosition * (dimensions.beadSize + dimensions.adjacentSpacing);
+                }
+              }
+            }
+
+            position = calculateOverlayPosition(overlay, dimensions, targetColumn, { x, y });
+          }
+        } else {
+          position = calculateOverlayPosition(overlay, dimensions);
+        }
+
+        return (
+          <foreignObject
+            key={overlay.id}
+            x={position.x}
+            y={position.y}
+            width="200"
+            height="100"
+            style={{
+              overflow: 'visible',
+              pointerEvents: 'none',
+              ...overlay.style
+            }}
+            className={overlay.className}
+          >
+            <div style={{ position: 'relative', pointerEvents: 'auto' }}>
+              {overlay.content}
+            </div>
+          </foreignObject>
+        );
+      })}
+
     </svg>
 
-    {/* Toggle button for toggleable mode */}
-    {showNumbers === 'toggleable' && (
-      <button
-        onClick={() => setNumbersVisible(!numbersVisible)}
-        style={{
-          position: 'absolute',
-          top: '5px',
-          right: '5px',
-          background: numbersVisible ? '#2196f3' : '#f0f0f0',
-          color: numbersVisible ? 'white' : '#333',
-          border: '1px solid #ccc',
-          borderRadius: '4px',
-          padding: '4px 8px',
-          fontSize: '12px',
-          cursor: 'pointer',
-          zIndex: 10
-        }}
-        title={numbersVisible ? 'Hide numbers' : 'Show numbers'}
-      >
-        {numbersVisible ? '123' : '···'}
-      </button>
-    )}
     </div>
   );
 };
