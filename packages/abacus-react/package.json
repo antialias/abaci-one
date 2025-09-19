@@ -46,7 +46,8 @@
     "react-dom": "^18.2.0"
   },
   "dependencies": {
-    "@number-flow/react": "^0.5.10"
+    "@number-flow/react": "^0.5.10",
+    "@radix-ui/react-tooltip": "^1.2.8"
   },
   "devDependencies": {
     "@storybook/addon-actions": "^7.6.0",
