@@ -276,7 +276,11 @@ async function generateSVGExamples() {
             const x = parseFloat(xMatch[1]) + parseFloat(widthMatch[1]) / 2; // Center horizontally
             const y = parseFloat(yMatch[1]) + parseFloat(heightMatch[1]) / 2 + 4; // Center vertically with slight offset
 
-            return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-weight="bold" font-size="12" fill="#333">${textContent.trim()}</text>`;
+            // Calculate font size to match React component: Math.max(8, 14 * scaleFactor)
+            const scaleFactor = example.props.scaleFactor || 1.0;
+            const fontSize = Math.max(8, 14 * scaleFactor);
+
+            return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-weight="bold" font-size="${fontSize}" fill="#333">${textContent.trim()}</text>`;
           }
           return match; // Return original if we can't parse
         }
