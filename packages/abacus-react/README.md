@@ -31,7 +31,7 @@ yarn add @soroban/abacus-react
 
 Simple abacus showing a number
 
-![Basic Usage](./examples/basic-usage.svg)
+<img src="https://raw.githubusercontent.com/antialias/soroban-abacus-flashcards/main/packages/abacus-react/examples/basic-usage.svg" alt="Basic Usage">
 
 ```tsx
 <AbacusReact
@@ -46,7 +46,7 @@ Simple abacus showing a number
 
 Clickable abacus with animations
 
-![Interactive Mode](./examples/interactive.svg)
+<img src="https://raw.githubusercontent.com/antialias/soroban-abacus-flashcards/main/packages/abacus-react/examples/interactive.svg" alt="Interactive Mode">
 
 ```tsx
 <AbacusReact
@@ -66,7 +66,7 @@ Clickable abacus with animations
 
 Personalized colors and highlights
 
-![Custom Styling](./examples/custom-styling.svg)
+<img src="https://raw.githubusercontent.com/antialias/soroban-abacus-flashcards/main/packages/abacus-react/examples/custom-styling.svg" alt="Custom Styling">
 
 ```tsx
 <AbacusReact
@@ -89,7 +89,7 @@ Personalized colors and highlights
 
 Educational guidance with tooltips
 
-![Tutorial System](./examples/tutorial-mode.svg)
+<img src="https://raw.githubusercontent.com/antialias/soroban-abacus-flashcards/main/packages/abacus-react/examples/tutorial-mode.svg" alt="Tutorial System">
 
 ```tsx
 <AbacusReact
