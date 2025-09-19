@@ -85,13 +85,23 @@ if (typeof global.window === 'undefined') {
     }
   };
 
-  // Mock @number-flow/react to return the actual value
+  // Mock @number-flow/react to return the actual value properly
   require.cache[require.resolve('@number-flow/react')] = {
     exports: {
       __esModule: true,
-      default: ({ children, value, ...props }) => {
-        // Return the value as text element for SVG context
-        return React.createElement('text', { ...props, fontSize: '12px', fill: '#333' }, value != null ? value : children);
+      default: ({ children, value, format, style, ...props }) => {
+        // Use value if provided, otherwise fallback to children
+        const displayValue = value !== undefined ? value : children;
+        // Return a simple span element that will work in foreignObject context
+        return React.createElement('span', {
+          style: {
+            fontSize: '12px',
+            color: '#333',
+            fontFamily: 'monospace',
+            fontWeight: 'bold',
+            ...style
+          }
+        }, String(displayValue));
       }
     }
   };
