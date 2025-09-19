@@ -262,6 +262,26 @@ async function generateSVGExamples() {
         );
       }
 
+      // Replace foreignObject elements with native SVG text elements for better compatibility
+      svgMarkup = svgMarkup.replace(
+        /<foreignObject([^>]*)><div[^>]*>([^<]+)<\/div><\/foreignObject>/g,
+        (match, attributes, textContent) => {
+          // Extract x, y, width, height from foreignObject
+          const xMatch = attributes.match(/x="([^"]+)"/);
+          const yMatch = attributes.match(/y="([^"]+)"/);
+          const widthMatch = attributes.match(/width="([^"]+)"/);
+          const heightMatch = attributes.match(/height="([^"]+)"/);
+
+          if (xMatch && yMatch && widthMatch && heightMatch) {
+            const x = parseFloat(xMatch[1]) + parseFloat(widthMatch[1]) / 2; // Center horizontally
+            const y = parseFloat(yMatch[1]) + parseFloat(heightMatch[1]) / 2 + 4; // Center vertically with slight offset
+
+            return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-weight="bold" font-size="12" fill="#333">${textContent.trim()}</text>`;
+          }
+          return match; // Return original if we can't parse
+        }
+      );
+
       // Add metadata as comments
       const svgWithMetadata = `<!-- ${example.description} -->
 <!-- Generated from: ${JSON.stringify(example.props, null, 2).replace(/-->/g, '--&gt;')} -->
