@@ -27,7 +27,8 @@
     "lint": "echo 'No linting configured'",
     "storybook": "storybook dev -p 6007",
     "build-storybook": "storybook build",
-    "clean": "rm -rf dist storybook-static"
+    "clean": "rm -rf dist storybook-static",
+    "generate-examples": "node generate-examples.js"
   },
   "keywords": [
     "react",
