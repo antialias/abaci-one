@@ -26,4 +26,4 @@ Or referenced in HTML:
 ---
 
 _Generated automatically by generate-examples.js using react-dom/server_
-_Last updated: 2025-09-19T20:40:59.799Z_
+_Last updated: 2025-09-19T20:42:42.450Z_
