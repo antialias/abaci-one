@@ -3,8 +3,10 @@
 import Link from 'next/link'
 import React, { useEffect, useReducer, useRef, useCallback, useMemo, useState } from 'react'
 import { css } from '../../../../styled-system/css'
-import { TypstSoroban } from '../../../components/TypstSoroban'
+import { AbacusReact } from '@soroban/abacus-react'
+import { useAbacusConfig } from '../../../contexts/AbacusDisplayContext'
 import { isPrefix } from '../../../lib/memory-quiz-utils'
+
 
 interface QuizCard {
   number: number
@@ -161,7 +163,7 @@ const DIFFICULTY_LEVELS = {
 type DifficultyLevel = keyof typeof DIFFICULTY_LEVELS
 
 // Generate quiz cards with difficulty-based number ranges
-const generateQuizCards = (count: number, difficulty: DifficultyLevel): QuizCard[] => {
+const generateQuizCards = (count: number, difficulty: DifficultyLevel, appConfig: any): QuizCard[] => {
   const { min, max } = DIFFICULTY_LEVELS[difficulty].range
 
   // Generate unique numbers - no duplicates allowed
@@ -188,11 +190,16 @@ const generateQuizCards = (count: number, difficulty: DifficultyLevel): QuizCard
 
   return numbers.map(number => ({
     number,
-    svgComponent: <TypstSoroban
-      number={number}
-      width="600pt"
-      height="500pt"
-      transparent={true}
+    svgComponent: <AbacusReact
+      value={number}
+      columns="auto"
+      beadShape={appConfig.beadShape}
+      colorScheme={appConfig.colorScheme}
+      hideInactiveBeads={appConfig.hideInactiveBeads}
+      scaleFactor={1.0}
+      interactive={false}
+      showNumbers={false}
+      animated={false}
     />,
     element: null
   }))
@@ -200,6 +207,8 @@ const generateQuizCards = (count: number, difficulty: DifficultyLevel): QuizCard
 
 // React component for the setup phase
 function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: React.Dispatch<QuizAction> }) {
+  const appConfig = useAbacusConfig()
+
   const handleCountSelect = (count: number) => {
     dispatch({ type: 'SET_SELECTED_COUNT', count })
   }
@@ -213,7 +222,7 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   }
 
   const handleStartQuiz = () => {
-    const quizCards = generateQuizCards(state.selectedCount, state.selectedDifficulty)
+    const quizCards = generateQuizCards(state.selectedCount, state.selectedDifficulty, appConfig)
     dispatch({ type: 'START_QUIZ', quizCards })
   }
 
@@ -355,12 +364,33 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   )
 }
 
+// Calculate maximum columns needed for a set of numbers
+function calculateMaxColumns(numbers: number[]): number {
+  if (numbers.length === 0) return 1
+  const maxNumber = Math.max(...numbers)
+  if (maxNumber === 0) return 1
+  return Math.floor(Math.log10(maxNumber)) + 1
+}
+
 // React component for the display phase
 function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: React.Dispatch<QuizAction> }) {
-  const [countdown, setCountdown] = useState<string>('')
-  const [showCard, setShowCard] = useState(false)
   const [currentCard, setCurrentCard] = useState<QuizCard | null>(null)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const isDisplayPhaseActive = state.currentCardIndex < state.quizCards.length
   const isProcessingRef = useRef(false)
+  const appConfig = useAbacusConfig()
+
+  // Calculate maximum columns needed for this quiz set
+  const maxColumns = useMemo(() => {
+    const allNumbers = state.quizCards.map(card => card.number)
+    return calculateMaxColumns(allNumbers)
+  }, [state.quizCards])
+
+  // Calculate adaptive animation duration
+  const flashDuration = useMemo(() => {
+    const displayTimeMs = state.displayTime * 1000
+    return Math.min(Math.max(displayTimeMs * 0.3, 150), 600) / 1000 // Convert to seconds for CSS
+  }, [state.displayTime])
 
   const progressPercentage = (state.currentCardIndex / state.quizCards.length) * 100
 
@@ -379,30 +409,27 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
       isProcessingRef.current = true
       const card = state.quizCards[state.currentCardIndex]
       console.log(`DisplayPhase: Showing card ${state.currentCardIndex + 1}/${state.quizCards.length}, number: ${card.number}`)
+
+      // Calculate adaptive timing based on display speed
+      const displayTimeMs = state.displayTime * 1000
+      const flashDuration = Math.min(Math.max(displayTimeMs * 0.3, 150), 600) // 30% of display time, between 150ms-600ms
+      const transitionPause = Math.min(Math.max(displayTimeMs * 0.1, 50), 200) // 10% of display time, between 50ms-200ms
+
+      // Trigger adaptive transition effect
+      setIsTransitioning(true)
       setCurrentCard(card)
 
-      // Show countdown for first card only
-      if (state.currentCardIndex === 0) {
-        const counts = ['3', '2', '1', 'GO!']
-        for (let i = 0; i < counts.length; i++) {
-          setCountdown(counts[i])
-          await new Promise(resolve => setTimeout(resolve, 400))
-        }
-      } else {
-        setCountdown('Next')
-        await new Promise(resolve => setTimeout(resolve, 150))
-      }
+      // Reset transition effect with adaptive duration
+      setTimeout(() => setIsTransitioning(false), flashDuration)
 
-      setCountdown('')
-      setShowCard(true)
-      console.log(`DisplayPhase: Card ${state.currentCardIndex + 1} now visible`)
+      console.log(`DisplayPhase: Card ${state.currentCardIndex + 1} now visible (flash: ${flashDuration}ms, pause: ${transitionPause}ms)`)
 
-      // Display card for specified time
-      await new Promise(resolve => setTimeout(resolve, state.displayTime * 1000 - 300))
+      // Display card for specified time with adaptive transition pause
+      await new Promise(resolve => setTimeout(resolve, displayTimeMs - transitionPause))
 
-      setShowCard(false)
-      console.log(`DisplayPhase: Card ${state.currentCardIndex + 1} hidden, advancing to next`)
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Don't hide the abacus - just advance to next card for smooth transition
+      console.log(`DisplayPhase: Card ${state.currentCardIndex + 1} transitioning to next`)
+      await new Promise(resolve => setTimeout(resolve, transitionPause)) // Adaptive pause for visual transition
 
       isProcessingRef.current = false
       dispatch({ type: 'NEXT_CARD' })
@@ -412,15 +439,20 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
   }, [state.currentCardIndex, state.displayTime, state.quizCards.length, dispatch])
 
   return (
-    <div className={css({
-      textAlign: 'center',
-      padding: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      boxSizing: 'border-box',
-      height: '100%'
-    })}>
+    <div
+      className={css({
+        textAlign: 'center',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        boxSizing: 'border-box',
+        height: '100%'
+      })}
+      style={{
+        animation: isTransitioning ? `subtlePageFlash ${flashDuration}s ease-out` : undefined
+      }}
+    >
       <div className={css({
         position: 'relative',
         width: '100%',
@@ -478,43 +510,43 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
         </div>
       </div>
 
-      {countdown && (
-        <div className={css({
-          fontSize: '3rem',
-          fontWeight: 'bold',
-          color: countdown === 'GO!' ? 'green.500' : 'blue.500',
-          margin: '20px 0',
-          textShadow: '2px 2px 4px rgba(0,0,0,0.1)',
-          animation: countdown === 'GO!' ? 'pulse 0.3s ease' : undefined
-        })}>
-          {countdown}
-        </div>
-      )}
 
-      {showCard && currentCard && (
+      {/* Persistent abacus container - stays mounted during entire memorize phase */}
+      <div className={css({
+        width: 'min(90vw, 800px)',
+        height: 'min(80vh, 700px)',
+        display: isDisplayPhaseActive ? 'flex' : 'none',
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: '0 auto',
+        transition: 'opacity 0.3s ease',
+        overflow: 'visible',
+        padding: '40px 20px'
+      })}>
         <div className={css({
-          width: 'min(90vw, 800px)',
-          height: 'min(70vh, 600px)',
+          width: '100%',
+          height: '100%',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          margin: '0 auto',
-          transition: 'transform 0.3s ease',
-          overflow: 'hidden'
+          gap: '30px'
         })}>
-          <div className={css({
-            transform: 'scale(1.5)',
-            transformOrigin: 'center'
-          })}>
-            <TypstSoroban
-              number={currentCard.number}
-              width="240pt"
-              height="320pt"
-              transparent={true}
-            />
-          </div>
+
+          {/* Persistent abacus with smooth bead animations and dynamically calculated columns */}
+          <AbacusReact
+            value={currentCard?.number || 0}
+            columns={maxColumns}
+            beadShape={appConfig.beadShape}
+            colorScheme={appConfig.colorScheme}
+            hideInactiveBeads={appConfig.hideInactiveBeads}
+            scaleFactor={5.5}
+            interactive={false}
+            showNumbers={false}
+            animated={true}
+          />
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -670,16 +702,26 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    padding: '4px'
                   })}>
                     <div className={css({
-                      transform: 'scale(2.2)',
-                      transformOrigin: 'center'
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     })}>
-                      <TypstSoroban
-                        number={card.number}
-                        width="120pt"
-                        height="160pt"
+                      <AbacusReact
+                        value={card.number}
+                        columns="auto"
+                        beadShape="diamond"
+                        colorScheme="place-value"
+                        hideInactiveBeads={false}
+                        scaleFactor={1.2}
+                        interactive={false}
+                        showNumbers={false}
+                        animated={false}
                       />
                     </div>
                   </div>
@@ -845,16 +887,26 @@ function ResultsCardGrid({ state }: { state: SorobanQuizState }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    padding: '4px'
                   })}>
                     <div className={css({
-                      transform: 'scale(2.2)',
-                      transformOrigin: 'center'
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     })}>
-                      <TypstSoroban
-                        number={card.number}
-                        width="120pt"
-                        height="160pt"
+                      <AbacusReact
+                        value={card.number}
+                        columns="auto"
+                        beadShape="diamond"
+                        colorScheme="place-value"
+                        hideInactiveBeads={false}
+                        scaleFactor={1.2}
+                        interactive={false}
+                        showNumbers={false}
+                        animated={false}
                       />
                     </div>
                   </div>
@@ -1283,6 +1335,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
 
 // React component for the results phase
 function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: React.Dispatch<QuizAction> }) {
+  const appConfig = useAbacusConfig()
   const correct = state.foundNumbers.length
   const total = state.correctAnswers.length
   const percentage = Math.round((correct / total) * 100)
@@ -1375,7 +1428,7 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
           })}
           onClick={() => {
             dispatch({ type: 'RESET_QUIZ' })
-            const quizCards = generateQuizCards(state.selectedCount, state.selectedDifficulty)
+            const quizCards = generateQuizCards(state.selectedCount, state.selectedDifficulty, appConfig)
             dispatch({ type: 'START_QUIZ', quizCards })
           }}
         >
@@ -1406,9 +1459,15 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
 // CSS animations that need to be global
 const globalAnimations = `
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+  50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); }
+  100% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+}
+
+@keyframes subtlePageFlash {
+  0% { background: linear-gradient(to bottom right, #f0fdf4, #ecfdf5); }
+  50% { background: linear-gradient(to bottom right, #dcfce7, #d1fae5); }
+  100% { background: linear-gradient(to bottom right, #f0fdf4, #ecfdf5); }
 }
 
 @keyframes fadeInScale {
