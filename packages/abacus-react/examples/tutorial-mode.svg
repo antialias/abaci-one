@@ -1,0 +1,20 @@
+<!-- Educational guidance with tooltips -->
+<!-- Generated from: {
+  "value": 42,
+  "columns": 2,
+  "interactive": true,
+  "animated": false,
+  "showNumbers": true
+} -->
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="200" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
+  <text x="150" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#6c757d">
+    Tutorial System
+  </text>
+  <text x="150" y="120" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#868e96">
+    Educational guidance with tooltips
+  </text>
+  <text x="150" y="140" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#adb5bd">
+    (SSR placeholder - use Storybook for interactive preview)
+  </text>
+</svg>

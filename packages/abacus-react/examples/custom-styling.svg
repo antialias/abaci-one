@@ -1,0 +1,38 @@
+<!-- Personalized colors and highlights -->
+<!-- Generated from: {
+  "value": 789,
+  "columns": 3,
+  "colorScheme": "place-value",
+  "beadShape": "circle",
+  "animated": false,
+  "customStyles": {
+    "heavenBeads": {
+      "fill": "#ff6b35"
+    },
+    "earthBeads": {
+      "fill": "#3498db"
+    },
+    "numerals": {
+      "color": "#2c3e50",
+      "fontWeight": "bold"
+    }
+  },
+  "highlightBeads": [
+    {
+      "columnIndex": 1,
+      "beadType": "heaven"
+    }
+  ]
+} -->
+<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="200" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
+  <text x="150" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#6c757d">
+    Custom Styling
+  </text>
+  <text x="150" y="120" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#868e96">
+    Personalized colors and highlights
+  </text>
+  <text x="150" y="140" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#adb5bd">
+    (SSR placeholder - use Storybook for interactive preview)
+  </text>
+</svg>

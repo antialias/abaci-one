@@ -6,12 +6,12 @@ A comprehensive React component for rendering interactive Soroban (Japanese abac
 
 - 🎯 **Interactive beads** - Click to toggle or use directional gestures
 - 🎨 **Complete visual customization** - Style every element individually
-- 🎓 **Tutorial system** - Built-in overlay and guidance capabilities
-- ⚡ **React Spring animations** - Smooth bead movements and transitions
 - 📱 **Responsive scaling** - Configurable scale factor for different sizes
 - 🌈 **Multiple color schemes** - Monochrome, place-value, alternating, heaven-earth
-- 🔧 **Developer-friendly** - Comprehensive hooks and callback system
 - 🎭 **Flexible shapes** - Diamond, square, or circle beads
+- ⚡ **React Spring animations** - Smooth bead movements and transitions
+- 🔧 **Developer-friendly** - Comprehensive hooks and callback system
+- 🎓 **Tutorial system** - Built-in overlay and guidance capabilities
 - 🧩 **Framework-free SVG** - Complete control over rendering
 
 ## Installation
@@ -24,97 +24,145 @@ pnpm add @soroban/abacus-react
 yarn add @soroban/abacus-react
 ```
 
-## Basic Usage
+## Quick Start
+
+
+### Basic Usage
+
+Simple abacus showing a number
+
+![Basic Usage](./examples/basic-usage.svg)
 
 ```tsx
-import { AbacusReact } from '@soroban/abacus-react';
+<AbacusReact
+  value={123}
+  columns={3}
+  showNumbers={true}
+  scaleFactor={1.0}
+/>
+```
 
-function MyApp() {
-  return (
-    <AbacusReact
-      value={123}
-      columns={3}
-      interactive={true}
-      showNumbers={true}
-      animated={true}
-    />
-  );
+### Interactive Mode
+
+Clickable abacus with animations
+
+![Interactive Mode](./examples/interactive.svg)
+
+```tsx
+<AbacusReact
+  value={456}
+  columns={3}
+  interactive={true}
+  animated={true}
+  showNumbers={true}
+  callbacks={{
+    onValueChange: (newValue) => console.log('New value:', newValue),
+    onBeadClick: (event) => console.log('Bead clicked:', event)
+  }}
+/>
+```
+
+### Custom Styling
+
+Personalized colors and highlights
+
+![Custom Styling](./examples/custom-styling.svg)
+
+```tsx
+<AbacusReact
+  value={789}
+  columns={3}
+  colorScheme="place-value"
+  beadShape="circle"
+  customStyles={{
+    heavenBeads: { fill: '#ff6b35' },
+    earthBeads: { fill: '#3498db' },
+    numerals: { color: '#2c3e50', fontWeight: 'bold' }
+  }}
+  highlightBeads={[
+    { columnIndex: 1, beadType: 'heaven' }
+  ]}
+/>
+```
+
+### Tutorial System
+
+Educational guidance with tooltips
+
+![Tutorial System](./examples/tutorial-mode.svg)
+
+```tsx
+<AbacusReact
+  value={42}
+  columns={2}
+  interactive={true}
+  overlays={[{
+    id: 'tip',
+    type: 'tooltip',
+    target: { type: 'bead', columnIndex: 0, beadType: 'earth', beadPosition: 1 },
+    content: <div>Click this bead!</div>,
+    offset: { x: 0, y: -30 }
+  }]}
+  callbacks={{
+    onBeadClick: (event) => {
+      if (event.columnIndex === 0 && event.beadType === 'earth' && event.position === 1) {
+        console.log('Correct!');
+      }
+    }
+  }}
+/>
+```
+
+
+## Core API
+
+### Basic Props
+
+```tsx
+interface AbacusConfig {
+  // Display
+  value?: number;                    // 0-99999, number to display
+  columns?: number | 'auto';         // Number of columns or auto-calculate
+  showNumbers?: boolean;             // Show place value numbers
+  scaleFactor?: number;              // 0.5 - 3.0, size multiplier
+
+  // Appearance
+  beadShape?: 'diamond' | 'square' | 'circle';
+  colorScheme?: 'monochrome' | 'place-value' | 'alternating' | 'heaven-earth';
+  colorPalette?: 'default' | 'colorblind' | 'mnemonic' | 'grayscale' | 'nature';
+  hideInactiveBeads?: boolean;       // Hide/show inactive beads
+
+  // Interaction
+  interactive?: boolean;             // Enable user interactions
+  animated?: boolean;               // Enable animations
+  gestures?: boolean;               // Enable drag gestures
 }
 ```
 
-## Advanced Tutorial System
-
-Build interactive educational experiences with precise bead targeting and overlay positioning:
+### Event Callbacks
 
 ```tsx
-import { AbacusReact, BeadClickEvent } from '@soroban/abacus-react';
+interface AbacusCallbacks {
+  onValueChange?: (newValue: number) => void;
+  onBeadClick?: (event: BeadClickEvent) => void;
+  onBeadHover?: (event: BeadClickEvent) => void;
+  onBeadLeave?: (event: BeadClickEvent) => void;
+  onColumnClick?: (columnIndex: number) => void;
+  onNumeralClick?: (columnIndex: number, value: number) => void;
+  onBeadRef?: (bead: BeadConfig, element: SVGElement | null) => void;
+}
 
-function TutorialExample() {
-  const [step, setStep] = useState(0);
-  const [beadRefs, setBeadRefs] = useState(new Map());
-
-  const handleBeadClick = (event: BeadClickEvent) => {
-    // Validate clicks against tutorial targets
-    if (event.columnIndex === 0 && event.beadType === 'earth') {
-      setStep(step + 1);
-    }
-  };
-
-  const handleBeadRef = (bead: BeadConfig, element: SVGElement | null) => {
-    // Collect references to individual beads for precise positioning
-    const key = `${bead.columnIndex}-${bead.type}-${bead.position}`;
-    if (element) {
-      beadRefs.set(key, element);
-    }
-  };
-
-  return (
-    <AbacusReact
-      value={123}
-      columns={3}
-      interactive={true}
-
-      // Highlight specific beads
-      highlightBeads={[
-        { columnIndex: 0, beadType: 'earth', position: 0 }
-      ]}
-
-      // Custom styling for tutorial
-      customStyles={{
-        beads: {
-          0: { // Column 0
-            earth: {
-              0: { fill: '#ff6b35', stroke: '#d63031', strokeWidth: 2 }
-            }
-          }
-        }
-      }}
-
-      // Overlay system for tooltips and guidance
-      overlays={[{
-        id: 'tutorial-tip',
-        type: 'tooltip',
-        target: {
-          type: 'bead',
-          columnIndex: 0,
-          beadType: 'earth',
-          beadPosition: 0
-        },
-        content: <div>Click this bead!</div>,
-        offset: { x: 0, y: -20 }
-      }]}
-
-      // Enhanced callbacks
-      callbacks={{
-        onBeadClick: handleBeadClick,
-        onBeadRef: handleBeadRef
-      }}
-    />
-  );
+interface BeadClickEvent {
+  columnIndex: number;              // 0, 1, 2...
+  beadType: 'heaven' | 'earth';     // Type of bead
+  position: number;                 // Position within type (0-3 for earth)
+  active: boolean;                  // Current state
+  value: number;                    // Numeric value (1 or 5)
+  bead: BeadConfig;                 // Full bead configuration
 }
 ```
 
-## Customization API
+## Advanced Customization
 
 ### Granular Styling
 
@@ -133,9 +181,6 @@ const customStyles = {
     0: { // Hundreds column
       heavenBeads: { fill: '#e74c3c' },
       earthBeads: { fill: '#2ecc71' }
-    },
-    2: { // Ones column
-      numerals: { color: '#9b59b6', fontWeight: 'bold' }
     }
   },
 
@@ -163,12 +208,56 @@ const customStyles = {
 <AbacusReact customStyles={customStyles} />
 ```
 
+### Tutorial and Overlay System
+
+Create interactive educational experiences:
+
+```tsx
+const overlays = [
+  {
+    id: 'welcome-tooltip',
+    type: 'tooltip',
+    target: {
+      type: 'bead',
+      columnIndex: 0,
+      beadType: 'earth',
+      beadPosition: 0
+    },
+    content: (
+      <div style={{
+        background: '#333',
+        color: 'white',
+        padding: '8px',
+        borderRadius: '4px'
+      }}>
+        Click me to start!
+      </div>
+    ),
+    offset: { x: 0, y: -30 }
+  }
+];
+
+<AbacusReact
+  overlays={overlays}
+  highlightBeads={[
+    { columnIndex: 0, beadType: 'earth', position: 0 }
+  ]}
+  callbacks={{
+    onBeadClick: (event) => {
+      if (event.columnIndex === 0 && event.beadType === 'earth' && event.position === 0) {
+        console.log('Tutorial step completed!');
+      }
+    }
+  }}
+/>
+```
+
 ### Bead Reference System
 
 Access individual bead DOM elements for advanced positioning:
 
 ```tsx
-function AdvancedTutorial() {
+function AdvancedExample() {
   const beadRefs = useRef(new Map<string, SVGElement>());
 
   const handleBeadRef = (bead: BeadConfig, element: SVGElement | null) => {
@@ -191,155 +280,6 @@ function AdvancedTutorial() {
 }
 ```
 
-### Overlay System
-
-Inject custom UI elements positioned relative to abacus components:
-
-```tsx
-const overlays = [
-  {
-    id: 'welcome-tooltip',
-    type: 'tooltip',
-    target: {
-      type: 'bead',
-      columnIndex: 0,
-      beadType: 'earth',
-      beadPosition: 0
-    },
-    content: (
-      <div style={{
-        background: '#333',
-        color: 'white',
-        padding: '8px',
-        borderRadius: '4px'
-      }}>
-        Click me to start!
-        {/* CSS arrow pointing to target */}
-        <div style={{
-          position: 'absolute',
-          bottom: '-6px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          borderTop: '6px solid #333',
-          borderLeft: '6px solid transparent',
-          borderRight: '6px solid transparent'
-        }} />
-      </div>
-    ),
-    offset: { x: 0, y: -30 },
-    visible: true
-  },
-
-  {
-    id: 'column-label',
-    type: 'highlight',
-    target: { type: 'column', columnIndex: 2 },
-    content: <div>Ones column</div>,
-    offset: { x: 0, y: -80 }
-  },
-
-  {
-    id: 'coordinate-marker',
-    type: 'custom',
-    target: { type: 'coordinates', x: 100, y: 50 },
-    content: <div>Custom position</div>
-  }
-];
-
-<AbacusReact overlays={overlays} />
-```
-
-## Event Callbacks
-
-### Enhanced Bead Events
-
-Get detailed information about every interaction:
-
-```tsx
-const handleBeadClick = (event: BeadClickEvent) => {
-  console.log('Bead clicked:', {
-    columnIndex: event.columnIndex,    // 0, 1, 2...
-    beadType: event.beadType,         // 'heaven' | 'earth'
-    position: event.position,         // 0-3 for earth beads
-    active: event.active,             // Current state
-    value: event.value,               // Numeric value (1 or 5)
-    bead: event.bead                  // Full bead config
-  });
-
-  // Tutorial validation example
-  if (event.columnIndex === targetColumn && event.beadType === targetType) {
-    advanceToNextStep();
-  }
-};
-
-const callbacks = {
-  onBeadClick: handleBeadClick,
-  onBeadHover: (event) => showHoverTooltip(event),
-  onBeadLeave: (event) => hideHoverTooltip(event),
-  onValueChange: (newValue) => updateDisplay(newValue),
-  onColumnClick: (columnIndex) => highlightColumn(columnIndex),
-  onNumeralClick: (columnIndex, value) => editColumnValue(columnIndex, value),
-  onBeadRef: (bead, element) => storeBeadReference(bead, element)
-};
-
-<AbacusReact callbacks={callbacks} />
-```
-
-## Configuration Options
-
-### Display Configuration
-
-```tsx
-interface AbacusConfig {
-  // Basic setup
-  value?: number;                    // 0-99999, value to display
-  columns?: number | 'auto';         // Number of columns or auto-calculate
-  showEmptyColumns?: boolean;        // Show leading zero columns
-  showNumbers?: boolean;             // Show place value numbers
-
-  // Visual appearance
-  beadShape?: 'diamond' | 'square' | 'circle';
-  colorScheme?: 'monochrome' | 'place-value' | 'alternating' | 'heaven-earth';
-  colorPalette?: 'default' | 'colorblind' | 'mnemonic' | 'grayscale' | 'nature';
-  scaleFactor?: number;              // 0.5 - 3.0, size multiplier
-  hideInactiveBeads?: boolean;       // Hide/show inactive beads
-
-  // Interaction
-  interactive?: boolean;             // Enable user interactions
-  gestures?: boolean;               // Enable drag gestures
-  animated?: boolean;               // Enable animations
-
-  // Advanced customization
-  customStyles?: AbacusCustomStyles; // Granular styling
-  overlays?: AbacusOverlay[];       // UI overlays
-  callbacks?: AbacusCallbacks;      // Event handlers
-
-  // Tutorial features
-  highlightColumns?: number[];       // Highlight specific columns
-  highlightBeads?: BeadTarget[];    // Highlight specific beads
-  disabledColumns?: number[];       // Disable interactions
-  disabledBeads?: BeadTarget[];     // Disable specific beads
-}
-```
-
-### Highlighting and Disabling
-
-```tsx
-// Highlight specific elements for tutorials
-<AbacusReact
-  highlightColumns={[0, 2]}         // Highlight hundreds and ones
-  highlightBeads={[
-    { columnIndex: 1, beadType: 'heaven' },
-    { columnIndex: 0, beadType: 'earth', position: 2 }
-  ]}
-
-  disabledColumns={[2]}             // Disable ones column
-  disabledBeads={[
-    { columnIndex: 0, beadType: 'earth', position: 3 }
-  ]}
-/>
-```
-
 ## Hooks
 
 ### useAbacusDimensions
@@ -352,38 +292,12 @@ import { useAbacusDimensions } from '@soroban/abacus-react';
 function MyComponent() {
   const dimensions = useAbacusDimensions(3, 1.2); // 3 columns, 1.2x scale
 
-  console.log('Abacus size:', {
-    width: dimensions.width,           // Total width in pixels
-    height: dimensions.height,         // Total height in pixels
-    rodSpacing: dimensions.rodSpacing, // Distance between columns
-    beadSize: dimensions.beadSize      // Individual bead size
-  });
-
   return (
     <div style={{ width: dimensions.width, height: dimensions.height }}>
       <AbacusReact columns={3} scaleFactor={1.2} />
     </div>
   );
 }
-```
-
-## TypeScript Support
-
-Full TypeScript definitions included:
-
-```tsx
-import {
-  AbacusReact,
-  AbacusConfig,
-  BeadConfig,
-  BeadClickEvent,
-  AbacusCustomStyles,
-  AbacusOverlay,
-  AbacusCallbacks,
-  useAbacusDimensions
-} from '@soroban/abacus-react';
-
-// All interfaces fully typed for excellent developer experience
 ```
 
 ## Educational Use Cases
@@ -399,30 +313,17 @@ function MathLesson() {
     <div>
       <h3>Add {problem.a} + {problem.b}</h3>
 
-      {step === 'show-first' && (
-        <AbacusReact
-          value={problem.a}
-          overlays={[{
-            id: 'instruction',
-            target: { type: 'coordinates', x: 200, y: 20 },
-            content: <div>This represents {problem.a}</div>
-          }]}
-        />
-      )}
-
-      {step === 'add-second' && (
-        <AbacusReact
-          value={problem.a}
-          interactive={true}
-          callbacks={{
-            onValueChange: (value) => {
-              if (value === problem.a + problem.b) {
-                celebrate();
-              }
+      <AbacusReact
+        value={step === 'show-first' ? problem.a : 0}
+        interactive={step === 'add-second'}
+        callbacks={{
+          onValueChange: (value) => {
+            if (value === problem.a + problem.b) {
+              celebrate();
             }
-          }}
-        />
-      )}
+          }
+        }}
+      />
     </div>
   );
 }
@@ -453,6 +354,25 @@ function AbacusQuiz() {
     />
   );
 }
+```
+
+## TypeScript Support
+
+Full TypeScript definitions included:
+
+```tsx
+import {
+  AbacusReact,
+  AbacusConfig,
+  BeadConfig,
+  BeadClickEvent,
+  AbacusCustomStyles,
+  AbacusOverlay,
+  AbacusCallbacks,
+  useAbacusDimensions
+} from '@soroban/abacus-react';
+
+// All interfaces fully typed for excellent developer experience
 ```
 
 ## Contributing
