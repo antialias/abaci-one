@@ -199,49 +199,6 @@ def generate_cards_direct(numbers, config, output_dir, format='png', dpi=300, se
     
     return generated_files
 
-def generate_typst_file(numbers, config, output_path):
-    """Generate a Typst file with the specified configuration."""
-    
-    # Convert Python list to Typst array syntax
-    if numbers:
-        numbers_str = '(' + ', '.join(str(n) for n in numbers) + ',)'
-    else:
-        numbers_str = '()'
-    
-    # Build the Typst document
-    # Use relative path from project root where temp file is created
-    typst_content = f'''
-#import "templates/flashcards.typ": generate-flashcards
-
-#generate-flashcards(
-  {numbers_str},
-  cards-per-page: {config.get('cards_per_page', 6)},
-  paper-size: "{config.get('paper_size', 'us-letter')}",
-  orientation: "{config.get('orientation', 'portrait')}",
-  margins: (
-    top: {config.get('margins', {}).get('top', '0.5in')},
-    bottom: {config.get('margins', {}).get('bottom', '0.5in')},
-    left: {config.get('margins', {}).get('left', '0.5in')},
-    right: {config.get('margins', {}).get('right', '0.5in')}
-  ),
-  gutter: {config.get('gutter', '5mm')},
-  show-cut-marks: {str(config.get('show_cut_marks', False)).lower()},
-  show-registration: {str(config.get('show_registration', False)).lower()},
-  font-family: "{config.get('font_family', 'DejaVu Sans')}",
-  font-size: {config.get('font_size', '48pt')},
-  columns: {config.get('columns', 'auto')},
-  show-empty-columns: {str(config.get('show_empty_columns', False)).lower()},
-  hide-inactive-beads: {str(config.get('hide_inactive_beads', False)).lower()},
-  bead-shape: "{config.get('bead_shape', 'diamond')}",
-  color-scheme: "{config.get('color_scheme', 'monochrome')}",
-  color-palette: "{config.get('color_palette', 'default')}",
-  colored-numerals: {str(config.get('colored_numerals', False)).lower()},
-  scale-factor: {config.get('scale_factor', 0.9)}
-)
-'''
-    
-    with open(output_path, 'w') as f:
-        f.write(typst_content)
 
 def main():
     parser = argparse.ArgumentParser(description='Generate Soroban flashcards PDF')
@@ -386,22 +343,54 @@ def main():
     if args.format == 'pdf':
         # Generate PDF (original functionality)
         project_root = Path(__file__).parent.parent
-        temp_typst = project_root / 'temp_flashcards.typ'
-        generate_typst_file(numbers, final_config, temp_typst)
-        
+
         # Set up font path if provided
         font_args = []
         if args.font_path:
             font_args = ['--font-path', args.font_path]
         elif os.path.exists('fonts'):
             font_args = ['--font-path', 'fonts']
-        
-        # Compile with Typst
+
+        # Build input arguments for Typst
+        input_args = []
+
+        # Numbers as comma-separated string
+        numbers_str = ','.join(str(n) for n in numbers)
+        input_args.extend(['--input', f'numbers={numbers_str}'])
+
+        # Add all configuration as input parameters
+        input_args.extend(['--input', f'cards_per_page={final_config.get("cards_per_page", 6)}'])
+        input_args.extend(['--input', f'paper_size={final_config.get("paper_size", "us-letter")}'])
+        input_args.extend(['--input', f'orientation={final_config.get("orientation", "portrait")}'])
+
+        # Format margins as comma-separated string
+        margins = final_config.get('margins', {})
+        margins_str = f'{margins.get("top", "0.5in")},{margins.get("bottom", "0.5in")},{margins.get("left", "0.5in")},{margins.get("right", "0.5in")}'
+        input_args.extend(['--input', f'margins={margins_str}'])
+
+        input_args.extend(['--input', f'gutter={final_config.get("gutter", "5mm")}'])
+        input_args.extend(['--input', f'show_cut_marks={str(final_config.get("show_cut_marks", False)).lower()}'])
+        input_args.extend(['--input', f'show_registration={str(final_config.get("show_registration", False)).lower()}'])
+        input_args.extend(['--input', f'font_family={final_config.get("font_family", "DejaVu Sans")}'])
+        input_args.extend(['--input', f'font_size={final_config.get("font_size", "48pt")}'])
+        input_args.extend(['--input', f'columns={final_config.get("columns", "auto")}'])
+        input_args.extend(['--input', f'show_empty_columns={str(final_config.get("show_empty_columns", False)).lower()}'])
+        input_args.extend(['--input', f'hide_inactive_beads={str(final_config.get("hide_inactive_beads", False)).lower()}'])
+        input_args.extend(['--input', f'bead_shape={final_config.get("bead_shape", "diamond")}'])
+        input_args.extend(['--input', f'color_scheme={final_config.get("color_scheme", "monochrome")}'])
+        input_args.extend(['--input', f'color_palette={final_config.get("color_palette", "default")}'])
+        input_args.extend(['--input', f'colored_numerals={str(final_config.get("colored_numerals", False)).lower()}'])
+        input_args.extend(['--input', f'scale_factor={final_config.get("scale_factor", 0.9)}'])
+
+        # Path to the input-based template
+        template_path = project_root.parent / 'templates' / 'flashcards-input.typ'
+
+        # Compile with Typst using input parameters
         print(f"Generating PDF flashcards for {len(numbers)} numbers...")
         try:
             # Run typst from project root directory
             result = subprocess.run(
-                ['typst', 'compile'] + font_args + [str(temp_typst), str(output_path)],
+                ['typst', 'compile'] + font_args + input_args + [str(template_path), str(output_path)],
                 capture_output=True,
                 text=True,
                 cwd=str(project_root)
@@ -413,14 +402,7 @@ def main():
                 sys.exit(1)
             
             print(f"Generated: {output_path}")
-            
-            # Clean up temp file
-            try:
-                temp_typst.unlink()
-            except FileNotFoundError:
-                # Temp file may have already been cleaned up or not created
-                pass
-            
+
             # Add duplex printing hints and linearize if requested
             if args.linearize:
                 linearized_path = output_path.parent / f"{output_path.stem}_linear{output_path.suffix}"
