@@ -1,11 +1,3 @@
-<!-- Simple abacus showing a number -->
-<!-- Generated from: {
-  "value": 123,
-  "columns": 3,
-  "showNumbers": true,
-  "scaleFactor": 1,
-  "animated": false
-} -->
 <svg width="75" height="160" viewBox="0 0 75 160" class="abacus-svg  " style="overflow:visible;display:block"><defs><style>
           /* CSS-based opacity system for hidden inactive beads */
           .abacus-bead {
