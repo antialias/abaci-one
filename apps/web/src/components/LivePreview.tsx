@@ -174,7 +174,7 @@ function FlashcardPreview({
             colorScheme={(config.colorScheme as any) || 'place-value'}
             scaleFactor={(config.scaleFactor || 1) * 1.2}
             interactive={false}
-            showNumbers="never"
+            showNumbers="always"
             animated={true}
             hideInactiveBeads={config.hideInactiveBeads}
           />

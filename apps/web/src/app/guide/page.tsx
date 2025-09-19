@@ -343,7 +343,7 @@ function ReadingNumbersGuide() {
                     colorScheme="monochrome"
                     scaleFactor={0.8}
                     interactive={false}
-                    showNumbers="never"
+                    showNumbers="always"
                     animated={true}
                   />
                 </div>
@@ -505,7 +505,7 @@ function ReadingNumbersGuide() {
                       colorScheme="place-value"
                       scaleFactor={0.9}
                       interactive={false}
-                      showNumbers="never"
+                      showNumbers="always"
                       animated={true}
                     />
                   </div>
@@ -914,7 +914,7 @@ function ArithmeticOperationsGuide() {
                   colorScheme="place-value"
                   scaleFactor={1.2}
                   interactive={false}
-                  showNumbers="never"
+                  showNumbers="always"
                   animated={true}
                 />
               </div>
@@ -943,7 +943,7 @@ function ArithmeticOperationsGuide() {
                   colorScheme="place-value"
                   scaleFactor={1.2}
                   interactive={false}
-                  showNumbers="never"
+                  showNumbers="always"
                   animated={true}
                 />
               </div>
@@ -1038,7 +1038,7 @@ function ArithmeticOperationsGuide() {
                   colorScheme="place-value"
                   scaleFactor={1.2}
                   interactive={false}
-                  showNumbers="never"
+                  showNumbers="always"
                   animated={true}
                 />
               </div>
@@ -1067,7 +1067,7 @@ function ArithmeticOperationsGuide() {
                   colorScheme="place-value"
                   scaleFactor={1.2}
                   interactive={false}
-                  showNumbers="never"
+                  showNumbers="always"
                   animated={true}
                 />
               </div>
