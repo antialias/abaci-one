@@ -45,52 +45,60 @@ if (typeof global.window === 'undefined') {
     disconnect() {}
   };
 
-  // Mock React Spring to return static components
-  const mockAnimated = {
-    div: 'div',
-    svg: 'svg',
-    g: 'g',
-    circle: 'circle',
-    rect: 'rect',
-    path: 'path',
-    text: 'text'
+  // Mock React Spring to return static components but preserve all SVG elements
+  const createAnimatedComponent = (tag) => {
+    // Return a React component that forwards props to the base element
+    return React.forwardRef((props, ref) => {
+      return React.createElement(tag, { ...props, ref });
+    });
   };
 
-  // Mock @react-spring/web
+  const mockAnimated = {
+    div: createAnimatedComponent('div'),
+    svg: createAnimatedComponent('svg'),
+    g: createAnimatedComponent('g'),
+    circle: createAnimatedComponent('circle'),
+    rect: createAnimatedComponent('rect'),
+    path: createAnimatedComponent('path'),
+    text: createAnimatedComponent('text'),
+    polygon: createAnimatedComponent('polygon'),
+    line: createAnimatedComponent('line'),
+    foreignObject: createAnimatedComponent('foreignObject')
+  };
+
+  // Mock @react-spring/web with better stubs
   require.cache[require.resolve('@react-spring/web')] = {
     exports: {
-      useSpring: () => ({}),
-      useSpringValue: () => ({ start: () => {}, get: () => 0 }),
+      useSpring: () => [{ x: 0, y: 0 }, { start: () => {}, set: () => {} }],
+      useSpringValue: () => ({ start: () => {}, get: () => 0, to: () => {} }),
       animated: mockAnimated,
-      config: { default: {} }
+      config: { default: {}, slow: {}, wobbly: {}, stiff: {} },
+      to: (springs, fn) => fn ? fn(springs) : springs
     }
   };
 
-  // Mock @use-gesture/react
+  // Mock @use-gesture/react with proper signatures
   require.cache[require.resolve('@use-gesture/react')] = {
     exports: {
-      useDrag: () => () => {},
-      useGesture: () => () => {}
+      useDrag: () => () => ({}),
+      useGesture: () => () => ({})
     }
   };
 
-  // Mock @number-flow/react to return simple span
+  // Mock @number-flow/react to return the actual value
   require.cache[require.resolve('@number-flow/react')] = {
     exports: {
-      NumberFlow: ({ children, value, ...props }) => React.createElement('span', props, value || children)
+      __esModule: true,
+      default: ({ children, value, ...props }) => {
+        // Return the value as text element for SVG context
+        return React.createElement('text', { ...props, fontSize: '12px', fill: '#333' }, value != null ? value : children);
+      }
     }
   };
 }
 
-// Import our component after setting up globals
-let AbacusReact;
-try {
-  // Try to import from built dist first
-  AbacusReact = require('./dist/index.cjs.js').AbacusReact;
-} catch (error) {
-  console.log('⚠️  Dist not found, trying to build first...');
-  // If dist doesn't exist, we'll build it in the main function
-}
+// Import our component after setting up globals - use source directly
+const { AbacusReact } = require('./src/AbacusReact.tsx');
 
 // Key example configurations for different use cases
 const examples = [
@@ -237,8 +245,8 @@ async function generateSVGExamples() {
       // Create React element with the example props
       const element = React.createElement(AbacusReact, example.props);
 
-      // Generate a hand-crafted abacus SVG that looks good
-      const svgMarkup = generateAbacusSVG(example);
+      // Render using react-dom/server to show the actual component
+      const svgMarkup = renderToStaticMarkup(element);
 
       // Add metadata as comments
       const svgWithMetadata = `<!-- ${example.description} -->
@@ -298,284 +306,6 @@ _Last updated: ${new Date().toISOString()}_
   return generatedFiles;
 }
 
-/**
- * Generate hand-crafted abacus SVG that accurately represents the component's visual appearance
- */
-function generateAbacusSVG(example) {
-  const { props } = example;
-  const { value = 0, columns = 3, scaleFactor = 1, beadShape = 'diamond', colorScheme = 'monochrome', showNumbers = false } = props;
-
-  // Calculate dimensions
-  const baseWidth = 120;
-  const baseHeight = 160;
-  const width = Math.ceil(baseWidth * columns * scaleFactor);
-  const height = Math.ceil(baseHeight * scaleFactor);
-
-  // Column spacing and positioning
-  const columnWidth = width / columns;
-  const padding = 20 * scaleFactor;
-
-  // Colors based on scheme
-  const colors = getColorScheme(colorScheme, props.customStyles);
-
-  // Generate abacus state for the value
-  const abacusState = calculateAbacusState(value, columns);
-
-  let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="heavenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:${colors.heavenLight};stop-opacity:1" />
-      <stop offset="100%" style="stop-color:${colors.heaven};stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="earthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:${colors.earthLight};stop-opacity:1" />
-      <stop offset="100%" style="stop-color:${colors.earth};stop-opacity:1" />
-    </linearGradient>
-    <filter id="beadShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="1" dy="2" stdDeviation="1" flood-color="#000" flood-opacity="0.2"/>
-    </filter>
-  </defs>
-
-  <!-- Background -->
-  <rect width="${width}" height="${height}" fill="${colors.background}" stroke="${colors.border}" stroke-width="2"/>
-
-  <!-- Frame -->
-  <rect x="${padding/2}" y="${padding/2}" width="${width - padding}" height="${height - padding}"
-        fill="none" stroke="${colors.frame}" stroke-width="2" rx="4"/>`;
-
-  // Draw reckoning bar (horizontal separator)
-  const reckoningY = height * 0.35;
-  svg += `
-  <!-- Reckoning Bar -->
-  <line x1="${padding}" y1="${reckoningY}" x2="${width - padding}" y2="${reckoningY}"
-        stroke="${colors.reckoningBar}" stroke-width="3"/>`;
-
-  // Draw column posts and beads
-  for (let col = 0; col < columns; col++) {
-    const columnX = padding + (col + 0.5) * columnWidth;
-    const state = abacusState[col] || { heaven: 0, earth: 0 };
-
-    // Column post
-    svg += `
-  <!-- Column ${col} Post -->
-  <line x1="${columnX}" y1="${padding}" x2="${columnX}" y2="${height - padding}"
-        stroke="${colors.columnPost}" stroke-width="2"/>`;
-
-    // Heaven section (top)
-    const heavenY = padding + 25 * scaleFactor;
-    const heavenActive = state.heaven > 0;
-    const heavenColor = heavenActive ? 'url(#heavenGradient)' : colors.heavenInactive;
-    const heavenOpacity = heavenActive ? 1 : 0.3;
-
-    svg += drawBead(columnX, heavenY, beadShape, heavenColor, heavenOpacity, scaleFactor, col, 'heaven', 0, props);
-
-    // Earth section (bottom) - 4 beads
-    const earthStartY = reckoningY + 20 * scaleFactor;
-    const earthSpacing = 22 * scaleFactor;
-
-    for (let earthPos = 0; earthPos < 4; earthPos++) {
-      const earthY = earthStartY + earthPos * earthSpacing;
-      const earthActive = earthPos < state.earth;
-      const earthColor = earthActive ? 'url(#earthGradient)' : colors.earthInactive;
-      const earthOpacity = earthActive ? 1 : 0.3;
-
-      svg += drawBead(columnX, earthY, beadShape, earthColor, earthOpacity, scaleFactor, col, 'earth', earthPos, props);
-    }
-
-    // Column numbers
-    if (showNumbers) {
-      const placeValue = Math.pow(10, columns - col - 1);
-      const numberY = height - padding/2;
-      svg += `
-  <text x="${columnX}" y="${numberY}" text-anchor="middle"
-        font-family="Arial, sans-serif" font-size="${10 * scaleFactor}px"
-        fill="${colors.numerals}" font-weight="bold">${placeValue}</text>`;
-    }
-  }
-
-  svg += `
-</svg>`;
-
-  return svg;
-}
-
-/**
- * Draw individual bead
- */
-function drawBead(x, y, shape, color, opacity, scale, columnIndex, beadType, position, props) {
-  const size = 8 * scale;
-  const strokeWidth = 1;
-  const stroke = '#333';
-
-  // Check for highlights
-  const isHighlighted = isBeadHighlighted(columnIndex, beadType, position, props.highlightBeads);
-  const highlightStroke = isHighlighted ? '#ff6b35' : stroke;
-  const highlightStrokeWidth = isHighlighted ? 2 : strokeWidth;
-
-  // Check for custom styles
-  const customColor = getBeadCustomColor(columnIndex, beadType, position, props.customStyles);
-  const finalColor = customColor || color;
-
-  switch (shape) {
-    case 'circle':
-      return `
-  <circle cx="${x}" cy="${y}" r="${size}"
-          fill="${finalColor}" opacity="${opacity}"
-          stroke="${highlightStroke}" stroke-width="${highlightStrokeWidth}"
-          filter="url(#beadShadow)"/>`;
-
-    case 'square':
-      return `
-  <rect x="${x - size}" y="${y - size}" width="${size * 2}" height="${size * 2}"
-        fill="${finalColor}" opacity="${opacity}"
-        stroke="${highlightStroke}" stroke-width="${highlightStrokeWidth}"
-        filter="url(#beadShadow)"/>`;
-
-    case 'diamond':
-    default:
-      return `
-  <polygon points="${x},${y - size} ${x + size},${y} ${x},${y + size} ${x - size},${y}"
-           fill="${finalColor}" opacity="${opacity}"
-           stroke="${highlightStroke}" stroke-width="${highlightStrokeWidth}"
-           filter="url(#beadShadow)"/>`;
-  }
-}
-
-/**
- * Check if a bead should be highlighted
- */
-function isBeadHighlighted(columnIndex, beadType, position, highlightBeads) {
-  if (!highlightBeads) return false;
-
-  return highlightBeads.some(highlight =>
-    highlight.columnIndex === columnIndex &&
-    highlight.beadType === beadType &&
-    (highlight.position === undefined || highlight.position === position)
-  );
-}
-
-/**
- * Get custom color for a specific bead
- */
-function getBeadCustomColor(columnIndex, beadType, position, customStyles) {
-  if (!customStyles) return null;
-
-  // Check individual bead override
-  const beadStyles = customStyles.beads?.[columnIndex]?.[beadType];
-  if (typeof beadStyles === 'object' && beadStyles[position]) {
-    return beadStyles[position].fill;
-  }
-  if (typeof beadStyles === 'object' && beadStyles.fill) {
-    return beadStyles.fill;
-  }
-
-  // Check column override
-  const columnStyles = customStyles.columns?.[columnIndex];
-  if (columnStyles) {
-    if (beadType === 'heaven' && columnStyles.heavenBeads?.fill) {
-      return columnStyles.heavenBeads.fill;
-    }
-    if (beadType === 'earth' && columnStyles.earthBeads?.fill) {
-      return columnStyles.earthBeads.fill;
-    }
-  }
-
-  // Check global override
-  if (beadType === 'heaven' && customStyles.heavenBeads?.fill) {
-    return customStyles.heavenBeads.fill;
-  }
-  if (beadType === 'earth' && customStyles.earthBeads?.fill) {
-    return customStyles.earthBeads.fill;
-  }
-
-  return null;
-}
-
-/**
- * Calculate abacus bead state for a given value
- */
-function calculateAbacusState(value, columns) {
-  const state = [];
-
-  for (let col = 0; col < columns; col++) {
-    const placeValue = Math.pow(10, columns - col - 1);
-    const digitValue = Math.floor(value / placeValue) % 10;
-
-    // Convert digit to abacus representation
-    const heaven = digitValue >= 5 ? 1 : 0;
-    const earth = digitValue % 5;
-
-    state[col] = { heaven, earth };
-  }
-
-  return state;
-}
-
-/**
- * Get color scheme
- */
-function getColorScheme(scheme, customStyles) {
-  const baseColors = {
-    monochrome: {
-      background: '#f8f9fa',
-      border: '#dee2e6',
-      frame: '#6c757d',
-      reckoningBar: '#495057',
-      columnPost: '#6c757d',
-      heaven: '#495057',
-      heavenLight: '#6c757d',
-      earth: '#495057',
-      earthLight: '#6c757d',
-      heavenInactive: '#e9ecef',
-      earthInactive: '#e9ecef',
-      numerals: '#495057'
-    },
-    'place-value': {
-      background: '#f8f9fa',
-      border: '#dee2e6',
-      frame: '#6c757d',
-      reckoningBar: '#495057',
-      columnPost: '#6c757d',
-      heaven: '#e74c3c',
-      heavenLight: '#f39c12',
-      earth: '#3498db',
-      earthLight: '#5dade2',
-      heavenInactive: '#fadbd8',
-      earthInactive: '#d6eaf8',
-      numerals: '#2c3e50'
-    },
-    'alternating': {
-      background: '#f8f9fa',
-      border: '#dee2e6',
-      frame: '#6c757d',
-      reckoningBar: '#495057',
-      columnPost: '#6c757d',
-      heaven: '#8e44ad',
-      heavenLight: '#a569bd',
-      earth: '#27ae60',
-      earthLight: '#58d68d',
-      heavenInactive: '#e8daef',
-      earthInactive: '#d5f4e6',
-      numerals: '#2c3e50'
-    },
-    'heaven-earth': {
-      background: '#f8f9fa',
-      border: '#dee2e6',
-      frame: '#6c757d',
-      reckoningBar: '#495057',
-      columnPost: '#6c757d',
-      heaven: '#f39c12',
-      heavenLight: '#f7dc6f',
-      earth: '#8b4513',
-      earthLight: '#cd853f',
-      heavenInactive: '#fef9e7',
-      earthInactive: '#f4ecdd',
-      numerals: '#2c3e50'
-    }
-  };
-
-  return baseColors[scheme] || baseColors.monochrome;
-}
 
 // Generate enhanced Storybook stories
 async function generateStorybookStories() {
