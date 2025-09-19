@@ -6,15 +6,106 @@
   "scaleFactor": 1,
   "animated": false
 } -->
-<svg width="300" height="200" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
-  <rect width="300" height="200" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
-  <text x="150" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#6c757d">
-    Basic Usage
-  </text>
-  <text x="150" y="120" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#868e96">
-    Simple abacus showing a number
-  </text>
-  <text x="150" y="140" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#adb5bd">
-    (SSR placeholder - use Storybook for interactive preview)
-  </text>
+<svg width="360" height="160" viewBox="0 0 360 160" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="heavenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6c757d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#495057;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="earthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6c757d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#495057;stop-opacity:1" />
+    </linearGradient>
+    <filter id="beadShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="1" dy="2" stdDeviation="1" flood-color="#000" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="360" height="160" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
+
+  <!-- Frame -->
+  <rect x="10" y="10" width="340" height="140"
+        fill="none" stroke="#6c757d" stroke-width="2" rx="4"/>
+  <!-- Reckoning Bar -->
+  <line x1="20" y1="56" x2="340" y2="56"
+        stroke="#495057" stroke-width="3"/>
+  <!-- Column 0 Post -->
+  <line x1="80" y1="20" x2="80" y2="140"
+        stroke="#6c757d" stroke-width="2"/>
+  <polygon points="80,37 88,45 80,53 72,45"
+           fill="#e9ecef" opacity="0.3"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="80,68 88,76 80,84 72,76"
+           fill="url(#earthGradient)" opacity="1"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="80,90 88,98 80,106 72,98"
+           fill="#e9ecef" opacity="0.3"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="80,112 88,120 80,128 72,120"
+           fill="#e9ecef" opacity="0.3"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="80,134 88,142 80,150 72,142"
+           fill="#e9ecef" opacity="0.3"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <text x="80" y="150" text-anchor="middle"
+        font-family="Arial, sans-serif" font-size="10px"
+        fill="#495057" font-weight="bold">100</text>
+  <!-- Column 1 Post -->
+  <line x1="200" y1="20" x2="200" y2="140"
+        stroke="#6c757d" stroke-width="2"/>
+  <polygon points="200,37 208,45 200,53 192,45"
+           fill="#e9ecef" opacity="0.3"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="200,68 208,76 200,84 192,76"
+           fill="url(#earthGradient)" opacity="1"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="200,90 208,98 200,106 192,98"
+           fill="url(#earthGradient)" opacity="1"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="200,112 208,120 200,128 192,120"
+           fill="#e9ecef" opacity="0.3"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="200,134 208,142 200,150 192,142"
+           fill="#e9ecef" opacity="0.3"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <text x="200" y="150" text-anchor="middle"
+        font-family="Arial, sans-serif" font-size="10px"
+        fill="#495057" font-weight="bold">10</text>
+  <!-- Column 2 Post -->
+  <line x1="320" y1="20" x2="320" y2="140"
+        stroke="#6c757d" stroke-width="2"/>
+  <polygon points="320,37 328,45 320,53 312,45"
+           fill="#e9ecef" opacity="0.3"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="320,68 328,76 320,84 312,76"
+           fill="url(#earthGradient)" opacity="1"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="320,90 328,98 320,106 312,98"
+           fill="url(#earthGradient)" opacity="1"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="320,112 328,120 320,128 312,120"
+           fill="url(#earthGradient)" opacity="1"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <polygon points="320,134 328,142 320,150 312,142"
+           fill="#e9ecef" opacity="0.3"
+           stroke="#333" stroke-width="1"
+           filter="url(#beadShadow)"/>
+  <text x="320" y="150" text-anchor="middle"
+        font-family="Arial, sans-serif" font-size="10px"
+        fill="#495057" font-weight="bold">1</text>
 </svg>
