@@ -246,7 +246,11 @@ async function generateSVGExamples() {
       const element = React.createElement(AbacusReact, example.props);
 
       // Render using react-dom/server to show the actual component
-      const svgMarkup = renderToStaticMarkup(element);
+      const fullMarkup = renderToStaticMarkup(element);
+
+      // Extract just the SVG content from the rendered HTML
+      const svgMatch = fullMarkup.match(/<svg[^>]*>.*<\/svg>/s);
+      const svgMarkup = svgMatch ? svgMatch[0] : fullMarkup;
 
       // Add metadata as comments
       const svgWithMetadata = `<!-- ${example.description} -->
