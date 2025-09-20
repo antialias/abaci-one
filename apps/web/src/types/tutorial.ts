@@ -25,13 +25,60 @@ export interface TutorialStep {
   multiStepInstructions?: string[]
 }
 
+// Skill-based system for practice problem generation
+export interface SkillSet {
+  // Five complements (single-column operations)
+  fiveComplements: {
+    "4=5-1": boolean
+    "3=5-2": boolean
+    "2=5-3": boolean
+    "1=5-4": boolean
+  }
+
+  // Ten complements (carrying operations)
+  tenComplements: {
+    "9=10-1": boolean
+    "8=10-2": boolean
+    "7=10-3": boolean
+    "6=10-4": boolean
+    "5=10-5": boolean
+    "4=10-6": boolean
+    "3=10-7": boolean
+    "2=10-8": boolean
+    "1=10-9": boolean
+  }
+
+  // Basic operations
+  basic: {
+    directAddition: boolean    // Can add 1-4 directly
+    heavenBead: boolean        // Can use heaven bead (5)
+    simpleCombinations: boolean // Can do 6-9 without complements
+  }
+}
+
 export interface PracticeStep {
   id: string
   title: string
   description: string
-  skillLevel: 'basic' | 'heaven' | 'five-complements' | 'mixed'
+
+  // Problem generation settings
   problemCount: number
   maxTerms: number // max numbers to add in a single problem
+
+  // Skill-based constraints
+  requiredSkills: SkillSet   // Skills user must know
+  targetSkills?: Partial<SkillSet>  // Skills to specifically practice (optional)
+  forbiddenSkills?: Partial<SkillSet> // Skills user hasn't learned yet (optional)
+
+  // Advanced constraints (optional)
+  numberRange?: { min: number, max: number }
+  sumConstraints?: { maxSum: number, minSum?: number }
+
+  // Legacy support for existing system
+  skillLevel?: 'basic' | 'heaven' | 'five-complements' | 'mixed'
+
+  // Tutorial integration
+  position?: number // Where in tutorial flow this appears
 }
 
 export interface Problem {
@@ -39,6 +86,61 @@ export interface Problem {
   terms: number[]
   userAnswer?: number
   isCorrect?: boolean
+}
+
+// Utility functions for skill management
+export function createEmptySkillSet(): SkillSet {
+  return {
+    basic: {
+      directAddition: false,
+      heavenBead: false,
+      simpleCombinations: false
+    },
+    fiveComplements: {
+      "4=5-1": false,
+      "3=5-2": false,
+      "2=5-3": false,
+      "1=5-4": false
+    },
+    tenComplements: {
+      "9=10-1": false,
+      "8=10-2": false,
+      "7=10-3": false,
+      "6=10-4": false,
+      "5=10-5": false,
+      "4=10-6": false,
+      "3=10-7": false,
+      "2=10-8": false,
+      "1=10-9": false
+    }
+  }
+}
+
+export function createBasicSkillSet(): SkillSet {
+  return {
+    basic: {
+      directAddition: true,
+      heavenBead: false,
+      simpleCombinations: false
+    },
+    fiveComplements: {
+      "4=5-1": false,
+      "3=5-2": false,
+      "2=5-3": false,
+      "1=5-4": false
+    },
+    tenComplements: {
+      "9=10-1": false,
+      "8=10-2": false,
+      "7=10-3": false,
+      "6=10-4": false,
+      "5=10-5": false,
+      "4=10-6": false,
+      "3=10-7": false,
+      "2=10-8": false,
+      "1=10-9": false
+    }
+  }
 }
 
 export interface Tutorial {

@@ -3,6 +3,7 @@ import { action } from '@storybook/addon-actions'
 import { TutorialEditor } from './TutorialEditor'
 import { DevAccessProvider } from '../../hooks/useAccessControl'
 import { getTutorialForEditor } from '../../utils/tutorialConverter'
+import { createBasicSkillSet } from '../../types/tutorial'
 import { TutorialValidation } from '../../types/tutorial'
 
 const meta: Meta<typeof TutorialEditor> = {
@@ -206,6 +207,75 @@ export const ReadOnlyPreview: Story = {
     docs: {
       description: {
         story: 'Tutorial editor in read-only mode (no save function provided) showing the preview functionality.'
+      }
+    }
+  }
+}
+
+export const WithPracticeSteps: Story = {
+  args: {
+    tutorial: {
+      ...mockTutorial,
+      practiceSteps: [
+        {
+          id: 'practice-basic',
+          title: 'Practice: Basic Addition (1-4)',
+          description: 'Practice adding numbers 1-4 using only earth beads',
+          problemCount: 12,
+          maxTerms: 3,
+          requiredSkills: createBasicSkillSet(),
+          numberRange: { min: 1, max: 4 },
+          sumConstraints: { maxSum: 9 }
+        },
+        {
+          id: 'practice-five-complements',
+          title: 'Practice: Five Complements',
+          description: 'Practice using five complement techniques',
+          problemCount: 15,
+          maxTerms: 4,
+          requiredSkills: {
+            basic: {
+              directAddition: true,
+              heavenBead: true,
+              simpleCombinations: true
+            },
+            fiveComplements: {
+              "4=5-1": true,
+              "3=5-2": true,
+              "2=5-3": false,
+              "1=5-4": false
+            },
+            tenComplements: {
+              "9=10-1": false,
+              "8=10-2": false,
+              "7=10-3": false,
+              "6=10-4": false,
+              "5=10-5": false,
+              "4=10-6": false,
+              "3=10-7": false,
+              "2=10-8": false,
+              "1=10-9": false
+            }
+          },
+          targetSkills: {
+            fiveComplements: {
+              "4=5-1": true,
+              "3=5-2": true
+            }
+          },
+          numberRange: { min: 1, max: 9 },
+          sumConstraints: { maxSum: 9 }
+        }
+      ]
+    },
+    onSave: action('save-tutorial'),
+    onValidate: mockValidate,
+    onPreview: action('preview-step')
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Tutorial editor with practice steps demonstrating the skill-based problem generation system.'
       }
     }
   }

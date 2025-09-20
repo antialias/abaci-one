@@ -4,7 +4,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { TutorialPlayer } from './TutorialPlayer'
 import { css } from '../../styled-system/css'
 import { stack, hstack, vstack } from '../../styled-system/patterns'
-import { Tutorial, TutorialStep, TutorialValidation, StepValidationError } from '../../types/tutorial'
+import { Tutorial, TutorialStep, PracticeStep, TutorialValidation, StepValidationError, createBasicSkillSet } from '../../types/tutorial'
+import { PracticeStepEditor } from './PracticeStepEditor'
 
 interface TutorialEditorProps {
   tutorial: Tutorial
@@ -148,6 +149,54 @@ export function TutorialEditor({
       selectedStepIndex: toIndex
     }))
   }, [tutorial.steps])
+
+  // Practice step management
+  const addPracticeStep = useCallback(() => {
+    const newPracticeStep: PracticeStep = {
+      id: `practice-${Date.now()}`,
+      title: 'New Practice Step',
+      description: 'Practice description here',
+      problemCount: 10,
+      maxTerms: 3,
+      requiredSkills: createBasicSkillSet(),
+      numberRange: { min: 1, max: 9 },
+      sumConstraints: { maxSum: 9 }
+    }
+
+    setTutorial(prev => ({
+      ...prev,
+      practiceSteps: [...(prev.practiceSteps || []), newPracticeStep],
+      updatedAt: new Date()
+    }))
+    setEditorState(prev => ({
+      ...prev,
+      isDirty: true
+    }))
+  }, [])
+
+  const updatePracticeStep = useCallback((stepIndex: number, updates: Partial<PracticeStep>) => {
+    const newPracticeSteps = [...(tutorial.practiceSteps || [])]
+    if (newPracticeSteps[stepIndex]) {
+      newPracticeSteps[stepIndex] = { ...newPracticeSteps[stepIndex], ...updates }
+
+      setTutorial(prev => ({
+        ...prev,
+        practiceSteps: newPracticeSteps,
+        updatedAt: new Date()
+      }))
+      setEditorState(prev => ({ ...prev, isDirty: true }))
+    }
+  }, [tutorial.practiceSteps])
+
+  const deletePracticeStep = useCallback((stepIndex: number) => {
+    const newPracticeSteps = (tutorial.practiceSteps || []).filter((_, index) => index !== stepIndex)
+    setTutorial(prev => ({
+      ...prev,
+      practiceSteps: newPracticeSteps,
+      updatedAt: new Date()
+    }))
+    setEditorState(prev => ({ ...prev, isDirty: true }))
+  }, [tutorial.practiceSteps])
 
   const updateStep = useCallback((stepIndex: number, updates: Partial<TutorialStep>) => {
     const newSteps = [...tutorial.steps]
@@ -674,6 +723,59 @@ export function TutorialEditor({
                     </div>
                   )
                 })}
+              </div>
+            </div>
+
+            {/* Practice Steps section */}
+            <div>
+              <div className={hstack({ justifyContent: 'space-between', alignItems: 'center', mb: 3 })}>
+                <h3 className={css({ fontWeight: 'bold' })}>Practice Steps ({(tutorial.practiceSteps || []).length})</h3>
+                <button
+                  onClick={addPracticeStep}
+                  className={css({
+                    px: 3,
+                    py: 1,
+                    bg: 'purple.500',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'md',
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    _hover: { bg: 'purple.600' }
+                  })}
+                >
+                  + Add Practice Step
+                </button>
+              </div>
+
+              <div className={stack({ gap: 3 })}>
+                {(tutorial.practiceSteps || []).map((practiceStep, index) => (
+                  <PracticeStepEditor
+                    key={practiceStep.id}
+                    step={practiceStep}
+                    onChange={(updatedStep) => updatePracticeStep(index, updatedStep)}
+                    onDelete={() => deletePracticeStep(index)}
+                  />
+                ))}
+
+                {(tutorial.practiceSteps || []).length === 0 && (
+                  <div className={css({
+                    p: 4,
+                    bg: 'purple.50',
+                    border: '2px dashed',
+                    borderColor: 'purple.200',
+                    borderRadius: 'lg',
+                    textAlign: 'center',
+                    color: 'purple.600'
+                  })}>
+                    <p className={css({ fontSize: 'sm', mb: 2 })}>
+                      No practice steps yet
+                    </p>
+                    <p className={css({ fontSize: 'xs' })}>
+                      Practice steps provide skill-based problem generation to reinforce learning
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
