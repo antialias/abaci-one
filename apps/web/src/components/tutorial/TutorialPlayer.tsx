@@ -1,10 +1,95 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useReducer } from 'react'
 import { AbacusReact } from '@soroban/abacus-react'
 import { css } from '../../styled-system/css'
 import { stack, hstack, vstack } from '../../styled-system/patterns'
 import { Tutorial, TutorialStep, TutorialEvent, NavigationState, UIState } from '../../types/tutorial'
+
+// Reducer state and actions
+interface TutorialPlayerState {
+  currentStepIndex: number
+  currentValue: number
+  isStepCompleted: boolean
+  error: string | null
+  events: TutorialEvent[]
+  stepStartTime: number
+  uiState: UIState
+}
+
+type TutorialPlayerAction =
+  | { type: 'INITIALIZE_STEP'; stepIndex: number; startValue: number; stepId: string }
+  | { type: 'USER_VALUE_CHANGE'; oldValue: number; newValue: number; stepId: string }
+  | { type: 'COMPLETE_STEP'; stepId: string }
+  | { type: 'SET_ERROR'; error: string | null }
+  | { type: 'ADD_EVENT'; event: TutorialEvent }
+  | { type: 'UPDATE_UI_STATE'; updates: Partial<UIState> }
+
+function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlayerAction): TutorialPlayerState {
+  switch (action.type) {
+    case 'INITIALIZE_STEP':
+      return {
+        ...state,
+        currentStepIndex: action.stepIndex,
+        currentValue: action.startValue,
+        isStepCompleted: false,
+        error: null,
+        stepStartTime: Date.now(),
+        events: [...state.events, {
+          type: 'STEP_STARTED',
+          stepId: action.stepId,
+          timestamp: new Date()
+        }]
+      }
+
+    case 'USER_VALUE_CHANGE':
+      return {
+        ...state,
+        currentValue: action.newValue,
+        events: [...state.events, {
+          type: 'VALUE_CHANGED',
+          stepId: action.stepId,
+          oldValue: action.oldValue,
+          newValue: action.newValue,
+          timestamp: new Date()
+        }]
+      }
+
+    case 'COMPLETE_STEP':
+      return {
+        ...state,
+        isStepCompleted: true,
+        error: null,
+        events: [...state.events, {
+          type: 'STEP_COMPLETED',
+          stepId: action.stepId,
+          success: true,
+          timestamp: new Date()
+        }]
+      }
+
+    case 'SET_ERROR':
+      return {
+        ...state,
+        error: action.error
+      }
+
+    case 'ADD_EVENT':
+      return {
+        ...state,
+        events: [...state.events, action.event]
+      }
+
+    case 'UPDATE_UI_STATE':
+      return {
+        ...state,
+        uiState: { ...state.uiState, ...action.updates }
+      }
+
+    default:
+      return state
+  }
+}
 
 interface TutorialPlayerProps {
   tutorial: Tutorial
@@ -29,23 +114,28 @@ export function TutorialPlayer({
   onEvent,
   className
 }: TutorialPlayerProps) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(initialStepIndex)
-  const [currentValue, setCurrentValue] = useState(0)
-  const [isStepCompleted, setIsStepCompleted] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [events, setEvents] = useState<TutorialEvent[]>([])
   const [startTime] = useState(Date.now())
-  const [stepStartTime, setStepStartTime] = useState(Date.now())
   const isProgrammaticChange = useRef(false)
-  const [uiState, setUIState] = useState<UIState>({
-    isPlaying: true,
-    isPaused: false,
-    isEditing: false,
-    showDebugPanel,
-    showStepList: false,
-    autoAdvance: false,
-    playbackSpeed: 1
+
+  const [state, dispatch] = useReducer(tutorialPlayerReducer, {
+    currentStepIndex: initialStepIndex,
+    currentValue: 0,
+    isStepCompleted: false,
+    error: null,
+    events: [],
+    stepStartTime: Date.now(),
+    uiState: {
+      isPlaying: true,
+      isPaused: false,
+      isEditing: false,
+      showDebugPanel,
+      showStepList: false,
+      autoAdvance: false,
+      playbackSpeed: 1
+    }
   })
+
+  const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, uiState } = state
 
   const currentStep = tutorial.steps[currentStepIndex]
   const beadRefs = useRef<Map<string, SVGElement>>(new Map())
@@ -59,45 +149,34 @@ export function TutorialPlayer({
     completionPercentage: (currentStepIndex / tutorial.steps.length) * 100
   }
 
-  // Event logging
-  const logEvent = useCallback((event: TutorialEvent) => {
-    setEvents(prev => [...prev, event])
+  // Event logging - now just notifies parent, state is managed by reducer
+  const notifyEvent = useCallback((event: TutorialEvent) => {
     onEvent?.(event)
   }, [onEvent])
 
-  // Initialize step
+  // Initialize step on mount only
   useEffect(() => {
-    if (currentStep) {
+    if (currentStep && currentStepIndex === initialStepIndex) {
       // Mark this as a programmatic change to prevent feedback loop
       isProgrammaticChange.current = true
-      setCurrentValue(currentStep.startValue)
-      setIsStepCompleted(false)
-      setError(null)
-      setStepStartTime(Date.now())
 
-      logEvent({
-        type: 'STEP_STARTED',
-        stepId: currentStep.id,
-        timestamp: new Date()
+      // Dispatch initialization action
+      dispatch({
+        type: 'INITIALIZE_STEP',
+        stepIndex: currentStepIndex,
+        startValue: currentStep.startValue,
+        stepId: currentStep.id
       })
 
+      // Notify parent of step change
       onStepChange?.(currentStepIndex, currentStep)
     }
-  }, [currentStepIndex, currentStep, onStepChange, logEvent])
+  }, []) // Only run on mount
 
-  // Check if step is completed
+  // Check if step is completed - now using useEffect only for side effects
   useEffect(() => {
     if (currentStep && currentValue === currentStep.targetValue && !isStepCompleted) {
-      setIsStepCompleted(true)
-      setError(null)
-
-      logEvent({
-        type: 'STEP_COMPLETED',
-        stepId: currentStep.id,
-        success: true,
-        timestamp: new Date()
-      })
-
+      dispatch({ type: 'COMPLETE_STEP', stepId: currentStep.id })
       onStepComplete?.(currentStepIndex, currentStep, true)
 
       // Auto-advance if enabled
@@ -105,14 +184,35 @@ export function TutorialPlayer({
         setTimeout(() => goToNextStep(), 1500)
       }
     }
-  }, [currentValue, currentStep, isStepCompleted, uiState.autoAdvance, navigationState.canGoNext, logEvent, onStepComplete, currentStepIndex])
+  }, [currentValue, currentStep, isStepCompleted, uiState.autoAdvance, navigationState.canGoNext, onStepComplete, currentStepIndex, goToNextStep])
+
+  // Notify parent of events when they're added to state
+  useEffect(() => {
+    if (events.length > 0) {
+      const lastEvent = events[events.length - 1]
+      notifyEvent(lastEvent)
+    }
+  }, [events, notifyEvent])
 
   // Navigation functions
   const goToStep = useCallback((stepIndex: number) => {
     if (stepIndex >= 0 && stepIndex < tutorial.steps.length) {
-      setCurrentStepIndex(stepIndex)
+      const step = tutorial.steps[stepIndex]
+
+      // Mark this as a programmatic change to prevent feedback loop
+      isProgrammaticChange.current = true
+
+      dispatch({
+        type: 'INITIALIZE_STEP',
+        stepIndex,
+        startValue: step.startValue,
+        stepId: step.id
+      })
+
+      // Notify parent of step change
+      onStepChange?.(stepIndex, step)
     }
-  }, [tutorial.steps.length])
+  }, [tutorial.steps, onStepChange])
 
   const goToNextStep = useCallback(() => {
     if (navigationState.canGoNext) {
@@ -147,24 +247,23 @@ export function TutorialPlayer({
       return
     }
 
-    const oldValue = currentValue
-    setCurrentValue(newValue)
-
-    logEvent({
-      type: 'VALUE_CHANGED',
-      stepId: currentStep.id,
-      oldValue,
+    dispatch({
+      type: 'USER_VALUE_CHANGE',
+      oldValue: currentValue,
       newValue,
-      timestamp: new Date()
+      stepId: currentStep.id
     })
-  }, [currentValue, currentStep, logEvent])
+  }, [currentValue, currentStep])
 
   const handleBeadClick = useCallback((beadInfo: any) => {
-    logEvent({
-      type: 'BEAD_CLICKED',
-      stepId: currentStep.id,
-      beadInfo,
-      timestamp: new Date()
+    dispatch({
+      type: 'ADD_EVENT',
+      event: {
+        type: 'BEAD_CLICKED',
+        stepId: currentStep.id,
+        beadInfo,
+        timestamp: new Date()
+      }
     })
 
     // Check if this is the correct action
@@ -176,19 +275,22 @@ export function TutorialPlayer({
       )
 
       if (!isCorrectBead) {
-        setError(currentStep.errorMessages.wrongBead)
+        dispatch({ type: 'SET_ERROR', error: currentStep.errorMessages.wrongBead })
 
-        logEvent({
-          type: 'ERROR_OCCURRED',
-          stepId: currentStep.id,
-          error: currentStep.errorMessages.wrongBead,
-          timestamp: new Date()
+        dispatch({
+          type: 'ADD_EVENT',
+          event: {
+            type: 'ERROR_OCCURRED',
+            stepId: currentStep.id,
+            error: currentStep.errorMessages.wrongBead,
+            timestamp: new Date()
+          }
         })
       } else {
-        setError(null)
+        dispatch({ type: 'SET_ERROR', error: null })
       }
     }
-  }, [currentStep, logEvent])
+  }, [currentStep])
 
   const handleBeadRef = useCallback((bead: any, element: SVGElement | null) => {
     const key = `${bead.columnIndex}-${bead.type}-${bead.position}`
@@ -201,16 +303,25 @@ export function TutorialPlayer({
 
   // UI state updaters
   const toggleDebugPanel = useCallback(() => {
-    setUIState(prev => ({ ...prev, showDebugPanel: !prev.showDebugPanel }))
-  }, [])
+    dispatch({
+      type: 'UPDATE_UI_STATE',
+      updates: { showDebugPanel: !uiState.showDebugPanel }
+    })
+  }, [uiState.showDebugPanel])
 
   const toggleStepList = useCallback(() => {
-    setUIState(prev => ({ ...prev, showStepList: !prev.showStepList }))
-  }, [])
+    dispatch({
+      type: 'UPDATE_UI_STATE',
+      updates: { showStepList: !uiState.showStepList }
+    })
+  }, [uiState.showStepList])
 
   const toggleAutoAdvance = useCallback(() => {
-    setUIState(prev => ({ ...prev, autoAdvance: !prev.autoAdvance }))
-  }, [])
+    dispatch({
+      type: 'UPDATE_UI_STATE',
+      updates: { autoAdvance: !uiState.autoAdvance }
+    })
+  }, [uiState.autoAdvance])
 
   if (!currentStep) {
     return <div>No steps available</div>
