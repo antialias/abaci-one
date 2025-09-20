@@ -9,6 +9,30 @@
 @import './tokens/keyframes.css';
 
 @layer utilities {
+  .right_0 {
+    right: var(--spacing-0)
+    }
+
+  .bottom_0 {
+    bottom: var(--spacing-0)
+    }
+
+  .left_4 {
+    left: var(--spacing-4)
+    }
+
+  .mt_1 {
+    margin-top: var(--spacing-1)
+    }
+
+  .rounded_sm {
+    border-radius: var(--radii-sm)
+    }
+
+  .columns_5 {
+    columns: 5
+    }
+
   .self_start {
     align-self: start
     }
@@ -123,10 +147,6 @@
 
   .transition_opacity_0\.3s_ease {
     transition: opacity 0.3s ease
-    }
-
-  .overflow_visible {
-    overflow: visible
     }
 
   .p_40px_20px {
@@ -715,10 +735,6 @@
     --gradient-to: var(--colors-indigo-700)
     }
 
-  .text_red\.600 {
-    color: var(--colors-red-600)
-    }
-
   .pl_6 {
     padding-left: var(--spacing-6)
     }
@@ -741,14 +757,6 @@
 
   .h_240px {
     height: 240px
-    }
-
-  .text_purple\.800 {
-    color: var(--colors-purple-800)
-    }
-
-  .text_purple\.700 {
-    color: var(--colors-purple-700)
     }
 
   .bg_indigo\.50 {
@@ -781,10 +789,6 @@
 
   .text_purple\.600 {
     color: var(--colors-purple-600)
-    }
-
-  .columns_3 {
-    columns: 3
     }
 
   .py_12 {
@@ -855,14 +859,6 @@
     width: 120px
     }
 
-  .bg_purple\.50 {
-    background: var(--colors-purple-50)
-    }
-
-  .border_purple\.200 {
-    border-color: var(--colors-purple-200)
-    }
-
   .text_capitalize {
     text-transform: capitalize
     }
@@ -889,10 +885,6 @@
 
   .border_pink\.200 {
     border-color: var(--colors-pink-200)
-    }
-
-  .grid-cols_repeat\(auto-fit\,_minmax\(200px\,_1fr\)\) {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))
     }
 
   .d_inline-block {
@@ -1237,10 +1229,6 @@
     opacity: 0.3
     }
 
-  .mb_3 {
-    margin-bottom: var(--spacing-3)
-    }
-
   .select_none {
     -webkit-user-select: none;
     user-select: none
@@ -1370,16 +1358,72 @@
     background: var(--colors-blue-50)
     }
 
+  .border_purple\.200 {
+    border-color: var(--colors-purple-200)
+    }
+
   .text_blue\.800 {
     color: var(--colors-blue-800)
+    }
+
+  .text_purple\.700 {
+    color: var(--colors-purple-700)
+    }
+
+  .text_blue\.600 {
+    color: var(--colors-blue-600)
+    }
+
+  .bg_purple\.50 {
+    background: var(--colors-purple-50)
+    }
+
+  .text_purple\.800 {
+    color: var(--colors-purple-800)
+    }
+
+  .grid-cols_repeat\(auto-fit\,_minmax\(200px\,_1fr\)\) {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))
+    }
+
+  .border_red\.300 {
+    border-color: var(--colors-red-300)
+    }
+
+  .p_3 {
+    padding: var(--spacing-3)
     }
 
   .fs_md {
     font-size: var(--font-sizes-md)
     }
 
-  .text_blue\.600 {
-    color: var(--colors-blue-600)
+  .mt_2 {
+    margin-top: var(--spacing-2)
+    }
+
+  .text_red\.600 {
+    color: var(--colors-red-600)
+    }
+
+  .bg_purple\.500 {
+    background: var(--colors-purple-500)
+    }
+
+  .mb_3 {
+    margin-bottom: var(--spacing-3)
+    }
+
+  .border_purple\.300 {
+    border-color: var(--colors-purple-300)
+    }
+
+  .min-h_350px {
+    min-height: 350px
+    }
+
+  .overflow_visible {
+    overflow: visible
     }
 
   .bg_yellow\.50 {
@@ -1472,6 +1516,10 @@
 
   .text_white {
     color: var(--colors-white)
+    }
+
+  .columns_3 {
+    columns: 3
     }
 
   .columns_1 {
@@ -2204,6 +2252,10 @@
     transform: translateY(-4px)
         }
 
+  .hover\:bg_blue\.600:is(:hover, [data-hover]) {
+    background: var(--colors-blue-600)
+        }
+
   .hover\:bg_brand\.25:is(:hover, [data-hover]) {
     background: brand.25
         }
@@ -2268,8 +2320,8 @@
     background: var(--colors-brand-50)
         }
 
-  .hover\:bg_blue\.600:is(:hover, [data-hover]) {
-    background: var(--colors-blue-600)
+  .hover\:bg_purple\.600:is(:hover, [data-hover]) {
+    background: var(--colors-purple-600)
         }
 
   .hover\:bg_green\.600:is(:hover, [data-hover]) {

@@ -32,6 +32,10 @@
     background: var(--colors-blue-50)
     }
 
+  .border_purple\.200 {
+    border-color: var(--colors-purple-200)
+    }
+
   .border_blue\.200 {
     border-color: var(--colors-blue-200)
     }
@@ -40,8 +44,8 @@
     color: var(--colors-blue-800)
     }
 
-  .fs_md {
-    font-size: var(--font-sizes-md)
+  .text_purple\.700 {
+    color: var(--colors-purple-700)
     }
 
   .text_blue\.700 {
@@ -50,6 +54,86 @@
 
   .text_blue\.600 {
     color: var(--colors-blue-600)
+    }
+
+  .bg_purple\.50 {
+    background: var(--colors-purple-50)
+    }
+
+  .text_purple\.800 {
+    color: var(--colors-purple-800)
+    }
+
+  .d_grid {
+    display: grid
+    }
+
+  .grid-cols_repeat\(auto-fit\,_minmax\(200px\,_1fr\)\) {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))
+    }
+
+  .gap_3 {
+    gap: var(--spacing-3)
+    }
+
+  .border_red\.300 {
+    border-color: var(--colors-red-300)
+    }
+
+  .p_3 {
+    padding: var(--spacing-3)
+    }
+
+  .text_gray\.600 {
+    color: var(--colors-gray-600)
+    }
+
+  .w_full {
+    width: var(--sizes-full)
+    }
+
+  .p_2 {
+    padding: var(--spacing-2)
+    }
+
+  .border_gray\.300 {
+    border-color: var(--colors-gray-300)
+    }
+
+  .rounded_md {
+    border-radius: var(--radii-md)
+    }
+
+  .fs_md {
+    font-size: var(--font-sizes-md)
+    }
+
+  .mt_2 {
+    margin-top: var(--spacing-2)
+    }
+
+  .text_red\.600 {
+    color: var(--colors-red-600)
+    }
+
+  .bg_purple\.500 {
+    background: var(--colors-purple-500)
+    }
+
+  .mb_3 {
+    margin-bottom: var(--spacing-3)
+    }
+
+  .border_purple\.300 {
+    border-color: var(--colors-purple-300)
+    }
+
+  .min-h_350px {
+    min-height: 350px
+    }
+
+  .overflow_visible {
+    overflow: visible
     }
 
   .bg_yellow\.50 {
@@ -204,6 +288,10 @@
     cursor: pointer
     }
 
+  .columns_3 {
+    columns: 3
+    }
+
   .columns_1 {
     columns: 1
     }
@@ -240,8 +328,8 @@
     flex-direction: row
     }
 
-  .hover\:bg_blue\.600:is(:hover, [data-hover]) {
-    background: var(--colors-blue-600)
+  .hover\:bg_purple\.600:is(:hover, [data-hover]) {
+    background: var(--colors-purple-600)
         }
 
   .hover\:bg_green\.600:is(:hover, [data-hover]) {
