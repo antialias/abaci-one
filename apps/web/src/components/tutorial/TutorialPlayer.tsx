@@ -33,10 +33,10 @@ export function TutorialPlayer({
   const [currentValue, setCurrentValue] = useState(0)
   const [isStepCompleted, setIsStepCompleted] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isInitializing, setIsInitializing] = useState(false)
   const [events, setEvents] = useState<TutorialEvent[]>([])
   const [startTime] = useState(Date.now())
   const [stepStartTime, setStepStartTime] = useState(Date.now())
+  const isProgrammaticChange = useRef(false)
   const [uiState, setUIState] = useState<UIState>({
     isPlaying: true,
     isPaused: false,
@@ -68,7 +68,8 @@ export function TutorialPlayer({
   // Initialize step
   useEffect(() => {
     if (currentStep) {
-      setIsInitializing(true)
+      // Mark this as a programmatic change to prevent feedback loop
+      isProgrammaticChange.current = true
       setCurrentValue(currentStep.startValue)
       setIsStepCompleted(false)
       setError(null)
@@ -81,9 +82,6 @@ export function TutorialPlayer({
       })
 
       onStepChange?.(currentStepIndex, currentStep)
-
-      // Clear initialization flag after a brief delay
-      setTimeout(() => setIsInitializing(false), 50)
     }
   }, [currentStepIndex, currentStep, onStepChange, logEvent])
 
@@ -143,8 +141,9 @@ export function TutorialPlayer({
 
   // Abacus event handlers
   const handleValueChange = useCallback((newValue: number) => {
-    // Ignore value changes during step initialization to prevent loops
-    if (isInitializing) {
+    // Ignore programmatic changes to prevent feedback loops
+    if (isProgrammaticChange.current) {
+      isProgrammaticChange.current = false
       return
     }
 
@@ -158,7 +157,7 @@ export function TutorialPlayer({
       newValue,
       timestamp: new Date()
     })
-  }, [currentValue, currentStep, logEvent, isInitializing])
+  }, [currentValue, currentStep, logEvent])
 
   const handleBeadClick = useCallback((beadInfo: any) => {
     logEvent({
