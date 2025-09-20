@@ -8,6 +8,7 @@ import { TypstSoroban } from '@/components/TypstSoroban'
 import { InteractiveAbacus } from '@/components/InteractiveAbacus'
 import { AbacusReact } from '@soroban/abacus-react'
 import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
+import { GuidedAdditionTutorial } from '@/components/GuidedAdditionTutorial'
 
 type TabType = 'reading' | 'arithmetic'
 
@@ -348,7 +349,7 @@ function ReadingNumbersGuide() {
                     scaleFactor={0.8}
                     interactive={false}
                     showNumbers={false}
-                    animated={appConfig.animated}
+                    animated={true}
                   />
                 </div>
 
@@ -511,7 +512,7 @@ function ReadingNumbersGuide() {
                       scaleFactor={0.9}
                       interactive={false}
                       showNumbers={false}
-                      animated={appConfig.animated}
+                      animated={true}
                     />
                   </div>
 
@@ -758,7 +759,7 @@ function ReadingNumbersGuide() {
               scaleFactor={1.5}
               interactive={true}
               showNumbers={true}
-              animated={appConfig.animated}
+              animated={true}
             />
           </div>
 
@@ -924,7 +925,7 @@ function ArithmeticOperationsGuide() {
                   scaleFactor={1.2}
                   interactive={false}
                   showNumbers={true}
-                  animated={appConfig.animated}
+                  animated={true}
                 />
               </div>
             </div>
@@ -954,12 +955,41 @@ function ArithmeticOperationsGuide() {
                   scaleFactor={1.2}
                   interactive={false}
                   showNumbers={true}
-                  animated={appConfig.animated}
+                  animated={true}
                 />
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Guided Addition Tutorial */}
+      <div className={css({
+        bg: 'white',
+        rounded: 'xl',
+        p: '6',
+        mb: '6',
+        shadow: 'sm',
+        border: '1px solid',
+        borderColor: 'gray.200'
+      })}>
+        <h3 className={css({
+          fontSize: 'xl',
+          fontWeight: 'bold',
+          color: 'blue.700',
+          mb: '4',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '2'
+        })}>
+          <span>🎯</span> Guided Addition Tutorial
+        </h3>
+
+        <p className={css({ mb: '6', color: 'gray.700' })}>
+          Learn addition step-by-step with interactive guidance, tooltips, and error correction.
+        </p>
+
+        <GuidedAdditionTutorial />
       </div>
 
       {/* Subtraction Section */}
@@ -1050,7 +1080,7 @@ function ArithmeticOperationsGuide() {
                   scaleFactor={1.2}
                   interactive={false}
                   showNumbers={true}
-                  animated={appConfig.animated}
+                  animated={true}
                 />
               </div>
             </div>
@@ -1080,7 +1110,7 @@ function ArithmeticOperationsGuide() {
                   scaleFactor={1.2}
                   interactive={false}
                   showNumbers={true}
-                  animated={appConfig.animated}
+                  animated={true}
                 />
               </div>
             </div>
