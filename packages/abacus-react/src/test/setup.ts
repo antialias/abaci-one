@@ -30,7 +30,7 @@ vi.mock('@react-spring/web', () => ({
 
 // Mock for @use-gesture/react
 vi.mock('@use-gesture/react', () => ({
-  useDrag: () => ({}),
+  useDrag: () => () => ({}), // Return a function that returns an empty object
 }));
 
 // Mock for @number-flow/react
