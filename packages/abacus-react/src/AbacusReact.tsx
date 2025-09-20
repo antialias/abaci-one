@@ -220,23 +220,54 @@ interface ColumnState {
   earthActive: number;    // 0-4, number of active earth beads
 }
 
-export function useAbacusState(initialValue: number = 0) {
+export function useAbacusState(initialValue: number = 0, targetColumns?: number) {
   // Initialize state from the initial value
-  const initializeFromValue = useCallback((value: number): ColumnState[] => {
+  const initializeFromValue = useCallback((value: number, minColumns?: number): ColumnState[] => {
+    console.log('initializeFromValue called with:', { value, minColumns, targetColumns });
+    if (value === 0) {
+      // Special case: for value 0, use minColumns if provided, otherwise single column
+      const columnCount = minColumns || 1;
+      console.log(`Creating ${columnCount} zero columns for value 0`);
+      return Array(columnCount).fill(null).map(() => ({ heavenActive: false, earthActive: 0 }));
+    }
     const digits = value.toString().split('').map(Number);
-    return digits.map(digit => ({
+    const result = digits.map(digit => ({
       heavenActive: digit >= 5,
       earthActive: digit % 5
     }));
-  }, []);
 
-  const [columnStates, setColumnStates] = useState<ColumnState[]>(() => initializeFromValue(initialValue));
+    // Ensure we have at least minColumns if specified
+    if (minColumns && result.length < minColumns) {
+      const paddingNeeded = minColumns - result.length;
+      const padding = Array(paddingNeeded).fill(null).map(() => ({ heavenActive: false, earthActive: 0 }));
+      return [...padding, ...result];
+    }
+
+    return result;
+  }, [targetColumns]);
+
+  const [columnStates, setColumnStates] = useState<ColumnState[]>(() => initializeFromValue(initialValue, targetColumns));
 
   // Sync with prop changes
   React.useEffect(() => {
     // console.log(`🔄 Syncing internal state to new prop value: ${initialValue}`);
-    setColumnStates(initializeFromValue(initialValue));
-  }, [initialValue, initializeFromValue]);
+    setColumnStates(initializeFromValue(initialValue, targetColumns));
+  }, [initialValue, initializeFromValue, targetColumns]);
+
+  // Expand columnStates to match target columns when needed
+  React.useEffect(() => {
+    console.log('State expansion effect running:', { targetColumns, currentLength: columnStates.length, needsExpansion: targetColumns && columnStates.length < targetColumns });
+    if (targetColumns && columnStates.length < targetColumns) {
+      console.log(`Expanding from ${columnStates.length} to ${targetColumns} columns`);
+      const newStates = [...columnStates];
+      // Pad to the left (higher place values) to maintain abacus convention
+      while (newStates.length < targetColumns) {
+        newStates.unshift({ heavenActive: false, earthActive: 0 });
+      }
+      console.log('Setting new states:', newStates.length);
+      setColumnStates(newStates);
+    }
+  }, [targetColumns]);
 
   // Calculate current value from independent column states
   const value = useMemo(() => {
@@ -248,8 +279,8 @@ export function useAbacusState(initialValue: number = 0) {
   }, [columnStates]);
 
   const setValue = useCallback((newValue: number) => {
-    setColumnStates(initializeFromValue(newValue));
-  }, [initializeFromValue]);
+    setColumnStates(initializeFromValue(newValue, targetColumns));
+  }, [initializeFromValue, targetColumns]);
 
   const getColumnState = useCallback((columnIndex: number): ColumnState => {
     return columnStates[columnIndex] || { heavenActive: false, earthActive: 0 };
@@ -482,9 +513,20 @@ function getBeadColor(
   }
 }
 
-function calculateBeadStates(columnStates: ColumnState[]): BeadConfig[][] {
-  return columnStates.map((columnState, columnIndex) => {
+function calculateBeadStates(columnStates: ColumnState[], originalLength: number): BeadConfig[][] {
+  console.log('calculateBeadStates called with:', {
+    columnStatesLength: columnStates.length,
+    originalLength,
+    columnStates: columnStates.map((state, i) => ({ index: i, state }))
+  });
+  console.log('calculateBeadStates called with:', { columnStatesLength: columnStates.length, originalLength });
+  return columnStates.map((columnState, arrayIndex) => {
     const beads: BeadConfig[] = [];
+    // Each column maps to its array index since columnStates should match display columns
+    const logicalColumnIndex = arrayIndex;
+    console.log(`Column ${arrayIndex}: creating beads with columnIndex=${logicalColumnIndex}`);
+
+    console.log(`About to create heaven bead with columnIndex=${logicalColumnIndex}`);
 
     // Heaven bead (value 5) - independent state
     beads.push({
@@ -492,7 +534,7 @@ function calculateBeadStates(columnStates: ColumnState[]): BeadConfig[][] {
       value: 5,
       active: columnState.heavenActive,
       position: 0,
-      columnIndex
+      columnIndex: logicalColumnIndex
     });
 
     // Earth beads (4 beads, each value 1) - independent state
@@ -502,7 +544,7 @@ function calculateBeadStates(columnStates: ColumnState[]): BeadConfig[][] {
         value: 1,
         active: i < columnState.earthActive,
         position: i,
-        columnIndex
+        columnIndex: logicalColumnIndex
       });
     }
 
@@ -699,6 +741,9 @@ const Bead: React.FC<BeadProps> = ({
       ref={onRef}
       {...(enableGestures ? bind() : {})}
       className={`abacus-bead ${bead.active ? 'active' : 'inactive'} ${hideInactiveBeads && !bead.active ? 'hidden-inactive' : ''}`}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      data-testid={onClick ? `bead-col-${bead.columnIndex}-${bead.type}${bead.type === 'earth' ? `-pos-${bead.position}` : ''}` : undefined}
       transform={enableAnimation ? undefined : `translate(${x - getXOffset()}, ${y - getYOffset()})`}
       style={
         enableAnimation
@@ -775,38 +820,27 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     gestures: gestures ?? contextConfig.gestures,
     showNumbers: showNumbers ?? contextConfig.showNumbers
   };
-  const { value: currentValue, columnStates, toggleBead, setColumnState } = useAbacusState(value);
+  // Calculate effective columns first, without depending on columnStates
+  const effectiveColumns = useMemo(() => {
+    if (columns === 'auto') {
+      const minColumns = Math.max(1, value.toString().length);
+      return showEmptyColumns ? minColumns : minColumns;
+    }
+    return columns;
+  }, [columns, value, showEmptyColumns]);
 
+  const { value: currentValue, columnStates, toggleBead, setColumnState } = useAbacusState(value, effectiveColumns);
 
   // Debug prop changes
   React.useEffect(() => {
     // console.log(`🔄 Component received value prop: ${value}, internal value: ${currentValue}`);
   }, [value, currentValue]);
 
-
-  // Calculate effective columns
-  const effectiveColumns = useMemo(() => {
-    if (columns === 'auto') {
-      const minColumns = Math.max(1, Math.max(currentValue.toString().length, columnStates.length));
-      return showEmptyColumns ? minColumns : minColumns;
-    }
-    return columns;
-  }, [columns, currentValue, showEmptyColumns, columnStates.length]);
-
   const dimensions = useAbacusDimensions(effectiveColumns, finalConfig.scaleFactor, finalConfig.showNumbers);
 
-  // Ensure we have enough column states for the effective columns
-  const paddedColumnStates = useMemo(() => {
-    const padded = [...columnStates];
-    while (padded.length < effectiveColumns) {
-      padded.unshift({ heavenActive: false, earthActive: 0 });
-    }
-    return padded.slice(-effectiveColumns); // Take the rightmost columns
-  }, [columnStates, effectiveColumns]);
-
   const beadStates = useMemo(
-    () => calculateBeadStates(paddedColumnStates),
-    [paddedColumnStates]
+    () => calculateBeadStates(columnStates, columnStates.length),
+    [columnStates]
   );
 
   // Layout calculations using exact Typst positioning
@@ -855,7 +889,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   }, [onClick, callbacks, toggleBead, effectiveColumns, disabledColumns, disabledBeads]);
 
   const handleGestureToggle = useCallback((bead: BeadConfig, direction: 'activate' | 'deactivate') => {
-    const currentState = paddedColumnStates[bead.columnIndex];
+    const currentState = columnStates[bead.columnIndex];
 
     if (bead.type === 'heaven') {
       // Heaven bead: directly set the state based on direction
@@ -882,17 +916,17 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         earthActive: newEarthActive
       });
     }
-  }, [paddedColumnStates, setColumnState]);
+  }, [columnStates, setColumnState]);
 
   // Place value editing - FRESH IMPLEMENTATION
   const [activeColumn, setActiveColumn] = React.useState<number | null>(null);
 
   // Calculate current place values
   const placeValues = React.useMemo(() => {
-    return paddedColumnStates.map(state =>
+    return columnStates.map(state =>
       (state.heavenActive ? 5 : 0) + state.earthActive
     );
-  }, [paddedColumnStates]);
+  }, [columnStates]);
 
   // Update a column from a digit
   const setColumnValue = React.useCallback((columnIndex: number, digit: number) => {
@@ -1078,7 +1112,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             }
           } else {
             // Earth bead positioning - exact Typst formulas (lines 249-261)
-            const columnState = paddedColumnStates[colIndex];
+            const columnState = columnStates[colIndex];
             const earthActive = columnState.earthActive;
 
             if (bead.active) {
@@ -1166,7 +1200,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                 callbacks.onBeadLeave?.(beadClickEvent);
               } : undefined}
               onGestureToggle={handleGestureToggle}
-              onRef={callbacks?.onBeadRef ? (element) => callbacks.onBeadRef(bead, element) : undefined}
+              onRef={callbacks?.onBeadRef ? (element) => callbacks.onBeadRef!(bead, element) : undefined}
               heavenEarthGap={dimensions.heavenEarthGap}
               barY={barY}
             />
@@ -1262,12 +1296,12 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             let y = 0;
 
             if (targetBeadType === 'heaven') {
-              const columnState = paddedColumnStates[targetColumn];
+              const columnState = columnStates[targetColumn];
               y = columnState.heavenActive
                 ? dimensions.heavenEarthGap - dimensions.beadSize / 2 - dimensions.activeGap
                 : dimensions.heavenEarthGap - dimensions.inactiveGap - dimensions.beadSize / 2;
             } else if (targetBeadType === 'earth' && targetBeadPosition !== undefined) {
-              const columnState = paddedColumnStates[targetColumn];
+              const columnState = columnStates[targetColumn];
               const earthActive = columnState.earthActive;
               const isActive = targetBeadPosition < earthActive;
 
