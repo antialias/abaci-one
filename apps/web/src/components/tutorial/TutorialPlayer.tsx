@@ -154,6 +154,54 @@ export function TutorialPlayer({
     onEvent?.(event)
   }, [onEvent])
 
+  // Navigation functions - declare these first since they're used in useEffects
+  const goToStep = useCallback((stepIndex: number) => {
+    if (stepIndex >= 0 && stepIndex < tutorial.steps.length) {
+      const step = tutorial.steps[stepIndex]
+
+      // Mark this as a programmatic change to prevent feedback loop
+      isProgrammaticChange.current = true
+
+      dispatch({
+        type: 'INITIALIZE_STEP',
+        stepIndex,
+        startValue: step.startValue,
+        stepId: step.id
+      })
+
+      // Notify parent of step change
+      onStepChange?.(stepIndex, step)
+    }
+  }, [tutorial.steps, onStepChange])
+
+  const goToNextStep = useCallback(() => {
+    if (navigationState.canGoNext) {
+      goToStep(currentStepIndex + 1)
+    } else if (currentStepIndex === tutorial.steps.length - 1) {
+      // Tutorial completed
+      const timeSpent = (Date.now() - startTime) / 1000
+      const score = events.filter(e => e.type === 'STEP_COMPLETED' && e.success).length / tutorial.steps.length * 100
+
+      dispatch({
+        type: 'ADD_EVENT',
+        event: {
+          type: 'TUTORIAL_COMPLETED',
+          tutorialId: tutorial.id,
+          score,
+          timestamp: new Date()
+        }
+      })
+
+      onTutorialComplete?.(score, timeSpent)
+    }
+  }, [navigationState.canGoNext, currentStepIndex, tutorial.steps.length, tutorial.id, startTime, events, onTutorialComplete, goToStep])
+
+  const goToPreviousStep = useCallback(() => {
+    if (navigationState.canGoPrevious) {
+      goToStep(currentStepIndex - 1)
+    }
+  }, [navigationState.canGoPrevious, currentStepIndex, goToStep])
+
   // Initialize step on mount only
   useEffect(() => {
     if (currentStep && currentStepIndex === initialStepIndex) {
@@ -193,51 +241,6 @@ export function TutorialPlayer({
       notifyEvent(lastEvent)
     }
   }, [events, notifyEvent])
-
-  // Navigation functions
-  const goToStep = useCallback((stepIndex: number) => {
-    if (stepIndex >= 0 && stepIndex < tutorial.steps.length) {
-      const step = tutorial.steps[stepIndex]
-
-      // Mark this as a programmatic change to prevent feedback loop
-      isProgrammaticChange.current = true
-
-      dispatch({
-        type: 'INITIALIZE_STEP',
-        stepIndex,
-        startValue: step.startValue,
-        stepId: step.id
-      })
-
-      // Notify parent of step change
-      onStepChange?.(stepIndex, step)
-    }
-  }, [tutorial.steps, onStepChange])
-
-  const goToNextStep = useCallback(() => {
-    if (navigationState.canGoNext) {
-      goToStep(currentStepIndex + 1)
-    } else if (currentStepIndex === tutorial.steps.length - 1) {
-      // Tutorial completed
-      const timeSpent = (Date.now() - startTime) / 1000
-      const score = events.filter(e => e.type === 'STEP_COMPLETED' && e.success).length / tutorial.steps.length * 100
-
-      logEvent({
-        type: 'TUTORIAL_COMPLETED',
-        tutorialId: tutorial.id,
-        score,
-        timestamp: new Date()
-      })
-
-      onTutorialComplete?.(score, timeSpent)
-    }
-  }, [navigationState.canGoNext, currentStepIndex, tutorial.steps.length, tutorial.id, startTime, events, logEvent, onTutorialComplete, goToStep])
-
-  const goToPreviousStep = useCallback(() => {
-    if (navigationState.canGoPrevious) {
-      goToStep(currentStepIndex - 1)
-    }
-  }, [navigationState.canGoPrevious, currentStepIndex, goToStep])
 
   // Abacus event handlers
   const handleValueChange = useCallback((newValue: number) => {
