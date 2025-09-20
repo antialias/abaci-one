@@ -1,0 +1,306 @@
+@layer utilities {
+
+  .h_100vh {
+    height: 100vh
+    }
+
+  .bg_gray\.50 {
+    background: var(--colors-gray-50)
+    }
+
+  .border-b_1px_solid {
+    border-bottom: 1px solid
+    }
+
+  .fs_2xl {
+    font-size: var(--font-sizes-2xl)
+    }
+
+  .text_blue\.700 {
+    color: var(--colors-blue-700)
+    }
+
+  .cursor_not-allowed {
+    cursor: not-allowed
+    }
+
+  .opacity_0\.5 {
+    opacity: 0.5
+    }
+
+  .opacity_1 {
+    opacity: 1
+    }
+
+  .px_4 {
+    padding-inline: var(--spacing-4)
+    }
+
+  .py_2 {
+    padding-block: var(--spacing-2)
+    }
+
+  .bg_green\.500 {
+    background: var(--colors-green-500)
+    }
+
+  .border_red\.200 {
+    border-color: var(--colors-red-200)
+    }
+
+  .text_red\.800 {
+    color: var(--colors-red-800)
+    }
+
+  .text_yellow\.700 {
+    color: var(--colors-yellow-700)
+    }
+
+  .ml_2 {
+    margin-left: var(--spacing-2)
+    }
+
+  .w_400px {
+    width: 400px
+    }
+
+  .border-r_1px_solid {
+    border-right: 1px solid
+    }
+
+  .p_4 {
+    padding: var(--spacing-4)
+    }
+
+  .overflow-y_auto {
+    overflow-y: auto
+    }
+
+  .mb_6 {
+    margin-bottom: var(--spacing-6)
+    }
+
+  .font_bold {
+    font-weight: var(--font-weights-bold)
+    }
+
+  .px_3 {
+    padding-inline: var(--spacing-3)
+    }
+
+  .bg_blue\.500 {
+    background: var(--colors-blue-500)
+    }
+
+  .text_white {
+    color: var(--colors-white)
+    }
+
+  .border_blue\.300 {
+    border-color: var(--colors-blue-300)
+    }
+
+  .bg_blue\.50 {
+    background: var(--colors-blue-50)
+    }
+
+  .p_3 {
+    padding: var(--spacing-3)
+    }
+
+  .fs_sm {
+    font-size: var(--font-sizes-sm)
+    }
+
+  .border_green\.300 {
+    border-color: var(--colors-green-300)
+    }
+
+  .bg_green\.50 {
+    background: var(--colors-green-50)
+    }
+
+  .text_green\.700 {
+    color: var(--colors-green-700)
+    }
+
+  .bg_white {
+    background: var(--colors-white)
+    }
+
+  .px_2 {
+    padding-inline: var(--spacing-2)
+    }
+
+  .py_1 {
+    padding-block: var(--spacing-1)
+    }
+
+  .border_red\.300 {
+    border-color: var(--colors-red-300)
+    }
+
+  .rounded_sm {
+    border-radius: var(--radii-sm)
+    }
+
+  .bg_red\.50 {
+    background: var(--colors-red-50)
+    }
+
+  .text_red\.700 {
+    color: var(--colors-red-700)
+    }
+
+  .cursor_pointer {
+    cursor: pointer
+    }
+
+  .text_gray\.600 {
+    color: var(--colors-gray-600)
+    }
+
+  .mt_2 {
+    margin-top: var(--spacing-2)
+    }
+
+  .text_red\.600 {
+    color: var(--colors-red-600)
+    }
+
+  .text_yellow\.600 {
+    color: var(--colors-yellow-600)
+    }
+
+  .mt_3 {
+    margin-top: var(--spacing-3)
+    }
+
+  .pt_3 {
+    padding-top: var(--spacing-3)
+    }
+
+  .border-t_1px_solid {
+    border-top: 1px solid
+    }
+
+  .border_gray\.200 {
+    border-color: var(--colors-gray-200)
+    }
+
+  .font_medium {
+    font-weight: var(--font-weights-medium)
+    }
+
+  .d_block {
+    display: block
+    }
+
+  .w_full {
+    width: var(--sizes-full)
+    }
+
+  .p_2 {
+    padding: var(--spacing-2)
+    }
+
+  .border_1px_solid {
+    border: 1px solid
+    }
+
+  .border_gray\.300 {
+    border-color: var(--colors-gray-300)
+    }
+
+  .rounded_md {
+    border-radius: var(--radii-md)
+    }
+
+  .fs_xs {
+    font-size: var(--font-sizes-xs)
+    }
+
+  .resize_vertical {
+    resize: vertical
+    }
+
+  .gap_0 {
+    gap: var(--spacing-0)
+    }
+
+  .flex_1 {
+    flex: 1 1 0%
+    }
+
+  .mb_3 {
+    margin-bottom: var(--spacing-3)
+    }
+
+  .justify_space-between {
+    justify-content: space-between
+    }
+
+  .gap_10px {
+    gap: 10px
+    }
+
+  .mb_1 {
+    margin-bottom: var(--spacing-1)
+    }
+
+  .gap_1 {
+    gap: var(--spacing-1)
+    }
+
+  .items_center {
+    align-items: center
+    }
+
+  .flex_row {
+    flex-direction: row
+    }
+
+  .gap_3 {
+    gap: var(--spacing-3)
+    }
+
+  .d_flex {
+    display: flex
+    }
+
+  .flex_column {
+    flex-direction: column
+    }
+
+  .gap_2 {
+    gap: var(--spacing-2)
+    }
+
+  .hover\:bg_blue\.50:is(:hover, [data-hover]) {
+    background: var(--colors-blue-50)
+        }
+
+  .hover\:bg_green\.600:is(:hover, [data-hover]) {
+    background: var(--colors-green-600)
+        }
+
+  .hover\:bg_blue\.600:is(:hover, [data-hover]) {
+    background: var(--colors-blue-600)
+        }
+
+  .hover\:bg_blue\.100:is(:hover, [data-hover]) {
+    background: var(--colors-blue-100)
+        }
+
+  .hover\:bg_green\.100:is(:hover, [data-hover]) {
+    background: var(--colors-green-100)
+        }
+
+  .hover\:bg_gray\.50:is(:hover, [data-hover]) {
+    background: var(--colors-gray-50)
+        }
+
+  .hover\:bg_red\.100:is(:hover, [data-hover]) {
+    background: var(--colors-red-100)
+        }
+}
