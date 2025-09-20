@@ -899,26 +899,6 @@
     .\[\@media_\(max-width\:_768px\)\]\:fs_40px {
       font-size: 40px
     }
-        }
-
-  @media (max-width: 480px) {
-    .\[\@media_\(max-width\:_480px\)\]\:gap_8px {
-      gap: 8px
-    }
-    .\[\@media_\(max-width\:_480px\)\]\:h_120px {
-      height: 120px
-    }
-
-    .\[\@media_\(max-width\:_480px\)\]\:min-w_90px {
-      min-width: 90px
-    }
-    .\[\@media_\(max-width\:_480px\)\]\:fs_32px {
-      font-size: 32px
-    }
-        }
-}8px\)\]\:min-w_100px {
-      min-width: 100px
-    }
 
     .\[\@media_\(max-width\:_768px\)\]\:gap_10px {
       gap: 10px
@@ -938,12 +918,18 @@
         }
 
   @media (max-width: 480px) {
+    .\[\@media_\(max-width\:_480px\)\]\:gap_8px {
+      gap: 8px
+    }
     .\[\@media_\(max-width\:_480px\)\]\:h_120px {
       height: 120px
     }
 
     .\[\@media_\(max-width\:_480px\)\]\:min-w_90px {
       min-width: 90px
+    }
+    .\[\@media_\(max-width\:_480px\)\]\:fs_32px {
+      font-size: 32px
     }
 
     .\[\@media_\(max-width\:_480px\)\]\:gap_8px {

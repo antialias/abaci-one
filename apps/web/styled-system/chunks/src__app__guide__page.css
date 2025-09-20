@@ -4,10 +4,6 @@
     min-height: 100vh
     }
 
-  .color-scheme_place-value {
-    color-scheme: place-value
-    }
-
   .bg_linear-gradient\(135deg\,_\#667eea_0\%\,_\#764ba2_100\%\) {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)
     }
@@ -164,10 +160,6 @@
     font-size: var(--font-sizes-xs)
     }
 
-  .text_blue\.700 {
-    color: var(--colors-blue-700)
-    }
-
   .p_8 {
     padding: var(--spacing-8)
     }
@@ -270,6 +262,10 @@
 
   .text_green\.700 {
     color: var(--colors-green-700)
+    }
+
+  .text_blue\.700 {
+    color: var(--colors-blue-700)
     }
 
   .text_red\.600 {
