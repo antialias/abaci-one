@@ -243,7 +243,11 @@ export function TutorialPlayer({
     }
   }, [events, notifyEvent])
 
-  // Abacus event handlers
+  // Debounced value change handling for smooth gesture performance
+  const valueChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastValueRef = useRef<number>(currentValue)
+  const pendingValueRef = useRef<number | null>(null)
+
   const handleValueChange = useCallback((newValue: number) => {
     // Ignore programmatic changes to prevent feedback loops
     if (isProgrammaticChange.current) {
@@ -251,13 +255,43 @@ export function TutorialPlayer({
       return
     }
 
-    dispatch({
-      type: 'USER_VALUE_CHANGE',
-      oldValue: currentValue,
-      newValue,
-      stepId: currentStep.id
-    })
-  }, [currentValue, currentStep])
+    // Store the pending value for immediate abacus updates
+    pendingValueRef.current = newValue
+
+    // Clear any existing timeout
+    if (valueChangeTimeoutRef.current) {
+      clearTimeout(valueChangeTimeoutRef.current)
+    }
+
+    // Debounce the tutorial system notification
+    valueChangeTimeoutRef.current = setTimeout(() => {
+      const finalValue = pendingValueRef.current
+      if (finalValue !== null && finalValue !== lastValueRef.current) {
+        dispatch({
+          type: 'USER_VALUE_CHANGE',
+          oldValue: lastValueRef.current,
+          newValue: finalValue,
+          stepId: currentStep.id
+        })
+        lastValueRef.current = finalValue
+      }
+      pendingValueRef.current = null
+    }, 150) // 150ms debounce - gestures settle quickly
+  }, [currentStep])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (valueChangeTimeoutRef.current) {
+        clearTimeout(valueChangeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Keep lastValueRef in sync with currentValue changes from external sources
+  useEffect(() => {
+    lastValueRef.current = currentValue
+  }, [currentValue])
 
   const handleBeadClick = useCallback((beadInfo: any) => {
     dispatch({
