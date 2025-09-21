@@ -128,10 +128,6 @@
     margin-top: auto
     }
 
-  .bg_blue\.50 {
-    background: var(--colors-blue-50)
-    }
-
   .text_blue\.800 {
     color: var(--colors-blue-800)
     }
@@ -150,14 +146,6 @@
 
   .bg_gray\.50 {
     background: var(--colors-gray-50)
-    }
-
-  .border_blue\.200 {
-    border-color: var(--colors-blue-200)
-    }
-
-  .fs_xs {
-    font-size: var(--font-sizes-xs)
     }
 
   .p_8 {
@@ -228,10 +216,6 @@
     background: var(--colors-blue-600)
     }
 
-  .text_blue\.600 {
-    color: var(--colors-blue-600)
-    }
-
   .bg_gradient-to-br {
     background: gradient-to-br
     }
@@ -264,8 +248,28 @@
     color: var(--colors-green-700)
     }
 
+  .bg_blue\.50 {
+    background: var(--colors-blue-50)
+    }
+
+  .border_blue\.200 {
+    border-color: var(--colors-blue-200)
+    }
+
+  .fs_xs {
+    font-size: var(--font-sizes-xs)
+    }
+
+  .text_blue\.600 {
+    color: var(--colors-blue-600)
+    }
+
   .text_blue\.700 {
     color: var(--colors-blue-700)
+    }
+
+  .text-decor_underline {
+    text-decoration: underline
     }
 
   .text_red\.600 {
@@ -584,6 +588,10 @@
 
   .hover\:text_gray\.800:is(:hover, [data-hover]) {
     color: var(--colors-gray-800)
+        }
+
+  .hover\:text_blue\.800:is(:hover, [data-hover]) {
+    color: var(--colors-blue-800)
         }
 
   .hover\:transform_translateY\(-1px\):is(:hover, [data-hover]) {
