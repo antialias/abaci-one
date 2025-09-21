@@ -1303,29 +1303,31 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         }
       } else if (e.key === 'Tab' && e.shiftKey) {
         e.preventDefault();
-        // console.log(`⬅️ SHIFT+TAB: moving to previous column`);
+        // console.log(`➡️ SHIFT+TAB: moving to lower place value (right)`);
 
-        // Move focus to the previous column to the left (without clearing)
-        const prevColumn = activeColumn - 1;
-        if (prevColumn >= 0) {
-          // console.log(`⬅️ Moving focus to previous column: ${prevColumn}`);
-          setActiveColumn(prevColumn);
+        // Shift+Tab moves RIGHT (to lower place values): hundreds → tens → ones
+        // Higher columnIndex = lower place value
+        const nextColumn = activeColumn + 1;
+        if (nextColumn < effectiveColumns) {
+          // console.log(`➡️ Moving focus to lower place value: ${nextColumn}`);
+          setActiveColumn(nextColumn);
         } else {
-          // console.log(`🏁 Reached first column, wrapping to last column`);
-          setActiveColumn(effectiveColumns - 1); // Wrap around to last column
+          // console.log(`🏁 Reached lowest place, wrapping to highest place`);
+          setActiveColumn(0); // Wrap to leftmost (highest place)
         }
       } else if (e.key === 'Tab') {
         e.preventDefault();
-        // console.log(`🔄 TAB: moving to next column`);
+        // console.log(`🔄 TAB: moving to next higher place value (left)`);
 
-        // Move focus to the next column to the right
-        const nextColumn = activeColumn + 1;
-        if (nextColumn < effectiveColumns) {
-          // console.log(`➡️ Moving focus to next column: ${nextColumn}`);
+        // Tab moves LEFT (to higher place values): ones → tens → hundreds
+        // Lower columnIndex = higher place value
+        const nextColumn = activeColumn - 1;
+        if (nextColumn >= 0) {
+          // console.log(`⬅️ Moving focus to higher place value: ${nextColumn}`);
           setActiveColumn(nextColumn);
         } else {
-          // console.log(`🏁 Reached last column, wrapping to first column`);
-          setActiveColumn(0); // Wrap around to first column
+          // console.log(`🏁 Reached highest place, wrapping to ones place`);
+          setActiveColumn(effectiveColumns - 1); // Wrap to rightmost (ones place)
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
