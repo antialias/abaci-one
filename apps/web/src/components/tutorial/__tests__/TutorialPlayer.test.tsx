@@ -14,7 +14,7 @@ vi.mock('@soroban/abacus-react', () => ({
         onClick={() => {
           onValueChange?.(value + 1)
           callbacks?.onBeadClick?.({
-            columnIndex: 0,
+            columnIndex: 4,
             beadType: 'earth',
             position: 0,
             active: false
@@ -42,7 +42,7 @@ const mockTutorial: Tutorial = {
       description: 'Add one',
       startValue: 0,
       targetValue: 1,
-      highlightBeads: [{ columnIndex: 0, beadType: 'earth', position: 0 }],
+      highlightBeads: [{ columnIndex: 4, beadType: 'earth', position: 0 }],
       expectedAction: 'add',
       actionDescription: 'Click the first bead',
       tooltip: {

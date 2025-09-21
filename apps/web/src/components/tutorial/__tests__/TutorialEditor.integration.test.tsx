@@ -16,7 +16,7 @@ vi.mock('@soroban/abacus-react', () => ({
         onClick={() => {
           onValueChange?.(value + 1)
           callbacks?.onBeadClick?.({
-            columnIndex: 0,
+            columnIndex: 4,
             beadType: 'earth',
             position: 0,
             active: false

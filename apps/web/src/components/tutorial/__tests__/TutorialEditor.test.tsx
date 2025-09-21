@@ -19,7 +19,7 @@ const mockTutorial: Tutorial = {
       description: 'Add one',
       startValue: 0,
       targetValue: 1,
-      highlightBeads: [{ columnIndex: 0, beadType: 'earth', position: 0 }],
+      highlightBeads: [{ columnIndex: 4, beadType: 'earth', position: 0 }],
       expectedAction: 'add',
       actionDescription: 'Click the first bead',
       tooltip: {
