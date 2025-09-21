@@ -7,6 +7,16 @@ import { PracticeStep, createBasicSkillSet } from '../../types/tutorial'
 import { SkillSelector, SkillConfiguration } from './SkillSelector'
 import { validatePracticeStepConfiguration } from '../../utils/problemGenerator'
 import { createBasicAllowedConfiguration, skillConfigurationToSkillSets } from '../../utils/skillConfiguration'
+import {
+  EditorLayout,
+  TextInput,
+  NumberInput,
+  GridLayout,
+  Section,
+  Button,
+  FormGroup,
+  inputStyles
+} from './shared/EditorComponents'
 
 interface PracticeStepEditorProps {
   step: PracticeStep
@@ -41,6 +51,48 @@ export function PracticeStepEditor({
       forbiddenSkills: forbidden
     })
   }, [updateStep])
+
+  // Helper functions for skill mode management
+  const getModeStyles = (skillMode: string): any => {
+    switch (skillMode) {
+      case 'off':
+        return { bg: 'gray.100', color: 'gray.400', border: '1px solid', borderColor: 'gray.200' }
+      case 'allowed':
+        return { bg: 'green.100', color: 'green.800', border: '1px solid', borderColor: 'green.300' }
+      case 'target':
+        return { bg: 'blue.100', color: 'blue.800', border: '1px solid', borderColor: 'blue.300' }
+      case 'forbidden':
+        return { bg: 'red.100', color: 'red.800', border: '1px solid', borderColor: 'red.300' }
+      default:
+        return { bg: 'gray.100', color: 'gray.600', border: '1px solid', borderColor: 'gray.300' }
+    }
+  }
+
+  const getModeIcon = (skillMode: string): string => {
+    switch (skillMode) {
+      case 'off': return '⚫'
+      case 'allowed': return '✅'
+      case 'target': return '🎯'
+      case 'forbidden': return '❌'
+      default: return '⚫'
+    }
+  }
+
+  const getNextMode = (currentMode: string): string => {
+    const modes = ['off', 'allowed', 'target', 'forbidden']
+    const currentIndex = modes.indexOf(currentMode)
+    return modes[(currentIndex + 1) % modes.length]
+  }
+
+  const updateSkill = useCallback((category: string, skill: string, mode: string) => {
+    const newSkills = { ...skillConfig }
+    if (category === 'basic') {
+      newSkills.basic = { ...newSkills.basic, [skill]: mode }
+    } else if (category === 'fiveComplements') {
+      newSkills.fiveComplements = { ...newSkills.fiveComplements, [skill]: mode }
+    }
+    updateSkillConfiguration(newSkills)
+  }, [skillConfig, updateSkillConfiguration])
 
   // Convert partial skill sets to full skill sets for the selector
   const targetSkillsForSelector: SkillSet = {
@@ -109,429 +161,230 @@ export function PracticeStepEditor({
   ]
 
   return (
-    <div className={css({
-      p: 4,
-      bg: 'purple.50',
-      border: '1px solid',
-      borderColor: 'purple.200',
-      rounded: 'lg'
-    }, className)}>
-      <div className={vstack({ gap: 4, alignItems: 'stretch' })}>
-        {/* Header */}
-        <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
-          <h3 className={css({
-            fontSize: 'lg',
-            fontWeight: 'semibold',
-            color: 'purple.800'
-          })}>
-            Practice Step Editor
-          </h3>
-          {onDelete && (
-            <button
-              onClick={onDelete}
-              className={css({
-                px: 3,
-                py: 1,
-                bg: 'red.500',
-                color: 'white',
-                rounded: 'md',
-                fontSize: 'sm',
-                cursor: 'pointer',
-                _hover: { bg: 'red.600' }
-              })}
-            >
-              Delete
-            </button>
-          )}
-        </div>
-
-        {/* Basic Information */}
-        <div className={vstack({ gap: 3, alignItems: 'stretch' })}>
-          <div>
-            <label className={css({
-              display: 'block',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: 'gray.700',
-              mb: 1
-            })}>
-              Title
-            </label>
-            <input
-              type="text"
-              value={step.title}
-              onChange={(e) => updateStep({ title: e.target.value })}
-              className={css({
-                w: 'full',
-                px: 3,
-                py: 2,
-                border: '1px solid',
-                borderColor: 'gray.300',
-                rounded: 'md',
-                fontSize: 'sm'
-              })}
-              placeholder="e.g., Practice: Basic Addition"
-            />
-          </div>
-
-          <div>
-            <label className={css({
-              display: 'block',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: 'gray.700',
-              mb: 1
-            })}>
-              Description
-            </label>
-            <textarea
-              value={step.description}
-              onChange={(e) => updateStep({ description: e.target.value })}
-              rows={2}
-              className={css({
-                w: 'full',
-                px: 3,
-                py: 2,
-                border: '1px solid',
-                borderColor: 'gray.300',
-                rounded: 'md',
-                fontSize: 'sm'
-              })}
-              placeholder="Explain what this practice session covers"
-            />
-          </div>
-
-          <div className={hstack({ gap: 4 })}>
-            <div className={css({ flex: 1 })}>
-              <label className={css({
-                display: 'block',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                color: 'gray.700',
-                mb: 1
-              })}>
-                Problem Count
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={50}
-                value={step.problemCount}
-                onChange={(e) => updateStep({ problemCount: parseInt(e.target.value) || 1 })}
-                className={css({
-                  w: 'full',
-                  px: 3,
-                  py: 2,
-                  border: '1px solid',
-                  borderColor: 'gray.300',
-                  rounded: 'md',
-                  fontSize: 'sm'
-                })}
-              />
-            </div>
-
-            <div className={css({ flex: 1 })}>
-              <label className={css({
-                display: 'block',
-                fontSize: 'sm',
-                fontWeight: 'medium',
-                color: 'gray.700',
-                mb: 1
-              })}>
-                Max Terms per Problem
-              </label>
-              <input
-                type="number"
-                min={2}
-                max={10}
-                value={step.maxTerms}
-                onChange={(e) => updateStep({ maxTerms: parseInt(e.target.value) || 2 })}
-                className={css({
-                  w: 'full',
-                  px: 3,
-                  py: 2,
-                  border: '1px solid',
-                  borderColor: 'gray.300',
-                  rounded: 'md',
-                  fontSize: 'sm'
-                })}
-              />
-            </div>
-
-          </div>
-        </div>
-
-        {/* Quick Preset Configurations */}
-        <div>
-          <label className={css({
-            display: 'block',
-            fontSize: 'sm',
-            fontWeight: 'medium',
-            color: 'gray.700',
-            mb: 2
-          })}>
-            Quick Presets
-          </label>
-          <div className={hstack({ gap: 2, flexWrap: 'wrap' })}>
-            {presetConfigurations.map((preset) => (
-              <button
-                key={preset.name}
-                onClick={() => updateSkillConfiguration(preset.config)}
-                className={css({
-                  px: 3,
-                  py: 2,
-                  bg: 'blue.100',
-                  color: 'blue.800',
-                  border: '1px solid',
-                  borderColor: 'blue.300',
-                  rounded: 'md',
-                  fontSize: 'sm',
-                  cursor: 'pointer',
-                  _hover: { bg: 'blue.200' }
-                })}
-              >
-                {preset.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Unified Skill Configuration */}
-        <SkillSelector
-          skills={skillConfig}
-          onChange={updateSkillConfiguration}
-          title="Skill Configuration"
+    <EditorLayout
+      title="Practice Step"
+      onClose={() => {/* This will be replaced by parent handler */}}
+      onDelete={onDelete}
+      deleteLabel="Delete"
+      className={className}
+    >
+      {/* Basic Info */}
+      <FormGroup>
+        <TextInput
+          label="Title"
+          value={step.title}
+          onChange={(value) => updateStep({ title: value })}
+          placeholder="Practice step title"
         />
 
-        {/* Advanced Options Toggle */}
-        <button
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className={css({
-            px: 3,
-            py: 2,
-            bg: 'gray.100',
-            color: 'gray.700',
-            border: '1px solid',
-            borderColor: 'gray.300',
-            rounded: 'md',
-            fontSize: 'sm',
-            cursor: 'pointer',
-            _hover: { bg: 'gray.200' }
-          })}
-        >
-          {showAdvanced ? '▼' : '▶'} Advanced Constraints
-        </button>
+        <TextInput
+          label="Description"
+          value={step.description}
+          onChange={(value) => updateStep({ description: value })}
+          placeholder="Brief description"
+          multiline
+          rows={2}
+        />
 
-        {/* Advanced Options */}
-        {showAdvanced && (
-          <div className={vstack({ gap: 3, alignItems: 'stretch' })}>
-            <h5 className={css({
-              fontSize: 'md',
-              fontWeight: 'medium',
-              color: 'gray.700'
-            })}>
-              Number & Sum Constraints
-            </h5>
+        <FormGroup columns={2}>
+          <NumberInput
+            label="Problems"
+            value={step.problemCount}
+            onChange={(value) => updateStep({ problemCount: value })}
+            min={1}
+            max={50}
+          />
+          <NumberInput
+            label="Max Terms"
+            value={step.maxTerms}
+            onChange={(value) => updateStep({ maxTerms: value })}
+            min={2}
+            max={10}
+          />
+        </FormGroup>
+      </FormGroup>
 
-            <div className={hstack({ gap: 4 })}>
-              <div className={css({ flex: 1 })}>
-                <label className={css({
-                  display: 'block',
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'gray.700',
-                  mb: 1
-                })}>
-                  Number Range Min
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={step.numberRange?.min || 1}
-                  onChange={(e) => updateStep({
-                    numberRange: {
-                      ...step.numberRange,
-                      min: parseInt(e.target.value) || 1,
-                      max: step.numberRange?.max || 9
-                    }
-                  })}
-                  className={css({
-                    w: 'full',
-                    px: 3,
-                    py: 2,
-                    border: '1px solid',
-                    borderColor: 'gray.300',
-                    rounded: 'md',
-                    fontSize: 'sm'
-                  })}
-                />
-              </div>
+        {/* Quick Setup Presets */}
+        <Section title="Quick Setup" background="none">
+          <GridLayout columns={2} gap={1}>
+            {presetConfigurations.map((preset) => (
+              <Button
+                key={preset.name}
+                onClick={() => updateSkillConfiguration(preset.config)}
+                variant="secondary"
+                size="xs"
+                title={preset.name}
+              >
+                {preset.name.split(' ')[0]}
+              </Button>
+            ))}
+          </GridLayout>
+        </Section>
 
-              <div className={css({ flex: 1 })}>
-                <label className={css({
-                  display: 'block',
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'gray.700',
-                  mb: 1
-                })}>
-                  Number Range Max
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={step.numberRange?.max || 9}
-                  onChange={(e) => updateStep({
-                    numberRange: {
-                      min: step.numberRange?.min || 1,
-                      max: parseInt(e.target.value) || 9
-                    }
-                  })}
-                  className={css({
-                    w: 'full',
-                    px: 3,
-                    py: 2,
-                    border: '1px solid',
-                    borderColor: 'gray.300',
-                    rounded: 'md',
-                    fontSize: 'sm'
-                  })}
-                />
-              </div>
-            </div>
-
-            <div className={hstack({ gap: 4 })}>
-              <div className={css({ flex: 1 })}>
-                <label className={css({
-                  display: 'block',
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'gray.700',
-                  mb: 1
-                })}>
-                  Maximum Sum
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={999}
-                  value={step.sumConstraints?.maxSum || 9}
-                  onChange={(e) => updateStep({
-                    sumConstraints: {
-                      ...step.sumConstraints,
-                      maxSum: parseInt(e.target.value) || 9
-                    }
-                  })}
-                  className={css({
-                    w: 'full',
-                    px: 3,
-                    py: 2,
-                    border: '1px solid',
-                    borderColor: 'gray.300',
-                    rounded: 'md',
-                    fontSize: 'sm'
-                  })}
-                />
-              </div>
-
-              <div className={css({ flex: 1 })}>
-                <label className={css({
-                  display: 'block',
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'gray.700',
-                  mb: 1
-                })}>
-                  Minimum Sum (Optional)
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={999}
-                  value={step.sumConstraints?.minSum || ''}
-                  onChange={(e) => updateStep({
-                    sumConstraints: {
-                      ...step.sumConstraints,
-                      minSum: e.target.value ? parseInt(e.target.value) : undefined
-                    }
-                  })}
-                  className={css({
-                    w: 'full',
-                    px: 3,
-                    py: 2,
-                    border: '1px solid',
-                    borderColor: 'gray.300',
-                    rounded: 'md',
-                    fontSize: 'sm'
-                  })}
-                  placeholder="Leave empty for no minimum"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Validation Results */}
-        {validationResult && (
-          <div className={css({
-            p: 3,
-            bg: validationResult.isValid ? 'green.50' : 'yellow.50',
-            border: '1px solid',
-            borderColor: validationResult.isValid ? 'green.200' : 'yellow.200',
-            rounded: 'md'
-          })}>
-            <h5 className={css({
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: validationResult.isValid ? 'green.800' : 'yellow.800',
-              mb: 2
-            })}>
-              {validationResult.isValid ? '✅ Configuration Valid' : '⚠️ Configuration Warnings'}
-            </h5>
-
-            {validationResult.warnings.length > 0 && (
-              <div className={css({ mb: 2 })}>
-                <strong className={css({ fontSize: 'xs', color: 'yellow.800' })}>Warnings:</strong>
-                <ul className={css({ fontSize: 'xs', color: 'yellow.700', pl: 4, mt: 1 })}>
-                  {validationResult.warnings.map((warning, index) => (
-                    <li key={index}>• {warning}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {validationResult.suggestions.length > 0 && (
-              <div>
-                <strong className={css({ fontSize: 'xs', color: 'blue.800' })}>Suggestions:</strong>
-                <ul className={css({ fontSize: 'xs', color: 'blue.700', pl: 4, mt: 1 })}>
-                  {validationResult.suggestions.map((suggestion, index) => (
-                    <li key={index}>• {suggestion}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Note about preview */}
+        {/* Compact Skill Configuration */}
         <div className={css({
-          p: 3,
-          bg: 'blue.50',
+          p: 2,
+          bg: 'white',
           border: '1px solid',
-          borderColor: 'blue.200',
-          rounded: 'md',
-          textAlign: 'center'
+          borderColor: 'gray.200',
+          rounded: 'md'
         })}>
-          <div className={css({
+          <h4 className={css({
             fontSize: 'sm',
-            color: 'blue.700'
+            fontWeight: 'medium',
+            mb: 2,
+            color: 'gray.800'
           })}>
-            💡 <strong>Tip:</strong> Check the preview panel on the right to see generated sample problems based on your configuration.
+            Skills
+          </h4>
+
+          <div className={vstack({ gap: 2, alignItems: 'stretch' })}>
+            {/* Basic Operations - Compact */}
+            <div>
+              <h5 className={css({ fontSize: 'xs', fontWeight: 'medium', mb: 1, color: 'gray.700' })}>
+                Basic
+              </h5>
+              <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1 })}>
+                {[
+                  { key: 'directAddition', label: '1-4' },
+                  { key: 'heavenBead', label: '5' },
+                  { key: 'simpleCombinations', label: '6-9' }
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => updateSkill('basic', key, getNextMode(skillConfig.basic[key as keyof typeof skillConfig.basic]))}
+                    className={css({
+                      px: 1,
+                      py: 1,
+                      rounded: 'sm',
+                      fontSize: 'xs',
+                      cursor: 'pointer',
+                      textAlign: 'center'
+                    }, getModeStyles(skillConfig.basic[key as keyof typeof skillConfig.basic]))}
+                  >
+                    {getModeIcon(skillConfig.basic[key as keyof typeof skillConfig.basic])} {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Five Complements - Compact */}
+            <div>
+              <h5 className={css({ fontSize: 'xs', fontWeight: 'medium', mb: 1, color: 'gray.700' })}>
+                Five Complements
+              </h5>
+              <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 })}>
+                {[
+                  { key: '4=5-1', label: '4=5-1' },
+                  { key: '3=5-2', label: '3=5-2' },
+                  { key: '2=5-3', label: '2=5-3' },
+                  { key: '1=5-4', label: '1=5-4' }
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => updateSkill('fiveComplements', key, getNextMode(skillConfig.fiveComplements[key as keyof typeof skillConfig.fiveComplements]))}
+                    className={css({
+                      px: 1,
+                      py: 1,
+                      rounded: 'sm',
+                      fontSize: 'xs',
+                      cursor: 'pointer',
+                      textAlign: 'center'
+                    }, getModeStyles(skillConfig.fiveComplements[key as keyof typeof skillConfig.fiveComplements]))}
+                  >
+                    {getModeIcon(skillConfig.fiveComplements[key as keyof typeof skillConfig.fiveComplements])} {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+
+        {/* Advanced Toggle */}
+        <Button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          variant="outline"
+          size="xs"
+        >
+          {showAdvanced ? '▼' : '▶'} Advanced
+        </Button>
+
+      {/* Advanced Options */}
+      {showAdvanced && (
+        <Section title="Advanced Settings" background="gray">
+          <FormGroup columns={2}>
+            <NumberInput
+              label="Min #"
+              value={step.numberRange?.min || 1}
+              onChange={(value) => updateStep({
+                numberRange: {
+                  ...step.numberRange,
+                  min: value,
+                  max: step.numberRange?.max || 9
+                }
+              })}
+              min={1}
+              max={99}
+            />
+            <NumberInput
+              label="Max #"
+              value={step.numberRange?.max || 9}
+              onChange={(value) => updateStep({
+                numberRange: {
+                  min: step.numberRange?.min || 1,
+                  max: value
+                }
+              })}
+              min={1}
+              max={99}
+            />
+          </FormGroup>
+          <FormGroup columns={2}>
+            <NumberInput
+              label="Max Sum"
+              value={step.sumConstraints?.maxSum || 9}
+              onChange={(value) => updateStep({
+                sumConstraints: {
+                  ...step.sumConstraints,
+                  maxSum: value
+                }
+              })}
+              min={1}
+              max={999}
+            />
+            <NumberInput
+              label="Min Sum"
+              value={step.sumConstraints?.minSum || ''}
+              onChange={(value) => updateStep({
+                sumConstraints: {
+                  ...step.sumConstraints,
+                  minSum: value || undefined
+                }
+              })}
+              min={1}
+              max={999}
+              placeholder="Optional"
+            />
+          </FormGroup>
+        </Section>
+      )}
+
+      {/* Validation */}
+      {validationResult && !validationResult.isValid && (
+        <Section background="none">
+          <div className={css({
+            p: 2,
+            bg: 'yellow.50',
+            border: '1px solid',
+            borderColor: 'yellow.200',
+            rounded: 'sm',
+            fontSize: 'xs',
+            color: 'yellow.800'
+          })}>
+            ⚠️ {validationResult.warnings.length} warning(s)
+          </div>
+        </Section>
+      )}
+    </EditorLayout>
   )
 }
