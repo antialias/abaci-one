@@ -1034,7 +1034,7 @@ const Bead: React.FC<BeadProps> = ({
       className={`abacus-bead ${bead.active ? 'active' : 'inactive'} ${hideInactiveBeads && !bead.active ? 'hidden-inactive' : ''}`}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      data-testid={onClick ? `bead-col-${bead.columnIndex}-${bead.type}${bead.type === 'earth' ? `-pos-${bead.position}` : ''}` : undefined}
+      data-testid={onClick ? `bead-place-${bead.placeValue}-${bead.type}${bead.type === 'earth' ? `-pos-${bead.position}` : ''}` : undefined}
       transform={enableAnimation ? undefined : `translate(${x - getXOffset()}, ${y - getYOffset()})`}
       style={
         enableAnimation
@@ -1175,8 +1175,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
   const handleBeadClick = useCallback((bead: BeadConfig, event?: React.MouseEvent) => {
     // Check if bead is disabled using new place-value system
+    const columnIndex = effectiveColumns - 1 - bead.placeValue; // Convert place value to legacy column index for disabled check
     const isDisabled = isBeadDisabledByPlaceValue(bead, disabledBeads) ||
-                      (disabledColumns?.includes(bead.columnIndex ?? -1));
+                      (disabledColumns?.includes(columnIndex));
 
     if (isDisabled) {
       return;
@@ -1185,7 +1186,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     // Create enhanced event object
     const beadClickEvent: BeadClickEvent = {
       bead,
-      columnIndex: bead.columnIndex,
+      columnIndex: columnIndex, // Legacy API compatibility
       beadType: bead.type,
       position: bead.position,
       active: bead.active,
@@ -1204,12 +1205,13 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   }, [onClick, callbacks, toggleBead, disabledColumns, disabledBeads]);
 
   const handleGestureToggle = useCallback((bead: BeadConfig, direction: 'activate' | 'deactivate') => {
-    const currentState = columnStates[bead.columnIndex];
+    const columnIndex = effectiveColumns - 1 - bead.placeValue; // Convert place value to column index
+    const currentState = columnStates[columnIndex];
 
     if (bead.type === 'heaven') {
       // Heaven bead: directly set the state based on direction
       const newHeavenActive = direction === 'activate';
-      setColumnState(bead.columnIndex, {
+      setColumnState(columnIndex, {
         ...currentState,
         heavenActive: newHeavenActive
       });
@@ -1226,12 +1228,12 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         newEarthActive = Math.min(currentState.earthActive, bead.position);
       }
 
-      setColumnState(bead.columnIndex, {
+      setColumnState(columnIndex, {
         ...currentState,
         earthActive: newEarthActive
       });
     }
-  }, [columnStates, setColumnState]);
+  }, [columnStates, setColumnState, effectiveColumns]);
 
   // Place value editing - FRESH IMPLEMENTATION
   const [activeColumn, setActiveColumn] = React.useState<number | null>(null);
@@ -1451,7 +1453,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
           const beadStyle = mergeBeadStyles(
             { fill: color },
             customStyles,
-            bead.columnIndex,
+            effectiveColumns - 1 - bead.placeValue, // Convert place value to column index for styling
             bead.type,
             bead.type === 'earth' ? bead.position : undefined,
             bead.active
@@ -1462,7 +1464,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
           // Check if bead is disabled - NO MORE EFFECTIVECOLUMNS THREADING!
           const isDisabled = isBeadDisabledByPlaceValue(bead, disabledBeads) ||
-                            (disabledColumns?.includes(bead.columnIndex ?? -1));
+                            (disabledColumns?.includes(effectiveColumns - 1 - bead.placeValue));
 
           return (
             <Bead
@@ -1483,7 +1485,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               onHover={callbacks?.onBeadHover ? (event) => {
                 const beadClickEvent: BeadClickEvent = {
                   bead,
-                  columnIndex: bead.columnIndex,
+                  columnIndex: effectiveColumns - 1 - bead.placeValue, // Convert place value to column index for callback
                   beadType: bead.type,
                   position: bead.position,
                   active: bead.active,
@@ -1495,7 +1497,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               onLeave={callbacks?.onBeadLeave ? (event) => {
                 const beadClickEvent: BeadClickEvent = {
                   bead,
-                  columnIndex: bead.columnIndex,
+                  columnIndex: effectiveColumns - 1 - bead.placeValue, // Convert place value to column index for callback
                   beadType: bead.type,
                   position: bead.position,
                   active: bead.active,
