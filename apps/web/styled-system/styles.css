@@ -511,8 +511,16 @@
     --gradient-to: var(--colors-blue-50)
     }
 
+  .max-w_100\% {
+    max-width: 100%
+    }
+
   .d_inline-flex {
     display: inline-flex
+    }
+
+  .max-h_100\% {
+    max-height: 100%
     }
 
   .overflow_auto {
@@ -961,6 +969,10 @@
     position: sticky
     }
 
+  .z_30 {
+    z-index: 30
+    }
+
   .text_brand\.700 {
     color: var(--colors-brand-700)
     }
@@ -1218,22 +1230,6 @@
     padding-inline: var(--spacing-6)
     }
 
-  .w_240 {
-    width: 240px
-    }
-
-  .w_300 {
-    width: 300px
-    }
-
-  .h_320 {
-    height: 320px
-    }
-
-  .h_400 {
-    height: 400px
-    }
-
   .h_320px {
     height: 320px
     }
@@ -1272,6 +1268,10 @@
 
   .transform_scale\(2\.2\) {
     transform: scale(2.2)
+    }
+
+  .origin_center {
+    transform-origin: center
     }
 
   .transition_all_0\.3s_ease {
@@ -1380,34 +1380,6 @@
 
   .h_240pt {
     height: 240pt
-    }
-
-  .transform_scale\(1\.8\) {
-    transform: scale(1.8)
-    }
-
-  .origin_center {
-    transform-origin: center
-    }
-
-  .max-w_100\% {
-    max-width: 100%
-    }
-
-  .max-h_100\% {
-    max-height: 100%
-    }
-
-  .\[\&_svg\]\:d_block svg {
-    display: block
-        }
-
-  .w_120pt {
-    width: 120pt
-    }
-
-  .h_160pt {
-    height: 160pt
     }
 
   .bg_brand\.100 {
@@ -1572,6 +1544,10 @@
     background: red.25
     }
 
+  .fs_3xl {
+    font-size: var(--font-sizes-3xl)
+    }
+
   .opacity_0\.6 {
     opacity: 0.6
     }
@@ -1602,10 +1578,6 @@
 
   .h_400px {
     height: 400px
-    }
-
-  .fs_3xl {
-    font-size: var(--font-sizes-3xl)
     }
 
   .border_orange\.300 {
@@ -1702,6 +1674,14 @@
 
   .top_0 {
     top: var(--spacing-0)
+    }
+
+  .left_0 {
+    left: var(--spacing-0)
+    }
+
+  .right_0 {
+    right: var(--spacing-0)
     }
 
   .bottom_0 {
@@ -1816,12 +1796,28 @@
     padding: var(--spacing-8)
     }
 
+  .text_purple\.700 {
+    color: var(--colors-purple-700)
+    }
+
   .leading_relaxed {
     line-height: var(--line-heights-relaxed)
     }
 
   .my_2 {
     margin-block: var(--spacing-2)
+    }
+
+  .top_100\% {
+    top: 100%
+    }
+
+  .left_50\% {
+    left: 50%
+    }
+
+  .transform_translateX\(-50\%\) {
+    transform: translateX(-50%)
     }
 
   .text_gray\.400 {
@@ -1876,12 +1872,20 @@
     width: 100%
     }
 
+  .pos_absolute {
+    position: absolute
+    }
+
   .top_4 {
     top: var(--spacing-4)
     }
 
   .right_4 {
     right: var(--spacing-4)
+    }
+
+  .z_10 {
+    z-index: 10
     }
 
   .columns_2 {
@@ -2102,50 +2106,6 @@
 
   .overflow-y_auto {
     overflow-y: auto
-    }
-
-  .bottom_-8px {
-    bottom: -8px
-    }
-
-  .left_0 {
-    left: var(--spacing-0)
-    }
-
-  .right_0 {
-    right: var(--spacing-0)
-    }
-
-  .z_10 {
-    z-index: 10
-    }
-
-  .text_purple\.700 {
-    color: var(--colors-purple-700)
-    }
-
-  .z_30 {
-    z-index: 30
-    }
-
-  .pos_absolute {
-    position: absolute
-    }
-
-  .top_100\% {
-    top: 100%
-    }
-
-  .left_50\% {
-    left: 50%
-    }
-
-  .transform_translateX\(-50\%\) {
-    transform: translateX(-50%)
-    }
-
-  .z_20 {
-    z-index: 20
     }
 
   .fs_md {
@@ -2704,6 +2664,18 @@
     background: var(--colors-blue-600)
         }
 
+  .hover\:bg_red\.600:is(:hover, [data-hover]) {
+    background: var(--colors-red-600)
+        }
+
+  .hover\:bg_gray\.100:is(:hover, [data-hover]) {
+    background: var(--colors-gray-100)
+        }
+
+  .hover\:bg_red\.200:is(:hover, [data-hover]) {
+    background: var(--colors-red-200)
+        }
+
   .hover\:opacity_1\!:is(:hover, [data-hover]) {
     opacity: 1 !important
         }
@@ -2730,22 +2702,6 @@
 
   .hover\:text_purple\.700:is(:hover, [data-hover]) {
     color: var(--colors-purple-700)
-        }
-
-  .hover\:bg_red\.600:is(:hover, [data-hover]) {
-    background: var(--colors-red-600)
-        }
-
-  .hover\:bg_gray\.100:is(:hover, [data-hover]) {
-    background: var(--colors-gray-100)
-        }
-
-  .hover\:bg_red\.200:is(:hover, [data-hover]) {
-    background: var(--colors-red-200)
-        }
-
-  .hover\:bg_purple\.200:is(:hover, [data-hover]) {
-    background: var(--colors-purple-200)
         }
 
   .hover\:bg_blue\.200:is(:hover, [data-hover]) {
@@ -2827,7 +2783,6 @@
         }
 
   @media (max-width: 768px) {
-
     .\[\@media_\(max-width\:_768px\)\]\:gap_10px {
       gap: 10px
     }
@@ -2846,7 +2801,6 @@
         }
 
   @media (max-width: 480px) {
-
     .\[\@media_\(max-width\:_480px\)\]\:gap_8px {
       gap: 8px
     }
