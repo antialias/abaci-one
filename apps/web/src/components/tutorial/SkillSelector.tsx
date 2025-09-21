@@ -1,54 +1,51 @@
 'use client'
 
 import { useCallback } from 'react'
-import { css } from '../../styled-system/css'
-import { hstack, vstack } from '../../styled-system/patterns'
-import { SkillSet } from '../../types/tutorial'
+import { css } from '../../../styled-system/css'
+import { hstack, vstack } from '../../../styled-system/patterns'
+import { SkillConfiguration, SkillMode } from '../../utils/skillConfiguration'
+
+// Export for convenience
+export type { SkillConfiguration, SkillMode } from '../../utils/skillConfiguration'
 
 interface SkillSelectorProps {
-  skills: SkillSet
-  onChange: (skills: SkillSet) => void
-  mode?: 'required' | 'target' | 'forbidden'
+  skills: SkillConfiguration
+  onChange: (skills: SkillConfiguration) => void
   title?: string
   className?: string
 }
 
-type SkillMode = 'required' | 'target' | 'forbidden'
-
 export function SkillSelector({
   skills,
   onChange,
-  mode = 'required',
-  title = 'Skills',
+  title = 'Skill Configuration',
   className
 }: SkillSelectorProps) {
 
-  const updateSkill = useCallback((category: keyof SkillSet, skill: string, enabled: boolean) => {
+  const updateSkill = useCallback((category: keyof SkillConfiguration, skill: string, mode: SkillMode) => {
     const newSkills = { ...skills }
 
     if (category === 'basic') {
-      newSkills.basic = { ...newSkills.basic, [skill]: enabled }
+      newSkills.basic = { ...newSkills.basic, [skill]: mode }
     } else if (category === 'fiveComplements') {
-      newSkills.fiveComplements = { ...newSkills.fiveComplements, [skill]: enabled }
+      newSkills.fiveComplements = { ...newSkills.fiveComplements, [skill]: mode }
     } else if (category === 'tenComplements') {
-      newSkills.tenComplements = { ...newSkills.tenComplements, [skill]: enabled }
+      newSkills.tenComplements = { ...newSkills.tenComplements, [skill]: mode }
     }
 
     onChange(newSkills)
   }, [skills, onChange])
 
-  const getModeStyles = (skillEnabled: boolean): string => {
-    if (!skillEnabled) {
-      return css({
-        bg: 'gray.100',
-        color: 'gray.400',
-        border: '1px solid',
-        borderColor: 'gray.200'
-      })
-    }
-
-    switch (mode) {
-      case 'required':
+  const getModeStyles = (skillMode: SkillMode): string => {
+    switch (skillMode) {
+      case 'off':
+        return css({
+          bg: 'gray.100',
+          color: 'gray.400',
+          border: '1px solid',
+          borderColor: 'gray.200'
+        })
+      case 'allowed':
         return css({
           bg: 'green.100',
           color: 'green.800',
@@ -79,19 +76,35 @@ export function SkillSelector({
     }
   }
 
+  const getModeIcon = (skillMode: SkillMode): string => {
+    switch (skillMode) {
+      case 'off': return '⚫'
+      case 'allowed': return '✅'
+      case 'target': return '🎯'
+      case 'forbidden': return '❌'
+      default: return '⚫'
+    }
+  }
+
+  const getNextMode = (currentMode: SkillMode): SkillMode => {
+    const modes: SkillMode[] = ['off', 'allowed', 'target', 'forbidden']
+    const currentIndex = modes.indexOf(currentMode)
+    return modes[(currentIndex + 1) % modes.length]
+  }
+
   const SkillButton = ({
     category,
     skill,
     label,
-    enabled
+    mode
   }: {
-    category: keyof SkillSet
+    category: keyof SkillConfiguration
     skill: string
     label: string
-    enabled: boolean
+    mode: SkillMode
   }) => (
     <button
-      onClick={() => updateSkill(category, skill, !enabled)}
+      onClick={() => updateSkill(category, skill, getNextMode(mode))}
       className={css({
         px: 3,
         py: 2,
@@ -100,13 +113,15 @@ export function SkillSelector({
         fontWeight: 'medium',
         cursor: 'pointer',
         transition: 'all 0.2s',
-        _hover: { opacity: 0.8 }
-      }, getModeStyles(enabled))}
+        _hover: { opacity: 0.8 },
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2
+      }, getModeStyles(mode))}
+      title={`Click to cycle: ${mode} → ${getNextMode(mode)}`}
     >
-      {enabled && mode === 'required' && '✅ '}
-      {enabled && mode === 'target' && '🎯 '}
-      {enabled && mode === 'forbidden' && '❌ '}
-      {label}
+      <span>{getModeIcon(mode)}</span>
+      <span>{label}</span>
     </button>
   )
 
@@ -143,19 +158,19 @@ export function SkillSelector({
               category="basic"
               skill="directAddition"
               label="Direct Addition (1-4)"
-              enabled={skills.basic.directAddition}
+              mode={skills.basic.directAddition}
             />
             <SkillButton
               category="basic"
               skill="heavenBead"
               label="Heaven Bead (5)"
-              enabled={skills.basic.heavenBead}
+              mode={skills.basic.heavenBead}
             />
             <SkillButton
               category="basic"
               skill="simpleCombinations"
               label="Simple Combinations (6-9)"
-              enabled={skills.basic.simpleCombinations}
+              mode={skills.basic.simpleCombinations}
             />
           </div>
         </div>
@@ -175,25 +190,25 @@ export function SkillSelector({
               category="fiveComplements"
               skill="4=5-1"
               label="4 = 5 - 1"
-              enabled={skills.fiveComplements["4=5-1"]}
+              mode={skills.fiveComplements["4=5-1"]}
             />
             <SkillButton
               category="fiveComplements"
               skill="3=5-2"
               label="3 = 5 - 2"
-              enabled={skills.fiveComplements["3=5-2"]}
+              mode={skills.fiveComplements["3=5-2"]}
             />
             <SkillButton
               category="fiveComplements"
               skill="2=5-3"
               label="2 = 5 - 3"
-              enabled={skills.fiveComplements["2=5-3"]}
+              mode={skills.fiveComplements["2=5-3"]}
             />
             <SkillButton
               category="fiveComplements"
               skill="1=5-4"
               label="1 = 5 - 4"
-              enabled={skills.fiveComplements["1=5-4"]}
+              mode={skills.fiveComplements["1=5-4"]}
             />
           </div>
         </div>
@@ -209,13 +224,13 @@ export function SkillSelector({
             Ten Complements
           </h5>
           <div className={hstack({ gap: 2, flexWrap: 'wrap' })}>
-            {Object.entries(skills.tenComplements).map(([complement, enabled]) => (
+            {Object.entries(skills.tenComplements).map(([complement, mode]) => (
               <SkillButton
                 key={complement}
                 category="tenComplements"
                 skill={complement}
                 label={complement}
-                enabled={enabled}
+                mode={mode}
               />
             ))}
           </div>
@@ -231,9 +246,21 @@ export function SkillSelector({
         fontSize: 'xs',
         color: 'gray.600'
       })}>
-        {mode === 'required' && '✅ Skills the user must know to solve problems'}
-        {mode === 'target' && '🎯 Skills to specifically practice (generates problems requiring these)'}
-        {mode === 'forbidden' && '❌ Skills the user hasn\'t learned yet (problems won\'t require these)'}
+        <div className={css({ fontWeight: 'medium', mb: 2 })}>Click skills to cycle through modes:</div>
+        <div className={hstack({ gap: 4, flexWrap: 'wrap' })}>
+          <div className={hstack({ gap: 1, alignItems: 'center' })}>
+            <span>⚫</span><span>Off - Not used</span>
+          </div>
+          <div className={hstack({ gap: 1, alignItems: 'center' })}>
+            <span>✅</span><span>Allowed - Can be used</span>
+          </div>
+          <div className={hstack({ gap: 1, alignItems: 'center' })}>
+            <span>🎯</span><span>Target - Focus practice</span>
+          </div>
+          <div className={hstack({ gap: 1, alignItems: 'center' })}>
+            <span>❌</span><span>Forbidden - Not learned yet</span>
+          </div>
+        </div>
       </div>
     </div>
   )
