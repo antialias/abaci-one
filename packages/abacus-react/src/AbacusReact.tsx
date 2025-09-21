@@ -304,6 +304,11 @@ export interface PlaceState {
 // State map keyed by place value - this eliminates the indexing nightmare!
 export type PlaceStatesMap = Map<ValidPlaceValues, PlaceState>;
 
+/**
+ * @deprecated Use useAbacusPlaceStates() instead.
+ * This hook uses array-based column indexing which requires totalColumns threading.
+ * The new hook uses Map-based place values for cleaner architecture.
+ */
 export function useAbacusState(initialValue: number = 0, targetColumns?: number) {
   // Initialize state from the initial value
   const initializeFromValue = useCallback((value: number, minColumns?: number): ColumnState[] => {
@@ -555,6 +560,10 @@ function mergeBeadStyles(
 
 // REMOVED: normalizeBeadHighlight function - no longer needed with place-value architecture!
 
+/**
+ * @deprecated Use isBeadHighlightedByPlaceValue() instead.
+ * This function requires totalColumns threading which the new architecture eliminates.
+ */
 function isBeadHighlighted(
   columnIndex: number,
   beadType: 'heaven' | 'earth',
@@ -565,13 +574,23 @@ function isBeadHighlighted(
   if (!highlightBeads || !totalColumns) return false;
 
   return highlightBeads.some(highlight => {
-    const normalizedHighlight = normalizeBeadHighlight(highlight, totalColumns);
-    return normalizedHighlight.columnIndex === columnIndex &&
-           normalizedHighlight.beadType === beadType &&
-           (normalizedHighlight.position === undefined || normalizedHighlight.position === position);
+    // Simple inline conversion for legacy function
+    let targetColumnIndex: number;
+    if ('placeValue' in highlight) {
+      targetColumnIndex = totalColumns - 1 - highlight.placeValue;
+    } else {
+      targetColumnIndex = highlight.columnIndex;
+    }
+    return targetColumnIndex === columnIndex &&
+           highlight.beadType === beadType &&
+           (highlight.position === undefined || highlight.position === position);
   });
 }
 
+/**
+ * @deprecated Use isBeadDisabledByPlaceValue() instead.
+ * This function requires totalColumns threading which the new architecture eliminates.
+ */
 function isBeadDisabled(
   columnIndex: number,
   beadType: 'heaven' | 'earth',
@@ -589,10 +608,16 @@ function isBeadDisabled(
   if (!disabledBeads || !totalColumns) return false;
 
   return disabledBeads.some(disabled => {
-    const normalizedDisabled = normalizeBeadHighlight(disabled, totalColumns);
-    return normalizedDisabled.columnIndex === columnIndex &&
-           normalizedDisabled.beadType === beadType &&
-           (normalizedDisabled.position === undefined || normalizedDisabled.position === position);
+    // Simple inline conversion for legacy function
+    let targetColumnIndex: number;
+    if ('placeValue' in disabled) {
+      targetColumnIndex = totalColumns - 1 - disabled.placeValue;
+    } else {
+      targetColumnIndex = disabled.columnIndex;
+    }
+    return targetColumnIndex === columnIndex &&
+           disabled.beadType === beadType &&
+           (disabled.position === undefined || disabled.position === position);
   });
 }
 
