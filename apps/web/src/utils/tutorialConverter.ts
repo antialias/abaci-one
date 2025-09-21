@@ -26,7 +26,7 @@ interface ExistingTutorialStep {
   startValue: number
   targetValue: number
   highlightBeads?: Array<{
-    columnIndex: number
+    placeValue: number
     beadType: 'heaven' | 'earth'
     position?: number
   }>
@@ -54,7 +54,7 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     description: 'Start by adding your first earth bead',
     startValue: 0,
     targetValue: 1,
-    highlightBeads: [{ columnIndex: 4, beadType: 'earth', position: 0 }],
+    highlightBeads: [{ placeValue: 0, beadType: 'earth', position: 0 }],
     expectedAction: 'add',
     actionDescription: 'Click the first earth bead to move it up',
     tooltip: {
@@ -74,7 +74,7 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     description: 'Add the second earth bead to make 2',
     startValue: 1,
     targetValue: 2,
-    highlightBeads: [{ columnIndex: 4, beadType: 'earth', position: 1 }],
+    highlightBeads: [{ placeValue: 0, beadType: 'earth', position: 1 }],
     expectedAction: 'add',
     actionDescription: 'Click the second earth bead to move it up',
     tooltip: {
@@ -94,7 +94,7 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     description: 'Add the third earth bead to make 3',
     startValue: 2,
     targetValue: 3,
-    highlightBeads: [{ columnIndex: 4, beadType: 'earth', position: 2 }],
+    highlightBeads: [{ placeValue: 0, beadType: 'earth', position: 2 }],
     expectedAction: 'add',
     actionDescription: 'Click the third earth bead to move it up',
     tooltip: {
@@ -114,7 +114,7 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     description: 'Add the fourth earth bead to make 4',
     startValue: 3,
     targetValue: 4,
-    highlightBeads: [{ columnIndex: 4, beadType: 'earth', position: 3 }],
+    highlightBeads: [{ placeValue: 0, beadType: 'earth', position: 3 }],
     expectedAction: 'add',
     actionDescription: 'Click the fourth earth bead to complete 4',
     tooltip: {
@@ -136,7 +136,7 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     description: 'Use the heaven bead to represent 5',
     startValue: 0,
     targetValue: 5,
-    highlightBeads: [{ columnIndex: 4, beadType: 'heaven' }],
+    highlightBeads: [{ placeValue: 0, beadType: 'heaven' }],
     expectedAction: 'add',
     actionDescription: 'Click the heaven bead to activate it',
     tooltip: {
@@ -156,7 +156,7 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     description: 'Add 1 to 5 by activating one earth bead',
     startValue: 5,
     targetValue: 6,
-    highlightBeads: [{ columnIndex: 4, beadType: 'earth', position: 0 }],
+    highlightBeads: [{ placeValue: 0, beadType: 'earth', position: 0 }],
     expectedAction: 'add',
     actionDescription: 'Click the first earth bead to make 6',
     tooltip: {
@@ -179,8 +179,8 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     startValue: 3,
     targetValue: 7,
     highlightBeads: [
-      { columnIndex: 4, beadType: 'heaven' },
-      { columnIndex: 4, beadType: 'earth', position: 0 }
+      { placeValue: 0, beadType: 'heaven' },
+      { placeValue: 0, beadType: 'earth', position: 0 }
     ],
     expectedAction: 'multi-step',
     actionDescription: 'First add heaven bead (5), then remove 1 earth bead',
@@ -206,9 +206,9 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     startValue: 2,
     targetValue: 5,
     highlightBeads: [
-      { columnIndex: 4, beadType: 'heaven' },
-      { columnIndex: 4, beadType: 'earth', position: 0 },
-      { columnIndex: 4, beadType: 'earth', position: 1 }
+      { placeValue: 0, beadType: 'heaven' },
+      { placeValue: 0, beadType: 'earth', position: 0 },
+      { placeValue: 0, beadType: 'earth', position: 1 }
     ],
     expectedAction: 'multi-step',
     actionDescription: 'Add heaven bead (5), then remove 2 earth beads',
@@ -237,8 +237,8 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     startValue: 6,
     targetValue: 8,
     highlightBeads: [
-      { columnIndex: 4, beadType: 'earth', position: 1 },
-      { columnIndex: 4, beadType: 'earth', position: 2 }
+      { placeValue: 0, beadType: 'earth', position: 1 },
+      { placeValue: 0, beadType: 'earth', position: 2 }
     ],
     expectedAction: 'add',
     actionDescription: 'Add two more earth beads',
@@ -260,9 +260,9 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     startValue: 7,
     targetValue: 11,
     highlightBeads: [
-      { columnIndex: 1, beadType: 'heaven' },
-      { columnIndex: 4, beadType: 'earth', position: 0 },
-      { columnIndex: 4, beadType: 'earth', position: 1 }
+      { placeValue: 1, beadType: 'heaven' },
+      { placeValue: 0, beadType: 'earth', position: 0 },
+      { placeValue: 0, beadType: 'earth', position: 1 }
     ],
     expectedAction: 'multi-step',
     actionDescription: 'This will move to tens place: activate left heaven, remove 3 earth',

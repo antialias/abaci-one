@@ -8,7 +8,8 @@ import { TypstSoroban } from '@/components/TypstSoroban'
 import { InteractiveAbacus } from '@/components/InteractiveAbacus'
 import { AbacusReact } from '@soroban/abacus-react'
 import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
-import { GuidedAdditionTutorial } from '@/components/GuidedAdditionTutorial'
+import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
+import { getTutorialForEditor } from '@/utils/tutorialConverter'
 
 type TabType = 'reading' | 'arithmetic'
 
@@ -989,7 +990,45 @@ function ArithmeticOperationsGuide() {
           Learn addition step-by-step with interactive guidance, tooltips, and error correction.
         </p>
 
-        <GuidedAdditionTutorial />
+        <div className={css({
+          bg: 'blue.50',
+          border: '1px solid',
+          borderColor: 'blue.200',
+          rounded: 'lg',
+          p: 4,
+          mb: 4
+        })}>
+          <p className={css({
+            fontSize: 'sm',
+            color: 'blue.700',
+            mb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          })}>
+            <span>✏️</span>
+            <strong>This tutorial is now editable!</strong>
+          </p>
+          <p className={css({ fontSize: 'xs', color: 'blue.600' })}>
+            You can customize this tutorial using our new tutorial editor system.{' '}
+            <a
+              href="/tutorial-editor"
+              className={css({
+                color: 'blue.700',
+                textDecoration: 'underline',
+                _hover: { color: 'blue.800' }
+              })}
+            >
+              Open in Editor →
+            </a>
+          </p>
+        </div>
+
+        <TutorialPlayer
+          tutorial={getTutorialForEditor()}
+          isDebugMode={false}
+          showDebugPanel={false}
+        />
       </div>
 
       {/* Subtraction Section */}

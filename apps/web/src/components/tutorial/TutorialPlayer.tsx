@@ -306,11 +306,16 @@ export function TutorialPlayer({
 
     // Check if this is the correct action
     if (currentStep.highlightBeads && Array.isArray(currentStep.highlightBeads)) {
-      const isCorrectBead = currentStep.highlightBeads.some(highlight =>
-        highlight.columnIndex === beadInfo.columnIndex &&
-        highlight.beadType === beadInfo.beadType &&
-        (highlight.position === undefined || highlight.position === beadInfo.position)
-      )
+      const isCorrectBead = currentStep.highlightBeads.some(highlight => {
+        // Get place value from highlight (convert columnIndex to placeValue if needed)
+        const highlightPlaceValue = highlight.placeValue ?? (4 - highlight.columnIndex);
+        // Get place value from bead click event
+        const beadPlaceValue = beadInfo.bead ? beadInfo.bead.placeValue : (4 - beadInfo.columnIndex);
+
+        return highlightPlaceValue === beadPlaceValue &&
+               highlight.beadType === beadInfo.beadType &&
+               (highlight.position === undefined || highlight.position === beadInfo.position);
+      });
 
       if (!isCorrectBead) {
         dispatch({ type: 'SET_ERROR', error: currentStep.errorMessages.wrongBead })
@@ -331,7 +336,7 @@ export function TutorialPlayer({
   }, [currentStep])
 
   const handleBeadRef = useCallback((bead: any, element: SVGElement | null) => {
-    const key = `${bead.columnIndex}-${bead.type}-${bead.position}`
+    const key = `${bead.placeValue}-${bead.type}-${bead.position}`
     if (element) {
       beadRefs.current.set(key, element)
     } else {
@@ -368,14 +373,35 @@ export function TutorialPlayer({
     }
 
     return {
-      beads: currentStep.highlightBeads.reduce((acc, highlight) => ({
-        ...acc,
-        [highlight.columnIndex]: {
-          [highlight.beadType]: highlight.beadType === 'earth' && highlight.position !== undefined
-            ? { [highlight.position]: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 3 } }
-            : { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 3 }
+      beads: currentStep.highlightBeads.reduce((acc, highlight) => {
+        // Convert columnIndex to placeValue for compatibility
+        const placeValue = highlight.placeValue ?? (4 - highlight.columnIndex);
+
+        // Initialize column if it doesn't exist
+        if (!acc[placeValue]) {
+          acc[placeValue] = {};
         }
-      }), {})
+
+        // Add the bead style to the appropriate type
+        if (highlight.beadType === 'earth' && highlight.position !== undefined) {
+          if (!acc[placeValue].earth) {
+            acc[placeValue].earth = {};
+          }
+          acc[placeValue].earth[highlight.position] = {
+            fill: '#fbbf24',
+            stroke: '#f59e0b',
+            strokeWidth: 3
+          };
+        } else {
+          acc[placeValue][highlight.beadType] = {
+            fill: '#fbbf24',
+            stroke: '#f59e0b',
+            strokeWidth: 3
+          };
+        }
+
+        return acc;
+      }, {} as any)
     };
   }, [currentStep.highlightBeads]);
 

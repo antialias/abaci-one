@@ -40,3 +40,5 @@ temp/
 
 # Claude settings (keep local only)
 .claude/settings.local.json
+*storybook.log
+storybook-static

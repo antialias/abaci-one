@@ -135,11 +135,11 @@ export default function TutorialEditorPage() {
       // Highlight beads validation
       if (step.highlightBeads) {
         step.highlightBeads.forEach((highlight, bIndex) => {
-          if (highlight.columnIndex < 0 || highlight.columnIndex > 4) {
+          if (highlight.placeValue < 0 || highlight.placeValue > 4) {
             errors.push({
               stepId: step.id,
               field: 'highlightBeads',
-              message: `Step ${index + 1}: Highlight bead ${bIndex + 1} has invalid column index`,
+              message: `Step ${index + 1}: Highlight bead ${bIndex + 1} has invalid place value`,
               severity: 'error'
             })
           }

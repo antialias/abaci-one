@@ -7,7 +7,7 @@ export interface TutorialStep {
   startValue: number
   targetValue: number
   highlightBeads?: Array<{
-    columnIndex: number
+    placeValue: number
     beadType: 'heaven' | 'earth'
     position?: number // for earth beads, 0-3
   }>
