@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { TutorialPlayer } from './TutorialPlayer'
 import { css } from '../../../styled-system/css'
 import { stack, hstack, vstack } from '../../../styled-system/patterns'
@@ -1031,6 +1031,17 @@ export function TutorialEditor({
     )
   }, [editorState.validation, tutorial.steps])
 
+  // Memoize TutorialPlayer props to avoid expensive recalculations on every render
+  const playerStepIndex = useMemo(() => {
+    return editorState.selectedStepIndex !== null
+      ? editorState.selectedStepIndex
+      : (editorState.previewStepIndex || 0);
+  }, [editorState.selectedStepIndex, editorState.previewStepIndex]);
+
+  const playerKey = useMemo(() => {
+    return `tutorial-player-${playerStepIndex}`;
+  }, [playerStepIndex]);
+
   return (
     <div className={css({
       display: 'flex',
@@ -1394,9 +1405,9 @@ export function TutorialEditor({
                     ) : (
                       /* Tutorial Player for Concept Steps */
                       <TutorialPlayer
-                        key={`tutorial-player-${editorState.selectedStepIndex !== null ? editorState.selectedStepIndex : (editorState.previewStepIndex || 0)}`}
+                        key={playerKey}
                         tutorial={tutorial}
-                        initialStepIndex={editorState.selectedStepIndex !== null ? editorState.selectedStepIndex : (editorState.previewStepIndex || 0)}
+                        initialStepIndex={playerStepIndex}
                         isDebugMode={true}
                         showDebugPanel={editorState.isEditing}
                       />
@@ -1437,9 +1448,9 @@ export function TutorialEditor({
           </div>
 
           <TutorialPlayer
-            key={`tutorial-player-${editorState.selectedStepIndex !== null ? editorState.selectedStepIndex : (editorState.previewStepIndex || 0)}`}
+            key={playerKey}
             tutorial={tutorial}
-            initialStepIndex={editorState.selectedStepIndex !== null ? editorState.selectedStepIndex : (editorState.previewStepIndex || 0)}
+            initialStepIndex={playerStepIndex}
             isDebugMode={true}
             showDebugPanel={editorState.isEditing}
           />
