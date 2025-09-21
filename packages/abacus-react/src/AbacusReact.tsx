@@ -86,6 +86,80 @@ export interface AbacusCustomStyles {
   };
 }
 
+// Branded types to prevent mixing place values and column indices
+export type PlaceValue = number & { readonly __brand: 'PlaceValue' };
+export type ColumnIndex = number & { readonly __brand: 'ColumnIndex' };
+
+// Type-safe constructors
+export const PlaceValue = (value: number): PlaceValue => {
+  if (value < 0) {
+    throw new Error(`Place value must be non-negative, got ${value}`);
+  }
+  return value as PlaceValue;
+};
+
+export const ColumnIndex = (value: number): ColumnIndex => {
+  if (value < 0) {
+    throw new Error(`Column index must be non-negative, got ${value}`);
+  }
+  return value as ColumnIndex;
+};
+
+// Utility types for better type safety
+export type ValidPlaceValues = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type EarthBeadPosition = 0 | 1 | 2 | 3;
+
+// Place-value based bead specification (new API)
+export interface PlaceValueBead {
+  placeValue: ValidPlaceValues; // 0=ones, 1=tens, 2=hundreds, etc.
+  beadType: 'heaven' | 'earth';
+  position?: EarthBeadPosition; // for earth beads, 0-3
+}
+
+// Legacy column-index based bead specification
+export interface ColumnIndexBead {
+  columnIndex: number; // array index (0=leftmost)
+  beadType: 'heaven' | 'earth';
+  position?: EarthBeadPosition; // for earth beads, 0-3
+}
+
+// Type-safe conversion utilities
+export namespace PlaceValueUtils {
+  export function toColumnIndex(placeValue: ValidPlaceValues, totalColumns: number): number {
+    const result = totalColumns - 1 - placeValue;
+    if (result < 0 || result >= totalColumns) {
+      throw new Error(`Place value ${placeValue} is out of range for ${totalColumns} columns`);
+    }
+    return result;
+  }
+
+  export function fromColumnIndex(columnIndex: number, totalColumns: number): ValidPlaceValues {
+    const result = totalColumns - 1 - columnIndex;
+    if (result < 0 || result > 9) {
+      throw new Error(`Column index ${columnIndex} maps to invalid place value ${result}`);
+    }
+    return result as ValidPlaceValues;
+  }
+
+  // Type-safe creation helpers
+  export const ones = (): PlaceValueBead['placeValue'] => 0;
+  export const tens = (): PlaceValueBead['placeValue'] => 1;
+  export const hundreds = (): PlaceValueBead['placeValue'] => 2;
+  export const thousands = (): PlaceValueBead['placeValue'] => 3;
+}
+
+// Union type for backward compatibility
+export type BeadHighlight = PlaceValueBead | ColumnIndexBead;
+
+// Type guards to distinguish between the two APIs
+export function isPlaceValueBead(bead: BeadHighlight): bead is PlaceValueBead {
+  return 'placeValue' in bead;
+}
+
+export function isColumnIndexBead(bead: BeadHighlight): bead is ColumnIndexBead {
+  return 'columnIndex' in bead;
+}
+
 // Event system
 export interface BeadClickEvent {
   bead: BeadConfig;
@@ -149,10 +223,10 @@ export interface AbacusConfig {
   overlays?: AbacusOverlay[];
 
   // Tutorial and accessibility features
-  highlightColumns?: number[]; // Highlight specific columns
-  highlightBeads?: Array<{ columnIndex: number; beadType: 'heaven' | 'earth'; position?: number }>;
-  disabledColumns?: number[]; // Disable interaction on specific columns
-  disabledBeads?: Array<{ columnIndex: number; beadType: 'heaven' | 'earth'; position?: number }>;
+  highlightColumns?: number[]; // Highlight specific columns (legacy - array indices)
+  highlightBeads?: BeadHighlight[]; // Support both place-value and column-index based highlighting
+  disabledColumns?: number[]; // Disable interaction on specific columns (legacy - array indices)
+  disabledBeads?: BeadHighlight[]; // Support both place-value and column-index based disabling
 
   // Legacy callbacks for backward compatibility
   onClick?: (bead: BeadConfig) => void;
@@ -223,11 +297,9 @@ interface ColumnState {
 export function useAbacusState(initialValue: number = 0, targetColumns?: number) {
   // Initialize state from the initial value
   const initializeFromValue = useCallback((value: number, minColumns?: number): ColumnState[] => {
-    console.log('initializeFromValue called with:', { value, minColumns, targetColumns });
     if (value === 0) {
       // Special case: for value 0, use minColumns if provided, otherwise single column
       const columnCount = minColumns || 1;
-      console.log(`Creating ${columnCount} zero columns for value 0`);
       return Array(columnCount).fill(null).map(() => ({ heavenActive: false, earthActive: 0 }));
     }
     const digits = value.toString().split('').map(Number);
@@ -247,27 +319,6 @@ export function useAbacusState(initialValue: number = 0, targetColumns?: number)
   }, [targetColumns]);
 
   const [columnStates, setColumnStates] = useState<ColumnState[]>(() => initializeFromValue(initialValue, targetColumns));
-
-  // Sync with prop changes
-  React.useEffect(() => {
-    // console.log(`🔄 Syncing internal state to new prop value: ${initialValue}`);
-    setColumnStates(initializeFromValue(initialValue, targetColumns));
-  }, [initialValue, initializeFromValue, targetColumns]);
-
-  // Expand columnStates to match target columns when needed
-  React.useEffect(() => {
-    console.log('State expansion effect running:', { targetColumns, currentLength: columnStates.length, needsExpansion: targetColumns && columnStates.length < targetColumns });
-    if (targetColumns && columnStates.length < targetColumns) {
-      console.log(`Expanding from ${columnStates.length} to ${targetColumns} columns`);
-      const newStates = [...columnStates];
-      // Pad to the left (higher place values) to maintain abacus convention
-      while (newStates.length < targetColumns) {
-        newStates.unshift({ heavenActive: false, earthActive: 0 });
-      }
-      console.log('Setting new states:', newStates.length);
-      setColumnStates(newStates);
-    }
-  }, [targetColumns]);
 
   // Calculate current value from independent column states
   const value = useMemo(() => {
@@ -393,17 +444,60 @@ function mergeBeadStyles(
   return mergedStyle;
 }
 
+// Convert BeadHighlight to column index for internal use
+function normalizeBeadHighlight(bead: BeadHighlight, totalColumns: number): ColumnIndexBead {
+  if (isPlaceValueBead(bead)) {
+    try {
+      const columnIndex = PlaceValueUtils.toColumnIndex(bead.placeValue, totalColumns);
+      return {
+        columnIndex,
+        beadType: bead.beadType,
+        position: bead.position
+      };
+    } catch (error) {
+      console.warn(`${error instanceof Error ? error.message : error}. Using ones place (0) instead.`);
+      return {
+        columnIndex: totalColumns - 1, // Default to ones place
+        beadType: bead.beadType,
+        position: bead.position
+      };
+    }
+  } else {
+    // Legacy columnIndex API - show deprecation warning
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const placeValue = PlaceValueUtils.fromColumnIndex(bead.columnIndex, totalColumns);
+        console.warn(
+          `Deprecated: Using columnIndex (${bead.columnIndex}) is deprecated. ` +
+          `Use placeValue (${placeValue}) instead. ` +
+          `Migration: Change { columnIndex: ${bead.columnIndex} } to { placeValue: ${placeValue} }`
+        );
+      } catch {
+        console.warn(
+          `Deprecated: Using columnIndex (${bead.columnIndex}) is deprecated and invalid for ${totalColumns} columns. ` +
+          `Use placeValue API instead.`
+        );
+      }
+    }
+    return bead; // Already a ColumnIndexBead
+  }
+}
+
 function isBeadHighlighted(
   columnIndex: number,
   beadType: 'heaven' | 'earth',
   position: number | undefined,
-  highlightBeads?: Array<{ columnIndex: number; beadType: 'heaven' | 'earth'; position?: number }>
+  highlightBeads?: BeadHighlight[],
+  totalColumns?: number
 ): boolean {
-  return highlightBeads?.some(highlight =>
-    highlight.columnIndex === columnIndex &&
-    highlight.beadType === beadType &&
-    (highlight.position === undefined || highlight.position === position)
-  ) || false;
+  if (!highlightBeads || !totalColumns) return false;
+
+  return highlightBeads.some(highlight => {
+    const normalizedHighlight = normalizeBeadHighlight(highlight, totalColumns);
+    return normalizedHighlight.columnIndex === columnIndex &&
+           normalizedHighlight.beadType === beadType &&
+           (normalizedHighlight.position === undefined || normalizedHighlight.position === position);
+  });
 }
 
 function isBeadDisabled(
@@ -411,19 +505,23 @@ function isBeadDisabled(
   beadType: 'heaven' | 'earth',
   position: number | undefined,
   disabledColumns?: number[],
-  disabledBeads?: Array<{ columnIndex: number; beadType: 'heaven' | 'earth'; position?: number }>
+  disabledBeads?: BeadHighlight[],
+  totalColumns?: number
 ): boolean {
-  // Check if entire column is disabled
+  // Check if entire column is disabled (legacy column index system)
   if (disabledColumns?.includes(columnIndex)) {
     return true;
   }
 
   // Check if specific bead is disabled
-  return disabledBeads?.some(disabled =>
-    disabled.columnIndex === columnIndex &&
-    disabled.beadType === beadType &&
-    (disabled.position === undefined || disabled.position === position)
-  ) || false;
+  if (!disabledBeads || !totalColumns) return false;
+
+  return disabledBeads.some(disabled => {
+    const normalizedDisabled = normalizeBeadHighlight(disabled, totalColumns);
+    return normalizedDisabled.columnIndex === columnIndex &&
+           normalizedDisabled.beadType === beadType &&
+           (normalizedDisabled.position === undefined || normalizedDisabled.position === position);
+  });
 }
 
 function calculateOverlayPosition(
@@ -514,19 +612,10 @@ function getBeadColor(
 }
 
 function calculateBeadStates(columnStates: ColumnState[], originalLength: number): BeadConfig[][] {
-  console.log('calculateBeadStates called with:', {
-    columnStatesLength: columnStates.length,
-    originalLength,
-    columnStates: columnStates.map((state, i) => ({ index: i, state }))
-  });
-  console.log('calculateBeadStates called with:', { columnStatesLength: columnStates.length, originalLength });
   return columnStates.map((columnState, arrayIndex) => {
     const beads: BeadConfig[] = [];
     // Each column maps to its array index since columnStates should match display columns
     const logicalColumnIndex = arrayIndex;
-    console.log(`Column ${arrayIndex}: creating beads with columnIndex=${logicalColumnIndex}`);
-
-    console.log(`About to create heaven bead with columnIndex=${logicalColumnIndex}`);
 
     // Heaven bead (value 5) - independent state
     beads.push({
@@ -836,6 +925,12 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     // console.log(`🔄 Component received value prop: ${value}, internal value: ${currentValue}`);
   }, [value, currentValue]);
 
+  // Notify about value changes
+  React.useEffect(() => {
+    onValueChange?.(currentValue);
+  }, [currentValue, onValueChange]);
+
+
   const dimensions = useAbacusDimensions(effectiveColumns, finalConfig.scaleFactor, finalConfig.showNumbers);
 
   const beadStates = useMemo(
@@ -848,10 +943,6 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   const barY = dimensions.heavenEarthGap;
 
 
-  // Notify about value changes
-  React.useEffect(() => {
-    onValueChange?.(currentValue);
-  }, [currentValue, onValueChange]);
 
   const handleBeadClick = useCallback((bead: BeadConfig, event?: React.MouseEvent) => {
     // Check if bead is disabled
@@ -860,7 +951,8 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       bead.type,
       bead.type === 'earth' ? bead.position : undefined,
       disabledColumns,
-      disabledBeads
+      disabledBeads,
+      effectiveColumns
     );
 
     if (isDisabled) {
@@ -1147,7 +1239,8 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             bead.columnIndex,
             bead.type,
             bead.type === 'earth' ? bead.position : undefined,
-            highlightBeads
+            highlightBeads,
+            effectiveColumns
           );
 
           // Check if bead is disabled
@@ -1156,7 +1249,8 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             bead.type,
             bead.type === 'earth' ? bead.position : undefined,
             disabledColumns,
-            disabledBeads
+            disabledBeads,
+            effectiveColumns
           );
 
           return (
