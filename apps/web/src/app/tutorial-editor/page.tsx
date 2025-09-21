@@ -1,18 +1,20 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { TutorialEditor } from '../../components/tutorial/TutorialEditor'
-import { TutorialPlayer } from '../../components/tutorial/TutorialPlayer'
-import { DevAccessProvider, EditorProtected } from '../../hooks/useAccessControl'
-import { getTutorialForEditor, validateTutorialConversion } from '../../utils/tutorialConverter'
-import { Tutorial, TutorialValidation, StepValidationError, TutorialEvent } from '../../types/tutorial'
-import { css } from '../../styled-system/css'
-import { hstack, vstack } from '../../styled-system/patterns'
+import { TutorialEditor } from '@/components/tutorial/TutorialEditor'
+import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
+import { DevAccessProvider, EditorProtected } from '@/hooks/useAccessControl'
+import { getTutorialForEditor, validateTutorialConversion } from '@/utils/tutorialConverter'
+import { Tutorial, TutorialValidation, StepValidationError, TutorialEvent } from '@/types/tutorial'
+import { css } from '../../../styled-system/css'
+import { hstack, vstack } from '../../../styled-system/patterns'
+import Resizable from 'react-resizable-layout'
 
 interface EditorMode {
   mode: 'editor' | 'player' | 'split'
   showDebugInfo: boolean
   autoSave: boolean
+  editingTitle: boolean
 }
 
 export default function TutorialEditorPage() {
@@ -20,7 +22,8 @@ export default function TutorialEditorPage() {
   const [editorMode, setEditorMode] = useState<EditorMode>({
     mode: 'editor',
     showDebugInfo: true,
-    autoSave: false
+    autoSave: false,
+    editingTitle: false
   })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [validationResult, setValidationResult] = useState(() => validateTutorialConversion())
@@ -222,6 +225,11 @@ export default function TutorialEditorPage() {
     setEditorMode(prev => ({ ...prev, autoSave: !prev.autoSave }))
   }, [])
 
+  // Tutorial metadata update
+  const updateTutorialTitle = useCallback((title: string) => {
+    setTutorial(prev => ({ ...prev, title, updatedAt: new Date() }))
+  }, [])
+
   // Export tutorial data for debugging
   const exportTutorialData = useCallback(() => {
     const data = {
@@ -263,214 +271,336 @@ export default function TutorialEditorPage() {
           </div>
         </div>
       }>
-        <div className={css({ height: '100vh', display: 'flex', flexDirection: 'column' })}>
-          {/* Header controls */}
-          <div className={css({
-            bg: 'white',
-            borderBottom: '1px solid',
-            borderColor: 'gray.200',
-            p: 4
-          })}>
-            <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
-              <div>
-                <h1 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>
-                  Tutorial Editor & Debugger
-                </h1>
-                <p className={css({ fontSize: 'sm', color: 'gray.600' })}>
-                  {tutorial.title} - {tutorial.steps.length} steps
-                </p>
-              </div>
+        <div className={css({ height: 'calc(100vh - 80px)', width: '100vw', overflow: 'hidden' })}>
+          <Resizable
+            axis="y"
+            initial={120}
+            min={80}
+            max={200}
+            step={1}
+          >
+            {({ position: headerHeight, separatorProps: headerSeparatorProps }) => (
+              <div className={css({ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' })}>
+                {/* Header controls - Fixed height */}
+                <div
+                  className={css({
+                    height: `${headerHeight}px`,
+                    bg: 'white',
+                    borderBottom: '1px solid',
+                    borderColor: 'gray.200',
+                    p: 4,
+                    overflowY: 'auto',
+                    flexShrink: 0
+                  })}
+                >
+                  <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
+                    <div>
+                      <h1 className={css({ fontSize: 'xl', fontWeight: 'bold', mb: 1 })}>
+                        Tutorial Editor & Debugger
+                      </h1>
+                      <div className={css({ display: 'flex', alignItems: 'center', gap: 2 })}>
+                        {editorMode.editingTitle ? (
+                          <input
+                            type="text"
+                            value={tutorial.title}
+                            onChange={(e) => updateTutorialTitle(e.target.value)}
+                            onBlur={() => setEditorMode(prev => ({ ...prev, editingTitle: false }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === 'Escape') {
+                                setEditorMode(prev => ({ ...prev, editingTitle: false }))
+                              }
+                            }}
+                            autoFocus
+                            className={css({
+                              fontSize: 'lg',
+                              fontWeight: 'medium',
+                              p: 1,
+                              border: '1px solid',
+                              borderColor: 'blue.300',
+                              borderRadius: 'sm',
+                              bg: 'white',
+                              minWidth: '300px'
+                            })}
+                          />
+                        ) : (
+                          <span
+                            onClick={() => setEditorMode(prev => ({ ...prev, editingTitle: true }))}
+                            className={css({
+                              fontSize: 'lg',
+                              fontWeight: 'medium',
+                              cursor: 'pointer',
+                              p: 1,
+                              borderRadius: 'sm',
+                              _hover: { bg: 'gray.50' }
+                            })}
+                          >
+                            {tutorial.title}
+                          </span>
+                        )}
+                        <span className={css({ fontSize: 'sm', color: 'gray.500' })}>
+                          - {tutorial.steps.length} steps
+                        </span>
+                      </div>
+                    </div>
 
-              <div className={hstack({ gap: 4 })}>
-                {/* Mode selector */}
-                <div className={hstack({ gap: 1 })}>
-                  {(['editor', 'player', 'split'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => switchMode(mode)}
-                      className={css({
-                        px: 3,
-                        py: 1,
-                        fontSize: 'sm',
-                        border: '1px solid',
-                        borderColor: editorMode.mode === mode ? 'blue.300' : 'gray.300',
-                        borderRadius: 'md',
-                        bg: editorMode.mode === mode ? 'blue.500' : 'white',
-                        color: editorMode.mode === mode ? 'white' : 'gray.700',
-                        cursor: 'pointer',
-                        textTransform: 'capitalize',
-                        _hover: { bg: editorMode.mode === mode ? 'blue.600' : 'gray.50' }
-                      })}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
+                    <div className={hstack({ gap: 4 })}>
+                      {/* Mode selector */}
+                      <div className={hstack({ gap: 1 })}>
+                        {(['editor', 'player', 'split'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            onClick={() => switchMode(mode)}
+                            className={css({
+                              px: 3,
+                              py: 1,
+                              fontSize: 'sm',
+                              border: '1px solid',
+                              borderColor: editorMode.mode === mode ? 'blue.300' : 'gray.300',
+                              borderRadius: 'md',
+                              bg: editorMode.mode === mode ? 'blue.500' : 'white',
+                              color: editorMode.mode === mode ? 'white' : 'gray.700',
+                              cursor: 'pointer',
+                              textTransform: 'capitalize',
+                              _hover: { bg: editorMode.mode === mode ? 'blue.600' : 'gray.50' }
+                            })}
+                          >
+                            {mode}
+                          </button>
+                        ))}
+                      </div>
 
-                {/* Options */}
-                <div className={hstack({ gap: 2 })}>
-                  <label className={hstack({ gap: 1, fontSize: 'sm' })}>
-                    <input
-                      type="checkbox"
-                      checked={editorMode.showDebugInfo}
-                      onChange={toggleDebugInfo}
-                    />
-                    Debug Info
-                  </label>
+                      {/* Options */}
+                      <div className={hstack({ gap: 2 })}>
+                        <label className={hstack({ gap: 1, fontSize: 'sm' })}>
+                          <input
+                            type="checkbox"
+                            checked={editorMode.showDebugInfo}
+                            onChange={toggleDebugInfo}
+                          />
+                          Debug Info
+                        </label>
 
-                  <label className={hstack({ gap: 1, fontSize: 'sm' })}>
-                    <input
-                      type="checkbox"
-                      checked={editorMode.autoSave}
-                      onChange={toggleAutoSave}
-                    />
-                    Auto Save
-                  </label>
-                </div>
+                        <label className={hstack({ gap: 1, fontSize: 'sm' })}>
+                          <input
+                            type="checkbox"
+                            checked={editorMode.autoSave}
+                            onChange={toggleAutoSave}
+                          />
+                          Auto Save
+                        </label>
+                      </div>
 
-                {/* Actions */}
-                <div className={hstack({ gap: 2 })}>
-                  <button
-                    onClick={exportTutorialData}
-                    className={css({
-                      px: 3,
-                      py: 1,
-                      fontSize: 'sm',
-                      border: '1px solid',
-                      borderColor: 'gray.300',
-                      borderRadius: 'md',
-                      bg: 'white',
-                      cursor: 'pointer',
-                      _hover: { bg: 'gray.50' }
-                    })}
-                  >
-                    Export Debug
-                  </button>
+                      {/* Actions */}
+                      <div className={hstack({ gap: 2 })}>
+                        <button
+                          onClick={exportTutorialData}
+                          className={css({
+                            px: 3,
+                            py: 1,
+                            fontSize: 'sm',
+                            border: '1px solid',
+                            borderColor: 'gray.300',
+                            borderRadius: 'md',
+                            bg: 'white',
+                            cursor: 'pointer',
+                            _hover: { bg: 'gray.50' }
+                          })}
+                        >
+                          Export Debug
+                        </button>
 
-                  {saveStatus !== 'idle' && (
-                    <div className={css({
-                      px: 3,
-                      py: 1,
-                      fontSize: 'sm',
-                      borderRadius: 'md',
-                      bg: saveStatus === 'saving' ? 'blue.100' :
-                          saveStatus === 'saved' ? 'green.100' : 'red.100',
-                      color: saveStatus === 'saving' ? 'blue.700' :
-                             saveStatus === 'saved' ? 'green.700' : 'red.700'
-                    })}>
-                      {saveStatus === 'saving' ? 'Saving...' :
-                       saveStatus === 'saved' ? 'Saved!' : 'Error!'}
+                        {saveStatus !== 'idle' && (
+                          <div className={css({
+                            px: 3,
+                            py: 1,
+                            fontSize: 'sm',
+                            borderRadius: 'md',
+                            bg: saveStatus === 'saving' ? 'blue.100' :
+                                saveStatus === 'saved' ? 'green.100' : 'red.100',
+                            color: saveStatus === 'saving' ? 'blue.700' :
+                                   saveStatus === 'saved' ? 'green.700' : 'red.700'
+                          })}>
+                            {saveStatus === 'saving' ? 'Saving...' :
+                             saveStatus === 'saved' ? 'Saved!' : 'Error!'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Validation status */}
+                  {editorMode.showDebugInfo && validationResult && (
+                    <div className={css({ mt: 3 })}>
+                      {!validationResult.isValid ? (
+                        <div className={css({
+                          p: 2,
+                          bg: 'red.50',
+                          border: '1px solid',
+                          borderColor: 'red.200',
+                          borderRadius: 'md',
+                          fontSize: 'sm'
+                        })}>
+                          <strong className={css({ color: 'red.800' })}>
+                            {validationResult.errors?.length || 0} validation error(s)
+                          </strong>
+                          {validationResult.warnings && validationResult.warnings.length > 0 && (
+                            <span className={css({ color: 'yellow.700', ml: 2 })}>
+                              and {validationResult.warnings.length} warning(s)
+                            </span>
+                          )}
+                        </div>
+                      ) : validationResult.warnings && validationResult.warnings.length > 0 ? (
+                        <div className={css({
+                          p: 2,
+                          bg: 'yellow.50',
+                          border: '1px solid',
+                          borderColor: 'yellow.200',
+                          borderRadius: 'md',
+                          fontSize: 'sm',
+                          color: 'yellow.700'
+                        })}>
+                          Tutorial is valid with {validationResult.warnings?.length || 0} warning(s)
+                        </div>
+                      ) : (
+                        <div className={css({
+                          p: 2,
+                          bg: 'green.50',
+                          border: '1px solid',
+                          borderColor: 'green.200',
+                          borderRadius: 'md',
+                          fontSize: 'sm',
+                          color: 'green.700'
+                        })}>
+                          Tutorial validation passed ✓
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* Validation status */}
-            {editorMode.showDebugInfo && validationResult && (
-              <div className={css({ mt: 3 })}>
-                {!validationResult.isValid ? (
-                  <div className={css({
-                    p: 2,
-                    bg: 'red.50',
-                    border: '1px solid',
-                    borderColor: 'red.200',
-                    borderRadius: 'md',
-                    fontSize: 'sm'
-                  })}>
-                    <strong className={css({ color: 'red.800' })}>
-                      {validationResult.errors.length} validation error(s)
-                    </strong>
-                    {validationResult.warnings.length > 0 && (
-                      <span className={css({ color: 'yellow.700', ml: 2 })}>
-                        and {validationResult.warnings.length} warning(s)
-                      </span>
-                    )}
-                  </div>
-                ) : validationResult.warnings.length > 0 ? (
-                  <div className={css({
-                    p: 2,
-                    bg: 'yellow.50',
-                    border: '1px solid',
-                    borderColor: 'yellow.200',
-                    borderRadius: 'md',
-                    fontSize: 'sm',
-                    color: 'yellow.700'
-                  })}>
-                    Tutorial is valid with {validationResult.warnings.length} warning(s)
-                  </div>
-                ) : (
-                  <div className={css({
-                    p: 2,
-                    bg: 'green.50',
-                    border: '1px solid',
-                    borderColor: 'green.200',
-                    borderRadius: 'md',
-                    fontSize: 'sm',
-                    color: 'green.700'
-                  })}>
-                    Tutorial validation passed ✓
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                {/* Header separator */}
+                <hr
+                  {...headerSeparatorProps}
+                  className={css({
+                    height: '4px',
+                    width: '100%',
+                    border: 'none',
+                    bg: 'gray.300',
+                    cursor: 'ns-resize',
+                    _hover: { bg: 'blue.400' },
+                    transition: 'background-color 0.2s',
+                    flexShrink: 0
+                  })}
+                />
 
-          {/* Main content area */}
-          <div className={css({ flex: 1, display: 'flex' })}>
-            {editorMode.mode === 'editor' && (
-              <TutorialEditor
-                tutorial={tutorial}
-                onSave={handleSave}
-                onValidate={handleValidate}
-                onPreview={handlePreview}
-              />
-            )}
+                {/* Main content area - Takes remaining height */}
+                <div
+                  className={css({
+                    height: `calc(100vh - 80px - ${headerHeight}px - 4px)`,
+                    display: 'flex',
+                    overflow: 'hidden'
+                  })}
+                >
+                  {editorMode.mode === 'editor' && (
+                    <TutorialEditor
+                      tutorial={tutorial}
+                      onSave={handleSave}
+                      onValidate={handleValidate}
+                      onPreview={handlePreview}
+                    />
+                  )}
 
-            {editorMode.mode === 'player' && (
-              <TutorialPlayer
-                tutorial={tutorial}
-                isDebugMode={true}
-                showDebugPanel={editorMode.showDebugInfo}
-                onEvent={handleDebugEvent}
-                onTutorialComplete={(score, timeSpent) => {
-                  console.log('Tutorial completed:', { score, timeSpent })
-                }}
-              />
-            )}
+                  {editorMode.mode === 'player' && (
+                    <TutorialPlayer
+                      tutorial={tutorial}
+                      isDebugMode={true}
+                      showDebugPanel={editorMode.showDebugInfo}
+                      onEvent={handleDebugEvent}
+                      onTutorialComplete={(score, timeSpent) => {
+                        console.log('Tutorial completed:', { score, timeSpent })
+                      }}
+                    />
+                  )}
 
-            {editorMode.mode === 'split' && (
-              <div className={css({ display: 'flex', width: '100%' })}>
-                <div className={css({ width: '50%', borderRight: '1px solid', borderColor: 'gray.200' })}>
-                  <TutorialEditor
-                    tutorial={tutorial}
-                    onSave={handleSave}
-                    onValidate={handleValidate}
-                    onPreview={handlePreview}
-                  />
+                  {editorMode.mode === 'split' && (
+                    <Resizable
+                      axis="x"
+                      initial={800}
+                      min={400}
+                      max={1200}
+                      step={1}
+                    >
+                      {({ position: splitPosition, separatorProps: splitSeparatorProps }) => (
+                        <div className={css({ display: 'flex', width: '100%', height: '100%' })}>
+                          <div
+                            className={css({
+                              width: `${splitPosition}px`,
+                              height: '100%',
+                              borderRight: '1px solid',
+                              borderColor: 'gray.200',
+                              flexShrink: 0
+                            })}
+                          >
+                            <TutorialEditor
+                              tutorial={tutorial}
+                              onSave={handleSave}
+                              onValidate={handleValidate}
+                              onPreview={handlePreview}
+                            />
+                          </div>
+
+                          {/* Split separator */}
+                          <hr
+                            {...splitSeparatorProps}
+                            className={css({
+                              width: '4px',
+                              height: '100%',
+                              border: 'none',
+                              bg: 'gray.300',
+                              cursor: 'ew-resize',
+                              _hover: { bg: 'blue.400' },
+                              transition: 'background-color 0.2s',
+                              flexShrink: 0
+                            })}
+                          />
+
+                          <div
+                            className={css({
+                              width: `calc(100% - ${splitPosition}px - 4px)`,
+                              height: '100%'
+                            })}
+                          >
+                            <TutorialPlayer
+                              tutorial={tutorial}
+                              isDebugMode={true}
+                              showDebugPanel={editorMode.showDebugInfo}
+                              onEvent={handleDebugEvent}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </Resizable>
+                  )}
                 </div>
-                <div className={css({ width: '50%' })}>
-                  <TutorialPlayer
-                    tutorial={tutorial}
-                    isDebugMode={true}
-                    showDebugPanel={editorMode.showDebugInfo}
-                    onEvent={handleDebugEvent}
-                  />
-                </div>
               </div>
             )}
-          </div>
+          </Resizable>
 
-          {/* Debug panel */}
+          {/* Debug panel - Fixed at bottom if needed */}
           {editorMode.showDebugInfo && debugEvents.length > 0 && (
             <div className={css({
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
               maxHeight: '200px',
               bg: 'gray.900',
               color: 'white',
               p: 4,
               overflowY: 'auto',
               fontFamily: 'mono',
-              fontSize: 'xs'
+              fontSize: 'xs',
+              zIndex: 1000
             })}>
               <h4 className={css({ fontWeight: 'bold', mb: 2 })}>
                 Debug Events ({debugEvents.length})
