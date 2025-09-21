@@ -8,6 +8,7 @@ import { Tutorial, TutorialStep, PracticeStep, TutorialValidation, StepValidatio
 import { PracticeStepEditor } from './PracticeStepEditor'
 import { generateSingleProblem } from '../../utils/problemGenerator'
 import { skillConfigurationToSkillSets, createBasicAllowedConfiguration } from '../../utils/skillConfiguration'
+import { EditorLayout, TextInput, NumberInput, FormGroup, CompactStepItem, BetweenStepAdd } from './shared/EditorComponents'
 import Resizable from 'react-resizable-layout'
 
 // Modal component for tutorial metadata editing
@@ -386,12 +387,16 @@ function PracticeStepPreview({ step }: PracticeStepPreviewProps) {
     setIsGenerating(true)
     const generatedProblems = []
     const maxToShow = Math.min(6, step.problemCount) // Show up to 6 problems in preview
+    const seenProblems = new Set<string>() // Track generated problems to avoid duplicates
 
     // Use a basic configuration for generating problems
     const config = createBasicAllowedConfiguration()
     const { required, target, forbidden } = skillConfigurationToSkillSets(config)
 
-    for (let i = 0; i < maxToShow; i++) {
+    let attempts = 0
+    const maxAttempts = 200 // Prevent infinite loops
+
+    while (generatedProblems.length < maxToShow && attempts < maxAttempts) {
       const problem = generateSingleProblem(
         {
           numberRange: step.numberRange || { min: 1, max: 9 },
@@ -407,8 +412,16 @@ function PracticeStepPreview({ step }: PracticeStepPreviewProps) {
       )
 
       if (problem) {
-        generatedProblems.push(problem)
+        // Create a unique key for the problem based on terms and answer
+        const problemKey = `${problem.terms.join('+')}_${problem.answer}`
+
+        if (!seenProblems.has(problemKey)) {
+          seenProblems.add(problemKey)
+          generatedProblems.push(problem)
+        }
       }
+
+      attempts++
     }
 
     setProblems(generatedProblems)
@@ -455,12 +468,13 @@ function PracticeStepPreview({ step }: PracticeStepPreviewProps) {
           </button>
         </div>
 
-        {/* Problems Grid */}
+        {/* Problems Flow */}
         {problems.length > 0 ? (
           <div className={css({
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-            gap: 4
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 3,
+            overflowX: 'auto'
           })}>
             {problems.map((problem, index) => (
               <div key={problem.id} className={css({
@@ -469,7 +483,9 @@ function PracticeStepPreview({ step }: PracticeStepPreviewProps) {
                 borderColor: 'purple.200',
                 borderRadius: 'lg',
                 p: 3,
-                textAlign: 'center'
+                textAlign: 'center',
+                minWidth: '120px',
+                flexShrink: 0
               })}>
                 {/* Problem Number */}
                 <div className={css({
@@ -578,14 +594,14 @@ function PracticeStepPreview({ step }: PracticeStepPreviewProps) {
   )
 }
 
-// Component for the "New" dropdown positioned between steps
+
+// Component for the "New" dropdown for empty state
 interface NewItemDropdownProps {
-  position: number
-  onAddStep: (position: number) => void
-  onAddPracticeStep: (position: number) => void
+  onAddStep: () => void
+  onAddPracticeStep: () => void
 }
 
-function NewItemDropdown({ position, onAddStep, onAddPracticeStep }: NewItemDropdownProps) {
+function NewItemDropdown({ onAddStep, onAddPracticeStep }: NewItemDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -625,7 +641,7 @@ function NewItemDropdown({ position, onAddStep, onAddPracticeStep }: NewItemDrop
         })}>
           <button
             onClick={() => {
-              onAddStep(position)
+              onAddStep()
               setIsOpen(false)
             }}
             className={css({
@@ -644,7 +660,7 @@ function NewItemDropdown({ position, onAddStep, onAddPracticeStep }: NewItemDrop
           </button>
           <button
             onClick={() => {
-              onAddPracticeStep(position)
+              onAddPracticeStep()
               setIsOpen(false)
             }}
             className={css({
@@ -1128,17 +1144,16 @@ export function TutorialEditor({
 
                           const items = []
 
-                          // Insert at beginning
+                          // Add BetweenStepAdd at the beginning
                           items.push(
-                            <NewItemDropdown
-                              key="new-0"
-                              position={0}
-                              onAddStep={(pos) => addStep(pos)}
-                              onAddPracticeStep={(pos) => addPracticeStep(pos)}
+                            <BetweenStepAdd
+                              key="add-0"
+                              onAddStep={() => addStep(0)}
+                              onAddPracticeStep={() => addPracticeStep(0)}
                             />
                           )
 
-                          // Render each step with dropdown after it
+                          // Render each step with BetweenStepAdd after it
                           unifiedSteps.forEach((item, index) => {
                             if (item.type === 'concept') {
                               const errors = getStepErrors(item.originalIndex)
@@ -1147,154 +1162,40 @@ export function TutorialEditor({
 
                               items.push(
                                 <div key={`concept-${item.step.id}`}>
-                                  {/* Concept Step Item */}
-                                  <div
+                                  <CompactStepItem
+                                    type="concept"
+                                    index={index}
+                                    title={item.step.title}
+                                    subtitle={`${item.step.problem} → ${item.step.targetValue}`}
+                                    isSelected={isSelected}
+                                    hasErrors={errors.length > 0}
+                                    hasWarnings={warnings.length > 0}
+                                    errorCount={errors.length}
+                                    warningCount={warnings.length}
                                     onClick={() => setEditorState(prev => ({
                                       ...prev,
                                       selectedStepIndex: item.originalIndex,
                                       selectedPracticeStepId: null
                                     }))}
-                                    className={css({
-                                      p: 3,
-                                      border: '2px solid',
-                                      borderColor: isSelected ? 'blue.500' : (errors.length > 0 ? 'red.300' : 'gray.200'),
-                                      borderRadius: 'md',
-                                      bg: isSelected ? 'blue.50' : (warnings.length > 0 ? 'yellow.50' : (errors.length > 0 ? 'red.50' : 'white')),
-                                      cursor: 'pointer',
-                                      _hover: { bg: isSelected ? 'blue.100' : 'gray.50' }
-                                    })}
+                                    onPreview={() => previewStep(item.originalIndex)}
+                                    onDelete={() => deleteStep(item.originalIndex)}
                                   >
-                                    <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 })}>
-                                      <div className={css({ flex: 1 })}>
-                                        <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 1 })}>
-                                          <span className={css({
-                                            fontSize: 'xs',
-                                            fontWeight: 'bold',
-                                            color: 'blue.800',
-                                            bg: 'blue.100',
-                                            px: 2,
-                                            py: 1,
-                                            borderRadius: 'sm'
-                                          })}>
-                                            📝 Step {index + 1}
-                                          </span>
-                                          {errors.length > 0 && (
-                                            <span className={css({
-                                              fontSize: 'xs',
-                                              color: 'red.600',
-                                              bg: 'red.100',
-                                              px: 2,
-                                              py: 1,
-                                              borderRadius: 'sm'
-                                            })}>
-                                              {errors.length} error{errors.length > 1 ? 's' : ''}
-                                            </span>
-                                          )}
-                                          {warnings.length > 0 && (
-                                            <span className={css({
-                                              fontSize: 'xs',
-                                              color: 'yellow.600',
-                                              bg: 'yellow.100',
-                                              px: 2,
-                                              py: 1,
-                                              borderRadius: 'sm'
-                                            })}>
-                                              {warnings.length} warning{warnings.length > 1 ? 's' : ''}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className={css({ fontWeight: 'medium', fontSize: 'sm', mb: 1 })}>
-                                          {item.step.title}
-                                        </div>
-                                        <div className={css({ fontSize: 'xs', color: 'gray.600', mb: 1 })}>
-                                          {item.step.problem} → {item.step.targetValue}
-                                        </div>
-                                        <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
-                                          {item.step.description}
-                                        </div>
-                                      </div>
-
-                                      {/* Step Actions */}
-                                      <div className={css({ display: 'flex', gap: 1, flexShrink: 0 })}>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            previewStep(item.originalIndex)
-                                          }}
-                                          className={css({
-                                            p: 1,
-                                            bg: 'blue.100',
-                                            color: 'blue.700',
-                                            border: '1px solid',
-                                            borderColor: 'blue.300',
-                                            borderRadius: 'sm',
-                                            fontSize: 'xs',
-                                            cursor: 'pointer',
-                                            _hover: { bg: 'blue.200' }
-                                          })}
-                                          title="Preview step"
-                                        >
-                                          👁️
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            duplicateStep(item.originalIndex)
-                                          }}
-                                          className={css({
-                                            p: 1,
-                                            bg: 'green.100',
-                                            color: 'green.700',
-                                            border: '1px solid',
-                                            borderColor: 'green.300',
-                                            borderRadius: 'sm',
-                                            fontSize: 'xs',
-                                            cursor: 'pointer',
-                                            _hover: { bg: 'green.200' }
-                                          })}
-                                          title="Duplicate step"
-                                        >
-                                          📋
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            deleteStep(item.originalIndex)
-                                          }}
-                                          className={css({
-                                            p: 1,
-                                            bg: 'red.100',
-                                            color: 'red.700',
-                                            border: '1px solid',
-                                            borderColor: 'red.300',
-                                            borderRadius: 'sm',
-                                            fontSize: 'xs',
-                                            cursor: 'pointer',
-                                            _hover: { bg: 'red.200' }
-                                          })}
-                                          title="Delete step"
-                                        >
-                                          🗑️
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {/* Error/Warning Details */}
+                                    {/* Error/Warning Details - show when there are issues */}
                                     {(errors.length > 0 || warnings.length > 0) && (
-                                      <div className={css({ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'gray.200' })}>
+                                      <div className={css({ mt: 1, pt: 1, borderTop: '1px solid', borderColor: 'gray.200' })}>
                                         {errors.map((error, errorIndex) => (
-                                          <div key={errorIndex} className={css({ fontSize: 'xs', color: 'red.600', mb: 1 })}>
+                                          <div key={errorIndex} className={css({ fontSize: 'xs', color: 'red.600', mb: 0.5 })}>
                                             ❌ {error.message}
                                           </div>
                                         ))}
                                         {warnings.map((warning, warningIndex) => (
-                                          <div key={warningIndex} className={css({ fontSize: 'xs', color: 'orange.600', mb: 1 })}>
+                                          <div key={warningIndex} className={css({ fontSize: 'xs', color: 'orange.600', mb: 0.5 })}>
                                             ⚠️ {warning.message}
                                           </div>
                                         ))}
                                       </div>
                                     )}
-                                  </div>
+                                  </CompactStepItem>
                                 </div>
                               )
                             } else {
@@ -1303,88 +1204,57 @@ export function TutorialEditor({
 
                               items.push(
                                 <div key={`practice-${item.step.id}`}>
-                                  {/* Practice Step Card */}
-                                  <div
+                                  <CompactStepItem
+                                    type="practice"
+                                    index={index}
+                                    title={item.step.title}
+                                    subtitle={`${item.step.problemCount} problems • Max ${item.step.maxTerms} terms`}
+                                    isSelected={isSelected}
+                                    hasErrors={false}
+                                    hasWarnings={false}
                                     onClick={() => setEditorState(prev => ({
                                       ...prev,
                                       selectedPracticeStepId: item.step.id,
                                       selectedStepIndex: null
                                     }))}
-                                    className={css({
-                                      p: 3,
-                                      border: '2px solid',
-                                      borderColor: isSelected ? 'purple.500' : 'purple.200',
-                                      borderRadius: 'md',
-                                      bg: isSelected ? 'purple.50' : 'white',
-                                      cursor: 'pointer',
-                                      _hover: { bg: isSelected ? 'purple.100' : 'gray.50' }
-                                    })}
-                                  >
-                                    <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 })}>
-                                      <div className={css({ flex: 1 })}>
-                                        <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 1 })}>
-                                          <span className={css({
-                                            fontSize: 'xs',
-                                            fontWeight: 'bold',
-                                            color: 'purple.800',
-                                            bg: 'purple.100',
-                                            px: 2,
-                                            py: 1,
-                                            borderRadius: 'sm'
-                                          })}>
-                                            🎯 Problem Page {index + 1}
-                                          </span>
-                                        </div>
-                                        <div className={css({ fontWeight: 'medium', fontSize: 'sm', mb: 1 })}>
-                                          {item.step.title}
-                                        </div>
-                                        <div className={css({ fontSize: 'xs', color: 'gray.600', mb: 1 })}>
-                                          {item.step.problemCount} problems • Max {item.step.maxTerms} terms
-                                        </div>
-                                        <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
-                                          {item.step.description}
-                                        </div>
-                                      </div>
-
-                                      {/* Practice Step Actions */}
-                                      <div className={css({ display: 'flex', gap: 1, flexShrink: 0 })}>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            deletePracticeStep(item.originalIndex)
-                                          }}
-                                          className={css({
-                                            p: 1,
-                                            bg: 'red.100',
-                                            color: 'red.700',
-                                            border: '1px solid',
-                                            borderColor: 'red.300',
-                                            borderRadius: 'sm',
-                                            fontSize: 'xs',
-                                            cursor: 'pointer',
-                                            _hover: { bg: 'red.200' }
-                                          })}
-                                          title="Delete practice step"
-                                        >
-                                          🗑️
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
+                                    onDelete={() => deletePracticeStep(item.originalIndex)}
+                                  />
                                 </div>
                               )
                             }
 
-                            // Add dropdown after each step
+                            // Add BetweenStepAdd after each step
                             items.push(
-                              <NewItemDropdown
-                                key={`new-${index + 1}`}
-                                position={index + 1}
-                                onAddStep={(pos) => addStep(pos)}
-                                onAddPracticeStep={(pos) => addPracticeStep(pos)}
+                              <BetweenStepAdd
+                                key={`add-${index + 1}`}
+                                onAddStep={() => addStep(index + 1)}
+                                onAddPracticeStep={() => addPracticeStep(index + 1)}
                               />
                             )
                           })
+
+                          // Show empty state if no actual steps (only BetweenStepAdd components)
+                          if (unifiedSteps.length === 0) {
+                            return (
+                              <div className={css({
+                                textAlign: 'center',
+                                py: 8,
+                                color: 'gray.500'
+                              })}>
+                                <div className={css({ mb: 4, fontSize: 'lg' })}>📝</div>
+                                <div className={css({ mb: 4, fontWeight: 'medium' })}>
+                                  No steps yet
+                                </div>
+                                <div className={css({ mb: 4, fontSize: 'sm' })}>
+                                  Add your first concept step or practice step to get started
+                                </div>
+                                <NewItemDropdown
+                                  onAddStep={() => addStep(0)}
+                                  onAddPracticeStep={() => addPracticeStep(0)}
+                                />
+                              </div>
+                            )
+                          }
 
                           return items
                         })()}
@@ -1407,154 +1277,71 @@ export function TutorialEditor({
                   })}
                 />
 
-                {/* Main content - Split between Tutorial Player and Step Editor */}
+                {/* Main content - Split between Step Editor and Preview */}
                 <div
                   className={css({
                     width: `calc(100% - ${position}px - 4px)`,
                     display: 'flex',
-                    flexDirection: 'column',
+                    flexDirection: 'row',
                     height: '100%'
                   })}
                 >
                   {/* Unified Step Editor - handles both concept and practice steps */}
-                  {(editorState.selectedStepIndex !== null || editorState.selectedPracticeStepId) && (
+                  {(editorState.selectedStepIndex !== null || editorState.selectedPracticeStepId) ? (
                     <div className={css({
-                      flex: editorState.selectedPracticeStepId ? '0 0 400px' : '0 0 300px',
+                      flex: '0 0 400px',
                       bg: 'white',
-                      borderBottom: '1px solid',
+                      borderRight: '1px solid',
                       borderColor: 'gray.200',
-                      p: 4,
-                      overflowY: 'auto'
+                      overflowY: 'auto',
+                      height: '100%'
                     })}>
-                      <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 })}>
-                        <h3 className={css({ fontWeight: 'bold', fontSize: 'lg' })}>
-                          {editorState.selectedStepIndex !== null
-                            ? `Edit Step ${editorState.selectedStepIndex + 1}`
-                            : 'Edit Practice Step'
-                          }
-                        </h3>
-                        <button
-                          onClick={() => setEditorState(prev => ({
+                      {/* Conditional Editor Content */}
+                      {editorState.selectedStepIndex !== null ? (
+                        /* Concept Step Editor */
+                        <EditorLayout
+                          title={`Edit Step ${editorState.selectedStepIndex + 1}`}
+                          onClose={() => setEditorState(prev => ({
                             ...prev,
                             selectedStepIndex: null,
                             selectedPracticeStepId: null
                           }))}
-                          className={css({
-                            p: 1,
-                            borderRadius: 'sm',
-                            cursor: 'pointer',
-                            _hover: { bg: 'gray.100' }
-                          })}
                         >
-                          ✕
-                        </button>
-                      </div>
-
-                      {/* Conditional Editor Content */}
-                      {editorState.selectedStepIndex !== null ? (
-                        /* Concept Step Editor */
-                        <div className={css({ display: 'flex', flexDirection: 'column', gap: 3 })}>
-                          {/* Title */}
-                          <div>
-                            <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
-                              Title
-                            </label>
-                            <input
-                              type="text"
+                          <FormGroup>
+                            <TextInput
+                              label="Title"
                               value={tutorial.steps[editorState.selectedStepIndex].title}
-                              onChange={(e) => updateStep(editorState.selectedStepIndex, { title: e.target.value })}
-                              className={css({
-                                w: 'full',
-                                p: 2,
-                                border: '1px solid',
-                                borderColor: 'gray.300',
-                                borderRadius: 'md',
-                                fontSize: 'sm'
-                              })}
+                              onChange={(value) => updateStep(editorState.selectedStepIndex, { title: value })}
                             />
-                          </div>
 
-                          {/* Problem */}
-                          <div>
-                            <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
-                              Problem
-                            </label>
-                            <input
-                              type="text"
+                            <TextInput
+                              label="Problem"
                               value={tutorial.steps[editorState.selectedStepIndex].problem}
-                              onChange={(e) => updateStep(editorState.selectedStepIndex, { problem: e.target.value })}
-                              className={css({
-                                w: 'full',
-                                p: 2,
-                                border: '1px solid',
-                                borderColor: 'gray.300',
-                                borderRadius: 'md',
-                                fontSize: 'sm'
-                              })}
+                              onChange={(value) => updateStep(editorState.selectedStepIndex, { problem: value })}
                             />
-                          </div>
 
-                          {/* Start Value & Target Value */}
-                          <div className={css({ display: 'flex', gap: 2 })}>
-                            <div className={css({ flex: 1 })}>
-                              <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
-                                Start Value
-                              </label>
-                              <input
-                                type="number"
+                            <FormGroup columns={2}>
+                              <NumberInput
+                                label="Start Value"
                                 value={tutorial.steps[editorState.selectedStepIndex].startValue}
-                                onChange={(e) => updateStep(editorState.selectedStepIndex, { startValue: parseInt(e.target.value) || 0 })}
-                                className={css({
-                                  w: 'full',
-                                  p: 2,
-                                  border: '1px solid',
-                                  borderColor: 'gray.300',
-                                  borderRadius: 'md',
-                                  fontSize: 'sm'
-                                })}
+                                onChange={(value) => updateStep(editorState.selectedStepIndex, { startValue: value })}
                               />
-                            </div>
-                            <div className={css({ flex: 1 })}>
-                              <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
-                                Target Value
-                              </label>
-                              <input
-                                type="number"
+                              <NumberInput
+                                label="Target Value"
                                 value={tutorial.steps[editorState.selectedStepIndex].targetValue}
-                                onChange={(e) => updateStep(editorState.selectedStepIndex, { targetValue: parseInt(e.target.value) || 0 })}
-                                className={css({
-                                  w: 'full',
-                                  p: 2,
-                                  border: '1px solid',
-                                  borderColor: 'gray.300',
-                                  borderRadius: 'md',
-                                  fontSize: 'sm'
-                                })}
+                                onChange={(value) => updateStep(editorState.selectedStepIndex, { targetValue: value })}
                               />
-                            </div>
-                          </div>
+                            </FormGroup>
 
-                          {/* Description */}
-                          <div>
-                            <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
-                              Description
-                            </label>
-                            <textarea
+                            <TextInput
+                              label="Description"
                               value={tutorial.steps[editorState.selectedStepIndex].description}
-                              onChange={(e) => updateStep(editorState.selectedStepIndex, { description: e.target.value })}
+                              onChange={(value) => updateStep(editorState.selectedStepIndex, { description: value })}
+                              multiline
                               rows={3}
-                              className={css({
-                                w: 'full',
-                                p: 2,
-                                border: '1px solid',
-                                borderColor: 'gray.300',
-                                borderRadius: 'md',
-                                fontSize: 'sm',
-                                resize: 'vertical'
-                              })}
                             />
-                          </div>
-                        </div>
+                          </FormGroup>
+                        </EditorLayout>
                       ) : editorState.selectedPracticeStepId ? (
                         /* Practice Step Editor */
                         (() => {
@@ -1580,13 +1367,14 @@ export function TutorialEditor({
                         })()
                       ) : null}
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Preview Section */}
                   <div className={css({
                     flex: 1,
                     overflowY: 'auto',
-                    minHeight: 0
+                    height: '100%',
+                    minWidth: 0
                   })}>
                     {editorState.selectedPracticeStepId ? (
                       /* Practice Step Preview */
