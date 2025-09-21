@@ -1,5 +1,21 @@
 // Utility to extract and convert the existing GuidedAdditionTutorial data
 import { Tutorial, TutorialStep as NewTutorialStep } from '../types/tutorial'
+import { PlaceValueUtils, type ValidPlaceValues, type EarthBeadPosition } from '@soroban/abacus-react'
+
+// Type-safe tutorial bead helper functions
+const TutorialBeads = {
+  ones: {
+    earth: (position: EarthBeadPosition) => ({
+      placeValue: PlaceValueUtils.ones(),
+      beadType: 'earth' as const,
+      position
+    }),
+    heaven: () => ({
+      placeValue: PlaceValueUtils.ones(),
+      beadType: 'heaven' as const
+    })
+  }
+} as const
 
 // Import the existing tutorial step interface to match the current structure
 interface ExistingTutorialStep {
