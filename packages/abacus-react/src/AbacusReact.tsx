@@ -409,25 +409,16 @@ export function useAbacusPlaceStates(initialValue: number = 0, maxPlaceValue: Va
   const initializeFromValue = useCallback((value: number): PlaceStatesMap => {
     const states = new Map<ValidPlaceValues, PlaceState>();
 
-    if (value === 0) {
-      // For zero, just initialize the ones place
-      states.set(0, { placeValue: 0, heavenActive: false, earthActive: 0 });
-      return states;
-    }
-
-    // Extract digits for each place value - DIRECT CALCULATION
-    let remainingValue = value;
-    for (let place = 0; place <= maxPlaceValue && remainingValue > 0; place++) {
+    // Always create ALL place values from 0 to maxPlaceValue (to match columns)
+    for (let place = 0; place <= maxPlaceValue; place++) {
       const placeValueNum = Math.pow(10, place);
-      const digit = Math.floor(remainingValue / placeValueNum) % 10;
+      const digit = Math.floor(value / placeValueNum) % 10;
 
-      if (digit > 0 || place === 0) { // Always include ones place
-        states.set(place as ValidPlaceValues, {
-          placeValue: place as ValidPlaceValues,
-          heavenActive: digit >= 5,
-          earthActive: digit >= 5 ? digit - 5 : digit
-        });
-      }
+      states.set(place as ValidPlaceValues, {
+        placeValue: place as ValidPlaceValues,
+        heavenActive: digit >= 5,
+        earthActive: digit >= 5 ? digit - 5 : digit
+      });
     }
 
     return states;
