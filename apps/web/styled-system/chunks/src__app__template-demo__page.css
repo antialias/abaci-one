@@ -1,5 +1,4 @@
 @layer utilities {
-
   .p_8 {
     padding: var(--spacing-8)
     }
@@ -59,6 +58,12 @@
   .text_white {
     color: var(--colors-white)
     }
+    .hover\:bg_blue\.600:is(:hover, [data-hover]) {
+      background: var(--colors-blue-600)
+        }
+    .hover\:bg_gray\.100:is(:hover, [data-hover]) {
+      background: var(--colors-gray-100)
+        }
 
   .cursor_pointer {
     cursor: pointer
@@ -275,12 +280,4 @@
   .h_600pt {
     height: 600pt
     }
-
-  .hover\:bg_blue\.600:is(:hover, [data-hover]) {
-    background: var(--colors-blue-600)
-        }
-
-  .hover\:bg_gray\.100:is(:hover, [data-hover]) {
-    background: var(--colors-gray-100)
-        }
 }

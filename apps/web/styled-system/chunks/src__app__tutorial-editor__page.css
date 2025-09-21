@@ -4,20 +4,12 @@
     justify-content: center
     }
 
-  .text_center {
-    text-align: center
-    }
-
-  .flex_1 {
-    flex: 1 1 0%
-    }
-
-  .w_50\% {
-    width: 50%
-    }
-
   .h_100vh {
     height: 100vh
+    }
+
+  .text_center {
+    text-align: center
     }
 
   .fs_2xl {
@@ -87,6 +79,9 @@
   .text_gray\.700 {
     color: var(--colors-gray-700)
     }
+    .hover\:bg_blue\.600:is(:hover, [data-hover]) {
+      background: var(--colors-blue-600)
+        }
 
   .text_capitalize {
     text-transform: capitalize
@@ -103,6 +98,9 @@
   .cursor_pointer {
     cursor: pointer
     }
+    .hover\:bg_gray\.50:is(:hover, [data-hover]) {
+      background: var(--colors-gray-50)
+        }
 
   .bg_green\.100 {
     background: var(--colors-green-100)
@@ -227,6 +225,9 @@
   .cursor_ew-resize {
     cursor: ew-resize
     }
+    .hover\:bg_blue\.400:is(:hover, [data-hover]) {
+      background: var(--colors-blue-400)
+        }
 
   .transition_background-color_0\.2s {
     transition: background-color 0.2s
@@ -355,16 +356,4 @@
   .flex_column {
     flex-direction: column
     }
-
-  .hover\:bg_blue\.400:is(:hover, [data-hover]) {
-    background: var(--colors-blue-400)
-        }
-
-  .hover\:bg_blue\.600:is(:hover, [data-hover]) {
-    background: var(--colors-blue-600)
-        }
-
-  .hover\:bg_gray\.50:is(:hover, [data-hover]) {
-    background: var(--colors-gray-50)
-        }
 }

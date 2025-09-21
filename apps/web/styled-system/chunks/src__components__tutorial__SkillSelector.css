@@ -71,6 +71,9 @@
   .transition_all_0\.2s {
     transition: all 0.2s
     }
+    .hover\:opacity_0\.8:is(:hover, [data-hover]) {
+      opacity: 0.8
+        }
 
   .p_4 {
     padding: var(--spacing-4)
@@ -179,8 +182,4 @@
   .flex_row {
     flex-direction: row
     }
-
-  .hover\:opacity_0\.8:is(:hover, [data-hover]) {
-    opacity: 0.8
-        }
 }

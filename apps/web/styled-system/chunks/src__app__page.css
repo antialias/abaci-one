@@ -1,5 +1,4 @@
 @layer utilities {
-
   .min-h_100vh {
     min-height: 100vh
     }
@@ -27,6 +26,9 @@
   .text_white {
     color: var(--colors-white)
     }
+    .hover\:bg_brand\.700:is(:hover, [data-hover]) {
+      background: var(--colors-brand-700)
+        }
 
   .px_8 {
     padding-inline: var(--spacing-8)
@@ -59,6 +61,12 @@
   .border_brand\.200 {
     border-color: var(--colors-brand-200)
     }
+    .hover\:border_brand\.400:is(:hover, [data-hover]) {
+      border-color: var(--colors-brand-400)
+        }
+    .hover\:transform_translateY\(-2px\):is(:hover, [data-hover]) {
+      transform: translateY(-2px)
+        }
 
   .d_grid {
     display: grid
@@ -101,6 +109,12 @@
     transition-timing-function: var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
     transition-duration: var(--transition-duration, 150ms)
     }
+    .hover\:transform_translateY\(-4px\):is(:hover, [data-hover]) {
+      transform: translateY(-4px)
+        }
+    .hover\:shadow_modal:is(:hover, [data-hover]) {
+      box-shadow: var(--shadows-modal)
+        }
 
   .fs_4xl {
     font-size: var(--font-sizes-4xl)
@@ -197,26 +211,6 @@
   .mt_8 {
     margin-top: var(--spacing-8)
     }
-
-  .hover\:bg_brand\.700:is(:hover, [data-hover]) {
-    background: var(--colors-brand-700)
-        }
-
-  .hover\:border_brand\.400:is(:hover, [data-hover]) {
-    border-color: var(--colors-brand-400)
-        }
-
-  .hover\:transform_translateY\(-2px\):is(:hover, [data-hover]) {
-    transform: translateY(-2px)
-        }
-
-  .hover\:transform_translateY\(-4px\):is(:hover, [data-hover]) {
-    transform: translateY(-4px)
-        }
-
-  .hover\:shadow_modal:is(:hover, [data-hover]) {
-    box-shadow: var(--shadows-modal)
-        }
     @media screen and (min-width: 48em) {
 
   .md\:fs_6xl {
@@ -228,18 +222,6 @@
     }
 
   .md\:grid-cols_3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr))
-    }
-
-    .md\:fs_6xl {
-      font-size: var(--font-sizes-6xl)
-    }
-
-    .md\:fs_xl {
-      font-size: var(--font-sizes-xl)
-    }
-
-    .md\:grid-cols_3 {
       grid-template-columns: repeat(3, minmax(0, 1fr))
     }
         }
