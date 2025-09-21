@@ -3,6 +3,7 @@
 import { ReactNode, useState } from 'react'
 import { css } from '../../../../styled-system/css'
 import { hstack, vstack } from '../../../../styled-system/patterns'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 
 // Shared input styles
 export const inputStyles = {
@@ -494,8 +495,6 @@ interface BetweenStepAddProps {
 }
 
 export function BetweenStepAdd({ onAddStep, onAddPracticeStep }: BetweenStepAddProps) {
-  const [isOpen, setIsOpen] = useState(false)
-
   return (
     <div className={css({
       position: 'relative',
@@ -503,89 +502,94 @@ export function BetweenStepAdd({ onAddStep, onAddPracticeStep }: BetweenStepAddP
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
+      zIndex: 50, // Higher z-index for the container
       '&:hover .add-button': {
         opacity: 0.5
       }
     })}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`${css({
-          px: 2,
-          py: 0.5,
-          bg: 'gray.100',
-          color: 'gray.600',
-          border: '1px dashed',
-          borderColor: 'gray.300',
-          borderRadius: 'sm',
-          fontSize: 'xs',
-          cursor: 'pointer',
-          opacity: 0,
-          transition: 'opacity 0.2s ease',
-          zIndex: 30,
-          position: 'relative',
-          _hover: {
-            opacity: '1 !important',
-            bg: 'gray.200',
-            borderColor: 'gray.400'
-          }
-        })} add-button`}
-      >
-        + New
-      </button>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button
+            className={`${css({
+              px: 2,
+              py: 0.5,
+              bg: 'gray.100',
+              color: 'gray.600',
+              border: '1px dashed',
+              borderColor: 'gray.300',
+              borderRadius: 'sm',
+              fontSize: 'xs',
+              cursor: 'pointer',
+              opacity: 0,
+              transition: 'opacity 0.2s ease',
+              zIndex: 50, // Higher z-index for the button
+              position: 'relative',
+              _hover: {
+                opacity: '1 !important',
+                bg: 'gray.200',
+                borderColor: 'gray.400'
+              }
+            })} add-button`}
+          >
+            + New
+          </button>
+        </DropdownMenu.Trigger>
 
-      {isOpen && (
-        <div className={css({
-          position: 'absolute',
-          top: '100%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          mt: 1,
-          bg: 'white',
-          border: '1px solid',
-          borderColor: 'gray.200',
-          borderRadius: 'md',
-          shadow: 'md',
-          zIndex: 20,
-          minW: '150px'
-        })}>
-          <button
-            onClick={() => {
-              onAddStep()
-              setIsOpen(false)
-            }}
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
             className={css({
-              w: 'full',
-              px: 3,
-              py: 2,
-              textAlign: 'left',
-              fontSize: 'sm',
-              cursor: 'pointer',
-              _hover: { bg: 'blue.50', color: 'blue.700' },
-              borderBottom: '1px solid',
-              borderColor: 'gray.100'
+              mt: 1,
+              bg: 'white',
+              border: '1px solid',
+              borderColor: 'gray.200',
+              borderRadius: 'md',
+              shadow: 'md',
+              zIndex: 100, // Very high z-index for dropdown content
+              minW: '150px'
             })}
+            sideOffset={4}
           >
-            📝 Concept Step
-          </button>
-          <button
-            onClick={() => {
-              onAddPracticeStep()
-              setIsOpen(false)
-            }}
-            className={css({
-              w: 'full',
-              px: 3,
-              py: 2,
-              textAlign: 'left',
-              fontSize: 'sm',
-              cursor: 'pointer',
-              _hover: { bg: 'purple.50', color: 'purple.700' }
-            })}
-          >
-            🎯 Problem Page
-          </button>
-        </div>
-      )}
+            <DropdownMenu.Item asChild>
+              <button
+                onClick={onAddStep}
+                className={css({
+                  w: 'full',
+                  px: 3,
+                  py: 2,
+                  textAlign: 'left',
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  border: 'none',
+                  bg: 'transparent',
+                  _hover: { bg: 'blue.50', color: 'blue.700' },
+                  borderBottom: '1px solid',
+                  borderColor: 'gray.100'
+                })}
+              >
+                📝 Concept Step
+              </button>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item asChild>
+              <button
+                onClick={onAddPracticeStep}
+                className={css({
+                  w: 'full',
+                  px: 3,
+                  py: 2,
+                  textAlign: 'left',
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  border: 'none',
+                  bg: 'transparent',
+                  _hover: { bg: 'purple.50', color: 'purple.700' }
+                })}
+              >
+                🎯 Problem Page
+              </button>
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
     </div>
   )
 }
