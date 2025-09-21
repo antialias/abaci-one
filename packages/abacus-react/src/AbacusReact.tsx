@@ -12,7 +12,7 @@ export interface BeadConfig {
   value: number;
   active: boolean;
   position: number; // 0-based position within its type group
-  columnIndex: number;
+  placeValue: ValidPlaceValues; // 0=ones, 1=tens, 2=hundreds, etc.
 }
 
 // Comprehensive styling system
@@ -288,11 +288,21 @@ export function useAbacusDimensions(
   }, [columns, scaleFactor, showNumbers]);
 }
 
-// Independent column state for heaven and earth beads
+// Legacy column state interface (deprecated)
 interface ColumnState {
   heavenActive: boolean;  // true if heaven bead (value 5) is active
   earthActive: number;    // 0-4, number of active earth beads
 }
+
+// Native place-value state (no more array indices!)
+export interface PlaceState {
+  placeValue: ValidPlaceValues;
+  heavenActive: boolean;
+  earthActive: number; // 0-4, number of active earth beads
+}
+
+// State map keyed by place value - this eliminates the indexing nightmare!
+export type PlaceStatesMap = Map<ValidPlaceValues, PlaceState>;
 
 export function useAbacusState(initialValue: number = 0, targetColumns?: number) {
   // Initialize state from the initial value
@@ -382,6 +392,100 @@ export function useAbacusState(initialValue: number = 0, targetColumns?: number)
     columnStates,
     getColumnState,
     setColumnState,
+    toggleBead
+  };
+}
+
+// NEW: Native place-value state management hook (eliminates the column index nightmare!)
+export function useAbacusPlaceStates(initialValue: number = 0, maxPlaceValue: ValidPlaceValues = 4) {
+  // Initialize state from value using place values as keys - NO MORE ARRAY INDICES!
+  const initializeFromValue = useCallback((value: number): PlaceStatesMap => {
+    const states = new Map<ValidPlaceValues, PlaceState>();
+
+    if (value === 0) {
+      // For zero, just initialize the ones place
+      states.set(0, { placeValue: 0, heavenActive: false, earthActive: 0 });
+      return states;
+    }
+
+    // Extract digits for each place value - DIRECT CALCULATION
+    let remainingValue = value;
+    for (let place = 0; place <= maxPlaceValue && remainingValue > 0; place++) {
+      const placeValueNum = Math.pow(10, place);
+      const digit = Math.floor(remainingValue / placeValueNum) % 10;
+
+      if (digit > 0 || place === 0) { // Always include ones place
+        states.set(place as ValidPlaceValues, {
+          placeValue: place as ValidPlaceValues,
+          heavenActive: digit >= 5,
+          earthActive: digit >= 5 ? digit - 5 : digit
+        });
+      }
+    }
+
+    return states;
+  }, [maxPlaceValue]);
+
+  const [placeStates, setPlaceStates] = useState<PlaceStatesMap>(() => initializeFromValue(initialValue));
+
+  // Calculate current value from place states - NO MORE INDEX MATH!
+  const value = useMemo(() => {
+    let total = 0;
+    placeStates.forEach((state) => {
+      const placeValueNum = Math.pow(10, state.placeValue);
+      const digitValue = (state.heavenActive ? 5 : 0) + state.earthActive;
+      total += digitValue * placeValueNum;
+    });
+    return total;
+  }, [placeStates]);
+
+  const setValue = useCallback((newValue: number) => {
+    setPlaceStates(initializeFromValue(newValue));
+  }, [initializeFromValue]);
+
+  const getPlaceState = useCallback((placeValue: ValidPlaceValues): PlaceState => {
+    return placeStates.get(placeValue) || {
+      placeValue,
+      heavenActive: false,
+      earthActive: 0
+    };
+  }, [placeStates]);
+
+  const setPlaceState = useCallback((placeValue: ValidPlaceValues, newState: Omit<PlaceState, 'placeValue'>) => {
+    setPlaceStates(prev => {
+      const newStates = new Map(prev);
+      newStates.set(placeValue, { placeValue, ...newState });
+      return newStates;
+    });
+  }, []);
+
+  const toggleBead = useCallback((bead: BeadConfig) => {
+    const currentState = getPlaceState(bead.placeValue);
+
+    if (bead.type === 'heaven') {
+      setPlaceState(bead.placeValue, {
+        ...currentState,
+        heavenActive: !currentState.heavenActive
+      });
+    } else {
+      // Earth bead toggle logic
+      const newEarthActive = bead.active
+        ? Math.max(0, bead.position)  // Deactivate this bead and all above
+        : bead.position + 1;          // Activate this bead and all below
+
+      setPlaceState(bead.placeValue, {
+        ...currentState,
+        earthActive: newEarthActive
+      });
+    }
+  }, [getPlaceState, setPlaceState]);
+
+  return {
+    value,
+    setValue,
+    placeStates,
+    getPlaceState,
+    setPlaceState,
     toggleBead
   };
 }
@@ -524,6 +628,58 @@ function isBeadDisabled(
   });
 }
 
+// NEW: Native place-value highlighting (eliminates totalColumns threading!)
+function isBeadHighlightedByPlaceValue(
+  bead: BeadConfig,
+  highlightBeads?: BeadHighlight[]
+): boolean {
+  if (!highlightBeads) return false;
+
+  return highlightBeads.some(highlight => {
+    // Direct place value matching - NO MORE CONVERSION NEEDED!
+    if ('placeValue' in highlight && bead.placeValue !== undefined) {
+      return highlight.placeValue === bead.placeValue &&
+             highlight.beadType === bead.type &&
+             (highlight.position === undefined || highlight.position === bead.position);
+    }
+
+    // Legacy columnIndex support for backward compatibility
+    if ('columnIndex' in highlight && bead.columnIndex !== undefined) {
+      return highlight.columnIndex === bead.columnIndex &&
+             highlight.beadType === bead.type &&
+             (highlight.position === undefined || highlight.position === bead.position);
+    }
+
+    return false;
+  });
+}
+
+// NEW: Native place-value disabling (eliminates totalColumns threading!)
+function isBeadDisabledByPlaceValue(
+  bead: BeadConfig,
+  disabledBeads?: BeadHighlight[]
+): boolean {
+  if (!disabledBeads) return false;
+
+  return disabledBeads.some(disabled => {
+    // Direct place value matching - NO MORE CONVERSION NEEDED!
+    if ('placeValue' in disabled && bead.placeValue !== undefined) {
+      return disabled.placeValue === bead.placeValue &&
+             disabled.beadType === bead.type &&
+             (disabled.position === undefined || disabled.position === bead.position);
+    }
+
+    // Legacy columnIndex support for backward compatibility
+    if ('columnIndex' in disabled && bead.columnIndex !== undefined) {
+      return disabled.columnIndex === bead.columnIndex &&
+             disabled.beadType === bead.type &&
+             (disabled.position === undefined || disabled.position === bead.position);
+    }
+
+    return false;
+  });
+}
+
 function calculateOverlayPosition(
   overlay: AbacusOverlay,
   dimensions: AbacusDimensions,
@@ -641,6 +797,47 @@ function calculateBeadStates(columnStates: ColumnState[], originalLength: number
   });
 }
 
+// NEW: Native place-value bead state calculation (eliminates array index math!)
+function calculateBeadStatesFromPlaces(placeStates: PlaceStatesMap): BeadConfig[][] {
+  const columnsList: BeadConfig[][] = [];
+
+  // Convert Map to sorted array by place value (ascending order for correct visual layout)
+  const sortedPlaces = Array.from(placeStates.entries()).sort(([a], [b]) => a - b);
+
+  for (const [placeValue, placeState] of sortedPlaces) {
+    const beads: BeadConfig[] = [];
+
+    // Heaven bead (value 5) - independent state
+    beads.push({
+      type: 'heaven',
+      value: 5,
+      active: placeState.heavenActive,
+      position: 0,
+      placeValue: placeValue, // Direct place value - no conversion needed!
+      // Keep columnIndex for backward compatibility during transition
+      columnIndex: sortedPlaces.length - 1 - sortedPlaces.findIndex(([p]) => p === placeValue)
+    });
+
+    // Earth beads (4 beads, each value 1) - independent state
+    for (let i = 0; i < 4; i++) {
+      beads.push({
+        type: 'earth',
+        value: 1,
+        active: i < placeState.earthActive,
+        position: i,
+        placeValue: placeValue, // Direct place value - no conversion needed!
+        // Keep columnIndex for backward compatibility during transition
+        columnIndex: sortedPlaces.length - 1 - sortedPlaces.findIndex(([p]) => p === placeValue)
+      });
+    }
+
+    columnsList.push(beads);
+  }
+
+  // Return in visual order (left-to-right = highest-to-lowest place value)
+  return columnsList.reverse();
+}
+
 // Calculate numeric value from column states
 function calculateValueFromColumnStates(columnStates: ColumnState[], totalColumns: number): number {
   let value = 0;
@@ -650,6 +847,19 @@ function calculateValueFromColumnStates(columnStates: ColumnState[], totalColumn
     const columnValue = (columnState.heavenActive ? 5 : 0) + columnState.earthActive;
     value += columnValue * placeValue;
   });
+
+  return value;
+}
+
+// NEW: Native place-value calculation (eliminates the array index nightmare!)
+function calculateValueFromPlaceStates(placeStates: PlaceStatesMap): number {
+  let value = 0;
+
+  // Direct place value iteration - NO MORE ARRAY INDEX MATH!
+  for (const [placeValue, placeState] of placeStates) {
+    const digitValue = (placeState.heavenActive ? 5 : 0) + placeState.earthActive;
+    value += digitValue * Math.pow(10, placeValue); // Direct place value - no conversion!
+  }
 
   return value;
 }
