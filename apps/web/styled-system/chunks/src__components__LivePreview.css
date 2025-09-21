@@ -1,4 +1,5 @@
 @layer utilities {
+
   .fs_xl {
     font-size: var(--font-sizes-xl)
     }
@@ -68,15 +69,6 @@
     transition-timing-function: var(--transition-easing, cubic-bezier(0.4, 0, 0.2, 1));
     transition-duration: var(--transition-duration, 150ms)
     }
-    .hover\:border_brand\.300:is(:hover, [data-hover]) {
-      border-color: var(--colors-brand-300)
-        }
-    .hover\:transform_translateY\(-2px\):is(:hover, [data-hover]) {
-      transform: translateY(-2px)
-        }
-    .hover\:shadow_card:is(:hover, [data-hover]) {
-      box-shadow: var(--shadows-card)
-        }
 
   .pos_absolute {
     position: absolute
@@ -217,16 +209,28 @@
   .gap_3 {
     gap: var(--spacing-3)
     }
-    @media screen and (min-width: 64em) {
 
-  .lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
-      grid-template-columns: repeat(3, minmax(0, 1fr))
+  .hover\:border_brand\.300:is(:hover, [data-hover]) {
+    border-color: var(--colors-brand-300)
+        }
+
+  .hover\:transform_translateY\(-2px\):is(:hover, [data-hover]) {
+    transform: translateY(-2px)
+        }
+
+  .hover\:shadow_card:is(:hover, [data-hover]) {
+    box-shadow: var(--shadows-card)
+        }
+
+  @media screen and (min-width: 48em) {
+    .md\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
+      grid-template-columns: repeat(2, minmax(0, 1fr))
     }
         }
-    @media screen and (min-width: 48em) {
 
-  .md\:grid-cols_repeat\(2\,_minmax\(0\,_1fr\)\) {
-      grid-template-columns: repeat(2, minmax(0, 1fr))
+  @media screen and (min-width: 64em) {
+    .lg\:grid-cols_repeat\(3\,_minmax\(0\,_1fr\)\) {
+      grid-template-columns: repeat(3, minmax(0, 1fr))
     }
         }
 }

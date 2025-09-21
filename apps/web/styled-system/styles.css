@@ -2783,6 +2783,7 @@
         }
 
   @media (max-width: 768px) {
+
     .\[\@media_\(max-width\:_768px\)\]\:gap_10px {
       gap: 10px
     }
@@ -2801,6 +2802,7 @@
         }
 
   @media (max-width: 480px) {
+
     .\[\@media_\(max-width\:_480px\)\]\:gap_8px {
       gap: 8px
     }

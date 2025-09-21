@@ -23,9 +23,6 @@
   .fs_xl {
     font-size: var(--font-sizes-xl)
     }
-    .hover\:bg_blue\.50:is(:hover, [data-hover]) {
-      background: var(--colors-blue-50)
-        }
 
   .border_orange\.300 {
     border-color: var(--colors-orange-300)
@@ -34,9 +31,6 @@
   .text_orange\.700 {
     color: var(--colors-orange-700)
     }
-    .hover\:bg_orange\.50:is(:hover, [data-hover]) {
-      background: var(--colors-orange-50)
-        }
 
   .px_3 {
     padding-inline: var(--spacing-3)
@@ -49,9 +43,6 @@
   .cursor_pointer {
     cursor: pointer
     }
-    .hover\:bg_gray\.50:is(:hover, [data-hover]) {
-      background: var(--colors-gray-50)
-        }
 
   .mt_3 {
     margin-top: var(--spacing-3)
@@ -348,4 +339,16 @@
   .flex_column {
     flex-direction: column
     }
+
+  .hover\:bg_blue\.50:is(:hover, [data-hover]) {
+    background: var(--colors-blue-50)
+        }
+
+  .hover\:bg_orange\.50:is(:hover, [data-hover]) {
+    background: var(--colors-orange-50)
+        }
+
+  .hover\:bg_gray\.50:is(:hover, [data-hover]) {
+    background: var(--colors-gray-50)
+        }
 }

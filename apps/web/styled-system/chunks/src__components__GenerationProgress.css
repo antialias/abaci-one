@@ -1,4 +1,5 @@
 @layer utilities {
+
   .fs_xl {
     font-size: var(--font-sizes-xl)
     }
