@@ -374,26 +374,26 @@ export function TutorialPlayer({
 
     return {
       beads: currentStep.highlightBeads.reduce((acc, highlight) => {
-        // Convert columnIndex to placeValue for compatibility
-        const placeValue = highlight.placeValue ?? (4 - highlight.columnIndex);
+        // Convert placeValue to columnIndex for AbacusReact compatibility
+        const columnIndex = highlight.placeValue !== undefined ? (4 - highlight.placeValue) : highlight.columnIndex;
 
         // Initialize column if it doesn't exist
-        if (!acc[placeValue]) {
-          acc[placeValue] = {};
+        if (!acc[columnIndex]) {
+          acc[columnIndex] = {};
         }
 
         // Add the bead style to the appropriate type
         if (highlight.beadType === 'earth' && highlight.position !== undefined) {
-          if (!acc[placeValue].earth) {
-            acc[placeValue].earth = {};
+          if (!acc[columnIndex].earth) {
+            acc[columnIndex].earth = {};
           }
-          acc[placeValue].earth[highlight.position] = {
+          acc[columnIndex].earth[highlight.position] = {
             fill: '#fbbf24',
             stroke: '#f59e0b',
             strokeWidth: 3
           };
         } else {
-          acc[placeValue][highlight.beadType] = {
+          acc[columnIndex][highlight.beadType] = {
             fill: '#fbbf24',
             stroke: '#f59e0b',
             strokeWidth: 3
