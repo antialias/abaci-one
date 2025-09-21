@@ -298,7 +298,7 @@ export const CustomTutorial: Story = {
           description: 'Add 5 to 5 using the heaven bead',
           startValue: 5,
           targetValue: 10,
-          highlightBeads: [{ columnIndex: 0, beadType: 'heaven' as const }],
+          highlightBeads: [{ columnIndex: 4, beadType: 'heaven' as const }],
           expectedAction: 'add' as const,
           actionDescription: 'Click the heaven bead',
           tooltip: {
@@ -320,7 +320,7 @@ export const CustomTutorial: Story = {
           targetValue: 15,
           highlightBeads: [
             { columnIndex: 1, beadType: 'heaven' as const },
-            { columnIndex: 0, beadType: 'heaven' as const }
+            { columnIndex: 4, beadType: 'heaven' as const }
           ],
           expectedAction: 'multi-step' as const,
           actionDescription: 'Activate both heaven beads for 15',

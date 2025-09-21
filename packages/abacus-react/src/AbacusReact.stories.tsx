@@ -435,12 +435,12 @@ export const TutorialExample: Story = {
       {
         title: "Welcome to the Abacus Tutorial!",
         description: "Click on the highlighted bead to continue.",
-        highlightBeads: [{ columnIndex: 0, beadType: 'earth' as const, position: 0 }],
-        targetBead: { columnIndex: 0, beadType: 'earth' as const, position: 0 },
+        highlightBeads: [{ columnIndex: 4, beadType: 'earth' as const, position: 0 }],
+        targetBead: { columnIndex: 4, beadType: 'earth' as const, position: 0 },
         overlays: [{
           id: 'welcome-tooltip',
           type: 'tooltip' as const,
-          target: { type: 'bead' as const, columnIndex: 0, beadType: 'earth' as const, beadPosition: 0 },
+          target: { type: 'bead' as const, columnIndex: 4, beadType: 'earth' as const, beadPosition: 0 },
           content: <div style={{
             background: '#333',
             color: 'white',

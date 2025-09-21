@@ -49,7 +49,7 @@ export const AbacusWithHighlights: Story = {
         scaleFactor={1.5}
         colorScheme="place-value"
         highlightBeads={[
-          { columnIndex: 0, beadType: 'earth', position: 0 }
+          { columnIndex: 4, beadType: 'earth', position: 0 }
         ]}
         customStyles={{
           beads: {

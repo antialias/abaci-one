@@ -120,7 +120,7 @@ export const TutorialExample: Story = {
     const tutorialSteps = [
       {
         instruction: "Click the orange highlighted bead in the ones column (leftmost)",
-        highlightBeads: [{ columnIndex: 0, beadType: 'earth', position: 2 }],
+        highlightBeads: [{ columnIndex: 4, beadType: 'earth', position: 2 }],
         value: 7
       },
       {
@@ -193,7 +193,7 @@ export const TutorialExample: Story = {
             type: 'tooltip',
             target: {
               type: 'bead',
-              columnIndex: 0,
+              columnIndex: 4,
               beadType: 'earth',
               beadPosition: 2
             },

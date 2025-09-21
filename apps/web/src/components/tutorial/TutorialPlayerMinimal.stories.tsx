@@ -87,7 +87,7 @@ export const WithMinimalData: Story = {
           description: 'Add one',
           startValue: 0,
           targetValue: 1,
-          highlightBeads: [{ columnIndex: 0, beadType: 'earth' as const, position: 0 }],
+          highlightBeads: [{ columnIndex: 4, beadType: 'earth' as const, position: 0 }],
           expectedAction: 'add' as const,
           actionDescription: 'Add bead',
           tooltip: { content: 'Test', explanation: 'Test' },
