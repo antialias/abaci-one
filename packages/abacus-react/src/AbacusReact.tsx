@@ -1113,7 +1113,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
   // Switch to place-value architecture!
   const maxPlaceValue = (effectiveColumns - 1) as ValidPlaceValues;
-  const { value: currentValue, placeStates, toggleBead } = useAbacusPlaceStates(value, maxPlaceValue);
+  const { value: currentValue, placeStates, toggleBead, getPlaceState, setPlaceState } = useAbacusPlaceStates(value, maxPlaceValue);
 
   // Legacy compatibility - convert placeStates back to columnStates for components that still need it
   const columnStates = useMemo(() => {
@@ -1196,13 +1196,12 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   }, [onClick, callbacks, toggleBead, disabledColumns, disabledBeads]);
 
   const handleGestureToggle = useCallback((bead: BeadConfig, direction: 'activate' | 'deactivate') => {
-    const columnIndex = effectiveColumns - 1 - bead.placeValue; // Convert place value to column index
-    const currentState = columnStates[columnIndex];
+    const currentState = getPlaceState(bead.placeValue);
 
     if (bead.type === 'heaven') {
       // Heaven bead: directly set the state based on direction
       const newHeavenActive = direction === 'activate';
-      setColumnState(columnIndex, {
+      setPlaceState(bead.placeValue, {
         ...currentState,
         heavenActive: newHeavenActive
       });
@@ -1219,12 +1218,12 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         newEarthActive = Math.min(currentState.earthActive, bead.position);
       }
 
-      setColumnState(columnIndex, {
+      setPlaceState(bead.placeValue, {
         ...currentState,
         earthActive: newEarthActive
       });
     }
-  }, [columnStates, setColumnState, effectiveColumns]);
+  }, [getPlaceState, setPlaceState]);
 
   // Place value editing - FRESH IMPLEMENTATION
   const [activeColumn, setActiveColumn] = React.useState<number | null>(null);
@@ -1240,11 +1239,14 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   const setColumnValue = React.useCallback((columnIndex: number, digit: number) => {
     if (digit < 0 || digit > 9) return;
 
-    setColumnState(columnIndex, {
+    // Convert column index to place value
+    const placeValue = (effectiveColumns - 1 - columnIndex) as ValidPlaceValues;
+
+    setPlaceState(placeValue, {
       heavenActive: digit >= 5,
       earthActive: digit % 5
     });
-  }, [setColumnState]);
+  }, [setPlaceState, effectiveColumns]);
 
   // Keyboard handler - only active when interactive
   React.useEffect(() => {
@@ -1283,11 +1285,27 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         } else {
           // console.log(`🏁 Reached last column, staying at: ${activeColumn}`);
         }
-      } else if (e.key === 'Backspace' || (e.key === 'Tab' && e.shiftKey)) {
+      } else if (e.key === 'Backspace') {
         e.preventDefault();
-        // console.log(`⬅️ ${e.key === 'Backspace' ? 'BACKSPACE' : 'SHIFT+TAB'}: moving to previous column`);
+        // console.log(`⬅️ BACKSPACE: clearing current column and moving to previous column`);
+
+        // Clear current column (set to 0)
+        setColumnValue(activeColumn, 0);
 
         // Move focus to the previous column to the left
+        const prevColumn = activeColumn - 1;
+        if (prevColumn >= 0) {
+          // console.log(`⬅️ Moving focus to previous column: ${prevColumn}`);
+          setActiveColumn(prevColumn);
+        } else {
+          // console.log(`🏁 Reached first column, wrapping to last column`);
+          setActiveColumn(effectiveColumns - 1); // Wrap around to last column
+        }
+      } else if (e.key === 'Tab' && e.shiftKey) {
+        e.preventDefault();
+        // console.log(`⬅️ SHIFT+TAB: moving to previous column`);
+
+        // Move focus to the previous column to the left (without clearing)
         const prevColumn = activeColumn - 1;
         if (prevColumn >= 0) {
           // console.log(`⬅️ Moving focus to previous column: ${prevColumn}`);
@@ -1333,6 +1351,18 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     <div
       className="abacus-container"
       style={{ display: 'inline-block', textAlign: 'center', position: 'relative' }}
+      tabIndex={finalConfig.interactive && finalConfig.showNumbers ? 0 : undefined}
+      onFocus={() => {
+        if (finalConfig.interactive && finalConfig.showNumbers && activeColumn === null) {
+          // Start at the rightmost column (ones place)
+          setActiveColumn(effectiveColumns - 1);
+        }
+      }}
+      onBlur={() => {
+        if (finalConfig.interactive && finalConfig.showNumbers) {
+          setActiveColumn(null);
+        }
+      }}
     >
       <svg
         width={dimensions.width}
