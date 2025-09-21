@@ -553,44 +553,7 @@ function mergeBeadStyles(
   return mergedStyle;
 }
 
-// Convert BeadHighlight to column index for internal use
-function normalizeBeadHighlight(bead: BeadHighlight, totalColumns: number): ColumnIndexBead {
-  if (isPlaceValueBead(bead)) {
-    try {
-      const columnIndex = PlaceValueUtils.toColumnIndex(bead.placeValue, totalColumns);
-      return {
-        columnIndex,
-        beadType: bead.beadType,
-        position: bead.position
-      };
-    } catch (error) {
-      console.warn(`${error instanceof Error ? error.message : error}. Using ones place (0) instead.`);
-      return {
-        columnIndex: totalColumns - 1, // Default to ones place
-        beadType: bead.beadType,
-        position: bead.position
-      };
-    }
-  } else {
-    // Legacy columnIndex API - show deprecation warning
-    if (process.env.NODE_ENV === 'development') {
-      try {
-        const placeValue = PlaceValueUtils.fromColumnIndex(bead.columnIndex, totalColumns);
-        console.warn(
-          `Deprecated: Using columnIndex (${bead.columnIndex}) is deprecated. ` +
-          `Use placeValue (${placeValue}) instead. ` +
-          `Migration: Change { columnIndex: ${bead.columnIndex} } to { placeValue: ${placeValue} }`
-        );
-      } catch {
-        console.warn(
-          `Deprecated: Using columnIndex (${bead.columnIndex}) is deprecated and invalid for ${totalColumns} columns. ` +
-          `Use placeValue API instead.`
-        );
-      }
-    }
-    return bead; // Already a ColumnIndexBead
-  }
-}
+// REMOVED: normalizeBeadHighlight function - no longer needed with place-value architecture!
 
 function isBeadHighlighted(
   columnIndex: number,
