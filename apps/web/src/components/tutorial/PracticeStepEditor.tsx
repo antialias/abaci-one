@@ -5,9 +5,8 @@ import { css } from '../../../styled-system/css'
 import { vstack, hstack } from '../../../styled-system/patterns'
 import { PracticeStep, createBasicSkillSet } from '../../types/tutorial'
 import { SkillSelector, SkillConfiguration } from './SkillSelector'
-import { validatePracticeStepConfiguration, generateSingleProblem } from '../../utils/problemGenerator'
+import { validatePracticeStepConfiguration } from '../../utils/problemGenerator'
 import { createBasicAllowedConfiguration, skillConfigurationToSkillSets } from '../../utils/skillConfiguration'
-import type { GeneratedProblem } from '../../utils/problemGenerator'
 
 interface PracticeStepEditorProps {
   step: PracticeStep
@@ -23,7 +22,6 @@ export function PracticeStepEditor({
   className
 }: PracticeStepEditorProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [sampleProblems, setSampleProblems] = useState<GeneratedProblem[]>([])
   const [validationResult, setValidationResult] = useState<ReturnType<typeof validatePracticeStepConfiguration> | null>(null)
   const [skillConfig, setSkillConfig] = useState<SkillConfiguration>(() => {
     // Initialize with a basic configuration for new steps or convert from existing
@@ -76,34 +74,6 @@ export function PracticeStepEditor({
     setValidationResult(result)
   }, [step])
 
-  // Generate sample problems
-  const generateSampleProblems = useCallback(() => {
-    const samples: GeneratedProblem[] = []
-    const maxSamples = Math.min(3, step.problemCount) // Show up to 3 samples
-    const { required, target, forbidden } = skillConfigurationToSkillSets(skillConfig)
-
-    for (let i = 0; i < maxSamples; i++) {
-      const problem = generateSingleProblem(
-        {
-          numberRange: step.numberRange || { min: 1, max: 9 },
-          maxSum: step.sumConstraints?.maxSum,
-          minSum: step.sumConstraints?.minSum,
-          maxTerms: step.maxTerms,
-          problemCount: step.problemCount
-        },
-        required,
-        target,
-        forbidden,
-        50 // More attempts for samples
-      )
-
-      if (problem) {
-        samples.push(problem)
-      }
-    }
-
-    setSampleProblems(samples)
-  }, [step, skillConfig])
 
   const presetConfigurations = [
     {
@@ -287,6 +257,7 @@ export function PracticeStepEditor({
                 })}
               />
             </div>
+
           </div>
         </div>
 
@@ -544,137 +515,20 @@ export function PracticeStepEditor({
           </div>
         )}
 
-        {/* Sample Problems Preview */}
+        {/* Note about preview */}
         <div className={css({
           p: 3,
           bg: 'blue.50',
           border: '1px solid',
           borderColor: 'blue.200',
-          rounded: 'md'
+          rounded: 'md',
+          textAlign: 'center'
         })}>
-          <div className={hstack({ justifyContent: 'space-between', alignItems: 'center', mb: 2 })}>
-            <h5 className={css({
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: 'blue.800'
-            })}>
-              Sample Problems Preview
-            </h5>
-            <button
-              onClick={generateSampleProblems}
-              className={css({
-                px: 2,
-                py: 1,
-                fontSize: 'xs',
-                bg: 'blue.500',
-                color: 'white',
-                border: 'none',
-                rounded: 'sm',
-                cursor: 'pointer',
-                _hover: { bg: 'blue.600' }
-              })}
-            >
-              Generate
-            </button>
-          </div>
-
-          {sampleProblems.length > 0 ? (
-            <div className={hstack({ gap: 3, flexWrap: 'wrap', alignItems: 'flex-start' })}>
-              {sampleProblems.map((problem, index) => (
-                <div key={problem.id} className={css({
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 1
-                })}>
-                  {/* Compact vertical problem display */}
-                  <div className={css({
-                    textAlign: 'right',
-                    fontFamily: 'mono',
-                    fontSize: 'sm',
-                    fontWeight: 'bold',
-                    bg: 'gray.50',
-                    px: 2,
-                    py: 1,
-                    rounded: 'sm',
-                    border: '1px solid',
-                    borderColor: 'gray.200',
-                    minW: '40px'
-                  })}>
-                    {problem.terms.map((term, termIndex) => (
-                      <div key={termIndex} className={css({ lineHeight: 'tight' })}>
-                        {term}
-                      </div>
-                    ))}
-                    <div className={css({
-                      borderTop: '1px solid',
-                      borderColor: 'gray.400',
-                      mt: 0.5,
-                      pt: 0.5
-                    })}>
-                      {problem.answer}
-                    </div>
-                  </div>
-
-                  {/* Difficulty badge below */}
-                  <span className={css({
-                    px: 1,
-                    py: 0.5,
-                    rounded: 'xs',
-                    fontSize: 'xs',
-                    bg: problem.difficulty === 'easy' ? 'green.100' :
-                        problem.difficulty === 'medium' ? 'yellow.100' : 'red.100',
-                    color: problem.difficulty === 'easy' ? 'green.800' :
-                           problem.difficulty === 'medium' ? 'yellow.800' : 'red.800'
-                  })}>
-                    {problem.difficulty}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className={css({
-              fontSize: 'xs',
-              color: 'blue.700',
-              textAlign: 'center',
-              py: 2
-            })}>
-              Click "Generate" to see sample problems
-            </div>
-          )}
-
-          {/* Skills summary below problems */}
-          {sampleProblems.length > 0 && (
-            <div className={css({
-              mt: 2,
-              pt: 2,
-              borderTop: '1px solid',
-              borderColor: 'blue.200',
-              fontSize: 'xs',
-              color: 'blue.600'
-            })}>
-              <strong>Skills used:</strong> {[...new Set(sampleProblems.flatMap(p => p.requiredSkills))].join(', ')}
-            </div>
-          )}
-
-          {/* Configuration Summary */}
           <div className={css({
-            mt: 3,
-            pt: 2,
-            borderTop: '1px solid',
-            borderColor: 'blue.200',
-            fontSize: 'xs',
-            color: 'blue.700',
-            lineHeight: 'relaxed'
+            fontSize: 'sm',
+            color: 'blue.700'
           })}>
-            <p><strong>Problems:</strong> {step.problemCount} problems, {step.maxTerms} terms max</p>
-            <p><strong>Numbers:</strong> {step.numberRange?.min || 1} to {step.numberRange?.max || 9}</p>
-            <p><strong>Sum limit:</strong> {step.sumConstraints?.maxSum || 9}</p>
-            <p><strong>Skills required:</strong> {
-              Object.entries(step.requiredSkills.basic).filter(([, enabled]) => enabled).length +
-              Object.entries(step.requiredSkills.fiveComplements).filter(([, enabled]) => enabled).length +
-              Object.entries(step.requiredSkills.tenComplements).filter(([, enabled]) => enabled).length
-            } skills enabled</p>
+            💡 <strong>Tip:</strong> Check the preview panel on the right to see generated sample problems based on your configuration.
           </div>
         </div>
       </div>
