@@ -468,15 +468,20 @@ export function useAbacusPlaceStates(initialValue: number = 0, maxPlaceValue: Va
         heavenActive: !currentState.heavenActive
       });
     } else {
-      // Earth bead toggle logic
-      const newEarthActive = bead.active
-        ? Math.max(0, bead.position)  // Deactivate this bead and all above
-        : bead.position + 1;          // Activate this bead and all below
-
-      setPlaceState(bead.placeValue, {
-        ...currentState,
-        earthActive: newEarthActive
-      });
+      // Earth bead toggle logic - same as legacy but cleaner
+      if (bead.active) {
+        // Deactivate this bead and all higher positioned earth beads
+        setPlaceState(bead.placeValue, {
+          ...currentState,
+          earthActive: Math.min(currentState.earthActive, bead.position)
+        });
+      } else {
+        // Activate this bead and all lower positioned earth beads
+        setPlaceState(bead.placeValue, {
+          ...currentState,
+          earthActive: Math.max(currentState.earthActive, bead.position + 1)
+        });
+      }
     }
   }, [getPlaceState, setPlaceState]);
 
@@ -1155,15 +1160,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
 
   const handleBeadClick = useCallback((bead: BeadConfig, event?: React.MouseEvent) => {
-    // Check if bead is disabled
-    const isDisabled = isBeadDisabled(
-      bead.columnIndex,
-      bead.type,
-      bead.type === 'earth' ? bead.position : undefined,
-      disabledColumns,
-      disabledBeads,
-      effectiveColumns
-    );
+    // Check if bead is disabled using new place-value system
+    const isDisabled = isBeadDisabledByPlaceValue(bead, disabledBeads) ||
+                      (disabledColumns?.includes(bead.columnIndex ?? -1));
 
     if (isDisabled) {
       return;
@@ -1186,9 +1185,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     // Legacy callback for backward compatibility
     onClick?.(bead);
 
-    // Toggle the bead
-    toggleBead(bead, effectiveColumns);
-  }, [onClick, callbacks, toggleBead, effectiveColumns, disabledColumns, disabledBeads]);
+    // Toggle the bead - NO MORE EFFECTIVECOLUMNS THREADING!
+    toggleBead(bead);
+  }, [onClick, callbacks, toggleBead, disabledColumns, disabledBeads]);
 
   const handleGestureToggle = useCallback((bead: BeadConfig, direction: 'activate' | 'deactivate') => {
     const currentState = columnStates[bead.columnIndex];
