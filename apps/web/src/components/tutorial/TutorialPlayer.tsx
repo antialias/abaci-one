@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef, useReducer } from 'react'
+import { useState, useCallback, useEffect, useRef, useReducer, useMemo } from 'react'
 import { AbacusReact } from '@soroban/abacus-react'
-import { css } from '../../styled-system/css'
-import { stack, hstack, vstack } from '../../styled-system/patterns'
-import { Tutorial, TutorialStep, TutorialEvent, NavigationState, UIState } from '../../types/tutorial'
+import { css } from '../../../styled-system/css'
+import { stack, hstack, vstack } from '../../../styled-system/patterns'
+import { Tutorial, TutorialStep, PracticeStep, TutorialEvent, NavigationState, UIState } from '../../types/tutorial'
+import { PracticeProblemPlayer, PracticeResults } from './PracticeProblemPlayer'
 
 // Reducer state and actions
 interface TutorialPlayerState {
@@ -326,6 +327,24 @@ export function TutorialPlayer({
     })
   }, [uiState.autoAdvance])
 
+  // Memoize custom styles calculation to avoid expensive recalculation on every render
+  const customStyles = useMemo(() => {
+    if (!currentStep.highlightBeads || !Array.isArray(currentStep.highlightBeads)) {
+      return undefined;
+    }
+
+    return {
+      beads: currentStep.highlightBeads.reduce((acc, highlight) => ({
+        ...acc,
+        [highlight.columnIndex]: {
+          [highlight.beadType]: highlight.beadType === 'earth' && highlight.position !== undefined
+            ? { [highlight.position]: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 3 } }
+            : { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 3 }
+        }
+      }), {})
+    };
+  }, [currentStep.highlightBeads]);
+
   if (!currentStep) {
     return <div>No steps available</div>
   }
@@ -526,16 +545,7 @@ export function TutorialPlayer({
                   scaleFactor={2.5}
                   colorScheme="place-value"
                   highlightBeads={currentStep.highlightBeads}
-                  customStyles={currentStep.highlightBeads && Array.isArray(currentStep.highlightBeads) ? {
-                    beads: currentStep.highlightBeads.reduce((acc, highlight) => ({
-                      ...acc,
-                      [highlight.columnIndex]: {
-                        [highlight.beadType]: highlight.beadType === 'earth' && highlight.position !== undefined
-                          ? { [highlight.position]: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 3 } }
-                          : { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 3 }
-                      }
-                    }), {})
-                  } : undefined}
+                  customStyles={customStyles}
                   onValueChange={handleValueChange}
                   callbacks={{
                     onBeadClick: handleBeadClick,
