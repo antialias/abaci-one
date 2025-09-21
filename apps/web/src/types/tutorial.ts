@@ -23,6 +23,7 @@ export interface TutorialStep {
     hint: string
   }
   multiStepInstructions?: string[]
+  position?: number // Position in unified tutorial flow
 }
 
 // Skill-based system for practice problem generation

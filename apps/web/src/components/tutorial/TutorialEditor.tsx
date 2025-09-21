@@ -2,10 +2,668 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { TutorialPlayer } from './TutorialPlayer'
-import { css } from '../../styled-system/css'
-import { stack, hstack, vstack } from '../../styled-system/patterns'
+import { css } from '../../../styled-system/css'
+import { stack, hstack, vstack } from '../../../styled-system/patterns'
 import { Tutorial, TutorialStep, PracticeStep, TutorialValidation, StepValidationError, createBasicSkillSet } from '../../types/tutorial'
 import { PracticeStepEditor } from './PracticeStepEditor'
+import { generateSingleProblem } from '../../utils/problemGenerator'
+import { skillConfigurationToSkillSets, createBasicAllowedConfiguration } from '../../utils/skillConfiguration'
+import Resizable from 'react-resizable-layout'
+
+// Modal component for tutorial metadata editing
+interface TutorialInfoModalProps {
+  tutorial: Tutorial
+  isOpen: boolean
+  onClose: () => void
+  onUpdateTutorial: (updates: Partial<Tutorial>) => void
+}
+
+function TutorialInfoModal({ tutorial, isOpen, onClose, onUpdateTutorial }: TutorialInfoModalProps) {
+  const [editingField, setEditingField] = useState<string | null>(null)
+
+  if (!isOpen) return null
+
+  const updateTutorialMeta = (updates: Partial<Tutorial>) => {
+    onUpdateTutorial({ ...updates, updatedAt: new Date() })
+  }
+
+  return (
+    <div className={css({
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      bg: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 1000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    })}>
+      <div className={css({
+        bg: 'white',
+        borderRadius: 'lg',
+        p: 6,
+        maxWidth: '500px',
+        width: '90%',
+        maxHeight: '80vh',
+        overflowY: 'auto',
+        shadow: 'xl'
+      })}>
+        <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 })}>
+          <h2 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>Tutorial Settings</h2>
+          <button
+            onClick={onClose}
+            className={css({
+              p: 2,
+              borderRadius: 'md',
+              cursor: 'pointer',
+              _hover: { bg: 'gray.100' }
+            })}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className={stack({ gap: 4 })}>
+          {/* Description */}
+          <div>
+            <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700', display: 'block', mb: 2 })}>
+              Description
+            </label>
+            {editingField === 'description' ? (
+              <textarea
+                value={tutorial.description}
+                onChange={(e) => updateTutorialMeta({ description: e.target.value })}
+                onBlur={() => setEditingField(null)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setEditingField(null)
+                  }
+                }}
+                autoFocus
+                rows={4}
+                className={css({
+                  w: 'full',
+                  p: 3,
+                  border: '1px solid',
+                  borderColor: 'blue.300',
+                  borderRadius: 'md',
+                  fontSize: 'sm',
+                  resize: 'vertical'
+                })}
+              />
+            ) : (
+              <div
+                onClick={() => setEditingField('description')}
+                className={css({
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  p: 3,
+                  border: '1px solid',
+                  borderColor: 'gray.200',
+                  borderRadius: 'md',
+                  _hover: { bg: 'gray.50', borderColor: 'gray.300' },
+                  lineHeight: 'normal',
+                  color: tutorial.description ? 'inherit' : 'gray.400',
+                  minHeight: '100px'
+                })}
+              >
+                {tutorial.description || 'Click to add description...'}
+              </div>
+            )}
+          </div>
+
+          {/* Category, Difficulty, Duration row */}
+          <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 })}>
+            {/* Category */}
+            <div>
+              <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700', display: 'block', mb: 2 })}>
+                Category
+              </label>
+              {editingField === 'category' ? (
+                <input
+                  type="text"
+                  value={tutorial.category}
+                  onChange={(e) => updateTutorialMeta({ category: e.target.value })}
+                  onBlur={() => setEditingField(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Escape') {
+                      setEditingField(null)
+                    }
+                  }}
+                  autoFocus
+                  className={css({
+                    w: 'full',
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'blue.300',
+                    borderRadius: 'md',
+                    fontSize: 'sm'
+                  })}
+                />
+              ) : (
+                <div
+                  onClick={() => setEditingField('category')}
+                  className={css({
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'gray.200',
+                    borderRadius: 'md',
+                    _hover: { bg: 'gray.50', borderColor: 'gray.300' }
+                  })}
+                >
+                  {tutorial.category}
+                </div>
+              )}
+            </div>
+
+            {/* Difficulty */}
+            <div>
+              <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700', display: 'block', mb: 2 })}>
+                Difficulty
+              </label>
+              {editingField === 'difficulty' ? (
+                <select
+                  value={tutorial.difficulty}
+                  onChange={(e) => {
+                    updateTutorialMeta({ difficulty: e.target.value as any })
+                    setEditingField(null)
+                  }}
+                  onBlur={() => setEditingField(null)}
+                  autoFocus
+                  className={css({
+                    w: 'full',
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'blue.300',
+                    borderRadius: 'md',
+                    fontSize: 'sm'
+                  })}
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              ) : (
+                <div
+                  onClick={() => setEditingField('difficulty')}
+                  className={css({
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'gray.200',
+                    borderRadius: 'md',
+                    _hover: { bg: 'gray.50', borderColor: 'gray.300' },
+                    textTransform: 'capitalize'
+                  })}
+                >
+                  {tutorial.difficulty}
+                </div>
+              )}
+            </div>
+
+            {/* Duration */}
+            <div>
+              <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700', display: 'block', mb: 2 })}>
+                Duration (min)
+              </label>
+              {editingField === 'estimatedDuration' ? (
+                <input
+                  type="number"
+                  value={tutorial.estimatedDuration}
+                  onChange={(e) => updateTutorialMeta({ estimatedDuration: parseInt(e.target.value) || 0 })}
+                  onBlur={() => setEditingField(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Escape') {
+                      setEditingField(null)
+                    }
+                  }}
+                  autoFocus
+                  className={css({
+                    w: 'full',
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'blue.300',
+                    borderRadius: 'md',
+                    fontSize: 'sm'
+                  })}
+                />
+              ) : (
+                <div
+                  onClick={() => setEditingField('estimatedDuration')}
+                  className={css({
+                    fontSize: 'sm',
+                    cursor: 'pointer',
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'gray.200',
+                    borderRadius: 'md',
+                    _hover: { bg: 'gray.50', borderColor: 'gray.300' }
+                  })}
+                >
+                  {tutorial.estimatedDuration}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700', display: 'block', mb: 2 })}>
+              Tags (comma-separated)
+            </label>
+            {editingField === 'tags' ? (
+              <input
+                type="text"
+                value={tutorial.tags?.join(', ') || ''}
+                onChange={(e) => updateTutorialMeta({
+                  tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
+                })}
+                onBlur={() => setEditingField(null)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'Escape') {
+                    setEditingField(null)
+                  }
+                }}
+                autoFocus
+                className={css({
+                  w: 'full',
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'blue.300',
+                  borderRadius: 'md',
+                  fontSize: 'sm'
+                })}
+              />
+            ) : (
+              <div
+                onClick={() => setEditingField('tags')}
+                className={css({
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'gray.200',
+                  borderRadius: 'md',
+                  _hover: { bg: 'gray.50', borderColor: 'gray.300' },
+                  color: tutorial.tags?.length ? 'inherit' : 'gray.400'
+                })}
+              >
+                {tutorial.tags?.join(', ') || 'Click to add tags...'}
+              </div>
+            )}
+          </div>
+
+          {/* Author */}
+          <div>
+            <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700', display: 'block', mb: 2 })}>
+              Author
+            </label>
+            {editingField === 'author' ? (
+              <input
+                type="text"
+                value={tutorial.author}
+                onChange={(e) => updateTutorialMeta({ author: e.target.value })}
+                onBlur={() => setEditingField(null)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'Escape') {
+                    setEditingField(null)
+                  }
+                }}
+                autoFocus
+                className={css({
+                  w: 'full',
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'blue.300',
+                  borderRadius: 'md',
+                  fontSize: 'sm'
+                })}
+              />
+            ) : (
+              <div
+                onClick={() => setEditingField('author')}
+                className={css({
+                  fontSize: 'sm',
+                  cursor: 'pointer',
+                  p: 2,
+                  border: '1px solid',
+                  borderColor: 'gray.200',
+                  borderRadius: 'md',
+                  _hover: { bg: 'gray.50', borderColor: 'gray.300' }
+                })}
+              >
+                {tutorial.author}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={css({ mt: 6, display: 'flex', justifyContent: 'flex-end' })}>
+          <button
+            onClick={onClose}
+            className={css({
+              px: 4,
+              py: 2,
+              bg: 'blue.500',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'md',
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              cursor: 'pointer',
+              _hover: { bg: 'blue.600' }
+            })}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Practice Step Preview Component
+interface PracticeStepPreviewProps {
+  step: PracticeStep
+}
+
+function PracticeStepPreview({ step }: PracticeStepPreviewProps) {
+  const [problems, setProblems] = useState<Array<{
+    id: string
+    terms: number[]
+    answer: number
+    difficulty: 'easy' | 'medium' | 'hard'
+    requiredSkills: string[]
+  }>>([])
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  const generateProblems = useCallback(async () => {
+    setIsGenerating(true)
+    const generatedProblems = []
+    const maxToShow = Math.min(6, step.problemCount) // Show up to 6 problems in preview
+
+    // Use a basic configuration for generating problems
+    const config = createBasicAllowedConfiguration()
+    const { required, target, forbidden } = skillConfigurationToSkillSets(config)
+
+    for (let i = 0; i < maxToShow; i++) {
+      const problem = generateSingleProblem(
+        {
+          numberRange: step.numberRange || { min: 1, max: 9 },
+          maxSum: step.sumConstraints?.maxSum,
+          minSum: step.sumConstraints?.minSum,
+          maxTerms: step.maxTerms,
+          problemCount: step.problemCount
+        },
+        step.requiredSkills || required,
+        step.targetSkills || target,
+        step.forbiddenSkills || forbidden,
+        50 // attempts
+      )
+
+      if (problem) {
+        generatedProblems.push(problem)
+      }
+    }
+
+    setProblems(generatedProblems)
+    setIsGenerating(false)
+  }, [step])
+
+  useEffect(() => {
+    generateProblems()
+  }, [generateProblems])
+
+  return (
+    <div className={css({ p: 4, height: '100%', overflowY: 'auto' })}>
+      <div className={vstack({ gap: 4, alignItems: 'stretch' })}>
+        {/* Header */}
+        <div className={css({ borderBottom: '1px solid', borderColor: 'gray.200', pb: 3 })}>
+          <h2 className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'purple.800', mb: 2 })}>
+            🎯 {step.title}
+          </h2>
+          <p className={css({ color: 'gray.600', mb: 2 })}>{step.description}</p>
+          <div className={css({ fontSize: 'sm', color: 'gray.500' })}>
+            {step.problemCount} problems • Max {step.maxTerms} terms • Numbers {step.numberRange?.min || 1}-{step.numberRange?.max || 9}
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' })}>
+          <h3 className={css({ fontSize: 'lg', fontWeight: 'semibold' })}>Sample Problems</h3>
+          <button
+            onClick={generateProblems}
+            disabled={isGenerating}
+            className={css({
+              px: 4,
+              py: 2,
+              bg: isGenerating ? 'gray.200' : 'purple.500',
+              color: isGenerating ? 'gray.500' : 'white',
+              border: 'none',
+              borderRadius: 'md',
+              fontSize: 'sm',
+              cursor: isGenerating ? 'not-allowed' : 'pointer',
+              _hover: isGenerating ? {} : { bg: 'purple.600' }
+            })}
+          >
+            {isGenerating ? 'Generating...' : 'Regenerate'}
+          </button>
+        </div>
+
+        {/* Problems Grid */}
+        {problems.length > 0 ? (
+          <div className={css({
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: 4
+          })}>
+            {problems.map((problem, index) => (
+              <div key={problem.id} className={css({
+                bg: 'white',
+                border: '2px solid',
+                borderColor: 'purple.200',
+                borderRadius: 'lg',
+                p: 3,
+                textAlign: 'center'
+              })}>
+                {/* Problem Number */}
+                <div className={css({
+                  fontSize: 'xs',
+                  fontWeight: 'bold',
+                  color: 'purple.600',
+                  mb: 2
+                })}>
+                  Problem {index + 1}
+                </div>
+
+                {/* Problem Display */}
+                <div className={css({
+                  fontFamily: 'mono',
+                  fontSize: 'lg',
+                  fontWeight: 'bold',
+                  mb: 2
+                })}>
+                  {problem.terms.map((term, termIndex) => (
+                    <div key={termIndex} className={css({
+                      textAlign: 'right',
+                      lineHeight: 'tight'
+                    })}>
+                      {term}
+                    </div>
+                  ))}
+                  <div className={css({
+                    borderTop: '2px solid',
+                    borderColor: 'gray.400',
+                    mt: 1,
+                    pt: 1,
+                    fontSize: 'xl',
+                    textAlign: 'right'
+                  })}>
+                    {problem.answer}
+                  </div>
+                </div>
+
+                {/* Difficulty Badge */}
+                <div className={css({
+                  fontSize: 'xs',
+                  fontWeight: 'medium',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 'full',
+                  bg: problem.difficulty === 'easy' ? 'green.100' :
+                      problem.difficulty === 'medium' ? 'yellow.100' : 'red.100',
+                  color: problem.difficulty === 'easy' ? 'green.800' :
+                         problem.difficulty === 'medium' ? 'yellow.800' : 'red.800'
+                })}>
+                  {problem.difficulty}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={css({
+            bg: 'gray.50',
+            border: '2px dashed',
+            borderColor: 'gray.300',
+            borderRadius: 'lg',
+            p: 8,
+            textAlign: 'center',
+            color: 'gray.500'
+          })}>
+            {isGenerating ? (
+              <div>
+                <div className={css({ fontSize: 'lg', mb: 2 })}>🔄</div>
+                <div>Generating problems...</div>
+              </div>
+            ) : (
+              <div>
+                <div className={css({ fontSize: 'lg', mb: 2 })}>📝</div>
+                <div>No problems generated yet</div>
+                <div className={css({ fontSize: 'sm', mt: 1 })}>
+                  Click "Regenerate" to create sample problems
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Configuration Summary */}
+        <div className={css({
+          bg: 'purple.50',
+          border: '1px solid',
+          borderColor: 'purple.200',
+          borderRadius: 'md',
+          p: 3
+        })}>
+          <h4 className={css({ fontSize: 'sm', fontWeight: 'semibold', color: 'purple.800', mb: 2 })}>
+            Configuration Summary
+          </h4>
+          <div className={css({ fontSize: 'xs', color: 'purple.700', lineHeight: 'relaxed' })}>
+            <div><strong>Total Problems:</strong> {step.problemCount}</div>
+            <div><strong>Terms per Problem:</strong> Up to {step.maxTerms}</div>
+            <div><strong>Number Range:</strong> {step.numberRange?.min || 1} to {step.numberRange?.max || 9}</div>
+            <div><strong>Sum Limit:</strong> {step.sumConstraints?.maxSum || 'No limit'}</div>
+            {step.sumConstraints?.minSum && (
+              <div><strong>Min Sum:</strong> {step.sumConstraints.minSum}</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Component for the "New" dropdown positioned between steps
+interface NewItemDropdownProps {
+  position: number
+  onAddStep: (position: number) => void
+  onAddPracticeStep: (position: number) => void
+}
+
+function NewItemDropdown({ position, onAddStep, onAddPracticeStep }: NewItemDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <div className={css({ position: 'relative', textAlign: 'center', my: 2 })}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={css({
+          px: 3,
+          py: 1,
+          bg: 'gray.100',
+          color: 'gray.600',
+          border: '1px dashed',
+          borderColor: 'gray.300',
+          borderRadius: 'md',
+          fontSize: 'sm',
+          cursor: 'pointer',
+          _hover: { bg: 'gray.200', borderColor: 'gray.400' }
+        })}
+      >
+        + New
+      </button>
+
+      {isOpen && (
+        <div className={css({
+          position: 'absolute',
+          top: '100%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          mt: 1,
+          bg: 'white',
+          border: '1px solid',
+          borderColor: 'gray.200',
+          borderRadius: 'md',
+          shadow: 'md',
+          zIndex: 10,
+          minW: '150px'
+        })}>
+          <button
+            onClick={() => {
+              onAddStep(position)
+              setIsOpen(false)
+            }}
+            className={css({
+              w: 'full',
+              px: 3,
+              py: 2,
+              textAlign: 'left',
+              fontSize: 'sm',
+              cursor: 'pointer',
+              _hover: { bg: 'blue.50', color: 'blue.700' },
+              borderBottom: '1px solid',
+              borderColor: 'gray.100'
+            })}
+          >
+            📝 Concept Step
+          </button>
+          <button
+            onClick={() => {
+              onAddPracticeStep(position)
+              setIsOpen(false)
+            }}
+            className={css({
+              w: 'full',
+              px: 3,
+              py: 2,
+              textAlign: 'left',
+              fontSize: 'sm',
+              cursor: 'pointer',
+              _hover: { bg: 'purple.50', color: 'purple.700' }
+            })}
+          >
+            🎯 Problem Page
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface TutorialEditorProps {
   tutorial: Tutorial
@@ -19,9 +677,11 @@ interface EditorState {
   isEditing: boolean
   isDirty: boolean
   selectedStepIndex: number | null
+  selectedPracticeStepId: string | null
   previewStepIndex: number | null
   validation: TutorialValidation | null
   isSaving: boolean
+  showTutorialInfoModal: boolean
 }
 
 export function TutorialEditor({
@@ -36,9 +696,11 @@ export function TutorialEditor({
     isEditing: false,
     isDirty: false,
     selectedStepIndex: null,
+    selectedPracticeStepId: null,
     previewStepIndex: null,
     validation: null,
-    isSaving: false
+    isSaving: false,
+    showTutorialInfoModal: false
   })
 
   // Auto-validate when tutorial changes
@@ -57,7 +719,53 @@ export function TutorialEditor({
   }, [])
 
   // Step management
-  const addStep = useCallback(() => {
+  const addStep = useCallback((position?: number) => {
+    // Create unified sequence to determine proper positioning
+    const unifiedSteps: Array<{
+      type: 'concept' | 'practice'
+      step: any
+      originalIndex: number
+      position: number
+    }> = []
+
+    // Add concept steps with positions
+    tutorial.steps.forEach((step, index) => {
+      unifiedSteps.push({
+        type: 'concept',
+        step,
+        originalIndex: index,
+        position: step.position ?? index
+      })
+    })
+
+    // Add practice steps with positions
+    ;(tutorial.practiceSteps || []).forEach((practiceStep, index) => {
+      unifiedSteps.push({
+        type: 'practice',
+        step: practiceStep,
+        originalIndex: index,
+        position: practiceStep.position ?? (tutorial.steps.length + index)
+      })
+    })
+
+    // Sort by position to get unified sequence
+    unifiedSteps.sort((a, b) => a.position - b.position)
+
+    // Determine the actual position value to assign to the new step
+    let newStepPosition: number
+    if (position === undefined || position >= unifiedSteps.length) {
+      // Add at end
+      newStepPosition = unifiedSteps.length > 0 ? unifiedSteps[unifiedSteps.length - 1].position + 1 : 0
+    } else if (position === 0) {
+      // Add at beginning
+      newStepPosition = unifiedSteps.length > 0 ? unifiedSteps[0].position - 1 : 0
+    } else {
+      // Insert between existing steps
+      const prevStep = unifiedSteps[position - 1]
+      const nextStep = unifiedSteps[position]
+      newStepPosition = (prevStep.position + nextStep.position) / 2
+    }
+
     const newStep: TutorialStep = {
       id: `step-${Date.now()}`,
       title: 'New Step',
@@ -75,20 +783,24 @@ export function TutorialEditor({
         wrongBead: 'Wrong bead error message',
         wrongAction: 'Wrong action error message',
         hint: 'Hint message'
-      }
+      },
+      position: newStepPosition
     }
+
+    // Add to concept steps array (position in array doesn't matter since we sort by position property)
+    const newSteps = [...tutorial.steps, newStep]
 
     setTutorial(prev => ({
       ...prev,
-      steps: [...prev.steps, newStep],
+      steps: newSteps,
       updatedAt: new Date()
     }))
     setEditorState(prev => ({
       ...prev,
       isDirty: true,
-      selectedStepIndex: tutorial.steps.length
+      selectedStepIndex: newSteps.length - 1 // Select the newly added step
     }))
-  }, [tutorial.steps.length])
+  }, [tutorial.steps, tutorial.practiceSteps])
 
   const duplicateStep = useCallback((stepIndex: number) => {
     const stepToDuplicate = tutorial.steps[stepIndex]
@@ -151,7 +863,53 @@ export function TutorialEditor({
   }, [tutorial.steps])
 
   // Practice step management
-  const addPracticeStep = useCallback(() => {
+  const addPracticeStep = useCallback((position?: number) => {
+    // Create unified sequence to determine proper positioning
+    const unifiedSteps: Array<{
+      type: 'concept' | 'practice'
+      step: any
+      originalIndex: number
+      position: number
+    }> = []
+
+    // Add concept steps with positions
+    tutorial.steps.forEach((step, index) => {
+      unifiedSteps.push({
+        type: 'concept',
+        step,
+        originalIndex: index,
+        position: step.position ?? index
+      })
+    })
+
+    // Add practice steps with positions
+    ;(tutorial.practiceSteps || []).forEach((practiceStep, index) => {
+      unifiedSteps.push({
+        type: 'practice',
+        step: practiceStep,
+        originalIndex: index,
+        position: practiceStep.position ?? (tutorial.steps.length + index)
+      })
+    })
+
+    // Sort by position to get unified sequence
+    unifiedSteps.sort((a, b) => a.position - b.position)
+
+    // Determine the actual position value to assign to the new practice step
+    let newStepPosition: number
+    if (position === undefined || position >= unifiedSteps.length) {
+      // Add at end
+      newStepPosition = unifiedSteps.length > 0 ? unifiedSteps[unifiedSteps.length - 1].position + 1 : 0
+    } else if (position === 0) {
+      // Add at beginning
+      newStepPosition = unifiedSteps.length > 0 ? unifiedSteps[0].position - 1 : 0
+    } else {
+      // Insert between existing steps
+      const prevStep = unifiedSteps[position - 1]
+      const nextStep = unifiedSteps[position]
+      newStepPosition = (prevStep.position + nextStep.position) / 2
+    }
+
     const newPracticeStep: PracticeStep = {
       id: `practice-${Date.now()}`,
       title: 'New Practice Step',
@@ -160,19 +918,24 @@ export function TutorialEditor({
       maxTerms: 3,
       requiredSkills: createBasicSkillSet(),
       numberRange: { min: 1, max: 9 },
-      sumConstraints: { maxSum: 9 }
+      sumConstraints: { maxSum: 9 },
+      position: newStepPosition
     }
+
+    // Add to practice steps array (position in array doesn't matter since we sort by position property)
+    const newPracticeSteps = [...(tutorial.practiceSteps || []), newPracticeStep]
 
     setTutorial(prev => ({
       ...prev,
-      practiceSteps: [...(prev.practiceSteps || []), newPracticeStep],
+      practiceSteps: newPracticeSteps,
       updatedAt: new Date()
     }))
     setEditorState(prev => ({
       ...prev,
-      isDirty: true
+      isDirty: true,
+      selectedPracticeStepId: newPracticeStep.id
     }))
-  }, [])
+  }, [tutorial.steps, tutorial.practiceSteps])
 
   const updatePracticeStep = useCallback((stepIndex: number, updates: Partial<PracticeStep>) => {
     const newPracticeSteps = [...(tutorial.practiceSteps || [])]
@@ -256,541 +1019,652 @@ export function TutorialEditor({
     <div className={css({
       display: 'flex',
       flexDirection: 'column',
-      height: '100vh',
+      height: '100%',
       bg: 'gray.50'
     }, className)}>
-      {/* Header */}
-      <div className={css({
-        bg: 'white',
-        borderBottom: '1px solid',
-        borderColor: 'gray.200',
-        p: 4
-      })}>
-        <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
-          <div>
-            <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
-              Tutorial Editor
-            </h1>
-            <p className={css({ color: 'gray.600' })}>
-              {tutorial.title} {editorState.isDirty && '*'}
-            </p>
-          </div>
 
-          <div className={hstack({ gap: 2 })}>
-            <button
-              onClick={toggleEdit}
-              className={css({
-                px: 4,
-                py: 2,
-                border: '1px solid',
-                borderColor: 'blue.300',
-                borderRadius: 'md',
-                bg: editorState.isEditing ? 'blue.500' : 'white',
-                color: editorState.isEditing ? 'white' : 'blue.700',
-                cursor: 'pointer',
-                _hover: { bg: editorState.isEditing ? 'blue.600' : 'blue.50' }
-              })}
-            >
-              {editorState.isEditing ? 'Stop Editing' : 'Edit Tutorial'}
-            </button>
-
-            {editorState.isDirty && (
-              <button
-                onClick={saveTutorial}
-                disabled={editorState.isSaving || !editorState.validation?.isValid}
+      {editorState.isEditing ? (
+        <Resizable
+          axis="x"
+          initial={400}
+          min={300}
+          max={800}
+          step={1}
+        >
+          {({ position, separatorProps }) => (
+            <div className={css({ display: 'flex', width: '100%', height: '100%' })}>
+              {/* Editor sidebar */}
+              <div
                 className={css({
-                  px: 4,
-                  py: 2,
-                  border: '1px solid',
-                  borderColor: 'green.300',
-                  borderRadius: 'md',
-                  bg: 'green.500',
-                  color: 'white',
-                  cursor: editorState.isSaving ? 'not-allowed' : 'pointer',
-                  opacity: editorState.isSaving || !editorState.validation?.isValid ? 0.5 : 1,
-                  _hover: !editorState.isSaving && editorState.validation?.isValid ? { bg: 'green.600' } : {}
+                  width: `${position}px`,
+                  bg: 'white',
+                  borderRight: '1px solid',
+                  borderColor: 'gray.200',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  height: '100%',
+                  flexShrink: 0
                 })}
               >
-                {editorState.isSaving ? 'Saving...' : 'Save Changes'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Validation summary */}
-        {editorState.validation && (
-          <div className={css({ mt: 3 })}>
-            {!editorState.validation.isValid && (
-              <div className={css({
-                p: 3,
-                bg: 'red.50',
-                border: '1px solid',
-                borderColor: 'red.200',
-                borderRadius: 'md',
-                fontSize: 'sm'
-              })}>
-                <strong className={css({ color: 'red.800' })}>
-                  {editorState.validation.errors.length} error(s) found
-                </strong>
-                {editorState.validation.warnings.length > 0 && (
-                  <span className={css({ color: 'yellow.700', ml: 2 })}>
-                    and {editorState.validation.warnings.length} warning(s)
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className={hstack({ flex: 1, gap: 0 })}>
-        {/* Editor sidebar */}
-        {editorState.isEditing && (
-          <div className={css({
-            w: '400px',
-            bg: 'white',
-            borderRight: '1px solid',
-            borderColor: 'gray.200',
-            p: 4,
-            overflowY: 'auto'
-          })}>
-            {/* Tutorial metadata */}
-            <div className={css({ mb: 6 })}>
-              <h3 className={css({ fontWeight: 'bold', mb: 3 })}>Tutorial Info</h3>
-              <div className={stack({ gap: 3 })}>
-                <div>
-                  <label className={css({ fontSize: 'sm', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    value={tutorial.title}
-                    onChange={(e) => updateTutorialMeta({ title: e.target.value })}
-                    className={css({
-                      w: 'full',
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'gray.300',
-                      borderRadius: 'md',
-                      fontSize: 'sm'
-                    })}
-                  />
-                </div>
-
-                <div>
-                  <label className={css({ fontSize: 'sm', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                    Description
-                  </label>
-                  <textarea
-                    value={tutorial.description}
-                    onChange={(e) => updateTutorialMeta({ description: e.target.value })}
-                    rows={3}
-                    className={css({
-                      w: 'full',
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'gray.300',
-                      borderRadius: 'md',
-                      fontSize: 'sm',
-                      resize: 'vertical'
-                    })}
-                  />
-                </div>
-
-                <div className={hstack({ gap: 2 })}>
-                  <div>
-                    <label className={css({ fontSize: 'sm', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                      Category
-                    </label>
-                    <input
-                      type="text"
-                      value={tutorial.category}
-                      onChange={(e) => updateTutorialMeta({ category: e.target.value })}
+                  {/* Tutorial Settings Button */}
+                  <div className={css({
+                    p: 3,
+                    borderBottom: '1px solid',
+                    borderColor: 'gray.200',
+                    flexShrink: 0
+                  })}>
+                    <button
+                      onClick={() => setEditorState(prev => ({ ...prev, showTutorialInfoModal: true }))}
                       className={css({
                         w: 'full',
-                        p: 2,
+                        p: 3,
+                        bg: 'white',
                         border: '1px solid',
                         borderColor: 'gray.300',
                         borderRadius: 'md',
-                        fontSize: 'sm'
-                      })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={css({ fontSize: 'sm', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                      Difficulty
-                    </label>
-                    <select
-                      value={tutorial.difficulty}
-                      onChange={(e) => updateTutorialMeta({ difficulty: e.target.value as any })}
-                      className={css({
-                        w: 'full',
-                        p: 2,
-                        border: '1px solid',
-                        borderColor: 'gray.300',
-                        borderRadius: 'md',
-                        fontSize: 'sm'
+                        fontSize: 'sm',
+                        fontWeight: 'medium',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        _hover: { bg: 'gray.50', borderColor: 'gray.400' }
                       })}
                     >
-                      <option value="beginner">Beginner</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="advanced">Advanced</option>
-                    </select>
+                      <div className={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+                        <div>
+                          <div className={css({ fontWeight: 'medium', mb: 1 })}>Tutorial Settings</div>
+                          <div className={css({ fontSize: 'xs', color: 'gray.600' })}>
+                            {tutorial.category} • {tutorial.difficulty} • {tutorial.estimatedDuration}min
+                          </div>
+                        </div>
+                        <div className={css({ fontSize: 'lg', color: 'gray.400' })}>⚙️</div>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Tutorial Flow - Scrollable */}
+                  <div className={css({
+                    flex: 1,
+                    overflowY: 'auto',
+                    p: 4,
+                    minHeight: 0
+                  })}>
+                    <div>
+                      <h3 className={css({ fontWeight: 'bold', mb: 3 })}>
+                        Tutorial Flow ({(tutorial.steps?.length || 0) + (tutorial.practiceSteps?.length || 0)} items)
+                      </h3>
+
+                      <div className={stack({ gap: 0 })}>
+                        {(() => {
+                          // Create unified sequence of all steps with positions
+                          const unifiedSteps: Array<{
+                            type: 'concept' | 'practice'
+                            step: any
+                            originalIndex: number
+                            position: number
+                          }> = []
+
+                          // Add concept steps with positions
+                          tutorial.steps.forEach((step, index) => {
+                            unifiedSteps.push({
+                              type: 'concept',
+                              step,
+                              originalIndex: index,
+                              position: step.position ?? index
+                            })
+                          })
+
+                          // Add practice steps with positions
+                          ;(tutorial.practiceSteps || []).forEach((practiceStep, index) => {
+                            unifiedSteps.push({
+                              type: 'practice',
+                              step: practiceStep,
+                              originalIndex: index,
+                              position: practiceStep.position ?? (tutorial.steps.length + index)
+                            })
+                          })
+
+                          // Sort by position
+                          unifiedSteps.sort((a, b) => a.position - b.position)
+
+                          const items = []
+
+                          // Insert at beginning
+                          items.push(
+                            <NewItemDropdown
+                              key="new-0"
+                              position={0}
+                              onAddStep={(pos) => addStep(pos)}
+                              onAddPracticeStep={(pos) => addPracticeStep(pos)}
+                            />
+                          )
+
+                          // Render each step with dropdown after it
+                          unifiedSteps.forEach((item, index) => {
+                            if (item.type === 'concept') {
+                              const errors = getStepErrors(item.originalIndex)
+                              const warnings = getStepWarnings(item.originalIndex)
+                              const isSelected = editorState.selectedStepIndex === item.originalIndex
+
+                              items.push(
+                                <div key={`concept-${item.step.id}`}>
+                                  {/* Concept Step Item */}
+                                  <div
+                                    onClick={() => setEditorState(prev => ({
+                                      ...prev,
+                                      selectedStepIndex: item.originalIndex,
+                                      selectedPracticeStepId: null
+                                    }))}
+                                    className={css({
+                                      p: 3,
+                                      border: '2px solid',
+                                      borderColor: isSelected ? 'blue.500' : (errors.length > 0 ? 'red.300' : 'gray.200'),
+                                      borderRadius: 'md',
+                                      bg: isSelected ? 'blue.50' : (warnings.length > 0 ? 'yellow.50' : (errors.length > 0 ? 'red.50' : 'white')),
+                                      cursor: 'pointer',
+                                      _hover: { bg: isSelected ? 'blue.100' : 'gray.50' }
+                                    })}
+                                  >
+                                    <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 })}>
+                                      <div className={css({ flex: 1 })}>
+                                        <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 1 })}>
+                                          <span className={css({
+                                            fontSize: 'xs',
+                                            fontWeight: 'bold',
+                                            color: 'blue.800',
+                                            bg: 'blue.100',
+                                            px: 2,
+                                            py: 1,
+                                            borderRadius: 'sm'
+                                          })}>
+                                            📝 Step {index + 1}
+                                          </span>
+                                          {errors.length > 0 && (
+                                            <span className={css({
+                                              fontSize: 'xs',
+                                              color: 'red.600',
+                                              bg: 'red.100',
+                                              px: 2,
+                                              py: 1,
+                                              borderRadius: 'sm'
+                                            })}>
+                                              {errors.length} error{errors.length > 1 ? 's' : ''}
+                                            </span>
+                                          )}
+                                          {warnings.length > 0 && (
+                                            <span className={css({
+                                              fontSize: 'xs',
+                                              color: 'yellow.600',
+                                              bg: 'yellow.100',
+                                              px: 2,
+                                              py: 1,
+                                              borderRadius: 'sm'
+                                            })}>
+                                              {warnings.length} warning{warnings.length > 1 ? 's' : ''}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className={css({ fontWeight: 'medium', fontSize: 'sm', mb: 1 })}>
+                                          {item.step.title}
+                                        </div>
+                                        <div className={css({ fontSize: 'xs', color: 'gray.600', mb: 1 })}>
+                                          {item.step.problem} → {item.step.targetValue}
+                                        </div>
+                                        <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
+                                          {item.step.description}
+                                        </div>
+                                      </div>
+
+                                      {/* Step Actions */}
+                                      <div className={css({ display: 'flex', gap: 1, flexShrink: 0 })}>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            previewStep(item.originalIndex)
+                                          }}
+                                          className={css({
+                                            p: 1,
+                                            bg: 'blue.100',
+                                            color: 'blue.700',
+                                            border: '1px solid',
+                                            borderColor: 'blue.300',
+                                            borderRadius: 'sm',
+                                            fontSize: 'xs',
+                                            cursor: 'pointer',
+                                            _hover: { bg: 'blue.200' }
+                                          })}
+                                          title="Preview step"
+                                        >
+                                          👁️
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            duplicateStep(item.originalIndex)
+                                          }}
+                                          className={css({
+                                            p: 1,
+                                            bg: 'green.100',
+                                            color: 'green.700',
+                                            border: '1px solid',
+                                            borderColor: 'green.300',
+                                            borderRadius: 'sm',
+                                            fontSize: 'xs',
+                                            cursor: 'pointer',
+                                            _hover: { bg: 'green.200' }
+                                          })}
+                                          title="Duplicate step"
+                                        >
+                                          📋
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            deleteStep(item.originalIndex)
+                                          }}
+                                          className={css({
+                                            p: 1,
+                                            bg: 'red.100',
+                                            color: 'red.700',
+                                            border: '1px solid',
+                                            borderColor: 'red.300',
+                                            borderRadius: 'sm',
+                                            fontSize: 'xs',
+                                            cursor: 'pointer',
+                                            _hover: { bg: 'red.200' }
+                                          })}
+                                          title="Delete step"
+                                        >
+                                          🗑️
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Error/Warning Details */}
+                                    {(errors.length > 0 || warnings.length > 0) && (
+                                      <div className={css({ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'gray.200' })}>
+                                        {errors.map((error, errorIndex) => (
+                                          <div key={errorIndex} className={css({ fontSize: 'xs', color: 'red.600', mb: 1 })}>
+                                            ❌ {error.message}
+                                          </div>
+                                        ))}
+                                        {warnings.map((warning, warningIndex) => (
+                                          <div key={warningIndex} className={css({ fontSize: 'xs', color: 'orange.600', mb: 1 })}>
+                                            ⚠️ {warning.message}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            } else {
+                              // Practice step
+                              const isSelected = editorState.selectedPracticeStepId === item.step.id
+
+                              items.push(
+                                <div key={`practice-${item.step.id}`}>
+                                  {/* Practice Step Card */}
+                                  <div
+                                    onClick={() => setEditorState(prev => ({
+                                      ...prev,
+                                      selectedPracticeStepId: item.step.id,
+                                      selectedStepIndex: null
+                                    }))}
+                                    className={css({
+                                      p: 3,
+                                      border: '2px solid',
+                                      borderColor: isSelected ? 'purple.500' : 'purple.200',
+                                      borderRadius: 'md',
+                                      bg: isSelected ? 'purple.50' : 'white',
+                                      cursor: 'pointer',
+                                      _hover: { bg: isSelected ? 'purple.100' : 'gray.50' }
+                                    })}
+                                  >
+                                    <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 })}>
+                                      <div className={css({ flex: 1 })}>
+                                        <div className={css({ display: 'flex', alignItems: 'center', gap: 2, mb: 1 })}>
+                                          <span className={css({
+                                            fontSize: 'xs',
+                                            fontWeight: 'bold',
+                                            color: 'purple.800',
+                                            bg: 'purple.100',
+                                            px: 2,
+                                            py: 1,
+                                            borderRadius: 'sm'
+                                          })}>
+                                            🎯 Problem Page {index + 1}
+                                          </span>
+                                        </div>
+                                        <div className={css({ fontWeight: 'medium', fontSize: 'sm', mb: 1 })}>
+                                          {item.step.title}
+                                        </div>
+                                        <div className={css({ fontSize: 'xs', color: 'gray.600', mb: 1 })}>
+                                          {item.step.problemCount} problems • Max {item.step.maxTerms} terms
+                                        </div>
+                                        <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
+                                          {item.step.description}
+                                        </div>
+                                      </div>
+
+                                      {/* Practice Step Actions */}
+                                      <div className={css({ display: 'flex', gap: 1, flexShrink: 0 })}>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            deletePracticeStep(item.originalIndex)
+                                          }}
+                                          className={css({
+                                            p: 1,
+                                            bg: 'red.100',
+                                            color: 'red.700',
+                                            border: '1px solid',
+                                            borderColor: 'red.300',
+                                            borderRadius: 'sm',
+                                            fontSize: 'xs',
+                                            cursor: 'pointer',
+                                            _hover: { bg: 'red.200' }
+                                          })}
+                                          title="Delete practice step"
+                                        >
+                                          🗑️
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            }
+
+                            // Add dropdown after each step
+                            items.push(
+                              <NewItemDropdown
+                                key={`new-${index + 1}`}
+                                position={index + 1}
+                                onAddStep={(pos) => addStep(pos)}
+                                onAddPracticeStep={(pos) => addPracticeStep(pos)}
+                              />
+                            )
+                          })
+
+                          return items
+                        })()}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className={css({ fontSize: 'sm', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                    Tags (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={tutorial.tags.join(', ')}
-                    onChange={(e) => updateTutorialMeta({
-                      tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
-                    })}
-                    className={css({
-                      w: 'full',
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'gray.300',
-                      borderRadius: 'md',
-                      fontSize: 'sm'
-                    })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Steps list */}
-            <div>
-              <div className={hstack({ justifyContent: 'space-between', alignItems: 'center', mb: 3 })}>
-                <h3 className={css({ fontWeight: 'bold' })}>Steps ({tutorial.steps.length})</h3>
-                <button
-                  onClick={addStep}
+                {/* Resizable separator */}
+                <hr
+                  {...separatorProps}
                   className={css({
-                    px: 3,
-                    py: 1,
-                    bg: 'blue.500',
-                    color: 'white',
-                    borderRadius: 'md',
-                    fontSize: 'sm',
-                    cursor: 'pointer',
-                    _hover: { bg: 'blue.600' }
+                    width: '4px',
+                    height: 'auto',
+                    border: 'none',
+                    bg: 'gray.300',
+                    cursor: 'ew-resize',
+                    _hover: { bg: 'blue.400' },
+                    transition: 'background-color 0.2s'
+                  })}
+                />
+
+                {/* Main content - Split between Tutorial Player and Step Editor */}
+                <div
+                  className={css({
+                    width: `calc(100% - ${position}px - 4px)`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%'
                   })}
                 >
-                  + Add Step
-                </button>
-              </div>
+                  {/* Unified Step Editor - handles both concept and practice steps */}
+                  {(editorState.selectedStepIndex !== null || editorState.selectedPracticeStepId) && (
+                    <div className={css({
+                      flex: editorState.selectedPracticeStepId ? '0 0 400px' : '0 0 300px',
+                      bg: 'white',
+                      borderBottom: '1px solid',
+                      borderColor: 'gray.200',
+                      p: 4,
+                      overflowY: 'auto'
+                    })}>
+                      <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 })}>
+                        <h3 className={css({ fontWeight: 'bold', fontSize: 'lg' })}>
+                          {editorState.selectedStepIndex !== null
+                            ? `Edit Step ${editorState.selectedStepIndex + 1}`
+                            : 'Edit Practice Step'
+                          }
+                        </h3>
+                        <button
+                          onClick={() => setEditorState(prev => ({
+                            ...prev,
+                            selectedStepIndex: null,
+                            selectedPracticeStepId: null
+                          }))}
+                          className={css({
+                            p: 1,
+                            borderRadius: 'sm',
+                            cursor: 'pointer',
+                            _hover: { bg: 'gray.100' }
+                          })}
+                        >
+                          ✕
+                        </button>
+                      </div>
 
-              <div className={stack({ gap: 2 })}>
-                {tutorial.steps.map((step, index) => {
-                  const errors = getStepErrors(index)
-                  const warnings = getStepWarnings(index)
-                  const hasIssues = errors.length > 0 || warnings.length > 0
-
-                  return (
-                    <div
-                      key={step.id}
-                      className={css({
-                        p: 3,
-                        border: '1px solid',
-                        borderColor: hasIssues ? 'red.300' :
-                          editorState.selectedStepIndex === index ? 'blue.300' : 'gray.200',
-                        borderRadius: 'md',
-                        bg: editorState.selectedStepIndex === index ? 'blue.50' : 'white',
-                        cursor: 'pointer',
-                        _hover: { bg: editorState.selectedStepIndex === index ? 'blue.100' : 'gray.50' }
-                      })}
-                      onClick={() => setEditorState(prev => ({
-                        ...prev,
-                        selectedStepIndex: prev.selectedStepIndex === index ? null : index
-                      }))}
-                    >
-                      <div className={hstack({ justifyContent: 'space-between', alignItems: 'center', mb: 1 })}>
-                        <div className={css({ fontSize: 'sm', fontWeight: 'medium' })}>
-                          {index + 1}. {step.title}
-                        </div>
-                        <div className={hstack({ gap: 1 })}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              previewStep(index)
-                            }}
-                            className={css({
-                              px: 2,
-                              py: 1,
-                              fontSize: 'xs',
-                              border: '1px solid',
-                              borderColor: 'green.300',
-                              borderRadius: 'sm',
-                              bg: 'green.50',
-                              color: 'green.700',
-                              cursor: 'pointer',
-                              _hover: { bg: 'green.100' }
-                            })}
-                          >
-                            Preview
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              duplicateStep(index)
-                            }}
-                            className={css({
-                              px: 2,
-                              py: 1,
-                              fontSize: 'xs',
-                              border: '1px solid',
-                              borderColor: 'gray.300',
-                              borderRadius: 'sm',
-                              bg: 'white',
-                              cursor: 'pointer',
-                              _hover: { bg: 'gray.50' }
-                            })}
-                          >
-                            Copy
-                          </button>
-                          {tutorial.steps.length > 1 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                deleteStep(index)
-                              }}
+                      {/* Conditional Editor Content */}
+                      {editorState.selectedStepIndex !== null ? (
+                        /* Concept Step Editor */
+                        <div className={css({ display: 'flex', flexDirection: 'column', gap: 3 })}>
+                          {/* Title */}
+                          <div>
+                            <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
+                              Title
+                            </label>
+                            <input
+                              type="text"
+                              value={tutorial.steps[editorState.selectedStepIndex].title}
+                              onChange={(e) => updateStep(editorState.selectedStepIndex, { title: e.target.value })}
                               className={css({
-                                px: 2,
-                                py: 1,
-                                fontSize: 'xs',
+                                w: 'full',
+                                p: 2,
                                 border: '1px solid',
-                                borderColor: 'red.300',
-                                borderRadius: 'sm',
-                                bg: 'red.50',
-                                color: 'red.700',
-                                cursor: 'pointer',
-                                _hover: { bg: 'red.100' }
+                                borderColor: 'gray.300',
+                                borderRadius: 'md',
+                                fontSize: 'sm'
                               })}
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                            />
+                          </div>
 
-                      <div className={css({ fontSize: 'xs', color: 'gray.600' })}>
-                        {step.problem}
-                      </div>
+                          {/* Problem */}
+                          <div>
+                            <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
+                              Problem
+                            </label>
+                            <input
+                              type="text"
+                              value={tutorial.steps[editorState.selectedStepIndex].problem}
+                              onChange={(e) => updateStep(editorState.selectedStepIndex, { problem: e.target.value })}
+                              className={css({
+                                w: 'full',
+                                p: 2,
+                                border: '1px solid',
+                                borderColor: 'gray.300',
+                                borderRadius: 'md',
+                                fontSize: 'sm'
+                              })}
+                            />
+                          </div>
 
-                      {hasIssues && (
-                        <div className={css({ mt: 2, fontSize: 'xs' })}>
-                          {errors.map((error, i) => (
-                            <div key={i} className={css({ color: 'red.600' })}>
-                              ⚠ {error.message}
-                            </div>
-                          ))}
-                          {warnings.map((warning, i) => (
-                            <div key={i} className={css({ color: 'yellow.600' })}>
-                              ⚡ {warning.message}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Step details editor */}
-                      {editorState.selectedStepIndex === index && (
-                        <div className={css({ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'gray.200' })}>
-                          <div className={stack({ gap: 2 })}>
-                            <div>
-                              <label className={css({ fontSize: 'xs', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                                Title
+                          {/* Start Value & Target Value */}
+                          <div className={css({ display: 'flex', gap: 2 })}>
+                            <div className={css({ flex: 1 })}>
+                              <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
+                                Start Value
                               </label>
                               <input
-                                type="text"
-                                value={step.title}
-                                onChange={(e) => updateStep(index, { title: e.target.value })}
+                                type="number"
+                                value={tutorial.steps[editorState.selectedStepIndex].startValue}
+                                onChange={(e) => updateStep(editorState.selectedStepIndex, { startValue: parseInt(e.target.value) || 0 })}
                                 className={css({
                                   w: 'full',
                                   p: 2,
                                   border: '1px solid',
                                   borderColor: 'gray.300',
                                   borderRadius: 'md',
-                                  fontSize: 'xs'
+                                  fontSize: 'sm'
                                 })}
                               />
                             </div>
-
-                            <div>
-                              <label className={css({ fontSize: 'xs', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                                Problem
+                            <div className={css({ flex: 1 })}>
+                              <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
+                                Target Value
                               </label>
                               <input
-                                type="text"
-                                value={step.problem}
-                                onChange={(e) => updateStep(index, { problem: e.target.value })}
+                                type="number"
+                                value={tutorial.steps[editorState.selectedStepIndex].targetValue}
+                                onChange={(e) => updateStep(editorState.selectedStepIndex, { targetValue: parseInt(e.target.value) || 0 })}
                                 className={css({
                                   w: 'full',
                                   p: 2,
                                   border: '1px solid',
                                   borderColor: 'gray.300',
                                   borderRadius: 'md',
-                                  fontSize: 'xs'
-                                })}
-                              />
-                            </div>
-
-                            <div>
-                              <label className={css({ fontSize: 'xs', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                                Description
-                              </label>
-                              <textarea
-                                value={step.description}
-                                onChange={(e) => updateStep(index, { description: e.target.value })}
-                                rows={2}
-                                className={css({
-                                  w: 'full',
-                                  p: 2,
-                                  border: '1px solid',
-                                  borderColor: 'gray.300',
-                                  borderRadius: 'md',
-                                  fontSize: 'xs',
-                                  resize: 'vertical'
-                                })}
-                              />
-                            </div>
-
-                            <div className={hstack({ gap: 2 })}>
-                              <div>
-                                <label className={css({ fontSize: 'xs', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                                  Start Value
-                                </label>
-                                <input
-                                  type="number"
-                                  value={step.startValue}
-                                  onChange={(e) => updateStep(index, { startValue: parseInt(e.target.value) || 0 })}
-                                  className={css({
-                                    w: 'full',
-                                    p: 2,
-                                    border: '1px solid',
-                                    borderColor: 'gray.300',
-                                    borderRadius: 'md',
-                                    fontSize: 'xs'
-                                  })}
-                                />
-                              </div>
-
-                              <div>
-                                <label className={css({ fontSize: 'xs', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                                  Target Value
-                                </label>
-                                <input
-                                  type="number"
-                                  value={step.targetValue}
-                                  onChange={(e) => updateStep(index, { targetValue: parseInt(e.target.value) || 0 })}
-                                  className={css({
-                                    w: 'full',
-                                    p: 2,
-                                    border: '1px solid',
-                                    borderColor: 'gray.300',
-                                    borderRadius: 'md',
-                                    fontSize: 'xs'
-                                  })}
-                                />
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className={css({ fontSize: 'xs', fontWeight: 'medium', mb: 1, display: 'block' })}>
-                                Action Description
-                              </label>
-                              <textarea
-                                value={step.actionDescription}
-                                onChange={(e) => updateStep(index, { actionDescription: e.target.value })}
-                                rows={2}
-                                className={css({
-                                  w: 'full',
-                                  p: 2,
-                                  border: '1px solid',
-                                  borderColor: 'gray.300',
-                                  borderRadius: 'md',
-                                  fontSize: 'xs',
-                                  resize: 'vertical'
+                                  fontSize: 'sm'
                                 })}
                               />
                             </div>
                           </div>
+
+                          {/* Description */}
+                          <div>
+                            <label className={css({ fontSize: 'sm', fontWeight: 'medium', display: 'block', mb: 1 })}>
+                              Description
+                            </label>
+                            <textarea
+                              value={tutorial.steps[editorState.selectedStepIndex].description}
+                              onChange={(e) => updateStep(editorState.selectedStepIndex, { description: e.target.value })}
+                              rows={3}
+                              className={css({
+                                w: 'full',
+                                p: 2,
+                                border: '1px solid',
+                                borderColor: 'gray.300',
+                                borderRadius: 'md',
+                                fontSize: 'sm',
+                                resize: 'vertical'
+                              })}
+                            />
+                          </div>
                         </div>
-                      )}
+                      ) : editorState.selectedPracticeStepId ? (
+                        /* Practice Step Editor */
+                        (() => {
+                          const practiceStepIndex = (tutorial.practiceSteps || []).findIndex(
+                            step => step.id === editorState.selectedPracticeStepId
+                          )
+                          const practiceStep = (tutorial.practiceSteps || [])[practiceStepIndex]
+
+                          return practiceStep ? (
+                            <PracticeStepEditor
+                              step={practiceStep}
+                              onChange={(updatedStep) => updatePracticeStep(practiceStepIndex, updatedStep)}
+                              onDelete={() => {
+                                deletePracticeStep(practiceStepIndex)
+                                setEditorState(prev => ({
+                                  ...prev,
+                                  selectedPracticeStepId: null,
+                                  selectedStepIndex: null
+                                }))
+                              }}
+                            />
+                          ) : null
+                        })()
+                      ) : null}
                     </div>
-                  )
-                })}
-              </div>
-            </div>
+                  )}
 
-            {/* Practice Steps section */}
-            <div>
-              <div className={hstack({ justifyContent: 'space-between', alignItems: 'center', mb: 3 })}>
-                <h3 className={css({ fontWeight: 'bold' })}>Practice Steps ({(tutorial.practiceSteps || []).length})</h3>
-                <button
-                  onClick={addPracticeStep}
-                  className={css({
-                    px: 3,
-                    py: 1,
-                    bg: 'purple.500',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 'md',
-                    fontSize: 'sm',
-                    cursor: 'pointer',
-                    _hover: { bg: 'purple.600' }
-                  })}
-                >
-                  + Add Practice Step
-                </button>
-              </div>
-
-              <div className={stack({ gap: 3 })}>
-                {(tutorial.practiceSteps || []).map((practiceStep, index) => (
-                  <PracticeStepEditor
-                    key={practiceStep.id}
-                    step={practiceStep}
-                    onChange={(updatedStep) => updatePracticeStep(index, updatedStep)}
-                    onDelete={() => deletePracticeStep(index)}
-                  />
-                ))}
-
-                {(tutorial.practiceSteps || []).length === 0 && (
+                  {/* Preview Section */}
                   <div className={css({
-                    p: 4,
-                    bg: 'purple.50',
-                    border: '2px dashed',
-                    borderColor: 'purple.200',
-                    borderRadius: 'lg',
-                    textAlign: 'center',
-                    color: 'purple.600'
+                    flex: 1,
+                    overflowY: 'auto',
+                    minHeight: 0
                   })}>
-                    <p className={css({ fontSize: 'sm', mb: 2 })}>
-                      No practice steps yet
-                    </p>
-                    <p className={css({ fontSize: 'xs' })}>
-                      Practice steps provide skill-based problem generation to reinforce learning
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+                    {editorState.selectedPracticeStepId ? (
+                      /* Practice Step Preview */
+                      (() => {
+                        const practiceStep = (tutorial.practiceSteps || []).find(
+                          step => step.id === editorState.selectedPracticeStepId
+                        )
 
-        {/* Main content - Tutorial Player */}
-        <div className={css({ flex: 1 })}>
+                        return practiceStep ? (
+                          <PracticeStepPreview step={practiceStep} />
+                        ) : (
+                          <div className={css({ p: 4, textAlign: 'center', color: 'gray.500' })}>
+                            Practice step not found
+                          </div>
+                        )
+                      })()
+                    ) : (
+                      /* Tutorial Player for Concept Steps */
+                      <TutorialPlayer
+                        key={`tutorial-player-${editorState.selectedStepIndex !== null ? editorState.selectedStepIndex : (editorState.previewStepIndex || 0)}`}
+                        tutorial={tutorial}
+                        initialStepIndex={editorState.selectedStepIndex !== null ? editorState.selectedStepIndex : (editorState.previewStepIndex || 0)}
+                        isDebugMode={true}
+                        showDebugPanel={editorState.isEditing}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Resizable>
+      ) : (
+        /* Non-editing view - tutorial player with edit button */
+        <div className={css({ width: '100%', height: '100%', position: 'relative' })}>
+          {/* Edit Tutorial Button */}
+          <div className={css({
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            zIndex: 10
+          })}>
+            <button
+              onClick={() => setEditorState(prev => ({ ...prev, isEditing: true }))}
+              className={css({
+                px: 4,
+                py: 2,
+                bg: 'blue.500',
+                color: 'white',
+                border: 'none',
+                borderRadius: 'md',
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                cursor: 'pointer',
+                shadow: 'md',
+                _hover: { bg: 'blue.600' }
+              })}
+            >
+              Edit Tutorial
+            </button>
+          </div>
+
           <TutorialPlayer
+            key={`tutorial-player-${editorState.selectedStepIndex !== null ? editorState.selectedStepIndex : (editorState.previewStepIndex || 0)}`}
             tutorial={tutorial}
-            initialStepIndex={editorState.previewStepIndex || 0}
+            initialStepIndex={editorState.selectedStepIndex !== null ? editorState.selectedStepIndex : (editorState.previewStepIndex || 0)}
             isDebugMode={true}
             showDebugPanel={editorState.isEditing}
           />
         </div>
-      </div>
+      )}
+
+      {/* Tutorial Info Modal */}
+      <TutorialInfoModal
+        tutorial={tutorial}
+        isOpen={editorState.showTutorialInfoModal}
+        onClose={() => setEditorState(prev => ({ ...prev, showTutorialInfoModal: false }))}
+        onUpdateTutorial={updateTutorialMeta}
+      />
     </div>
   )
 }
