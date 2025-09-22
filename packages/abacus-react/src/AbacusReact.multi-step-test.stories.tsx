@@ -288,6 +288,13 @@ export const ThreePlusFourteenTest: Story = {
       const currentExpectedStep = expectedSteps[currentStep];
       if (!currentExpectedStep) return undefined;
 
+      // CRITICAL FIX: If we've already reached the current step's target, don't show arrows
+      // This prevents ephemeral arrows during the step advancement delay
+      if (currentValue === currentExpectedStep.targetValue) {
+        console.log('🎯 Current step completed, hiding arrows until step advances');
+        return undefined;
+      }
+
       try {
         // Generate arrows to get from current value to current expected step's target
         const dynamicInstruction = generateAbacusInstructions(currentValue, currentExpectedStep.targetValue);
@@ -365,7 +372,7 @@ export const ThreePlusFourteenTest: Story = {
               console.log('⚡ Advancing to next expected step:', currentStep, '→', currentStep + 1);
               setCurrentStep(prev => prev + 1);
               lastValueForStepAdvancement.current = currentValue;
-            }, 1000);
+            }, 500); // Reduced delay for better UX
 
             return () => clearTimeout(timeoutId);
           }

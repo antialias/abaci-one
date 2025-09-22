@@ -168,53 +168,57 @@ export function TutorialPlayer({
     completionPercentage: (currentStepIndex / tutorial.steps.length) * 100
   }
 
-  // Define the static expected steps (generated once at start)
+  // Define the static expected steps (generated once at start using our fixed algorithm)
   const expectedSteps = useMemo(() => {
-    // Generate expected steps from the original stepBeadHighlights
-    if (!currentStep.stepBeadHighlights || !currentStep.totalSteps || currentStep.totalSteps <= 1) {
+    // Generate expected steps using the same auto-generation as Storybook stories
+    try {
+      const fullInstruction = generateAbacusInstructions(currentStep.startValue, currentStep.targetValue)
+
+      if (!fullInstruction.stepBeadHighlights || !fullInstruction.multiStepInstructions) {
+        return []
+      }
+
+      // Extract unique step indices and create milestones by simulating bead movements
+      const stepIndices = [...new Set(fullInstruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
+      const steps = []
+      let currentAbacusValue = currentStep.startValue
+
+      stepIndices.forEach((stepIndex, i) => {
+        const description = fullInstruction.multiStepInstructions?.[i] || `Step ${i + 1}`
+        const stepBeads = fullInstruction.stepBeadHighlights.filter(bead => bead.stepIndex === stepIndex)
+
+        // Calculate the value change for this step by applying all bead movements
+        let valueChange = 0
+        stepBeads.forEach(bead => {
+          const placeMultiplier = Math.pow(10, bead.placeValue)
+
+          if (bead.beadType === 'heaven') {
+            // Heaven bead is worth 5 in its place value
+            valueChange += bead.direction === 'activate' ? (5 * placeMultiplier) : -(5 * placeMultiplier)
+          } else {
+            // Earth bead is worth 1 in its place value
+            valueChange += bead.direction === 'activate' ? placeMultiplier : -placeMultiplier
+          }
+        })
+
+        currentAbacusValue += valueChange
+
+        steps.push({
+          index: i,
+          stepIndex: stepIndex,
+          targetValue: currentAbacusValue,
+          startValue: i === 0 ? currentStep.startValue : steps[i-1].targetValue,
+          description: description
+        })
+      })
+
+      console.log('📋 Auto-generated expected steps with calculated values:', steps)
+      return steps
+    } catch (error) {
+      console.warn('⚠️ Failed to auto-generate expected steps, falling back to empty:', error)
       return []
     }
-
-    // Extract unique step indices to understand the progression
-    const stepIndices = [...new Set(currentStep.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
-
-    // For now, use a heuristic to determine milestone values
-    // This should ideally come from the instruction generator or tutorial data
-    const steps = []
-    let value = currentStep.startValue
-
-    // Generate progressive milestones
-    if (currentStep.startValue === 3 && currentStep.targetValue === 17) {
-      // Hardcode for the 3+14=17 case until we have proper milestone generation
-      const milestones = [8, 18, 17]
-      for (let i = 0; i < stepIndices.length && i < milestones.length; i++) {
-        steps.push({
-          index: i,
-          stepIndex: stepIndices[i],
-          targetValue: milestones[i],
-          startValue: value,
-          description: currentStep.multiStepInstructions?.[i] || `Step ${i + 1}`
-        })
-        value = milestones[i]
-      }
-    } else {
-      // Generic case - just use the final target for all steps for now
-      // TODO: Implement proper milestone calculation
-      for (let i = 0; i < stepIndices.length; i++) {
-        const isLast = i === stepIndices.length - 1
-        steps.push({
-          index: i,
-          stepIndex: stepIndices[i],
-          targetValue: isLast ? currentStep.targetValue : currentStep.targetValue, // TODO: calculate intermediate
-          startValue: value,
-          description: currentStep.multiStepInstructions?.[i] || `Step ${i + 1}`
-        })
-      }
-    }
-
-    console.log('📋 Generated expected steps:', steps)
-    return steps
-  }, [currentStep.startValue, currentStep.targetValue, currentStep.stepBeadHighlights, currentStep.totalSteps, currentStep.multiStepInstructions])
+  }, [currentStep.startValue, currentStep.targetValue])
 
   // Get arrows for the immediate next action to reach current expected step
   const getCurrentStepBeads = useCallback(() => {

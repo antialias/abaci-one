@@ -481,3 +481,397 @@ export const RapidTests: Story = {
     );
   }
 };
+
+// Advanced challenging problems with pedagogical expansion displays
+export const AdvancedComplement: Story = {
+  render: () => {
+    // 🎯 COMPLETELY AUTO-GENERATED: Change these numbers and watch the expansion adjust!
+    const startValue = 27;
+    const targetValue = 65; // Changed from 63 to 65 to demonstrate auto-generation
+    const instruction = generateAbacusInstructions(startValue, targetValue);
+
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <h3>Advanced: {startValue} + {targetValue - startValue} = {targetValue}</h3>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+          Multi-place operation with multiple complement steps
+        </p>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f0f8ff', borderRadius: '8px' }}>
+          <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: '#e8f5e8', borderRadius: '4px' }}>
+            <strong>🤖 100% AUTO-GENERATED:</strong> Change the numbers above and all content updates automatically!
+          </div>
+
+          <h4>📐 Mathematical Breakdown:</h4>
+          <p><strong>{instruction.actionDescription}</strong></p>
+          <p><em>{instruction.errorMessages.hint}</em></p>
+
+          <h4>📋 Auto-Generated Expected Steps ({instruction.totalSteps} steps):</h4>
+          <ol style={{ textAlign: 'left', maxWidth: '500px', margin: '0 auto' }}>
+            {instruction.multiStepInstructions?.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        <ProgressiveTestComponent
+          title="Interactive Demo"
+          startValue={startValue}
+          targetValue={targetValue}
+          description="Follow the steps above to complete this problem"
+        />
+      </div>
+    );
+  }
+};
+
+export const CrossingHundreds: Story = {
+  render: () => {
+    const instruction = generateAbacusInstructions(87, 113);
+
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <h3>Crossing Hundreds: 87 + 26 = 113</h3>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+          Complex operation crossing into hundreds place with complements
+        </p>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f0f8ff', borderRadius: '8px' }}>
+          <h4>📐 Mathematical Breakdown:</h4>
+          <p><strong>{instruction.actionDescription}</strong></p>
+          <p><em>{instruction.errorMessages.hint}</em></p>
+
+          <h4>📋 Auto-Generated Expected Steps ({instruction.totalSteps} steps):</h4>
+          <ol style={{ textAlign: 'left', maxWidth: '500px', margin: '0 auto' }}>
+            {instruction.multiStepInstructions?.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        <ProgressiveTestComponent
+          title="Interactive Demo"
+          startValue={87}
+          targetValue={113}
+          description="Follow the steps above to complete this problem"
+        />
+      </div>
+    );
+  }
+};
+
+export const ChallengeNinetyNine: Story = {
+  render: () => {
+    const instruction = generateAbacusInstructions(99, 100);
+
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <h3>Challenge: 99 + 1 = 100</h3>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+          Recursive complement: adding 1 when all lower places are at capacity
+        </p>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#fff5f5', borderRadius: '8px' }}>
+          <h4>📐 Mathematical Breakdown:</h4>
+          <p><strong>{instruction.actionDescription}</strong></p>
+          <p><em>{instruction.errorMessages.hint}</em></p>
+
+          <h4>📋 Auto-Generated Expected Steps ({instruction.totalSteps} steps):</h4>
+          <ol style={{ textAlign: 'left', maxWidth: '500px', margin: '0 auto' }}>
+            {instruction.multiStepInstructions?.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        <ProgressiveTestComponent
+          title="Interactive Demo"
+          startValue={99}
+          targetValue={100}
+          description="Follow the steps above to complete this problem"
+        />
+      </div>
+    );
+  }
+};
+
+export const MultiStepChain: Story = {
+  render: () => {
+    const instruction = generateAbacusInstructions(45, 112);
+
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <h3>Multi-Step Chain: 45 + 67 = 112</h3>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+          Complex multi-step operation requiring multiple place value operations
+        </p>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f5f8ff', borderRadius: '8px' }}>
+          <h4>📐 Mathematical Breakdown:</h4>
+          <p><strong>{instruction.actionDescription}</strong></p>
+          <p><em>{instruction.errorMessages.hint}</em></p>
+
+          <h4>📋 Auto-Generated Expected Steps ({instruction.totalSteps} steps):</h4>
+          <ol style={{ textAlign: 'left', maxWidth: '500px', margin: '0 auto' }}>
+            {instruction.multiStepInstructions?.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        <ProgressiveTestComponent
+          title="Interactive Demo"
+          startValue={45}
+          targetValue={112}
+          description="Follow the steps above to complete this problem"
+        />
+      </div>
+    );
+  }
+};
+
+export const ExtremeCase: Story = {
+  render: () => {
+    const instruction = generateAbacusInstructions(89, 112);
+
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <h3>Extreme: 89 + 23 = 112</h3>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+          Advanced complement operations across multiple place values
+        </p>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#fff8f0', borderRadius: '8px' }}>
+          <h4>📐 Mathematical Breakdown:</h4>
+          <p><strong>{instruction.actionDescription}</strong></p>
+          <p><em>{instruction.errorMessages.hint}</em></p>
+
+          <h4>📋 Auto-Generated Expected Steps ({instruction.totalSteps} steps):</h4>
+          <ol style={{ textAlign: 'left', maxWidth: '500px', margin: '0 auto' }}>
+            {instruction.multiStepInstructions?.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        <ProgressiveTestComponent
+          title="Interactive Demo"
+          startValue={89}
+          targetValue={112}
+          description="Follow the steps above to complete this problem"
+        />
+      </div>
+    );
+  }
+};
+
+// Pedagogical showcase of our original problem
+export const ShowcaseOriginalProblem: Story = {
+  render: () => {
+    const instruction = generateAbacusInstructions(3, 17);
+
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <h3>🎯 Showcase: The Original Fixed Problem</h3>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+          This demonstrates the pedagogical step ordering that was broken and is now fixed.
+          <br />
+          Note the proper ordering: tens place first, then ones place operations.
+        </p>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#e8f5e8', borderRadius: '8px' }}>
+          <h4>📐 Auto-Generated Mathematical Breakdown:</h4>
+          <p><strong>{instruction.actionDescription}</strong></p>
+          <p><em>{instruction.errorMessages.hint}</em></p>
+
+          <h4>📋 Auto-Generated Expected Steps ({instruction.totalSteps} steps):</h4>
+          <ol style={{ textAlign: 'left', maxWidth: '500px', margin: '0 auto' }}>
+            {instruction.multiStepInstructions?.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+          <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
+            This ordering follows proper abacus pedagogy: highest place value operations first.
+          </p>
+        </div>
+
+        <ProgressiveTestComponent
+          title="Interactive Demo: 3 + 14 = 17"
+          startValue={3}
+          targetValue={17}
+          description="Follow the auto-generated steps above"
+        />
+      </div>
+    );
+  }
+};
+
+// Dynamic demonstration of auto-generation
+export const DynamicAutoGeneration: Story = {
+  render: () => {
+    const [startValue, setStartValue] = useState(42);
+    const [targetValue, setTargetValue] = useState(89);
+
+    const instruction = generateAbacusInstructions(startValue, targetValue);
+
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <h3>🤖 Live Auto-Generation Demo</h3>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+          Change the numbers below and watch the pedagogical expansion update in real-time!
+        </p>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f0f0f0', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '15px' }}>
+            <div>
+              <label>Start Value: </label>
+              <input
+                type="number"
+                value={startValue}
+                onChange={(e) => setStartValue(parseInt(e.target.value) || 0)}
+                style={{ width: '80px', padding: '5px' }}
+                min="0"
+                max="99"
+              />
+            </div>
+            <div>
+              <label>Target Value: </label>
+              <input
+                type="number"
+                value={targetValue}
+                onChange={(e) => setTargetValue(parseInt(e.target.value) || 0)}
+                style={{ width: '80px', padding: '5px' }}
+                min="0"
+                max="999"
+              />
+            </div>
+          </div>
+
+          <h4>Problem: {startValue} + {targetValue - startValue} = {targetValue}</h4>
+        </div>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#fff5f5', borderRadius: '8px' }}>
+          <div style={{ marginBottom: '10px', padding: '8px', backgroundColor: '#ffeeee', borderRadius: '4px' }}>
+            <strong>⚡ REAL-TIME AUTO-GENERATION:</strong> All content below updates automatically as you change the numbers!
+          </div>
+
+          <h4>📐 Mathematical Breakdown:</h4>
+          <p><strong>{instruction.actionDescription}</strong></p>
+          <p><em>{instruction.errorMessages.hint}</em></p>
+
+          <h4>📋 Auto-Generated Expected Steps ({instruction.totalSteps} steps):</h4>
+          <ol style={{ textAlign: 'left', maxWidth: '500px', margin: '0 auto' }}>
+            {instruction.multiStepInstructions?.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
+        <ProgressiveTestComponent
+          key={`${startValue}-${targetValue}`}
+          title="Live Interactive Demo"
+          startValue={startValue}
+          targetValue={targetValue}
+          description="Try the auto-generated steps above!"
+        />
+      </div>
+    );
+  }
+};
+
+export const ExpectedStatesCalculation: Story = {
+  render: () => {
+    const startValue = 3;
+    const targetValue = 17;
+    const instruction = generateAbacusInstructions(startValue, targetValue);
+
+    // Calculate expected states for each step (same logic as tutorial editor)
+    const expectedStates: number[] = [];
+    if (instruction.stepBeadHighlights && instruction.multiStepInstructions) {
+      const stepIndices = [...new Set(instruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort();
+      let currentValue = startValue;
+
+      stepIndices.forEach((stepIndex, i) => {
+        const stepBeads = instruction.stepBeadHighlights!.filter(bead => bead.stepIndex === stepIndex);
+        let valueChange = 0;
+
+        stepBeads.forEach(bead => {
+          const placeMultiplier = Math.pow(10, bead.placeValue);
+          if (bead.beadType === 'heaven') {
+            valueChange += bead.direction === 'activate' ? (5 * placeMultiplier) : -(5 * placeMultiplier);
+          } else {
+            valueChange += bead.direction === 'activate' ? placeMultiplier : -placeMultiplier;
+          }
+        });
+
+        currentValue += valueChange;
+        expectedStates.push(currentValue);
+      });
+    }
+
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <h3>🎯 Expected States Calculation Demo</h3>
+        <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+          This demonstrates the expected state calculation feature now available in the tutorial editor
+        </p>
+
+        <p><strong>Problem:</strong> {startValue} → {targetValue}</p>
+        <p><strong>{instruction.actionDescription}</strong></p>
+
+        <div style={{
+          backgroundColor: '#fff7ed',
+          border: '2px solid #fed7aa',
+          borderRadius: '8px',
+          padding: '15px',
+          margin: '15px 0',
+          maxWidth: '600px',
+          marginLeft: 'auto',
+          marginRight: 'auto'
+        }}>
+          <h4 style={{ color: '#ea580c', marginTop: 0 }}>📊 Step-by-Step Expected States:</h4>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '80px 1fr 120px',
+            gap: '10px',
+            fontSize: '14px',
+            textAlign: 'left'
+          }}>
+            <div style={{ fontWeight: 'bold' }}>Step</div>
+            <div style={{ fontWeight: 'bold' }}>Instruction</div>
+            <div style={{ fontWeight: 'bold' }}>Expected State</div>
+
+            <div style={{ gridColumn: '1 / -1', height: '1px', backgroundColor: '#fed7aa' }}></div>
+
+            <div>Initial</div>
+            <div>Starting position</div>
+            <div style={{ fontWeight: 'bold', color: '#059669' }}>{startValue}</div>
+
+            {instruction.multiStepInstructions?.map((step, index) => (
+              <>
+                <div>Step {index + 1}</div>
+                <div>{step}</div>
+                <div style={{ fontWeight: 'bold', color: '#059669' }}>{expectedStates[index] || '?'}</div>
+              </>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f0f8ff', borderRadius: '8px' }}>
+          <h4>✨ Tutorial Editor Enhancement:</h4>
+          <p style={{ fontSize: '14px', margin: 0 }}>
+            Fixed major bug: multiStepInstructions now match stepBeadHighlights in pedagogical order.
+            The tutorial editor shows expected states below each multi-step instruction in the correct sequence.
+          </p>
+        </div>
+
+        <ProgressiveTestComponent
+          title="Interactive Demo"
+          startValue={startValue}
+          targetValue={targetValue}
+          description="Follow the steps above to see the progression"
+        />
+      </div>
+    );
+  }
+};
