@@ -8,6 +8,7 @@ import { Tutorial, TutorialStep, PracticeStep, TutorialValidation, StepValidatio
 import { PracticeStepEditor } from './PracticeStepEditor'
 import { generateSingleProblem } from '../../utils/problemGenerator'
 import { skillConfigurationToSkillSets, createBasicAllowedConfiguration } from '../../utils/skillConfiguration'
+import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
 import { EditorLayout, TextInput, NumberInput, FormGroup, CompactStepItem, BetweenStepAdd } from './shared/EditorComponents'
 import Resizable from 'react-resizable-layout'
 
@@ -782,24 +783,47 @@ export function TutorialEditor({
       newStepPosition = (prevStep.position + nextStep.position) / 2
     }
 
+    // Generate a default operation based on existing steps
+    const existingSteps = tutorial.steps
+    let defaultStart = 0
+    let defaultTarget = 1
+
+    // Create increasingly complex defaults based on tutorial progression
+    if (existingSteps.length === 0) {
+      // First step: simple 0 + 1
+      defaultStart = 0
+      defaultTarget = 1
+    } else if (existingSteps.length < 5) {
+      // First few steps: basic earth bead additions
+      defaultStart = existingSteps.length
+      defaultTarget = existingSteps.length + 1
+    } else if (existingSteps.length < 10) {
+      // Introduce heaven bead: 0 + 5, then combinations
+      defaultStart = existingSteps.length - 5
+      defaultTarget = defaultStart + 5
+    } else {
+      // More complex operations: complements and multi-place
+      const baseValue = (existingSteps.length - 10) % 8 + 2
+      defaultStart = baseValue
+      defaultTarget = baseValue + Math.min(4, Math.floor((existingSteps.length - 10) / 8) + 2)
+    }
+
+    // Generate automatic instructions using our instruction generator
+    const generatedInstructions = generateAbacusInstructions(defaultStart, defaultTarget)
+
     const newStep: TutorialStep = {
       id: `step-${Date.now()}`,
-      title: 'New Step',
-      problem: '0 + 0',
-      description: 'Add step description here',
-      startValue: 0,
-      targetValue: 0,
-      expectedAction: 'add',
-      actionDescription: 'Describe the action to take',
-      tooltip: {
-        content: 'Tooltip title',
-        explanation: 'Tooltip explanation'
-      },
-      errorMessages: {
-        wrongBead: 'Wrong bead error message',
-        wrongAction: 'Wrong action error message',
-        hint: 'Hint message'
-      },
+      title: `${defaultStart} + ${defaultTarget - defaultStart}`,
+      problem: `${defaultStart} + ${defaultTarget - defaultStart}`,
+      description: `Learn to add ${defaultTarget - defaultStart} to ${defaultStart} using the abacus`,
+      startValue: defaultStart,
+      targetValue: defaultTarget,
+      expectedAction: generatedInstructions.expectedAction,
+      actionDescription: generatedInstructions.actionDescription,
+      highlightBeads: generatedInstructions.highlightBeads,
+      multiStepInstructions: generatedInstructions.multiStepInstructions,
+      tooltip: generatedInstructions.tooltip,
+      errorMessages: generatedInstructions.errorMessages,
       position: newStepPosition
     }
 
@@ -988,6 +1012,30 @@ export function TutorialEditor({
     }))
     setEditorState(prev => ({ ...prev, isDirty: true }))
   }, [tutorial.steps])
+
+  // Generate instructions for a specific step
+  const generateInstructionsForStep = useCallback((stepIndex: number) => {
+    const step = tutorial.steps[stepIndex]
+    if (!step) return
+
+    try {
+      const generatedInstructions = generateAbacusInstructions(step.startValue, step.targetValue, step.problem)
+
+      const instructionUpdates: Partial<TutorialStep> = {
+        expectedAction: generatedInstructions.expectedAction,
+        actionDescription: generatedInstructions.actionDescription,
+        highlightBeads: generatedInstructions.highlightBeads,
+        multiStepInstructions: generatedInstructions.multiStepInstructions,
+        tooltip: generatedInstructions.tooltip,
+        errorMessages: generatedInstructions.errorMessages
+      }
+
+      updateStep(stepIndex, instructionUpdates)
+    } catch (error) {
+      console.error('Failed to generate instructions:', error)
+      // Could show user notification here
+    }
+  }, [tutorial.steps, updateStep])
 
   // Editor actions
   const toggleEdit = useCallback(() => {
@@ -1344,6 +1392,40 @@ export function TutorialEditor({
                               />
                             </FormGroup>
 
+                            {/* Automatic Instruction Generation Controls */}
+                            <div className={css({
+                              p: 3,
+                              bg: 'blue.50',
+                              borderRadius: 'md',
+                              border: '1px solid',
+                              borderColor: 'blue.200'
+                            })}>
+                              <div className={hstack({ justifyContent: 'space-between', alignItems: 'center', mb: 2 })}>
+                                <span className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'blue.800' })}>
+                                  🤖 Automatic Instructions
+                                </span>
+                                <button
+                                  onClick={() => generateInstructionsForStep && generateInstructionsForStep(editorState.selectedStepIndex)}
+                                  className={css({
+                                    px: 3,
+                                    py: 1,
+                                    fontSize: 'xs',
+                                    bg: 'blue.600',
+                                    color: 'white',
+                                    borderRadius: 'md',
+                                    cursor: 'pointer',
+                                    _hover: { bg: 'blue.700' }
+                                  })}
+                                >
+                                  Generate Instructions
+                                </button>
+                              </div>
+                              <p className={css({ fontSize: 'xs', color: 'blue.700', mb: 0 })}>
+                                Click "Generate Instructions" to automatically create proper bead highlighting,
+                                tooltips, and error messages based on the start and target values.
+                              </p>
+                            </div>
+
                             <TextInput
                               label="Description"
                               value={tutorial.steps[editorState.selectedStepIndex].description}
@@ -1351,6 +1433,177 @@ export function TutorialEditor({
                               multiline
                               rows={3}
                             />
+
+                            {/* Manual Instruction Editing */}
+                            <div className={css({
+                              p: 3,
+                              bg: 'gray.50',
+                              borderRadius: 'md',
+                              border: '1px solid',
+                              borderColor: 'gray.200'
+                            })}>
+                              <h4 className={css({ fontSize: 'sm', fontWeight: 'medium', mb: 3, color: 'gray.800' })}>
+                                ✏️ Manual Instruction Editing
+                              </h4>
+
+                              <FormGroup columns={2}>
+                                <div>
+                                  <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700', display: 'block', mb: 2 })}>
+                                    Expected Action
+                                  </label>
+                                  <select
+                                    value={tutorial.steps[editorState.selectedStepIndex].expectedAction}
+                                    onChange={(e) => updateStep(editorState.selectedStepIndex, { expectedAction: e.target.value as any })}
+                                    className={css({
+                                      w: 'full',
+                                      p: 2,
+                                      border: '1px solid',
+                                      borderColor: 'gray.300',
+                                      borderRadius: 'md',
+                                      fontSize: 'sm'
+                                    })}
+                                  >
+                                    <option value="add">Add</option>
+                                    <option value="remove">Remove</option>
+                                    <option value="multi-step">Multi-step</option>
+                                  </select>
+                                </div>
+
+                                <TextInput
+                                  label="Action Description"
+                                  value={tutorial.steps[editorState.selectedStepIndex].actionDescription}
+                                  onChange={(value) => updateStep(editorState.selectedStepIndex, { actionDescription: value })}
+                                />
+                              </FormGroup>
+
+                              <FormGroup columns={2}>
+                                <TextInput
+                                  label="Tooltip Title"
+                                  value={tutorial.steps[editorState.selectedStepIndex].tooltip.content}
+                                  onChange={(value) => updateStep(editorState.selectedStepIndex, {
+                                    tooltip: {
+                                      ...tutorial.steps[editorState.selectedStepIndex].tooltip,
+                                      content: value
+                                    }
+                                  })}
+                                />
+
+                                <TextInput
+                                  label="Tooltip Explanation"
+                                  value={tutorial.steps[editorState.selectedStepIndex].tooltip.explanation}
+                                  onChange={(value) => updateStep(editorState.selectedStepIndex, {
+                                    tooltip: {
+                                      ...tutorial.steps[editorState.selectedStepIndex].tooltip,
+                                      explanation: value
+                                    }
+                                  })}
+                                />
+                              </FormGroup>
+
+                              <FormGroup columns={1}>
+                                <TextInput
+                                  label="Wrong Bead Error Message"
+                                  value={tutorial.steps[editorState.selectedStepIndex].errorMessages.wrongBead}
+                                  onChange={(value) => updateStep(editorState.selectedStepIndex, {
+                                    errorMessages: {
+                                      ...tutorial.steps[editorState.selectedStepIndex].errorMessages,
+                                      wrongBead: value
+                                    }
+                                  })}
+                                />
+
+                                <TextInput
+                                  label="Wrong Action Error Message"
+                                  value={tutorial.steps[editorState.selectedStepIndex].errorMessages.wrongAction}
+                                  onChange={(value) => updateStep(editorState.selectedStepIndex, {
+                                    errorMessages: {
+                                      ...tutorial.steps[editorState.selectedStepIndex].errorMessages,
+                                      wrongAction: value
+                                    }
+                                  })}
+                                />
+
+                                <TextInput
+                                  label="Hint Message"
+                                  value={tutorial.steps[editorState.selectedStepIndex].errorMessages.hint}
+                                  onChange={(value) => updateStep(editorState.selectedStepIndex, {
+                                    errorMessages: {
+                                      ...tutorial.steps[editorState.selectedStepIndex].errorMessages,
+                                      hint: value
+                                    }
+                                  })}
+                                />
+                              </FormGroup>
+
+                              {/* Multi-step Instructions */}
+                              {tutorial.steps[editorState.selectedStepIndex].expectedAction === 'multi-step' && (
+                                <div className={css({ mt: 3 })}>
+                                  <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700', display: 'block', mb: 2 })}>
+                                    Multi-step Instructions
+                                  </label>
+                                  <div className={css({ space: 2 })}>
+                                    {(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []).map((instruction, index) => (
+                                      <div key={index} className={css({ display: 'flex', gap: 2, mb: 2 })}>
+                                        <input
+                                          type="text"
+                                          value={instruction}
+                                          onChange={(e) => {
+                                            const newInstructions = [...(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || [])]
+                                            newInstructions[index] = e.target.value
+                                            updateStep(editorState.selectedStepIndex, { multiStepInstructions: newInstructions })
+                                          }}
+                                          className={css({
+                                            flex: 1,
+                                            p: 2,
+                                            border: '1px solid',
+                                            borderColor: 'gray.300',
+                                            borderRadius: 'md',
+                                            fontSize: 'sm'
+                                          })}
+                                          placeholder={`Step ${index + 1}`}
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            const newInstructions = (tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []).filter((_, i) => i !== index)
+                                            updateStep(editorState.selectedStepIndex, { multiStepInstructions: newInstructions })
+                                          }}
+                                          className={css({
+                                            px: 2,
+                                            py: 1,
+                                            fontSize: 'xs',
+                                            bg: 'red.500',
+                                            color: 'white',
+                                            borderRadius: 'md',
+                                            cursor: 'pointer',
+                                            _hover: { bg: 'red.600' }
+                                          })}
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <button
+                                      onClick={() => {
+                                        const newInstructions = [...(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []), '']
+                                        updateStep(editorState.selectedStepIndex, { multiStepInstructions: newInstructions })
+                                      }}
+                                      className={css({
+                                        px: 3,
+                                        py: 1,
+                                        fontSize: 'xs',
+                                        bg: 'green.500',
+                                        color: 'white',
+                                        borderRadius: 'md',
+                                        cursor: 'pointer',
+                                        _hover: { bg: 'green.600' }
+                                      })}
+                                    >
+                                      Add Step
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </FormGroup>
                         </EditorLayout>
                       ) : editorState.selectedPracticeStepId ? (

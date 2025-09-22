@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef, useReducer, useMemo } from 'react'
-import { AbacusReact } from '@soroban/abacus-react'
+import React, { useState, useCallback, useEffect, useRef, useReducer, useMemo } from 'react'
+import { AbacusReact, StepBeadHighlight } from '@soroban/abacus-react'
 import { css } from '../../../styled-system/css'
 import { stack, hstack, vstack } from '../../../styled-system/patterns'
 import { Tutorial, TutorialStep, PracticeStep, TutorialEvent, NavigationState, UIState } from '../../types/tutorial'
 import { PracticeProblemPlayer, PracticeResults } from './PracticeProblemPlayer'
+import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
 
 // Reducer state and actions
 interface TutorialPlayerState {
@@ -16,6 +17,7 @@ interface TutorialPlayerState {
   events: TutorialEvent[]
   stepStartTime: number
   uiState: UIState
+  currentMultiStep: number // Current step within multi-step instructions (0-based)
 }
 
 type TutorialPlayerAction =
@@ -25,6 +27,8 @@ type TutorialPlayerAction =
   | { type: 'SET_ERROR'; error: string | null }
   | { type: 'ADD_EVENT'; event: TutorialEvent }
   | { type: 'UPDATE_UI_STATE'; updates: Partial<UIState> }
+  | { type: 'ADVANCE_MULTI_STEP' }
+  | { type: 'RESET_MULTI_STEP' }
 
 function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlayerAction): TutorialPlayerState {
   switch (action.type) {
@@ -36,6 +40,7 @@ function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlaye
         isStepCompleted: false,
         error: null,
         stepStartTime: Date.now(),
+        currentMultiStep: 0, // Reset to first multi-step
         events: [...state.events, {
           type: 'STEP_STARTED',
           stepId: action.stepId,
@@ -87,6 +92,18 @@ function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlaye
         uiState: { ...state.uiState, ...action.updates }
       }
 
+    case 'ADVANCE_MULTI_STEP':
+      return {
+        ...state,
+        currentMultiStep: state.currentMultiStep + 1
+      }
+
+    case 'RESET_MULTI_STEP':
+      return {
+        ...state,
+        currentMultiStep: 0
+      }
+
     default:
       return state
   }
@@ -125,6 +142,7 @@ export function TutorialPlayer({
     error: null,
     events: [],
     stepStartTime: Date.now(),
+    currentMultiStep: 0,
     uiState: {
       isPlaying: true,
       isPaused: false,
@@ -136,7 +154,7 @@ export function TutorialPlayer({
     }
   })
 
-  const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, uiState } = state
+  const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, uiState, currentMultiStep } = state
 
   const currentStep = tutorial.steps[currentStepIndex]
   const beadRefs = useRef<Map<string, SVGElement>>(new Map())
@@ -149,6 +167,92 @@ export function TutorialPlayer({
     totalSteps: tutorial.steps.length,
     completionPercentage: (currentStepIndex / tutorial.steps.length) * 100
   }
+
+  // Define the static expected steps (generated once at start)
+  const expectedSteps = useMemo(() => {
+    // Generate expected steps from the original stepBeadHighlights
+    if (!currentStep.stepBeadHighlights || !currentStep.totalSteps || currentStep.totalSteps <= 1) {
+      return []
+    }
+
+    // Extract unique step indices to understand the progression
+    const stepIndices = [...new Set(currentStep.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
+
+    // For now, use a heuristic to determine milestone values
+    // This should ideally come from the instruction generator or tutorial data
+    const steps = []
+    let value = currentStep.startValue
+
+    // Generate progressive milestones
+    if (currentStep.startValue === 3 && currentStep.targetValue === 17) {
+      // Hardcode for the 3+14=17 case until we have proper milestone generation
+      const milestones = [8, 18, 17]
+      for (let i = 0; i < stepIndices.length && i < milestones.length; i++) {
+        steps.push({
+          index: i,
+          stepIndex: stepIndices[i],
+          targetValue: milestones[i],
+          startValue: value,
+          description: currentStep.multiStepInstructions?.[i] || `Step ${i + 1}`
+        })
+        value = milestones[i]
+      }
+    } else {
+      // Generic case - just use the final target for all steps for now
+      // TODO: Implement proper milestone calculation
+      for (let i = 0; i < stepIndices.length; i++) {
+        const isLast = i === stepIndices.length - 1
+        steps.push({
+          index: i,
+          stepIndex: stepIndices[i],
+          targetValue: isLast ? currentStep.targetValue : currentStep.targetValue, // TODO: calculate intermediate
+          startValue: value,
+          description: currentStep.multiStepInstructions?.[i] || `Step ${i + 1}`
+        })
+      }
+    }
+
+    console.log('📋 Generated expected steps:', steps)
+    return steps
+  }, [currentStep.startValue, currentStep.targetValue, currentStep.stepBeadHighlights, currentStep.totalSteps, currentStep.multiStepInstructions])
+
+  // Get arrows for the immediate next action to reach current expected step
+  const getCurrentStepBeads = useCallback(() => {
+    // If we've reached the final target, no arrows needed
+    if (currentValue === currentStep.targetValue) return undefined
+
+    // If no expected steps, fall back to original behavior
+    if (expectedSteps.length === 0) return currentStep.stepBeadHighlights
+
+    // Get the current expected step we're working toward
+    const currentExpectedStep = expectedSteps[currentMultiStep]
+    if (!currentExpectedStep) return undefined
+
+    // Generate arrows to get from current value to this expected step's target
+    try {
+      const instruction = generateAbacusInstructions(currentValue, currentExpectedStep.targetValue)
+
+      // Take only the FIRST step (immediate next action)
+      const immediateAction = instruction.stepBeadHighlights?.filter(bead => bead.stepIndex === 0)
+
+      console.log('🎯 Expected step progression:', {
+        currentValue,
+        expectedStepIndex: currentMultiStep,
+        expectedStepTarget: currentExpectedStep.targetValue,
+        expectedStepDescription: currentExpectedStep.description,
+        immediateActionBeads: immediateAction?.length || 0,
+        totalExpectedSteps: expectedSteps.length
+      })
+
+      return immediateAction && immediateAction.length > 0 ? immediateAction : undefined
+    } catch (error) {
+      console.warn('⚠️ Failed to generate step guidance:', error)
+      return undefined
+    }
+  }, [currentValue, currentStep.targetValue, expectedSteps, currentMultiStep])
+
+  // Get current step beads (dynamic arrows for static expected steps)
+  const currentStepBeads = getCurrentStepBeads()
 
   // Event logging - now just notifies parent, state is managed by reducer
   const notifyEvent = useCallback((event: TutorialEvent) => {
@@ -235,6 +339,63 @@ export function TutorialPlayer({
     }
   }, [currentValue, currentStep, isStepCompleted, uiState.autoAdvance, navigationState.canGoNext, onStepComplete, currentStepIndex, goToNextStep])
 
+  // Track the last value to detect when meaningful changes occur
+  const lastValueForStepAdvancement = useRef<number>(currentValue)
+  const userHasInteracted = useRef<boolean>(false)
+
+  // Check if user completed the current expected step and advance to next expected step
+  useEffect(() => {
+    const valueChanged = currentValue !== lastValueForStepAdvancement.current
+
+    // Get current expected step
+    const currentExpectedStep = expectedSteps[currentMultiStep]
+
+    console.log('🔍 Expected step advancement check:', {
+      currentValue,
+      lastValue: lastValueForStepAdvancement.current,
+      valueChanged,
+      userHasInteracted: userHasInteracted.current,
+      expectedStepIndex: currentMultiStep,
+      expectedStepTarget: currentExpectedStep?.targetValue,
+      expectedStepReached: currentExpectedStep ? currentValue === currentExpectedStep.targetValue : false,
+      totalExpectedSteps: expectedSteps.length,
+      finalTargetReached: currentValue === currentStep?.targetValue
+    })
+
+    // Only advance if user interacted and we have expected steps
+    if (valueChanged && userHasInteracted.current && expectedSteps.length > 0 && currentExpectedStep) {
+      // Check if user reached the current expected step's target
+      if (currentValue === currentExpectedStep.targetValue) {
+        const hasMoreExpectedSteps = currentMultiStep < expectedSteps.length - 1
+
+        console.log('🎯 Expected step completed:', {
+          completedStep: currentMultiStep,
+          targetReached: currentExpectedStep.targetValue,
+          hasMoreSteps: hasMoreExpectedSteps,
+          willAdvance: hasMoreExpectedSteps
+        })
+
+        if (hasMoreExpectedSteps) {
+          // Auto-advance to next expected step after a delay
+          const timeoutId = setTimeout(() => {
+            console.log('⚡ Advancing to next expected step:', currentMultiStep, '→', currentMultiStep + 1)
+            dispatch({ type: 'ADVANCE_MULTI_STEP' })
+            lastValueForStepAdvancement.current = currentValue
+          }, 1000)
+
+          return () => clearTimeout(timeoutId)
+        }
+      }
+    }
+  }, [currentValue, currentStep, currentMultiStep, expectedSteps])
+
+  // Update the reference when the step changes (not just value changes)
+  useEffect(() => {
+    lastValueForStepAdvancement.current = currentValue
+    // Reset user interaction flag when step changes
+    userHasInteracted.current = false
+  }, [currentStepIndex, currentMultiStep])
+
   // Notify parent of events when they're added to state
   useEffect(() => {
     if (events.length > 0) {
@@ -254,6 +415,9 @@ export function TutorialPlayer({
       isProgrammaticChange.current = false
       return
     }
+
+    // Mark that user has interacted
+    userHasInteracted.current = true
 
     // Store the pending value for immediate abacus updates
     pendingValueRef.current = newValue
@@ -558,6 +722,44 @@ export function TutorialPlayer({
                 </p>
               </div>
 
+              {/* Multi-step instructions panel */}
+              {currentStep.multiStepInstructions && currentStep.multiStepInstructions.length > 0 && (
+                <div className={css({
+                  p: 4,
+                  bg: 'yellow.50',
+                  border: '1px solid',
+                  borderColor: 'yellow.200',
+                  borderRadius: 'md',
+                  maxW: '600px',
+                  w: 'full'
+                })}>
+                  <p className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    color: 'yellow.800',
+                    mb: 2
+                  })}>
+                    Step-by-Step Instructions:
+                  </p>
+                  <ol className={css({
+                    fontSize: 'sm',
+                    color: 'yellow.700',
+                    pl: 4
+                  })}>
+                    {currentStep.multiStepInstructions.map((instruction, index) => (
+                      <li key={index} className={css({
+                        mb: 1,
+                        opacity: index === currentMultiStep ? '1' : index < currentMultiStep ? '0.7' : '0.4',
+                        fontWeight: index === currentMultiStep ? 'bold' : 'normal',
+                        color: index === currentMultiStep ? 'yellow.900' : index < currentMultiStep ? 'yellow.600' : 'yellow.400'
+                      })}>
+                        {index + 1}. {instruction}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
               {/* Error message */}
               {error && (
                 <div className={css({
@@ -605,6 +807,9 @@ export function TutorialPlayer({
                   scaleFactor={2.5}
                   colorScheme="place-value"
                   highlightBeads={currentStep.highlightBeads}
+                  stepBeadHighlights={currentStepBeads}
+                  currentStep={currentMultiStep}
+                  showDirectionIndicators={true}
                   customStyles={customStyles}
                   onValueChange={handleValueChange}
                   callbacks={{
@@ -612,6 +817,41 @@ export function TutorialPlayer({
                     onBeadRef: handleBeadRef
                   }}
                 />
+
+                {/* Debug info */}
+                {isDebugMode && (
+                  <div className={css({
+                    mt: 4,
+                    p: 3,
+                    bg: 'purple.50',
+                    border: '1px solid',
+                    borderColor: 'purple.200',
+                    borderRadius: 'md',
+                    fontSize: 'xs',
+                    fontFamily: 'mono'
+                  })}>
+                    <div><strong>Step Debug Info:</strong></div>
+                    <div>Current Multi-Step: {currentMultiStep}</div>
+                    <div>Total Steps: {currentStep.totalSteps || 'undefined'}</div>
+                    <div>Step Bead Highlights: {currentStepBeads ? currentStepBeads.length : 'undefined'}</div>
+                    <div>Dynamic Recalc: {currentValue} → {currentStep.targetValue}</div>
+                    <div>Show Direction Indicators: true</div>
+                    <div>Multi-Step Instructions: {currentStep.multiStepInstructions?.length || 'undefined'}</div>
+                    {currentStepBeads && (
+                      <div className={css({ mt: 2 })}>
+                        <div><strong>Current Step Beads ({currentMultiStep}):</strong></div>
+                        {currentStepBeads
+                          .filter(bead => bead.stepIndex === currentMultiStep)
+                          .map((bead, i) => (
+                            <div key={i}>
+                              - Place {bead.placeValue} {bead.beadType} {bead.position !== undefined ? `pos ${bead.position}` : ''} → {bead.direction}
+                            </div>
+                          ))
+                        }
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Tooltip */}

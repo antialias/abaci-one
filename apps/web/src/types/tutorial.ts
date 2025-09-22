@@ -11,6 +11,16 @@ export interface TutorialStep {
     beadType: 'heaven' | 'earth'
     position?: number // for earth beads, 0-3
   }>
+  // Progressive step-based highlighting with directions
+  stepBeadHighlights?: Array<{
+    placeValue: number
+    beadType: 'heaven' | 'earth'
+    position?: number // for earth beads, 0-3
+    stepIndex: number  // Which instruction step this bead belongs to
+    direction: 'up' | 'down' | 'activate' | 'deactivate'  // Movement direction
+    order?: number     // Order within the step (for multiple beads per step)
+  }>
+  totalSteps?: number // Total number of instruction steps
   expectedAction: 'add' | 'remove' | 'multi-step'
   actionDescription: string
   tooltip: {
