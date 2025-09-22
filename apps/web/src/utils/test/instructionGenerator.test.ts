@@ -107,26 +107,26 @@ describe('Automatic Abacus Instruction Generator', () => {
       const heavenBead = instruction.highlightBeads.find(b => b.beadType === 'heaven')
       expect(heavenBead).toBeDefined()
 
-      // Should highlight earth bead to remove
+      // Should highlight earth bead to remove (the last one in the sequence)
       const earthBead = instruction.highlightBeads.find(b => b.beadType === 'earth')
       expect(earthBead).toBeDefined()
-      expect(earthBead?.position).toBe(0)
+      expect(earthBead?.position).toBe(2) // Position 2 (third earth bead) needs to be removed
     })
 
     it('should generate correct instructions for ten complement', () => {
       const instruction = generateAbacusInstructions(7, 11) // 7 + 4
 
-      expect(instruction.highlightBeads).toHaveLength(4) // tens heaven + ones heaven + 2 ones earth
+      expect(instruction.highlightBeads).toHaveLength(3) // tens earth + ones heaven + 1 ones earth
       expect(instruction.expectedAction).toBe('multi-step')
       expect(instruction.actionDescription).toContain('ten complement')
 
-      // Should highlight tens place heaven bead
-      const tensHeaven = instruction.highlightBeads.find(b => b.placeValue === 1 && b.beadType === 'heaven')
-      expect(tensHeaven).toBeDefined()
+      // Should highlight tens place earth bead (to add 1 in tens place)
+      const tensEarth = instruction.highlightBeads.find(b => b.placeValue === 1 && b.beadType === 'earth')
+      expect(tensEarth).toBeDefined()
 
-      // Should highlight ones place beads to remove
+      // Should highlight ones place beads to change
       const onesBeads = instruction.highlightBeads.filter(b => b.placeValue === 0)
-      expect(onesBeads).toHaveLength(3) // ones heaven + 2 ones earth
+      expect(onesBeads).toHaveLength(2) // ones heaven + 1 ones earth to remove
     })
 
     it('should generate correct instructions for direct multi-bead addition', () => {
@@ -210,6 +210,257 @@ describe('Automatic Abacus Instruction Generator', () => {
         expect(instruction.tooltip.content).toBeTruthy()
         expect(instruction.errorMessages.wrongBead).toBeTruthy()
       })
+    })
+  })
+
+  describe('Edge cases and boundary conditions', () => {
+    it('should handle subtraction operations', () => {
+      const instruction = generateAbacusInstructions(5, 3) // 5 - 2
+      expect(instruction.expectedAction).toBe('multi-step')
+      expect(instruction.actionDescription).toContain('subtract')
+
+      const validation = validateInstruction(instruction, 5, 3)
+      expect(validation.isValid).toBe(true)
+    })
+
+    it('should handle zero difference (same start and target)', () => {
+      const instruction = generateAbacusInstructions(7, 7) // 7 - 0
+      expect(instruction.highlightBeads).toHaveLength(0)
+      expect(instruction.expectedAction).toBe('add')
+      expect(instruction.actionDescription).toContain('No change needed')
+
+      const validation = validateInstruction(instruction, 7, 7)
+      expect(validation.isValid).toBe(true)
+    })
+
+    it('should handle maximum single-digit values', () => {
+      const instruction = generateAbacusInstructions(0, 9) // 0 + 9
+      expect(instruction.highlightBeads.length).toBeGreaterThan(0)
+
+      const validation = validateInstruction(instruction, 0, 9)
+      expect(validation.isValid).toBe(true)
+    })
+
+    it('should handle maximum two-digit values', () => {
+      const instruction = generateAbacusInstructions(0, 99) // 0 + 99
+      expect(instruction.highlightBeads.length).toBeGreaterThan(0)
+
+      // Should involve both ones and tens places
+      const onesBeads = instruction.highlightBeads.filter(b => b.placeValue === 0)
+      const tensBeads = instruction.highlightBeads.filter(b => b.placeValue === 1)
+      expect(onesBeads.length + tensBeads.length).toBe(instruction.highlightBeads.length)
+
+      const validation = validateInstruction(instruction, 0, 99)
+      expect(validation.isValid).toBe(true)
+    })
+
+    it('should handle complex complement operations across place values', () => {
+      const instruction = generateAbacusInstructions(89, 95) // 89 + 6
+      expect(instruction.expectedAction).toBe('multi-step')
+
+      const validation = validateInstruction(instruction, 89, 95)
+      expect(validation.isValid).toBe(true)
+    })
+
+    it('should handle large subtraction with borrowing', () => {
+      const instruction = generateAbacusInstructions(50, 7) // 50 - 43
+      expect(instruction.expectedAction).toBe('multi-step')
+      expect(instruction.actionDescription).toContain('subtract')
+
+      const validation = validateInstruction(instruction, 50, 7)
+      expect(validation.isValid).toBe(true)
+    })
+
+    it('should handle all possible five complement scenarios', () => {
+      const fiveComplementCases = [
+        { start: 1, target: 4 }, // 1 + 3 = 4 (no complement needed)
+        { start: 1, target: 5 }, // 1 + 4 = 5 (complement needed)
+        { start: 2, target: 5 }, // 2 + 3 = 5 (complement needed)
+        { start: 3, target: 7 }, // 3 + 4 = 7 (complement needed)
+        { start: 4, target: 8 }  // 4 + 4 = 8 (complement needed)
+      ]
+
+      fiveComplementCases.forEach(({ start, target }) => {
+        const instruction = generateAbacusInstructions(start, target)
+        const validation = validateInstruction(instruction, start, target)
+        expect(validation.isValid).toBe(true)
+      })
+    })
+
+    it('should handle all possible ten complement scenarios', () => {
+      const tenComplementCases = [
+        { start: 6, target: 10 }, // 6 + 4 = 10
+        { start: 7, target: 11 }, // 7 + 4 = 11
+        { start: 8, target: 12 }, // 8 + 4 = 12
+        { start: 9, target: 13 }, // 9 + 4 = 13
+        { start: 19, target: 23 }, // 19 + 4 = 23 (tens place)
+        { start: 29, target: 33 }  // 29 + 4 = 33 (tens place)
+      ]
+
+      tenComplementCases.forEach(({ start, target }) => {
+        const instruction = generateAbacusInstructions(start, target)
+        const validation = validateInstruction(instruction, start, target)
+        expect(validation.isValid).toBe(true)
+      })
+    })
+  })
+
+  describe('Stress testing with random operations', () => {
+    it('should handle 100 random addition operations', () => {
+      const failedCases: Array<{start: number, target: number, error: string}> = []
+
+      for (let i = 0; i < 100; i++) {
+        const start = Math.floor(Math.random() * 90) // 0-89
+        const additionAmount = Math.floor(Math.random() * 10) + 1 // 1-10
+        const target = start + additionAmount
+
+        // Skip if target exceeds our max value
+        if (target > 99) continue
+
+        try {
+          const instruction = generateAbacusInstructions(start, target)
+          const validation = validateInstruction(instruction, start, target)
+
+          if (!validation.isValid) {
+            failedCases.push({
+              start,
+              target,
+              error: `Validation failed: ${validation.issues.join(', ')}`
+            })
+          }
+        } catch (error) {
+          failedCases.push({
+            start,
+            target,
+            error: `Exception: ${error instanceof Error ? error.message : String(error)}`
+          })
+        }
+      }
+
+      if (failedCases.length > 0) {
+        console.error('Failed stress test cases:', failedCases)
+      }
+
+      expect(failedCases).toHaveLength(0)
+    })
+
+    it('should handle 50 random subtraction operations', () => {
+      const failedCases: Array<{start: number, target: number, error: string}> = []
+
+      for (let i = 0; i < 50; i++) {
+        const start = Math.floor(Math.random() * 89) + 10 // 10-98
+        const subtractionAmount = Math.floor(Math.random() * Math.min(start, 10)) + 1 // 1 to min(start, 10)
+        const target = start - subtractionAmount
+
+        try {
+          const instruction = generateAbacusInstructions(start, target)
+          const validation = validateInstruction(instruction, start, target)
+
+          if (!validation.isValid) {
+            failedCases.push({
+              start,
+              target,
+              error: `Validation failed: ${validation.issues.join(', ')}`
+            })
+          }
+        } catch (error) {
+          failedCases.push({
+            start,
+            target,
+            error: `Exception: ${error instanceof Error ? error.message : String(error)}`
+          })
+        }
+      }
+
+      if (failedCases.length > 0) {
+        console.error('Failed subtraction stress test cases:', failedCases)
+      }
+
+      expect(failedCases).toHaveLength(0)
+    })
+
+    it('should handle all systematic single-digit operations', () => {
+      const failedCases: Array<{start: number, target: number, error: string}> = []
+
+      // Test every possible single-digit to single-digit operation
+      for (let start = 0; start <= 9; start++) {
+        for (let target = 0; target <= 9; target++) {
+          if (start === target) continue // Skip no-change operations
+
+          try {
+            const instruction = generateAbacusInstructions(start, target)
+            const validation = validateInstruction(instruction, start, target)
+
+            if (!validation.isValid) {
+              failedCases.push({
+                start,
+                target,
+                error: `Validation failed: ${validation.issues.join(', ')}`
+              })
+            }
+          } catch (error) {
+            failedCases.push({
+              start,
+              target,
+              error: `Exception: ${error instanceof Error ? error.message : String(error)}`
+            })
+          }
+        }
+      }
+
+      if (failedCases.length > 0) {
+        console.error('Failed systematic single-digit test cases:', failedCases)
+      }
+
+      expect(failedCases).toHaveLength(0)
+    })
+  })
+
+  describe('Performance benchmarks', () => {
+    it('should generate instructions quickly for simple operations', () => {
+      const start = performance.now()
+
+      for (let i = 0; i < 1000; i++) {
+        generateAbacusInstructions(3, 7) // Five complement operation
+      }
+
+      const end = performance.now()
+      const timePerOperation = (end - start) / 1000
+
+      // Should take less than 1ms per operation on average
+      expect(timePerOperation).toBeLessThan(1)
+    })
+
+    it('should generate instructions quickly for complex operations', () => {
+      const start = performance.now()
+
+      for (let i = 0; i < 1000; i++) {
+        generateAbacusInstructions(89, 95) // Complex multi-place operation
+      }
+
+      const end = performance.now()
+      const timePerOperation = (end - start) / 1000
+
+      // Should take less than 2ms per operation on average
+      expect(timePerOperation).toBeLessThan(2)
+    })
+  })
+
+  describe('Input validation and error handling', () => {
+    it('should handle negative start values gracefully', () => {
+      expect(() => generateAbacusInstructions(-1, 5)).not.toThrow()
+    })
+
+    it('should handle negative target values gracefully', () => {
+      expect(() => generateAbacusInstructions(5, -1)).not.toThrow()
+    })
+
+    it('should handle values exceeding normal abacus range', () => {
+      expect(() => generateAbacusInstructions(0, 12345)).not.toThrow()
+    })
+
+    it('should handle very large differences', () => {
+      expect(() => generateAbacusInstructions(1, 999)).not.toThrow()
     })
   })
 })
