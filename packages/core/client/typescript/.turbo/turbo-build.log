@@ -1,5 +1,0 @@
-
-> @soroban/client@1.0.0 build /Users/antialias/projects/soroban-abacus-flashcards/packages/core/client/typescript
-> tsup src/index.ts --format cjs,esm --dts
-
- ELIFECYCLE  Command failed.

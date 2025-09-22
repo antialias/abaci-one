@@ -7,6 +7,12 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Generated CSS (Panda CSS / styled-system)
+**/styled-system/styles.css
+**/styled-system/chunks/
+**/styled-system/global.css
+**/styled-system/reset.css
+
 # Environment
 .env*
 
@@ -22,6 +28,9 @@ lerna-debug.log*
 .turbo/
 .cache/
 *.cache
+
+# Turbo build logs
+**/.turbo/turbo-build.log
 
 # IDE
 .vscode/
