@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { generateAbacusInstructions, validateInstruction } from '../../utils/abacusInstructionGenerator'
-import { css } from '../../styled-system/css'
-import { vstack, hstack } from '../../styled-system/patterns'
+import { css } from '../../../styled-system/css'
+import { vstack, hstack } from '../../../styled-system/patterns'
 
 export function AutoInstructionDemo() {
   const [startValue, setStartValue] = useState(0)

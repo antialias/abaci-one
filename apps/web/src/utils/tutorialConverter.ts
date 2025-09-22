@@ -1,21 +1,6 @@
 // Utility to extract and convert the existing GuidedAdditionTutorial data
 import { Tutorial, TutorialStep as NewTutorialStep } from '../types/tutorial'
-import { PlaceValueUtils, type ValidPlaceValues, type EarthBeadPosition } from '@soroban/abacus-react'
-
-// Type-safe tutorial bead helper functions
-const TutorialBeads = {
-  ones: {
-    earth: (position: EarthBeadPosition) => ({
-      placeValue: PlaceValueUtils.ones(),
-      beadType: 'earth' as const,
-      position
-    }),
-    heaven: () => ({
-      placeValue: PlaceValueUtils.ones(),
-      beadType: 'heaven' as const
-    })
-  }
-} as const
+import { generateAbacusInstructions } from './abacusInstructionGenerator'
 
 // Import the existing tutorial step interface to match the current structure
 interface ExistingTutorialStep {
@@ -287,27 +272,40 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
 
 // Convert the existing tutorial format to our new format
 export function convertGuidedAdditionTutorial(): Tutorial {
-  // Temporarily create many steps to test scrolling
-  const duplicatedSteps = []
-  for (let i = 0; i < 10; i++) {
-    duplicatedSteps.push(...guidedAdditionSteps.map(step => ({
+  // Convert existing static steps to progressive step data
+  const convertedSteps = guidedAdditionSteps.map(step => {
+    // Generate progressive instruction data
+    const generatedInstruction = generateAbacusInstructions(step.startValue, step.targetValue)
+
+    // Progressive instruction data generated successfully
+
+    return {
       ...step,
-      id: `${step.id}-copy-${i}`,
-      title: `${step.title} (Copy ${i + 1})`
-    })))
-  }
+      // Override with generated step-based highlighting and instructions
+      stepBeadHighlights: generatedInstruction.stepBeadHighlights,
+      totalSteps: generatedInstruction.totalSteps,
+      // Keep existing multi-step instructions if available, otherwise use generated ones
+      multiStepInstructions: step.multiStepInstructions || generatedInstruction.multiStepInstructions,
+      // Update action description if multi-step was generated
+      expectedAction: generatedInstruction.expectedAction,
+      actionDescription: generatedInstruction.actionDescription
+    }
+  })
+
+  // Create a smaller test set for easier navigation
+  const testSteps = convertedSteps.slice(0, 8) // Just first 8 steps for testing
 
   const tutorial: Tutorial = {
     id: 'guided-addition-tutorial',
-    title: 'Guided Addition Tutorial (Testing Scrolling)',
-    description: 'Learn basic addition on the soroban abacus, from simple earth bead movements to five complements and carrying',
+    title: 'Progressive Multi-Step Tutorial',
+    description: 'Learn basic addition on the soroban abacus with progressive step-by-step guidance, direction indicators, and pedagogical decomposition',
     category: 'Basic Operations',
     difficulty: 'beginner',
-    estimatedDuration: 20, // minutes
-    steps: duplicatedSteps,
-    tags: ['addition', 'basic', 'earth beads', 'heaven beads', 'complements', 'carrying'],
+    estimatedDuration: 15, // minutes
+    steps: testSteps,
+    tags: ['addition', 'basic', 'earth beads', 'heaven beads', 'complements', 'progressive', 'step-by-step'],
     author: 'Soroban Abacus System',
-    version: '1.0.0',
+    version: '2.0.0',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date(),
     isPublished: true

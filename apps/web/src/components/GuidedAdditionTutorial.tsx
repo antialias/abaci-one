@@ -3,29 +3,29 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { css } from '../../styled-system/css'
 import { stack, hstack } from '../../styled-system/patterns'
-import { AbacusReact, PlaceValueUtils, type ValidPlaceValues, type EarthBeadPosition } from '@soroban/abacus-react'
+import { AbacusReact, type ValidPlaceValues, type EarthBeadPosition } from '@soroban/abacus-react'
 
 // Type-safe tutorial bead helper functions
 const TutorialBeads = {
   ones: {
     earth: (position: EarthBeadPosition) => ({
-      placeValue: PlaceValueUtils.ones(),
+      placeValue: 0,
       beadType: 'earth' as const,
       position
     }),
     heaven: () => ({
-      placeValue: PlaceValueUtils.ones(),
+      placeValue: 0,
       beadType: 'heaven' as const
     })
   },
   tens: {
     earth: (position: EarthBeadPosition) => ({
-      placeValue: PlaceValueUtils.tens(),
+      placeValue: 1,
       beadType: 'earth' as const,
       position
     }),
     heaven: () => ({
-      placeValue: PlaceValueUtils.tens(),
+      placeValue: 1,
       beadType: 'heaven' as const
     })
   }

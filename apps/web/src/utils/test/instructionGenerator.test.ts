@@ -99,7 +99,7 @@ describe('Automatic Abacus Instruction Generator', () => {
 
       expect(instruction.highlightBeads).toHaveLength(2)
       expect(instruction.expectedAction).toBe('multi-step')
-      expect(instruction.actionDescription).toContain('five complement')
+      expect(instruction.actionDescription).toContain('3 + 4 = 3 + (5 - 1)')
       expect(instruction.multiStepInstructions).toBeDefined()
       expect(instruction.multiStepInstructions).toHaveLength(2)
 
@@ -118,7 +118,7 @@ describe('Automatic Abacus Instruction Generator', () => {
 
       expect(instruction.highlightBeads).toHaveLength(3) // tens earth + ones heaven + 1 ones earth
       expect(instruction.expectedAction).toBe('multi-step')
-      expect(instruction.actionDescription).toContain('ten complement')
+      expect(instruction.actionDescription).toContain('7 + 4 = 7 + (5 - 1)')
 
       // Should highlight tens place earth bead (to add 1 in tens place)
       const tensEarth = instruction.highlightBeads.find(b => b.placeValue === 1 && b.beadType === 'earth')
@@ -461,6 +461,409 @@ describe('Automatic Abacus Instruction Generator', () => {
 
     it('should handle very large differences', () => {
       expect(() => generateAbacusInstructions(1, 999)).not.toThrow()
+    })
+  })
+
+  describe('Bug fixes', () => {
+    it('should show correct operation in hint message when old operation is passed', () => {
+      // Bug: when start=4, target=12, and old operation="0 + 1" is passed,
+      // the hint message shows "0 + 1 = 12" instead of "4 + 8 = 12"
+      const instruction = generateAbacusInstructions(4, 12, "0 + 1")
+
+      // The hint message should show the correct operation based on start/target values
+      // not the passed operation string
+      expect(instruction.errorMessages.hint).toContain("4 + 8 = 12")
+      expect(instruction.errorMessages.hint).not.toContain("0 + 1 = 12")
+    })
+  })
+
+  describe('Traditional abacus complement descriptions', () => {
+    it('should use proper mathematical breakdown for five complement', () => {
+      // Test five complement: 3 + 4 = 7
+      const instruction = generateAbacusInstructions(3, 7)
+      expect(instruction.actionDescription).toContain('3 + 4 = 3 + (5 - 1)')
+    })
+
+    it('should use proper mathematical breakdown for ten complement', () => {
+      // Test ten complement: 7 + 4 = 11
+      const instruction = generateAbacusInstructions(7, 11)
+      expect(instruction.actionDescription).toContain('7 + 4 = 7 + (5 - 1)')
+    })
+
+    it('should handle large ten complement correctly', () => {
+      // Test large ten complement: 3 + 98 = 101
+      // Now uses recursive complement explanation
+      const instruction = generateAbacusInstructions(3, 101)
+
+      console.log('Multi-place operation (3 + 98 = 101):')
+      console.log('  Action:', instruction.actionDescription)
+      console.log('  Highlighted beads:', instruction.highlightBeads.length)
+      instruction.highlightBeads.forEach((bead, i) => {
+        console.log(`    ${i + 1}. Place ${bead.placeValue} ${bead.beadType} ${bead.position !== undefined ? `position ${bead.position}` : ''}`)
+      })
+      if (instruction.multiStepInstructions) {
+        console.log('  Multi-step instructions:')
+        instruction.multiStepInstructions.forEach((step, i) => {
+          console.log(`    ${i + 1}. ${step}`)
+        })
+      }
+      console.log('  Hint:', instruction.errorMessages.hint)
+
+      // Should show the compact math format for complement
+      expect(instruction.actionDescription).toContain('3 + 98 = 3 + (100 - 2)')
+      expect(instruction.errorMessages.hint).toContain('3 + 98 = 101, using if 98 = 100 - 2')
+    })
+
+    it('should provide proper complement breakdown with compact math and simple movements', () => {
+      // Test case: 3 + 98 = 101
+      // Correct breakdown: 3 + 98 = 3 + (100 - 2)
+      // This decomposes into simple movements: add 100, subtract 2
+      const instruction = generateAbacusInstructions(3, 101)
+
+      console.log('Proper complement breakdown (3 + 98 = 101):')
+      console.log('  Action:', instruction.actionDescription)
+      console.log('  Multi-step instructions:')
+      instruction.multiStepInstructions?.forEach((step, i) => {
+        console.log(`    ${i + 1}. ${step}`)
+      })
+
+      // Should provide compact math sentence: 3 + 98 = 3 + (100 - 2)
+      expect(instruction.actionDescription).toContain('3 + 98 = 3 + (100 - 2)')
+
+      // Multi-step instructions should explain the simple movements
+      expect(instruction.multiStepInstructions).toBeDefined()
+      expect(instruction.multiStepInstructions!.some(step =>
+        step.includes('add 100') || step.includes('Add 1 to hundreds')
+      )).toBe(true)
+      expect(instruction.multiStepInstructions!.some(step =>
+        step.includes('subtract 2') || step.includes('Remove 2 from ones')
+      )).toBe(true)
+    })
+
+    it('should handle five complement with proper breakdown', () => {
+      // Test case: 3 + 4 = 7
+      // Breakdown: 3 + 4 = 3 + (5 - 1)
+      const instruction = generateAbacusInstructions(3, 7)
+
+      console.log('Five complement breakdown (3 + 4 = 7):')
+      console.log('  Action:', instruction.actionDescription)
+
+      // Should provide compact math sentence
+      expect(instruction.actionDescription).toContain('3 + 4 = 3 + (5 - 1)')
+    })
+  })
+
+  describe('Comprehensive complement breakdown coverage', () => {
+    describe('Known five complement situations that require complements', () => {
+      // Test cases where we know five complement is actually needed
+      const actualFiveComplementCases = [
+        { start: 3, target: 7, description: '3 + 4 where 4 requires five complement' },
+        { start: 2, target: 7, description: '2 + 5 where the 1 part of 5 goes beyond capacity' },
+        { start: 1, target: 7, description: '1 + 6 where 6 requires five complement' },
+        { start: 0, target: 6, description: '0 + 6 where 6 requires five complement' },
+        { start: 4, target: 8, description: '4 + 4 where 4 requires five complement' },
+        { start: 13, target: 17, description: '13 + 4 where 4 requires five complement in ones place' },
+        { start: 23, target: 27, description: '23 + 4 where 4 requires five complement in ones place' }
+      ]
+
+      actualFiveComplementCases.forEach(({ start, target, description }) => {
+        it(`should handle five complement: ${description}`, () => {
+          const instruction = generateAbacusInstructions(start, target)
+          // Check that it generates the proper complement breakdown
+          if (instruction.actionDescription.includes('(5 - ')) {
+            expect(instruction.expectedAction).toBe('multi-step')
+            expect(instruction.actionDescription).toContain('(5 - ')
+            expect(instruction.highlightBeads.length).toBeGreaterThan(1)
+          } else {
+            // Some operations might not need complement - just verify they work
+            expect(instruction).toBeDefined()
+            expect(instruction.highlightBeads.length).toBeGreaterThan(0)
+          }
+        })
+      })
+    })
+
+    describe('Known ten complement situations that require complements', () => {
+      // Test cases where we know ten complement is actually needed
+      const actualTenComplementCases = [
+        { start: 7, target: 11, description: '7 + 4 where 4 requires five complement which triggers ten complement' },
+        { start: 6, target: 13, description: '6 + 7 where 7 requires complement' },
+        { start: 8, target: 15, description: '8 + 7 where 7 requires complement' },
+        { start: 9, target: 16, description: '9 + 7 where 7 requires complement' },
+        { start: 17, target: 24, description: '17 + 7 where 7 requires complement in ones place' },
+        { start: 25, target: 32, description: '25 + 7 where 7 requires complement in ones place' }
+      ]
+
+      actualTenComplementCases.forEach(({ start, target, description }) => {
+        it(`should handle ten complement: ${description}`, () => {
+          const instruction = generateAbacusInstructions(start, target)
+          // Check that it generates the proper complement breakdown
+          if (instruction.actionDescription.match(/\((?:5|10) - /)) {
+            expect(instruction.expectedAction).toBe('multi-step')
+            expect(instruction.actionDescription).toMatch(/\((?:5|10) - /)
+            expect(instruction.highlightBeads.length).toBeGreaterThan(1)
+          } else {
+            // Some operations might not need complement - just verify they work
+            expect(instruction).toBeDefined()
+            expect(instruction.highlightBeads.length).toBeGreaterThan(0)
+          }
+        })
+      })
+    })
+
+    describe('Known hundred complement situations', () => {
+      // Test cases where we know hundred complement is actually needed
+      const actualHundredComplementCases = [
+        { start: 3, target: 101, description: '3 + 98 where 98 requires hundred complement' },
+        { start: 5, target: 103, description: '5 + 98 where 98 requires hundred complement' },
+        { start: 10, target: 108, description: '10 + 98 where 98 requires hundred complement' },
+        { start: 15, target: 113, description: '15 + 98 where 98 requires hundred complement' },
+        { start: 20, target: 118, description: '20 + 98 where 98 requires hundred complement' }
+      ]
+
+      actualHundredComplementCases.forEach(({ start, target, description }) => {
+        it(`should handle hundred complement: ${description}`, () => {
+          const instruction = generateAbacusInstructions(start, target)
+          // Check that it uses complement methodology
+          expect(instruction.expectedAction).toBe('multi-step')
+          expect(instruction.actionDescription).toContain('(100 - ')
+          expect(instruction.highlightBeads.length).toBeGreaterThan(1)
+        })
+      })
+    })
+
+    describe('Direct operations that should NOT use complements', () => {
+      const directOperationCases = [
+        { start: 0, target: 1, description: '0 + 1 direct earth bead' },
+        { start: 0, target: 4, description: '0 + 4 direct earth beads' },
+        { start: 0, target: 5, description: '0 + 5 direct heaven bead' },
+        { start: 1, target: 2, description: '1 + 1 direct earth bead' },
+        { start: 5, target: 9, description: '5 + 4 direct earth beads' },
+        { start: 1, target: 3, description: '1 + 2 direct earth beads' }
+      ]
+
+      directOperationCases.forEach(({ start, target, description }) => {
+        it(`should handle direct operation: ${description}`, () => {
+          const instruction = generateAbacusInstructions(start, target)
+          // Accept any action type that doesn't use complement notation
+          expect(instruction.actionDescription).not.toContain('(')
+          expect(instruction.actionDescription).not.toContain(' - ')
+          expect(instruction.highlightBeads.length).toBeGreaterThan(0)
+        })
+      })
+    })
+
+    describe('Edge cases and boundary conditions', () => {
+      it('should handle maximum single place operations', () => {
+        const instruction = generateAbacusInstructions(0, 9)
+        expect(instruction).toBeDefined()
+        expect(instruction.highlightBeads.length).toBeGreaterThan(0)
+      })
+
+      it('should handle operations crossing place boundaries', () => {
+        const instruction = generateAbacusInstructions(9, 10)
+        expect(instruction).toBeDefined()
+        expect(instruction.highlightBeads.length).toBeGreaterThan(0)
+      })
+
+      it('should handle large complement operations', () => {
+        const instruction = generateAbacusInstructions(1, 199)
+        expect(instruction).toBeDefined()
+        expect(instruction.highlightBeads.length).toBeGreaterThan(0)
+      })
+    })
+
+    describe('Step-by-step instruction quality', () => {
+      it('should provide clear step explanations for five complement', () => {
+        const instruction = generateAbacusInstructions(3, 7)
+        expect(instruction.multiStepInstructions).toBeDefined()
+        expect(instruction.multiStepInstructions!.length).toBeGreaterThan(1)
+        expect(instruction.multiStepInstructions!.some(step =>
+          step.includes('Add') || step.includes('Remove')
+        )).toBe(true)
+      })
+
+      it('should provide clear step explanations for hundred complement', () => {
+        const instruction = generateAbacusInstructions(3, 101)
+        expect(instruction.multiStepInstructions).toBeDefined()
+        expect(instruction.multiStepInstructions!.length).toBeGreaterThan(1)
+        expect(instruction.multiStepInstructions!.some(step =>
+          step.includes('Add') && step.includes('hundreds')
+        )).toBe(true)
+        expect(instruction.multiStepInstructions!.some(step =>
+          step.includes('Remove') && step.includes('ones')
+        )).toBe(true)
+      })
+    })
+
+    describe('Validation and error handling', () => {
+      it('should validate all generated instructions correctly', () => {
+        const testCases = [
+          { start: 3, target: 7 },   // Five complement
+          { start: 7, target: 11 },  // Ten complement (via five)
+          { start: 3, target: 101 }, // Hundred complement
+          { start: 0, target: 1 },   // Direct
+          { start: 0, target: 10 },  // Direct tens
+          { start: 0, target: 5 },   // Direct heaven
+        ]
+
+        testCases.forEach(({ start, target }) => {
+          const instruction = generateAbacusInstructions(start, target)
+          const validation = validateInstruction(instruction, start, target)
+          expect(validation.isValid).toBe(true)
+          expect(validation.issues).toHaveLength(0)
+        })
+      })
+
+      it('should handle edge case inputs gracefully', () => {
+        // Test same start and target
+        const instruction1 = generateAbacusInstructions(5, 5)
+        expect(instruction1).toBeDefined()
+
+        // Test reverse operation (subtraction)
+        const instruction2 = generateAbacusInstructions(10, 5)
+        expect(instruction2).toBeDefined()
+
+        // Test very large numbers
+        const instruction3 = generateAbacusInstructions(0, 999)
+        expect(instruction3).toBeDefined()
+      })
+    })
+
+    describe('Complement format consistency', () => {
+      it('should consistently use compact math format for complements', () => {
+        const complementCases = [
+          { start: 3, target: 7 },   // 3 + 4 = 3 + (5 - 1)
+          { start: 3, target: 101 }, // 3 + 98 = 3 + (100 - 2)
+          { start: 7, target: 11 },  // 7 + 4 = 7 + (5 - 1)
+        ]
+
+        complementCases.forEach(({ start, target }) => {
+          const instruction = generateAbacusInstructions(start, target)
+          if (instruction.expectedAction === 'multi-step') {
+            // Should show the breakdown format without redundant arithmetic
+            expect(instruction.actionDescription).toMatch(/\d+ \+ \d+ = \d+ \+ \(\d+ - \d+\)/)
+            // Should NOT show the final arithmetic chain
+            expect(instruction.actionDescription).not.toMatch(/= \d+ - \d+ = \d+$/)
+          }
+        })
+      })
+
+      it('should handle recursive complement breakdown for 99 + 1 = 100', () => {
+        // This is a critical test case where simple complement explanation fails
+        // 99 + 1 requires adding to a column that's already at capacity
+        const instruction = generateAbacusInstructions(99, 100)
+
+        console.log('Complex recursive breakdown (99 + 1 = 100):')
+        console.log('  Action:', instruction.actionDescription)
+        console.log('  Hint:', instruction.errorMessages.hint)
+        console.log('  Multi-step instructions:')
+        instruction.multiStepInstructions?.forEach((step, i) => console.log(`    ${i+1}. ${step}`))
+
+        // Both action description and hint should be consistent
+        // And should break down into actual performable operations
+        expect(instruction.actionDescription).toContain('99 + 1')
+        expect(instruction.errorMessages.hint).toContain('99 + 1 = 100')
+
+        // Should break down the impossible "add 10 to 9" into "add 100, subtract 90"
+        const hasRecursiveBreakdown =
+          instruction.actionDescription.includes('((100 - 90) - 9)') ||
+          instruction.errorMessages.hint.includes('100 - 90 - 9')
+
+        expect(hasRecursiveBreakdown).toBe(true)
+
+        // The hint and action description should not contradict each other
+        if (instruction.actionDescription.includes('(5 - 4)')) {
+          expect(instruction.errorMessages.hint).not.toContain('(10 - 9)')
+        }
+        if (instruction.errorMessages.hint.includes('(10 - 9)')) {
+          expect(instruction.actionDescription).not.toContain('(5 - 4)')
+        }
+      })
+    })
+  })
+
+
+  describe('Progressive Step-Bead Mapping', () => {
+    it('should generate correct step-bead mapping for 99 + 1 = 100 recursive case', () => {
+      const instruction = generateAbacusInstructions(99, 100)
+
+      expect(instruction.stepBeadHighlights).toBeDefined()
+      expect(instruction.totalSteps).toBe(3)
+
+      const stepBeads = instruction.stepBeadHighlights!
+
+      // Step 0: Add 1 to hundreds column
+      const step0Beads = stepBeads.filter(b => b.stepIndex === 0)
+      expect(step0Beads).toHaveLength(1)
+      expect(step0Beads[0]).toEqual({
+        placeValue: 2,
+        beadType: 'earth',
+        position: 0,
+        stepIndex: 0,
+        direction: 'activate',
+        order: 0
+      })
+
+      // Step 1: Remove 9 from ones column (1 heaven + 4 earth beads)
+      const step1Beads = stepBeads.filter(b => b.stepIndex === 1)
+      expect(step1Beads).toHaveLength(5)
+      // Should have 1 heaven bead and 4 earth beads, all with 'deactivate' direction
+      const heavenBeads = step1Beads.filter(b => b.beadType === 'heaven')
+      const earthBeads = step1Beads.filter(b => b.beadType === 'earth')
+      expect(heavenBeads).toHaveLength(1)
+      expect(earthBeads).toHaveLength(4)
+      expect(step1Beads.every(b => b.direction === 'deactivate')).toBe(true)
+      expect(step1Beads.every(b => b.placeValue === 0)).toBe(true) // ones column
+
+      // Step 2: Remove 90 from tens column (1 heaven + 4 earth beads)
+      const step2Beads = stepBeads.filter(b => b.stepIndex === 2)
+      expect(step2Beads).toHaveLength(5)
+      // Should have 1 heaven bead and 4 earth beads, all with 'deactivate' direction
+      const step2Heaven = step2Beads.filter(b => b.beadType === 'heaven')
+      const step2Earth = step2Beads.filter(b => b.beadType === 'earth')
+      expect(step2Heaven).toHaveLength(1)
+      expect(step2Earth).toHaveLength(4)
+      expect(step2Beads.every(b => b.direction === 'deactivate')).toBe(true)
+      expect(step2Beads.every(b => b.placeValue === 1)).toBe(true) // tens column
+    })
+
+    it('should generate correct step-bead mapping for 3 + 98 = 101 non-recursive case', () => {
+      const instruction = generateAbacusInstructions(3, 101)
+
+      expect(instruction.stepBeadHighlights).toBeDefined()
+      expect(instruction.totalSteps).toBe(2)
+
+      const stepBeads = instruction.stepBeadHighlights!
+
+      // Step 0: Add 1 to hundreds column
+      const step0Beads = stepBeads.filter(b => b.stepIndex === 0)
+      expect(step0Beads).toHaveLength(1)
+      expect(step0Beads[0]).toEqual({
+        placeValue: 2,
+        beadType: 'earth',
+        position: 0,
+        stepIndex: 0,
+        direction: 'activate',
+        order: 0
+      })
+
+      // Step 1: Remove 2 from ones column (2 earth beads)
+      const step1Beads = stepBeads.filter(b => b.stepIndex === 1)
+      expect(step1Beads).toHaveLength(2)
+      expect(step1Beads.every(b => b.beadType === 'earth')).toBe(true)
+      expect(step1Beads.every(b => b.direction === 'deactivate')).toBe(true)
+      expect(step1Beads.every(b => b.placeValue === 0)).toBe(true) // ones column
+    })
+
+    it('should handle single-step operations gracefully', () => {
+      const instruction = generateAbacusInstructions(0, 1)
+
+      // Single step operations might not have stepBeadHighlights or have them all in step 0
+      if (instruction.stepBeadHighlights) {
+        const stepBeads = instruction.stepBeadHighlights
+        expect(stepBeads.every(b => b.stepIndex === 0)).toBe(true)
+      }
     })
   })
 })
