@@ -261,13 +261,15 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     targetValue: 11,
     highlightBeads: [
       { placeValue: 1, beadType: 'heaven' },
+      { placeValue: 0, beadType: 'heaven' },
       { placeValue: 0, beadType: 'earth', position: 0 },
       { placeValue: 0, beadType: 'earth', position: 1 }
     ],
     expectedAction: 'multi-step',
-    actionDescription: 'This will move to tens place: activate left heaven, remove 3 earth',
+    actionDescription: 'Add tens heaven, then clear ones place: remove heaven + 2 earth',
     multiStepInstructions: [
       'Click the heaven bead in the tens column (left)',
+      'Click the heaven bead in the ones column to remove it',
       'Click the first earth bead to remove it',
       'Click the second earth bead to remove it'
     ],
@@ -276,9 +278,9 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
       explanation: '7 + 4 = 11, which needs the tens column heaven bead'
     },
     errorMessages: {
-      wrongBead: 'Work with the tens column (left side) and remove earth beads',
-      wrongAction: 'Activate tens heaven, then remove earth beads from ones',
-      hint: '11 = 10 + 1, so activate tens heaven and adjust ones'
+      wrongBead: 'First activate tens heaven, then clear all beads from ones place',
+      wrongAction: 'Add tens heaven first, then remove heaven and earth beads from ones',
+      hint: '7 + 4 = 11: add 10 (tens heaven), then subtract 6 by clearing ones place (7-1=6 remaining)'
     }
   }
 ]
