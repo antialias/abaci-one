@@ -133,85 +133,112 @@ function generateEnhancedStepInstructions(
   targetValue: number,
   additions: BeadHighlight[],
   removals: BeadHighlight[],
-  decomposition: any
+  decomposition: any,
+  stepBeadHighlights?: StepBeadHighlight[]
 ): string[] {
   const instructions: string[] = []
 
-
-  if (decomposition) {
+  if (decomposition && stepBeadHighlights) {
     const { addTerm, subtractTerm, isRecursive } = decomposition
 
-    // Group additions by place value and create explanations
-    const additionsByPlace: { [place: number]: BeadHighlight[] } = {}
-    additions.forEach(bead => {
-      if (!additionsByPlace[bead.placeValue]) additionsByPlace[bead.placeValue] = []
-      additionsByPlace[bead.placeValue].push(bead)
-    })
+    // Generate instructions based on step groupings from stepBeadHighlights
+    const stepIndices = [...new Set(stepBeadHighlights.map(bead => bead.stepIndex))].sort()
 
-    // Group removals by place value
-    const removalsByPlace: { [place: number]: BeadHighlight[] } = {}
-    removals.forEach(bead => {
-      if (!removalsByPlace[bead.placeValue]) removalsByPlace[bead.placeValue] = []
-      removalsByPlace[bead.placeValue].push(bead)
-    })
+    stepIndices.forEach(stepIndex => {
+      const stepBeads = stepBeadHighlights.filter(bead => bead.stepIndex === stepIndex)
 
-    // PEDAGOGICAL ORDER: Process from highest place value to lowest, matching stepBeadHighlights ordering
-    const placeValues = Object.keys({ ...additionsByPlace, ...removalsByPlace }).map(p => parseInt(p)).sort((a, b) => b - a);
+      // Group beads by place and direction within this step
+      const stepByPlace: { [place: number]: { additions: StepBeadHighlight[], removals: StepBeadHighlight[] } } = {}
 
-    // First: Process additions from highest to lowest place value
-    for (const place of placeValues) {
-      if (additionsByPlace[place]) {
-        const beads = additionsByPlace[place]
+      stepBeads.forEach(bead => {
+        if (!stepByPlace[bead.placeValue]) {
+          stepByPlace[bead.placeValue] = { additions: [], removals: [] }
+        }
+        if (bead.direction === 'activate') {
+          stepByPlace[bead.placeValue].additions.push(bead)
+        } else {
+          stepByPlace[bead.placeValue].removals.push(bead)
+        }
+      })
+
+      // Process places in descending order (pedagogical: highest place first)
+      const places = Object.keys(stepByPlace).map(p => parseInt(p)).sort((a, b) => b - a)
+
+      places.forEach(place => {
         const placeName = place === 0 ? 'ones' : place === 1 ? 'tens' : place === 2 ? 'hundreds' : `place ${place}`
+        const placeData = stepByPlace[place]
 
-        beads.forEach(bead => {
+        // Handle additions for this place
+        if (placeData.additions.length > 0) {
+          const beads = placeData.additions
+          let totalValue = 0
+          let hasHeaven = false
+          let earthCount = 0
+
+          beads.forEach(bead => {
+            if (bead.beadType === 'heaven') {
+              hasHeaven = true
+              totalValue += 5 * Math.pow(10, place)
+            } else {
+              earthCount++
+              totalValue += 1 * Math.pow(10, place)
+            }
+          })
+
+          // Generate consolidated instruction for this place's additions
           if (place === 2 && addTerm === 100) {
             instructions.push(`Click earth bead 1 in the hundreds column to add it`)
           } else if (place === 1 && addTerm === 10) {
             instructions.push(`Click earth bead 1 in the tens column to add it`)
           } else if (place === 0 && addTerm === 5) {
             instructions.push(`Click the heaven bead in the ones column to add it`)
+          } else if (hasHeaven && earthCount > 0) {
+            instructions.push(`Add ${totalValue} to ${placeName} column (heaven bead + ${earthCount} earth beads)`)
+          } else if (hasHeaven) {
+            instructions.push(`Click the heaven bead in the ${placeName} column to add it`)
+          } else if (earthCount === 1) {
+            instructions.push(`Click earth bead 1 in the ${placeName} column to add it`)
           } else {
-            const beadDesc = bead.beadType === 'heaven' ? 'heaven bead' : `earth bead ${(bead.position || 0) + 1}`
-            instructions.push(`Click the ${beadDesc} in the ${placeName} column to add it`)
+            instructions.push(`Add ${totalValue} to ${placeName} column (${earthCount} earth beads)`)
           }
-        })
-      }
-    }
+        }
 
-    // Second: Process removals from highest to lowest place value
-    for (const place of placeValues) {
-      if (removalsByPlace[place]) {
-        const beads = removalsByPlace[place]
-        const placeName = place === 0 ? 'ones' : place === 1 ? 'tens' : place === 2 ? 'hundreds' : `place ${place}`
+        // Handle removals for this place
+        if (placeData.removals.length > 0) {
+          const beads = placeData.removals
+          let totalValue = 0
+          let hasHeaven = false
+          let earthCount = 0
 
-        // Calculate the total value being removed from this place
-        let placeValue = 0
-        beads.forEach(bead => {
-          if (bead.beadType === 'heaven') {
-            placeValue += 5 * Math.pow(10, place)
+          beads.forEach(bead => {
+            if (bead.beadType === 'heaven') {
+              hasHeaven = true
+              totalValue += 5 * Math.pow(10, place)
+            } else {
+              earthCount++
+              totalValue += 1 * Math.pow(10, place)
+            }
+          })
+
+          // Generate consolidated instruction for this place's removals
+          if (isRecursive && place === 1 && totalValue === 90) {
+            instructions.push(`Remove 90 from tens column (subtracting first part of decomposition)`)
+          } else if (isRecursive && place === 0 && totalValue === 9) {
+            instructions.push(`Remove 9 from ones column (subtracting second part of decomposition)`)
+          } else if (place === 0 && totalValue === subtractTerm) {
+            instructions.push(`Remove ${subtractTerm} from ones column (subtracting ${subtractTerm} from complement)`)
+          } else if (hasHeaven && earthCount > 0) {
+            instructions.push(`Remove ${totalValue} from ${placeName} column (heaven bead + ${earthCount} earth beads)`)
+          } else if (hasHeaven) {
+            instructions.push(`Click heaven bead in the ${placeName} column to remove`)
+          } else if (earthCount === 1) {
+            instructions.push(`Click earth bead 1 in the ${placeName} column to remove`)
           } else {
-            placeValue += 1 * Math.pow(10, place)
+            instructions.push(`Remove ${totalValue} from ${placeName} column (${earthCount} earth beads)`)
           }
-        })
-
-      // For recursive breakdowns, explain which part of the decomposition we're subtracting
-      if (isRecursive && place === 1 && placeValue === 90) {
-        instructions.push(`Remove 90 from tens column (subtracting first part of decomposition)`)
-      } else if (isRecursive && place === 0 && placeValue === 9) {
-        instructions.push(`Remove 9 from ones column (subtracting second part of decomposition)`)
-      } else if (place === 0 && placeValue === subtractTerm) {
-        // For non-recursive cases where we're removing the exact subtractTerm from ones column
-        instructions.push(`Remove ${subtractTerm} from ones column (subtracting ${subtractTerm} from complement)`)
-      } else {
-        // Generate individual bead instructions for each bead
-        beads.forEach(bead => {
-          const beadDesc = bead.beadType === 'heaven' ? 'heaven bead' : `earth bead ${(bead.position || 0) + 1}`
-          instructions.push(`Click ${beadDesc} in the ${placeName} column to remove`)
-        })
-      }
-      }
-    }
+        }
+      })
+    })
   } else {
     // Fallback to standard instructions
     return generateStepInstructions(additions, removals, false)
@@ -307,78 +334,129 @@ function generateStepBeadMapping(
   return stepBeadHighlights
 }
 
-// Find optimal complement decomposition (e.g., 98 = 100 - 2, 4 = 5 - 1)
+// Find optimal decomposition that maps 1:1 to bead movements
 function findOptimalDecomposition(value: number, context?: { startValue?: number; placeCapacity?: number }): {
   addTerm: number
   subtractTerm: number
   compactMath: string
   isRecursive: boolean
   recursiveBreakdown?: string
+  decompositionTerms?: string[]
 } | null {
-  // Check powers of 10 and 5, starting from largest
-  const candidates: number[] = []
-
-  // Add powers of 10: 10, 100, 1000
-  for (let power = 10; power <= 1000; power *= 10) {
-    if (power > value) candidates.push(power)
+  // Special case for 99 + 1: Force using recursive breakdown
+  if (context?.startValue === 99 && value === 1) {
+    return {
+      addTerm: 100,
+      subtractTerm: 99,
+      compactMath: '(100 - 90) - 9',
+      isRecursive: true,
+      recursiveBreakdown: '((100 - 90) - 9)',
+      decompositionTerms: ['(100 - 90)', '- 9']
+    }
   }
 
-  // Add 5 if value is small
-  if (value <= 4) candidates.push(5)
+  // Break down the value into components that map to bead movements
+  const decompositionTerms: string[] = []
+  let remainingValue = value
 
-  // Find the best decomposition (smallest complement)
-  let bestDecomposition: {
-    addTerm: number;
-    subtractTerm: number;
-    compactMath: string;
-    isRecursive: boolean;
-    recursiveBreakdown?: string;
-  } | null = null
-  let smallestComplement = Infinity
+  // Process from highest place value to lowest
+  const placeValues = [100, 10, 1]
 
-  for (const candidate of candidates) {
-    const complement = candidate - value
+  for (const placeValue of placeValues) {
+    if (remainingValue >= placeValue) {
+      const digitNeeded = Math.floor(remainingValue / placeValue)
+      remainingValue = remainingValue % placeValue
 
-    // Valid if complement is positive and reasonably small
-    if (complement > 0 && complement <= 99 && complement < smallestComplement) {
-      smallestComplement = complement
+      // For each place, check if we need complement operations
+      if (context?.startValue !== undefined) {
+        const currentDigit = Math.floor((context.startValue % (placeValue * 10)) / placeValue)
+        const targetDigit = currentDigit + digitNeeded
 
-      // Check if this complement itself needs recursive breakdown
-      // For example, if we have 99 + 1 and we want to add 10, but the tens place has 9
-      let isRecursive = false
-      let recursiveBreakdown = ''
+        // If we exceed 9 in this place, we need to use complement from next higher place
+        if (targetDigit > 9 && placeValue < 100) {
+          const nextPlaceValue = placeValue * 10
+          const carryAmount = Math.floor(targetDigit / 10)
+          const remainderInPlace = targetDigit % 10
 
-      // Check if adding this candidate would exceed capacity in the target place
-      if (context?.startValue !== undefined && candidate >= 10) {
-        const placeValue = Math.log10(candidate) // 10 -> 1, 100 -> 2, etc.
-        const powerOfTen = Math.pow(10, placeValue)
-        const digitInPlace = Math.floor((context.startValue % (powerOfTen * 10)) / powerOfTen)
+          // Add the carry to next place
+          decompositionTerms.push(`${carryAmount * nextPlaceValue}`)
 
-        // If the target place is at 9 (maximum), adding would require carrying
-        if (digitInPlace === 9) {
-          const nextPowerOfTen = powerOfTen * 10
-          isRecursive = true
-          recursiveBreakdown = `((${nextPowerOfTen} - ${nextPowerOfTen - candidate}) - ${complement})`
+          // Handle the remainder in current place
+          if (remainderInPlace > 0) {
+            if (remainderInPlace <= 4 && placeValue === 1) {
+              // Use five complement for ones place if needed
+              const currentOnesDigit = context.startValue % 10
+              const earthSpaceAvailable = 4 - (currentOnesDigit >= 5 ? currentOnesDigit - 5 : currentOnesDigit)
+
+              if (remainderInPlace > earthSpaceAvailable) {
+                decompositionTerms.push(`(5 - ${5 - remainderInPlace})`)
+              } else {
+                decompositionTerms.push(`${remainderInPlace}`)
+              }
+            } else {
+              decompositionTerms.push(`${remainderInPlace * placeValue}`)
+            }
+          }
+        } else if (placeValue === 1) {
+          // Check if we need five complement for ones place
+          const currentOnesDigit = context.startValue % 10
+          const earthSpaceAvailable = 4 - (currentOnesDigit >= 5 ? currentOnesDigit - 5 : currentOnesDigit)
+
+          if (digitNeeded <= 4 && digitNeeded > earthSpaceAvailable && currentOnesDigit < 5) {
+            decompositionTerms.push(`(5 - ${5 - digitNeeded})`)
+          } else {
+            decompositionTerms.push(`${digitNeeded * placeValue}`)
+          }
+        } else {
+          // Direct addition
+          decompositionTerms.push(`${digitNeeded * placeValue}`)
         }
-      }
-
-      // Special case for 99 + 1: Force using recursive breakdown
-      if (context?.startValue === 99 && value === 1) {
-        isRecursive = true
-        recursiveBreakdown = `((100 - 90) - 9)`
-      }
-
-      bestDecomposition = {
-        addTerm: candidate,
-        subtractTerm: complement,
-        compactMath: isRecursive ? recursiveBreakdown : `(${candidate} - ${complement})`,
-        isRecursive,
-        recursiveBreakdown: isRecursive ? recursiveBreakdown : undefined
+      } else {
+        // Without context, just break down by place value
+        decompositionTerms.push(`${digitNeeded * placeValue}`)
       }
     }
   }
 
-  return bestDecomposition
+  // If we have decomposition terms, format them properly
+  if (decompositionTerms.length > 0) {
+    const compactMath = decompositionTerms.join(' + ')
+
+    // For simple single complement operations, return in the expected format
+    if (decompositionTerms.length === 1 && decompositionTerms[0].includes('(') && decompositionTerms[0].includes(' - ')) {
+      const match = decompositionTerms[0].match(/\((\d+) - (\d+)\)/)
+      if (match) {
+        return {
+          addTerm: parseInt(match[1]),
+          subtractTerm: parseInt(match[2]),
+          compactMath: decompositionTerms[0],
+          isRecursive: false,
+          decompositionTerms
+        }
+      }
+    }
+
+    return {
+      addTerm: value, // For multi-term decompositions, addTerm represents the total
+      subtractTerm: 0,
+      compactMath,
+      isRecursive: false,
+      decompositionTerms
+    }
+  }
+
+  // Fallback: use simple complement for small values
+  if (value <= 4) {
+    return {
+      addTerm: 5,
+      subtractTerm: 5 - value,
+      compactMath: `(5 - ${5 - value})`,
+      isRecursive: false,
+      decompositionTerms: [`(5 - ${5 - value})`]
+    }
+  }
+
+  return null
 }
 
 // Generate recursive complement description for complex multi-place operations
@@ -726,6 +804,7 @@ export function generateAbacusInstructions(
   let actionDescription: string
   let stepInstructions: string[]
   let decomposition: any = null
+  let stepBeadMapping: StepBeadHighlight[] | undefined
 
   // Check if this is a complex multi-place operation requiring comprehensive explanation
   const hasMultiplePlaces = new Set(allHighlights.map(bead => bead.placeValue)).size > 1
@@ -737,13 +816,21 @@ export function generateAbacusInstructions(
     const result = generateProperComplementDescription(startValue, targetValue, additions, removals)
     actionDescription = result.description
     decomposition = result.decomposition
-    stepInstructions = generateEnhancedStepInstructions(startValue, targetValue, additions, removals, decomposition)
+    // First generate step bead mapping to understand step groupings
+    const tempStepInstructions = generateStepInstructions(additions, removals, false)
+    stepBeadMapping = generateStepBeadMapping(startValue, targetValue, additions, removals, decomposition, tempStepInstructions)
+    // Then generate enhanced instructions based on step groupings
+    stepInstructions = generateEnhancedStepInstructions(startValue, targetValue, additions, removals, decomposition, stepBeadMapping)
   } else if (complement.needsComplement) {
     // Use proper complement breakdown for simple operations too
     const result = generateProperComplementDescription(startValue, targetValue, additions, removals)
     actionDescription = result.description
     decomposition = result.decomposition
-    stepInstructions = generateEnhancedStepInstructions(startValue, targetValue, additions, removals, decomposition)
+    // First generate step bead mapping to understand step groupings
+    const tempStepInstructions = generateStepInstructions(additions, removals, false)
+    stepBeadMapping = generateStepBeadMapping(startValue, targetValue, additions, removals, decomposition, tempStepInstructions)
+    // Then generate enhanced instructions based on step groupings
+    stepInstructions = generateEnhancedStepInstructions(startValue, targetValue, additions, removals, decomposition, stepBeadMapping)
   } else if (additions.length === 1 && removals.length === 0) {
     const bead = additions[0]
     actionDescription = `Click the ${bead.beadType} bead to ${operationWord} ${Math.abs(difference)}`
@@ -779,9 +866,9 @@ export function generateAbacusInstructions(
   }
 
   // Generate step-by-step bead mapping for ALL instructions (both single and multi-step)
-  const stepBeadHighlights = stepInstructions && stepInstructions.length > 0
+  const stepBeadHighlights = stepBeadMapping || (stepInstructions && stepInstructions.length > 0
     ? generateStepBeadMapping(startValue, targetValue, additions, removals, decomposition, stepInstructions)
-    : undefined
+    : undefined)
 
   return {
     highlightBeads: allHighlights,

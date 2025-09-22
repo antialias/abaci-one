@@ -920,10 +920,12 @@ describe('Automatic Abacus Instruction Generator', () => {
       expect(instruction.multiStepInstructions!).toHaveLength(3)
 
       // FIXED: multiStepInstructions now use PEDAGOGICAL ORDER (highest place first)
+      // AND are consolidated to match step groupings
       // For 3+14=17 using 3+(20-6) decomposition: tens first (add 10), then ones (add 5, remove 1)
       expect(instruction.multiStepInstructions![0]).toContain('earth bead 1 in the tens column')
       expect(instruction.multiStepInstructions![1]).toContain('heaven bead in the ones column')
-      expect(instruction.multiStepInstructions![2]).toContain('earth bead 3 in the ones column to remove')
+      // FIXED: Now consolidated - shows "earth bead 1" instead of individual bead references
+      expect(instruction.multiStepInstructions![2]).toContain('earth bead 1 in the ones column to remove')
     })
 
     // Test pedagogical ordering algorithm with various complex cases
@@ -1254,6 +1256,40 @@ describe('Automatic Abacus Instruction Generator', () => {
 
       // Final verification
       expect(expectedStates[expectedStates.length - 1]).toBe(65)
+    })
+
+    it('should correctly consolidate multi-bead instructions for 56 → 104', () => {
+      // Verifies the fix for consolidated instructions matching expected states
+      const instruction = generateAbacusInstructions(56, 104)
+
+      // Verify instruction consolidation
+      expect(instruction.multiStepInstructions).toBeDefined()
+      expect(instruction.multiStepInstructions![1]).toContain('Add 3 to ones column (3 earth beads)')
+
+      // Calculate expected states step by step like tutorial editor does
+      const expectedStates: number[] = []
+      if (instruction.stepBeadHighlights && instruction.multiStepInstructions) {
+        const stepIndices = [...new Set(instruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
+        let currentValue = 56
+
+        stepIndices.forEach((stepIndex, i) => {
+          const stepBeads = instruction.stepBeadHighlights!.filter(bead => bead.stepIndex === stepIndex)
+          let valueChange = 0
+
+          stepBeads.forEach(bead => {
+            const multiplier = Math.pow(10, bead.placeValue)
+            const value = bead.beadType === 'heaven' ? 5 * multiplier : multiplier
+            const change = bead.direction === 'activate' ? value : -value
+            valueChange += change
+          })
+
+          currentValue += valueChange
+          expectedStates.push(currentValue)
+        })
+      }
+
+      // FIXED: step 1 should be 156 + 3 = 159 (3 earth beads consolidated)
+      expect(expectedStates[1]).toBe(159) // Instruction and expected state now match
     })
   })
 })
