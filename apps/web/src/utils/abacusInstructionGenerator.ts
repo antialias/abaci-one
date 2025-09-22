@@ -105,14 +105,22 @@ export function detectComplementOperation(startValue: number, targetValue: numbe
   const difference = targetValue - startValue
 
   // Ten complement detection (carrying to next place) - check this FIRST
-  if (difference > 0 && targetValue >= 10 && startValue < 10) {
-    return {
-      needsComplement: true,
-      complementType: 'ten',
-      complementDetails: {
-        addValue: 10,
-        subtractValue: 10 - difference,
-        description: `Add 10, subtract ${10 - difference}`
+  if (difference > 0) {
+    // Check if we're crossing a multiple of 10 boundary
+    const startDigit = startValue % 10
+    const targetDigit = targetValue % 10
+
+    // If we go from single digits to teens, or cross any 10s boundary with insufficient space
+    if ((startValue < 10 && targetValue >= 10) ||
+        (startDigit + difference > 9 && Math.floor(startValue / 10) !== Math.floor(targetValue / 10))) {
+      return {
+        needsComplement: true,
+        complementType: 'ten',
+        complementDetails: {
+          addValue: 10,
+          subtractValue: 10 - (difference % 10),
+          description: `Add 10, subtract ${10 - (difference % 10)}`
+        }
       }
     }
   }
@@ -172,18 +180,35 @@ export function generateStepInstructions(
       }
     })
   } else {
-    // For simple operations, just describe the additions
+    // For non-complement operations, handle both additions and removals
     additions.forEach(bead => {
       const placeDesc = bead.placeValue === 0 ? 'ones' :
                        bead.placeValue === 1 ? 'tens' :
                        bead.placeValue === 2 ? 'hundreds' : `place ${bead.placeValue}`
 
       if (bead.beadType === 'heaven') {
-        instructions.push(`Click the heaven bead in the ${placeDesc} column`)
+        instructions.push(`Click the heaven bead in the ${placeDesc} column to add it`)
       } else {
-        instructions.push(`Click earth bead ${bead.position! + 1} in the ${placeDesc} column`)
+        instructions.push(`Click earth bead ${bead.position! + 1} in the ${placeDesc} column to add it`)
       }
     })
+
+    removals.forEach(bead => {
+      const placeDesc = bead.placeValue === 0 ? 'ones' :
+                       bead.placeValue === 1 ? 'tens' :
+                       bead.placeValue === 2 ? 'hundreds' : `place ${bead.placeValue}`
+
+      if (bead.beadType === 'heaven') {
+        instructions.push(`Click the heaven bead in the ${placeDesc} column to remove it`)
+      } else {
+        instructions.push(`Click earth bead ${bead.position! + 1} in the ${placeDesc} column to remove it`)
+      }
+    })
+  }
+
+  // Always return at least one instruction, even if empty
+  if (instructions.length === 0) {
+    instructions.push('No bead movements required')
   }
 
   return instructions
@@ -208,6 +233,24 @@ export function generateAbacusInstructions(
 
   // Combine all beads that need to be highlighted
   const allHighlights = [...additions, ...removals]
+
+  // Handle zero difference case
+  if (difference === 0) {
+    return {
+      highlightBeads: [],
+      expectedAction: 'add',
+      actionDescription: 'No change needed - already at target value',
+      tooltip: {
+        content: 'No Operation Required',
+        explanation: 'The abacus already shows the target value'
+      },
+      errorMessages: {
+        wrongBead: 'No beads need to be moved',
+        wrongAction: 'No action required',
+        hint: `${startValue} is already at the target value`
+      }
+    }
+  }
 
   // Determine action type
   const actionType = allHighlights.length === 1 ?
@@ -259,7 +302,7 @@ export function generateAbacusInstructions(
     highlightBeads: allHighlights,
     expectedAction: actionType,
     actionDescription,
-    multiStepInstructions: stepInstructions.length > 1 ? stepInstructions : undefined,
+    multiStepInstructions: actionType === 'multi-step' ? stepInstructions : undefined,
     tooltip,
     errorMessages
   }
@@ -272,9 +315,9 @@ export function validateInstruction(instruction: GeneratedInstruction, startValu
 } {
   const issues: string[] = []
 
-  // Check if highlights exist
-  if (!instruction.highlightBeads || instruction.highlightBeads.length === 0) {
-    issues.push('No beads highlighted')
+  // Check if highlights exist (only if values are different)
+  if (startValue !== targetValue && (!instruction.highlightBeads || instruction.highlightBeads.length === 0)) {
+    issues.push('No beads highlighted for non-zero operation')
   }
 
   // Check for multi-step consistency
