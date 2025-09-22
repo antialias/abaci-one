@@ -137,6 +137,7 @@ function generateEnhancedStepInstructions(
 ): string[] {
   const instructions: string[] = []
 
+
   if (decomposition) {
     const { addTerm, subtractTerm, isRecursive } = decomposition
 
@@ -154,41 +155,45 @@ function generateEnhancedStepInstructions(
       removalsByPlace[bead.placeValue].push(bead)
     })
 
-    // Generate instructions for additions (add the complement term)
-    Object.keys(additionsByPlace).forEach(placeStr => {
-      const place = parseInt(placeStr)
-      const beads = additionsByPlace[place]
-      const placeName = place === 0 ? 'ones' : place === 1 ? 'tens' : place === 2 ? 'hundreds' : `place ${place}`
+    // PEDAGOGICAL ORDER: Process from highest place value to lowest, matching stepBeadHighlights ordering
+    const placeValues = Object.keys({ ...additionsByPlace, ...removalsByPlace }).map(p => parseInt(p)).sort((a, b) => b - a);
 
-      beads.forEach(bead => {
-        if (place === 2 && addTerm === 100) {
-          instructions.push(`Add 1 to hundreds column (adding 100 from complement)`)
-        } else if (place === 1 && addTerm === 10) {
-          instructions.push(`Add 1 to tens column (adding 10 from complement)`)
-        } else if (place === 0 && addTerm === 5) {
-          instructions.push(`Add heaven bead (adding 5 from complement)`)
-        } else {
-          const beadDesc = bead.beadType === 'heaven' ? 'heaven bead' : `earth bead ${(bead.position || 0) + 1}`
-          instructions.push(`Click ${beadDesc} in the ${placeName} column to add it`)
-        }
-      })
-    })
+    // First: Process additions from highest to lowest place value
+    for (const place of placeValues) {
+      if (additionsByPlace[place]) {
+        const beads = additionsByPlace[place]
+        const placeName = place === 0 ? 'ones' : place === 1 ? 'tens' : place === 2 ? 'hundreds' : `place ${place}`
 
-    // Generate instructions for removals - handle each place separately with proper value calculation
-    Object.keys(removalsByPlace).forEach(placeStr => {
-      const place = parseInt(placeStr)
-      const beads = removalsByPlace[place]
-      const placeName = place === 0 ? 'ones' : place === 1 ? 'tens' : place === 2 ? 'hundreds' : `place ${place}`
+        beads.forEach(bead => {
+          if (place === 2 && addTerm === 100) {
+            instructions.push(`Click earth bead 1 in the hundreds column to add it`)
+          } else if (place === 1 && addTerm === 10) {
+            instructions.push(`Click earth bead 1 in the tens column to add it`)
+          } else if (place === 0 && addTerm === 5) {
+            instructions.push(`Click the heaven bead in the ones column to add it`)
+          } else {
+            const beadDesc = bead.beadType === 'heaven' ? 'heaven bead' : `earth bead ${(bead.position || 0) + 1}`
+            instructions.push(`Click the ${beadDesc} in the ${placeName} column to add it`)
+          }
+        })
+      }
+    }
 
-      // Calculate the total value being removed from this place
-      let placeValue = 0
-      beads.forEach(bead => {
-        if (bead.beadType === 'heaven') {
-          placeValue += 5 * Math.pow(10, place)
-        } else {
-          placeValue += 1 * Math.pow(10, place)
-        }
-      })
+    // Second: Process removals from highest to lowest place value
+    for (const place of placeValues) {
+      if (removalsByPlace[place]) {
+        const beads = removalsByPlace[place]
+        const placeName = place === 0 ? 'ones' : place === 1 ? 'tens' : place === 2 ? 'hundreds' : `place ${place}`
+
+        // Calculate the total value being removed from this place
+        let placeValue = 0
+        beads.forEach(bead => {
+          if (bead.beadType === 'heaven') {
+            placeValue += 5 * Math.pow(10, place)
+          } else {
+            placeValue += 1 * Math.pow(10, place)
+          }
+        })
 
       // For recursive breakdowns, explain which part of the decomposition we're subtracting
       if (isRecursive && place === 1 && placeValue === 90) {
@@ -202,10 +207,11 @@ function generateEnhancedStepInstructions(
         // Generate individual bead instructions for each bead
         beads.forEach(bead => {
           const beadDesc = bead.beadType === 'heaven' ? 'heaven bead' : `earth bead ${(bead.position || 0) + 1}`
-          instructions.push(`Click ${beadDesc} in the ${placeName} column to remove it`)
+          instructions.push(`Click ${beadDesc} in the ${placeName} column to remove`)
         })
       }
-    })
+      }
+    }
   } else {
     // Fallback to standard instructions
     return generateStepInstructions(additions, removals, false)
@@ -265,41 +271,28 @@ function generateStepBeadMapping(
   let currentStepIndex = 0
   let currentOrder = 0
 
-  // Step 0: Handle additions (usually the main complement term like +100)
-  Object.keys(additionsByPlace).forEach(placeStr => {
-    const place = parseInt(placeStr)
-    const beads = additionsByPlace[place]
+  // Pedagogical step ordering: Process from highest place value to lowest, separating additions and subtractions
+  const placeValues = Object.keys({ ...additionsByPlace, ...removalsByPlace }).map(p => parseInt(p)).sort((a, b) => b - a);
 
-    beads.forEach(bead => {
-      stepBeadHighlights.push({
-        ...bead,
-        stepIndex: currentStepIndex,
-        direction: 'activate',
-        order: currentOrder++
-      })
-    })
-  })
-
-  // For recursive breakdowns like 99+1, we need to map removals to specific steps
-  if (isRecursive) {
-    currentStepIndex = 1 // Start from step 1 for removals
-
-    // Step 1: Remove from ones column (second part of recursive decomposition)
-    if (removalsByPlace[0]) {
-      removalsByPlace[0].forEach(bead => {
+  for (const place of placeValues) {
+    // First: Add any additions for this place value
+    if (additionsByPlace[place]) {
+      additionsByPlace[place].forEach(bead => {
         stepBeadHighlights.push({
           ...bead,
           stepIndex: currentStepIndex,
-          direction: 'deactivate',
+          direction: 'activate',
           order: currentOrder++
         })
       })
-      currentStepIndex++
+      currentStepIndex++;
     }
+  }
 
-    // Step 2: Remove from tens column (first part of recursive decomposition)
-    if (removalsByPlace[1]) {
-      removalsByPlace[1].forEach(bead => {
+  // Then: Add any removals (complement subtractions)
+  for (const place of placeValues) {
+    if (removalsByPlace[place]) {
+      removalsByPlace[place].forEach(bead => {
         stepBeadHighlights.push({
           ...bead,
           stepIndex: currentStepIndex,
@@ -307,23 +300,8 @@ function generateStepBeadMapping(
           order: currentOrder++
         })
       })
+      currentStepIndex++;
     }
-  } else {
-    // Non-recursive: all removals in step 1
-    currentStepIndex = 1
-    Object.keys(removalsByPlace).forEach(placeStr => {
-      const place = parseInt(placeStr)
-      const beads = removalsByPlace[place]
-
-      beads.forEach(bead => {
-        stepBeadHighlights.push({
-          ...bead,
-          stepIndex: currentStepIndex,
-          direction: 'deactivate',
-          order: currentOrder++
-        })
-      })
-    })
   }
 
   return stepBeadHighlights
