@@ -151,6 +151,13 @@ export namespace PlaceValueUtils {
 // Union type for backward compatibility
 export type BeadHighlight = PlaceValueBead | ColumnIndexBead;
 
+// Enhanced bead highlight with step progression and direction indicators
+export interface StepBeadHighlight extends PlaceValueBead {
+  stepIndex: number  // Which instruction step this bead belongs to
+  direction: 'up' | 'down' | 'activate' | 'deactivate'  // Movement direction
+  order?: number     // Order within the step (for multiple beads per step)
+}
+
 // Type guards to distinguish between the two APIs
 export function isPlaceValueBead(bead: BeadHighlight): bead is PlaceValueBead {
   return 'placeValue' in bead;
@@ -225,6 +232,9 @@ export interface AbacusConfig {
   // Tutorial and accessibility features
   highlightColumns?: number[]; // Highlight specific columns (legacy - array indices)
   highlightBeads?: BeadHighlight[]; // Support both place-value and column-index based highlighting
+  stepBeadHighlights?: StepBeadHighlight[]; // Progressive step-based highlighting with directions
+  currentStep?: number; // Current step index for progressive highlighting
+  showDirectionIndicators?: boolean; // Show direction arrows/indicators on beads
   disabledColumns?: number[]; // Disable interaction on specific columns (legacy - array indices)
   disabledBeads?: BeadHighlight[]; // Support both place-value and column-index based disabling
 
@@ -642,6 +652,37 @@ function isBeadHighlightedByPlaceValue(
   });
 }
 
+// NEW: Step-based highlighting with progressive revelation
+function getBeadStepHighlight(
+  bead: BeadConfig,
+  stepBeadHighlights?: StepBeadHighlight[],
+  currentStep?: number
+): { isHighlighted: boolean; direction?: string; isCurrentStep: boolean } {
+  if (!stepBeadHighlights || currentStep === undefined) {
+    return { isHighlighted: false, isCurrentStep: false };
+  }
+
+  const matchingStepBead = stepBeadHighlights.find(stepBead =>
+    stepBead.placeValue === bead.placeValue &&
+    stepBead.beadType === bead.type &&
+    (stepBead.position === undefined || stepBead.position === bead.position)
+  );
+
+  if (!matchingStepBead) {
+    return { isHighlighted: false, isCurrentStep: false };
+  }
+
+  const isCurrentStep = matchingStepBead.stepIndex === currentStep;
+  const isCompleted = matchingStepBead.stepIndex < currentStep;
+  const isHighlighted = isCurrentStep || isCompleted;
+
+  return {
+    isHighlighted,
+    direction: isCurrentStep ? matchingStepBead.direction : undefined,
+    isCurrentStep
+  };
+}
+
 // NEW: Native place-value disabling (eliminates totalColumns threading!)
 function isBeadDisabledByPlaceValue(
   bead: BeadConfig,
@@ -754,6 +795,90 @@ function getBeadColor(
   }
 }
 
+// Get arrow colors that respect color schemes and accessibility
+function getArrowColors(
+  bead: BeadConfig,
+  direction: string,
+  totalColumns: number,
+  colorScheme: string,
+  colorPalette: string
+): { fill: string; stroke: string } {
+  const isActivating = direction === 'activate' || direction === 'up';
+
+  switch (colorScheme) {
+    case 'monochrome':
+      return isActivating
+        ? { fill: 'rgba(100, 100, 100, 0.8)', stroke: 'rgba(50, 50, 50, 1)' }
+        : { fill: 'rgba(150, 150, 150, 0.8)', stroke: 'rgba(100, 100, 100, 1)' };
+
+    case 'grayscale':
+      return isActivating
+        ? { fill: 'rgba(60, 60, 60, 0.8)', stroke: 'rgba(30, 30, 30, 1)' }
+        : { fill: 'rgba(120, 120, 120, 0.8)', stroke: 'rgba(80, 80, 80, 1)' };
+
+    case 'place-value': {
+      const colors = COLOR_PALETTES[colorPalette as keyof typeof COLOR_PALETTES] || COLOR_PALETTES.default;
+      const baseColor = colors[bead.placeValue % colors.length];
+
+      // Create darker/lighter variants for arrows
+      const activateColor = isActivating ? baseColor : adjustColorBrightness(baseColor, -30);
+      const strokeColor = adjustColorBrightness(activateColor, -40);
+
+      return {
+        fill: `${activateColor}CC`, // Add alpha
+        stroke: strokeColor
+      };
+    }
+
+    case 'heaven-earth': {
+      const baseColor = bead.type === 'heaven' ? '#F18F01' : '#2E86AB';
+      const activateColor = isActivating ? baseColor : adjustColorBrightness(baseColor, -30);
+      const strokeColor = adjustColorBrightness(activateColor, -40);
+
+      return {
+        fill: `${activateColor}CC`,
+        stroke: strokeColor
+      };
+    }
+
+    case 'alternating': {
+      const baseColor = bead.placeValue % 2 === 0 ? '#1E88E5' : '#43A047';
+      const activateColor = isActivating ? baseColor : adjustColorBrightness(baseColor, -30);
+      const strokeColor = adjustColorBrightness(activateColor, -40);
+
+      return {
+        fill: `${activateColor}CC`,
+        stroke: strokeColor
+      };
+    }
+
+    default:
+      // Fallback to original green/red system
+      return isActivating
+        ? { fill: 'rgba(0, 150, 0, 0.8)', stroke: 'rgba(0, 100, 0, 1)' }
+        : { fill: 'rgba(200, 0, 0, 0.8)', stroke: 'rgba(150, 0, 0, 1)' };
+  }
+}
+
+// Helper function to adjust color brightness
+function adjustColorBrightness(hex: string, percent: number): string {
+  // Remove # if present
+  hex = hex.replace('#', '');
+
+  // Parse RGB components
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+
+  // Adjust brightness
+  const newR = Math.max(0, Math.min(255, r + (r * percent) / 100));
+  const newG = Math.max(0, Math.min(255, g + (g * percent) / 100));
+  const newB = Math.max(0, Math.min(255, b + (b * percent) / 100));
+
+  // Convert back to hex
+  return `#${Math.round(newR).toString(16).padStart(2, '0')}${Math.round(newG).toString(16).padStart(2, '0')}${Math.round(newB).toString(16).padStart(2, '0')}`;
+}
+
 function calculateBeadStates(columnStates: ColumnState[], originalLength: number): BeadConfig[][] {
   return columnStates.map((columnState, arrayIndex) => {
     const beads: BeadConfig[] = [];
@@ -862,6 +987,9 @@ interface BeadProps {
   enableAnimation: boolean;
   enableGestures?: boolean;
   hideInactiveBeads?: boolean;
+  showDirectionIndicator?: boolean;
+  direction?: string;
+  isCurrentStep?: boolean;
   onClick?: (event: React.MouseEvent) => void;
   onHover?: (event: React.MouseEvent) => void;
   onLeave?: (event: React.MouseEvent) => void;
@@ -869,6 +997,10 @@ interface BeadProps {
   onRef?: (element: SVGElement | null) => void;
   heavenEarthGap: number;
   barY: number;
+  // Arrow color scheme integration
+  colorScheme?: string;
+  colorPalette?: string;
+  totalColumns?: number;
 }
 
 const Bead: React.FC<BeadProps> = ({
@@ -884,15 +1016,28 @@ const Bead: React.FC<BeadProps> = ({
   enableAnimation,
   enableGestures = false,
   hideInactiveBeads = false,
+  showDirectionIndicator = false,
+  direction,
+  isCurrentStep = false,
   onClick,
   onHover,
   onLeave,
   onGestureToggle,
   onRef,
   heavenEarthGap,
-  barY
+  barY,
+  colorScheme = 'monochrome',
+  colorPalette = 'default',
+  totalColumns = 1
 }) => {
   const [{ x: springX, y: springY }, api] = useSpring(() => ({ x, y }));
+
+  // Arrow pulse animation for urgency indication
+  const [{ arrowPulse }, arrowApi] = useSpring(() => ({
+    arrowPulse: 1,
+    config: { tension: 200, friction: 10 }
+  }));
+
   const gestureStateRef = useRef({
     isDragging: false,
     lastDirection: null as 'activate' | 'deactivate' | null,
@@ -967,6 +1112,30 @@ const Bead: React.FC<BeadProps> = ({
       api.set({ x, y });
     }
   }, [x, y, enableAnimation, api]);
+
+  // Pulse animation for direction arrows to indicate urgency
+  React.useEffect(() => {
+    if (showDirectionIndicator && direction && isCurrentStep) {
+      const startPulse = () => {
+        arrowApi.start({
+          from: { arrowPulse: 1 },
+          to: async (next) => {
+            await next({ arrowPulse: 1.3 });
+            await next({ arrowPulse: 1 });
+          },
+          loop: true
+        });
+      };
+
+      const timeoutId = setTimeout(startPulse, 200); // Small delay before starting pulse
+      return () => {
+        clearTimeout(timeoutId);
+        arrowApi.stop();
+      };
+    } else {
+      arrowApi.set({ arrowPulse: 1 });
+    }
+  }, [showDirectionIndicator, direction, isCurrentStep, arrowApi]);
 
   const renderShape = () => {
     const halfSize = size / 2;
@@ -1051,6 +1220,40 @@ const Bead: React.FC<BeadProps> = ({
       }} // Enable click with gesture conflict prevention
     >
       {renderShape()}
+      {showDirectionIndicator && direction && (
+        <animated.g
+          className="direction-indicator"
+          transform={to([arrowPulse], (pulse) => {
+            // Match the exact center coordinates of each shape
+            const centerX = shape === 'diamond' ? size * 0.7 : size / 2;
+            const centerY = size / 2;
+            return `translate(${centerX}, ${centerY}) scale(${pulse})`;
+          })}
+        >
+          {(() => {
+            const arrowColors = getArrowColors(bead, direction, totalColumns, colorScheme, colorPalette);
+            const isUpArrow = direction === 'up' || (direction === 'activate' && bead.type === 'earth') || (direction === 'deactivate' && bead.type === 'heaven');
+
+            return isUpArrow ? (
+              // Up arrow - centered with color scheme
+              <polygon
+                points={`${-size * 0.15},${size * 0.05} ${size * 0.15},${size * 0.05} 0,${-size * 0.15}`}
+                fill={arrowColors.fill}
+                stroke={arrowColors.stroke}
+                strokeWidth="1.5"
+              />
+            ) : (
+              // Down arrow - centered with color scheme
+              <polygon
+                points={`${-size * 0.15},${-size * 0.1} ${size * 0.15},${-size * 0.1} 0,${size * 0.1}`}
+                fill={arrowColors.fill}
+                stroke={arrowColors.stroke}
+                strokeWidth="1.5"
+              />
+            );
+          })()}
+        </animated.g>
+      )}
     </AnimatedG>
   );
 };
@@ -1075,6 +1278,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   overlays = [],
   highlightColumns = [],
   highlightBeads = [],
+  stepBeadHighlights = [],
+  currentStep = 0,
+  showDirectionIndicators = false,
   disabledColumns = [],
   disabledBeads = [],
   // Legacy callbacks
@@ -1483,7 +1689,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
           );
 
           // Check if bead is highlighted - NO MORE EFFECTIVECOLUMNS THREADING!
-          const isHighlighted = isBeadHighlightedByPlaceValue(bead, highlightBeads);
+          const regularHighlight = isBeadHighlightedByPlaceValue(bead, highlightBeads);
+          const stepHighlight = getBeadStepHighlight(bead, stepBeadHighlights, currentStep);
+          const isHighlighted = regularHighlight || stepHighlight.isHighlighted;
 
           // Check if bead is disabled - NO MORE EFFECTIVECOLUMNS THREADING!
           const isDisabled = isBeadDisabledByPlaceValue(bead, disabledBeads) ||
@@ -1504,6 +1712,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               enableAnimation={finalConfig.animated}
               enableGestures={finalConfig.interactive || finalConfig.gestures}
               hideInactiveBeads={finalConfig.hideInactiveBeads}
+              showDirectionIndicator={showDirectionIndicators && stepHighlight.isCurrentStep}
+              direction={stepHighlight.direction}
+              isCurrentStep={stepHighlight.isCurrentStep}
               onClick={finalConfig.interactive && !isDisabled ? (event) => handleBeadClick(bead, event) : undefined}
               onHover={callbacks?.onBeadHover ? (event) => {
                 const beadClickEvent: BeadClickEvent = {
@@ -1533,6 +1744,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               onRef={callbacks?.onBeadRef ? (element) => callbacks.onBeadRef!(bead, element) : undefined}
               heavenEarthGap={dimensions.heavenEarthGap}
               barY={barY}
+              colorScheme={finalConfig.colorScheme}
+              colorPalette={finalConfig.colorPalette}
+              totalColumns={effectiveColumns}
             />
           );
         })
