@@ -26,7 +26,7 @@ const generateAbacusInstructions = (startValue: number, targetValue: number) => 
         {
           placeValue: 0,
           beadType: 'earth' as const,
-          position: 0,
+          position: 2, // 18 = heaven(5) + 3 earth beads(0,1,2), so deactivate position 2 to subtract 1
           stepIndex: 2,
           direction: 'deactivate' as const,
           order: 0
@@ -117,7 +117,7 @@ const generateAbacusInstructions = (startValue: number, targetValue: number) => 
         {
           placeValue: 0,
           beadType: 'earth' as const,
-          position: 0,
+          position: 2, // 18 = heaven(5) + 3 earth beads(0,1,2), so deactivate position 2 to subtract 1
           stepIndex: 0,
           direction: 'deactivate' as const,
           order: 0
@@ -291,15 +291,23 @@ export const ThreePlusFourteenTest: Story = {
       try {
         // Generate arrows to get from current value to current expected step's target
         const dynamicInstruction = generateAbacusInstructions(currentValue, currentExpectedStep.targetValue);
+
+        // CRITICAL FIX: Set all stepIndex to match currentStep for arrow display
+        const adjustedStepBeads = dynamicInstruction.stepBeadHighlights?.map(bead => ({
+          ...bead,
+          stepIndex: currentStep // Force stepIndex to match currentStep
+        }));
+
         console.log('🔄 Dynamic instruction:', {
           from: currentValue,
           to: currentExpectedStep.targetValue,
           expectedStepIndex: currentStep,
           expectedStepDescription: currentExpectedStep.description,
-          stepBeads: dynamicInstruction.stepBeadHighlights,
-          stepCount: dynamicInstruction.stepBeadHighlights?.length || 0
+          originalStepBeads: dynamicInstruction.stepBeadHighlights,
+          adjustedStepBeads: adjustedStepBeads,
+          stepCount: adjustedStepBeads?.length || 0
         });
-        return dynamicInstruction.stepBeadHighlights;
+        return adjustedStepBeads;
       } catch (error) {
         console.error('Failed to generate dynamic instruction:', error);
         return undefined;
