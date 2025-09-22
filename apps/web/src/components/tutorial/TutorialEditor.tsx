@@ -1025,6 +1025,8 @@ export function TutorialEditor({
         expectedAction: generatedInstructions.expectedAction,
         actionDescription: generatedInstructions.actionDescription,
         highlightBeads: generatedInstructions.highlightBeads,
+        stepBeadHighlights: generatedInstructions.stepBeadHighlights,
+        totalSteps: generatedInstructions.totalSteps,
         multiStepInstructions: generatedInstructions.multiStepInstructions,
         tooltip: generatedInstructions.tooltip,
         errorMessages: generatedInstructions.errorMessages
@@ -1538,50 +1540,109 @@ export function TutorialEditor({
                               {/* Multi-step Instructions */}
                               {tutorial.steps[editorState.selectedStepIndex].expectedAction === 'multi-step' && (
                                 <div className={css({ mt: 3 })}>
-                                  <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700', display: 'block', mb: 2 })}>
-                                    Multi-step Instructions
-                                  </label>
+                                  <div className={css({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 })}>
+                                    <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700' })}>
+                                      Multi-step Instructions
+                                    </label>
+                                    <button
+                                      onClick={() => generateInstructionsForStep(editorState.selectedStepIndex)}
+                                      className={css({
+                                        px: 3,
+                                        py: 1,
+                                        fontSize: 'xs',
+                                        bg: 'blue.500',
+                                        color: 'white',
+                                        borderRadius: 'md',
+                                        cursor: 'pointer',
+                                        _hover: { bg: 'blue.600' }
+                                      })}
+                                    >
+                                      🤖 Auto-Generate
+                                    </button>
+                                  </div>
                                   <div className={css({ space: 2 })}>
-                                    {(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []).map((instruction, index) => (
-                                      <div key={index} className={css({ display: 'flex', gap: 2, mb: 2 })}>
-                                        <input
-                                          type="text"
-                                          value={instruction}
-                                          onChange={(e) => {
-                                            const newInstructions = [...(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || [])]
-                                            newInstructions[index] = e.target.value
-                                            updateStep(editorState.selectedStepIndex, { multiStepInstructions: newInstructions })
-                                          }}
-                                          className={css({
-                                            flex: 1,
-                                            p: 2,
-                                            border: '1px solid',
-                                            borderColor: 'gray.300',
-                                            borderRadius: 'md',
-                                            fontSize: 'sm'
-                                          })}
-                                          placeholder={`Step ${index + 1}`}
-                                        />
-                                        <button
-                                          onClick={() => {
-                                            const newInstructions = (tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []).filter((_, i) => i !== index)
-                                            updateStep(editorState.selectedStepIndex, { multiStepInstructions: newInstructions })
-                                          }}
-                                          className={css({
-                                            px: 2,
-                                            py: 1,
-                                            fontSize: 'xs',
-                                            bg: 'red.500',
-                                            color: 'white',
-                                            borderRadius: 'md',
-                                            cursor: 'pointer',
-                                            _hover: { bg: 'red.600' }
-                                          })}
-                                        >
-                                          Remove
-                                        </button>
-                                      </div>
-                                    ))}
+                                    {(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []).map((instruction, index) => {
+                                      // Calculate expected state for this step
+                                      // FIXED: multiStepInstructions now use pedagogical order, matching stepBeadHighlights
+                                      const currentStep = tutorial.steps[editorState.selectedStepIndex]
+                                      let expectedValue = "Calculating..."
+
+                                      try {
+                                        const fullInstruction = generateAbacusInstructions(currentStep.startValue, currentStep.targetValue)
+                                        if (fullInstruction.stepBeadHighlights) {
+                                          const stepIndices = [...new Set(fullInstruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
+                                          let currentValue = currentStep.startValue
+
+                                          for (let i = 0; i <= index && i < stepIndices.length; i++) {
+                                            const stepIndex = stepIndices[i]
+                                            const stepBeads = fullInstruction.stepBeadHighlights.filter(bead => bead.stepIndex === stepIndex)
+
+                                            stepBeads.forEach(bead => {
+                                              const multiplier = Math.pow(10, bead.placeValue)
+                                              const value = bead.beadType === 'heaven' ? 5 * multiplier : multiplier
+                                              currentValue += bead.direction === 'activate' ? value : -value
+                                            })
+                                          }
+
+                                          expectedValue = currentValue.toString()
+                                        } else {
+                                          expectedValue = `Final: ${currentStep.targetValue}`
+                                        }
+                                      } catch (error) {
+                                        expectedValue = "Error calculating"
+                                      }
+
+                                      return (
+                                        <div key={index} className={css({ display: 'flex', gap: 2, mb: 2 })}>
+                                          <div className={css({ flex: 1 })}>
+                                            <input
+                                              type="text"
+                                              value={instruction}
+                                              onChange={(e) => {
+                                                const newInstructions = [...(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || [])]
+                                                newInstructions[index] = e.target.value
+                                                updateStep(editorState.selectedStepIndex, { multiStepInstructions: newInstructions })
+                                              }}
+                                              className={css({
+                                                w: 'full',
+                                                p: 2,
+                                                border: '1px solid',
+                                                borderColor: 'gray.300',
+                                                borderRadius: 'md',
+                                                fontSize: 'sm'
+                                              })}
+                                              placeholder={`Step ${index + 1}`}
+                                            />
+                                            <div className={css({
+                                              fontSize: 'xs',
+                                              color: 'gray.500',
+                                              mt: 1
+                                            })}>
+                                              Expected state after step: {expectedValue}
+                                            </div>
+                                          </div>
+                                          <button
+                                            onClick={() => {
+                                              const newInstructions = (tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []).filter((_, i) => i !== index)
+                                              updateStep(editorState.selectedStepIndex, { multiStepInstructions: newInstructions })
+                                            }}
+                                            className={css({
+                                              px: 2,
+                                              py: 1,
+                                              fontSize: 'xs',
+                                              bg: 'red.500',
+                                              color: 'white',
+                                              borderRadius: 'md',
+                                              cursor: 'pointer',
+                                              _hover: { bg: 'red.600' },
+                                              alignSelf: 'flex-start'
+                                            })}
+                                          >
+                                            Remove
+                                          </button>
+                                        </div>
+                                      )
+                                    })}
                                     <button
                                       onClick={() => {
                                         const newInstructions = [...(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []), '']
