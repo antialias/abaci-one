@@ -927,23 +927,7 @@ export function TutorialPlayer({
                             fontWeight: 'bold',
                             color: 'yellow.900'
                           })}>
-                            {currentMultiStep + 1}. {currentInstruction}
-                            {mathTerm && (
-                              <span className={css({
-                                ml: 2,
-                                px: 2,
-                                py: 1,
-                                bg: 'blue.100',
-                                color: 'blue.800',
-                                fontSize: 'xs',
-                                fontWeight: 'semibold',
-                                borderRadius: 'sm',
-                                border: '1px solid',
-                                borderColor: 'blue.200'
-                              })}>
-                                {mathTerm}
-                              </span>
-                            )}
+                            {currentInstruction}
                           </div>
 
                           {/* Show bead diff summary only when current value doesn't match step target */}
