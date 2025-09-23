@@ -892,43 +892,43 @@ export function TutorialPlayer({
                     color: 'yellow.800',
                     mb: 2
                   })}>
-                    Step-by-Step Instructions:
+                    Current Step:
                   </p>
-                  <ol className={css({
+                  <div className={css({
                     fontSize: 'sm',
-                    color: 'yellow.700',
-                    pl: 4
+                    color: 'yellow.700'
                   })}>
-                    {currentStep.multiStepInstructions.map((instruction, index) => {
-                      // Get the mathematical term for this step
-                      const mathTerm = expectedSteps[index]?.mathematicalTerm
-                      const isCurrentStep = index === currentMultiStep
+                    {(() => {
+                      // Only show the current step instruction
+                      const currentInstruction = currentStep.multiStepInstructions[currentMultiStep]
+                      const mathTerm = expectedSteps[currentMultiStep]?.mathematicalTerm
+
+                      if (!currentInstruction) return null
 
                       // Hide "Next Action" when at the expected starting state for this step
                       const isAtExpectedStartingState = (() => {
-                        if (index === 0) {
+                        if (currentMultiStep === 0) {
                           // First step: check if current value matches tutorial step start value
                           return currentValue === currentStep.startValue
                         } else {
                           // Subsequent steps: check if current value matches previous step's target
-                          const previousStepTarget = expectedSteps[index - 1]?.targetValue
+                          const previousStepTarget = expectedSteps[currentMultiStep - 1]?.targetValue
                           return currentValue === previousStepTarget
                         }
                       })()
 
                       const hasMeaningfulSummary = currentStepSummary && !currentStepSummary.includes('No changes needed')
-                      const needsAction = isCurrentStep && !isAtExpectedStartingState && hasMeaningfulSummary
+                      const needsAction = !isAtExpectedStartingState && hasMeaningfulSummary
 
                       return (
-                        <div key={index}>
-                          <li className={css({
+                        <div>
+                          <div className={css({
                             mb: 1,
-                            opacity: index === currentMultiStep ? '1' : index < currentMultiStep ? '0.7' : '0.4',
-                            fontWeight: index === currentMultiStep ? 'bold' : 'normal',
-                            color: index === currentMultiStep ? 'yellow.900' : index < currentMultiStep ? 'yellow.600' : 'yellow.400'
+                            fontWeight: 'bold',
+                            color: 'yellow.900'
                           })}>
-                            {index + 1}. {instruction}
-                            {isCurrentStep && mathTerm && (
+                            {currentMultiStep + 1}. {currentInstruction}
+                            {mathTerm && (
                               <span className={css({
                                 ml: 2,
                                 px: 2,
@@ -944,12 +944,11 @@ export function TutorialPlayer({
                                 {mathTerm}
                               </span>
                             )}
-                          </li>
+                          </div>
 
                           {/* Show bead diff summary only when current value doesn't match step target */}
                           {needsAction && (
                             <div className={css({
-                              ml: 6, // Align with step text (after number and dot)
                               mt: 1,
                               mb: 2,
                               p: 2,
@@ -978,8 +977,8 @@ export function TutorialPlayer({
                           )}
                         </div>
                       )
-                    })}
-                  </ol>
+                    })()}
+                  </div>
                 </div>
               )}
 
