@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useCallback, useEffect, useRef, useReducer, useMemo } from 'react'
-import { AbacusReact, StepBeadHighlight } from '@soroban/abacus-react'
+import { AbacusReact, StepBeadHighlight, AbacusOverlay } from '@soroban/abacus-react'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import { css } from '../../../styled-system/css'
 import { stack, hstack, vstack } from '../../../styled-system/patterns'
 import { Tutorial, TutorialStep, PracticeStep, TutorialEvent, NavigationState, UIState } from '../../types/tutorial'
@@ -10,6 +11,43 @@ import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerat
 import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 import { TutorialProvider } from './TutorialContext'
+
+// Helper function to find the topmost bead with arrows
+function findTopmostBeadWithArrows(stepBeadHighlights: StepBeadHighlight[] | undefined): StepBeadHighlight | null {
+  if (!stepBeadHighlights || stepBeadHighlights.length === 0) return null
+
+  // Filter only beads that have direction arrows (should have highlights)
+  const beadsWithArrows = stepBeadHighlights.filter(bead => bead.direction && bead.direction !== 'none')
+
+  if (beadsWithArrows.length === 0) {
+    console.warn('No beads with arrows found in step highlights:', stepBeadHighlights)
+    return null
+  }
+
+  // Sort by place value (highest first, since place value 4 = leftmost = highest value)
+  // Then by bead type (heaven beads are higher than earth beads)
+  // Then by position for earth beads (lower position = higher on abacus)
+  const sortedBeads = [...beadsWithArrows].sort((a, b) => {
+    // First sort by place value (higher place value = more significant = topmost priority)
+    if (a.placeValue !== b.placeValue) {
+      return b.placeValue - a.placeValue
+    }
+
+    // If same place value, heaven beads come before earth beads
+    if (a.beadType !== b.beadType) {
+      return a.beadType === 'heaven' ? -1 : 1
+    }
+
+    // If both earth beads in same column, lower position number = higher on abacus
+    if (a.beadType === 'earth' && b.beadType === 'earth') {
+      return (a.position || 0) - (b.position || 0)
+    }
+
+    return 0
+  })
+
+  return sortedBeads[0] || null
+}
 
 // Reducer state and actions
 interface TutorialPlayerState {
