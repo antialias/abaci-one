@@ -834,11 +834,20 @@ export function TutorialPlayer({
                       const mathTerm = expectedSteps[index]?.mathematicalTerm
                       const isCurrentStep = index === currentMultiStep
 
-                      // Get the target value for this step to check if we need to show "Next Action"
-                      const stepTargetValue = expectedSteps[index]?.targetValue
-                      const hasChangesNeeded = currentValue !== stepTargetValue
+                      // Hide "Next Action" when at the expected starting state for this step
+                      const isAtExpectedStartingState = (() => {
+                        if (index === 0) {
+                          // First step: check if current value matches tutorial step start value
+                          return currentValue === currentStep.startValue
+                        } else {
+                          // Subsequent steps: check if current value matches previous step's target
+                          const previousStepTarget = expectedSteps[index - 1]?.targetValue
+                          return currentValue === previousStepTarget
+                        }
+                      })()
+
                       const hasMeaningfulSummary = currentStepSummary && !currentStepSummary.includes('No changes needed')
-                      const needsAction = isCurrentStep && hasChangesNeeded && hasMeaningfulSummary
+                      const needsAction = isCurrentStep && !isAtExpectedStartingState && hasMeaningfulSummary
 
                       return (
                         <div key={index}>
