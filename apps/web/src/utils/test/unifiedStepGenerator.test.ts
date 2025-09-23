@@ -137,4 +137,38 @@ describe('Unified Step Generator', () => {
       }).not.toThrow()
     })
   })
+
+  it('should generate correct term positions for precise highlighting', () => {
+    const sequence = generateUnifiedInstructionSequence(3, 17)
+
+    // Full decomposition should be "3 + 14 = 3 + 10 + (5 - 1) = 17"
+    expect(sequence.fullDecomposition).toBe('3 + 14 = 3 + 10 + (5 - 1) = 17')
+
+    // Each step should have valid position information
+    sequence.steps.forEach((step, index) => {
+      expect(step.termPosition).toBeDefined()
+      expect(step.termPosition.startIndex).toBeGreaterThanOrEqual(0)
+      expect(step.termPosition.endIndex).toBeGreaterThan(step.termPosition.startIndex)
+
+      // Extract the term using the position and verify it matches
+      const { startIndex, endIndex } = step.termPosition
+      const extractedTerm = sequence.fullDecomposition.substring(startIndex, endIndex)
+      expect(extractedTerm).toBe(step.mathematicalTerm)
+
+      console.log(`Step ${index + 1}: "${step.mathematicalTerm}" at position ${startIndex}-${endIndex} = "${extractedTerm}"`)
+    })
+
+    // Verify specific positions for known case "3 + 14 = 3 + 10 + (5 - 1) = 17"
+    //                                             0123456789012345678901234567890123456
+    //                                             0         1         2         3
+    // First step should be "10" at position around 13-15
+    const firstStep = sequence.steps[0]
+    expect(firstStep.mathematicalTerm).toBe('10')
+    expect(sequence.fullDecomposition.substring(firstStep.termPosition.startIndex, firstStep.termPosition.endIndex)).toBe('10')
+
+    // Second step should be "(5 - 1)" at position around 18-25
+    const secondStep = sequence.steps[1]
+    expect(secondStep.mathematicalTerm).toBe('(5 - 1)')
+    expect(sequence.fullDecomposition.substring(secondStep.termPosition.startIndex, secondStep.termPosition.endIndex)).toBe('(5 - 1)')
+  })
 })
