@@ -245,8 +245,26 @@ export function TutorialPlayer({
     }
   }, [currentValue, currentStep.targetValue, expectedSteps, currentMultiStep])
 
+  // Get the current step's bead diff summary for real-time user feedback
+  const getCurrentStepSummary = useCallback(() => {
+    if (expectedSteps.length === 0) return null
+
+    const currentExpectedStep = expectedSteps[currentMultiStep]
+    if (!currentExpectedStep) return null
+
+    try {
+      const beadDiff = calculateBeadDiffFromValues(currentValue, currentExpectedStep.targetValue)
+      return beadDiff.hasChanges ? beadDiff.summary : null
+    } catch (error) {
+      return null
+    }
+  }, [currentValue, expectedSteps, currentMultiStep])
+
   // Get current step beads (dynamic arrows for static expected steps)
   const currentStepBeads = getCurrentStepBeads()
+
+  // Get current step summary for real-time user feedback
+  const currentStepSummary = getCurrentStepSummary()
 
   // Event logging - now just notifies parent, state is managed by reducer
   const notifyEvent = useCallback((event: TutorialEvent) => {
@@ -815,6 +833,35 @@ export function TutorialPlayer({
                       </li>
                     ))}
                   </ol>
+
+                  {/* Real-time bead movement feedback */}
+                  {currentStepSummary && (
+                    <div className={css({
+                      mt: 3,
+                      p: 2,
+                      bg: 'blue.50',
+                      border: '1px solid',
+                      borderColor: 'blue.200',
+                      borderRadius: 'md',
+                      fontSize: 'xs'
+                    })}>
+                      <p className={css({
+                        fontSize: 'xs',
+                        fontWeight: 'medium',
+                        color: 'blue.800',
+                        mb: 1
+                      })}>
+                        Next Action:
+                      </p>
+                      <p className={css({
+                        fontSize: 'xs',
+                        color: 'blue.700',
+                        fontStyle: 'italic'
+                      })}>
+                        {currentStepSummary}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
