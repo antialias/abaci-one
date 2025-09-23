@@ -834,6 +834,10 @@ export function TutorialPlayer({
                       const mathTerm = expectedSteps[index]?.mathematicalTerm
                       const isCurrentStep = index === currentMultiStep
 
+                      // Get the target value for this step to check if we need to show "Next Action"
+                      const stepTargetValue = expectedSteps[index]?.targetValue
+                      const needsAction = isCurrentStep && currentStepSummary && currentValue !== stepTargetValue
+
                       return (
                         <div key={index}>
                           <li className={css({
@@ -861,8 +865,8 @@ export function TutorialPlayer({
                             )}
                           </li>
 
-                          {/* Show bead diff summary directly under current step */}
-                          {isCurrentStep && currentStepSummary && (
+                          {/* Show bead diff summary only when current value doesn't match step target */}
+                          {needsAction && (
                             <div className={css({
                               ml: 6, // Align with step text (after number and dot)
                               mt: 1,
