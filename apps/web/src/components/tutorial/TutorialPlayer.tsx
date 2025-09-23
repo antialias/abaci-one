@@ -18,6 +18,7 @@ interface TutorialPlayerState {
   error: string | null
   events: TutorialEvent[]
   stepStartTime: number
+  multiStepStartTime: number // Track when current multi-step started
   uiState: UIState
   currentMultiStep: number // Current step within multi-step instructions (0-based)
 }
@@ -53,6 +54,7 @@ function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlaye
         isStepCompleted: false,
         error: null,
         stepStartTime: Date.now(),
+        multiStepStartTime: Date.now(), // Start timing for first multi-step
         currentMultiStep: 0, // Reset to first multi-step
         events: [...state.events, {
           type: 'STEP_STARTED',
@@ -108,7 +110,8 @@ function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlaye
     case 'ADVANCE_MULTI_STEP':
       return {
         ...state,
-        currentMultiStep: state.currentMultiStep + 1
+        currentMultiStep: state.currentMultiStep + 1,
+        multiStepStartTime: Date.now() // Reset timer for new multi-step
       }
 
     case 'PREVIOUS_MULTI_STEP':
@@ -161,6 +164,7 @@ export function TutorialPlayer({
     error: null,
     events: [],
     stepStartTime: Date.now(),
+    multiStepStartTime: Date.now(),
     currentMultiStep: 0,
     uiState: {
       isPlaying: true,
@@ -173,7 +177,7 @@ export function TutorialPlayer({
     }
   })
 
-  const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, uiState, currentMultiStep } = state
+  const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, multiStepStartTime, uiState, currentMultiStep } = state
 
   const currentStep = tutorial.steps[currentStepIndex]
   const beadRefs = useRef<Map<string, SVGElement>>(new Map())
@@ -918,7 +922,14 @@ export function TutorialPlayer({
                       })()
 
                       const hasMeaningfulSummary = currentStepSummary && !currentStepSummary.includes('No changes needed')
-                      const needsAction = !isAtExpectedStartingState && hasMeaningfulSummary
+
+                      // Smart help detection - show help when user might be confused or stalled
+                      const timeOnCurrentStep = Date.now() - multiStepStartTime
+                      const hasBeenOnStepTooLong = timeOnCurrentStep > 10000 // 10 seconds
+                      const isWrongValue = !isAtExpectedStartingState && currentValue !== expectedSteps[currentMultiStep]?.targetValue
+                      const shouldShowHelp = hasBeenOnStepTooLong || (isWrongValue && timeOnCurrentStep > 5000) // 5 seconds if wrong value
+
+                      const needsAction = !isAtExpectedStartingState && hasMeaningfulSummary && shouldShowHelp
 
                       return (
                         <div>
