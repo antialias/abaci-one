@@ -21,11 +21,7 @@ interface ExistingTutorialStep {
     content: string
     explanation: string
   }
-  errorMessages: {
-    wrongBead: string
-    wrongAction: string
-    hint: string
-  }
+  // errorMessages removed - bead diff tooltip provides better guidance
   multiStepInstructions?: string[]
 }
 
@@ -340,9 +336,7 @@ export function validateTutorialConversion(): { isValid: boolean; errors: string
         errors.push(`Step ${index + 1}: Missing tooltip content`)
       }
 
-      if (!step.errorMessages?.wrongBead || !step.errorMessages?.wrongAction || !step.errorMessages?.hint) {
-        errors.push(`Step ${index + 1}: Missing error messages`)
-      }
+      // errorMessages validation removed - no longer needed
 
       if (step.expectedAction === 'multi-step' && (!step.multiStepInstructions || step.multiStepInstructions.length === 0)) {
         errors.push(`Step ${index + 1}: Multi-step action missing instructions`)
