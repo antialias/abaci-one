@@ -27,11 +27,7 @@ export interface TutorialStep {
     content: string
     explanation: string
   }
-  errorMessages: {
-    wrongBead: string
-    wrongAction: string
-    hint: string
-  }
+  // errorMessages removed - bead diff tooltip provides better guidance
   multiStepInstructions?: string[]
   position?: number // Position in unified tutorial flow
 }
