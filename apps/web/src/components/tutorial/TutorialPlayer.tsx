@@ -8,6 +8,7 @@ import { Tutorial, TutorialStep, PracticeStep, TutorialEvent, NavigationState, U
 import { PracticeProblemPlayer, PracticeResults } from './PracticeProblemPlayer'
 import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
 import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
+import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 
 // Reducer state and actions
 interface TutorialPlayerState {
@@ -176,54 +177,25 @@ export function TutorialPlayer({
     completionPercentage: (currentStepIndex / tutorial.steps.length) * 100
   }
 
-  // Define the static expected steps (generated once at start using our fixed algorithm)
+  // Define the static expected steps using our unified step generator
   const expectedSteps = useMemo(() => {
-    // Generate expected steps using the same auto-generation as Storybook stories
     try {
-      const fullInstruction = generateAbacusInstructions(currentStep.startValue, currentStep.targetValue)
+      console.log('🚀 Generating unified instruction sequence for TutorialPlayer')
+      const unifiedSequence = generateUnifiedInstructionSequence(currentStep.startValue, currentStep.targetValue)
 
-      if (!fullInstruction.stepBeadHighlights || !fullInstruction.multiStepInstructions) {
-        return []
-      }
+      // Convert unified sequence to expected steps format
+      const steps = unifiedSequence.steps.map((step, index) => ({
+        index: index,
+        stepIndex: index,
+        targetValue: step.expectedValue,
+        startValue: index === 0 ? currentStep.startValue : unifiedSequence.steps[index - 1].expectedValue,
+        description: step.englishInstruction
+      }))
 
-      // Extract unique step indices and create milestones by simulating bead movements
-      const stepIndices = [...new Set(fullInstruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
-      const steps = []
-      let currentAbacusValue = currentStep.startValue
-
-      stepIndices.forEach((stepIndex, i) => {
-        const description = fullInstruction.multiStepInstructions?.[i] || `Step ${i + 1}`
-        const stepBeads = fullInstruction.stepBeadHighlights.filter(bead => bead.stepIndex === stepIndex)
-
-        // Calculate the value change for this step by applying all bead movements
-        let valueChange = 0
-        stepBeads.forEach(bead => {
-          const placeMultiplier = Math.pow(10, bead.placeValue)
-
-          if (bead.beadType === 'heaven') {
-            // Heaven bead is worth 5 in its place value
-            valueChange += bead.direction === 'activate' ? (5 * placeMultiplier) : -(5 * placeMultiplier)
-          } else {
-            // Earth bead is worth 1 in its place value
-            valueChange += bead.direction === 'activate' ? placeMultiplier : -placeMultiplier
-          }
-        })
-
-        currentAbacusValue += valueChange
-
-        steps.push({
-          index: i,
-          stepIndex: stepIndex,
-          targetValue: currentAbacusValue,
-          startValue: i === 0 ? currentStep.startValue : steps[i-1].targetValue,
-          description: description
-        })
-      })
-
-      console.log('📋 Auto-generated expected steps with calculated values:', steps)
+      console.log('📋 Generated expected steps from unified sequence:', steps)
       return steps
     } catch (error) {
-      console.warn('⚠️ Failed to auto-generate expected steps, falling back to empty:', error)
+      console.warn('⚠️ Failed to generate unified expected steps, falling back to empty:', error)
       return []
     }
   }, [currentStep.startValue, currentStep.targetValue])
@@ -235,25 +207,23 @@ export function TutorialPlayer({
 
     // Get the current expected step we're working toward
     const currentExpectedStep = expectedSteps[currentMultiStep]
+
+
     if (!currentExpectedStep) {
       // If we're past the last step, check if we've reached the final target
-      if (currentValue === currentStep.targetValue) return undefined
+      if (currentValue === currentStep.targetValue) {
+        return undefined
+      }
       return undefined
     }
 
     // Use the new bead diff algorithm to get arrows for current step
     try {
-      console.log(`🎯 TutorialPlayer: Calculating bead diff for step ${currentMultiStep}`)
-      console.log(`   From: ${currentValue} → To: ${currentExpectedStep.targetValue}`)
 
       const beadDiff = calculateBeadDiffFromValues(currentValue, currentExpectedStep.targetValue)
 
-      console.log(`   Bead diff summary: "${beadDiff.summary}"`)
-      console.log(`   Has changes: ${beadDiff.hasChanges}`)
-      console.log(`   Changes: ${beadDiff.changes.length}`)
 
       if (!beadDiff.hasChanges) {
-        console.log(`   ✅ No changes needed - current value ${currentValue} matches target ${currentExpectedStep.targetValue}`)
         return undefined
       }
 
@@ -263,11 +233,10 @@ export function TutorialPlayer({
         beadType: change.beadType,
         position: change.position,
         direction: change.direction,
-        stepIndex: 0, // Always use step 0 since we're showing immediate next action
+        stepIndex: currentMultiStep, // Use current multi-step index to match AbacusReact filtering
         order: change.order
       }))
 
-      console.log(`   Generated ${stepBeadHighlights.length} step bead highlights`)
 
       return stepBeadHighlights
     } catch (error) {
@@ -393,17 +362,10 @@ export function TutorialPlayer({
       if (currentValue === currentExpectedStep.targetValue) {
         const hasMoreExpectedSteps = currentMultiStep < expectedSteps.length - 1
 
-        console.log('🎯 Expected step completed:', {
-          completedStep: currentMultiStep,
-          targetReached: currentExpectedStep.targetValue,
-          hasMoreSteps: hasMoreExpectedSteps,
-          willAdvance: hasMoreExpectedSteps
-        })
 
         if (hasMoreExpectedSteps) {
           // Auto-advance to next expected step after a delay
           const timeoutId = setTimeout(() => {
-            console.log('⚡ Advancing to next expected step:', currentMultiStep, '→', currentMultiStep + 1)
             dispatch({ type: 'ADVANCE_MULTI_STEP' })
             lastValueForStepAdvancement.current = currentValue
           }, 1000)
