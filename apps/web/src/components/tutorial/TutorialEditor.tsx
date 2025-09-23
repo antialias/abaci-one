@@ -10,6 +10,7 @@ import { generateSingleProblem } from '../../utils/problemGenerator'
 import { skillConfigurationToSkillSets, createBasicAllowedConfiguration } from '../../utils/skillConfiguration'
 import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
+import { calculateBeadDiffFromValues, calculateMultiStepBeadDiffs } from '../../utils/beadDiff'
 import { EditorLayout, TextInput, NumberInput, FormGroup, CompactStepItem, BetweenStepAdd } from './shared/EditorComponents'
 import Resizable from 'react-resizable-layout'
 
@@ -1014,6 +1015,72 @@ export function TutorialEditor({
     setEditorState(prev => ({ ...prev, isDirty: true }))
   }, [tutorial.steps])
 
+  // Calculate step-by-step states and bead diffs for multi-step instructions
+  const calculateStepStatesAndDiffs = useCallback((stepIndex: number) => {
+    const step = tutorial.steps[stepIndex]
+    if (!step || !step.multiStepInstructions || step.multiStepInstructions.length === 0) {
+      return []
+    }
+
+    try {
+      // Use unified sequence if available, otherwise generate it
+      let unifiedSequence = (step as any).unifiedSequence
+      if (!unifiedSequence) {
+        unifiedSequence = generateUnifiedInstructionSequence(step.startValue, step.targetValue)
+      }
+
+      const stepStates = []
+      let currentValue = step.startValue
+
+      console.log('=== Calculating Step States and Diffs ===')
+      console.log('Start value:', currentValue)
+      console.log('Target value:', step.targetValue)
+      console.log('Unified sequence steps:', unifiedSequence.steps.length)
+      console.log('Multi-step instructions:', step.multiStepInstructions.length)
+
+      for (let i = 0; i < step.multiStepInstructions.length && i < unifiedSequence.steps.length; i++) {
+        const unifiedStep = unifiedSequence.steps[i]
+        const expectedValue = unifiedStep.expectedValue
+
+        console.log(`\nStep ${i}:`)
+        console.log(`  From: ${currentValue} → To: ${expectedValue}`)
+        console.log(`  Math term: ${unifiedStep.mathematicalTerm}`)
+
+        // Calculate bead diff from current to expected state (incremental)
+        const beadDiff = calculateBeadDiffFromValues(currentValue, expectedValue)
+
+        console.log(`  Bead diff summary: "${beadDiff.summary}"`)
+        console.log(`  Has changes: ${beadDiff.hasChanges}`)
+        console.log(`  Changes count: ${beadDiff.changes.length}`)
+        console.log(`  Changes:`, beadDiff.changes.map(c =>
+          `${c.placeValue}:${c.beadType}:${c.direction}${c.position !== undefined ? `:pos${c.position}` : ''}`
+        ).join(', '))
+
+        stepStates.push({
+          stepIndex: i,
+          instruction: step.multiStepInstructions[i],
+          currentValue,
+          expectedValue,
+          beadDiff,
+          mathematicalTerm: unifiedStep.mathematicalTerm
+        })
+
+        // Update current value for next iteration (incremental approach)
+        currentValue = expectedValue
+      }
+
+      console.log(`\nGenerated ${stepStates.length} step states`)
+      stepStates.forEach((state, i) => {
+        console.log(`  Step ${i}: ${state.currentValue}→${state.expectedValue}, changes: ${state.beadDiff.changes.length}`)
+      })
+
+      return stepStates
+    } catch (error) {
+      console.error('Failed to calculate step states:', error)
+      return []
+    }
+  }, [tutorial.steps])
+
   // Generate unified instructions for a specific step
   const generateUnifiedInstructionsForStep = useCallback((stepIndex: number) => {
     const step = tutorial.steps[stepIndex]
@@ -1657,36 +1724,15 @@ export function TutorialEditor({
                                     </div>
                                   </div>
                                   <div className={css({ space: 2 })}>
-                                    {(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []).map((instruction, index) => {
-                                      // Calculate expected state for this step
-                                      // FIXED: multiStepInstructions now use pedagogical order, matching stepBeadHighlights
-                                      const currentStep = tutorial.steps[editorState.selectedStepIndex]
-                                      let expectedValue = "Calculating..."
+                                    {(() => {
+                                      // Use the new bead diff calculation for each step
+                                      const stepStatesAndDiffs = calculateStepStatesAndDiffs(editorState.selectedStepIndex)
 
-                                      try {
-                                        const fullInstruction = generateAbacusInstructions(currentStep.startValue, currentStep.targetValue)
-                                        if (fullInstruction.stepBeadHighlights) {
-                                          const stepIndices = [...new Set(fullInstruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
-                                          let currentValue = currentStep.startValue
-
-                                          for (let i = 0; i <= index && i < stepIndices.length; i++) {
-                                            const stepIndex = stepIndices[i]
-                                            const stepBeads = fullInstruction.stepBeadHighlights.filter(bead => bead.stepIndex === stepIndex)
-
-                                            stepBeads.forEach(bead => {
-                                              const multiplier = Math.pow(10, bead.placeValue)
-                                              const value = bead.beadType === 'heaven' ? 5 * multiplier : multiplier
-                                              currentValue += bead.direction === 'activate' ? value : -value
-                                            })
-                                          }
-
-                                          expectedValue = currentValue.toString()
-                                        } else {
-                                          expectedValue = `Final: ${currentStep.targetValue}`
-                                        }
-                                      } catch (error) {
-                                        expectedValue = "Error calculating"
-                                      }
+                                      return (tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []).map((instruction, index) => {
+                                        const stepData = stepStatesAndDiffs[index]
+                                        const expectedValue = stepData ? stepData.expectedValue.toString() : "Calculating..."
+                                        const beadDiff = stepData ? stepData.beadDiff : null
+                                        const mathematicalTerm = stepData ? stepData.mathematicalTerm : ""
 
                                       return (
                                         <div key={index} className={css({ display: 'flex', gap: 2, mb: 2 })}>
@@ -1715,7 +1761,59 @@ export function TutorialEditor({
                                               mt: 1
                                             })}>
                                               Expected state after step: {expectedValue}
+                                              {mathematicalTerm && (
+                                                <span className={css({ color: 'blue.600', ml: 2, fontWeight: 'medium' })}>
+                                                  (Math: {mathematicalTerm})
+                                                </span>
+                                              )}
                                             </div>
+
+                                            {/* Dynamic Bead Diff Display */}
+                                            {beadDiff && beadDiff.hasChanges && (
+                                              <div className={css({
+                                                fontSize: 'xs',
+                                                mt: 2,
+                                                p: 2,
+                                                bg: 'yellow.50',
+                                                border: '1px solid',
+                                                borderColor: 'yellow.200',
+                                                borderRadius: 'sm'
+                                              })}>
+                                                <div className={css({ fontWeight: 'medium', color: 'yellow.800', mb: 1 })}>
+                                                  🎯 Bead Movements for this Step:
+                                                </div>
+                                                <div className={css({ color: 'yellow.700', mb: 1 })}>
+                                                  {beadDiff.summary}
+                                                </div>
+                                                <div className={css({
+                                                  display: 'flex',
+                                                  flexWrap: 'wrap',
+                                                  gap: 1,
+                                                  mt: 1
+                                                })}>
+                                                  {beadDiff.changes.map((change, changeIndex) => (
+                                                    <span
+                                                      key={changeIndex}
+                                                      className={css({
+                                                        fontSize: 'xs',
+                                                        px: 1,
+                                                        py: 0.5,
+                                                        borderRadius: 'xs',
+                                                        bg: change.direction === 'activate' ? 'green.100' : 'red.100',
+                                                        color: change.direction === 'activate' ? 'green.800' : 'red.800',
+                                                        border: '1px solid',
+                                                        borderColor: change.direction === 'activate' ? 'green.300' : 'red.300'
+                                                      })}
+                                                    >
+                                                      {change.direction === 'activate' ? '↗️' : '↙️'}
+                                                      {change.beadType === 'heaven' ? 'H' : 'E'}
+                                                      {change.position !== undefined ? change.position : ''}
+                                                      @P{change.placeValue}
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
                                           </div>
                                           <button
                                             onClick={() => {
@@ -1738,7 +1836,8 @@ export function TutorialEditor({
                                           </button>
                                         </div>
                                       )
-                                    })}
+                                    })
+                                    })()}
                                     <button
                                       onClick={() => {
                                         const newInstructions = [...(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []), '']
