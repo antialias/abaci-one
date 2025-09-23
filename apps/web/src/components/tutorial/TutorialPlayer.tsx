@@ -316,13 +316,16 @@ export function TutorialPlayer({
       <span>
         {beforeTerm}
         <span className={css({
-          bg: 'blue.100',
-          color: 'blue.800',
-          px: 1,
-          borderRadius: 'sm',
-          border: '2px solid',
-          borderColor: 'blue.300',
-          fontWeight: 'bold'
+          background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(147,51,234,0.1) 100%)',
+          color: 'blue.900',
+          px: 2,
+          py: 1,
+          borderRadius: 'md',
+          border: '1px solid rgba(59,130,246,0.3)',
+          fontWeight: '600',
+          boxShadow: '0 1px 3px rgba(59,130,246,0.1), inset 0 1px 0 rgba(255,255,255,0.6)',
+          backdropFilter: 'blur(2px)',
+          display: 'inline-block'
         })}>
           {term}
         </span>
@@ -866,19 +869,31 @@ export function TutorialPlayer({
               {/* Multi-step instructions panel */}
               {currentStep.multiStepInstructions && currentStep.multiStepInstructions.length > 0 && (
                 <div className={css({
-                  p: 4,
-                  bg: 'yellow.50',
-                  border: '1px solid',
-                  borderColor: 'yellow.200',
-                  borderRadius: 'md',
+                  p: 5,
+                  background: 'linear-gradient(135deg, rgba(255,248,225,0.95) 0%, rgba(254,252,232,0.95) 50%, rgba(255,245,157,0.15) 100%)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(251,191,36,0.3)',
+                  borderRadius: 'xl',
+                  boxShadow: '0 8px 32px rgba(251,191,36,0.1), 0 2px 8px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.6)',
+                  position: 'relative',
                   maxW: '600px',
-                  w: 'full'
+                  w: 'full',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    inset: '0',
+                    borderRadius: 'xl',
+                    background: 'linear-gradient(135deg, rgba(251,191,36,0.1) 0%, rgba(168,85,247,0.05) 100%)',
+                    zIndex: -1
+                  }
                 })}>
                   <p className={css({
-                    fontSize: 'sm',
-                    fontWeight: 'bold',
-                    color: 'yellow.800',
-                    mb: 3
+                    fontSize: 'base',
+                    fontWeight: '600',
+                    color: 'amber.900',
+                    mb: 4,
+                    letterSpacing: 'wide',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.1)'
                   })}>
                     Guidance
                   </p>
@@ -886,17 +901,21 @@ export function TutorialPlayer({
                   {/* Pedagogical decomposition with current term highlighted */}
                   {fullDecomposition && (
                     <div className={css({
-                      mb: 3,
-                      p: 2,
-                      bg: 'gray.50',
-                      border: '1px solid',
-                      borderColor: 'gray.200',
-                      borderRadius: 'md'
+                      mb: 4,
+                      p: 3,
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(248,250,252,0.9) 100%)',
+                      border: '1px solid rgba(203,213,225,0.4)',
+                      borderRadius: 'lg',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7)',
+                      backdropFilter: 'blur(4px)'
                     })}>
                       <p className={css({
-                        fontSize: 'sm',
-                        color: 'gray.800',
-                        fontFamily: 'mono'
+                        fontSize: 'base',
+                        color: 'slate.800',
+                        fontFamily: 'mono',
+                        fontWeight: '500',
+                        letterSpacing: 'tight',
+                        lineHeight: '1.5'
                       })}>
                         {renderHighlightedDecomposition()}
                       </p>
@@ -905,7 +924,9 @@ export function TutorialPlayer({
 
                   <div className={css({
                     fontSize: 'sm',
-                    color: 'yellow.700'
+                    color: 'amber.800',
+                    fontWeight: '500',
+                    lineHeight: '1.6'
                   })}>
                     {(() => {
                       // Only show the current step instruction
