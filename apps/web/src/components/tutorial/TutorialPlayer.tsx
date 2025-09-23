@@ -22,6 +22,15 @@ interface TutorialPlayerState {
   currentMultiStep: number // Current step within multi-step instructions (0-based)
 }
 
+interface ExpectedStep {
+  index: number
+  stepIndex: number
+  targetValue: number
+  startValue: number
+  description: string
+  mathematicalTerm?: string // Pedagogical term like "10", "(5 - 1)", "-6"
+}
+
 type TutorialPlayerAction =
   | { type: 'INITIALIZE_STEP'; stepIndex: number; startValue: number; stepId: string }
   | { type: 'USER_VALUE_CHANGE'; oldValue: number; newValue: number; stepId: string }
@@ -178,9 +187,8 @@ export function TutorialPlayer({
   }
 
   // Define the static expected steps using our unified step generator
-  const expectedSteps = useMemo(() => {
+  const expectedSteps: ExpectedStep[] = useMemo(() => {
     try {
-      console.log('🚀 Generating unified instruction sequence for TutorialPlayer')
       const unifiedSequence = generateUnifiedInstructionSequence(currentStep.startValue, currentStep.targetValue)
 
       // Convert unified sequence to expected steps format
@@ -189,13 +197,12 @@ export function TutorialPlayer({
         stepIndex: index,
         targetValue: step.expectedValue,
         startValue: index === 0 ? currentStep.startValue : unifiedSequence.steps[index - 1].expectedValue,
-        description: step.englishInstruction
+        description: step.englishInstruction,
+        mathematicalTerm: step.mathematicalTerm  // Add the pedagogical term
       }))
 
-      console.log('📋 Generated expected steps from unified sequence:', steps)
       return steps
     } catch (error) {
-      console.warn('⚠️ Failed to generate unified expected steps, falling back to empty:', error)
       return []
     }
   }, [currentStep.startValue, currentStep.targetValue])
@@ -822,16 +829,38 @@ export function TutorialPlayer({
                     color: 'yellow.700',
                     pl: 4
                   })}>
-                    {currentStep.multiStepInstructions.map((instruction, index) => (
-                      <li key={index} className={css({
-                        mb: 1,
-                        opacity: index === currentMultiStep ? '1' : index < currentMultiStep ? '0.7' : '0.4',
-                        fontWeight: index === currentMultiStep ? 'bold' : 'normal',
-                        color: index === currentMultiStep ? 'yellow.900' : index < currentMultiStep ? 'yellow.600' : 'yellow.400'
-                      })}>
-                        {index + 1}. {instruction}
-                      </li>
-                    ))}
+                    {currentStep.multiStepInstructions.map((instruction, index) => {
+                      // Get the mathematical term for this step
+                      const mathTerm = expectedSteps[index]?.mathematicalTerm
+                      const isCurrentStep = index === currentMultiStep
+
+                      return (
+                        <li key={index} className={css({
+                          mb: 1,
+                          opacity: index === currentMultiStep ? '1' : index < currentMultiStep ? '0.7' : '0.4',
+                          fontWeight: index === currentMultiStep ? 'bold' : 'normal',
+                          color: index === currentMultiStep ? 'yellow.900' : index < currentMultiStep ? 'yellow.600' : 'yellow.400'
+                        })}>
+                          {index + 1}. {instruction}
+                          {isCurrentStep && mathTerm && (
+                            <span className={css({
+                              ml: 2,
+                              px: 2,
+                              py: 1,
+                              bg: 'blue.100',
+                              color: 'blue.800',
+                              fontSize: 'xs',
+                              fontWeight: 'semibold',
+                              borderRadius: 'sm',
+                              border: '1px solid',
+                              borderColor: 'blue.200'
+                            })}>
+                              {mathTerm}
+                            </span>
+                          )}
+                        </li>
+                      )
+                    })}
                   </ol>
 
                   {/* Real-time bead movement feedback */}
