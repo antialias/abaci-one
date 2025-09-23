@@ -9,6 +9,7 @@ import { PracticeProblemPlayer, PracticeResults } from './PracticeProblemPlayer'
 import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
 import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
+import { TutorialProvider } from './TutorialContext'
 
 // Reducer state and actions
 interface TutorialPlayerState {
@@ -143,7 +144,7 @@ interface TutorialPlayerProps {
   className?: string
 }
 
-export function TutorialPlayer({
+function TutorialPlayerContent({
   tutorial,
   initialStepIndex = 0,
   isDebugMode = false,
@@ -1221,5 +1222,22 @@ export function TutorialPlayer({
         )}
       </div>
     </div>
+  )
+}
+
+// Export wrapper component with provider
+export function TutorialPlayer(props: TutorialPlayerProps) {
+  return (
+    <TutorialProvider
+      tutorial={props.tutorial}
+      initialStepIndex={props.initialStepIndex}
+      showDebugPanel={props.showDebugPanel}
+      onStepChange={props.onStepChange}
+      onStepComplete={props.onStepComplete}
+      onTutorialComplete={props.onTutorialComplete}
+      onEvent={props.onEvent}
+    >
+      <TutorialPlayerContent {...props} />
+    </TutorialProvider>
   )
 }
