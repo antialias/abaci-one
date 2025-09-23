@@ -156,6 +156,7 @@ export function TutorialPlayer({
 }: TutorialPlayerProps) {
   const [startTime] = useState(Date.now())
   const isProgrammaticChange = useRef(false)
+  const [showHelpForCurrentStep, setShowHelpForCurrentStep] = useState(false)
 
   const [state, dispatch] = useReducer(tutorialPlayerReducer, {
     currentStepIndex: initialStepIndex,
@@ -284,6 +285,17 @@ export function TutorialPlayer({
 
   // Get current step summary for real-time user feedback
   const currentStepSummary = getCurrentStepSummary()
+
+  // Timer for smart help detection
+  useEffect(() => {
+    setShowHelpForCurrentStep(false) // Reset help when step changes
+
+    const timer = setTimeout(() => {
+      setShowHelpForCurrentStep(true)
+    }, 8000) // 8 seconds
+
+    return () => clearTimeout(timer)
+  }, [currentMultiStep, multiStepStartTime]) // Reset when step changes or timer resets
 
   // Helper function to highlight the current mathematical term in the full decomposition
   const renderHighlightedDecomposition = useCallback(() => {
@@ -923,13 +935,11 @@ export function TutorialPlayer({
 
                       const hasMeaningfulSummary = currentStepSummary && !currentStepSummary.includes('No changes needed')
 
-                      // Smart help detection - show help when user might be confused or stalled
-                      const timeOnCurrentStep = Date.now() - multiStepStartTime
-                      const hasBeenOnStepTooLong = timeOnCurrentStep > 10000 // 10 seconds
-                      const isWrongValue = !isAtExpectedStartingState && currentValue !== expectedSteps[currentMultiStep]?.targetValue
-                      const shouldShowHelp = hasBeenOnStepTooLong || (isWrongValue && timeOnCurrentStep > 5000) // 5 seconds if wrong value
-
-                      const needsAction = !isAtExpectedStartingState && hasMeaningfulSummary && shouldShowHelp
+                      // Only show help if:
+                      // 1. Not at expected starting state (user needs to do something)
+                      // 2. Has meaningful summary to show
+                      // 3. Timer has expired (user appears stuck for 8+ seconds)
+                      const needsAction = !isAtExpectedStartingState && hasMeaningfulSummary && showHelpForCurrentStep
 
                       return (
                         <div>
