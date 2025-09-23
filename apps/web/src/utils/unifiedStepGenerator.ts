@@ -17,6 +17,7 @@ export interface UnifiedStepData {
 
   // Pedagogical decomposition - the math term for this step
   mathematicalTerm: string  // e.g., "10", "(5 - 1)", "-6"
+  termPosition: { startIndex: number; endIndex: number } // Position in full decomposition
 
   // English instruction - what the user should do
   englishInstruction: string  // e.g., "Click earth bead 1 in tens column"
@@ -105,6 +106,7 @@ export function generateUnifiedInstructionSequence(
     const stepData: UnifiedStepData = {
       stepIndex,
       mathematicalTerm: term,
+      termPosition: { startIndex: 0, endIndex: 0 }, // Will be set later
       englishInstruction,
       expectedValue: newValue,
       expectedState: newState,
@@ -120,8 +122,15 @@ export function generateUnifiedInstructionSequence(
     currentState = { ...newState }
   }
 
-  // Step 4: Build full decomposition string
-  const fullDecomposition = buildFullDecomposition(startValue, targetValue, decompositionTerms)
+  // Step 4: Build full decomposition string and calculate term positions
+  const { fullDecomposition, termPositions } = buildFullDecompositionWithPositions(startValue, targetValue, decompositionTerms)
+
+  // Step 5: Add position information to each step
+  steps.forEach((step, index) => {
+    if (termPositions[index]) {
+      step.termPosition = termPositions[index]
+    }
+  })
 
   return {
     fullDecomposition,
@@ -422,16 +431,47 @@ function validateStepConsistency(
 }
 
 /**
- * Build the full pedagogical decomposition string
+ * Build the full pedagogical decomposition string with term positions
  */
-function buildFullDecomposition(
+function buildFullDecompositionWithPositions(
   startValue: number,
   targetValue: number,
   terms: string[]
-): string {
+): {
+  fullDecomposition: string
+  termPositions: Array<{ startIndex: number; endIndex: number }>
+} {
 
   const difference = targetValue - startValue
   const termString = terms.join(' + ').replace('+ -', '- ')
 
-  return `${startValue} + ${difference} = ${startValue} + ${termString} = ${targetValue}`
+  // Build the full string: "3 + 14 = 3 + 10 + (5 - 1) = 17"
+  const leftSide = `${startValue} + ${difference} = ${startValue} + `
+  const rightSide = ` = ${targetValue}`
+  const fullDecomposition = leftSide + termString + rightSide
+
+  // Calculate positions for each term within the decomposition
+  const termPositions: Array<{ startIndex: number; endIndex: number }> = []
+  let currentIndex = leftSide.length
+
+  terms.forEach((term, index) => {
+    const startIndex = currentIndex
+    const endIndex = startIndex + term.length
+
+    termPositions.push({ startIndex, endIndex })
+
+    // Move past this term and the separator
+    currentIndex = endIndex
+    if (index < terms.length - 1) {
+      // Account for " + " or " - " separator (check if next term starts with -)
+      const nextTerm = terms[index + 1]
+      if (nextTerm.startsWith('-')) {
+        currentIndex += 3 // " - "
+      } else {
+        currentIndex += 3 // " + "
+      }
+    }
+  })
+
+  return { fullDecomposition, termPositions }
 }
