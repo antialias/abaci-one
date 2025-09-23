@@ -825,7 +825,7 @@ export function TutorialEditor({
       highlightBeads: generatedInstructions.highlightBeads,
       multiStepInstructions: generatedInstructions.multiStepInstructions,
       tooltip: generatedInstructions.tooltip,
-      errorMessages: generatedInstructions.errorMessages,
+      // errorMessages removed - bead diff tooltip provides better guidance
       position: newStepPosition
     }
 
@@ -1100,7 +1100,7 @@ export function TutorialEditor({
         totalSteps: unifiedSequence.totalSteps,
         multiStepInstructions: unifiedSequence.steps.map(step => step.englishInstruction), // Use unified instructions
         tooltip: legacyInstructions.tooltip,
-        errorMessages: legacyInstructions.errorMessages,
+        // errorMessages removed - bead diff tooltip provides better guidance
         // Store the unified sequence for debugging
         unifiedSequence: unifiedSequence
       }
@@ -1128,7 +1128,7 @@ export function TutorialEditor({
         totalSteps: generatedInstructions.totalSteps,
         multiStepInstructions: generatedInstructions.multiStepInstructions,
         tooltip: generatedInstructions.tooltip,
-        errorMessages: generatedInstructions.errorMessages
+        // errorMessages removed - bead diff tooltip provides better guidance
       }
 
       updateStep(stepIndex, instructionUpdates)
@@ -1648,40 +1648,7 @@ export function TutorialEditor({
                                 />
                               </FormGroup>
 
-                              <FormGroup columns={1}>
-                                <TextInput
-                                  label="Wrong Bead Error Message"
-                                  value={tutorial.steps[editorState.selectedStepIndex].errorMessages.wrongBead}
-                                  onChange={(value) => updateStep(editorState.selectedStepIndex, {
-                                    errorMessages: {
-                                      ...tutorial.steps[editorState.selectedStepIndex].errorMessages,
-                                      wrongBead: value
-                                    }
-                                  })}
-                                />
-
-                                <TextInput
-                                  label="Wrong Action Error Message"
-                                  value={tutorial.steps[editorState.selectedStepIndex].errorMessages.wrongAction}
-                                  onChange={(value) => updateStep(editorState.selectedStepIndex, {
-                                    errorMessages: {
-                                      ...tutorial.steps[editorState.selectedStepIndex].errorMessages,
-                                      wrongAction: value
-                                    }
-                                  })}
-                                />
-
-                                <TextInput
-                                  label="Hint Message"
-                                  value={tutorial.steps[editorState.selectedStepIndex].errorMessages.hint}
-                                  onChange={(value) => updateStep(editorState.selectedStepIndex, {
-                                    errorMessages: {
-                                      ...tutorial.steps[editorState.selectedStepIndex].errorMessages,
-                                      hint: value
-                                    }
-                                  })}
-                                />
-                              </FormGroup>
+                              {/* Error messages form removed - bead diff tooltip provides better guidance */}
 
                               {/* Multi-step Instructions */}
                               {tutorial.steps[editorState.selectedStepIndex].expectedAction === 'multi-step' && (
