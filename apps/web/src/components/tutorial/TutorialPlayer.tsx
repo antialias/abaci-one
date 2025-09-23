@@ -836,7 +836,9 @@ export function TutorialPlayer({
 
                       // Get the target value for this step to check if we need to show "Next Action"
                       const stepTargetValue = expectedSteps[index]?.targetValue
-                      const needsAction = isCurrentStep && currentStepSummary && currentValue !== stepTargetValue
+                      const hasChangesNeeded = currentValue !== stepTargetValue
+                      const hasMeaningfulSummary = currentStepSummary && !currentStepSummary.includes('No changes needed')
+                      const needsAction = isCurrentStep && hasChangesNeeded && hasMeaningfulSummary
 
                       return (
                         <div key={index}>
