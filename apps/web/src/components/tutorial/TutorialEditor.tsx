@@ -9,6 +9,7 @@ import { PracticeStepEditor } from './PracticeStepEditor'
 import { generateSingleProblem } from '../../utils/problemGenerator'
 import { skillConfigurationToSkillSets, createBasicAllowedConfiguration } from '../../utils/skillConfiguration'
 import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
+import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 import { EditorLayout, TextInput, NumberInput, FormGroup, CompactStepItem, BetweenStepAdd } from './shared/EditorComponents'
 import Resizable from 'react-resizable-layout'
 
@@ -1013,7 +1014,38 @@ export function TutorialEditor({
     setEditorState(prev => ({ ...prev, isDirty: true }))
   }, [tutorial.steps])
 
-  // Generate instructions for a specific step
+  // Generate unified instructions for a specific step
+  const generateUnifiedInstructionsForStep = useCallback((stepIndex: number) => {
+    const step = tutorial.steps[stepIndex]
+    if (!step) return
+
+    try {
+      const unifiedSequence = generateUnifiedInstructionSequence(step.startValue, step.targetValue)
+
+      // Convert unified sequence back to legacy format for compatibility
+      const legacyInstructions = generateAbacusInstructions(step.startValue, step.targetValue, step.problem)
+
+      const instructionUpdates: Partial<TutorialStep> = {
+        expectedAction: legacyInstructions.expectedAction,
+        actionDescription: unifiedSequence.fullDecomposition, // Use unified pedagogical decomposition
+        highlightBeads: legacyInstructions.highlightBeads,
+        stepBeadHighlights: legacyInstructions.stepBeadHighlights,
+        totalSteps: unifiedSequence.totalSteps,
+        multiStepInstructions: unifiedSequence.steps.map(step => step.englishInstruction), // Use unified instructions
+        tooltip: legacyInstructions.tooltip,
+        errorMessages: legacyInstructions.errorMessages,
+        // Store the unified sequence for debugging
+        unifiedSequence: unifiedSequence
+      }
+
+      updateStep(stepIndex, instructionUpdates)
+    } catch (error) {
+      console.error('Failed to generate unified instructions:', error)
+      // Could show user notification here
+    }
+  }, [tutorial.steps, updateStep])
+
+  // Generate instructions for a specific step (legacy)
   const generateInstructionsForStep = useCallback((stepIndex: number) => {
     const step = tutorial.steps[stepIndex]
     if (!step) return
@@ -1406,25 +1438,42 @@ export function TutorialEditor({
                                 <span className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'blue.800' })}>
                                   🤖 Automatic Instructions
                                 </span>
-                                <button
-                                  onClick={() => generateInstructionsForStep && generateInstructionsForStep(editorState.selectedStepIndex)}
-                                  className={css({
-                                    px: 3,
-                                    py: 1,
-                                    fontSize: 'xs',
-                                    bg: 'blue.600',
-                                    color: 'white',
-                                    borderRadius: 'md',
-                                    cursor: 'pointer',
-                                    _hover: { bg: 'blue.700' }
-                                  })}
-                                >
-                                  Generate Instructions
-                                </button>
+                                <div className={hstack({ gap: 2 })}>
+                                  <button
+                                    onClick={() => generateUnifiedInstructionsForStep(editorState.selectedStepIndex)}
+                                    className={css({
+                                      px: 3,
+                                      py: 1,
+                                      fontSize: 'xs',
+                                      bg: 'green.600',
+                                      color: 'white',
+                                      borderRadius: 'md',
+                                      cursor: 'pointer',
+                                      _hover: { bg: 'green.700' }
+                                    })}
+                                  >
+                                    ✨ Unified Generator
+                                  </button>
+                                  <button
+                                    onClick={() => generateInstructionsForStep && generateInstructionsForStep(editorState.selectedStepIndex)}
+                                    className={css({
+                                      px: 3,
+                                      py: 1,
+                                      fontSize: 'xs',
+                                      bg: 'blue.600',
+                                      color: 'white',
+                                      borderRadius: 'md',
+                                      cursor: 'pointer',
+                                      _hover: { bg: 'blue.700' }
+                                    })}
+                                  >
+                                    Legacy Generator
+                                  </button>
+                                </div>
                               </div>
                               <p className={css({ fontSize: 'xs', color: 'blue.700', mb: 0 })}>
-                                Click "Generate Instructions" to automatically create proper bead highlighting,
-                                tooltips, and error messages based on the start and target values.
+                                Use "Unified Generator" for consistent pedagogical decomposition like "3 + 14 = 3 + 10 + (5 - 1) = 17".
+                                The Legacy Generator provides the old approach.
                               </p>
                             </div>
 
@@ -1435,6 +1484,36 @@ export function TutorialEditor({
                               multiline
                               rows={3}
                             />
+
+                            {/* Unified Pedagogical Decomposition Display */}
+                            {(tutorial.steps[editorState.selectedStepIndex] as any)?.unifiedSequence && (
+                              <div className={css({
+                                p: 3,
+                                bg: 'green.50',
+                                borderRadius: 'md',
+                                border: '1px solid',
+                                borderColor: 'green.200'
+                              })}>
+                                <div className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'green.800', mb: 2 })}>
+                                  ✨ Unified Pedagogical Decomposition
+                                </div>
+                                <div className={css({
+                                  fontFamily: 'mono',
+                                  fontSize: 'sm',
+                                  color: 'green.700',
+                                  bg: 'green.100',
+                                  p: 2,
+                                  borderRadius: 'sm',
+                                  mb: 2
+                                })}>
+                                  {(tutorial.steps[editorState.selectedStepIndex] as any).unifiedSequence.fullDecomposition}
+                                </div>
+                                <div className={css({ fontSize: 'xs', color: 'green.600' })}>
+                                  This shows the complete mathematical breakdown with 1:1 mapping to bead movements.
+                                  Each term corresponds to specific abacus actions in pedagogical order.
+                                </div>
+                              </div>
+                            )}
 
                             {/* Manual Instruction Editing */}
                             <div className={css({
@@ -1544,21 +1623,38 @@ export function TutorialEditor({
                                     <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700' })}>
                                       Multi-step Instructions
                                     </label>
-                                    <button
-                                      onClick={() => generateInstructionsForStep(editorState.selectedStepIndex)}
-                                      className={css({
-                                        px: 3,
-                                        py: 1,
-                                        fontSize: 'xs',
-                                        bg: 'blue.500',
-                                        color: 'white',
-                                        borderRadius: 'md',
-                                        cursor: 'pointer',
-                                        _hover: { bg: 'blue.600' }
-                                      })}
-                                    >
-                                      🤖 Auto-Generate
-                                    </button>
+                                    <div className={hstack({ gap: 1 })}>
+                                      <button
+                                        onClick={() => generateUnifiedInstructionsForStep(editorState.selectedStepIndex)}
+                                        className={css({
+                                          px: 3,
+                                          py: 1,
+                                          fontSize: 'xs',
+                                          bg: 'green.500',
+                                          color: 'white',
+                                          borderRadius: 'md',
+                                          cursor: 'pointer',
+                                          _hover: { bg: 'green.600' }
+                                        })}
+                                      >
+                                        ✨ Unified
+                                      </button>
+                                      <button
+                                        onClick={() => generateInstructionsForStep(editorState.selectedStepIndex)}
+                                        className={css({
+                                          px: 3,
+                                          py: 1,
+                                          fontSize: 'xs',
+                                          bg: 'blue.500',
+                                          color: 'white',
+                                          borderRadius: 'md',
+                                          cursor: 'pointer',
+                                          _hover: { bg: 'blue.600' }
+                                        })}
+                                      >
+                                        🤖 Legacy
+                                      </button>
+                                    </div>
                                   </div>
                                   <div className={css({ space: 2 })}>
                                     {(tutorial.steps[editorState.selectedStepIndex].multiStepInstructions || []).map((instruction, index) => {
