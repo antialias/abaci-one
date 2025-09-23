@@ -874,6 +874,15 @@ export function TutorialPlayer({
                   maxW: '600px',
                   w: 'full'
                 })}>
+                  <p className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'bold',
+                    color: 'yellow.800',
+                    mb: 3
+                  })}>
+                    Guidance
+                  </p>
+
                   {/* Pedagogical decomposition with current term highlighted */}
                   {fullDecomposition && (
                     <div className={css({
@@ -885,14 +894,6 @@ export function TutorialPlayer({
                       borderRadius: 'md'
                     })}>
                       <p className={css({
-                        fontSize: 'xs',
-                        fontWeight: 'medium',
-                        color: 'gray.700',
-                        mb: 1
-                      })}>
-                        Problem Breakdown:
-                      </p>
-                      <p className={css({
                         fontSize: 'sm',
                         color: 'gray.800',
                         fontFamily: 'mono'
@@ -902,14 +903,6 @@ export function TutorialPlayer({
                     </div>
                   )}
 
-                  <p className={css({
-                    fontSize: 'sm',
-                    fontWeight: 'medium',
-                    color: 'yellow.800',
-                    mb: 2
-                  })}>
-                    Current Step:
-                  </p>
                   <div className={css({
                     fontSize: 'sm',
                     color: 'yellow.700'
@@ -969,7 +962,7 @@ export function TutorialPlayer({
                                 color: 'blue.800',
                                 mb: 1
                               })}>
-                                Next Action:
+                                💡
                               </p>
                               <p className={css({
                                 fontSize: 'xs',
