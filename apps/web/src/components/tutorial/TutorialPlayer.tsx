@@ -835,62 +835,66 @@ export function TutorialPlayer({
                       const isCurrentStep = index === currentMultiStep
 
                       return (
-                        <li key={index} className={css({
-                          mb: 1,
-                          opacity: index === currentMultiStep ? '1' : index < currentMultiStep ? '0.7' : '0.4',
-                          fontWeight: index === currentMultiStep ? 'bold' : 'normal',
-                          color: index === currentMultiStep ? 'yellow.900' : index < currentMultiStep ? 'yellow.600' : 'yellow.400'
-                        })}>
-                          {index + 1}. {instruction}
-                          {isCurrentStep && mathTerm && (
-                            <span className={css({
-                              ml: 2,
-                              px: 2,
-                              py: 1,
-                              bg: 'blue.100',
-                              color: 'blue.800',
-                              fontSize: 'xs',
-                              fontWeight: 'semibold',
-                              borderRadius: 'sm',
+                        <div key={index}>
+                          <li className={css({
+                            mb: 1,
+                            opacity: index === currentMultiStep ? '1' : index < currentMultiStep ? '0.7' : '0.4',
+                            fontWeight: index === currentMultiStep ? 'bold' : 'normal',
+                            color: index === currentMultiStep ? 'yellow.900' : index < currentMultiStep ? 'yellow.600' : 'yellow.400'
+                          })}>
+                            {index + 1}. {instruction}
+                            {isCurrentStep && mathTerm && (
+                              <span className={css({
+                                ml: 2,
+                                px: 2,
+                                py: 1,
+                                bg: 'blue.100',
+                                color: 'blue.800',
+                                fontSize: 'xs',
+                                fontWeight: 'semibold',
+                                borderRadius: 'sm',
+                                border: '1px solid',
+                                borderColor: 'blue.200'
+                              })}>
+                                {mathTerm}
+                              </span>
+                            )}
+                          </li>
+
+                          {/* Show bead diff summary directly under current step */}
+                          {isCurrentStep && currentStepSummary && (
+                            <div className={css({
+                              ml: 6, // Align with step text (after number and dot)
+                              mt: 1,
+                              mb: 2,
+                              p: 2,
+                              bg: 'blue.50',
                               border: '1px solid',
-                              borderColor: 'blue.200'
+                              borderColor: 'blue.200',
+                              borderRadius: 'md',
+                              fontSize: 'xs'
                             })}>
-                              {mathTerm}
-                            </span>
+                              <p className={css({
+                                fontSize: 'xs',
+                                fontWeight: 'medium',
+                                color: 'blue.800',
+                                mb: 1
+                              })}>
+                                Next Action:
+                              </p>
+                              <p className={css({
+                                fontSize: 'xs',
+                                color: 'blue.700',
+                                fontStyle: 'italic'
+                              })}>
+                                {currentStepSummary}
+                              </p>
+                            </div>
                           )}
-                        </li>
+                        </div>
                       )
                     })}
                   </ol>
-
-                  {/* Real-time bead movement feedback */}
-                  {currentStepSummary && (
-                    <div className={css({
-                      mt: 3,
-                      p: 2,
-                      bg: 'blue.50',
-                      border: '1px solid',
-                      borderColor: 'blue.200',
-                      borderRadius: 'md',
-                      fontSize: 'xs'
-                    })}>
-                      <p className={css({
-                        fontSize: 'xs',
-                        fontWeight: 'medium',
-                        color: 'blue.800',
-                        mb: 1
-                      })}>
-                        Next Action:
-                      </p>
-                      <p className={css({
-                        fontSize: 'xs',
-                        color: 'blue.700',
-                        fontStyle: 'italic'
-                      })}>
-                        {currentStepSummary}
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
 
