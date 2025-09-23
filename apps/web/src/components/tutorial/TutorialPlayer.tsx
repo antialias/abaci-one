@@ -958,17 +958,10 @@ export function TutorialPlayer({
                             })}>
                               <p className={css({
                                 fontSize: 'xs',
-                                fontWeight: 'medium',
-                                color: 'blue.800',
-                                mb: 1
-                              })}>
-                                💡
-                              </p>
-                              <p className={css({
-                                fontSize: 'xs',
                                 color: 'blue.700',
                                 fontStyle: 'italic'
                               })}>
+                                <span className={css({ mr: 1 })}>💡</span>
                                 {currentStepSummary}
                               </p>
                             </div>
