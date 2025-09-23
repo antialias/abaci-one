@@ -7,6 +7,7 @@ import { stack, hstack, vstack } from '../../../styled-system/patterns'
 import { Tutorial, TutorialStep, PracticeStep, TutorialEvent, NavigationState, UIState } from '../../types/tutorial'
 import { PracticeProblemPlayer, PracticeResults } from './PracticeProblemPlayer'
 import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
+import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 
 // Reducer state and actions
 interface TutorialPlayerState {
@@ -28,6 +29,7 @@ type TutorialPlayerAction =
   | { type: 'ADD_EVENT'; event: TutorialEvent }
   | { type: 'UPDATE_UI_STATE'; updates: Partial<UIState> }
   | { type: 'ADVANCE_MULTI_STEP' }
+  | { type: 'PREVIOUS_MULTI_STEP' }
   | { type: 'RESET_MULTI_STEP' }
 
 function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlayerAction): TutorialPlayerState {
@@ -96,6 +98,12 @@ function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlaye
       return {
         ...state,
         currentMultiStep: state.currentMultiStep + 1
+      }
+
+    case 'PREVIOUS_MULTI_STEP':
+      return {
+        ...state,
+        currentMultiStep: Math.max(0, state.currentMultiStep - 1)
       }
 
     case 'RESET_MULTI_STEP':
@@ -222,35 +230,48 @@ export function TutorialPlayer({
 
   // Get arrows for the immediate next action to reach current expected step
   const getCurrentStepBeads = useCallback(() => {
-    // If we've reached the final target, no arrows needed
-    if (currentValue === currentStep.targetValue) return undefined
-
     // If no expected steps, fall back to original behavior
     if (expectedSteps.length === 0) return currentStep.stepBeadHighlights
 
     // Get the current expected step we're working toward
     const currentExpectedStep = expectedSteps[currentMultiStep]
-    if (!currentExpectedStep) return undefined
+    if (!currentExpectedStep) {
+      // If we're past the last step, check if we've reached the final target
+      if (currentValue === currentStep.targetValue) return undefined
+      return undefined
+    }
 
-    // Generate arrows to get from current value to this expected step's target
+    // Use the new bead diff algorithm to get arrows for current step
     try {
-      const instruction = generateAbacusInstructions(currentValue, currentExpectedStep.targetValue)
+      console.log(`🎯 TutorialPlayer: Calculating bead diff for step ${currentMultiStep}`)
+      console.log(`   From: ${currentValue} → To: ${currentExpectedStep.targetValue}`)
 
-      // Take only the FIRST step (immediate next action)
-      const immediateAction = instruction.stepBeadHighlights?.filter(bead => bead.stepIndex === 0)
+      const beadDiff = calculateBeadDiffFromValues(currentValue, currentExpectedStep.targetValue)
 
-      console.log('🎯 Expected step progression:', {
-        currentValue,
-        expectedStepIndex: currentMultiStep,
-        expectedStepTarget: currentExpectedStep.targetValue,
-        expectedStepDescription: currentExpectedStep.description,
-        immediateActionBeads: immediateAction?.length || 0,
-        totalExpectedSteps: expectedSteps.length
-      })
+      console.log(`   Bead diff summary: "${beadDiff.summary}"`)
+      console.log(`   Has changes: ${beadDiff.hasChanges}`)
+      console.log(`   Changes: ${beadDiff.changes.length}`)
 
-      return immediateAction && immediateAction.length > 0 ? immediateAction : undefined
+      if (!beadDiff.hasChanges) {
+        console.log(`   ✅ No changes needed - current value ${currentValue} matches target ${currentExpectedStep.targetValue}`)
+        return undefined
+      }
+
+      // Convert bead diff results to StepBeadHighlight format expected by AbacusReact
+      const stepBeadHighlights: StepBeadHighlight[] = beadDiff.changes.map((change, index) => ({
+        placeValue: change.placeValue,
+        beadType: change.beadType,
+        position: change.position,
+        direction: change.direction,
+        stepIndex: 0, // Always use step 0 since we're showing immediate next action
+        order: change.order
+      }))
+
+      console.log(`   Generated ${stepBeadHighlights.length} step bead highlights`)
+
+      return stepBeadHighlights
     } catch (error) {
-      console.warn('⚠️ Failed to generate step guidance:', error)
+      console.error('Error generating step beads with bead diff:', error)
       return undefined
     }
   }, [currentValue, currentStep.targetValue, expectedSteps, currentMultiStep])
@@ -391,7 +412,7 @@ export function TutorialPlayer({
         }
       }
     }
-  }, [currentValue, currentStep, currentMultiStep, expectedSteps])
+  }, [currentValue, currentStep, currentMultiStep, expectedSteps, showDebugPanel])
 
   // Update the reference when the step changes (not just value changes)
   useEffect(() => {
@@ -637,6 +658,77 @@ export function TutorialPlayer({
                 >
                   Steps
                 </button>
+
+                {/* Multi-step navigation controls */}
+                {currentStep.multiStepInstructions && currentStep.multiStepInstructions.length > 1 && (
+                  <>
+                    <div className={css({
+                      fontSize: 'xs',
+                      color: 'gray.600',
+                      px: 2,
+                      borderLeft: '1px solid',
+                      borderColor: 'gray.300',
+                      ml: 2,
+                      pl: 3
+                    })}>
+                      Multi-Step: {currentMultiStep + 1} / {currentStep.multiStepInstructions.length}
+                    </div>
+                    <button
+                      onClick={() => dispatch({ type: 'RESET_MULTI_STEP' })}
+                      disabled={currentMultiStep === 0}
+                      className={css({
+                        px: 2,
+                        py: 1,
+                        fontSize: 'xs',
+                        border: '1px solid',
+                        borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
+                        borderRadius: 'md',
+                        bg: currentMultiStep === 0 ? 'gray.100' : 'white',
+                        color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
+                        cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
+                        _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' }
+                      })}
+                    >
+                      ⏮ First
+                    </button>
+                    <button
+                      onClick={() => dispatch({ type: 'PREVIOUS_MULTI_STEP' })}
+                      disabled={currentMultiStep === 0}
+                      className={css({
+                        px: 2,
+                        py: 1,
+                        fontSize: 'xs',
+                        border: '1px solid',
+                        borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
+                        borderRadius: 'md',
+                        bg: currentMultiStep === 0 ? 'gray.100' : 'white',
+                        color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
+                        cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
+                        _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' }
+                      })}
+                    >
+                      ⏪ Prev
+                    </button>
+                    <button
+                      onClick={() => dispatch({ type: 'ADVANCE_MULTI_STEP' })}
+                      disabled={currentMultiStep >= currentStep.multiStepInstructions.length - 1}
+                      className={css({
+                        px: 2,
+                        py: 1,
+                        fontSize: 'xs',
+                        border: '1px solid',
+                        borderColor: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? 'gray.200' : 'green.300',
+                        borderRadius: 'md',
+                        bg: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? 'gray.100' : 'white',
+                        color: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? 'gray.400' : 'green.700',
+                        cursor: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? 'not-allowed' : 'pointer',
+                        _hover: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? {} : { bg: 'green.50' }
+                      })}
+                    >
+                      Next ⏩
+                    </button>
+                  </>
+                )}
                 <label className={hstack({ gap: 2, fontSize: 'sm' })}>
                   <input
                     type="checkbox"
