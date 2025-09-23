@@ -115,7 +115,7 @@ function generateProperComplementDescription(
   if (decomposition) {
     const { addTerm, subtractTerm, compactMath, isRecursive } = decomposition
     return {
-      description: `${startValue} + ${difference} = ${startValue} + ${compactMath}`,
+      description: `${startValue} + ${difference} = ${startValue} + ${compactMath} = ${targetValue}`,
       decomposition: { ...decomposition, isRecursive }
     }
   }
@@ -355,66 +355,93 @@ function findOptimalDecomposition(value: number, context?: { startValue?: number
     }
   }
 
-  // Break down the value into components that map to bead movements
+  // Analyze actual bead movements to determine proper decomposition
+  if (context?.startValue !== undefined) {
+    const startState = numberToAbacusState(context.startValue)
+    const targetState = numberToAbacusState(context.startValue + value)
+    const { additions, removals } = calculateBeadChanges(startState, targetState)
+
+    const decompositionTerms: string[] = []
+
+    // Group changes by place value
+    const changesByPlace: { [place: number]: { adds: number, removes: number, addHeaven: boolean, removeHeaven: boolean } } = {}
+
+    additions.forEach(bead => {
+      if (!changesByPlace[bead.placeValue]) {
+        changesByPlace[bead.placeValue] = { adds: 0, removes: 0, addHeaven: false, removeHeaven: false }
+      }
+      if (bead.beadType === 'heaven') {
+        changesByPlace[bead.placeValue].addHeaven = true
+        changesByPlace[bead.placeValue].adds += 5 * Math.pow(10, bead.placeValue)
+      } else {
+        changesByPlace[bead.placeValue].adds += 1 * Math.pow(10, bead.placeValue)
+      }
+    })
+
+    removals.forEach(bead => {
+      if (!changesByPlace[bead.placeValue]) {
+        changesByPlace[bead.placeValue] = { adds: 0, removes: 0, addHeaven: false, removeHeaven: false }
+      }
+      if (bead.beadType === 'heaven') {
+        changesByPlace[bead.placeValue].removeHeaven = true
+        changesByPlace[bead.placeValue].removes += 5 * Math.pow(10, bead.placeValue)
+      } else {
+        changesByPlace[bead.placeValue].removes += 1 * Math.pow(10, bead.placeValue)
+      }
+    })
+
+    // Process places in descending order
+    const places = Object.keys(changesByPlace).map(p => parseInt(p)).sort((a, b) => b - a)
+
+    for (const place of places) {
+      const changes = changesByPlace[place]
+      const netValue = changes.adds - changes.removes
+
+      if (changes.adds > 0 && changes.removes > 0) {
+        // Complement operation - show as (add - remove)
+        decompositionTerms.push(`(${changes.adds} - ${changes.removes})`)
+      } else if (changes.adds > 0) {
+        // Pure addition
+        if (place === 1 && changes.adds >= 5) {
+          // Five complement in ones place
+          const earthValue = changes.adds % 5
+          if (earthValue > 0) {
+            decompositionTerms.push(`(5 - ${5 - earthValue})`)
+          } else {
+            decompositionTerms.push(`${changes.adds}`)
+          }
+        } else {
+          decompositionTerms.push(`${changes.adds}`)
+        }
+      } else if (changes.removes > 0) {
+        // Pure subtraction
+        decompositionTerms.push(`-${changes.removes}`)
+      }
+    }
+
+    // If we have decomposition terms, format them properly
+    if (decompositionTerms.length > 0) {
+      const compactMath = decompositionTerms.join(' + ').replace('+ -', '- ')
+      return {
+        addTerm: value,
+        subtractTerm: 0,
+        compactMath,
+        isRecursive: false,
+        decompositionTerms
+      }
+    }
+  }
+
+  // Fallback: Break down by place value without context
   const decompositionTerms: string[] = []
   let remainingValue = value
-
-  // Process from highest place value to lowest
   const placeValues = [100, 10, 1]
 
   for (const placeValue of placeValues) {
     if (remainingValue >= placeValue) {
       const digitNeeded = Math.floor(remainingValue / placeValue)
       remainingValue = remainingValue % placeValue
-
-      // For each place, check if we need complement operations
-      if (context?.startValue !== undefined) {
-        const currentDigit = Math.floor((context.startValue % (placeValue * 10)) / placeValue)
-        const targetDigit = currentDigit + digitNeeded
-
-        // If we exceed 9 in this place, we need to use complement from next higher place
-        if (targetDigit > 9 && placeValue < 100) {
-          const nextPlaceValue = placeValue * 10
-          const carryAmount = Math.floor(targetDigit / 10)
-          const remainderInPlace = targetDigit % 10
-
-          // Add the carry to next place
-          decompositionTerms.push(`${carryAmount * nextPlaceValue}`)
-
-          // Handle the remainder in current place
-          if (remainderInPlace > 0) {
-            if (remainderInPlace <= 4 && placeValue === 1) {
-              // Use five complement for ones place if needed
-              const currentOnesDigit = context.startValue % 10
-              const earthSpaceAvailable = 4 - (currentOnesDigit >= 5 ? currentOnesDigit - 5 : currentOnesDigit)
-
-              if (remainderInPlace > earthSpaceAvailable) {
-                decompositionTerms.push(`(5 - ${5 - remainderInPlace})`)
-              } else {
-                decompositionTerms.push(`${remainderInPlace}`)
-              }
-            } else {
-              decompositionTerms.push(`${remainderInPlace * placeValue}`)
-            }
-          }
-        } else if (placeValue === 1) {
-          // Check if we need five complement for ones place
-          const currentOnesDigit = context.startValue % 10
-          const earthSpaceAvailable = 4 - (currentOnesDigit >= 5 ? currentOnesDigit - 5 : currentOnesDigit)
-
-          if (digitNeeded <= 4 && digitNeeded > earthSpaceAvailable && currentOnesDigit < 5) {
-            decompositionTerms.push(`(5 - ${5 - digitNeeded})`)
-          } else {
-            decompositionTerms.push(`${digitNeeded * placeValue}`)
-          }
-        } else {
-          // Direct addition
-          decompositionTerms.push(`${digitNeeded * placeValue}`)
-        }
-      } else {
-        // Without context, just break down by place value
-        decompositionTerms.push(`${digitNeeded * placeValue}`)
-      }
+      decompositionTerms.push(`${digitNeeded * placeValue}`)
     }
   }
 
