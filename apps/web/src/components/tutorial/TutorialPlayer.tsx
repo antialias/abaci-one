@@ -29,6 +29,7 @@ interface ExpectedStep {
   startValue: number
   description: string
   mathematicalTerm?: string // Pedagogical term like "10", "(5 - 1)", "-6"
+  termPosition?: { startIndex: number; endIndex: number } // Position in full decomposition
 }
 
 type TutorialPlayerAction =
@@ -187,7 +188,7 @@ export function TutorialPlayer({
   }
 
   // Define the static expected steps using our unified step generator
-  const expectedSteps: ExpectedStep[] = useMemo(() => {
+  const { expectedSteps, fullDecomposition } = useMemo(() => {
     try {
       const unifiedSequence = generateUnifiedInstructionSequence(currentStep.startValue, currentStep.targetValue)
 
@@ -198,12 +199,19 @@ export function TutorialPlayer({
         targetValue: step.expectedValue,
         startValue: index === 0 ? currentStep.startValue : unifiedSequence.steps[index - 1].expectedValue,
         description: step.englishInstruction,
-        mathematicalTerm: step.mathematicalTerm  // Add the pedagogical term
+        mathematicalTerm: step.mathematicalTerm,  // Add the pedagogical term
+        termPosition: step.termPosition  // Add the precise position information
       }))
 
-      return steps
+      return {
+        expectedSteps: steps,
+        fullDecomposition: unifiedSequence.fullDecomposition
+      }
     } catch (error) {
-      return []
+      return {
+        expectedSteps: [],
+        fullDecomposition: ''
+      }
     }
   }, [currentStep.startValue, currentStep.targetValue])
 
@@ -272,6 +280,40 @@ export function TutorialPlayer({
 
   // Get current step summary for real-time user feedback
   const currentStepSummary = getCurrentStepSummary()
+
+  // Helper function to highlight the current mathematical term in the full decomposition
+  const renderHighlightedDecomposition = useCallback(() => {
+    if (!fullDecomposition || expectedSteps.length === 0) return null
+
+    const currentStep = expectedSteps[currentMultiStep]
+    if (!currentStep?.mathematicalTerm || !currentStep?.termPosition) {
+      return <span>{fullDecomposition}</span>
+    }
+
+    // Use the precise position information from the unified generator
+    const { startIndex, endIndex } = currentStep.termPosition
+    const beforeTerm = fullDecomposition.substring(0, startIndex)
+    const term = fullDecomposition.substring(startIndex, endIndex)
+    const afterTerm = fullDecomposition.substring(endIndex)
+
+    return (
+      <span>
+        {beforeTerm}
+        <span className={css({
+          bg: 'blue.100',
+          color: 'blue.800',
+          px: 1,
+          borderRadius: 'sm',
+          border: '2px solid',
+          borderColor: 'blue.300',
+          fontWeight: 'bold'
+        })}>
+          {term}
+        </span>
+        {afterTerm}
+      </span>
+    )
+  }, [fullDecomposition, expectedSteps, currentMultiStep])
 
   // Event logging - now just notifies parent, state is managed by reducer
   const notifyEvent = useCallback((event: TutorialEvent) => {
@@ -816,6 +858,34 @@ export function TutorialPlayer({
                   maxW: '600px',
                   w: 'full'
                 })}>
+                  {/* Pedagogical decomposition with current term highlighted */}
+                  {fullDecomposition && (
+                    <div className={css({
+                      mb: 3,
+                      p: 2,
+                      bg: 'gray.50',
+                      border: '1px solid',
+                      borderColor: 'gray.200',
+                      borderRadius: 'md'
+                    })}>
+                      <p className={css({
+                        fontSize: 'xs',
+                        fontWeight: 'medium',
+                        color: 'gray.700',
+                        mb: 1
+                      })}>
+                        Problem Breakdown:
+                      </p>
+                      <p className={css({
+                        fontSize: 'sm',
+                        color: 'gray.800',
+                        fontFamily: 'mono'
+                      })}>
+                        {renderHighlightedDecomposition()}
+                      </p>
+                    </div>
+                  )}
+
                   <p className={css({
                     fontSize: 'sm',
                     fontWeight: 'medium',
