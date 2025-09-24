@@ -357,18 +357,26 @@ function TutorialPlayerContent({
 
   // Create overlay for tooltip positioned precisely at topmost bead using smart collision detection
   const tooltipOverlay = useMemo(() => {
-    // Show tooltip if we have step instructions OR if step is completed
-    if (!currentStepSummary || (!currentStepBeads?.length && !isStepCompleted)) {
+    // Show tooltip if step is completed OR if we have step instructions
+    if (!isStepCompleted && (!currentStepSummary || !currentStepBeads?.length)) {
       return null
     }
 
-    // Find the topmost bead with arrows, or use last bead position if completed
+    // Find the topmost bead with arrows, or use fallback for completed steps
     let topmostBead = currentStepBeads?.length ? findTopmostBeadWithArrows(currentStepBeads) : null
 
-    // If step is completed but no current beads with arrows, try to find a recent bead to attach to
-    if (!topmostBead && isStepCompleted && currentStepBeads?.length) {
-      // Use the first bead from current step beads as fallback
-      topmostBead = currentStepBeads[0]
+    // If step is completed but no current beads, create a fallback bead position
+    if (!topmostBead && isStepCompleted) {
+      // Find an appropriate bead to attach celebration tooltip to
+      // Use the ones place (rightmost column) heaven bead as fallback
+      topmostBead = {
+        placeValue: 0, // Ones place
+        beadType: 'heaven' as const,
+        position: 0,
+        direction: 'none' as const,
+        stepIndex: currentMultiStep,
+        order: 0
+      }
     }
 
     if (!topmostBead) {
@@ -510,7 +518,7 @@ function TutorialPlayerContent({
     }
 
     return overlay
-  }, [currentStepSummary, currentStepBeads, isStepCompleted])
+  }, [currentStepSummary, currentStepBeads, isStepCompleted, currentMultiStep, renderHighlightedDecomposition, currentValue])
 
   // Timer for smart help detection
   useEffect(() => {
