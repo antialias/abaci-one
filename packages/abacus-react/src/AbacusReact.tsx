@@ -672,11 +672,13 @@ function getBeadStepHighlight(
     return { isHighlighted: false, isCurrentStep: false };
   }
 
-  const matchingStepBead = stepBeadHighlights.find(stepBead =>
-    stepBead.placeValue === bead.placeValue &&
-    stepBead.beadType === bead.type &&
-    (stepBead.position === undefined || stepBead.position === bead.position)
-  );
+  const matchingStepBead = stepBeadHighlights.find(stepBead => {
+    const matches = stepBead.placeValue === bead.placeValue &&
+      stepBead.beadType === bead.type &&
+      (stepBead.position === undefined || stepBead.position === bead.position);
+
+    return matches;
+  });
 
   if (!matchingStepBead) {
     return { isHighlighted: false, isCurrentStep: false };
@@ -685,6 +687,7 @@ function getBeadStepHighlight(
   const isCurrentStep = matchingStepBead.stepIndex === currentStep;
   const isCompleted = matchingStepBead.stepIndex < currentStep;
   const isHighlighted = isCurrentStep || isCompleted;
+
 
   return {
     isHighlighted,
@@ -785,9 +788,14 @@ function getBeadColor(
   bead: BeadConfig,
   totalColumns: number,
   colorScheme: string,
-  colorPalette: string
+  colorPalette: string,
+  isHighlighted: boolean = false
 ): string {
   const inactiveColor = 'rgb(211, 211, 211)'; // Typst uses gray.lighten(70%)
+  const highlightColor = '#FFD700'; // Gold color for highlighting
+
+  // If highlighted, return the highlight color regardless of active state
+  if (isHighlighted) return highlightColor;
 
   if (!bead.active) return inactiveColor;
 
@@ -1712,7 +1720,12 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             }
           }
 
-          const color = getBeadColor(bead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette);
+          // Check if bead is highlighted - NO MORE EFFECTIVECOLUMNS THREADING!
+          const regularHighlight = isBeadHighlightedByPlaceValue(bead, highlightBeads);
+          const stepHighlight = getBeadStepHighlight(bead, stepBeadHighlights, currentStep);
+          const isHighlighted = regularHighlight || stepHighlight.isHighlighted;
+
+          const color = getBeadColor(bead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette, isHighlighted);
 
           // Apply custom styling
           const beadStyle = mergeBeadStyles(
@@ -1723,11 +1736,6 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             bead.type === 'earth' ? bead.position : undefined,
             bead.active
           );
-
-          // Check if bead is highlighted - NO MORE EFFECTIVECOLUMNS THREADING!
-          const regularHighlight = isBeadHighlightedByPlaceValue(bead, highlightBeads);
-          const stepHighlight = getBeadStepHighlight(bead, stepBeadHighlights, currentStep);
-          const isHighlighted = regularHighlight || stepHighlight.isHighlighted;
 
           // Check if bead is disabled - NO MORE EFFECTIVECOLUMNS THREADING!
           const isDisabled = isBeadDisabledByPlaceValue(bead, disabledBeads) ||
