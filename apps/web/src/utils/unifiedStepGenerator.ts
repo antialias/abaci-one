@@ -38,6 +38,9 @@ export interface UnifiedInstructionSequence {
   // Overall pedagogical decomposition
   fullDecomposition: string  // e.g., "3 + 14 = 3 + 10 + (5 - 1) = 17"
 
+  // Whether the decomposition is meaningful (not redundant)
+  isMeaningfulDecomposition: boolean
+
   // Step-by-step breakdown
   steps: UnifiedStepData[]
 
@@ -125,7 +128,10 @@ export function generateUnifiedInstructionSequence(
   // Step 4: Build full decomposition string and calculate term positions
   const { fullDecomposition, termPositions } = buildFullDecompositionWithPositions(startValue, targetValue, decompositionTerms)
 
-  // Step 5: Add position information to each step
+  // Step 5: Determine if this decomposition is meaningful
+  const isMeaningfulDecomposition = isDecompositionMeaningful(startValue, targetValue, decompositionTerms, fullDecomposition)
+
+  // Step 6: Add position information to each step
   steps.forEach((step, index) => {
     if (termPositions[index]) {
       step.termPosition = termPositions[index]
@@ -134,6 +140,7 @@ export function generateUnifiedInstructionSequence(
 
   return {
     fullDecomposition,
+    isMeaningfulDecomposition,
     steps,
     startValue,
     targetValue,
@@ -474,4 +481,78 @@ function buildFullDecompositionWithPositions(
   })
 
   return { fullDecomposition, termPositions }
+}
+
+/**
+ * Determine if a pedagogical decomposition is meaningful (not redundant)
+ */
+function isDecompositionMeaningful(
+  startValue: number,
+  targetValue: number,
+  decompositionTerms: string[],
+  fullDecomposition: string
+): boolean {
+  // Simple heuristics to determine if the decomposition adds pedagogical value
+
+  const difference = targetValue - startValue
+
+  // If there's no change, it's definitely not meaningful
+  if (difference === 0) {
+    return false
+  }
+
+  // If there's only one term and it equals the difference, it's redundant
+  if (decompositionTerms.length === 1 && decompositionTerms[0] === Math.abs(difference).toString()) {
+    return false
+  }
+
+  // Check if we have complement operations (parentheses) or multiple terms
+  const hasComplementOperations = decompositionTerms.some(term => term.includes('(') && term.includes(')'))
+  const hasMultipleTerms = decompositionTerms.length > 1
+
+  // For very simple differences (< 5), even complement operations might be redundant
+  if (Math.abs(difference) < 5 && hasComplementOperations && !hasMultipleTerms) {
+    // Check if it's a simple complement that doesn't add pedagogical value
+    // For example: 5 -> 4 using (4-5) is probably not worth showing
+    return false
+  }
+
+  // If we have multiple terms, it's definitely meaningful
+  if (hasMultipleTerms) {
+    return true
+  }
+
+  // For larger differences with complement operations, it's meaningful
+  if (hasComplementOperations && Math.abs(difference) >= 5) {
+    return true
+  }
+
+  // For single terms, check if it's a simple difference that doesn't need decomposition
+  if (decompositionTerms.length === 1) {
+    const term = decompositionTerms[0]
+
+    // If it's just the raw difference (positive or negative), it's redundant
+    if (term === difference.toString() || term === Math.abs(difference).toString() || term === `-${Math.abs(difference)}`) {
+      return false
+    }
+
+    // If the difference is small (< 10) and it's a simple term, likely redundant
+    if (Math.abs(difference) < 10) {
+      return false
+    }
+  }
+
+  // Check for actual decomposition complexity in the full string
+  // If it just restates the problem without breaking it down, it's redundant
+  const originalProblem = `${startValue} ${difference >= 0 ? '+' : '-'} ${Math.abs(difference)}`
+
+  // If the decomposition is essentially just restating the original, it's not meaningful
+  // This catches cases like "0 + 1 = 0 + 1 = 1"
+  const decompositionPart = fullDecomposition.split(' = ')[1]?.split(' = ')[0] // Get middle part
+  if (decompositionPart && decompositionPart.replace(/\s/g, '') === `${startValue}+${Math.abs(difference)}`.replace(/\s/g, '')) {
+    return false
+  }
+
+  // Default to meaningful for cases that don't match simple patterns
+  return true
 }

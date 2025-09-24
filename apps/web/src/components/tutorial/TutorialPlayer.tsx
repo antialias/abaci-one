@@ -252,7 +252,7 @@ function TutorialPlayerContent({
   }
 
   // Define the static expected steps using our unified step generator
-  const { expectedSteps, fullDecomposition } = useMemo(() => {
+  const { expectedSteps, fullDecomposition, isMeaningfulDecomposition } = useMemo(() => {
     try {
       const unifiedSequence = generateUnifiedInstructionSequence(currentStep.startValue, currentStep.targetValue)
 
@@ -269,12 +269,14 @@ function TutorialPlayerContent({
 
       return {
         expectedSteps: steps,
-        fullDecomposition: unifiedSequence.fullDecomposition
+        fullDecomposition: unifiedSequence.fullDecomposition,
+        isMeaningfulDecomposition: unifiedSequence.isMeaningfulDecomposition
       }
     } catch (error) {
       return {
         expectedSteps: [],
-        fullDecomposition: ''
+        fullDecomposition: '',
+        isMeaningfulDecomposition: false
       }
     }
   }, [currentStep.startValue, currentStep.targetValue])
@@ -507,11 +509,13 @@ function TutorialPlayerContent({
                     </div>
                   ) : (
                     <>
-                      <PedagogicalDecompositionDisplay
-                        variant="tooltip"
-                        showLabel={true}
-                        decomposition={renderHighlightedDecomposition()}
-                      />
+                      {isMeaningfulDecomposition && (
+                        <PedagogicalDecompositionDisplay
+                          variant="tooltip"
+                          showLabel={true}
+                          decomposition={renderHighlightedDecomposition()}
+                        />
+                      )}
                       <span style={{ fontSize: '18px' }}>💡</span> {currentStepSummary}
                     </>
                   )}
@@ -1052,7 +1056,7 @@ function TutorialPlayerContent({
                   </p>
 
                   {/* Pedagogical decomposition with current term highlighted */}
-                  {fullDecomposition && (
+                  {fullDecomposition && isMeaningfulDecomposition && (
                     <div className={css({
                       mb: 4,
                       p: 3,
