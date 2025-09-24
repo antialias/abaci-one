@@ -1,77 +1,110 @@
 # Soroban Pedagogical Expansion Algorithm
 
 ## Overview
-This algorithm generates pedagogical expansions that show how to perform arithmetic operations on a soroban (Japanese abacus) by analyzing physical bead movement constraints.
+This algorithm generates pedagogical expansions that show how to perform arithmetic operations on a soroban (Japanese abacus) by analyzing physical bead movement constraints and current abacus state.
 
 ## Key Principle
-The LHS (starting value) is ALREADY on the abacus. The pedagogical expansion only shows how to perform the operation (RHS) to reach the target value.
+The LHS (starting value) is ALREADY on the abacus. The pedagogical expansion only shows how to perform the operation (addend/RHS) to reach the target value.
 
 ## Addition Algorithm
 
-### Input
-- Current abacus state = LHS value (already displayed)
-- Operation to perform = RHS value (the number to add)
+### Setup
+- Abacus shows LHS value (already displayed)
+- RHS is the addend (number to add)
+- Leave an extra blank rod on the left to absorb carries
 - Target = LHS + RHS
 
-### Process
-1. **Parse RHS digit by digit from highest place value to lowest**
-2. **For each digit D at place value P:**
+### Process - Left to Right Processing
 
-   **Step A: Try Direct Entry**
-   - Attempt to add digit D directly by moving beads at place P
-   - If successful, continue to next digit
+For each digit at place P from most-significant to least-significant:
 
-   **Step B: Try 5's Complement**
-   - If direct entry fails, try using heaven bead
-   - Replace D with `(5 + (D-5))` if heaven bead available
-   - If successful, continue to next digit
+1. **Setup for Place P**
+   - Let `d` = RHS digit at place P. If `d = 0`, continue to next place.
+   - Let `a` = current digit showing at place P (0–9)
 
-   **Step C: Try 10's Complement**
-   - If heaven bead already active OR digit still won't fit
-   - Add 10 to place value P+1 (next highest place)
-   - Subtract `(10 - D)` from place value P
-   - Expression: `D = (10 - (10-D))`
+2. **Decision: Direct Addition vs 10's Complement**
+   - **If `a + d ≤ 9` (no carry needed):** Add within place P
+   - **If `a + d ≥ 10` (carry needed):** Use 10's complement
 
-   **Step D: Try 100's Complement**
-   - If can't add 10 to P+1 (because it shows 9)
-   - Add 100 to place value P+2
-   - Subtract 90 from place value P+1
-   - Subtract `(10 - D)` from place value P
+3. **Case A: Direct Addition at Place P (a + d ≤ 9)**
 
-   **Step E: Try 1000's Complement**
-   - If can't add 100 to P+2 (because it shows 9)
-   - Add 1000 to place value P+3
-   - Subtract 900 from place value P+2
-   - Subtract 90 from place value P+1
-   - Subtract `(10 - D)` from place value P
+   **For d ≤ 4:**
+   - If you can push `d` lower beads: do it directly
+   - Else (not enough lower capacity, upper bead is up): Use 5's complement:
+     - Add 5 (activate upper bead)
+     - Subtract `(5 - d)` (remove lower beads)
+     - Expression: `d = (5 - (5-d))`
 
-   **Step F: Continue Pattern**
-   - Keep cascading up place values as needed
-   - Each level adds the next power of 10 and subtracts appropriate complements
+   **For d ≥ 5:**
+   - If possible: activate upper bead (if not already) and push `d - 5` lower beads
+   - If that won't fit: fall back to Case B (10's complement)
 
-3. **Generate Parenthesized Expressions**
-   - Each complement operation becomes a parenthesized replacement
-   - Example: `7 = (10 - 3)` for ten's complement
-   - Example: `6 = (5 + 1)` for five's complement
+4. **Case B: 10's Complement (a + d ≥ 10)**
 
-4. **Process Left to Right**
-   - Continue until entire RHS is processed
-   - Each digit gets handled with appropriate complement strategy
+   **Ripple-Carry Process:**
+   - Find the nearest higher non-9 place value
+   - Increment that place by 1
+   - Set any intervening 9s to 0
 
-## Examples
+   **Subtraction at Place P:**
+   - Subtract `(10 - d)` at place P
+   - **If can't subtract at P (borrowing needed):**
+     - Borrow 10 from the place just incremented (decrement by 1, add 10 to P)
+     - Then subtract `(10 - d)` at place P
 
-### Direct Entry
-- `4 + 3 = 7` → No complement needed, direct bead movement
+   **Expression:** `d = (10 - (10-d))`
 
-### Five's Complement
-- `0 + 6 = 0 + (5 + 1) = 6` → Replace 6 with (5 + 1)
+5. **Continue to Next Place**
+   - Move to next place value to the right
+   - Repeat process
 
-### Ten's Complement
-- `4 + 7 = 4 + (10 - 3) = 11` → Replace 7 with (10 - 3)
+### Invariant
+After finishing each place, every rod shows a single decimal digit (0–9), and the abacus equals LHS + the processed prefix of RHS.
 
-### Multi-Place Processing
-- `89 + 25` → Process as `80 + 9 + 20 + 5`
-- Handle 20 first (add to tens place), then 5 (add to ones place)
+## Worked Examples
+
+### Example 1: 268 + 795 = 1063
+```
+Start: 2|6|8
+Hundreds (7): a=2, d=7, a+d=9 ≤ 9 → Direct addition (5+2 lowers)
+  Result: 9|6|8
+Tens (9): a=6, d=9, a+d=15 ≥ 10 → 10's complement
+  Ripple-carry: hundreds=9 → set to 0, increment thousands → 1|0|6|8
+  Subtract (10-9)=1 from tens: 6-1=5 → 1|0|5|8
+Ones (5): a=8, d=5, a+d=13 ≥ 10 → 10's complement
+  Carry: tens 5→6
+  Subtract (10-5)=5 from ones: 8-5=3
+Result: 1|0|6|3 = 1063
+```
+
+### Example 2: 999 + 1 = 1000
+```
+Start: 9|9|9
+Ones (1): a=9, d=1, a+d=10 ≥ 10 → 10's complement
+  Ripple-carry across 9s: increment thousands to 1, clear hundreds and tens to 0
+  Subtract (10-1)=9 from ones: 9-9=0
+Result: 1|0|0|0 = 1000
+```
+
+### Example 3: 4 + 3 = 7 (Direct)
+```
+Start: 4 (heaven up, 4 lowers down)
+Ones (3): a=4, d=3, a+d=7 ≤ 9 → But can't push 3 more lowers (would be 7 lowers)
+  Use 5's complement: 3 = (5 - 2)
+  Add 5 (second heaven bead), subtract 2 lowers
+Result: 7 (both heaven beads, 2 lowers) = 7
+```
+
+### Example 4: 7 + 8 = 15 (5's complement impossible)
+```
+Start: 7 (heaven up, 2 lowers down)
+Ones (8): a=7, d=8, a+d=15 ≥ 10 → 10's complement
+  Add 10 to tens place
+  Subtract (10-8)=2: but need to borrow first
+  Borrow 10 from tens (decrement tens, add 10 to ones): 7+10=17
+  Subtract 2: 17-2=15, but 15 > 9 so carry: tens+1, ones=5
+Result: 1|5 = 15
+```
 
 ## Subtraction Algorithm
 **TODO: Implement in separate sprint**
