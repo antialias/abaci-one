@@ -279,7 +279,6 @@ function TutorialPlayerContent({
 
     // Use the new bead diff algorithm to get arrows for current step
     try {
-
       const beadDiff = calculateBeadDiffFromValues(currentValue, currentExpectedStep.targetValue)
 
 
@@ -322,6 +321,7 @@ function TutorialPlayerContent({
 
   // Get current step beads (dynamic arrows for static expected steps)
   const currentStepBeads = getCurrentStepBeads()
+
 
   // Get current step summary for real-time user feedback
   const currentStepSummary = getCurrentStepSummary()
