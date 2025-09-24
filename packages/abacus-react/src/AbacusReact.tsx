@@ -414,7 +414,7 @@ export function useAbacusState(initialValue: number = 0, targetColumns?: number)
 }
 
 // NEW: Native place-value state management hook (eliminates the column index nightmare!)
-export function useAbacusPlaceStates(initialValue: number = 0, maxPlaceValue: ValidPlaceValues = 4) {
+export function useAbacusPlaceStates(controlledValue: number = 0, maxPlaceValue: ValidPlaceValues = 4) {
   // Initialize state from value using place values as keys - NO MORE ARRAY INDICES!
   const initializeFromValue = useCallback((value: number): PlaceStatesMap => {
     const states = new Map<ValidPlaceValues, PlaceState>();
@@ -434,7 +434,7 @@ export function useAbacusPlaceStates(initialValue: number = 0, maxPlaceValue: Va
     return states;
   }, [maxPlaceValue]);
 
-  const [placeStates, setPlaceStates] = useState<PlaceStatesMap>(() => initializeFromValue(initialValue));
+  const [placeStates, setPlaceStates] = useState<PlaceStatesMap>(() => initializeFromValue(controlledValue));
 
   // Calculate current value from place states - NO MORE INDEX MATH!
   const value = useMemo(() => {
@@ -450,6 +450,16 @@ export function useAbacusPlaceStates(initialValue: number = 0, maxPlaceValue: Va
   const setValue = useCallback((newValue: number) => {
     setPlaceStates(initializeFromValue(newValue));
   }, [initializeFromValue]);
+
+  // Update internal state when external controlled value changes
+  // Only update if the controlled value is different from our current value
+  // This prevents infinite loops while allowing controlled updates
+  React.useEffect(() => {
+    const currentInternalValue = value;
+    if (controlledValue !== currentInternalValue) {
+      setPlaceStates(initializeFromValue(controlledValue));
+    }
+  }, [controlledValue, initializeFromValue, value]);
 
   const getPlaceState = useCallback((placeValue: ValidPlaceValues): PlaceState => {
     return placeStates.get(placeValue) || {
@@ -1345,15 +1355,41 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     }
   }, [placeStates, effectiveColumns]);
 
-  // Debug prop changes
+  // Track when changes are from external control vs user interaction
+  const isExternalChange = useRef(false);
+  const previousControlledValue = useRef(value);
+
+  // Debug prop changes and mark external changes
   React.useEffect(() => {
     // console.log(`🔄 Component received value prop: ${value}, internal value: ${currentValue}`);
+
+    // Mark this as an external change when controlled value prop changes
+    if (value !== previousControlledValue.current) {
+      isExternalChange.current = true;
+    }
   }, [value, currentValue]);
 
-  // Notify about value changes
+  // Notify about value changes only when user interacts (not external control)
   React.useEffect(() => {
+    // Skip callback if this change was from external control
+    if (isExternalChange.current) {
+      isExternalChange.current = false;
+      return;
+    }
+
+    // Skip callback if value hasn't actually changed from user interaction
+    if (currentValue === previousControlledValue.current) {
+      return;
+    }
+
+    // This is a user-initiated change, notify parent
     onValueChange?.(currentValue);
   }, [currentValue, onValueChange]);
+
+  // Track controlled value changes
+  React.useEffect(() => {
+    previousControlledValue.current = value;
+  }, [value]);
 
 
   const dimensions = useAbacusDimensions(effectiveColumns, finalConfig.scaleFactor, finalConfig.showNumbers);
@@ -1509,23 +1545,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         }
       } else if (e.key === 'Tab' && e.shiftKey) {
         e.preventDefault();
-        // console.log(`➡️ SHIFT+TAB: moving to lower place value (right)`);
+        // console.log(`⬅️ SHIFT+TAB: moving to higher place value (left)`);
 
-        // Shift+Tab moves RIGHT (to lower place values): hundreds → tens → ones
-        // Higher columnIndex = lower place value
-        const nextColumn = activeColumn + 1;
-        if (nextColumn < effectiveColumns) {
-          // console.log(`➡️ Moving focus to lower place value: ${nextColumn}`);
-          setActiveColumn(nextColumn);
-        } else {
-          // console.log(`🏁 Reached lowest place, wrapping to highest place`);
-          setActiveColumn(0); // Wrap to leftmost (highest place)
-        }
-      } else if (e.key === 'Tab') {
-        e.preventDefault();
-        // console.log(`🔄 TAB: moving to next higher place value (left)`);
-
-        // Tab moves LEFT (to higher place values): ones → tens → hundreds
+        // Shift+Tab moves LEFT (to higher place values): ones → tens → hundreds
         // Lower columnIndex = higher place value
         const nextColumn = activeColumn - 1;
         if (nextColumn >= 0) {
@@ -1534,6 +1556,20 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         } else {
           // console.log(`🏁 Reached highest place, wrapping to ones place`);
           setActiveColumn(effectiveColumns - 1); // Wrap to rightmost (ones place)
+        }
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        // console.log(`➡️ TAB: moving to lower place value (right)`);
+
+        // Tab moves RIGHT (to lower place values): hundreds → tens → ones
+        // Higher columnIndex = lower place value
+        const nextColumn = activeColumn + 1;
+        if (nextColumn < effectiveColumns) {
+          // console.log(`➡️ Moving focus to lower place value: ${nextColumn}`);
+          setActiveColumn(nextColumn);
+        } else {
+          // console.log(`🏁 Reached lowest place, wrapping to highest place`);
+          setActiveColumn(0); // Wrap to leftmost (highest place)
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
