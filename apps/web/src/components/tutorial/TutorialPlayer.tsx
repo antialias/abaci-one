@@ -511,18 +511,27 @@ function TutorialPlayerContent({
     }
   }, []) // Only run on mount
 
-  // Check if step is completed - now using useEffect only for side effects
+  // Check if step is completed - only complete when we've gone through all multi-steps AND reached target
   useEffect(() => {
     if (currentStep && currentValue === currentStep.targetValue && !isStepCompleted) {
-      dispatch({ type: 'COMPLETE_STEP', stepId: currentStep.id })
-      onStepComplete?.(currentStepIndex, currentStep, true)
+      // For multi-step problems, only complete when we've finished all expected steps
+      const isMultiStepProblem = expectedSteps.length > 0
+      const hasFinishedAllMultiSteps = currentMultiStep >= expectedSteps.length - 1
 
-      // Auto-advance if enabled
-      if (uiState.autoAdvance && navigationState.canGoNext) {
-        setTimeout(() => goToNextStep(), 1500)
+      // Complete the step if:
+      // 1. It's not a multi-step problem, OR
+      // 2. It's a multi-step problem and we've finished all steps
+      if (!isMultiStepProblem || hasFinishedAllMultiSteps) {
+        dispatch({ type: 'COMPLETE_STEP', stepId: currentStep.id })
+        onStepComplete?.(currentStepIndex, currentStep, true)
+
+        // Auto-advance if enabled
+        if (uiState.autoAdvance && navigationState.canGoNext) {
+          setTimeout(() => goToNextStep(), 1500)
+        }
       }
     }
-  }, [currentValue, currentStep, isStepCompleted, uiState.autoAdvance, navigationState.canGoNext, onStepComplete, currentStepIndex, goToNextStep])
+  }, [currentValue, currentStep, isStepCompleted, expectedSteps, currentMultiStep, uiState.autoAdvance, navigationState.canGoNext, onStepComplete, currentStepIndex, goToNextStep])
 
   // Track the last value to detect when meaningful changes occur
   const lastValueForStepAdvancement = useRef<number>(currentValue)
