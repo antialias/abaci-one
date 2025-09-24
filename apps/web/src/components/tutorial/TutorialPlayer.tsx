@@ -219,6 +219,11 @@ function TutorialPlayerContent({
   const { config: abacusConfig } = useAbacusDisplay()
   const [isSuccessPopupDismissed, setIsSuccessPopupDismissed] = useState(false)
 
+  // Keep refs needed for step advancement and bead tracking
+  const lastValueForStepAdvancement = useRef<number>(currentValue)
+  const userHasInteracted = useRef<boolean>(false)
+  const lastMovedBead = useRef<StepBeadHighlight | null>(null)
+
   // Reset success popup when moving to new step
   useEffect(() => {
     setIsSuccessPopupDismissed(false)
@@ -649,10 +654,6 @@ function TutorialPlayerContent({
     }
   }, [events, notifyEvent])
 
-  // Keep refs needed for step advancement logic
-  const lastValueForStepAdvancement = useRef<number>(currentValue)
-  const userHasInteracted = useRef<boolean>(false)
-  const lastMovedBead = useRef<StepBeadHighlight | null>(null)
 
   // Wrap context handleValueChange to track user interaction
   const handleValueChange = useCallback((newValue: number) => {
