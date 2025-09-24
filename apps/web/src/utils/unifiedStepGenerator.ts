@@ -151,63 +151,211 @@ export function generateUnifiedInstructionSequence(
 /**
  * Generate decomposition terms based on actual bead movements
  */
+interface AbacusPlaceState {
+  heavenActive: boolean
+  earthActive: number // 0-4
+}
+
+interface DecompositionStep {
+  operation: string // The mathematical term like "7", "(10 - 3)", etc.
+  description: string // What this step does pedagogically
+  targetValue: number // Expected value after this step
+}
+
+/**
+ * NEW ALGORITHM: Generate pedagogical decomposition using proper soroban logic
+ * Process addend left-to-right, checking abacus state constraints at each place
+ */
 function generateDecompositionTerms(
   startValue: number,
   targetValue: number,
-  additions: BeadHighlight[],
-  removals: BeadHighlight[]
+  additions: BeadHighlight[], // Legacy parameter - not used in new algo
+  removals: BeadHighlight[]   // Legacy parameter - not used in new algo
 ): string[] {
+  const addend = targetValue - startValue
+  if (addend === 0) return []
+  if (addend < 0) {
+    // TODO: Handle subtraction in separate sprint
+    throw new Error('Subtraction not implemented yet')
+  }
 
-  const terms: string[] = []
+  // Convert to abacus state representation
+  let currentState = numberToAbacusState(startValue, 5)
+  let currentValue = startValue
+  const steps: DecompositionStep[] = []
 
-  // Group movements by place value
-  const movementsByPlace: { [place: number]: { adds: BeadHighlight[], removes: BeadHighlight[] } } = {}
+  // Process addend digit by digit from left to right (highest to lowest place)
+  const addendStr = addend.toString()
+  const addendLength = addendStr.length
 
-  additions.forEach(bead => {
-    if (!movementsByPlace[bead.placeValue]) {
-      movementsByPlace[bead.placeValue] = { adds: [], removes: [] }
+  for (let digitIndex = 0; digitIndex < addendLength; digitIndex++) {
+    const digit = parseInt(addendStr[digitIndex])
+    const placeValue = addendLength - 1 - digitIndex
+
+    if (digit === 0) continue // Skip zeros
+
+    // Get current digit at this place value
+    const currentDigitAtPlace = getDigitAtPlace(currentValue, placeValue)
+
+    // Apply the pedagogical algorithm decision tree
+    const stepResult = processDigitAtPlace(
+      digit,
+      placeValue,
+      currentDigitAtPlace,
+      currentState
+    )
+
+    // Apply the step result to our current state
+    steps.push(...stepResult.steps)
+    currentValue = stepResult.newValue
+    currentState = stepResult.newState
+  }
+
+  // Convert steps to string terms for compatibility
+  return steps.map(step => step.operation)
+}
+
+/**
+ * Process a single digit at a specific place value using soroban algorithm
+ */
+function processDigitAtPlace(
+  digit: number,
+  placeValue: number,
+  currentDigitAtPlace: number,
+  currentState: AbacusState
+): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
+
+  const a = currentDigitAtPlace
+  const d = digit
+
+  // Decision: Direct addition vs 10's complement
+  if (a + d <= 9) {
+    // Case A: Direct addition at this place
+    return processDirectAddition(d, placeValue, currentState)
+  } else {
+    // Case B: 10's complement required
+    return processTensComplement(d, placeValue, currentState)
+  }
+}
+
+/**
+ * Handle direct addition at a place value (a + d ≤ 9)
+ */
+function processDirectAddition(
+  digit: number,
+  placeValue: number,
+  currentState: AbacusState
+): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
+
+  const placeState = currentState[placeValue] || { heavenActive: false, earthActive: 0 }
+  const steps: DecompositionStep[] = []
+  const newState = { ...currentState }
+
+  if (digit <= 4) {
+    // For digits 1-4: try to add earth beads directly
+    if (placeState.earthActive + digit <= 4) {
+      // Direct earth bead addition
+      const termValue = digit * Math.pow(10, placeValue)
+      steps.push({
+        operation: termValue.toString(),
+        description: `Add ${digit} earth bead${digit > 1 ? 's' : ''} at place ${placeValue}`,
+        targetValue: 0 // Will be calculated later
+      })
+      newState[placeValue] = {
+        ...placeState,
+        earthActive: placeState.earthActive + digit
+      }
+    } else {
+      // Use 5's complement: digit = (5 - (5 - digit))
+      const complement = 5 - digit
+      const termValue = digit * Math.pow(10, placeValue)
+      steps.push({
+        operation: `(5 - ${complement})`,
+        description: `Add heaven bead and remove ${complement} earth beads at place ${placeValue}`,
+        targetValue: 0
+      })
+      newState[placeValue] = {
+        heavenActive: true,
+        earthActive: placeState.earthActive - complement
+      }
     }
-    movementsByPlace[bead.placeValue].adds.push(bead)
-  })
-
-  removals.forEach(bead => {
-    if (!movementsByPlace[bead.placeValue]) {
-      movementsByPlace[bead.placeValue] = { adds: [], removes: [] }
-    }
-    movementsByPlace[bead.placeValue].removes.push(bead)
-  })
-
-  // Process places in pedagogical order (highest first)
-  const places = Object.keys(movementsByPlace)
-    .map(p => parseInt(p))
-    .sort((a, b) => b - a)
-
-  for (const place of places) {
-    const movements = movementsByPlace[place]
-
-    // Calculate the net effect of this place
-    const addValue = movements.adds.reduce((sum, bead) => {
-      return sum + (bead.beadType === 'heaven' ? 5 * Math.pow(10, place) : Math.pow(10, place))
-    }, 0)
-
-    const removeValue = movements.removes.reduce((sum, bead) => {
-      return sum + (bead.beadType === 'heaven' ? 5 * Math.pow(10, place) : Math.pow(10, place))
-    }, 0)
-
-    // Generate appropriate term
-    if (addValue > 0 && removeValue > 0) {
-      // Complement operation
-      terms.push(`(${addValue} - ${removeValue})`)
-    } else if (addValue > 0) {
-      // Pure addition
-      terms.push(`${addValue}`)
-    } else if (removeValue > 0) {
-      // Pure subtraction
-      terms.push(`-${removeValue}`)
+  } else {
+    // For digits 5-9: activate heaven bead + earth beads
+    const earthBeadsNeeded = digit - 5
+    if (!placeState.heavenActive && placeState.earthActive + earthBeadsNeeded <= 4) {
+      // Direct heaven + earth addition
+      const termValue = digit * Math.pow(10, placeValue)
+      steps.push({
+        operation: termValue.toString(),
+        description: `Add heaven bead and ${earthBeadsNeeded} earth beads at place ${placeValue}`,
+        targetValue: 0
+      })
+      newState[placeValue] = {
+        heavenActive: true,
+        earthActive: placeState.earthActive + earthBeadsNeeded
+      }
+    } else {
+      // Fall back to 10's complement (this shouldn't happen if a + d ≤ 9, but safety check)
+      return processTensComplement(digit, placeValue, currentState)
     }
   }
 
-  return terms
+  // Calculate new total value
+  const currentValue = abacusStateToNumber(currentState)
+  const newValue = abacusStateToNumber(newState)
+
+  return { steps, newValue, newState }
+}
+
+/**
+ * Handle 10's complement when a + d ≥ 10
+ */
+function processTensComplement(
+  digit: number,
+  placeValue: number,
+  currentState: AbacusState
+): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
+
+  const steps: DecompositionStep[] = []
+  const newState = { ...currentState }
+
+  // Use 10's complement: d = (10 - (10-d))
+  const complementToSubtract = 10 - digit
+
+  // Generate single complement term instead of separate add/subtract
+  steps.push({
+    operation: `(10 - ${complementToSubtract})`,
+    description: `Ten's complement: add 10 to higher place, subtract ${complementToSubtract}`,
+    targetValue: 0
+  })
+
+  // TODO: Implement proper bead state updates for carries and borrows
+  // For now, calculate new value mathematically
+  const currentValue = abacusStateToNumber(currentState)
+  const newValue = currentValue + (digit * Math.pow(10, placeValue))
+
+  return {
+    steps,
+    newValue,
+    newState: numberToAbacusState(newValue, 5)
+  }
+}
+
+/**
+ * Helper functions
+ */
+function getDigitAtPlace(value: number, placeValue: number): number {
+  return Math.floor(value / Math.pow(10, placeValue)) % 10
+}
+
+function abacusStateToNumber(state: AbacusState): number {
+  let total = 0
+  Object.entries(state).forEach(([place, beadState]) => {
+    const placeNum = parseInt(place)
+    const placeValue = (beadState.heavenActive ? 5 : 0) + beadState.earthActive
+    total += placeValue * Math.pow(10, placeNum)
+  })
+  return total
 }
 
 /**
@@ -450,9 +598,24 @@ function buildFullDecompositionWithPositions(
 } {
 
   const difference = targetValue - startValue
-  const termString = terms.join(' + ').replace('+ -', '- ')
 
-  // Build the full string: "3 + 14 = 3 + 10 + (5 - 1) = 17"
+  // Handle term joining more carefully to preserve parentheses and signs
+  let termString = ''
+  if (terms.length > 0) {
+    termString = terms[0]
+    for (let i = 1; i < terms.length; i++) {
+      const term = terms[i]
+      if (term.startsWith('-')) {
+        termString += ` ${term}` // Keep the negative sign
+      } else if (term.startsWith('(')) {
+        termString += ` + ${term}` // Add plus before parentheses
+      } else {
+        termString += ` + ${term}` // Normal addition
+      }
+    }
+  }
+
+  // Build the full string: "4 + 7 = 4 + (10 - 3) = 11"
   const leftSide = `${startValue} + ${difference} = ${startValue} + `
   const rightSide = ` = ${targetValue}`
   const fullDecomposition = leftSide + termString + rightSide
