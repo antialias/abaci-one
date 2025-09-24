@@ -147,6 +147,9 @@ interface TutorialContextType {
   goToNextStep: () => void
   goToPreviousStep: () => void
   handleValueChange: (newValue: number) => void
+  advanceMultiStep: () => void
+  previousMultiStep: () => void
+  resetMultiStep: () => void
   handleBeadClick: (beadInfo: any) => void
   handleBeadRef: (bead: any, element: SVGElement | null) => void
   toggleDebugPanel: () => void
@@ -207,6 +210,24 @@ export function TutorialProvider({
     }
   })
 
+  // Initialize the first step on mount
+  React.useEffect(() => {
+    if (tutorial.steps.length > 0) {
+      const step = tutorial.steps[initialStepIndex]
+
+      // Mark as programmatic change to prevent AbacusReact feedback loop
+      isProgrammaticChange.current = true
+
+      dispatch({
+        type: 'INITIALIZE_STEP',
+        stepIndex: initialStepIndex,
+        startValue: step.startValue,
+        stepId: step.id
+      })
+      onStepChange?.(initialStepIndex, step)
+    }
+  }, []) // Empty dependency array - only run on mount
+
   // Current step and computed values
   const currentStep = tutorial.steps[state.currentStepIndex]
 
@@ -249,6 +270,10 @@ export function TutorialProvider({
   const goToStep = useCallback((stepIndex: number) => {
     if (stepIndex >= 0 && stepIndex < tutorial.steps.length) {
       const step = tutorial.steps[stepIndex]
+
+      // Mark as programmatic change to prevent AbacusReact feedback loop
+      isProgrammaticChange.current = true
+
       dispatch({
         type: 'INITIALIZE_STEP',
         stepIndex,
@@ -258,6 +283,18 @@ export function TutorialProvider({
       onStepChange?.(stepIndex, step)
     }
   }, [tutorial.steps, onStepChange])
+
+  // Clear isProgrammaticChange flag after external value changes have settled
+  React.useEffect(() => {
+    // Use a small timeout to ensure the AbacusReact has processed the value change
+    const timeoutId = setTimeout(() => {
+      if (isProgrammaticChange.current) {
+        isProgrammaticChange.current = false
+      }
+    }, 100)
+
+    return () => clearTimeout(timeoutId)
+  }, [state.currentValue])
 
   const goToNextStep = useCallback(() => {
     if (navigationState.canGoNext) {
@@ -273,6 +310,7 @@ export function TutorialProvider({
 
   const handleValueChange = useCallback((newValue: number) => {
     if (isProgrammaticChange.current) {
+      isProgrammaticChange.current = false
       return
     }
 
@@ -335,6 +373,18 @@ export function TutorialProvider({
       updates: { autoAdvance: !state.uiState.autoAdvance }
     })
   }, [state.uiState.autoAdvance])
+
+  const advanceMultiStep = useCallback(() => {
+    dispatch({ type: 'ADVANCE_MULTI_STEP' })
+  }, [])
+
+  const previousMultiStep = useCallback(() => {
+    dispatch({ type: 'PREVIOUS_MULTI_STEP' })
+  }, [])
+
+  const resetMultiStep = useCallback(() => {
+    dispatch({ type: 'RESET_MULTI_STEP' })
+  }, [])
 
   const getCurrentStepBeads = useCallback(() => {
     if (expectedSteps.length === 0) return currentStep.stepBeadHighlights || []
@@ -425,6 +475,9 @@ export function TutorialProvider({
     goToNextStep,
     goToPreviousStep,
     handleValueChange,
+    advanceMultiStep,
+    previousMultiStep,
+    resetMultiStep,
     handleBeadClick,
     handleBeadRef,
     toggleDebugPanel,
