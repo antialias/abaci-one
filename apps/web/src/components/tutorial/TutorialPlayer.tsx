@@ -357,12 +357,20 @@ function TutorialPlayerContent({
 
   // Create overlay for tooltip positioned precisely at topmost bead using smart collision detection
   const tooltipOverlay = useMemo(() => {
-    if (!currentStepSummary || !currentStepBeads?.length) {
+    // Show tooltip if we have step instructions OR if step is completed
+    if (!currentStepSummary || (!currentStepBeads?.length && !isStepCompleted)) {
       return null
     }
 
-    // Find the topmost bead with arrows
-    const topmostBead = findTopmostBeadWithArrows(currentStepBeads)
+    // Find the topmost bead with arrows, or use last bead position if completed
+    let topmostBead = currentStepBeads?.length ? findTopmostBeadWithArrows(currentStepBeads) : null
+
+    // If step is completed but no current beads with arrows, try to find a recent bead to attach to
+    if (!topmostBead && isStepCompleted && currentStepBeads?.length) {
+      // Use the first bead from current step beads as fallback
+      topmostBead = currentStepBeads[0]
+    }
+
     if (!topmostBead) {
       return null
     }
@@ -502,7 +510,7 @@ function TutorialPlayerContent({
     }
 
     return overlay
-  }, [currentStepSummary, currentStepBeads])
+  }, [currentStepSummary, currentStepBeads, isStepCompleted])
 
   // Timer for smart help detection
   useEffect(() => {
