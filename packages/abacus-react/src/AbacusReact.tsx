@@ -1925,7 +1925,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             }}
             className={overlay.className}
           >
-            <div style={{ position: 'relative', pointerEvents: 'auto' }}>
+            <div style={{ position: 'relative', pointerEvents: 'none' }}>
               {overlay.content}
             </div>
           </foreignObject>
