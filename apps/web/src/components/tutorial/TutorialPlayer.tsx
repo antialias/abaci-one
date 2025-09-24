@@ -906,9 +906,12 @@ function TutorialPlayerContent({
                 <p className={css({ fontSize: 'lg', color: 'gray.700', mb: 4 })}>
                   {currentStep.description}
                 </p>
-                <p className={css({ fontSize: 'md', color: 'blue.600' })}>
-                  {currentStep.actionDescription}
-                </p>
+                {/* Hide action description for multi-step problems since it duplicates pedagogical decomposition */}
+                {!currentStep.multiStepInstructions && (
+                  <p className={css({ fontSize: 'md', color: 'blue.600' })}>
+                    {currentStep.actionDescription}
+                  </p>
+                )}
               </div>
 
               {/* Multi-step instructions panel */}
@@ -1010,28 +1013,6 @@ function TutorialPlayerContent({
                             {currentInstruction}
                           </div>
 
-                          {/* Show bead diff summary only when current value doesn't match step target */}
-                          {needsAction && (
-                            <div className={css({
-                              mt: 1,
-                              mb: 2,
-                              p: 2,
-                              bg: 'blue.50',
-                              border: '1px solid',
-                              borderColor: 'blue.200',
-                              borderRadius: 'md',
-                              fontSize: 'xs'
-                            })}>
-                              <p className={css({
-                                fontSize: 'xs',
-                                color: 'blue.700',
-                                fontStyle: 'italic'
-                              })}>
-                                <span className={css({ mr: 1 })}>💡</span>
-                                {currentStepSummary}
-                              </p>
-                            </div>
-                          )}
                         </div>
                       )
                     })()}
