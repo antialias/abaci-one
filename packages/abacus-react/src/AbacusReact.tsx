@@ -1241,6 +1241,7 @@ const Bead: React.FC<BeadProps> = ({
       {showDirectionIndicator && direction && (
         <animated.g
           className="direction-indicator"
+          style={{ pointerEvents: 'none' }}
           transform={to([arrowPulse], (pulse) => {
             // Match the exact center coordinates of each shape
             const centerX = shape === 'diamond' ? size * 0.7 : size / 2;
