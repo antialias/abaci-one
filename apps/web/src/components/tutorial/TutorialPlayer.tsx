@@ -1286,13 +1286,13 @@ function TutorialPlayerContent({
           </div>
         )}
 
-        {/* Success toast - subtle, non-blocking notification */}
+        {/* Success toast - positioned near the abacus */}
         {isStepCompleted && !isSuccessPopupDismissed && (
           <div
             className={css({
-              position: 'fixed',
-              top: '20px',
-              right: '20px',
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
               zIndex: 50,
               pointerEvents: 'none',
               animation: 'slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards'
