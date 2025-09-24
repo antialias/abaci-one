@@ -11,6 +11,7 @@ import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerat
 import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 import { TutorialProvider } from './TutorialContext'
+import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
 
 // Helper function to find the topmost bead with arrows
 function findTopmostBeadWithArrows(stepBeadHighlights: StepBeadHighlight[] | undefined): StepBeadHighlight | null {
@@ -331,6 +332,102 @@ function TutorialPlayerContent({
   // Get current step summary for real-time user feedback
   const currentStepSummary = getCurrentStepSummary()
 
+  // Helper function to highlight the current mathematical term in the full decomposition
+  const renderHighlightedDecomposition = useCallback(() => {
+    if (!fullDecomposition || expectedSteps.length === 0) return null
+
+    const currentStep = expectedSteps[currentMultiStep]
+    if (!currentStep?.termPosition) return null
+
+    const { startIndex, endIndex } = currentStep.termPosition
+    const before = fullDecomposition.substring(0, startIndex)
+    const highlighted = fullDecomposition.substring(startIndex, endIndex)
+    const after = fullDecomposition.substring(endIndex)
+
+    return { before, highlighted, after }
+  }, [fullDecomposition, expectedSteps, currentMultiStep])
+
+  // Create overlay for tooltip positioned precisely at topmost bead using AbacusReact's overlay system
+  const tooltipOverlay = useMemo(() => {
+    if (!currentStepSummary || !currentStepBeads?.length) {
+      return null
+    }
+
+    // Find the topmost bead with arrows
+    const topmostBead = findTopmostBeadWithArrows(currentStepBeads)
+    if (!topmostBead) {
+      return null
+    }
+
+    // Create an overlay that targets the specific bead and positions tooltip outside abacus
+    const overlay: AbacusOverlay = {
+      id: 'bead-tooltip',
+      type: 'tooltip',
+      target: {
+        type: 'bead',
+        columnIndex: 4 - topmostBead.placeValue, // Convert placeValue to columnIndex (5 columns: 0-4)
+        beadType: topmostBead.beadType,
+        beadPosition: topmostBead.position
+      },
+      content: (
+        <Tooltip.Provider>
+          <Tooltip.Root open={true}>
+            <Tooltip.Trigger asChild>
+              <div style={{ width: '1px', height: '1px', opacity: 0 }} />
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content
+                side="left"
+                align="center"
+                sideOffset={20}
+                style={{
+                  background: '#1e40af',
+                  color: 'white',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  whiteSpace: 'normal',
+                  maxWidth: '200px',
+                  minWidth: '150px',
+                  wordBreak: 'break-word',
+                  zIndex: 1000,
+                  opacity: 0.85,
+                  transition: 'opacity 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '1'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '0.85'
+                }}
+              >
+                <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                  <PedagogicalDecompositionDisplay
+                    variant="tooltip"
+                    showLabel={true}
+                    decomposition={renderHighlightedDecomposition()}
+                  />
+                  <span style={{ fontSize: '18px' }}>💡</span> {currentStepSummary}
+                </div>
+                <Tooltip.Arrow
+                  style={{
+                    fill: '#1e40af'
+                  }}
+                />
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+        </Tooltip.Provider>
+      ),
+      offset: { x: 0, y: 0 },
+      visible: true
+    }
+
+    return overlay
+  }, [currentStepSummary, currentStepBeads])
+
   // Timer for smart help detection
   useEffect(() => {
     setShowHelpForCurrentStep(false) // Reset help when step changes
@@ -341,43 +438,6 @@ function TutorialPlayerContent({
 
     return () => clearTimeout(timer)
   }, [currentMultiStep, multiStepStartTime]) // Reset when step changes or timer resets
-
-  // Helper function to highlight the current mathematical term in the full decomposition
-  const renderHighlightedDecomposition = useCallback(() => {
-    if (!fullDecomposition || expectedSteps.length === 0) return null
-
-    const currentStep = expectedSteps[currentMultiStep]
-    if (!currentStep?.mathematicalTerm || !currentStep?.termPosition) {
-      return <span>{fullDecomposition}</span>
-    }
-
-    // Use the precise position information from the unified generator
-    const { startIndex, endIndex } = currentStep.termPosition
-    const beforeTerm = fullDecomposition.substring(0, startIndex)
-    const term = fullDecomposition.substring(startIndex, endIndex)
-    const afterTerm = fullDecomposition.substring(endIndex)
-
-    return (
-      <span>
-        {beforeTerm}
-        <span className={css({
-          background: 'linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(147,51,234,0.1) 100%)',
-          color: 'blue.900',
-          px: 2,
-          py: 1,
-          borderRadius: 'md',
-          border: '1px solid rgba(59,130,246,0.3)',
-          fontWeight: '600',
-          boxShadow: '0 1px 3px rgba(59,130,246,0.1), inset 0 1px 0 rgba(255,255,255,0.6)',
-          backdropFilter: 'blur(2px)',
-          display: 'inline-block'
-        })}>
-          {term}
-        </span>
-        {afterTerm}
-      </span>
-    )
-  }, [fullDecomposition, expectedSteps, currentMultiStep])
 
   // Event logging - now just notifies parent, state is managed by reducer
   const notifyEvent = useCallback((event: TutorialEvent) => {
@@ -965,7 +1025,10 @@ function TutorialPlayerContent({
                         letterSpacing: 'tight',
                         lineHeight: '1.5'
                       })}>
-                        {renderHighlightedDecomposition()}
+                        <PedagogicalDecompositionDisplay
+                          variant="guidance"
+                          decomposition={renderHighlightedDecomposition()}
+                        />
                       </p>
                     </div>
                   )}
@@ -1044,7 +1107,8 @@ function TutorialPlayerContent({
                 borderColor: 'gray.200',
                 borderRadius: 'lg',
                 p: 6,
-                shadow: 'lg'
+                shadow: 'lg',
+                ml: '60px' // Left margin to accommodate tooltip
               })}>
                 <AbacusReact
                   value={currentValue}
@@ -1058,6 +1122,7 @@ function TutorialPlayerContent({
                   currentStep={currentMultiStep}
                   showDirectionIndicators={true}
                   customStyles={customStyles}
+                  overlays={tooltipOverlay ? [tooltipOverlay] : []}
                   onValueChange={handleValueChange}
                   callbacks={{
                     onBeadClick: handleBeadClick,
