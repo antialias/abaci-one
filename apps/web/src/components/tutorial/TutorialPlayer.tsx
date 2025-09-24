@@ -218,6 +218,12 @@ function TutorialPlayerContent({
   })
 
   const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, multiStepStartTime, uiState, currentMultiStep } = state
+  const [isSuccessPopupDismissed, setIsSuccessPopupDismissed] = useState(false)
+
+  // Reset success popup when moving to new step
+  useEffect(() => {
+    setIsSuccessPopupDismissed(false)
+  }, [currentStepIndex])
 
   const currentStep = tutorial.steps[currentStepIndex]
   const beadRefs = useRef<Map<string, SVGElement>>(new Map())
@@ -1247,16 +1253,20 @@ function TutorialPlayerContent({
         )}
 
         {/* Success overlay - positioned absolutely to avoid layout shift */}
-        {isStepCompleted && (
-          <div className={css({
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 1000,
-            pointerEvents: 'none',
-            animation: 'successPulse 0.6s ease-out'
-          })}>
+        {isStepCompleted && !isSuccessPopupDismissed && (
+          <div
+            className={css({
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 1000,
+              pointerEvents: 'auto',
+              cursor: 'pointer',
+              animation: 'successPulse 0.6s ease-out'
+            })}
+            onClick={() => setIsSuccessPopupDismissed(true)}
+          >
             <div className={css({
               background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(21, 128, 61, 0.95) 100%)',
               backdropFilter: 'blur(20px)',
@@ -1269,6 +1279,11 @@ function TutorialPlayerContent({
               minW: '320px',
               position: 'relative',
               overflow: 'hidden',
+              transition: 'all 0.2s ease',
+              _hover: {
+                transform: 'scale(1.02)',
+                boxShadow: '0 30px 60px rgba(34, 197, 94, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+              },
               '&::before': {
                 content: '""',
                 position: 'absolute',
