@@ -10,7 +10,7 @@ import { PracticeProblemPlayer, PracticeResults } from './PracticeProblemPlayer'
 import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
 import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
-import { TutorialProvider } from './TutorialContext'
+import { TutorialProvider, useTutorialContext } from './TutorialContext'
 import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
 
 // Helper function to find the topmost bead with arrows
@@ -198,25 +198,19 @@ function TutorialPlayerContent({
   const isProgrammaticChange = useRef(false)
   const [showHelpForCurrentStep, setShowHelpForCurrentStep] = useState(false)
 
-  const [state, dispatch] = useReducer(tutorialPlayerReducer, {
-    currentStepIndex: initialStepIndex,
-    currentValue: 0,
-    isStepCompleted: false,
-    error: null,
-    events: [],
-    stepStartTime: Date.now(),
-    multiStepStartTime: Date.now(),
-    currentMultiStep: 0,
-    uiState: {
-      isPlaying: true,
-      isPaused: false,
-      isEditing: false,
-      showDebugPanel,
-      showStepList: false,
-      autoAdvance: false,
-      playbackSpeed: 1
-    }
-  })
+  // Use tutorial context instead of local state
+  const {
+    state,
+    dispatch,
+    currentStep,
+    goToStep: contextGoToStep,
+    goToNextStep: contextGoToNextStep,
+    goToPreviousStep: contextGoToPreviousStep,
+    handleValueChange: contextHandleValueChange,
+    advanceMultiStep,
+    previousMultiStep,
+    resetMultiStep
+  } = useTutorialContext()
 
   const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, multiStepStartTime, uiState, currentMultiStep } = state
   const [isSuccessPopupDismissed, setIsSuccessPopupDismissed] = useState(false)
@@ -226,7 +220,7 @@ function TutorialPlayerContent({
     setIsSuccessPopupDismissed(false)
   }, [currentStepIndex])
 
-  const currentStep = tutorial.steps[currentStepIndex]
+  // Current step comes from context
   const beadRefs = useRef<Map<string, SVGElement>>(new Map())
 
   // Navigation state
@@ -492,52 +486,14 @@ function TutorialPlayerContent({
   }, [onEvent])
 
   // Navigation functions - declare these first since they're used in useEffects
-  const goToStep = useCallback((stepIndex: number) => {
-    if (stepIndex >= 0 && stepIndex < tutorial.steps.length) {
-      const step = tutorial.steps[stepIndex]
+  // Use context goToStep function instead of local one
+  const goToStep = contextGoToStep
 
-      // Mark this as a programmatic change to prevent feedback loop
-      isProgrammaticChange.current = true
+  // Use context goToNextStep function instead of local one
+  const goToNextStep = contextGoToNextStep
 
-      dispatch({
-        type: 'INITIALIZE_STEP',
-        stepIndex,
-        startValue: step.startValue,
-        stepId: step.id
-      })
-
-      // Notify parent of step change
-      onStepChange?.(stepIndex, step)
-    }
-  }, [tutorial.steps, onStepChange])
-
-  const goToNextStep = useCallback(() => {
-    if (navigationState.canGoNext) {
-      goToStep(currentStepIndex + 1)
-    } else if (currentStepIndex === tutorial.steps.length - 1) {
-      // Tutorial completed
-      const timeSpent = (Date.now() - startTime) / 1000
-      const score = events.filter(e => e.type === 'STEP_COMPLETED' && e.success).length / tutorial.steps.length * 100
-
-      dispatch({
-        type: 'ADD_EVENT',
-        event: {
-          type: 'TUTORIAL_COMPLETED',
-          tutorialId: tutorial.id,
-          score,
-          timestamp: new Date()
-        }
-      })
-
-      onTutorialComplete?.(score, timeSpent)
-    }
-  }, [navigationState.canGoNext, currentStepIndex, tutorial.steps.length, tutorial.id, startTime, events, onTutorialComplete, goToStep])
-
-  const goToPreviousStep = useCallback(() => {
-    if (navigationState.canGoPrevious) {
-      goToStep(currentStepIndex - 1)
-    }
-  }, [navigationState.canGoPrevious, currentStepIndex, goToStep])
+  // Use context goToPreviousStep function instead of local one
+  const goToPreviousStep = contextGoToPreviousStep
 
   // Initialize step on mount only
   useEffect(() => {
@@ -580,9 +536,7 @@ function TutorialPlayerContent({
     }
   }, [currentValue, currentStep, isStepCompleted, expectedSteps, currentMultiStep, uiState.autoAdvance, navigationState.canGoNext, onStepComplete, currentStepIndex, goToNextStep])
 
-  // Track the last value to detect when meaningful changes occur
-  const lastValueForStepAdvancement = useRef<number>(currentValue)
-  const userHasInteracted = useRef<boolean>(false)
+  // These refs are already defined above
 
   // Check if user completed the current expected step and advance to next expected step
   useEffect(() => {
@@ -609,11 +563,10 @@ function TutorialPlayerContent({
       if (currentValue === currentExpectedStep.targetValue) {
         const hasMoreExpectedSteps = currentMultiStep < expectedSteps.length - 1
 
-
         if (hasMoreExpectedSteps) {
           // Auto-advance to next expected step after a delay
           const timeoutId = setTimeout(() => {
-            dispatch({ type: 'ADVANCE_MULTI_STEP' })
+            advanceMultiStep()
             lastValueForStepAdvancement.current = currentValue
           }, 1000)
 
@@ -638,58 +591,22 @@ function TutorialPlayerContent({
     }
   }, [events, notifyEvent])
 
-  // Debounced value change handling for smooth gesture performance
-  const valueChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const lastValueRef = useRef<number>(currentValue)
-  const pendingValueRef = useRef<number | null>(null)
+  // Keep refs needed for step advancement logic
+  const lastValueForStepAdvancement = useRef<number>(currentValue)
+  const userHasInteracted = useRef<boolean>(false)
 
+  // Wrap context handleValueChange to track user interaction
   const handleValueChange = useCallback((newValue: number) => {
-    // Ignore programmatic changes to prevent feedback loops
-    if (isProgrammaticChange.current) {
-      isProgrammaticChange.current = false
-      return
-    }
-
     // Mark that user has interacted
     userHasInteracted.current = true
 
-    // Store the pending value for immediate abacus updates
-    pendingValueRef.current = newValue
+    // Call the context's handleValueChange
+    contextHandleValueChange(newValue)
+  }, [contextHandleValueChange, currentValue])
 
-    // Clear any existing timeout
-    if (valueChangeTimeoutRef.current) {
-      clearTimeout(valueChangeTimeoutRef.current)
-    }
+  // Cleanup handled by context
 
-    // Debounce the tutorial system notification
-    valueChangeTimeoutRef.current = setTimeout(() => {
-      const finalValue = pendingValueRef.current
-      if (finalValue !== null && finalValue !== lastValueRef.current) {
-        dispatch({
-          type: 'USER_VALUE_CHANGE',
-          oldValue: lastValueRef.current,
-          newValue: finalValue,
-          stepId: currentStep.id
-        })
-        lastValueRef.current = finalValue
-      }
-      pendingValueRef.current = null
-    }, 150) // 150ms debounce - gestures settle quickly
-  }, [currentStep])
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (valueChangeTimeoutRef.current) {
-        clearTimeout(valueChangeTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  // Keep lastValueRef in sync with currentValue changes from external sources
-  useEffect(() => {
-    lastValueRef.current = currentValue
-  }, [currentValue])
+  // Value tracking handled by context
 
   const handleBeadClick = useCallback((beadInfo: any) => {
     dispatch({
@@ -901,7 +818,7 @@ function TutorialPlayerContent({
                       ⏮ First
                     </button>
                     <button
-                      onClick={() => dispatch({ type: 'PREVIOUS_MULTI_STEP' })}
+                      onClick={() => previousMultiStep()}
                       disabled={currentMultiStep === 0}
                       className={css({
                         px: 2,
@@ -919,7 +836,7 @@ function TutorialPlayerContent({
                       ⏪ Prev
                     </button>
                     <button
-                      onClick={() => dispatch({ type: 'ADVANCE_MULTI_STEP' })}
+                      onClick={() => advanceMultiStep()}
                       disabled={currentMultiStep >= currentStep.multiStepInstructions.length - 1}
                       className={css({
                         px: 2,
