@@ -224,6 +224,16 @@ function TutorialPlayerContent({
     setIsSuccessPopupDismissed(false)
   }, [currentStepIndex])
 
+  // Auto-dismiss success toast after 3 seconds
+  useEffect(() => {
+    if (isStepCompleted && !isSuccessPopupDismissed) {
+      const timer = setTimeout(() => {
+        setIsSuccessPopupDismissed(true)
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [isStepCompleted, isSuccessPopupDismissed])
+
   // Current step comes from context
   const beadRefs = useRef<Map<string, SVGElement>>(new Map())
 
@@ -1276,71 +1286,33 @@ function TutorialPlayerContent({
           </div>
         )}
 
-        {/* Success overlay - positioned absolutely to avoid layout shift */}
+        {/* Success toast - subtle, non-blocking notification */}
         {isStepCompleted && !isSuccessPopupDismissed && (
           <div
             className={css({
               position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 1000,
-              pointerEvents: 'auto',
-              cursor: 'pointer',
-              animation: 'successPulse 0.6s ease-out'
+              top: '20px',
+              right: '20px',
+              zIndex: 50,
+              pointerEvents: 'none',
+              animation: 'slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards'
             })}
-            onClick={() => setIsSuccessPopupDismissed(true)}
           >
             <div className={css({
-              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(21, 128, 61, 0.95) 100%)',
-              backdropFilter: 'blur(20px)',
-              border: '2px solid rgba(34, 197, 94, 0.3)',
-              borderRadius: '2xl',
-              boxShadow: '0 25px 50px rgba(34, 197, 94, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-              p: 8,
-              textAlign: 'center',
+              background: 'rgba(34, 197, 94, 0.9)',
+              borderRadius: 'lg',
+              px: 4,
+              py: 2,
               color: 'white',
-              minW: '320px',
-              position: 'relative',
-              overflow: 'hidden',
-              transition: 'all 0.2s ease',
-              _hover: {
-                transform: 'scale(1.02)',
-                boxShadow: '0 30px 60px rgba(34, 197, 94, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: '-100%',
-                width: '100%',
-                height: '100%',
-                background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
-                animation: 'shimmer 1.5s ease-in-out infinite'
-              }
+              fontSize: 'sm',
+              fontWeight: 'medium',
+              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2
             })}>
-              <div className={css({
-                fontSize: '3xl',
-                mb: 2,
-                animation: 'bounce 0.6s ease-out'
-              })}>
-                🎉
-              </div>
-              <div className={css({
-                fontSize: 'xl',
-                fontWeight: 'bold',
-                mb: 2,
-                textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
-              })}>
-                Excellent Work!
-              </div>
-              <div className={css({
-                fontSize: 'base',
-                opacity: 0.9,
-                textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
-              })}>
-                You completed this step correctly
-              </div>
+              <span>✓</span>
+              <span>Step completed!</span>
             </div>
           </div>
         )}
@@ -1348,38 +1320,23 @@ function TutorialPlayerContent({
 
       {/* Add CSS animations */}
       <style jsx>{`
-        @keyframes successPulse {
+        @keyframes slideInRight {
           0% {
-            transform: translate(-50%, -50%) scale(0.8);
+            transform: translateX(100%);
             opacity: 0;
           }
-          50% {
-            transform: translate(-50%, -50%) scale(1.05);
-          }
           100% {
-            transform: translate(-50%, -50%) scale(1);
+            transform: translateX(0);
             opacity: 1;
           }
         }
 
-        @keyframes bounce {
-          0%, 20%, 50%, 80%, 100% {
-            transform: translateY(0);
-          }
-          40% {
-            transform: translateY(-8px);
-          }
-          60% {
-            transform: translateY(-4px);
-          }
-        }
-
-        @keyframes shimmer {
+        @keyframes fadeOut {
           0% {
-            left: -100%;
+            opacity: 1;
           }
           100% {
-            left: 100%;
+            opacity: 0;
           }
         }
       `}</style>
