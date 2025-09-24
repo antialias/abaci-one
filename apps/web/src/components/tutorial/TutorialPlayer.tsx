@@ -1048,20 +1048,7 @@ function TutorialPlayerContent({
                 </div>
               )}
 
-              {/* Success message */}
-              {isStepCompleted && (
-                <div className={css({
-                  p: 4,
-                  bg: 'green.50',
-                  border: '1px solid',
-                  borderColor: 'green.200',
-                  borderRadius: 'md',
-                  color: 'green.700',
-                  maxW: '600px'
-                })}>
-                  Great! You completed this step correctly.
-                </div>
-              )}
+              {/* Success message removed from inline layout - now positioned as overlay */}
 
               {/* Abacus */}
               <div className={css({
@@ -1258,7 +1245,105 @@ function TutorialPlayerContent({
             </div>
           </div>
         )}
+
+        {/* Success overlay - positioned absolutely to avoid layout shift */}
+        {isStepCompleted && (
+          <div className={css({
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            animation: 'successPulse 0.6s ease-out'
+          })}>
+            <div className={css({
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(21, 128, 61, 0.95) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '2px solid rgba(34, 197, 94, 0.3)',
+              borderRadius: '2xl',
+              boxShadow: '0 25px 50px rgba(34, 197, 94, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+              p: 8,
+              textAlign: 'center',
+              color: 'white',
+              minW: '320px',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: '-100%',
+                width: '100%',
+                height: '100%',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+                animation: 'shimmer 1.5s ease-in-out infinite'
+              }
+            })}>
+              <div className={css({
+                fontSize: '3xl',
+                mb: 2,
+                animation: 'bounce 0.6s ease-out'
+              })}>
+                🎉
+              </div>
+              <div className={css({
+                fontSize: 'xl',
+                fontWeight: 'bold',
+                mb: 2,
+                textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
+              })}>
+                Excellent Work!
+              </div>
+              <div className={css({
+                fontSize: 'base',
+                opacity: 0.9,
+                textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
+              })}>
+                You completed this step correctly
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Add CSS animations */}
+      <style jsx>{`
+        @keyframes successPulse {
+          0% {
+            transform: translate(-50%, -50%) scale(0.8);
+            opacity: 0;
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.05);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+          }
+        }
+
+        @keyframes bounce {
+          0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+          }
+          40% {
+            transform: translateY(-8px);
+          }
+          60% {
+            transform: translateY(-4px);
+          }
+        }
+
+        @keyframes shimmer {
+          0% {
+            left: -100%;
+          }
+          100% {
+            left: 100%;
+          }
+        }
+      `}</style>
     </div>
   )
 }
