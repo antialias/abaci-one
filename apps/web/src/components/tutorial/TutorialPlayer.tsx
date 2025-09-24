@@ -365,17 +365,22 @@ function TutorialPlayerContent({
     // Find the topmost bead with arrows, or use fallback for completed steps
     let topmostBead = currentStepBeads?.length ? findTopmostBeadWithArrows(currentStepBeads) : null
 
-    // If step is completed but no current beads, create a fallback bead position
+    // If step is completed but no current beads, use last moved bead or fallback
     if (!topmostBead && isStepCompleted) {
-      // Find an appropriate bead to attach celebration tooltip to
-      // Use the ones place (rightmost column) heaven bead as fallback
-      topmostBead = {
-        placeValue: 0, // Ones place
-        beadType: 'heaven' as const,
-        position: 0,
-        direction: 'none' as const,
-        stepIndex: currentMultiStep,
-        order: 0
+      // First try to use the last bead that was moved
+      if (lastMovedBead.current && currentValue === currentStep.targetValue) {
+        topmostBead = lastMovedBead.current
+      } else {
+        // Find an appropriate bead to attach celebration tooltip to
+        // Use the ones place (rightmost column) heaven bead as fallback
+        topmostBead = {
+          placeValue: 0, // Ones place
+          beadType: 'heaven' as const,
+          position: 0,
+          direction: 'none' as const,
+          stepIndex: currentMultiStep,
+          order: 0
+        }
       }
     }
 
@@ -518,7 +523,7 @@ function TutorialPlayerContent({
     }
 
     return overlay
-  }, [currentStepSummary, currentStepBeads, isStepCompleted, currentMultiStep, renderHighlightedDecomposition, currentValue])
+  }, [currentStepSummary, currentStepBeads, isStepCompleted, currentMultiStep, renderHighlightedDecomposition, currentValue, currentStep])
 
   // Timer for smart help detection
   useEffect(() => {
@@ -632,6 +637,8 @@ function TutorialPlayerContent({
     lastValueForStepAdvancement.current = currentValue
     // Reset user interaction flag when step changes
     userHasInteracted.current = false
+    // Reset last moved bead when step changes
+    lastMovedBead.current = null
   }, [currentStepIndex, currentMultiStep])
 
   // Notify parent of events when they're added to state
@@ -645,15 +652,25 @@ function TutorialPlayerContent({
   // Keep refs needed for step advancement logic
   const lastValueForStepAdvancement = useRef<number>(currentValue)
   const userHasInteracted = useRef<boolean>(false)
+  const lastMovedBead = useRef<StepBeadHighlight | null>(null)
 
   // Wrap context handleValueChange to track user interaction
   const handleValueChange = useCallback((newValue: number) => {
     // Mark that user has interacted
     userHasInteracted.current = true
 
+    // Try to determine which bead was moved by looking at current step beads
+    if (currentStepBeads?.length) {
+      // Find the first bead with direction arrows as the likely moved bead
+      const likelyMovedBead = findTopmostBeadWithArrows(currentStepBeads)
+      if (likelyMovedBead) {
+        lastMovedBead.current = likelyMovedBead
+      }
+    }
+
     // Call the context's handleValueChange
     contextHandleValueChange(newValue)
-  }, [contextHandleValueChange, currentValue])
+  }, [contextHandleValueChange, currentValue, currentStepBeads])
 
   // Cleanup handled by context
 
