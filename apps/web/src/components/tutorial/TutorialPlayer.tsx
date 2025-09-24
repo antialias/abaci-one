@@ -347,7 +347,7 @@ function TutorialPlayerContent({
     return { before, highlighted, after }
   }, [fullDecomposition, expectedSteps, currentMultiStep])
 
-  // Create overlay for tooltip positioned precisely at topmost bead using AbacusReact's overlay system
+  // Create overlay for tooltip positioned precisely at topmost bead using smart collision detection
   const tooltipOverlay = useMemo(() => {
     if (!currentStepSummary || !currentStepBeads?.length) {
       return null
@@ -359,16 +359,37 @@ function TutorialPlayerContent({
       return null
     }
 
-    // Create an overlay that targets the specific bead and positions tooltip outside abacus
+    // Smart positioning logic: avoid covering active beads
+    const targetColumnIndex = 4 - topmostBead.placeValue // Convert placeValue to columnIndex (5 columns: 0-4)
+
+    // Check if there are any active beads (with arrows/highlights) in columns to the left
+    const hasActiveBeadsToLeft = currentStepBeads.some(bead => {
+      const beadColumnIndex = 4 - bead.placeValue
+      return beadColumnIndex < targetColumnIndex && bead.direction && bead.direction !== 'none'
+    })
+
+    // Determine tooltip position and target
+    const shouldPositionAbove = hasActiveBeadsToLeft
+    const tooltipSide = shouldPositionAbove ? 'top' : 'left'
+    const tooltipTarget = shouldPositionAbove ? {
+      // Target the heaven bead position for the column
+      type: 'bead' as const,
+      columnIndex: targetColumnIndex,
+      beadType: 'heaven' as const,
+      beadPosition: 0 // Heaven beads are always at position 0
+    } : {
+      // Target the actual bead
+      type: 'bead' as const,
+      columnIndex: targetColumnIndex,
+      beadType: topmostBead.beadType,
+      beadPosition: topmostBead.position
+    }
+
+    // Create an overlay that positions tooltip to avoid covering active beads
     const overlay: AbacusOverlay = {
       id: 'bead-tooltip',
       type: 'tooltip',
-      target: {
-        type: 'bead',
-        columnIndex: 4 - topmostBead.placeValue, // Convert placeValue to columnIndex (5 columns: 0-4)
-        beadType: topmostBead.beadType,
-        beadPosition: topmostBead.position
-      },
+      target: tooltipTarget,
       content: (
         <Tooltip.Provider>
           <Tooltip.Root open={true}>
@@ -377,7 +398,7 @@ function TutorialPlayerContent({
             </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content
-                side="left"
+                side={tooltipSide}
                 align="center"
                 sideOffset={20}
                 style={{
@@ -1116,8 +1137,7 @@ function TutorialPlayerContent({
                 borderColor: 'gray.200',
                 borderRadius: 'lg',
                 p: 6,
-                shadow: 'lg',
-                ml: '60px' // Left margin to accommodate tooltip
+                shadow: 'lg'
               })}>
                 <AbacusReact
                   value={currentValue}
