@@ -12,6 +12,7 @@ import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 import { TutorialProvider, useTutorialContext } from './TutorialContext'
 import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
+import { useAbacusDisplay } from '@/contexts/AbacusDisplayContext'
 
 // Helper function to find the topmost bead with arrows
 function findTopmostBeadWithArrows(stepBeadHighlights: StepBeadHighlight[] | undefined): StepBeadHighlight | null {
@@ -213,6 +214,9 @@ function TutorialPlayerContent({
   } = useTutorialContext()
 
   const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, multiStepStartTime, uiState, currentMultiStep } = state
+
+  // Use universal abacus display configuration
+  const { config: abacusConfig } = useAbacusDisplay()
   const [isSuccessPopupDismissed, setIsSuccessPopupDismissed] = useState(false)
 
   // Reset success popup when moving to new step
@@ -1088,7 +1092,9 @@ function TutorialPlayerContent({
                   interactive={true}
                   animated={true}
                   scaleFactor={2.5}
-                  colorScheme="place-value"
+                  colorScheme={abacusConfig.colorScheme}
+                  beadShape={abacusConfig.beadShape}
+                  hideInactiveBeads={abacusConfig.hideInactiveBeads}
                   highlightBeads={currentStep.highlightBeads}
                   stepBeadHighlights={currentStepBeads}
                   currentStep={currentMultiStep}
