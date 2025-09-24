@@ -362,11 +362,37 @@ function TutorialPlayerContent({
     // Smart positioning logic: avoid covering active beads
     const targetColumnIndex = 4 - topmostBead.placeValue // Convert placeValue to columnIndex (5 columns: 0-4)
 
-    // Check if there are any active beads (with arrows/highlights) in columns to the left
-    const hasActiveBeadsToLeft = currentStepBeads.some(bead => {
-      const beadColumnIndex = 4 - bead.placeValue
-      return beadColumnIndex < targetColumnIndex && bead.direction && bead.direction !== 'none'
-    })
+    // Check if there are any active beads (against reckoning bar OR with arrows) in columns to the left
+    const hasActiveBeadsToLeft = (() => {
+      // Get current abacus state - we need to check which beads are against the reckoning bar
+      const abacusDigits = currentValue.toString().padStart(5, '0').split('').map(Number)
+
+      for (let col = 0; col < targetColumnIndex; col++) {
+        const placeValue = 4 - col // Convert columnIndex back to placeValue
+        const digitValue = abacusDigits[col]
+
+        // Check if any beads are active (against reckoning bar) in this column
+        if (digitValue >= 5) {
+          // Heaven bead is active
+          return true
+        }
+        if (digitValue % 5 > 0) {
+          // Earth beads are active
+          return true
+        }
+
+        // Also check if this column has beads with direction arrows (from current step)
+        const hasArrowsInColumn = currentStepBeads.some(bead => {
+          const beadColumnIndex = 4 - bead.placeValue
+          return beadColumnIndex === col && bead.direction && bead.direction !== 'none'
+        })
+        if (hasArrowsInColumn) {
+          return true
+        }
+      }
+
+      return false
+    })()
 
     // Determine tooltip position and target
     const shouldPositionAbove = hasActiveBeadsToLeft
