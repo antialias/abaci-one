@@ -1286,33 +1286,36 @@ function TutorialPlayerContent({
           </div>
         )}
 
-        {/* Success toast - positioned near the abacus */}
+        {/* Success notification - positioned directly above the abacus */}
         {isStepCompleted && !isSuccessPopupDismissed && (
           <div
             className={css({
               position: 'absolute',
-              top: '10px',
-              right: '10px',
+              top: '-60px',
+              left: '50%',
+              transform: 'translateX(-50%)',
               zIndex: 50,
               pointerEvents: 'none',
-              animation: 'slideInRight 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards'
+              animation: 'bounceIn 0.4s ease-out, fadeOut 0.3s ease-in 2.2s forwards'
             })}
           >
             <div className={css({
-              background: 'rgba(34, 197, 94, 0.9)',
-              borderRadius: 'lg',
-              px: 4,
-              py: 2,
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(21, 128, 61, 0.95) 100%)',
+              borderRadius: 'xl',
+              px: 6,
+              py: 3,
               color: 'white',
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
+              fontSize: 'lg',
+              fontWeight: 'bold',
+              boxShadow: '0 8px 25px rgba(34, 197, 94, 0.4), 0 0 0 2px rgba(255, 255, 255, 0.2)',
               display: 'flex',
               alignItems: 'center',
-              gap: 2
+              gap: 3,
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+              whiteSpace: 'nowrap'
             })}>
-              <span>✓</span>
-              <span>Step completed!</span>
+              <span className={css({ fontSize: 'xl' })}>🎉</span>
+              <span>Excellent!</span>
             </div>
           </div>
         )}
@@ -1320,13 +1323,19 @@ function TutorialPlayerContent({
 
       {/* Add CSS animations */}
       <style jsx>{`
-        @keyframes slideInRight {
+        @keyframes bounceIn {
           0% {
-            transform: translateX(100%);
+            transform: translateX(-50%) scale(0.3);
             opacity: 0;
           }
+          50% {
+            transform: translateX(-50%) scale(1.05);
+          }
+          70% {
+            transform: translateX(-50%) scale(0.95);
+          }
           100% {
-            transform: translateX(0);
+            transform: translateX(-50%) scale(1);
             opacity: 1;
           }
         }
