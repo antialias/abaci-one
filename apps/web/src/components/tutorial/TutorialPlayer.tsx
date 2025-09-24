@@ -406,10 +406,10 @@ function TutorialPlayerContent({
         }
 
         // Also check if this column has beads with direction arrows (from current step)
-        const hasArrowsInColumn = currentStepBeads.some(bead => {
+        const hasArrowsInColumn = currentStepBeads?.some(bead => {
           const beadColumnIndex = 4 - bead.placeValue
           return beadColumnIndex === col && bead.direction && bead.direction !== 'none'
-        })
+        }) ?? false
         if (hasArrowsInColumn) {
           return true
         }
