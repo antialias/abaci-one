@@ -362,21 +362,21 @@ function TutorialPlayerContent({
 
   // Create overlay for tooltip positioned precisely at topmost bead using smart collision detection
   const tooltipOverlay = useMemo(() => {
-    // Show tooltip if step is completed OR if we have step instructions
-    if (!isStepCompleted && (!currentStepSummary || !currentStepBeads?.length)) {
+    // Show tooltip if step is completed AND still at target value OR if we have step instructions
+    const showCelebration = isStepCompleted && currentValue === currentStep.targetValue
+    const showInstructions = !showCelebration && currentStepSummary && currentStepBeads?.length
+
+    if (!showCelebration && !showInstructions) {
       return null
     }
 
-    // Find the topmost bead with arrows, or use fallback for completed steps
-    let topmostBead = currentStepBeads?.length ? findTopmostBeadWithArrows(currentStepBeads) : null
+    let topmostBead: StepBeadHighlight | null = null
 
-    // If step is completed but no current beads, use last moved bead or fallback
-    if (!topmostBead && isStepCompleted) {
-      // First try to use the last bead that was moved
-      if (lastMovedBead.current && currentValue === currentStep.targetValue) {
+    if (showCelebration) {
+      // For celebration, use the last moved bead or fallback
+      if (lastMovedBead.current) {
         topmostBead = lastMovedBead.current
       } else {
-        // Find an appropriate bead to attach celebration tooltip to
         // Use the ones place (rightmost column) heaven bead as fallback
         topmostBead = {
           placeValue: 0, // Ones place
@@ -387,6 +387,9 @@ function TutorialPlayerContent({
           order: 0
         }
       }
+    } else if (showInstructions) {
+      // For instructions, use the topmost bead with arrows
+      topmostBead = findTopmostBeadWithArrows(currentStepBeads)
     }
 
     if (!topmostBead) {
@@ -462,7 +465,7 @@ function TutorialPlayerContent({
                 align="center"
                 sideOffset={20}
                 style={{
-                  background: isStepCompleted
+                  background: showCelebration
                     ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(21, 128, 61, 0.95) 100%)'
                     : '#1e40af',
                   color: 'white',
@@ -470,7 +473,7 @@ function TutorialPlayerContent({
                   borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: '700',
-                  boxShadow: isStepCompleted
+                  boxShadow: showCelebration
                     ? '0 8px 25px rgba(34, 197, 94, 0.4), 0 0 0 2px rgba(255, 255, 255, 0.2)'
                     : '0 4px 12px rgba(0,0,0,0.3)',
                   whiteSpace: 'normal',
@@ -480,8 +483,8 @@ function TutorialPlayerContent({
                   zIndex: 1000,
                   opacity: 0.95,
                   transition: 'all 0.3s ease',
-                  transform: isStepCompleted ? 'scale(1.05)' : 'scale(1)',
-                  animation: isStepCompleted ? 'celebrationPulse 0.6s ease-out' : 'none'
+                  transform: showCelebration ? 'scale(1.05)' : 'scale(1)',
+                  animation: showCelebration ? 'celebrationPulse 0.6s ease-out' : 'none'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '1'
@@ -491,7 +494,7 @@ function TutorialPlayerContent({
                 }}
               >
                 <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                  {isStepCompleted ? (
+                  {showCelebration ? (
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -515,7 +518,7 @@ function TutorialPlayerContent({
                 </div>
                 <Tooltip.Arrow
                   style={{
-                    fill: isStepCompleted ? '#15803d' : '#1e40af'
+                    fill: showCelebration ? '#15803d' : '#1e40af'
                   }}
                 />
               </Tooltip.Content>
