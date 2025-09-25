@@ -326,13 +326,9 @@ export function generateUnifiedInstructionSequence(
   const width = Math.max(digits(startValue), digits(targetValue), digits(Math.abs(targetValue - startValue))) + 1 // +1 to absorb carries
   const toState = (n: number) => numberToAbacusState(n, width)
 
-  // Step 1: Calculate actual bead movements
+  // Step 1: Generate pedagogical decomposition terms and segment plan
   const startState = toState(startValue)
-  const targetState = toState(targetValue)
-  const { additions, removals } = calculateBeadChanges(startState, targetState)
-
-  // Step 2: Generate pedagogical decomposition terms and segment plan based on actual bead movements
-  const { terms: decompositionTerms, segmentsPlan } = generateDecompositionTerms(startValue, targetValue, additions, removals, toState)
+  const { terms: decompositionTerms, segmentsPlan } = generateDecompositionTerms(startValue, targetValue, toState)
 
   // Step 3: Generate unified steps - each step computes ALL aspects simultaneously
   const steps: UnifiedStepData[] = []
@@ -457,8 +453,6 @@ interface DecompositionStep {
 function generateDecompositionTerms(
   startValue: number,
   targetValue: number,
-  additions: BeadHighlight[], // Legacy parameter - not used in new algo
-  removals: BeadHighlight[],   // Legacy parameter - not used in new algo
   toState: (n: number) => AbacusState
 ): { terms: string[]; segmentsPlan: SegmentDraft[] } {
   const addend = targetValue - startValue
@@ -772,7 +766,7 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
   if (term.startsWith('-')) {
     const value = parseInt(term.substring(1))
     if (value <= 4) {
-      return `remove ${value} earth bead${value > 1 ? 's' : ''}`
+      return `remove ${value} earth bead${value > 1 ? 's' : ''} in ones column`
     } else if (value === 5) {
       return 'deactivate heaven bead'
     } else if (value >= 6 && value <= 9) {
@@ -797,7 +791,7 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
     if (value === 5) {
       return isComplementContext ? 'add 5' : 'activate heaven bead'
     } else if (value <= 4) {
-      return `add ${value} earth bead${value > 1 ? 's' : ''}`
+      return `add ${value} earth bead${value > 1 ? 's' : ''} in ones column`
     } else if (value >= 6 && value <= 9) {
       const earthBeads = value - 5
       return `activate heaven bead and add ${earthBeads} earth beads`
@@ -843,7 +837,7 @@ function abacusStateToNumber(state: AbacusState): number {
  */
 function calculateStepResult(currentValue: number, term: string): {
   newValue: number
-  operation: 'add' | 'subtract' | 'complement'
+  operation: 'add' | 'subtract'
   addAmount?: number
   subtractAmount?: number
 } {
