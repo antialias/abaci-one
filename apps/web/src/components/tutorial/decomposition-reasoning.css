@@ -1,0 +1,401 @@
+/* CSS styling for DecompositionWithReasons component */
+
+.decomposition {
+  display: inline;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.term {
+  display: inline-block;
+  padding: 2px 4px;
+  margin: 0 1px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.term--plain {
+  cursor: default;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+
+.term:focus {
+  outline: none;
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Active term - the one being directly hovered/clicked */
+.term--active {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.6);
+  font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Current step - the term that matches the current tutorial step */
+.term--current {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.6);
+  border-width: 2px;
+  font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  animation: currentStepGlow 1.5s ease-in-out infinite;
+}
+
+/* Grouped terms - terms that belong to pedagogical segments */
+.term--grouped {
+  background: transparent;
+  border-color: transparent;
+}
+
+
+/* Reason tooltip styling */
+.reason-tooltip {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  max-width: 240px;
+  z-index: 50;
+  animation: fadeIn 0.2s ease-out;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.reason-tooltip__content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reason-tooltip__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.reason-tooltip__emoji {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.reason-tooltip__title {
+  flex: 1;
+}
+
+.reason-tooltip__name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: #1f2937;
+}
+
+.reason-tooltip__description {
+  font-size: 13px;
+  margin: 0;
+  color: #6b7280;
+  opacity: 0.9;
+}
+
+.reason-tooltip__explanation {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.4;
+}
+
+.reason-tooltip__explanation p {
+  margin: 0;
+}
+
+.reason-tooltip__details ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reason-tooltip__details li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.4;
+}
+
+.reason-tooltip__details li:last-child {
+  margin-bottom: 0;
+}
+
+.reason-tooltip__bullet {
+  color: #9ca3af;
+  font-weight: bold;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.reason-tooltip__formula {
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.reason-tooltip__expansion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 8px;
+  background: #fafbfc;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.reason-tooltip__original {
+  background: #fff2cc;
+  border: 1px solid #ffd93d;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.reason-tooltip__arrow {
+  color: #6b7280;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.reason-tooltip__expanded {
+  background: #f0f9ff;
+  border: 1px solid #7dd3fc;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+  color: #1e40af;
+  flex: 1;
+}
+
+.reason-tooltip__section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 4px;
+}
+
+.reason-tooltip__reasoning {
+  margin-bottom: 12px;
+}
+
+.reason-tooltip__decision {
+  margin-bottom: 8px;
+}
+
+.reason-tooltip__explanation-text {
+  font-size: 12px;
+  color: #4b5563;
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+}
+
+.reason-tooltip__steps {
+  margin-bottom: 12px;
+}
+
+.reason-tooltip__step-list {
+  margin: 0;
+  padding: 0 0 0 16px;
+  list-style: decimal;
+}
+
+.reason-tooltip__step {
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reason-tooltip__step:last-child {
+  margin-bottom: 0;
+}
+
+.reason-tooltip__step-term {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 11px;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.reason-tooltip__step-instruction {
+  font-size: 11px;
+  color: #6b7280;
+  line-height: 1.3;
+  font-style: italic;
+}
+
+.reason-tooltip__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+  font-style: italic;
+}
+
+.reason-tooltip__code {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+  color: #1f2937;
+}
+
+/* Radix tooltip arrow */
+.reason-tooltip .reason-tooltip__arrow {
+  fill: #ffffff;
+  stroke: #e5e7eb;
+  stroke-width: 2px;
+}
+
+/* Color variants */
+.reason-tooltip--green {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+}
+
+.reason-tooltip--green .reason-tooltip__name {
+  color: #065f46;
+}
+
+.reason-tooltip--green .reason-tooltip__emoji {
+  filter: hue-rotate(120deg);
+}
+
+.reason-tooltip--blue {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+}
+
+.reason-tooltip--blue .reason-tooltip__name {
+  color: #1e40af;
+}
+
+.reason-tooltip--purple {
+  border-color: #8b5cf6;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%);
+}
+
+.reason-tooltip--purple .reason-tooltip__name {
+  color: #5b21b6;
+}
+
+.reason-tooltip--orange {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%);
+}
+
+.reason-tooltip--orange .reason-tooltip__name {
+  color: #92400e;
+}
+
+.reason-tooltip--gray {
+  border-color: #6b7280;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes groupPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes currentStepGlow {
+  0% {
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.5), 0 0 8px rgba(245, 158, 11, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+  }
+}
+
+/* Segment group styling */
+.segment-group {
+  display: inline;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: 0 1px;
+  transition: all 0.2s ease;
+}
+
+.segment-group:hover {
+  background: rgba(147, 51, 234, 0.1);
+  box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.2);
+}
+
+/* Accessibility improvements */
+.term:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.segment-group:focus-visible {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .term {
+    transition: none;
+  }
+
+  .reason-popover {
+    animation: none;
+  }
+}

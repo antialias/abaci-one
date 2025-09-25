@@ -12,6 +12,7 @@ import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 import { TutorialProvider, useTutorialContext } from './TutorialContext'
 import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
+import { DecompositionWithReasons } from './DecompositionWithReasons'
 import { useAbacusDisplay } from '@/contexts/AbacusDisplayContext'
 
 // Helper function to find the topmost bead with arrows
@@ -199,6 +200,7 @@ function TutorialPlayerContent({
   const isProgrammaticChange = useRef(false)
   const [showHelpForCurrentStep, setShowHelpForCurrentStep] = useState(false)
 
+
   // Use tutorial context instead of local state
   const {
     state,
@@ -252,7 +254,7 @@ function TutorialPlayerContent({
   }
 
   // Define the static expected steps using our unified step generator
-  const { expectedSteps, fullDecomposition, isMeaningfulDecomposition } = useMemo(() => {
+  const { expectedSteps, fullDecomposition, isMeaningfulDecomposition, pedagogicalSegments, termPositions } = useMemo(() => {
     try {
       const unifiedSequence = generateUnifiedInstructionSequence(currentStep.startValue, currentStep.targetValue)
 
@@ -267,16 +269,23 @@ function TutorialPlayerContent({
         termPosition: step.termPosition  // Add the precise position information
       }))
 
+      // Extract term positions from steps for DecompositionWithReasons
+      const positions = unifiedSequence.steps.map(step => step.termPosition).filter(Boolean)
+
       return {
         expectedSteps: steps,
         fullDecomposition: unifiedSequence.fullDecomposition,
-        isMeaningfulDecomposition: unifiedSequence.isMeaningfulDecomposition
+        isMeaningfulDecomposition: unifiedSequence.isMeaningfulDecomposition,
+        pedagogicalSegments: unifiedSequence.segments,
+        termPositions: positions
       }
     } catch (error) {
       return {
         expectedSteps: [],
         fullDecomposition: '',
-        isMeaningfulDecomposition: false
+        isMeaningfulDecomposition: false,
+        pedagogicalSegments: [],
+        termPositions: []
       }
     }
   }, [currentStep.startValue, currentStep.targetValue])
@@ -1101,7 +1110,7 @@ function TutorialPlayerContent({
                     Guidance
                   </p>
 
-                  {/* Pedagogical decomposition with current term highlighted */}
+                  {/* Pedagogical decomposition with interactive reasoning */}
                   {fullDecomposition && isMeaningfulDecomposition && (
                     <div className={css({
                       mb: 4,
@@ -1120,13 +1129,15 @@ function TutorialPlayerContent({
                         letterSpacing: 'tight',
                         lineHeight: '1.5'
                       })}>
-                        <PedagogicalDecompositionDisplay
-                          variant="guidance"
-                          decomposition={renderHighlightedDecomposition()}
+                        <DecompositionWithReasons
+                          fullDecomposition={fullDecomposition}
+                          termPositions={termPositions}
+                          segments={pedagogicalSegments}
                         />
                       </p>
                     </div>
                   )}
+
 
                   <div className={css({
                     fontSize: 'sm',
