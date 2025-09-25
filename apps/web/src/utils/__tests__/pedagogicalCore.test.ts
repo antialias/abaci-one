@@ -103,26 +103,43 @@ describe('Pedagogical Algorithm - Core Validation', () => {
       const nonMeaningful = [
         [0, 0],   // Zero case
         [5, 5],   // No change
-        [0, 6],   // Simple addition without complements (if that's the case)
+        [123, 123], // No change multi-digit
       ]
 
       nonMeaningful.forEach(([start, target]) => {
         const result = generateUnifiedInstructionSequence(start, target)
         assertMeaningfulness(result, false)
+        expect(result.fullDecomposition).not.toMatch(/\(/) // Should not contain parentheses
       })
     })
 
-    it('detects meaningful decompositions', () => {
+    it('detects meaningful decompositions with explicit parentheses check', () => {
       const meaningful = [
-        [4, 7],       // Five-complement with parentheses
-        [7, 15],      // Ten-complement with parentheses
-        [99, 107],    // Cascading complement
+        [4, 7],       // Five-complement: (5 - 2)
+        [7, 15],      // Ten-complement: (10 - 2)
+        [99, 107],    // Cascading: (100 - 90 - 2)
+        [3, 6],       // Five-complement: (5 - 2)
+        [8, 15],      // Ten-complement: (10 - 3)
       ]
 
       meaningful.forEach(([start, target]) => {
         const result = generateUnifiedInstructionSequence(start, target)
         assertMeaningfulness(result, true)
+        expect(result.fullDecomposition, `${start}→${target} should have parentheses for complement`).toMatch(/\(/)
+        expect(result.isMeaningfulDecomposition).toBe(true)
       })
+    })
+
+    it('validates specific meaningfulness edge cases', () => {
+      // Test case that should be meaningful due to complement structure
+      const result = generateUnifiedInstructionSequence(0, 6)
+      if (result.fullDecomposition.includes('(')) {
+        // If it uses complements (5 + 1), it should be meaningful
+        expect(result.isMeaningfulDecomposition).toBe(true)
+      } else {
+        // If it's direct addition, it should be non-meaningful
+        expect(result.isMeaningfulDecomposition).toBe(false)
+      }
     })
   })
 

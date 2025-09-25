@@ -3,7 +3,6 @@
 // expected states, and bead mappings.
 
 import {
-  BeadState,
   AbacusState,
   BeadHighlight,
   StepBeadHighlight,
@@ -136,6 +135,11 @@ export function generateUnifiedInstructionSequence(
 
   // Step 4: Build full decomposition string and calculate term positions
   const { fullDecomposition, termPositions } = buildFullDecompositionWithPositions(startValue, targetValue, decompositionTerms)
+
+  // Defensive check: ensure position count matches term count
+  if (termPositions.length !== decompositionTerms.length) {
+    throw new Error(`Position count mismatch: ${termPositions.length} positions for ${decompositionTerms.length} terms`)
+  }
 
   // Step 5: Determine if this decomposition is meaningful
   const isMeaningfulDecomposition = isDecompositionMeaningful(startValue, targetValue, decompositionTerms, fullDecomposition)
@@ -579,6 +583,19 @@ function calculateStepBeadMovements(
       direction: 'deactivate',
       order: additions.length + index
     })
+  })
+
+  // Stabilize movement ordering for consistent UI animations
+  // Priority: higher place → heaven beads → activations first
+  movements.sort((a, b) => (
+    b.placeValue - a.placeValue ||            // Higher place first (tens before ones)
+    (a.beadType === 'heaven' ? -1 : 1) - (b.beadType === 'heaven' ? -1 : 1) ||  // Heaven before earth
+    (a.direction === 'activate' ? -1 : 1) - (b.direction === 'activate' ? -1 : 1) // Activate before deactivate
+  ))
+
+  // Reassign order indices after sorting
+  movements.forEach((movement, index) => {
+    movement.order = index
   })
 
   return movements
