@@ -12,6 +12,16 @@ import {
 
 export type PedagogicalRule = 'Direct' | 'FiveComplement' | 'TenComplement' | 'Cascade'
 
+export interface SegmentReadable {
+  title: string              // "Make 10 — ones" or "Make 10 (carry) — ones"
+  subtitle?: string          // "Using pairs that make 10"
+  chips: Array<{ label: string; value: string }>
+  why: string[]              // short, plain bullets
+  carryPath?: string         // "Tens is 9 → hundreds +1; tens → 0"
+  stepsFriendly: string[]    // bead verbs for each subterm
+  showMath?: { lines: string[] } // ["We take away 5 here (that's 10 minus 5)."]
+}
+
 export interface SegmentDecision {
   /** Short, machine-readable rule fired at this segment */
   rule: PedagogicalRule
@@ -44,6 +54,8 @@ export interface PedagogicalSegment {
   endValue: number
   startState: AbacusState
   endState: AbacusState
+  /** Learner-friendly descriptions without technical variables */
+  readable: SegmentReadable
 }
 
 export interface UnifiedStepData {
@@ -210,6 +222,147 @@ function formatSegmentGoal(digit: number, placeValue: number): string {
   return `Add ${digit} to ${placeName}`
 }
 
+function generateSegmentReadable(
+  rule: PedagogicalRule,
+  place: number,
+  digit: number,
+  currentDigit: number,
+  plan: SegmentDecision[],
+  steps: UnifiedStepData[],
+  stepIndices: number[],
+  startState: AbacusState,
+  targetState: AbacusState
+): SegmentReadable {
+  const placeName = getPlaceName(place)
+  const hasCascade = plan.some(p => p.rule === 'Cascade')
+
+  // Generate title based on rule
+  let title: string
+  let subtitle: string | undefined
+
+  switch (rule) {
+    case 'Direct':
+      title = `Direct Add — ${placeName}`
+      subtitle = digit <= 4 ? 'Simple bead movement' : 'Using the heaven bead'
+      break
+    case 'FiveComplement':
+      title = `Make 5 — ${placeName}`
+      subtitle = 'Using pairs that make 5'
+      break
+    case 'TenComplement':
+      title = hasCascade ? `Make 10 (carry) — ${placeName}` : `Make 10 — ${placeName}`
+      subtitle = 'Using pairs that make 10'
+      break
+    case 'Cascade':
+      title = `Chain Reaction — ${placeName}`
+      subtitle = 'Multiple carries needed'
+      break
+    default:
+      title = `Strategy — ${placeName}`
+  }
+
+  // Generate chips with concrete language
+  const chips: Array<{ label: string; value: string }> = []
+
+  chips.push({
+    label: 'This rod shows',
+    value: currentDigit.toString()
+  })
+
+  chips.push({
+    label: "We're adding",
+    value: digit.toString()
+  })
+
+  // Add context-specific third chip
+  if (rule === 'TenComplement') {
+    const takeAway = 10 - digit
+    chips.push({
+      label: 'So take away here',
+      value: takeAway.toString()
+    })
+  } else if (rule === 'FiveComplement') {
+    chips.push({
+      label: 'Not enough lower beads here',
+      value: `Need ${digit - currentDigit} more`
+    })
+  }
+
+  // Generate why bullets
+  const why: string[] = []
+  switch (rule) {
+    case 'Direct':
+      if (digit <= 4) {
+        why.push('We can add beads directly to this rod.')
+      } else {
+        why.push(`Adding ${digit} fits perfectly using heaven and earth beads.`)
+      }
+      break
+    case 'FiveComplement':
+      why.push(`Adding ${digit} would need more lower beads than we have.`)
+      why.push('Use the heaven bead instead: press it and lift some lower beads.')
+      break
+    case 'TenComplement':
+      why.push(`Adding ${digit} would overfill this rod.`)
+      why.push(`We "make a ten": give 10 to the next rod and take ${10 - digit} away here.`)
+      break
+  }
+
+  // Generate carry path for ten complements
+  let carryPath: string | undefined
+  if (rule === 'TenComplement') {
+    if (hasCascade) {
+      // Look at the start state to determine the cascade path
+      const nextPlace = place + 1
+      const nextPlaceName = getPlaceName(nextPlace)
+      const nextValue = (startState[nextPlace]?.heavenActive ? 5 : 0) + (startState[nextPlace]?.earthActive || 0)
+
+      if (nextValue === 9) {
+        const higherPlace = place + 2
+        const higherPlaceName = getPlaceName(higherPlace)
+        carryPath = `${nextPlaceName} is 9 → ${higherPlaceName} +1; ${nextPlaceName} → 0`
+      } else {
+        carryPath = `${nextPlaceName} +1`
+      }
+    } else {
+      const nextPlaceName = getPlaceName(place + 1)
+      carryPath = `${nextPlaceName} +1`
+    }
+  }
+
+  // Generate friendly step descriptions
+  const stepsFriendly: string[] = []
+  stepIndices.forEach(stepIndex => {
+    const step = steps[stepIndex]
+    if (step) {
+      stepsFriendly.push(step.englishInstruction)
+    }
+  })
+
+  // Generate advanced math explanations
+  const showMath: { lines: string[] } = {
+    lines: []
+  }
+
+  if (rule === 'TenComplement') {
+    showMath.lines.push(`We take away ${10 - digit} here because that's what's needed to reach 10.`)
+    showMath.lines.push(`(That's 10 minus ${digit}.)`)
+  } else if (rule === 'FiveComplement') {
+    showMath.lines.push(`We take away ${5 - currentDigit} lower beads after pressing the heaven bead.`)
+    showMath.lines.push(`(That's 5 minus ${currentDigit}.)`)
+  }
+
+  return {
+    title,
+    subtitle,
+    chips,
+    why,
+    carryPath,
+    stepsFriendly,
+    showMath: showMath.lines.length > 0 ? showMath : undefined
+  }
+}
+
 function buildSegmentsWithPositions(
   segmentsPlan: SegmentDraft[],
   fullDecomposition: string,
@@ -235,6 +388,8 @@ function buildSegmentsWithPositions(
       start -= 1; end += 1
     }
 
+    const primaryRule = draft.plan[0]?.rule || 'Direct'
+
     return {
       id: draft.id,
       place: draft.place,
@@ -251,7 +406,18 @@ function buildSegmentsWithPositions(
       startValue: draft.startValue,
       endValue: draft.endValue,
       startState: draft.startState,
-      endState: draft.endState
+      endState: draft.endState,
+      readable: generateSegmentReadable(
+        primaryRule,
+        draft.place,
+        draft.digit,
+        draft.a,
+        draft.plan,
+        steps,
+        draft.stepIndices,
+        draft.startState,
+        draft.endState
+      )
     }
   })
 }
