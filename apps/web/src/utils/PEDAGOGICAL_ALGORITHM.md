@@ -33,11 +33,11 @@ For each digit at place P from most-significant to least-significant:
    - Else (not enough lower capacity, upper bead is up): Use 5's complement:
      - Add 5 (activate upper bead)
      - Subtract `(5 - d)` (remove lower beads)
-     - Expression: `d = (5 - (5-d))`
+     - Expression: `d ≡ (+5) − (5 − d)`
 
    **For d ≥ 5:**
-   - If possible: activate upper bead (if not already) and push `d - 5` lower beads
-   - If that won't fit: fall back to Case B (10's complement)
+   - Activate the upper bead (it must be up in Case A) and push `d − 5` lowers.
+   - **Always fits:** Case A gives `d ≤ 9 − a`, hence `d − 5 ≤ 4 − a`.
 
 4. **Case B: 10's Complement (a + d ≥ 10)**
 
@@ -47,12 +47,11 @@ For each digit at place P from most-significant to least-significant:
    - Set any intervening 9s to 0
 
    **Subtraction at Place P:**
-   - Subtract `(10 - d)` at place P
-   - **If can't subtract at P (borrowing needed):**
-     - Borrow 10 from the place just incremented (decrement by 1, add 10 to P)
-     - Then subtract `(10 - d)` at place P
+   - Let `s = 10 - d`
+   - Subtract `s` at place P by raising lower beads and (if down) the upper bead
+   - **No borrow needed at P:** Since `a + d ≥ 10`, we have `a ≥ 10 - d = s`, so subtraction is always physically possible
 
-   **Expression:** `d = (10 - (10-d))`
+   **Expression:** `d ≡ (+10) − (10 − d)` (realize +10 via ripple‑carry)
 
 5. **Continue to Next Place**
    - Move to next place value to the right
@@ -86,24 +85,22 @@ Ones (1): a=9, d=1, a+d=10 ≥ 10 → 10's complement
 Result: 1|0|0|0 = 1000
 ```
 
-### Example 3: 4 + 3 = 7 (Direct)
+### Example 3: 4 + 3 = 7 (5's Complement)
 ```
-Start: 4 (heaven up, 4 lowers down)
-Ones (3): a=4, d=3, a+d=7 ≤ 9 → But can't push 3 more lowers (would be 7 lowers)
+Start: 4 (upper up, 4 lowers down)
+Ones (3): a=4, d=3, a+d=7 ≤ 9 → But can't push 3 more lowers (max is 4 lowers total)
   Use 5's complement: 3 = (5 - 2)
-  Add 5 (second heaven bead), subtract 2 lowers
-Result: 7 (both heaven beads, 2 lowers) = 7
+  Drop upper bead (+5), raise 2 lowers (-2)
+Result: 7 (upper down, 2 lowers down) = 7
 ```
 
-### Example 4: 7 + 8 = 15 (5's complement impossible)
+### Example 4: 7 + 8 = 15 (10's Complement)
 ```
-Start: 7 (heaven up, 2 lowers down)
+Start: 7 (upper down, 2 lowers down)
 Ones (8): a=7, d=8, a+d=15 ≥ 10 → 10's complement
-  Add 10 to tens place
-  Subtract (10-8)=2: but need to borrow first
-  Borrow 10 from tens (decrement tens, add 10 to ones): 7+10=17
-  Subtract 2: 17-2=15, but 15 > 9 so carry: tens+1, ones=5
-Result: 1|5 = 15
+  Ripple-carry: increment tens by 1
+  Subtract s = 10 - d = 2 at ones: 7 - 2 = 5 (no borrow needed, s ≤ a)
+Result: tens +1, ones = 5 → 15
 ```
 
 ## Subtraction Algorithm
