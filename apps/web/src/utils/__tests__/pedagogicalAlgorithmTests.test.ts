@@ -234,22 +234,25 @@ describe('Pedagogical Expansion Algorithm - Addition Only', () => {
       {
         start: 23, target: 47,
         expected: {
-          decomposition: '23 + 24 = 23 + 20 + 4 = 47',
+          decomposition: '23 + 24 = 23 + 20 + (5 - 1) = 47',
           meaningful: true,
           steps: [
             { term: '20', value: 43, instruction: /add.*2.*tens/i },
-            { term: '4', value: 47, instruction: /add.*4.*earth/i }
+            { term: '5', value: 48, instruction: /add.*5/i },
+            { term: '-1', value: 47, instruction: /remove.*1.*earth/i }
           ]
         }
       },
       {
         start: 34, target: 78,
         expected: {
-          decomposition: '34 + 44 = 34 + 40 + 4 = 78',
+          decomposition: '34 + 44 = 34 + (50 - 10) + (5 - 1) = 78',
           meaningful: true,
           steps: [
-            { term: '40', value: 74, instruction: /add.*4.*tens/i },
-            { term: '4', value: 78, instruction: /add.*4.*earth/i }
+            { term: '50', value: 84, instruction: /add.*5.*tens/i },
+            { term: '-10', value: 74, instruction: /remove.*1.*tens/i },
+            { term: '5', value: 79, instruction: /add.*5/i },
+            { term: '-1', value: 78, instruction: /remove.*1.*earth/i }
           ]
         }
       }

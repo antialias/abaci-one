@@ -62,7 +62,14 @@
       "Bash(open http://localhost:3002/tutorial-editor)",
       "Bash(xargs rm:*)",
       "WebFetch(domain:www.radix-ui.com)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(pnpm --filter=@soroban/web test src/components/tutorial/__tests__/TutorialCelebrationTooltip.e2e.test.ts)",
+      "Bash(pnpm --filter=@soroban/web test src/components/tutorial/__tests__/TutorialPlayerCelebration.integration.test.tsx --timeout=10000)",
+      "Bash(pnpm --filter=@soroban/web test src/components/tutorial/__tests__/TutorialPlayerCelebration.integration.test.tsx)",
+      "Bash(pnpm --filter=@soroban/web test src/utils/__tests__/pedagogicalAlgorithmTests.test.ts)",
+      "Bash(pnpm --filter=@soroban/web test src/utils/__tests__/pedagogicalAlgorithmTests.test.ts --timeout=5000 --run)",
+      "Bash(pnpm --filter=@soroban/web test src/utils/__tests__/termPositionDebug.test.ts)",
+      "Bash(pnpm --filter=@soroban/web test src/utils/__tests__/pedagogicalSnapshot.test.ts)"
     ],
     "deny": [],
     "ask": []
