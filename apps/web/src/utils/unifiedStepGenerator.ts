@@ -10,6 +10,42 @@ import {
   calculateBeadChanges
 } from './abacusInstructionGenerator'
 
+export type PedagogicalRule = 'Direct' | 'FiveComplement' | 'TenComplement' | 'Cascade'
+
+export interface SegmentDecision {
+  /** Short, machine-readable rule fired at this segment */
+  rule: PedagogicalRule
+  /** Guard conditions that selected this rule */
+  conditions: string[] // e.g., ["a+d=6 ≤ 9", "L+d=5 > 4"]
+  /** Friendly bullets explaining the why */
+  explanation: string[] // e.g., ["No room for 3 lowers → use +5 − (5−3)"]
+}
+
+export interface PedagogicalSegment {
+  id: string                 // e.g., "P1-d4-#2"
+  place: number              // P
+  digit: number              // d
+  a: number                  // digit currently showing at P before the segment
+  L: number                  // lowers down at P
+  U: 0 | 1                   // upper down?
+  goal: string               // "Increase tens by 4 without carry"
+  plan: SegmentDecision[]    // one or more rules (Cascade includes TenComplement+Cascade)
+  /** Expression for the whole segment, e.g., "40" or "(100 - 90 - 6)" */
+  expression: string
+  /** Indices into the flat `steps` array that belong to this segment */
+  stepIndices: number[]
+  /** Indices into the decompositionTerms list that belong to this segment */
+  termIndices: number[]
+  /** character range inside `fullDecomposition` spanning the expression */
+  termRange: { startIndex: number; endIndex: number }
+
+  /** Segment start→end snapshot (optional but useful for UI tooltips) */
+  startValue: number
+  endValue: number
+  startState: AbacusState
+  endState: AbacusState
+}
+
 export interface UnifiedStepData {
   stepIndex: number
 
@@ -30,6 +66,9 @@ export interface UnifiedStepData {
   // Validation
   isValid: boolean
   validationIssues?: string[]
+
+  /** Link to pedagogy segment this step belongs to */
+  segmentId?: string
 }
 
 export interface UnifiedInstructionSequence {
@@ -46,6 +85,207 @@ export interface UnifiedInstructionSequence {
   startValue: number
   targetValue: number
   totalSteps: number
+
+  /** NEW: Schema version for compatibility */
+  schemaVersion?: '1' | '2'
+  /** NEW: High-level "chapters" that explain the why */
+  segments: PedagogicalSegment[]
+}
+
+// Internal draft interface for building segments
+interface SegmentDraft {
+  id: string
+  place: number
+  digit: number
+  a: number
+  L: number
+  U: 0 | 1
+  plan: SegmentDecision[]
+  goal: string
+  /** contiguous indices into steps[] / terms[] for this segment */
+  stepIndices: number[]
+  termIndices: number[]
+  // Value/state snapshots
+  startValue: number
+  startState: AbacusState
+  endValue: number
+  endState: AbacusState
+}
+
+/**
+ * Helper functions for building segment decisions and explanations
+ */
+
+function isPowerOfTen(n: number): boolean {
+  if (n < 1) return false
+  return /^10*$/.test(n.toString())
+}
+function inferGoal(seg: SegmentDraft): string {
+  const placeName = getPlaceName(seg.place)
+  switch (seg.plan[0]?.rule) {
+    case 'Direct':
+      return `Increase ${placeName} by ${seg.digit} without carry`
+    case 'FiveComplement':
+      return `Add ${seg.digit} to ${placeName} using 5's complement`
+    case 'TenComplement':
+      return `Add ${seg.digit} to ${placeName} with a carry`
+    case 'Cascade':
+      return `Carry through ${placeName}+ to nearest non‑9 place`
+    default:
+      return `Apply operation at ${placeName}`
+  }
+}
+
+function decisionForDirect(a: number, d: number, L: number): SegmentDecision[] {
+  if (L + d <= 4) {
+    return [{
+      rule: 'Direct',
+      conditions: [`a+d=${a}+${d}=${a+d} ≤ 9`],
+      explanation: ['Fits inside this place; add earth beads directly.']
+    }]
+  } else {
+    const s = 5 - d
+    return [{
+      rule: 'FiveComplement',
+      conditions: [`a+d=${a}+${d}=${a+d} ≤ 9`, `L+d=${L}+${d}=${L+d} > 4`],
+      explanation: [
+        'No room for that many earth beads.',
+        `Use +5 − (5−${d}) = +5 − ${s}; subtraction is possible because lowers ≥ ${s}.`
+      ]
+    }]
+  }
+}
+
+function decisionForFiveComplement(a: number, d: number): SegmentDecision[] {
+  const s = 5 - d
+  return [{
+    rule: 'FiveComplement',
+    conditions: [`a+d=${a}+${d}=${a+d} ≤ 9`, `L+d > 4`],
+    explanation: [
+      'No room for that many earth beads.',
+      `Use +5 − (5−${d}) = +5 − ${s}; subtraction is possible because lowers ≥ ${s}.`
+    ]
+  }]
+}
+
+function decisionForTenComplement(a: number, d: number, nextIs9: boolean): SegmentDecision[] {
+  const base: SegmentDecision = {
+    rule: 'TenComplement',
+    conditions: [`a+d=${a}+${d}=${a+d} ≥ 10`, `a ≥ 10−d = ${10-d}`],
+    explanation: [
+      'Need a carry to the next higher place.',
+      `No borrow at this place because a ≥ ${10-d}.`
+    ]
+  }
+  if (!nextIs9) return [base]
+  return [
+    base,
+    {
+      rule: 'Cascade',
+      conditions: ['next place is 9 ⇒ ripple carry'],
+      explanation: ['Increment nearest non‑9 place; clear intervening 9s.']
+    }
+  ]
+}
+
+function formatSegmentExpression(terms: string[]): string {
+  // single term -> "40"
+  if (terms.length === 1 && !terms[0].startsWith('-')) return terms[0]
+
+  // complement group -> "(pos - n1 - n2 - ...)"
+  const pos = terms[0]
+  const negs = terms.slice(1).map(t => t.replace(/^-/, ''))
+  return `(${pos} - ${negs.join(' - ')})`
+}
+
+function formatSegmentGoal(digit: number, placeValue: number): string {
+  const placeName = getPlaceName(placeValue)
+  return `Add ${digit} to ${placeName}`
+}
+
+function buildSegmentsWithPositions(
+  segmentsPlan: SegmentDraft[],
+  fullDecomposition: string,
+  steps: UnifiedStepData[]
+): PedagogicalSegment[] {
+  return segmentsPlan.map(draft => {
+    const segmentTerms = draft.stepIndices
+      .map(i => steps[i]?.mathematicalTerm)
+      .filter((t): t is string => !!t)
+
+    // Range from steps -> exact, no string search
+    const ranges = draft.stepIndices
+      .map(i => steps[i]?.termPosition)
+      .filter((r): r is {startIndex:number; endIndex:number} => !!r)
+
+    let start = Math.min(...ranges.map(r => r.startIndex))
+    let end   = Math.max(...ranges.map(r => r.endIndex))
+
+    // Optionally include surrounding parentheses for complement groups
+    if (fullDecomposition[start - 1] === '(' && fullDecomposition[end] === ')') {
+      start -= 1; end += 1
+    }
+
+    return {
+      id: draft.id,
+      place: draft.place,
+      digit: draft.digit,
+      a: draft.a,
+      L: draft.L,
+      U: draft.U,
+      goal: draft.goal,
+      plan: draft.plan,
+      expression: formatSegmentExpression(segmentTerms),
+      stepIndices: draft.stepIndices,
+      termIndices: draft.termIndices,
+      termRange: { startIndex: start, endIndex: end },
+      startValue: draft.startValue,
+      endValue: draft.endValue,
+      startState: draft.startState,
+      endState: draft.endState
+    }
+  })
+}
+
+
+function determineSegmentDecisions(
+  digit: number,
+  place: number,
+  currentDigit: number,
+  steps: DecompositionStep[]
+): SegmentDecision[] {
+  const sum = currentDigit + digit
+
+  if (steps.length === 1) {
+    return [{
+      rule: 'Direct',
+      conditions: [`a+d=${currentDigit}+${digit}=${sum} ≤ 9`],
+      explanation: ['Fits in this place; add earth beads directly.']
+    }]
+  }
+
+  const hasPositive = steps.some(s => !s.operation.startsWith('-'))
+  const hasNegative = steps.some(s =>  s.operation.startsWith('-'))
+
+  if (hasPositive && hasNegative) {
+    const positives = steps.filter(s => !s.operation.startsWith('-')).map(s => parseInt(s.operation, 10))
+    const hasFiveAdd = positives.some(v => Number.isInteger(v / 5) && isPowerOfTen(v / 5))
+    const hasTenAdd  = positives.some(v => isPowerOfTen(v))
+
+    if (hasFiveAdd && !hasTenAdd) {
+      return decisionForFiveComplement(currentDigit, digit)
+    }
+    if (hasTenAdd) {
+      const nextIs9 = positives.length > 1 // cascade if ripple seen
+      return decisionForTenComplement(currentDigit, digit, nextIs9)
+    }
+  }
+
+  return [{
+    rule: 'Direct',
+    conditions: [`processing digit ${digit} at ${getPlaceName(place)}`],
+    explanation: ['Standard operation.']
+  }]
 }
 
 /**
@@ -69,8 +309,8 @@ export function generateUnifiedInstructionSequence(
   const targetState = toState(targetValue)
   const { additions, removals } = calculateBeadChanges(startState, targetState)
 
-  // Step 2: Generate pedagogical decomposition terms based on actual bead movements
-  const decompositionTerms = generateDecompositionTerms(startValue, targetValue, additions, removals, toState)
+  // Step 2: Generate pedagogical decomposition terms and segment plan based on actual bead movements
+  const { terms: decompositionTerms, segmentsPlan } = generateDecompositionTerms(startValue, targetValue, additions, removals, toState)
 
   // Step 3: Generate unified steps - each step computes ALL aspects simultaneously
   const steps: UnifiedStepData[] = []
@@ -144,17 +384,23 @@ export function generateUnifiedInstructionSequence(
   // Step 5: Determine if this decomposition is meaningful
   const isMeaningfulDecomposition = isDecompositionMeaningful(startValue, targetValue, decompositionTerms, fullDecomposition)
 
-  // Step 6: Add position information to each step
-  steps.forEach((step, index) => {
-    if (termPositions[index]) {
-      step.termPosition = termPositions[index]
-    }
+  // Step 6: Attach term positions and segment ids to steps
+  steps.forEach((step, idx) => {
+    if (termPositions[idx]) step.termPosition = termPositions[idx]
   })
 
+  // (optional) annotate steps with the segment they belong to
+  segmentsPlan.forEach(seg => seg.stepIndices.forEach(i => { if (steps[i]) steps[i].segmentId = seg.id }))
+
+  // Step 7: Build segments using step positions (exact indices, robust)
+  const segments = buildSegmentsWithPositions(segmentsPlan, fullDecomposition, steps)
+
   return {
+    schemaVersion: '2' as const,
     fullDecomposition,
     isMeaningfulDecomposition,
     steps,
+    segments,
     startValue,
     targetValue,
     totalSteps: steps.length
@@ -185,9 +431,9 @@ function generateDecompositionTerms(
   additions: BeadHighlight[], // Legacy parameter - not used in new algo
   removals: BeadHighlight[],   // Legacy parameter - not used in new algo
   toState: (n: number) => AbacusState
-): string[] {
+): { terms: string[]; segmentsPlan: SegmentDraft[] } {
   const addend = targetValue - startValue
-  if (addend === 0) return []
+  if (addend === 0) return { terms: [], segmentsPlan: [] }
   if (addend < 0) {
     // TODO: Handle subtraction in separate sprint
     throw new Error('Subtraction not implemented yet')
@@ -197,6 +443,7 @@ function generateDecompositionTerms(
   let currentState = toState(startValue)
   let currentValue = startValue
   const steps: DecompositionStep[] = []
+  const segmentsPlan: SegmentDraft[] = []
 
   // Process addend digit by digit from left to right (highest to lowest place)
   const addendStr = addend.toString()
@@ -210,6 +457,7 @@ function generateDecompositionTerms(
 
     // Get current digit at this place value
     const currentDigitAtPlace = getDigitAtPlace(currentValue, placeValue)
+    const startStepCount = steps.length
 
     // DEBUG: Log the processing for troubleshooting
     // console.log(`Processing place ${placeValue}: digit=${digit}, current=${currentDigitAtPlace}, sum=${currentDigitAtPlace + digit}`)
@@ -224,14 +472,50 @@ function generateDecompositionTerms(
       toState  // Pass consistent state converter
     )
 
-    // Apply the step result to our current state
+    const segmentId = `place-${placeValue}-digit-${digit}`
+    const segmentStartValue = currentValue
+    const segmentStartState = { ...currentState }
+    const placeStart = segmentStartState[placeValue] ?? { heavenActive: false, earthActive: 0 }
+    const L = placeStart.earthActive
+    const U: 0 | 1 = placeStart.heavenActive ? 1 : 0
+
+    // Apply the step result
     steps.push(...stepResult.steps)
     currentValue = stepResult.newValue
     currentState = stepResult.newState
+
+    const endStepCount = steps.length
+    const stepIndices = Array.from({ length: endStepCount - startStepCount }, (_, i) => startStepCount + i)
+
+    // Decide pedagogy
+    const plan = determineSegmentDecisions(digit, placeValue, currentDigitAtPlace, stepResult.steps)
+    const goal = inferGoal({ id: segmentId, place: placeValue, digit, a: currentDigitAtPlace, L, U, plan,
+      goal: '', stepIndices, termIndices: stepIndices, startValue: segmentStartValue,
+      startState: segmentStartState, endValue: currentValue, endState: { ...currentState } })
+
+    const segment: SegmentDraft = {
+      id: segmentId,
+      place: placeValue,
+      digit,
+      a: currentDigitAtPlace,
+      L,
+      U,
+      plan,
+      goal,
+      stepIndices,
+      termIndices: stepIndices,
+      startValue: segmentStartValue,
+      startState: segmentStartState,
+      endValue: currentValue,
+      endState: { ...currentState }
+    }
+
+    segmentsPlan.push(segment)
   }
 
   // Convert steps to string terms for compatibility
-  return steps.map(step => step.operation)
+  const terms = steps.map(step => step.operation)
+  return { terms, segmentsPlan }
 }
 
 /**
@@ -457,6 +741,9 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
       return `remove ${value} earth bead${value > 1 ? 's' : ''}`
     } else if (value === 5) {
       return 'deactivate heaven bead'
+    } else if (value >= 6 && value <= 9) {
+      const e = value - 5
+      return `deactivate heaven bead and remove ${e} earth bead${e > 1 ? 's' : ''}`
     } else if (isPowerOfTen(value)) {
       const place = Math.round(Math.log10(value))
       return `remove 1 from ${getPlaceName(place)}`
@@ -946,14 +1233,6 @@ export function buildFullDecompositionWithPositions(
 /**
  * Check if a number is a power of 10
  */
-function isPowerOfTen(num: number): boolean {
-  if (num < 10) return false
-  while (num > 1) {
-    if (num % 10 !== 0) return false
-    num = num / 10
-  }
-  return true
-}
 
 
 /**
