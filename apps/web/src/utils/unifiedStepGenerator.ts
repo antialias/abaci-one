@@ -62,7 +62,7 @@ export function generateUnifiedInstructionSequence(
 
   // Ensure consistent width across all state conversions to prevent place misalignment
   const digits = (n: number) => Math.max(1, Math.floor(Math.log10(Math.abs(n))) + 1)
-  const width = Math.max(digits(startValue), digits(targetValue)) + 1 // +1 to absorb carries
+  const width = Math.max(digits(startValue), digits(targetValue), digits(Math.abs(targetValue - startValue))) + 1 // +1 to absorb carries
   const toState = (n: number) => numberToAbacusState(n, width)
 
   // Step 1: Calculate actual bead movements
@@ -99,9 +99,10 @@ export function generateUnifiedInstructionSequence(
       stepIndex + 1 < decompositionTerms.length &&
       decompositionTerms[stepIndex + 1].startsWith('-')
     const englishInstruction =
-      stepBeadMovements.length > 0
-        ? generateStepInstruction(stepBeadMovements, term, stepResult)
-        : generateInstructionFromTerm(term, stepIndex, isComplementContext)
+      generateInstructionFromTerm(term, stepIndex, isComplementContext)
+      || (stepBeadMovements.length > 0
+           ? generateStepInstruction(stepBeadMovements, term, stepResult)
+           : `perform operation: ${term}`)
 
     // Validate that everything is consistent
     const validation = validateStepConsistency(
@@ -456,8 +457,8 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
         return `add heaven bead and remove ${subtract} earth beads`
       } else if (add === 10) {
         return `add 1 to tens and remove ${subtract} earth beads`
-      } else if (add >= 100) {
-        const place = Math.round(Math.log10(add))
+      } else if (isPowerOfTen(add)) {
+        const place = Math.log10(add)
         return `add 1 to ${getPlaceName(place)} and remove ${subtract} earth beads`
       }
     }
@@ -791,7 +792,7 @@ function validateStepConsistency(
 /**
  * Build the full pedagogical decomposition string with term positions
  */
-function buildFullDecompositionWithPositions(
+export function buildFullDecompositionWithPositions(
   startValue: number,
   targetValue: number,
   terms: string[]
@@ -850,7 +851,6 @@ function buildFullDecompositionWithPositions(
   // Build decomposition string with proper segment formatting
   let termString = ''
   const termPositions: Array<{ startIndex: number; endIndex: number }> = []
-  let termIndex = 0 // Track which original term we're processing
 
   segments.forEach((segment, segmentIndex) => {
     if (segment.isComplement) {
@@ -889,6 +889,11 @@ function buildFullDecompositionWithPositions(
 
   segments.forEach((segment, segmentIndex) => {
     if (segment.isComplement) {
+      // Account for " + " delimiter before complement segments (except first)
+      if (segmentIndex > 0) {
+        currentPos += 3 // Skip " + "
+      }
+
       // Position within parenthesized complement
       currentPos += 1 // Skip opening '('
 
@@ -916,11 +921,6 @@ function buildFullDecompositionWithPositions(
       })
 
       currentPos += 1 // Skip closing ')'
-
-      // If not the last segment, account for ' + ' before next segment
-      if (segmentIndex < segments.length - 1) {
-        currentPos += 3
-      }
     } else {
       // Single term segment
       const term = segment.terms[0]
