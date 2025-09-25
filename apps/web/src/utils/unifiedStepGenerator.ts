@@ -120,6 +120,8 @@ function isPowerOfTen(n: number): boolean {
   if (n < 1) return false
   return /^10*$/.test(n.toString())
 }
+
+const isPowerOfTenGE10 = (n: number) => n >= 10 && isPowerOfTen(n)
 function inferGoal(seg: SegmentDraft): string {
   const placeName = getPlaceName(seg.place)
   switch (seg.plan[0]?.rule) {
@@ -264,21 +266,23 @@ function determineSegmentDecisions(
     }]
   }
 
-  const hasPositive = steps.some(s => !s.operation.startsWith('-'))
-  const hasNegative = steps.some(s =>  s.operation.startsWith('-'))
+  const positives = steps.filter(s => !s.operation.startsWith('-')).map(s => parseInt(s.operation, 10))
+  const negatives = steps.filter(s =>  s.operation.startsWith('-')).map(s => Math.abs(parseInt(s.operation, 10)))
 
-  if (hasPositive && hasNegative) {
-    const positives = steps.filter(s => !s.operation.startsWith('-')).map(s => parseInt(s.operation, 10))
-    const hasFiveAdd = positives.some(v => Number.isInteger(v / 5) && isPowerOfTen(v / 5))
-    const hasTenAdd  = positives.some(v => isPowerOfTen(v))
+  const hasFiveAdd = positives.some(v => Number.isInteger(v / 5) && isPowerOfTen(v / 5))
+  const tenAdd     = positives.find(v => isPowerOfTenGE10(v))
+  const hasTenAdd  = tenAdd !== undefined
 
-    if (hasFiveAdd && !hasTenAdd) {
-      return decisionForFiveComplement(currentDigit, digit)
-    }
-    if (hasTenAdd) {
-      const nextIs9 = positives.length > 1 // cascade if ripple seen
-      return decisionForTenComplement(currentDigit, digit, nextIs9)
-    }
+  if (hasFiveAdd && !hasTenAdd) {
+    return decisionForFiveComplement(currentDigit, digit)
+  }
+
+  if (hasTenAdd) {
+    const tenAddPlace = Math.round(Math.log10(tenAdd!))
+    // If the +10^k lands above the immediate next place, we must have rippled through 9s.
+    // Alternatively, multiple negatives (>=2) is also a strong signal of a cascade.
+    const cascades = tenAddPlace > place + 1 || negatives.length >= 2
+    return decisionForTenComplement(currentDigit, digit, cascades)
   }
 
   return [{
@@ -744,7 +748,7 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
     } else if (value >= 6 && value <= 9) {
       const e = value - 5
       return `deactivate heaven bead and remove ${e} earth bead${e > 1 ? 's' : ''}`
-    } else if (isPowerOfTen(value)) {
+    } else if (isPowerOfTenGE10(value)) {
       const place = Math.round(Math.log10(value))
       return `remove 1 from ${getPlaceName(place)}`
     } else if (value >= 10) {
@@ -767,7 +771,7 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
     } else if (value >= 6 && value <= 9) {
       const earthBeads = value - 5
       return `activate heaven bead and add ${earthBeads} earth beads`
-    } else if (isPowerOfTen(value)) {
+    } else if (isPowerOfTenGE10(value)) {
       const place = Math.round(Math.log10(value))
       return `add 1 to ${getPlaceName(place)}`
     } else if (value >= 10) {
@@ -874,11 +878,12 @@ function calculateStepBeadMovements(
 
   // Stabilize movement ordering for consistent UI animations
   // Priority: higher place → heaven beads → activations first
-  movements.sort((a, b) => (
-    b.placeValue - a.placeValue ||            // Higher place first (tens before ones)
-    (a.beadType === 'heaven' ? -1 : 1) - (b.beadType === 'heaven' ? -1 : 1) ||  // Heaven before earth
-    (a.direction === 'activate' ? -1 : 1) - (b.direction === 'activate' ? -1 : 1) // Activate before deactivate
-  ))
+  movements.sort((a, b) => {
+    if (a.placeValue !== b.placeValue) return b.placeValue - a.placeValue
+    if (a.beadType !== b.beadType)     return a.beadType === 'heaven' ? -1 : 1
+    if (a.direction !== b.direction)   return a.direction === 'activate' ? -1 : 1
+    return 0
+  })
 
   // Reassign order indices after sorting
   movements.forEach((movement, index) => {
@@ -924,9 +929,7 @@ function generateStepInstruction(
     .sort((a, b) => b - a) // Pedagogical order: highest place first
     .forEach(place => {
 
-      const placeName = place === 0 ? 'ones' :
-                       place === 1 ? 'tens' :
-                       place === 2 ? 'hundreds' : `place ${place}`
+      const placeName = getPlaceName(place)
 
       const placeData = byPlace[place]
 

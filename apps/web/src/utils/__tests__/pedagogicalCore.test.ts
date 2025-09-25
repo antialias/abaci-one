@@ -374,4 +374,46 @@ describe('Pedagogical Algorithm - Core Validation', () => {
       })
     })
   })
+
+  describe('Pedagogical Segments - Advanced Rules and Ranges', () => {
+    // 1) Five-complement at ones (shows rule + expression)
+    it('segments: five-complement ones (3→ +2)', () => {
+      const { segments, fullDecomposition } = generateUnifiedInstructionSequence(3, 5)
+      const s0 = segments.find(s => s.place === 0)!
+      expect(s0.plan[0].rule).toBe('FiveComplement')
+      expect(s0.expression).toMatch(/^\(5.*-\s*3\)$/) // "(5 - 3)"
+      // range points to the parenthesized group
+      const text = fullDecomposition.slice(s0.termRange.startIndex, s0.termRange.endIndex)
+      expect(text.startsWith('(') && text.endsWith(')')).toBe(true)
+    })
+
+    // 2) Ten-complement no cascade (19 + 1)
+    it('segments: ten-complement without cascade (19→ +1)', () => {
+      const { segments } = generateUnifiedInstructionSequence(19, 20)
+      const tensSeg = segments.find(s => s.place === 0)!
+      expect(tensSeg.plan.some(p => p.rule === 'TenComplement')).toBe(true)
+      expect(tensSeg.plan.some(p => p.rule === 'Cascade')).toBe(false)
+    })
+
+    // 3) Ten-complement with cascade (199 + 1)
+    it('segments: ten-complement with cascade ripple', () => {
+      const { segments } = generateUnifiedInstructionSequence(199, 200)
+      const onesSeg = segments.find(s => s.place === 0)!
+      expect(onesSeg.plan.some(p => p.rule === 'Cascade')).toBe(true)
+    })
+
+    // 4) Segment range robustness with repeated terms
+    it('segment ranges use termPositions not string search', () => {
+      const { segments, steps, fullDecomposition } = generateUnifiedInstructionSequence(3478, 3500) // 3478 + 22
+      const tensSeg = segments.find(s => s.place === 1)!
+      const text = fullDecomposition.slice(tensSeg.termRange.startIndex, tensSeg.termRange.endIndex)
+      // should be "(20 - ...)" group and not pick the "20" inside "120" if any
+      expect(text.includes('20')).toBe(true)
+      // also, every step in the segment should lie inside segment range
+      tensSeg.stepIndices.forEach(i => {
+        const { startIndex, endIndex } = steps[i].termPosition
+        expect(startIndex >= tensSeg.termRange.startIndex && endIndex <= tensSeg.termRange.endIndex).toBe(true)
+      })
+    })
+  })
 })
