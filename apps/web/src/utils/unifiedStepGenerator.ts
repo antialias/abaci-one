@@ -223,8 +223,10 @@ function buildSegmentsWithPositions(
     let start = Math.min(...ranges.map(r => r.startIndex))
     let end   = Math.max(...ranges.map(r => r.endIndex))
 
-    // Optionally include surrounding parentheses for complement groups
-    if (fullDecomposition[start - 1] === '(' && fullDecomposition[end] === ')') {
+    // Safely include surrounding parentheses for complement groups
+    const before = start > 0 ? fullDecomposition[start - 1] : ''
+    const after  = end < fullDecomposition.length ? fullDecomposition[end] : ''
+    if (before === '(' && after === ')') {
       start -= 1; end += 1
     }
 
@@ -280,8 +282,9 @@ function determineSegmentDecisions(
   if (hasTenAdd) {
     const tenAddPlace = Math.round(Math.log10(tenAdd!))
     // If the +10^k lands above the immediate next place, we must have rippled through 9s.
-    // Alternatively, multiple negatives (>=2) is also a strong signal of a cascade.
-    const cascades = tenAddPlace > place + 1 || negatives.length >= 2
+    // Alternatively, multiple distinct higher places in negatives indicates cascade.
+    const negPlaces = new Set(negatives.map(v => Math.floor(Math.log10(v))))
+    const cascades = tenAddPlace > place + 1 || negPlaces.size >= 2
     return decisionForTenComplement(currentDigit, digit, cascades)
   }
 
@@ -399,7 +402,7 @@ export function generateUnifiedInstructionSequence(
   // Step 7: Build segments using step positions (exact indices, robust)
   const segments = buildSegmentsWithPositions(segmentsPlan, fullDecomposition, steps)
 
-  return {
+  const result = {
     schemaVersion: '2' as const,
     fullDecomposition,
     isMeaningfulDecomposition,
@@ -409,6 +412,13 @@ export function generateUnifiedInstructionSequence(
     targetValue,
     totalSteps: steps.length
   }
+
+  // Development-time invariant checks
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+    assertSegments(result)
+  }
+
+  return result
 }
 
 /**
@@ -490,6 +500,11 @@ function generateDecompositionTerms(
 
     const endStepCount = steps.length
     const stepIndices = Array.from({ length: endStepCount - startStepCount }, (_, i) => startStepCount + i)
+
+    if (stepIndices.length === 0) {
+      // skip building a segment with no terms/steps
+      continue
+    }
 
     // Decide pedagogy
     const plan = determineSegmentDecisions(digit, placeValue, currentDigitAtPlace, stepResult.steps)
@@ -751,7 +766,7 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
     } else if (isPowerOfTenGE10(value)) {
       const place = Math.round(Math.log10(value))
       return `remove 1 from ${getPlaceName(place)}`
-    } else if (value >= 10) {
+    } else if (value >= 10 && !isPowerOfTenGE10(value)) {
       const place = Math.floor(Math.log10(value))
       const digit = Math.floor(value / Math.pow(10, place))
       if (digit === 5) return `deactivate heaven bead in ${getPlaceName(place)} column`
@@ -774,7 +789,7 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
     } else if (isPowerOfTenGE10(value)) {
       const place = Math.round(Math.log10(value))
       return `add 1 to ${getPlaceName(place)}`
-    } else if (value >= 10) {
+    } else if (value >= 10 && !isPowerOfTenGE10(value)) {
       const place = Math.floor(Math.log10(value))
       const digit = Math.floor(value / Math.pow(10, place))
       if (digit === 5) return `activate heaven bead in ${getPlaceName(place)} column`
@@ -1232,6 +1247,29 @@ export function buildFullDecompositionWithPositions(
   return { fullDecomposition, termPositions }
 }
 
+
+function assertSegments(seq: UnifiedInstructionSequence) {
+  // 1) Every step that has a segmentId belongs to a segment that includes it
+  const byId = new Map(seq.segments.map(s => [s.id, s]))
+  seq.steps.forEach((st, i) => {
+    if (!st.segmentId) return
+    const seg = byId.get(st.segmentId)
+    if (!seg) throw new Error(`step[${i}] has unknown segmentId ${st.segmentId}`)
+    if (!seg.stepIndices.includes(i)) {
+      throw new Error(`step[${i}] not contained in its segment ${st.segmentId}`)
+    }
+  })
+
+  // 2) Segment ranges are contiguous and non-empty
+  seq.segments.forEach(seg => {
+    if (seg.stepIndices.length === 0) {
+      throw new Error(`segment ${seg.id} has no steps`)
+    }
+    if (seg.termRange.endIndex <= seg.termRange.startIndex) {
+      throw new Error(`segment ${seg.id} has empty term range`)
+    }
+  })
+}
 
 /**
  * Check if a number is a power of 10
