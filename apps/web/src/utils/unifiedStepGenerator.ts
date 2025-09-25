@@ -191,13 +191,18 @@ function decisionForTenComplement(a: number, d: number, nextIs9: boolean): Segme
 }
 
 function formatSegmentExpression(terms: string[]): string {
-  // single term -> "40"
-  if (terms.length === 1 && !terms[0].startsWith('-')) return terms[0]
+  if (terms.length === 0) return ''
 
-  // complement group -> "(pos - n1 - n2 - ...)"
-  const pos = terms[0]
-  const negs = terms.slice(1).map(t => t.replace(/^-/, ''))
-  return `(${pos} - ${negs.join(' - ')})`
+  const positives = terms.filter(t => !t.startsWith('-'))
+  const negatives = terms.filter(t =>  t.startsWith('-')).map(t => t.slice(1))
+
+  // All positive → join with pluses (no parentheses)
+  if (negatives.length === 0) {
+    return positives.join(' + ')
+  }
+
+  // Complement group → (pos - n1 - n2 - …)
+  return `(${positives[0]} - ${negatives.join(' - ')})`
 }
 
 function formatSegmentGoal(digit: number, placeValue: number): string {
@@ -260,34 +265,44 @@ function determineSegmentDecisions(
 ): SegmentDecision[] {
   const sum = currentDigit + digit
 
-  if (steps.length === 1) {
+  // If there is exactly one step and it's positive, it's direct.
+  if (steps.length === 1 && !steps[0].operation.startsWith('-')) {
     return [{
       rule: 'Direct',
       conditions: [`a+d=${currentDigit}+${digit}=${sum} ≤ 9`],
-      explanation: ['Fits in this place; add earth beads directly.']
+      explanation: ['Fits in this place; add beads directly.']
     }]
   }
 
   const positives = steps.filter(s => !s.operation.startsWith('-')).map(s => parseInt(s.operation, 10))
   const negatives = steps.filter(s =>  s.operation.startsWith('-')).map(s => Math.abs(parseInt(s.operation, 10)))
 
+  // No negatives → it's a direct (possibly 5+earth remainder) entry, not complement
+  if (negatives.length === 0) {
+    return [{
+      rule: 'Direct',
+      conditions: [`a+d=${currentDigit}+${digit}=${sum} ≤ 9`],
+      explanation: ['Heaven bead (5) plus lower beads: still direct addition.']
+    }]
+  }
+
+  // There are negatives → complement family
   const hasFiveAdd = positives.some(v => Number.isInteger(v / 5) && isPowerOfTen(v / 5))
   const tenAdd     = positives.find(v => isPowerOfTenGE10(v))
   const hasTenAdd  = tenAdd !== undefined
 
-  if (hasFiveAdd && !hasTenAdd) {
-    return decisionForFiveComplement(currentDigit, digit)
-  }
-
   if (hasTenAdd) {
     const tenAddPlace = Math.round(Math.log10(tenAdd!))
-    // If the +10^k lands above the immediate next place, we must have rippled through 9s.
-    // Alternatively, multiple distinct higher places in negatives indicates cascade.
     const negPlaces = new Set(negatives.map(v => Math.floor(Math.log10(v))))
     const cascades = tenAddPlace > place + 1 || negPlaces.size >= 2
     return decisionForTenComplement(currentDigit, digit, cascades)
   }
 
+  if (hasFiveAdd) {
+    return decisionForFiveComplement(currentDigit, digit)
+  }
+
+  // Fallback (unlikely with current generators)
   return [{
     rule: 'Direct',
     conditions: [`processing digit ${digit} at ${getPlaceName(place)}`],
