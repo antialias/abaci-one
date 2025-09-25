@@ -73,7 +73,9 @@
       "Bash(pnpm --filter=@soroban/web test src/utils/__tests__/termPositionBuilder.test.ts)",
       "Bash(pnpm --filter=@soroban/web test src/utils/__tests__/pedagogicalSnapshot.test.ts --run)",
       "Bash(pnpm --filter=@soroban/web test src/utils/__tests__/pedagogicalSnapshot.test.ts -u)",
-      "Bash(LEGACY_SNAPSHOTS=1 pnpm vitest src/utils/__tests__/pedagogicalSnapshot.test.ts --run)"
+      "Bash(LEGACY_SNAPSHOTS=1 pnpm vitest src/utils/__tests__/pedagogicalSnapshot.test.ts --run)",
+      "Bash(pnpm --filter=@soroban/web test src/utils/__tests__/pedagogicalCore.test.ts --run)",
+      "Bash(pnpm --filter=@soroban/web test src/utils/__tests__/pedagogicalCore.test.ts)"
     ],
     "deny": [],
     "ask": []
