@@ -267,27 +267,26 @@ function processDirectAddition(
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const placeState = currentState[placeValue] || { heavenActive: false, earthActive: 0 }
+  const L = placeState.earthActive // Current earth beads (matches algorithm spec)
   const steps: DecompositionStep[] = []
   const newState = { ...currentState }
 
   if (digit <= 4) {
     // For digits 1-4: try to add earth beads directly
-    if (placeState.earthActive + digit <= 4) {
+    if (L + digit <= 4) {
       // Direct earth bead addition
-      const termValue = digit * Math.pow(10, placeValue)
       steps.push({
-        operation: termValue.toString(),
+        operation: (digit * Math.pow(10, placeValue)).toString(),
         description: `Add ${digit} earth bead${digit > 1 ? 's' : ''} at place ${placeValue}`,
         targetValue: 0 // Will be calculated later
       })
       newState[placeValue] = {
         ...placeState,
-        earthActive: placeState.earthActive + digit
+        earthActive: L + digit
       }
     } else if (!placeState.heavenActive) {
       // Use 5's complement: digit = (5 - (5 - digit)) when pedagogically valuable
       const complement = 5 - digit
-      const termValue = digit * Math.pow(10, placeValue)
 
       // Always show five-complement pedagogy as separate steps
       const fiveValue = 5 * Math.pow(10, placeValue)
@@ -446,23 +445,6 @@ function generateCascadeComplementSteps(currentValue: number, startPlace: number
 function generateInstructionFromTerm(term: string, stepIndex: number, isComplementContext: boolean = false): string {
   // Parse the term to determine what instruction to give
 
-  // Handle parenthesized complements like "(5 - 2)" or "(10 - 3)"
-  if (term.startsWith('(') && term.includes(' - ')) {
-    const match = term.match(/\((\d+) - (\d+)\)/)
-    if (match) {
-      const add = parseInt(match[1])
-      const subtract = parseInt(match[2])
-
-      if (add === 5) {
-        return `add heaven bead and remove ${subtract} earth beads`
-      } else if (add === 10) {
-        return `add 1 to tens and remove ${subtract} earth beads`
-      } else if (isPowerOfTen(add)) {
-        const place = Math.log10(add)
-        return `add 1 to ${getPlaceName(place)} and remove ${subtract} earth beads`
-      }
-    }
-  }
 
   // Handle negative numbers FIRST
   if (term.startsWith('-')) {
@@ -542,20 +524,7 @@ function calculateStepResult(currentValue: number, term: string): {
 } {
 
   // Parse the term to understand the operation
-  if (term.startsWith('(') && term.includes(' - ')) {
-    // Complement operation like "(10 - 6)"
-    const match = term.match(/\((\d+) - (\d+)\)/)
-    if (match) {
-      const addAmount = parseInt(match[1])
-      const subtractAmount = parseInt(match[2])
-      return {
-        newValue: currentValue + addAmount - subtractAmount,
-        operation: 'complement',
-        addAmount,
-        subtractAmount
-      }
-    }
-  } else if (term.startsWith('-')) {
+  if (term.startsWith('-')) {
     // Pure subtraction like "-6"
     const amount = parseInt(term.substring(1))
     return {
@@ -774,6 +743,17 @@ function validateStepConsistency(
 
     if (expected.earthActive !== simulated.earthActive) {
       issues.push(`Place ${place}: earth bead count mismatch`)
+    }
+  }
+
+  // Check for extra places in simulated state that shouldn't exist
+  for (const place in simulatedState) {
+    if (!(place in expectedState)) {
+      const placeNum = parseInt(place)
+      const s = simulatedState[placeNum]
+      if (s.heavenActive || s.earthActive > 0) {
+        issues.push(`Place ${place}: unexpected nonzero state in simulation`)
+      }
     }
   }
 

@@ -2,10 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { generateUnifiedInstructionSequence } from '../unifiedStepGenerator'
 
 /**
- * Comprehensive snapshot tests to lock in the perfect pedagogical algorithm implementation.
- * These tests ensure that math, states, highlights, and instructions remain perfectly synchronized.
+ * LEGACY: Comprehensive snapshot tests (292 tests, ~40k lines of snapshots)
+ *
+ * ⚠️  DEPRECATED: This massive snapshot suite is brittle and slow.
+ *     Use pedagogicalCore.test.ts instead for focused validation with lean snapshots.
+ *
+ * This suite is now gated behind LEGACY_SNAPSHOTS=1 environment variable.
+ * Run with: LEGACY_SNAPSHOTS=1 pnpm test pedagogicalSnapshot.test.ts
  */
-describe('Pedagogical Algorithm Snapshot Tests', () => {
+const runLegacySnapshots = process.env.LEGACY_SNAPSHOTS === '1'
+
+describe.skipIf(!runLegacySnapshots)('Pedagogical Algorithm Snapshot Tests (Legacy)', () => {
 
   describe('Direct Entry Cases (No Complements)', () => {
     const directCases = [

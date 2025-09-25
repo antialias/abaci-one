@@ -1,0 +1,223 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lean) > cascading complement pattern 1`] = `
+{
+  "fullDecomposition": "99 + 8 = 99 + (100 - 90 - 2) = 107",
+  "isMeaningfulDecomposition": true,
+  "startValue": 99,
+  "steps": [
+    {
+      "english": "add 1 to hundreds",
+      "expectedValue": 199,
+      "isValid": true,
+      "term": "100",
+      "termPosition": {
+        "endIndex": 18,
+        "startIndex": 15,
+      },
+    },
+    {
+      "english": "deactivate heaven bead and remove 4 earth beads in tens column",
+      "expectedValue": 109,
+      "isValid": true,
+      "term": "-90",
+      "termPosition": {
+        "endIndex": 23,
+        "startIndex": 21,
+      },
+    },
+    {
+      "english": "remove 2 earth beads",
+      "expectedValue": 107,
+      "isValid": true,
+      "term": "-2",
+      "termPosition": {
+        "endIndex": 27,
+        "startIndex": 26,
+      },
+    },
+  ],
+  "targetValue": 107,
+  "totalSteps": 3,
+}
+`;
+
+exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lean) > complex multi-cascade pattern 1`] = `
+{
+  "fullDecomposition": "9999 + 8 = 9999 + (10000 - 9000 - 900 - 90 - 2) = 10007",
+  "isMeaningfulDecomposition": true,
+  "startValue": 9999,
+  "steps": [
+    {
+      "english": "add 1 to ten-thousands",
+      "expectedValue": 19999,
+      "isValid": true,
+      "term": "10000",
+      "termPosition": {
+        "endIndex": 24,
+        "startIndex": 19,
+      },
+    },
+    {
+      "english": "deactivate heaven bead and remove 4 earth beads in thousands column",
+      "expectedValue": 10999,
+      "isValid": true,
+      "term": "-9000",
+      "termPosition": {
+        "endIndex": 31,
+        "startIndex": 27,
+      },
+    },
+    {
+      "english": "deactivate heaven bead and remove 4 earth beads in hundreds column",
+      "expectedValue": 10099,
+      "isValid": true,
+      "term": "-900",
+      "termPosition": {
+        "endIndex": 37,
+        "startIndex": 34,
+      },
+    },
+    {
+      "english": "deactivate heaven bead and remove 4 earth beads in tens column",
+      "expectedValue": 10009,
+      "isValid": true,
+      "term": "-90",
+      "termPosition": {
+        "endIndex": 42,
+        "startIndex": 40,
+      },
+    },
+    {
+      "english": "remove 2 earth beads",
+      "expectedValue": 10007,
+      "isValid": true,
+      "term": "-2",
+      "termPosition": {
+        "endIndex": 46,
+        "startIndex": 45,
+      },
+    },
+  ],
+  "targetValue": 10007,
+  "totalSteps": 5,
+}
+`;
+
+exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lean) > direct entry pattern 1`] = `
+{
+  "fullDecomposition": "0 + 3 = 0 + 3 = 3",
+  "isMeaningfulDecomposition": false,
+  "startValue": 0,
+  "steps": [
+    {
+      "english": "add 3 earth beads",
+      "expectedValue": 3,
+      "isValid": true,
+      "term": "3",
+      "termPosition": {
+        "endIndex": 13,
+        "startIndex": 12,
+      },
+    },
+  ],
+  "targetValue": 3,
+  "totalSteps": 1,
+}
+`;
+
+exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lean) > five-complement pattern 1`] = `
+{
+  "fullDecomposition": "4 + 3 = 4 + (5 - 2) = 7",
+  "isMeaningfulDecomposition": true,
+  "startValue": 4,
+  "steps": [
+    {
+      "english": "add 5",
+      "expectedValue": 9,
+      "isValid": true,
+      "term": "5",
+      "termPosition": {
+        "endIndex": 14,
+        "startIndex": 13,
+      },
+    },
+    {
+      "english": "remove 2 earth beads",
+      "expectedValue": 7,
+      "isValid": true,
+      "term": "-2",
+      "termPosition": {
+        "endIndex": 18,
+        "startIndex": 17,
+      },
+    },
+  ],
+  "targetValue": 7,
+  "totalSteps": 2,
+}
+`;
+
+exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lean) > mixed operations pattern 1`] = `
+{
+  "fullDecomposition": "43 + 8 = 43 + (10 - 2) = 51",
+  "isMeaningfulDecomposition": true,
+  "startValue": 43,
+  "steps": [
+    {
+      "english": "add 1 to tens",
+      "expectedValue": 53,
+      "isValid": true,
+      "term": "10",
+      "termPosition": {
+        "endIndex": 17,
+        "startIndex": 15,
+      },
+    },
+    {
+      "english": "remove 2 earth beads",
+      "expectedValue": 51,
+      "isValid": true,
+      "term": "-2",
+      "termPosition": {
+        "endIndex": 21,
+        "startIndex": 20,
+      },
+    },
+  ],
+  "targetValue": 51,
+  "totalSteps": 2,
+}
+`;
+
+exports[`Pedagogical Algorithm - Core Validation > Representative Snapshots (Lean) > ten-complement pattern 1`] = `
+{
+  "fullDecomposition": "7 + 8 = 7 + (10 - 2) = 15",
+  "isMeaningfulDecomposition": true,
+  "startValue": 7,
+  "steps": [
+    {
+      "english": "add 1 to tens",
+      "expectedValue": 17,
+      "isValid": true,
+      "term": "10",
+      "termPosition": {
+        "endIndex": 15,
+        "startIndex": 13,
+      },
+    },
+    {
+      "english": "remove 2 earth beads",
+      "expectedValue": 15,
+      "isValid": true,
+      "term": "-2",
+      "termPosition": {
+        "endIndex": 19,
+        "startIndex": 18,
+      },
+    },
+  ],
+  "targetValue": 15,
+  "totalSteps": 2,
+}
+`;
