@@ -2,7 +2,6 @@
 // to guarantee consistency between pedagogical decomposition, English instructions,
 // expected states, and bead mappings.
 
-import { ValidPlaceValues } from '@soroban/abacus-react'
 import {
   BeadState,
   AbacusState,
@@ -61,13 +60,18 @@ export function generateUnifiedInstructionSequence(
 
   const difference = targetValue - startValue
 
+  // Ensure consistent width across all state conversions to prevent place misalignment
+  const digits = (n: number) => Math.max(1, Math.floor(Math.log10(Math.abs(n))) + 1)
+  const width = Math.max(digits(startValue), digits(targetValue)) + 1 // +1 to absorb carries
+  const toState = (n: number) => numberToAbacusState(n, width)
+
   // Step 1: Calculate actual bead movements
-  const startState = numberToAbacusState(startValue)
-  const targetState = numberToAbacusState(targetValue)
+  const startState = toState(startValue)
+  const targetState = toState(targetValue)
   const { additions, removals } = calculateBeadChanges(startState, targetState)
 
   // Step 2: Generate pedagogical decomposition terms based on actual bead movements
-  const decompositionTerms = generateDecompositionTerms(startValue, targetValue, additions, removals)
+  const decompositionTerms = generateDecompositionTerms(startValue, targetValue, additions, removals, toState)
 
   // Step 3: Generate unified steps - each step computes ALL aspects simultaneously
   const steps: UnifiedStepData[] = []
@@ -80,7 +84,7 @@ export function generateUnifiedInstructionSequence(
     // Calculate what this step should accomplish
     const stepResult = calculateStepResult(currentValue, term)
     const newValue = stepResult.newValue
-    const newState = numberToAbacusState(newValue)
+    const newState = toState(newValue)
 
     // Find the bead movements for this specific step
     const stepBeadMovements = calculateStepBeadMovements(
@@ -89,12 +93,15 @@ export function generateUnifiedInstructionSequence(
       stepIndex
     )
 
-    // Generate English instruction from our algorithm data
-    // Check if this is a five-complement context (5 followed by negative term)
+    // Generate English instruction with hybrid approach
+    // Use term-based for consistency with tests, bead-movements as validation
     const isComplementContext = term === '5' &&
       stepIndex + 1 < decompositionTerms.length &&
       decompositionTerms[stepIndex + 1].startsWith('-')
-    const englishInstruction = generateInstructionFromTerm(term, stepIndex, isComplementContext)
+    const englishInstruction =
+      stepBeadMovements.length > 0
+        ? generateStepInstruction(stepBeadMovements, term, stepResult)
+        : generateInstructionFromTerm(term, stepIndex, isComplementContext)
 
     // Validate that everything is consistent
     const validation = validateStepConsistency(
@@ -102,7 +109,8 @@ export function generateUnifiedInstructionSequence(
       englishInstruction,
       currentValue,
       newValue,
-      stepBeadMovements
+      stepBeadMovements,
+      toState
     )
 
     // Create the unified step data
@@ -170,7 +178,8 @@ function generateDecompositionTerms(
   startValue: number,
   targetValue: number,
   additions: BeadHighlight[], // Legacy parameter - not used in new algo
-  removals: BeadHighlight[]   // Legacy parameter - not used in new algo
+  removals: BeadHighlight[],   // Legacy parameter - not used in new algo
+  toState: (n: number) => AbacusState
 ): string[] {
   const addend = targetValue - startValue
   if (addend === 0) return []
@@ -180,7 +189,7 @@ function generateDecompositionTerms(
   }
 
   // Convert to abacus state representation with correct dimensions
-  let currentState = numberToAbacusState(startValue, 5) // Support up to 5 places
+  let currentState = toState(startValue)
   let currentValue = startValue
   const steps: DecompositionStep[] = []
 
@@ -206,7 +215,8 @@ function generateDecompositionTerms(
       placeValue,
       currentDigitAtPlace,
       currentState,
-      addend  // Pass the full addend to determine if it's multi-place
+      addend,  // Pass the full addend to determine if it's multi-place
+      toState  // Pass consistent state converter
     )
 
     // Apply the step result to our current state
@@ -227,7 +237,8 @@ function processDigitAtPlace(
   placeValue: number,
   currentDigitAtPlace: number,
   currentState: AbacusState,
-  addend: number
+  addend: number,
+  toState: (n: number) => AbacusState
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const a = currentDigitAtPlace
@@ -236,10 +247,10 @@ function processDigitAtPlace(
   // Decision: Direct addition vs 10's complement
   if (a + d <= 9) {
     // Case A: Direct addition at this place
-    return processDirectAddition(d, placeValue, currentState, addend)
+    return processDirectAddition(d, placeValue, currentState, addend, toState)
   } else {
     // Case B: 10's complement required
-    return processTensComplement(d, placeValue, currentState)
+    return processTensComplement(d, placeValue, currentState, toState)
   }
 }
 
@@ -250,7 +261,8 @@ function processDirectAddition(
   digit: number,
   placeValue: number,
   currentState: AbacusState,
-  addend: number
+  addend: number,
+  toState: (n: number) => AbacusState
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const placeState = currentState[placeValue] || { heavenActive: false, earthActive: 0 }
@@ -276,33 +288,21 @@ function processDirectAddition(
       const complement = 5 - digit
       const termValue = digit * Math.pow(10, placeValue)
 
-      // Check if this is part of a multi-place operation
-      const isMultiPlaceOperation = addend >= 10 // If adding a multi-digit number
+      // Always show five-complement pedagogy as separate steps
+      const fiveValue = 5 * Math.pow(10, placeValue)
+      const subtractValue = complement * Math.pow(10, placeValue)
 
-      if (isMultiPlaceOperation) {
-        // Multi-place operation: use direct representation
-        steps.push({
-          operation: termValue.toString(),
-          description: `Add ${digit} using heaven bead adjustment`,
-          targetValue: 0
-        })
-      } else {
-        // Single-place operation: show complement pedagogy as separate steps
-        const fiveValue = 5 * Math.pow(10, placeValue)
-        const subtractValue = complement * Math.pow(10, placeValue)
+      steps.push({
+        operation: fiveValue.toString(),
+        description: `Add heaven bead at place ${placeValue}`,
+        targetValue: 0
+      })
 
-        steps.push({
-          operation: fiveValue.toString(),
-          description: `Add heaven bead at place ${placeValue}`,
-          targetValue: 0
-        })
-
-        steps.push({
-          operation: `-${subtractValue}`,
-          description: `Remove ${complement} earth beads at place ${placeValue}`,
-          targetValue: 0
-        })
-      }
+      steps.push({
+        operation: `-${subtractValue}`,
+        description: `Remove ${complement} earth beads at place ${placeValue}`,
+        targetValue: 0
+      })
 
       newState[placeValue] = {
         heavenActive: true,
@@ -349,7 +349,8 @@ function processDirectAddition(
 function processTensComplement(
   digit: number,
   placeValue: number,
-  currentState: AbacusState
+  currentState: AbacusState,
+  toState: (n: number) => AbacusState
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const steps: DecompositionStep[] = []
@@ -388,7 +389,7 @@ function processTensComplement(
   return {
     steps,
     newValue,
-    newState: numberToAbacusState(newValue, 5)
+    newState: toState(newValue)
   }
 }
 
@@ -400,9 +401,9 @@ function generateCascadeComplementSteps(currentValue: number, startPlace: number
 
   // First, add to the highest non-9 place
   let checkPlace = startPlace + 1
-  while (getDigitAtPlace(currentValue, checkPlace) === 9) {
+  const maxCheck = Math.max(1, Math.floor(Math.log10(Math.max(1, currentValue))) + 1) + 2
+  while (getDigitAtPlace(currentValue, checkPlace) === 9 && checkPlace <= maxCheck) {
     checkPlace += 1
-    if (checkPlace > 10) break
   }
 
   // Add 1 to the highest place (this creates the cascade)
@@ -437,64 +438,6 @@ function generateCascadeComplementSteps(currentValue: number, startPlace: number
   return steps
 }
 
-/**
- * Generate ripple-carry steps for ten-complement cascading (legacy)
- */
-function generateRippleCarrySteps(currentValue: number, startPlace: number): DecompositionStep[] {
-  const steps: DecompositionStep[] = []
-
-  // Find the first non-9 place above startPlace
-  let checkPlace = startPlace + 1
-  let ninesCleared = 0
-
-  // Check each higher place value
-  while (true) {
-    const digitAtPlace = getDigitAtPlace(currentValue, checkPlace)
-
-    if (digitAtPlace === 9) {
-      // This place is 9, will be set to 0 during cascade
-      ninesCleared += 1
-      checkPlace += 1
-    } else {
-      // Found non-9 place, increment it
-      const incrementValue = Math.pow(10, checkPlace)
-
-      // Handle the cascade in reverse order (highest to lowest)
-      // First increment the non-9 place
-      steps.push({
-        operation: incrementValue.toString(),
-        description: `Add 1 to ${getPlaceName(checkPlace)} (ripple-carry)`,
-        targetValue: 0
-      })
-
-      // Then clear all the 9s in between
-      for (let clearPlace = checkPlace - 1; clearPlace > startPlace; clearPlace--) {
-        const clearValue = 9 * Math.pow(10, clearPlace)
-        steps.push({
-          operation: `-${clearValue}`,
-          description: `Clear 9s at ${getPlaceName(clearPlace)} (cascade)`,
-          targetValue: 0
-        })
-      }
-
-      break
-    }
-
-    // Safety check to prevent infinite loop
-    if (checkPlace > 10) {
-      // If we get here, create a new leading place
-      const newLeadingValue = Math.pow(10, checkPlace)
-      steps.push({
-        operation: newLeadingValue.toString(),
-        description: `Create new leading 1 at ${getPlaceName(checkPlace)}`,
-        targetValue: 0
-      })
-      break
-    }
-  }
-
-  return steps
-}
 
 /**
  * Generate English instruction from mathematical term
@@ -514,7 +457,7 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
       } else if (add === 10) {
         return `add 1 to tens and remove ${subtract} earth beads`
       } else if (add >= 100) {
-        const place = Math.log10(add)
+        const place = Math.round(Math.log10(add))
         return `add 1 to ${getPlaceName(place)} and remove ${subtract} earth beads`
       }
     }
@@ -527,9 +470,15 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
       return `remove ${value} earth bead${value > 1 ? 's' : ''}`
     } else if (value === 5) {
       return 'deactivate heaven bead'
+    } else if (isPowerOfTen(value)) {
+      const place = Math.round(Math.log10(value))
+      return `remove 1 from ${getPlaceName(place)}`
     } else if (value >= 10) {
       const place = Math.floor(Math.log10(value))
       const digit = Math.floor(value / Math.pow(10, place))
+      if (digit === 5) return `deactivate heaven bead in ${getPlaceName(place)} column`
+      if (digit > 5)  return `deactivate heaven bead and remove ${digit - 5} earth beads in ${getPlaceName(place)} column`
+      // (digit 6..9 handled above; digit 1..4 would be rare here)
       return `remove ${digit} from ${getPlaceName(place)}`
     }
   }
@@ -541,15 +490,18 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
       return isComplementContext ? 'add 5' : 'activate heaven bead'
     } else if (value <= 4) {
       return `add ${value} earth bead${value > 1 ? 's' : ''}`
-    } else if (value === 10) {
-      return 'add 1 to tens place'
-    } else if (value >= 10) {
-      const place = Math.floor(Math.log10(value))
-      const digit = Math.floor(value / Math.pow(10, place))
-      return `add ${digit} to ${getPlaceName(place)}`
     } else if (value >= 6 && value <= 9) {
       const earthBeads = value - 5
       return `activate heaven bead and add ${earthBeads} earth beads`
+    } else if (isPowerOfTen(value)) {
+      const place = Math.round(Math.log10(value))
+      return `add 1 to ${getPlaceName(place)}`
+    } else if (value >= 10) {
+      const place = Math.floor(Math.log10(value))
+      const digit = Math.floor(value / Math.pow(10, place))
+      if (digit === 5) return `activate heaven bead in ${getPlaceName(place)} column`
+      if (digit > 5)  return `activate heaven bead and add ${digit - 5} earth beads in ${getPlaceName(place)} column`
+      return `add ${digit} to ${getPlaceName(place)}`
     }
   }
 
@@ -557,13 +509,8 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
 }
 
 function getPlaceName(place: number): string {
-  switch (place) {
-    case 0: return 'ones'
-    case 1: return 'tens'
-    case 2: return 'hundreds'
-    case 3: return 'thousands'
-    default: return `${place} place`
-  }
+  const names = ['ones', 'tens', 'hundreds', 'thousands', 'ten-thousands', 'hundred-thousands', 'millions']
+  return names[place] ?? `${place} place`
 }
 
 /**
@@ -740,8 +687,9 @@ function generatePlaceInstruction(
   const parts: string[] = []
 
   if (heavenBeads.length > 0) {
-    const verb = action === 'add' ? 'add' : 'remove'
-    parts.push(`${verb} heaven bead in ${placeName} column`)
+    parts.push(action === 'add'
+      ? `activate heaven bead in ${placeName} column`
+      : `deactivate heaven bead in ${placeName} column`)
   }
 
   if (earthBeads.length > 0) {
@@ -762,18 +710,23 @@ function validateStepConsistency(
   englishInstruction: string,
   startValue: number,
   expectedValue: number,
-  beadMovements: StepBeadHighlight[]
+  beadMovements: StepBeadHighlight[],
+  toState: (n: number) => AbacusState
 ): { isValid: boolean; issues: string[] } {
 
   const issues: string[] = []
 
   // Validate that bead movements produce the expected value
-  const startState = numberToAbacusState(startValue)
-  const expectedState = numberToAbacusState(expectedValue)
+  const startState = toState(startValue)
+  const expectedState = toState(expectedValue)
 
   // Apply bead movements to start state
   let simulatedState = { ...startState }
   beadMovements.forEach(movement => {
+    // Ensure place exists before mutating
+    if (!simulatedState[movement.placeValue]) {
+      simulatedState[movement.placeValue] = { heavenActive: false, earthActive: 0 }
+    }
     if (movement.direction === 'activate') {
       if (movement.beadType === 'heaven') {
         simulatedState[movement.placeValue].heavenActive = true
@@ -789,11 +742,30 @@ function validateStepConsistency(
     }
   })
 
+  // Validate bead ranges after applying movements
+  for (const place in simulatedState) {
+    const placeNum = parseInt(place)
+    const state = simulatedState[placeNum]
+
+    if (state.earthActive < 0 || state.earthActive > 4) {
+      issues.push(`Place ${place}: earth beads out of range (${state.earthActive})`)
+    }
+
+    if (typeof state.heavenActive !== 'boolean') {
+      issues.push(`Place ${place}: heaven bead state invalid (${state.heavenActive})`)
+    }
+  }
+
   // Check if simulated state matches expected state
   for (const place in expectedState) {
     const placeNum = parseInt(place)
     const expected = expectedState[placeNum]
     const simulated = simulatedState[placeNum]
+
+    if (!simulated) {
+      issues.push(`Place ${place}: missing in simulated state`)
+      continue
+    }
 
     if (expected.heavenActive !== simulated.heavenActive) {
       issues.push(`Place ${place}: heaven bead mismatch`)
@@ -802,6 +774,12 @@ function validateStepConsistency(
     if (expected.earthActive !== simulated.earthActive) {
       issues.push(`Place ${place}: earth bead count mismatch`)
     }
+  }
+
+  // Final numeric equivalence check
+  const simulatedValue = abacusStateToNumber(simulatedState)
+  if (simulatedValue !== expectedValue) {
+    issues.push(`Numeric mismatch: simulated=${simulatedValue}, expected=${expectedValue}`)
   }
 
   return {
@@ -821,7 +799,6 @@ function buildFullDecompositionWithPositions(
   fullDecomposition: string
   termPositions: Array<{ startIndex: number; endIndex: number }>
 } {
-
   const difference = targetValue - startValue
 
   // Handle zero difference special case
@@ -832,142 +809,142 @@ function buildFullDecompositionWithPositions(
     }
   }
 
-  // Handle term joining with special logic for ten-complements
+  // Group consecutive complement terms into segments
+  const segments: Array<{
+    terms: string[]
+    isComplement: boolean
+  }> = []
+
+  let i = 0
+  while (i < terms.length) {
+    const currentTerm = terms[i]
+
+    // Check if this starts a complement sequence (positive term followed by negative(s))
+    if (i + 1 < terms.length &&
+        !currentTerm.startsWith('-') &&
+        terms[i + 1].startsWith('-')) {
+
+      // Collect all consecutive negative terms after this positive term
+      const complementTerms = [currentTerm]
+      let j = i + 1
+      while (j < terms.length && terms[j].startsWith('-')) {
+        complementTerms.push(terms[j])
+        j++
+      }
+
+      segments.push({
+        terms: complementTerms,
+        isComplement: true
+      })
+      i = j // Jump past all consumed terms
+    } else {
+      // Single term (not part of complement)
+      segments.push({
+        terms: [currentTerm],
+        isComplement: false
+      })
+      i++
+    }
+  }
+
+  // Build decomposition string with proper segment formatting
   let termString = ''
+  const termPositions: Array<{ startIndex: number; endIndex: number }> = []
+  let termIndex = 0 // Track which original term we're processing
 
-  // Special case for cascading ten-complement pattern like ["100", "-90", "-2"]
-  if (terms.length === 3 &&
-      isPowerOfTen(parseInt(terms[0])) &&
-      terms[1].startsWith('-') &&
-      terms[2].startsWith('-')) {
-    const firstAdd = parseInt(terms[0])
-    const firstSubtract = parseInt(terms[1].substring(1))
-    const secondSubtract = parseInt(terms[2].substring(1))
+  segments.forEach((segment, segmentIndex) => {
+    if (segment.isComplement) {
+      // Format as parenthesized complement: (10 - 3) or (1000 - 900 - 90 - 2)
+      const positiveStr = segment.terms[0]
+      const negativeStrs = segment.terms.slice(1).map(t => t.substring(1)) // Remove - signs
 
-    // Check if this looks like a cascading pattern (e.g., 100, -90, -2)
-    if (firstAdd === 100 && firstSubtract === 90 && secondSubtract <= 9) {
-      termString = `(${terms[0]} - ${firstSubtract} - ${secondSubtract})`
+      const segmentStr = `(${positiveStr} - ${negativeStrs.join(' - ')})`
 
-      // Build and return immediately for this special case
-      const leftSide = `${startValue} + ${difference} = ${startValue} + `
-      const rightSide = ` = ${targetValue}`
-      const fullDecomposition = leftSide + termString + rightSide
-
-      // Calculate proper term positions for the cascading case
-      const termPositions: Array<{ startIndex: number; endIndex: number }> = []
-      let currentIndex = leftSide.length
-
-      // For the cascading case, we need to map each original term to positions within the parenthesized expression
-      // terms[0] = "100" maps to position within "(100 - 90 - 2)"
-      termPositions.push({
-        startIndex: currentIndex + 1, // Skip the opening parenthesis
-        endIndex: currentIndex + 1 + terms[0].length
-      })
-
-      // terms[1] = "-90" maps to position within the parentheses
-      termPositions.push({
-        startIndex: currentIndex + 1 + terms[0].length + 3, // Skip "100 - "
-        endIndex: currentIndex + 1 + terms[0].length + 3 + firstSubtract.toString().length
-      })
-
-      // terms[2] = "-2" maps to position within the parentheses
-      termPositions.push({
-        startIndex: currentIndex + 1 + terms[0].length + 3 + firstSubtract.toString().length + 3, // Skip "100 - 90 - "
-        endIndex: currentIndex + 1 + terms[0].length + 3 + firstSubtract.toString().length + 3 + secondSubtract.toString().length
-      })
-
-      return {
-        fullDecomposition,
-        termPositions
-      }
-    }
-  }
-  if (terms.length > 0) {
-    let i = 0
-    while (i < terms.length) {
-      if (i === 0) {
-        // Check if first two terms form a ten-complement pattern
-        if (i + 1 < terms.length && isTenComplementPattern(terms[i], terms[i + 1])) {
-          const complement = extractComplementValue(terms[i], terms[i + 1])
-          termString = `(${terms[i]} - ${complement})`
-          i += 2 // Skip both terms as they're combined
-        } else if (terms[i].startsWith('(')) {
-          termString = terms[i]
-          i++
-        } else {
-          termString = terms[i]
-          i++
-        }
+      if (segmentIndex === 0) {
+        termString = segmentStr
       } else {
-        // Check if this and next term form a ten-complement pattern
-        if (i + 1 < terms.length && isTenComplementPattern(terms[i], terms[i + 1])) {
-          const complement = extractComplementValue(terms[i], terms[i + 1])
-          termString += ` + (${terms[i]} - ${complement})`
-          i += 2
-        } else {
-          const term = terms[i]
-          if (term.startsWith('-')) {
-            termString += ` ${term}` // Keep the negative sign
-          } else if (term.startsWith('(')) {
-            termString += ` + ${term}` // Add plus before parentheses
-          } else {
-            termString += ` + ${term}` // Normal addition
-          }
-          i++
-        }
+        termString += ` + ${segmentStr}`
+      }
+    } else {
+      // Single term
+      const term = segment.terms[0]
+      if (segmentIndex === 0) {
+        termString = term
+      } else if (term.startsWith('-')) {
+        termString += ` ${term}` // Keep negative sign
+      } else {
+        termString += ` + ${term}`
       }
     }
-  }
+  })
 
-  // Build the full string: "4 + 7 = 4 + (10 - 3) = 11"
+  // Build full decomposition
   const leftSide = `${startValue} + ${difference} = ${startValue} + `
   const rightSide = ` = ${targetValue}`
   const fullDecomposition = leftSide + termString + rightSide
 
-  // Calculate positions for each term within the decomposition
-  const termPositions: Array<{ startIndex: number; endIndex: number }> = []
-  let currentIndex = leftSide.length
+  // Calculate precise positions for each original term
+  let currentPos = leftSide.length
+  let segmentTermIndex = 0
 
-  terms.forEach((term, index) => {
-    const startIndex = currentIndex
-    const endIndex = startIndex + term.length
+  segments.forEach((segment, segmentIndex) => {
+    if (segment.isComplement) {
+      // Position within parenthesized complement
+      currentPos += 1 // Skip opening '('
 
-    termPositions.push({ startIndex, endIndex })
+      segment.terms.forEach((term, termInSegmentIndex) => {
+        const startIndex = currentPos
 
-    // Move past this term and the separator
-    currentIndex = endIndex
-    if (index < terms.length - 1) {
-      // Account for " + " or " - " separator (check if next term starts with -)
-      const nextTerm = terms[index + 1]
-      if (nextTerm.startsWith('-')) {
-        currentIndex += 3 // " - "
-      } else {
-        currentIndex += 3 // " + "
+        if (termInSegmentIndex === 0) {
+          // Positive term
+          termPositions[segmentTermIndex] = {
+            startIndex,
+            endIndex: startIndex + term.length
+          }
+          currentPos += term.length
+        } else {
+          // Negative term (but we position on just the number part)
+          currentPos += 3 // Skip ' - '
+          const numberStr = term.substring(1) // Remove '-'
+          termPositions[segmentTermIndex] = {
+            startIndex: currentPos,
+            endIndex: currentPos + numberStr.length
+          }
+          currentPos += numberStr.length
+        }
+        segmentTermIndex++
+      })
+
+      currentPos += 1 // Skip closing ')'
+
+      // If not the last segment, account for ' + ' before next segment
+      if (segmentIndex < segments.length - 1) {
+        currentPos += 3
       }
+    } else {
+      // Single term segment
+      const term = segment.terms[0]
+
+      if (segmentIndex > 0) {
+        if (term.startsWith('-')) {
+          currentPos += 1 // Skip ' ' before negative
+        } else {
+          currentPos += 3 // Skip ' + '
+        }
+      }
+
+      const isNegative = term.startsWith('-')
+      const startIndex = isNegative ? (currentPos + 1) : currentPos   // skip the '−' for mapping
+      const endIndex   = isNegative ? (startIndex + (term.length - 1)) : (startIndex + term.length)
+      termPositions[segmentTermIndex] = { startIndex, endIndex }
+      currentPos += term.length  // actual text includes the '−'
+      segmentTermIndex++
     }
   })
 
   return { fullDecomposition, termPositions }
 }
 
-/**
- * Check if two consecutive terms form a complement pattern (e.g., "5" and "-2", "10" and "-3", or "100" and "-90")
- */
-function isTenComplementPattern(term1: string, term2: string): boolean {
-  if (!term2.startsWith('-')) return false
-
-  const addValue = parseInt(term1)
-  const subtractValue = parseInt(term2.substring(1))
-
-  // Check for five-complements (5 and -X) or ten-complements (powers of 10 and -Y)
-  if (addValue === 5 && subtractValue <= 4) {
-    return true // Five-complement pattern
-  }
-
-  // Check if it's a power of 10 being added and any value being subtracted
-  // This covers both simple ten-complements (10 - 3) and cascade complements (100 - 90)
-  return addValue >= 10 && isPowerOfTen(addValue)
-}
 
 /**
  * Check if a number is a power of 10
@@ -981,13 +958,6 @@ function isPowerOfTen(num: number): boolean {
   return true
 }
 
-/**
- * Extract the complement value from a ten-complement pair
- */
-function extractComplementValue(term1: string, term2: string): string {
-  const subtractValue = parseInt(term2.substring(1))
-  return subtractValue.toString()
-}
 
 /**
  * Determine if a pedagogical decomposition is meaningful (not redundant)
@@ -1006,7 +976,7 @@ function isDecompositionMeaningful(
   }
 
   // Check if we have complement expressions (parentheses)
-  const hasComplementOperations = decompositionTerms.some(term => term.includes('(') && term.includes(')'))
+  const hasComplementOperations = fullDecomposition.includes('(')
 
   // Complement operations are always meaningful (they show soroban technique)
   if (hasComplementOperations) {

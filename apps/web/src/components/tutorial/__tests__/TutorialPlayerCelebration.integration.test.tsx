@@ -52,7 +52,14 @@ const mockTutorial: Tutorial = {
       problem: '3 + 2',
       description: 'Add 2 to 3 to get 5',
       startValue: 3,
-      targetValue: 5
+      targetValue: 5,
+      expectedAction: 'add',
+      actionDescription: '3 + 2 = 5',
+      tooltip: {
+        content: 'Add 2 to reach 5',
+        explanation: 'Move two earth beads up to add 2'
+      },
+      multiStepInstructions: ['Move two earth beads up']
     }
   ]
 }
@@ -232,7 +239,14 @@ describe('TutorialPlayer Celebration Integration', () => {
             problem: '4 + 1',
             description: 'Add 1 to 4 to get 5',
             startValue: 4,
-            targetValue: 5
+            targetValue: 5,
+            expectedAction: 'add',
+            actionDescription: '4 + 1 = 5',
+            tooltip: {
+              content: 'Add 1 to reach 5',
+              explanation: 'Move one earth bead up to add 1'
+            },
+            multiStepInstructions: ['Move one earth bead up']
           }
         ]
       }
@@ -293,7 +307,14 @@ describe('TutorialPlayer Celebration Integration', () => {
             problem: '2 + 4',
             description: 'Add 4 to 2 to get 6',
             startValue: 2,
-            targetValue: 6
+            targetValue: 6,
+            expectedAction: 'add',
+            actionDescription: '2 + 4 = 6',
+            tooltip: {
+              content: 'Add 4 to reach 6',
+              explanation: 'Move four earth beads up to add 4'
+            },
+            multiStepInstructions: ['Move four earth beads up']
           }
         ]
       }
