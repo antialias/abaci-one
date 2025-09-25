@@ -288,7 +288,7 @@ describe('Pedagogical Expansion Algorithm - Addition Only', () => {
       {
         start: 99, target: 107,
         expected: {
-          decomposition: '99 + 8 = 99 + (100 - 90) + (10 - 2) = 107',
+          decomposition: '99 + 8 = 99 + (100 - 90 - 2) = 107',
           meaningful: true,
           steps: [
             { term: '100', value: 199, instruction: /add.*1.*hundreds/i },
