@@ -89,12 +89,12 @@ export function generateUnifiedInstructionSequence(
       stepIndex
     )
 
-    // Generate English instruction based on the actual bead movements
-    const englishInstruction = generateStepInstruction(
-      stepBeadMovements,
-      term,
-      stepResult
-    )
+    // Generate English instruction from our algorithm data
+    // Check if this is a five-complement context (5 followed by negative term)
+    const isComplementContext = term === '5' &&
+      stepIndex + 1 < decompositionTerms.length &&
+      decompositionTerms[stepIndex + 1].startsWith('-')
+    const englishInstruction = generateInstructionFromTerm(term, stepIndex, isComplementContext)
 
     // Validate that everything is consistent
     const validation = validateStepConsistency(
@@ -179,8 +179,8 @@ function generateDecompositionTerms(
     throw new Error('Subtraction not implemented yet')
   }
 
-  // Convert to abacus state representation
-  let currentState = numberToAbacusState(startValue, 5)
+  // Convert to abacus state representation with correct dimensions
+  let currentState = numberToAbacusState(startValue, 5) // Support up to 5 places
   let currentValue = startValue
   const steps: DecompositionStep[] = []
 
@@ -197,12 +197,16 @@ function generateDecompositionTerms(
     // Get current digit at this place value
     const currentDigitAtPlace = getDigitAtPlace(currentValue, placeValue)
 
+    // DEBUG: Log the processing for troubleshooting
+    // console.log(`Processing place ${placeValue}: digit=${digit}, current=${currentDigitAtPlace}, sum=${currentDigitAtPlace + digit}`)
+
     // Apply the pedagogical algorithm decision tree
     const stepResult = processDigitAtPlace(
       digit,
       placeValue,
       currentDigitAtPlace,
-      currentState
+      currentState,
+      addend  // Pass the full addend to determine if it's multi-place
     )
 
     // Apply the step result to our current state
@@ -222,7 +226,8 @@ function processDigitAtPlace(
   digit: number,
   placeValue: number,
   currentDigitAtPlace: number,
-  currentState: AbacusState
+  currentState: AbacusState,
+  addend: number
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const a = currentDigitAtPlace
@@ -231,7 +236,7 @@ function processDigitAtPlace(
   // Decision: Direct addition vs 10's complement
   if (a + d <= 9) {
     // Case A: Direct addition at this place
-    return processDirectAddition(d, placeValue, currentState)
+    return processDirectAddition(d, placeValue, currentState, addend)
   } else {
     // Case B: 10's complement required
     return processTensComplement(d, placeValue, currentState)
@@ -244,7 +249,8 @@ function processDigitAtPlace(
 function processDirectAddition(
   digit: number,
   placeValue: number,
-  currentState: AbacusState
+  currentState: AbacusState,
+  addend: number
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const placeState = currentState[placeValue] || { heavenActive: false, earthActive: 0 }
@@ -265,38 +271,68 @@ function processDirectAddition(
         ...placeState,
         earthActive: placeState.earthActive + digit
       }
-    } else {
-      // Use 5's complement: digit = (5 - (5 - digit))
+    } else if (!placeState.heavenActive) {
+      // Use 5's complement: digit = (5 - (5 - digit)) when pedagogically valuable
       const complement = 5 - digit
       const termValue = digit * Math.pow(10, placeValue)
-      steps.push({
-        operation: `(5 - ${complement})`,
-        description: `Add heaven bead and remove ${complement} earth beads at place ${placeValue}`,
-        targetValue: 0
-      })
+
+      // Check if this is part of a multi-place operation
+      const isMultiPlaceOperation = addend >= 10 // If adding a multi-digit number
+
+      if (isMultiPlaceOperation) {
+        // Multi-place operation: use direct representation
+        steps.push({
+          operation: termValue.toString(),
+          description: `Add ${digit} using heaven bead adjustment`,
+          targetValue: 0
+        })
+      } else {
+        // Single-place operation: show complement pedagogy as separate steps
+        const fiveValue = 5 * Math.pow(10, placeValue)
+        const subtractValue = complement * Math.pow(10, placeValue)
+
+        steps.push({
+          operation: fiveValue.toString(),
+          description: `Add heaven bead at place ${placeValue}`,
+          targetValue: 0
+        })
+
+        steps.push({
+          operation: `-${subtractValue}`,
+          description: `Remove ${complement} earth beads at place ${placeValue}`,
+          targetValue: 0
+        })
+      }
+
       newState[placeValue] = {
         heavenActive: true,
         earthActive: placeState.earthActive - complement
       }
     }
   } else {
-    // For digits 5-9: activate heaven bead + earth beads
+    // For digits 5-9: always fits under Case A assumption (a + d ≤ 9)
+    // Activate heaven bead and add remainder earth beads
     const earthBeadsNeeded = digit - 5
-    if (!placeState.heavenActive && placeState.earthActive + earthBeadsNeeded <= 4) {
-      // Direct heaven + earth addition
-      const termValue = digit * Math.pow(10, placeValue)
+    const fiveValue = 5 * Math.pow(10, placeValue)
+    const remainderValue = earthBeadsNeeded * Math.pow(10, placeValue)
+
+    steps.push({
+      operation: fiveValue.toString(),
+      description: `Add heaven bead at place ${placeValue}`,
+      targetValue: 0
+    })
+
+    if (earthBeadsNeeded > 0) {
       steps.push({
-        operation: termValue.toString(),
-        description: `Add heaven bead and ${earthBeadsNeeded} earth beads at place ${placeValue}`,
+        operation: remainderValue.toString(),
+        description: `Add ${earthBeadsNeeded} earth beads at place ${placeValue}`,
         targetValue: 0
       })
-      newState[placeValue] = {
-        heavenActive: true,
-        earthActive: placeState.earthActive + earthBeadsNeeded
-      }
-    } else {
-      // Fall back to 10's complement (this shouldn't happen if a + d ≤ 9, but safety check)
-      return processTensComplement(digit, placeValue, currentState)
+    }
+
+    newState[placeValue] = {
+      heavenActive: true,
+      earthActive: placeState.earthActive + earthBeadsNeeded
     }
   }
 
@@ -317,27 +353,216 @@ function processTensComplement(
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const steps: DecompositionStep[] = []
-  const newState = { ...currentState }
-
-  // Use 10's complement: d = (10 - (10-d))
   const complementToSubtract = 10 - digit
-
-  // Generate single complement term instead of separate add/subtract
-  steps.push({
-    operation: `(10 - ${complementToSubtract})`,
-    description: `Ten's complement: add 10 to higher place, subtract ${complementToSubtract}`,
-    targetValue: 0
-  })
-
-  // TODO: Implement proper bead state updates for carries and borrows
-  // For now, calculate new value mathematically
   const currentValue = abacusStateToNumber(currentState)
+
+  // Check if this requires cascading (next place is 9)
+  const nextPlaceDigit = getDigitAtPlace(currentValue, placeValue + 1)
+  const requiresCascading = nextPlaceDigit === 9
+
+  if (requiresCascading) {
+    // Generate cascading complement terms in parenthesized format
+    const cascadeSteps = generateCascadeComplementSteps(currentValue, placeValue, complementToSubtract)
+    steps.push(...cascadeSteps)
+  } else {
+    // Simple ten-complement: generate separate add/subtract steps
+    const higherPlaceValue = Math.pow(10, placeValue + 1)
+    const subtractValue = complementToSubtract * Math.pow(10, placeValue)
+
+    steps.push({
+      operation: higherPlaceValue.toString(),
+      description: `Add 1 to ${getPlaceName(placeValue + 1)} (carry)`,
+      targetValue: 0
+    })
+
+    steps.push({
+      operation: `-${subtractValue}`,
+      description: `Remove ${complementToSubtract} earth beads (no borrow needed)`,
+      targetValue: 0
+    })
+  }
+
+  // Calculate new value mathematically
   const newValue = currentValue + (digit * Math.pow(10, placeValue))
 
   return {
     steps,
     newValue,
     newState: numberToAbacusState(newValue, 5)
+  }
+}
+
+/**
+ * Generate cascade complement steps as individual terms for UI tracking
+ */
+function generateCascadeComplementSteps(currentValue: number, startPlace: number, onesComplement: number): DecompositionStep[] {
+  const steps: DecompositionStep[] = []
+
+  // First, add to the highest non-9 place
+  let checkPlace = startPlace + 1
+  while (getDigitAtPlace(currentValue, checkPlace) === 9) {
+    checkPlace += 1
+    if (checkPlace > 10) break
+  }
+
+  // Add 1 to the highest place (this creates the cascade)
+  const higherPlaceValue = Math.pow(10, checkPlace)
+  steps.push({
+    operation: higherPlaceValue.toString(),
+    description: `Add 1 to ${getPlaceName(checkPlace)} (cascade trigger)`,
+    targetValue: 0
+  })
+
+  // Clear all the 9s in between (working downward)
+  for (let clearPlace = checkPlace - 1; clearPlace > startPlace; clearPlace--) {
+    const digitAtClearPlace = getDigitAtPlace(currentValue, clearPlace)
+    if (digitAtClearPlace === 9) {
+      const clearValue = 9 * Math.pow(10, clearPlace)
+      steps.push({
+        operation: `-${clearValue}`,
+        description: `Remove 9 from ${getPlaceName(clearPlace)} (cascade)`,
+        targetValue: 0
+      })
+    }
+  }
+
+  // Finally, subtract at the original place
+  const onesSubtractValue = onesComplement * Math.pow(10, startPlace)
+  steps.push({
+    operation: `-${onesSubtractValue}`,
+    description: `Remove ${onesComplement} earth beads (ten's complement)`,
+    targetValue: 0
+  })
+
+  return steps
+}
+
+/**
+ * Generate ripple-carry steps for ten-complement cascading (legacy)
+ */
+function generateRippleCarrySteps(currentValue: number, startPlace: number): DecompositionStep[] {
+  const steps: DecompositionStep[] = []
+
+  // Find the first non-9 place above startPlace
+  let checkPlace = startPlace + 1
+  let ninesCleared = 0
+
+  // Check each higher place value
+  while (true) {
+    const digitAtPlace = getDigitAtPlace(currentValue, checkPlace)
+
+    if (digitAtPlace === 9) {
+      // This place is 9, will be set to 0 during cascade
+      ninesCleared += 1
+      checkPlace += 1
+    } else {
+      // Found non-9 place, increment it
+      const incrementValue = Math.pow(10, checkPlace)
+
+      // Handle the cascade in reverse order (highest to lowest)
+      // First increment the non-9 place
+      steps.push({
+        operation: incrementValue.toString(),
+        description: `Add 1 to ${getPlaceName(checkPlace)} (ripple-carry)`,
+        targetValue: 0
+      })
+
+      // Then clear all the 9s in between
+      for (let clearPlace = checkPlace - 1; clearPlace > startPlace; clearPlace--) {
+        const clearValue = 9 * Math.pow(10, clearPlace)
+        steps.push({
+          operation: `-${clearValue}`,
+          description: `Clear 9s at ${getPlaceName(clearPlace)} (cascade)`,
+          targetValue: 0
+        })
+      }
+
+      break
+    }
+
+    // Safety check to prevent infinite loop
+    if (checkPlace > 10) {
+      // If we get here, create a new leading place
+      const newLeadingValue = Math.pow(10, checkPlace)
+      steps.push({
+        operation: newLeadingValue.toString(),
+        description: `Create new leading 1 at ${getPlaceName(checkPlace)}`,
+        targetValue: 0
+      })
+      break
+    }
+  }
+
+  return steps
+}
+
+/**
+ * Generate English instruction from mathematical term
+ */
+function generateInstructionFromTerm(term: string, stepIndex: number, isComplementContext: boolean = false): string {
+  // Parse the term to determine what instruction to give
+
+  // Handle parenthesized complements like "(5 - 2)" or "(10 - 3)"
+  if (term.startsWith('(') && term.includes(' - ')) {
+    const match = term.match(/\((\d+) - (\d+)\)/)
+    if (match) {
+      const add = parseInt(match[1])
+      const subtract = parseInt(match[2])
+
+      if (add === 5) {
+        return `add heaven bead and remove ${subtract} earth beads`
+      } else if (add === 10) {
+        return `add 1 to tens and remove ${subtract} earth beads`
+      } else if (add >= 100) {
+        const place = Math.log10(add)
+        return `add 1 to ${getPlaceName(place)} and remove ${subtract} earth beads`
+      }
+    }
+  }
+
+  // Handle negative numbers FIRST
+  if (term.startsWith('-')) {
+    const value = parseInt(term.substring(1))
+    if (value <= 4) {
+      return `remove ${value} earth bead${value > 1 ? 's' : ''}`
+    } else if (value === 5) {
+      return 'deactivate heaven bead'
+    } else if (value >= 10) {
+      const place = Math.floor(Math.log10(value))
+      const digit = Math.floor(value / Math.pow(10, place))
+      return `remove ${digit} from ${getPlaceName(place)}`
+    }
+  }
+
+  // Handle simple positive numbers
+  const value = parseInt(term)
+  if (!isNaN(value) && value > 0) {
+    if (value === 5) {
+      return isComplementContext ? 'add 5' : 'activate heaven bead'
+    } else if (value <= 4) {
+      return `add ${value} earth bead${value > 1 ? 's' : ''}`
+    } else if (value === 10) {
+      return 'add 1 to tens place'
+    } else if (value >= 10) {
+      const place = Math.floor(Math.log10(value))
+      const digit = Math.floor(value / Math.pow(10, place))
+      return `add ${digit} to ${getPlaceName(place)}`
+    } else if (value >= 6 && value <= 9) {
+      const earthBeads = value - 5
+      return `activate heaven bead and add ${earthBeads} earth beads`
+    }
+  }
+
+  return `perform operation: ${term}`
+}
+
+function getPlaceName(place: number): string {
+  switch (place) {
+    case 0: return 'ones'
+    case 1: return 'tens'
+    case 2: return 'hundreds'
+    case 3: return 'thousands'
+    default: return `${place} place`
   }
 }
 
@@ -599,18 +824,97 @@ function buildFullDecompositionWithPositions(
 
   const difference = targetValue - startValue
 
-  // Handle term joining more carefully to preserve parentheses and signs
+  // Handle zero difference special case
+  if (difference === 0) {
+    return {
+      fullDecomposition: `${startValue} + 0 = ${targetValue}`,
+      termPositions: []
+    }
+  }
+
+  // Handle term joining with special logic for ten-complements
   let termString = ''
+
+  // Special case for cascading ten-complement pattern like ["100", "-90", "-2"]
+  if (terms.length === 3 &&
+      isPowerOfTen(parseInt(terms[0])) &&
+      terms[1].startsWith('-') &&
+      terms[2].startsWith('-')) {
+    const firstAdd = parseInt(terms[0])
+    const firstSubtract = parseInt(terms[1].substring(1))
+    const secondSubtract = parseInt(terms[2].substring(1))
+
+    // Check if this looks like a cascading pattern (e.g., 100, -90, -2)
+    if (firstAdd === 100 && firstSubtract === 90 && secondSubtract <= 9) {
+      termString = `(${terms[0]} - ${firstSubtract} - ${secondSubtract})`
+
+      // Build and return immediately for this special case
+      const leftSide = `${startValue} + ${difference} = ${startValue} + `
+      const rightSide = ` = ${targetValue}`
+      const fullDecomposition = leftSide + termString + rightSide
+
+      // Calculate proper term positions for the cascading case
+      const termPositions: Array<{ startIndex: number; endIndex: number }> = []
+      let currentIndex = leftSide.length
+
+      // For the cascading case, we need to map each original term to positions within the parenthesized expression
+      // terms[0] = "100" maps to position within "(100 - 90 - 2)"
+      termPositions.push({
+        startIndex: currentIndex + 1, // Skip the opening parenthesis
+        endIndex: currentIndex + 1 + terms[0].length
+      })
+
+      // terms[1] = "-90" maps to position within the parentheses
+      termPositions.push({
+        startIndex: currentIndex + 1 + terms[0].length + 3, // Skip "100 - "
+        endIndex: currentIndex + 1 + terms[0].length + 3 + firstSubtract.toString().length
+      })
+
+      // terms[2] = "-2" maps to position within the parentheses
+      termPositions.push({
+        startIndex: currentIndex + 1 + terms[0].length + 3 + firstSubtract.toString().length + 3, // Skip "100 - 90 - "
+        endIndex: currentIndex + 1 + terms[0].length + 3 + firstSubtract.toString().length + 3 + secondSubtract.toString().length
+      })
+
+      return {
+        fullDecomposition,
+        termPositions
+      }
+    }
+  }
   if (terms.length > 0) {
-    termString = terms[0]
-    for (let i = 1; i < terms.length; i++) {
-      const term = terms[i]
-      if (term.startsWith('-')) {
-        termString += ` ${term}` // Keep the negative sign
-      } else if (term.startsWith('(')) {
-        termString += ` + ${term}` // Add plus before parentheses
+    let i = 0
+    while (i < terms.length) {
+      if (i === 0) {
+        // Check if first two terms form a ten-complement pattern
+        if (i + 1 < terms.length && isTenComplementPattern(terms[i], terms[i + 1])) {
+          const complement = extractComplementValue(terms[i], terms[i + 1])
+          termString = `(${terms[i]} - ${complement})`
+          i += 2 // Skip both terms as they're combined
+        } else if (terms[i].startsWith('(')) {
+          termString = terms[i]
+          i++
+        } else {
+          termString = terms[i]
+          i++
+        }
       } else {
-        termString += ` + ${term}` // Normal addition
+        // Check if this and next term form a ten-complement pattern
+        if (i + 1 < terms.length && isTenComplementPattern(terms[i], terms[i + 1])) {
+          const complement = extractComplementValue(terms[i], terms[i + 1])
+          termString += ` + (${terms[i]} - ${complement})`
+          i += 2
+        } else {
+          const term = terms[i]
+          if (term.startsWith('-')) {
+            termString += ` ${term}` // Keep the negative sign
+          } else if (term.startsWith('(')) {
+            termString += ` + ${term}` // Add plus before parentheses
+          } else {
+            termString += ` + ${term}` // Normal addition
+          }
+          i++
+        }
       }
     }
   }
@@ -647,6 +951,45 @@ function buildFullDecompositionWithPositions(
 }
 
 /**
+ * Check if two consecutive terms form a complement pattern (e.g., "5" and "-2", "10" and "-3", or "100" and "-90")
+ */
+function isTenComplementPattern(term1: string, term2: string): boolean {
+  if (!term2.startsWith('-')) return false
+
+  const addValue = parseInt(term1)
+  const subtractValue = parseInt(term2.substring(1))
+
+  // Check for five-complements (5 and -X) or ten-complements (powers of 10 and -Y)
+  if (addValue === 5 && subtractValue <= 4) {
+    return true // Five-complement pattern
+  }
+
+  // Check if it's a power of 10 being added and any value being subtracted
+  // This covers both simple ten-complements (10 - 3) and cascade complements (100 - 90)
+  return addValue >= 10 && isPowerOfTen(addValue)
+}
+
+/**
+ * Check if a number is a power of 10
+ */
+function isPowerOfTen(num: number): boolean {
+  if (num < 10) return false
+  while (num > 1) {
+    if (num % 10 !== 0) return false
+    num = num / 10
+  }
+  return true
+}
+
+/**
+ * Extract the complement value from a ten-complement pair
+ */
+function extractComplementValue(term1: string, term2: string): string {
+  const subtractValue = parseInt(term2.substring(1))
+  return subtractValue.toString()
+}
+
+/**
  * Determine if a pedagogical decomposition is meaningful (not redundant)
  */
 function isDecompositionMeaningful(
@@ -655,67 +998,52 @@ function isDecompositionMeaningful(
   decompositionTerms: string[],
   fullDecomposition: string
 ): boolean {
-  // Simple heuristics to determine if the decomposition adds pedagogical value
-
   const difference = targetValue - startValue
 
-  // If there's no change, it's definitely not meaningful
+  // No change = not meaningful
   if (difference === 0) {
     return false
   }
 
-  // If there's only one term and it equals the difference, it's redundant
-  if (decompositionTerms.length === 1 && decompositionTerms[0] === Math.abs(difference).toString()) {
-    return false
-  }
-
-  // Check if we have complement operations (parentheses) or multiple terms
+  // Check if we have complement expressions (parentheses)
   const hasComplementOperations = decompositionTerms.some(term => term.includes('(') && term.includes(')'))
-  const hasMultipleTerms = decompositionTerms.length > 1
 
-  // For very simple differences (< 5), even complement operations might be redundant
-  if (Math.abs(difference) < 5 && hasComplementOperations && !hasMultipleTerms) {
-    // Check if it's a simple complement that doesn't add pedagogical value
-    // For example: 5 -> 4 using (4-5) is probably not worth showing
-    return false
-  }
-
-  // If we have multiple terms, it's definitely meaningful
-  if (hasMultipleTerms) {
+  // Complement operations are always meaningful (they show soroban technique)
+  if (hasComplementOperations) {
     return true
   }
 
-  // For larger differences with complement operations, it's meaningful
-  if (hasComplementOperations && Math.abs(difference) >= 5) {
+  // Multiple terms without complements can be meaningful for multi-place operations
+  // but not for simple natural breakdowns like 6 = 5 + 1
+  if (decompositionTerms.length > 1) {
+    // Check if it's a simple natural breakdown (like 5 + 1, 5 + 2, 5 + 3, 5 + 4)
+    if (decompositionTerms.length === 2) {
+      const [first, second] = decompositionTerms
+      if (first === '5' && parseInt(second) >= 1 && parseInt(second) <= 4) {
+        return false // Natural soroban representation, not pedagogically meaningful
+      }
+    }
     return true
   }
 
-  // For single terms, check if it's a simple difference that doesn't need decomposition
+  // Single term that equals the difference = not meaningful (redundant)
   if (decompositionTerms.length === 1) {
     const term = decompositionTerms[0]
-
-    // If it's just the raw difference (positive or negative), it's redundant
-    if (term === difference.toString() || term === Math.abs(difference).toString() || term === `-${Math.abs(difference)}`) {
-      return false
-    }
-
-    // If the difference is small (< 10) and it's a simple term, likely redundant
-    if (Math.abs(difference) < 10) {
+    if (term === Math.abs(difference).toString()) {
       return false
     }
   }
 
-  // Check for actual decomposition complexity in the full string
-  // If it just restates the problem without breaking it down, it's redundant
-  const originalProblem = `${startValue} ${difference >= 0 ? '+' : '-'} ${Math.abs(difference)}`
-
-  // If the decomposition is essentially just restating the original, it's not meaningful
-  // This catches cases like "0 + 1 = 0 + 1 = 1"
-  const decompositionPart = fullDecomposition.split(' = ')[1]?.split(' = ')[0] // Get middle part
-  if (decompositionPart && decompositionPart.replace(/\s/g, '') === `${startValue}+${Math.abs(difference)}`.replace(/\s/g, '')) {
-    return false
+  // For complex cases with multiple breakdowns, check if it's just restating
+  const decompositionPart = fullDecomposition.split(' = ')[1]?.split(' = ')[0]
+  if (decompositionPart) {
+    // If the middle part is just the same as "start + difference", it's redundant
+    const simplePattern = `${startValue} + ${Math.abs(difference)}`
+    if (decompositionPart.replace(/\s/g, '') === simplePattern.replace(/\s/g, '')) {
+      return false
+    }
   }
 
-  // Default to meaningful for cases that don't match simple patterns
+  // Default to meaningful
   return true
 }
