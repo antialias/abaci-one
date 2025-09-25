@@ -352,14 +352,60 @@ function TutorialPlayerContent({
     if (!fullDecomposition || expectedSteps.length === 0) return null
 
     const currentStep = expectedSteps[currentMultiStep]
-    if (!currentStep?.termPosition) return null
+    if (!currentStep?.mathematicalTerm) return null
 
-    const { startIndex, endIndex } = currentStep.termPosition
-    const before = fullDecomposition.substring(0, startIndex)
-    const highlighted = fullDecomposition.substring(startIndex, endIndex)
-    const after = fullDecomposition.substring(endIndex)
+    const mathTerm = currentStep.mathematicalTerm
 
-    return { before, highlighted, after }
+    // Try to use precise position first
+    if (currentStep.termPosition) {
+      const { startIndex, endIndex } = currentStep.termPosition
+      const highlighted = fullDecomposition.substring(startIndex, endIndex)
+
+      // Validate that the highlighted text makes sense
+      if (highlighted.includes(mathTerm.replace('-', '')) || highlighted === mathTerm) {
+        return {
+          before: fullDecomposition.substring(0, startIndex),
+          highlighted,
+          after: fullDecomposition.substring(endIndex)
+        }
+      }
+    }
+
+    // Fallback: search for the mathematical term in the decomposition
+    const searchTerm = mathTerm.startsWith('-') ? mathTerm.substring(1) : mathTerm
+    const searchIndex = fullDecomposition.indexOf(searchTerm)
+
+    if (searchIndex !== -1) {
+      const startIndex = mathTerm.startsWith('-') ?
+        // For negative terms, try to include the preceding dash
+        Math.max(0, searchIndex - 1) :
+        searchIndex
+      const endIndex = mathTerm.startsWith('-') ?
+        searchIndex + searchTerm.length :
+        searchIndex + mathTerm.length
+
+      return {
+        before: fullDecomposition.substring(0, startIndex),
+        highlighted: fullDecomposition.substring(startIndex, endIndex),
+        after: fullDecomposition.substring(endIndex)
+      }
+    }
+
+    // Final fallback: highlight the first occurrence of just the number part
+    const numberMatch = mathTerm.match(/\d+/)
+    if (numberMatch) {
+      const number = numberMatch[0]
+      const numberIndex = fullDecomposition.indexOf(number)
+      if (numberIndex !== -1) {
+        return {
+          before: fullDecomposition.substring(0, numberIndex),
+          highlighted: fullDecomposition.substring(numberIndex, numberIndex + number.length),
+          after: fullDecomposition.substring(numberIndex + number.length)
+        }
+      }
+    }
+
+    return null
   }, [fullDecomposition, expectedSteps, currentMultiStep])
 
   // Create overlay for tooltip positioned precisely at topmost bead using smart collision detection
