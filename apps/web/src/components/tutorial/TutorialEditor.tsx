@@ -1089,17 +1089,17 @@ export function TutorialEditor({
     try {
       const unifiedSequence = generateUnifiedInstructionSequence(step.startValue, step.targetValue)
 
-      // Convert unified sequence back to legacy format for compatibility
-      const legacyInstructions = generateAbacusInstructions(step.startValue, step.targetValue, step.problem)
+      // Generate bead highlights and visual elements for compatibility
+      const visualInstructions = generateAbacusInstructions(step.startValue, step.targetValue, step.problem)
 
       const instructionUpdates: Partial<TutorialStep> = {
-        expectedAction: legacyInstructions.expectedAction,
+        expectedAction: visualInstructions.expectedAction,
         actionDescription: unifiedSequence.fullDecomposition, // Use unified pedagogical decomposition
-        highlightBeads: legacyInstructions.highlightBeads,
-        stepBeadHighlights: legacyInstructions.stepBeadHighlights,
+        highlightBeads: visualInstructions.highlightBeads,
+        stepBeadHighlights: visualInstructions.stepBeadHighlights,
         totalSteps: unifiedSequence.totalSteps,
         multiStepInstructions: unifiedSequence.steps.map(step => step.englishInstruction), // Use unified instructions
-        tooltip: legacyInstructions.tooltip,
+        tooltip: visualInstructions.tooltip,
         // errorMessages removed - bead diff tooltip provides better guidance
         // Store the unified sequence for debugging
         unifiedSequence: unifiedSequence
@@ -1112,31 +1112,6 @@ export function TutorialEditor({
     }
   }, [tutorial.steps, updateStep])
 
-  // Generate instructions for a specific step (legacy)
-  const generateInstructionsForStep = useCallback((stepIndex: number) => {
-    const step = tutorial.steps[stepIndex]
-    if (!step) return
-
-    try {
-      const generatedInstructions = generateAbacusInstructions(step.startValue, step.targetValue, step.problem)
-
-      const instructionUpdates: Partial<TutorialStep> = {
-        expectedAction: generatedInstructions.expectedAction,
-        actionDescription: generatedInstructions.actionDescription,
-        highlightBeads: generatedInstructions.highlightBeads,
-        stepBeadHighlights: generatedInstructions.stepBeadHighlights,
-        totalSteps: generatedInstructions.totalSteps,
-        multiStepInstructions: generatedInstructions.multiStepInstructions,
-        tooltip: generatedInstructions.tooltip,
-        // errorMessages removed - bead diff tooltip provides better guidance
-      }
-
-      updateStep(stepIndex, instructionUpdates)
-    } catch (error) {
-      console.error('Failed to generate instructions:', error)
-      // Could show user notification here
-    }
-  }, [tutorial.steps, updateStep])
 
   // Editor actions
   const toggleEdit = useCallback(() => {
@@ -1519,28 +1494,12 @@ export function TutorialEditor({
                                       _hover: { bg: 'green.700' }
                                     })}
                                   >
-                                    ✨ Unified Generator
-                                  </button>
-                                  <button
-                                    onClick={() => generateInstructionsForStep && generateInstructionsForStep(editorState.selectedStepIndex)}
-                                    className={css({
-                                      px: 3,
-                                      py: 1,
-                                      fontSize: 'xs',
-                                      bg: 'blue.600',
-                                      color: 'white',
-                                      borderRadius: 'md',
-                                      cursor: 'pointer',
-                                      _hover: { bg: 'blue.700' }
-                                    })}
-                                  >
-                                    Legacy Generator
+                                    ✨ Generate Instructions
                                   </button>
                                 </div>
                               </div>
                               <p className={css({ fontSize: 'xs', color: 'blue.700', mb: 0 })}>
-                                Use "Unified Generator" for consistent pedagogical decomposition like "3 + 14 = 3 + 10 + (5 - 1) = 17".
-                                The Legacy Generator provides the old approach.
+                                Automatically generates pedagogical decomposition like "3 + 14 = 3 + 10 + (5 - 1) = 17" with proper soroban complement rules.
                               </p>
                             </div>
 
@@ -1657,38 +1616,21 @@ export function TutorialEditor({
                                     <label className={css({ fontSize: 'sm', fontWeight: 'medium', color: 'gray.700' })}>
                                       Multi-step Instructions
                                     </label>
-                                    <div className={hstack({ gap: 1 })}>
-                                      <button
-                                        onClick={() => generateUnifiedInstructionsForStep(editorState.selectedStepIndex)}
-                                        className={css({
-                                          px: 3,
-                                          py: 1,
-                                          fontSize: 'xs',
-                                          bg: 'green.500',
-                                          color: 'white',
-                                          borderRadius: 'md',
-                                          cursor: 'pointer',
-                                          _hover: { bg: 'green.600' }
-                                        })}
-                                      >
-                                        ✨ Unified
-                                      </button>
-                                      <button
-                                        onClick={() => generateInstructionsForStep(editorState.selectedStepIndex)}
-                                        className={css({
-                                          px: 3,
-                                          py: 1,
-                                          fontSize: 'xs',
-                                          bg: 'blue.500',
-                                          color: 'white',
-                                          borderRadius: 'md',
-                                          cursor: 'pointer',
-                                          _hover: { bg: 'blue.600' }
-                                        })}
-                                      >
-                                        🤖 Legacy
-                                      </button>
-                                    </div>
+                                    <button
+                                      onClick={() => generateUnifiedInstructionsForStep(editorState.selectedStepIndex)}
+                                      className={css({
+                                        px: 3,
+                                        py: 1,
+                                        fontSize: 'xs',
+                                        bg: 'green.500',
+                                        color: 'white',
+                                        borderRadius: 'md',
+                                        cursor: 'pointer',
+                                        _hover: { bg: 'green.600' }
+                                      })}
+                                    >
+                                      ✨ Generate Instructions
+                                    </button>
                                   </div>
                                   <div className={css({ space: 2 })}>
                                     {(() => {
