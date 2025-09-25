@@ -198,13 +198,13 @@
   font-size: 12px;
   font-weight: 600;
   color: #374151;
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .reason-tooltip__reasoning {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .reason-tooltip__decision {
@@ -219,20 +219,22 @@
 }
 
 .reason-tooltip__steps {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .reason-tooltip__step-list {
   margin: 0;
-  padding: 0 0 0 16px;
+  margin-block-start: 0;
+  margin-block-end: 0;
+  padding: 0 0 0 12px;
   list-style: decimal;
 }
 
 .reason-tooltip__step {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .reason-tooltip__step:last-child {
@@ -263,6 +265,88 @@
   color: #6b7280;
   text-align: center;
   font-style: italic;
+}
+
+/* Context chips */
+.reason-tooltip__context {
+  margin: 8px 0;
+}
+
+.reason-tooltip__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.reason-tooltip__chip {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #374151;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+}
+
+/* Expandable step section */
+.reason-tooltip__expand-button {
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+}
+
+.reason-tooltip__expand-button:hover .reason-tooltip__section-title {
+  color: #1f2937;
+}
+
+.reason-tooltip__expand-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.reason-tooltip__expand-button:focus .reason-tooltip__section-title {
+  color: #1f2937;
+}
+
+.reason-tooltip__section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 4px 0;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 2px;
+}
+
+.reason-tooltip__chevron {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  color: #9ca3af;
+}
+
+/* Carry path section */
+.reason-tooltip__carry-path {
+  margin: 8px 0;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+}
+
+.reason-tooltip__carry-description {
+  margin: 0;
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.4;
 }
 
 .reason-tooltip__code {
