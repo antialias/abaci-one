@@ -308,4 +308,70 @@ describe('Pedagogical Algorithm - Core Validation', () => {
       })
     })
   })
+
+  describe('Pedagogical Segments - Basic Validation', () => {
+    const segmentTestCases = [
+      [4, 7],   // Five-complement
+      [7, 15],  // Ten-complement
+      [0, 3],   // Direct entry
+      [99, 107] // Cascading
+    ]
+
+    segmentTestCases.forEach(([start, target]) => {
+      it(`generates valid segments for ${start} → ${target}`, () => {
+        const result = generateUnifiedInstructionSequence(start, target)
+
+        // Basic segment validation
+        expect(result.segments).toBeDefined()
+        expect(Array.isArray(result.segments)).toBe(true)
+        expect(result.segments.length).toBeGreaterThan(0)
+
+        // Each segment should have required properties
+        result.segments.forEach((segment, i) => {
+          expect(segment.id, `Segment ${i} should have id`).toBeDefined()
+          expect(segment.goal, `Segment ${i} should have goal`).toBeDefined()
+          expect(segment.plan, `Segment ${i} should have plan`).toBeDefined()
+          expect(segment.expression, `Segment ${i} should have expression`).toBeDefined()
+          expect(segment.startValue, `Segment ${i} should have startValue`).toBeTypeOf('number')
+          expect(segment.endValue, `Segment ${i} should have endValue`).toBeTypeOf('number')
+          expect(segment.stepIndices, `Segment ${i} should have stepIndices`).toBeDefined()
+
+          // Segment progression should be mathematically sound
+          expect(segment.startValue).toBeLessThanOrEqual(segment.endValue)
+        })
+
+        // Segments should cover all operations
+        const allStepIndices = result.segments.flatMap(s => s.stepIndices)
+        expect(allStepIndices.length, 'Segments should cover all steps').toEqual(result.steps.length)
+      })
+    })
+
+    it('validates segment decision rules are coherent', () => {
+      const result = generateUnifiedInstructionSequence(4, 7) // Five-complement case
+
+      const segment = result.segments[0]
+      expect(segment.plan.length).toBeGreaterThan(0)
+
+      const decision = segment.plan[0]
+      expect(decision.rule).toEqual('FiveComplement')
+      expect(decision.conditions).toBeDefined()
+      expect(decision.explanation).toBeDefined()
+      expect(decision.explanation.length).toBeGreaterThan(0)
+    })
+
+    it('validates segment term ranges map to decomposition string', () => {
+      const result = generateUnifiedInstructionSequence(99, 107) // Complex cascading case
+
+      result.segments.forEach((segment, i) => {
+        const { termRange } = segment
+        expect(termRange.startIndex, `Segment ${i} should have valid start index`).toBeGreaterThanOrEqual(0)
+        expect(termRange.endIndex, `Segment ${i} should have valid end index`).toBeGreaterThan(termRange.startIndex)
+        expect(termRange.endIndex, `Segment ${i} end should not exceed decomposition length`).toBeLessThanOrEqual(result.fullDecomposition.length)
+
+        // The substring should not be empty
+        const substring = result.fullDecomposition.slice(termRange.startIndex, termRange.endIndex)
+        expect(substring.length, `Segment ${i} should map to non-empty substring`).toBeGreaterThan(0)
+      })
+    })
+  })
 })
