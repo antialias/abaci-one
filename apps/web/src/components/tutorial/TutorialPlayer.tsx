@@ -214,7 +214,9 @@ function TutorialPlayerContent({
     previousMultiStep,
     resetMultiStep,
     activeTermIndices,
+    activeIndividualTermIndex,
     getColumnFromTermIndex,
+    getGroupTermIndicesFromTermIndex,
     handleAbacusColumnHover
   } = useTutorialContext()
 
@@ -817,35 +819,69 @@ function TutorialPlayerContent({
     })
   }, [uiState.autoAdvance])
 
-  // Dynamic column highlights from active terms - enhanced glowing effect
+  // Two-level dynamic column highlights: group terms + individual term
   const dynamicColumnHighlights = useMemo(() => {
+    console.log('🎨 COMPUTING COLUMN HIGHLIGHTS')
+    console.log('  - activeTermIndices:', Array.from(activeTermIndices))
+    console.log('  - activeIndividualTermIndex:', activeIndividualTermIndex)
+
     const highlights: Record<number, any> = {}
 
+    // Level 1: Group highlights (blue glow for all terms in activeTermIndices)
     activeTermIndices.forEach(termIndex => {
-      const columnIndex = getColumnFromTermIndex(termIndex)
+      const columnIndex = getColumnFromTermIndex(termIndex, true) // Use group column (rhsPlace)
+      console.log(`  - Group term ${termIndex} maps to column ${columnIndex} (using rhsPlace)`)
       if (columnIndex !== null) {
         highlights[columnIndex] = {
-          // Clean background glow effect - this will be rendered behind everything
+          // Group background glow effect (blue)
           backgroundGlow: {
-            fill: 'rgba(59, 130, 246, 0.25)',
+            fill: 'rgba(59, 130, 246, 0.2)',
             blur: 4,
             spread: 16
           },
-          // Subtle numeral highlighting only
+          // Group numeral highlighting
           numerals: {
             color: '#1e40af',
-            backgroundColor: 'rgba(219, 234, 254, 0.9)',
+            backgroundColor: 'rgba(219, 234, 254, 0.8)',
             fontWeight: 'bold',
             borderRadius: 4,
             borderWidth: 1,
             borderColor: '#3b82f6'
           }
         }
+        console.log(`  🔵 Added BLUE highlight for column ${columnIndex}`)
       }
     })
 
+    // Level 2: Individual term highlight (orange glow, overrides group styling)
+    if (activeIndividualTermIndex !== null) {
+      const individualColumnIndex = getColumnFromTermIndex(activeIndividualTermIndex, false) // Use individual column (termPlace)
+      console.log(`  - Individual term ${activeIndividualTermIndex} maps to column ${individualColumnIndex} (using termPlace)`)
+      if (individualColumnIndex !== null) {
+        highlights[individualColumnIndex] = {
+          // Individual background glow effect (orange) - overrides group glow
+          backgroundGlow: {
+            fill: 'rgba(249, 115, 22, 0.3)',
+            blur: 6,
+            spread: 20
+          },
+          // Individual numeral highlighting (orange)
+          numerals: {
+            color: '#c2410c',
+            backgroundColor: 'rgba(254, 215, 170, 0.9)',
+            fontWeight: 'bold',
+            borderRadius: 6,
+            borderWidth: 2,
+            borderColor: '#ea580c'
+          }
+        }
+        console.log(`  🟠 Added ORANGE highlight for column ${individualColumnIndex} (overriding blue)`)
+      }
+    }
+
+    console.log('🎨 Final highlights:', Object.keys(highlights).map(col => `Column ${col}`))
     return highlights
-  }, [activeTermIndices, getColumnFromTermIndex])
+  }, [activeTermIndices, activeIndividualTermIndex, getColumnFromTermIndex])
 
   // Memoize custom styles calculation to avoid expensive recalculation on every render
   const customStyles = useMemo(() => {
