@@ -179,48 +179,34 @@ export function ReasonTooltip({
               </div>
             </div>
 
-            {/* Context chips using enhanced or readable format */}
-            {(enhancedContent?.chips || readable?.chips) && (
+            {/* Primary, concise explanation */}
+            {segment?.readable?.summary && (
+              <div className="reason-tooltip__summary">
+                <p className="reason-tooltip__explanation-text">
+                  {segment.readable.summary}
+                </p>
+              </div>
+            )}
+
+            {/* Optional: 0–2 context chips (kept minimal) */}
+            {(enhancedContent?.chips || readable?.chips)?.length ? (
               <div className="reason-tooltip__context">
                 <div className="reason-tooltip__chips">
-                  {(enhancedContent?.chips || readable?.chips || []).map((chip, index) => (
+                  {(enhancedContent?.chips || readable?.chips || []).slice(0, 2).map((chip, index) => (
                     <span key={index} className="reason-tooltip__chip">
                       {chip.label}: {chip.value}
                     </span>
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {/* Why this step using enhanced provenance or readable format */}
-            {(provenance || (readable && readable.why.length > 0)) && (
+            {/* Optional provenance nudge (kept to one line when present) */}
+            {provenance && (
               <div className="reason-tooltip__reasoning">
-                <h5 className="reason-tooltip__section-title">Why this step</h5>
-                {/* Show provenance explanation for Direct rules */}
-                {provenance && rule === 'Direct' && (
-                  <>
-                    <p className="reason-tooltip__explanation-text">
-                      • We're adding the <strong>{provenance.rhsPlaceName} digit</strong> of <strong>{provenance.rhs}</strong> → <strong>{provenance.rhsDigit} {provenance.rhsPlaceName}</strong>.
-                    </p>
-                    {readable?.chips.find(chip => chip.label === 'This rod shows') && (
-                      <p className="reason-tooltip__explanation-text">
-                        • {readable.chips.find(chip => chip.label === 'This rod shows')?.label} <strong>{readable.chips.find(chip => chip.label === 'This rod shows')?.value}</strong>; adding <strong>{provenance.rhsDigit}</strong> fits, so no carry.
-                      </p>
-                    )}
-                  </>
-                )}
-                {/* Show readable why explanations for complement rules (and optionally Direct if available) */}
-                {readable && readable.why.length > 0 && readable.why.map((why, index) => (
-                  <p key={index} className="reason-tooltip__explanation-text">
-                    • {why}
-                  </p>
-                ))}
-                {/* For complement rules with provenance, add additional context about source digit */}
-                {provenance && rule !== 'Direct' && (
-                  <p className="reason-tooltip__explanation-text">
-                    • This expansion processes the <strong>{provenance.rhsPlaceName} digit {provenance.rhsDigit}</strong> from the addend <strong>{provenance.rhs}</strong>.
-                  </p>
-                )}
+                <p className="reason-tooltip__explanation-text">
+                  From addend <strong>{provenance.rhs}</strong>: use the <strong>{provenance.rhsPlaceName}</strong> digit <strong>{provenance.rhsDigit}</strong>.
+                </p>
               </div>
             )}
 
