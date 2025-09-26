@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useMemo, useState, createContext, useContext } from 'react'
-import * as Tooltip from '@radix-ui/react-tooltip'
 import { ReasonTooltip } from './ReasonTooltip'
 import type { UnifiedStepData } from '../../utils/unifiedStepGenerator'
 import { useTutorialContext } from './TutorialContext'
@@ -120,7 +119,6 @@ interface SegmentGroupProps {
 }
 
 function SegmentGroup({ segment, fullDecomposition, children }: SegmentGroupProps) {
-  const [tooltipOpen, setTooltipOpen] = useState(false)
   const { addActiveTerm, removeActiveTerm } = useContext(DecompositionContext)
 
   // Get steps from tutorial context instead of props
@@ -135,12 +133,9 @@ function SegmentGroup({ segment, fullDecomposition, children }: SegmentGroupProp
   const firstStep = steps[firstStepIndex]
   const provenance = firstStep?.provenance
 
-
-
-  const handleTooltipChange = (open: boolean) => {
-    setTooltipOpen(open)
-    // Activate/deactivate all terms in this segment
-    if (open) {
+  const handleHighlightChange = (active: boolean) => {
+    // Only handle highlighting, let HoverCard manage its own open/close timing
+    if (active) {
       segment.termIndices.forEach(termIndex => addActiveTerm(termIndex, segment.id))
     } else {
       segment.termIndices.forEach(termIndex => removeActiveTerm(termIndex, segment.id))
@@ -153,14 +148,12 @@ function SegmentGroup({ segment, fullDecomposition, children }: SegmentGroupProp
       segment={segment}
       originalValue={originalValue}
       steps={steps}
-      open={tooltipOpen}
-      onOpenChange={handleTooltipChange}
       provenance={provenance} // NEW: Pass provenance data
     >
       <span
         className="segment-group"
-        onMouseEnter={() => handleTooltipChange(true)}
-        onMouseLeave={() => handleTooltipChange(false)}
+        onMouseEnter={() => handleHighlightChange(true)}
+        onMouseLeave={() => handleHighlightChange(false)}
       >
         {children}
       </span>
@@ -384,11 +377,9 @@ export function DecompositionWithReasons({
 
   return (
     <DecompositionContext.Provider value={{ activeTerms: activeTermIndices, activeSegmentId, addActiveTerm, removeActiveTerm }}>
-      <Tooltip.Provider delayDuration={200} skipDelayDuration={100}>
-        <div className="decomposition">
-          {renderElements()}
-        </div>
-      </Tooltip.Provider>
+      <div className="decomposition">
+        {renderElements()}
+      </div>
     </DecompositionContext.Provider>
   )
 }
