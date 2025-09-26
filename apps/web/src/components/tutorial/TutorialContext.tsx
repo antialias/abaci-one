@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useReducer, useRef, useState, useCallback, useMemo } from 'react'
 import { Tutorial, TutorialEvent, UIState, TutorialStep } from '../../types/tutorial'
-import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
+import { generateUnifiedInstructionSequence, type UnifiedStepData } from '../../utils/unifiedStepGenerator'
 
 // Exact same interfaces from TutorialPlayer.tsx
 interface TutorialPlayerState {
@@ -140,6 +140,7 @@ interface TutorialContextType {
   currentStep: TutorialStep
   expectedSteps: ExpectedStep[]
   fullDecomposition: string
+  unifiedSteps: UnifiedStepData[]  // NEW: Add unified steps with provenance
   customStyles: any
 
   // Action functions
@@ -231,7 +232,7 @@ export function TutorialProvider({
   // Current step and computed values
   const currentStep = tutorial.steps[state.currentStepIndex]
 
-  const { expectedSteps, fullDecomposition } = useMemo(() => {
+  const { expectedSteps, fullDecomposition, unifiedSteps } = useMemo(() => {
     try {
       const unifiedSequence = generateUnifiedInstructionSequence(currentStep.startValue, currentStep.targetValue)
 
@@ -248,11 +249,12 @@ export function TutorialProvider({
 
       return {
         expectedSteps: mappedSteps,
-        fullDecomposition: unifiedSequence.fullDecomposition
+        fullDecomposition: unifiedSequence.fullDecomposition,
+        unifiedSteps: unifiedSequence.steps  // NEW: Include raw steps with provenance
       }
     } catch (error) {
       console.warn('Failed to generate unified sequence:', error)
-      return { expectedSteps: [], fullDecomposition: '' }
+      return { expectedSteps: [], fullDecomposition: '', unifiedSteps: [] }
     }
   }, [currentStep.startValue, currentStep.targetValue])
 
@@ -468,6 +470,7 @@ export function TutorialProvider({
     currentStep,
     expectedSteps,
     fullDecomposition,
+    unifiedSteps,
     customStyles,
 
     // Action functions

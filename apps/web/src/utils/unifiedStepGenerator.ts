@@ -58,6 +58,16 @@ export interface PedagogicalSegment {
   readable: SegmentReadable
 }
 
+export interface TermProvenance {
+  rhs: number;               // the addend (difference), e.g., 25
+  rhsDigit: number;          // e.g., 2 (for tens), 5 (for ones)
+  rhsPlace: number;          // 1=tens, 0=ones, etc.
+  rhsPlaceName: string;      // "tens"
+  rhsDigitIndex: number;     // index of the digit in the addend string (for highlighting)
+  rhsValue: number;          // digit * 10^place (e.g., 20)
+  groupId?: string;          // same id for a complement group (e.g., +100 -90 -5)
+}
+
 export interface UnifiedStepData {
   stepIndex: number
 
@@ -81,6 +91,14 @@ export interface UnifiedStepData {
 
   /** Link to pedagogy segment this step belongs to */
   segmentId?: string
+
+  /** NEW: Provenance linking this term to its source digit in the addend */
+  provenance?: TermProvenance
+}
+
+export interface EquationAnchors {
+  differenceText: string; // "25"
+  rhsDigitPositions: Array<{ digitIndex: number; startIndex: number; endIndex: number }>;
 }
 
 export interface UnifiedInstructionSequence {
@@ -102,6 +120,9 @@ export interface UnifiedInstructionSequence {
   schemaVersion?: '1' | '2'
   /** NEW: High-level "chapters" that explain the why */
   segments: PedagogicalSegment[]
+
+  /** NEW: Character positions for highlighting addend digits */
+  equationAnchors?: EquationAnchors
 }
 
 // Internal draft interface for building segments
@@ -494,7 +515,7 @@ export function generateUnifiedInstructionSequence(
 
   // Step 1: Generate pedagogical decomposition terms and segment plan
   const startState = toState(startValue)
-  const { terms: decompositionTerms, segmentsPlan } = generateDecompositionTerms(startValue, targetValue, toState)
+  const { terms: decompositionTerms, segmentsPlan, decompositionSteps } = generateDecompositionTerms(startValue, targetValue, toState)
 
   // Step 3: Generate unified steps - each step computes ALL aspects simultaneously
   const steps: UnifiedStepData[] = []
@@ -547,7 +568,8 @@ export function generateUnifiedInstructionSequence(
       expectedState: newState,
       beadMovements: stepBeadMovements,
       isValid: validation.isValid,
-      validationIssues: validation.issues
+      validationIssues: validation.issues,
+      provenance: decompositionSteps[stepIndex]?.provenance
     }
 
     steps.push(stepData)
@@ -579,6 +601,9 @@ export function generateUnifiedInstructionSequence(
   // Step 7: Build segments using step positions (exact indices, robust)
   const segments = buildSegmentsWithPositions(segmentsPlan, fullDecomposition, steps)
 
+  // Step 8: Build equation anchors for addend digit highlighting
+  const equationAnchors = buildEquationAnchors(startValue, targetValue, fullDecomposition)
+
   const result = {
     schemaVersion: '2' as const,
     fullDecomposition,
@@ -587,7 +612,8 @@ export function generateUnifiedInstructionSequence(
     segments,
     startValue,
     targetValue,
-    totalSteps: steps.length
+    totalSteps: steps.length,
+    equationAnchors
   }
 
   // Development-time invariant checks
@@ -610,6 +636,7 @@ interface DecompositionStep {
   operation: string // The mathematical term like "7", "(10 - 3)", etc.
   description: string // What this step does pedagogically
   targetValue: number // Expected value after this step
+  provenance?: TermProvenance // NEW: Link to source digit
 }
 
 /**
@@ -620,9 +647,9 @@ function generateDecompositionTerms(
   startValue: number,
   targetValue: number,
   toState: (n: number) => AbacusState
-): { terms: string[]; segmentsPlan: SegmentDraft[] } {
+): { terms: string[]; segmentsPlan: SegmentDraft[]; decompositionSteps: DecompositionStep[] } {
   const addend = targetValue - startValue
-  if (addend === 0) return { terms: [], segmentsPlan: [] }
+  if (addend === 0) return { terms: [], segmentsPlan: [], decompositionSteps: [] }
   if (addend < 0) {
     // TODO: Handle subtraction in separate sprint
     throw new Error('Subtraction not implemented yet')
@@ -651,6 +678,16 @@ function generateDecompositionTerms(
     // DEBUG: Log the processing for troubleshooting
     // console.log(`Processing place ${placeValue}: digit=${digit}, current=${currentDigitAtPlace}, sum=${currentDigitAtPlace + digit}`)
 
+    // Create base provenance for this digit
+    const baseProvenance: TermProvenance = {
+      rhs: addend,
+      rhsDigit: digit,
+      rhsPlace: placeValue,
+      rhsPlaceName: getPlaceName(placeValue),
+      rhsDigitIndex: digitIndex,
+      rhsValue: digit * Math.pow(10, placeValue)
+    }
+
     // Apply the pedagogical algorithm decision tree
     const stepResult = processDigitAtPlace(
       digit,
@@ -658,7 +695,8 @@ function generateDecompositionTerms(
       currentDigitAtPlace,
       currentState,
       addend,  // Pass the full addend to determine if it's multi-place
-      toState  // Pass consistent state converter
+      toState, // Pass consistent state converter
+      baseProvenance  // NEW: Pass provenance info
     )
 
     const segmentId = `place-${placeValue}-digit-${digit}`
@@ -709,7 +747,7 @@ function generateDecompositionTerms(
 
   // Convert steps to string terms for compatibility
   const terms = steps.map(step => step.operation)
-  return { terms, segmentsPlan }
+  return { terms, segmentsPlan, decompositionSteps: steps }
 }
 
 /**
@@ -721,7 +759,8 @@ function processDigitAtPlace(
   currentDigitAtPlace: number,
   currentState: AbacusState,
   addend: number,
-  toState: (n: number) => AbacusState
+  toState: (n: number) => AbacusState,
+  baseProvenance: TermProvenance
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const a = currentDigitAtPlace
@@ -730,10 +769,10 @@ function processDigitAtPlace(
   // Decision: Direct addition vs 10's complement
   if (a + d <= 9) {
     // Case A: Direct addition at this place
-    return processDirectAddition(d, placeValue, currentState, addend, toState)
+    return processDirectAddition(d, placeValue, currentState, addend, toState, baseProvenance)
   } else {
     // Case B: 10's complement required
-    return processTensComplement(d, placeValue, currentState, toState)
+    return processTensComplement(d, placeValue, currentState, toState, baseProvenance)
   }
 }
 
@@ -745,7 +784,8 @@ function processDirectAddition(
   placeValue: number,
   currentState: AbacusState,
   addend: number,
-  toState: (n: number) => AbacusState
+  toState: (n: number) => AbacusState,
+  baseProvenance: TermProvenance
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const placeState = currentState[placeValue] || { heavenActive: false, earthActive: 0 }
@@ -760,7 +800,8 @@ function processDirectAddition(
       steps.push({
         operation: (digit * Math.pow(10, placeValue)).toString(),
         description: `Add ${digit} earth bead${digit > 1 ? 's' : ''} at place ${placeValue}`,
-        targetValue: 0 // Will be calculated later
+        targetValue: 0, // Will be calculated later
+        provenance: baseProvenance
       })
       newState[placeValue] = {
         ...placeState,
@@ -769,6 +810,7 @@ function processDirectAddition(
     } else if (!placeState.heavenActive) {
       // Use 5's complement: digit = (5 - (5 - digit)) when pedagogically valuable
       const complement = 5 - digit
+      const groupId = `5comp-${baseProvenance.rhsPlace}-${baseProvenance.rhsDigit}`
 
       // Always show five-complement pedagogy as separate steps
       const fiveValue = 5 * Math.pow(10, placeValue)
@@ -777,13 +819,15 @@ function processDirectAddition(
       steps.push({
         operation: fiveValue.toString(),
         description: `Add heaven bead at place ${placeValue}`,
-        targetValue: 0
+        targetValue: 0,
+        provenance: { ...baseProvenance, groupId }
       })
 
       steps.push({
         operation: `-${subtractValue}`,
         description: `Remove ${complement} earth beads at place ${placeValue}`,
-        targetValue: 0
+        targetValue: 0,
+        provenance: { ...baseProvenance, groupId }
       })
 
       newState[placeValue] = {
@@ -801,14 +845,16 @@ function processDirectAddition(
     steps.push({
       operation: fiveValue.toString(),
       description: `Add heaven bead at place ${placeValue}`,
-      targetValue: 0
+      targetValue: 0,
+      provenance: baseProvenance
     })
 
     if (earthBeadsNeeded > 0) {
       steps.push({
         operation: remainderValue.toString(),
         description: `Add ${earthBeadsNeeded} earth beads at place ${placeValue}`,
-        targetValue: 0
+        targetValue: 0,
+        provenance: baseProvenance
       })
     }
 
@@ -832,7 +878,8 @@ function processTensComplement(
   digit: number,
   placeValue: number,
   currentState: AbacusState,
-  toState: (n: number) => AbacusState
+  toState: (n: number) => AbacusState,
+  baseProvenance: TermProvenance
 ): { steps: DecompositionStep[], newValue: number, newState: AbacusState } {
 
   const steps: DecompositionStep[] = []
@@ -843,9 +890,11 @@ function processTensComplement(
   const nextPlaceDigit = getDigitAtPlace(currentValue, placeValue + 1)
   const requiresCascading = nextPlaceDigit === 9
 
+  const groupId = `10comp-${baseProvenance.rhsPlace}-${baseProvenance.rhsDigit}`
+
   if (requiresCascading) {
     // Generate cascading complement terms in parenthesized format
-    const cascadeSteps = generateCascadeComplementSteps(currentValue, placeValue, complementToSubtract)
+    const cascadeSteps = generateCascadeComplementSteps(currentValue, placeValue, complementToSubtract, baseProvenance, groupId)
     steps.push(...cascadeSteps)
   } else {
     // Simple ten-complement: generate separate add/subtract steps
@@ -855,13 +904,15 @@ function processTensComplement(
     steps.push({
       operation: higherPlaceValue.toString(),
       description: `Add 1 to ${getPlaceName(placeValue + 1)} (carry)`,
-      targetValue: 0
+      targetValue: 0,
+      provenance: { ...baseProvenance, groupId }
     })
 
     steps.push({
       operation: `-${subtractValue}`,
       description: `Remove ${complementToSubtract} earth beads (no borrow needed)`,
-      targetValue: 0
+      targetValue: 0,
+      provenance: { ...baseProvenance, groupId }
     })
   }
 
@@ -878,7 +929,7 @@ function processTensComplement(
 /**
  * Generate cascade complement steps as individual terms for UI tracking
  */
-function generateCascadeComplementSteps(currentValue: number, startPlace: number, onesComplement: number): DecompositionStep[] {
+function generateCascadeComplementSteps(currentValue: number, startPlace: number, onesComplement: number, baseProvenance: TermProvenance, groupId: string): DecompositionStep[] {
   const steps: DecompositionStep[] = []
 
   // First, add to the highest non-9 place
@@ -893,7 +944,8 @@ function generateCascadeComplementSteps(currentValue: number, startPlace: number
   steps.push({
     operation: higherPlaceValue.toString(),
     description: `Add 1 to ${getPlaceName(checkPlace)} (cascade trigger)`,
-    targetValue: 0
+    targetValue: 0,
+    provenance: { ...baseProvenance, groupId }
   })
 
   // Clear all the 9s in between (working downward)
@@ -904,7 +956,8 @@ function generateCascadeComplementSteps(currentValue: number, startPlace: number
       steps.push({
         operation: `-${clearValue}`,
         description: `Remove 9 from ${getPlaceName(clearPlace)} (cascade)`,
-        targetValue: 0
+        targetValue: 0,
+        provenance: { ...baseProvenance, groupId }
       })
     }
   }
@@ -914,7 +967,8 @@ function generateCascadeComplementSteps(currentValue: number, startPlace: number
   steps.push({
     operation: `-${onesSubtractValue}`,
     description: `Remove ${onesComplement} earth beads (ten's complement)`,
-    targetValue: 0
+    targetValue: 0,
+    provenance: { ...baseProvenance, groupId }
   })
 
   return steps
@@ -1444,6 +1498,43 @@ function assertSegments(seq: UnifiedInstructionSequence) {
       throw new Error(`segment ${seg.id} has empty term range`)
     }
   })
+}
+
+/**
+ * Build equation anchors for addend digit highlighting
+ */
+function buildEquationAnchors(
+  startValue: number,
+  targetValue: number,
+  fullDecomposition: string
+): EquationAnchors {
+  const addend = targetValue - startValue
+  const addendStr = Math.abs(addend).toString()
+
+  // Find the addend in the left side of the equation
+  // The pattern is typically: "startValue + addend = startValue + [decomposition] = targetValue"
+  const leftSide = `${startValue} + ${addend}`
+  const addendStart = leftSide.indexOf(addend.toString())
+
+  if (addendStart === -1) {
+    // Fallback: return empty positions if we can't find the addend
+    return {
+      differenceText: addendStr,
+      rhsDigitPositions: []
+    }
+  }
+
+  // Calculate positions for each digit in the addend
+  const rhsDigitPositions = Array.from(addendStr).map((digit, index) => ({
+    digitIndex: index,
+    startIndex: addendStart + index,
+    endIndex: addendStart + index + 1
+  }))
+
+  return {
+    differenceText: addendStr,
+    rhsDigitPositions
+  }
 }
 
 /**

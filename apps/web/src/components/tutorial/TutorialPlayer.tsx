@@ -254,7 +254,7 @@ function TutorialPlayerContent({
   }
 
   // Define the static expected steps using our unified step generator
-  const { expectedSteps, fullDecomposition, isMeaningfulDecomposition, pedagogicalSegments, termPositions } = useMemo(() => {
+  const { expectedSteps, fullDecomposition, isMeaningfulDecomposition, pedagogicalSegments, termPositions, unifiedSteps } = useMemo(() => {
     try {
       const unifiedSequence = generateUnifiedInstructionSequence(currentStep.startValue, currentStep.targetValue)
 
@@ -277,7 +277,8 @@ function TutorialPlayerContent({
         fullDecomposition: unifiedSequence.fullDecomposition,
         isMeaningfulDecomposition: unifiedSequence.isMeaningfulDecomposition,
         pedagogicalSegments: unifiedSequence.segments,
-        termPositions: positions
+        termPositions: positions,
+        unifiedSteps: unifiedSequence.steps  // NEW: Include the raw unified steps with provenance
       }
     } catch (error) {
       return {
@@ -285,7 +286,8 @@ function TutorialPlayerContent({
         fullDecomposition: '',
         isMeaningfulDecomposition: false,
         pedagogicalSegments: [],
-        termPositions: []
+        termPositions: [],
+        unifiedSteps: []  // NEW: Also add empty array for error case
       }
     }
   }, [currentStep.startValue, currentStep.targetValue])
