@@ -20,6 +20,10 @@ export interface SegmentReadable {
   carryPath?: string         // "Tens is 9 → hundreds +1; tens → 0"
   stepsFriendly: string[]    // bead verbs for each subterm
   showMath?: { lines: string[] } // ["We take away 5 here (that's 10 minus 5)."]
+  /** NEW: one or two sentences that explain the move in plain language */
+  summary: string
+  /** NEW: dev-only self-check of the summary against the segment's guards */
+  validation?: { ok: boolean; issues: string[] }
 }
 
 export interface SegmentDecision {
@@ -257,130 +261,118 @@ function generateSegmentReadable(
   const placeName = getPlaceName(place)
   const hasCascade = plan.some(p => p.rule === 'Cascade')
 
-  // Generate title based on rule
-  let title: string
-  let subtitle: string | undefined
+  // Pull first available provenance from this segment's steps
+  const provenance =
+    stepIndices.map(i => steps[i]?.provenance).find(Boolean)
 
-  switch (rule) {
-    case 'Direct':
-      title = `Direct Add — ${placeName}`
-      subtitle = digit <= 4 ? 'Simple bead movement' : 'Using the heaven bead'
-      break
-    case 'FiveComplement':
-      title = `Make 5 — ${placeName}`
-      subtitle = 'Using pairs that make 5'
-      break
-    case 'TenComplement':
-      title = hasCascade ? `Make 10 (carry) — ${placeName}` : `Make 10 — ${placeName}`
-      subtitle = 'Using pairs that make 10'
-      break
-    case 'Cascade':
-      title = `Chain Reaction — ${placeName}`
-      subtitle = 'Multiple carries needed'
-      break
-    default:
-      title = `Strategy — ${placeName}`
-  }
+  // Helper numbers
+  const s5  = 5  - digit
+  const s10 = 10 - digit
+  const nextPlaceName = getPlaceName(place + 1)
 
-  // Generate chips with concrete language
+  // Title is short + kid-friendly
+  let title =
+    rule === 'Direct'         ? `Add ${digit} — ${placeName}`
+  : rule === 'FiveComplement' ? `Make 5 — ${placeName}`
+  : rule === 'TenComplement'  ? (hasCascade ? `Make 10 (carry) — ${placeName}` : `Make 10 — ${placeName}`)
+  : rule === 'Cascade'        ? `Carry ripple — ${placeName}`
+  :                             `Strategy — ${placeName}`
+
+  // Minimal chips (0–2), provenance first if present
   const chips: Array<{ label: string; value: string }> = []
-
-  chips.push({
-    label: 'This rod shows',
-    value: currentDigit.toString()
-  })
-
-  chips.push({
-    label: "We're adding",
-    value: digit.toString()
-  })
-
-  // Add context-specific third chip
-  if (rule === 'TenComplement') {
-    const takeAway = 10 - digit
-    chips.push({
-      label: 'So take away here',
-      value: takeAway.toString()
-    })
-  } else if (rule === 'FiveComplement') {
-    chips.push({
-      label: 'Not enough lower beads here',
-      value: `Need ${digit - currentDigit} more`
-    })
+  if (provenance) {
+    chips.push({ label: 'From addend', value: `${provenance.rhsDigit} ${provenance.rhsPlaceName}` })
   }
+  chips.push({ label: 'Rod shows', value: `${currentDigit}` })
 
-  // Generate why bullets
-  const why: string[] = []
-  switch (rule) {
-    case 'Direct':
-      if (digit <= 4) {
-        why.push('We can add beads directly to this rod.')
-      } else {
-        why.push(`Adding ${digit} fits perfectly using heaven and earth beads.`)
-      }
-      break
-    case 'FiveComplement':
-      why.push(`Adding ${digit} would need more lower beads than we have.`)
-      why.push('Use the heaven bead instead: press it and lift some lower beads.')
-      break
-    case 'TenComplement':
-      why.push(`Adding ${digit} would overfill this rod.`)
-      why.push(`We "make a ten": give 10 to the next rod and take ${10 - digit} away here.`)
-      break
-  }
-
-  // Generate carry path for ten complements
+  // Carry path (kept terse)
   let carryPath: string | undefined
   if (rule === 'TenComplement') {
     if (hasCascade) {
-      // Look at the start state to determine the cascade path
       const nextPlace = place + 1
-      const nextPlaceName = getPlaceName(nextPlace)
-      const nextValue = (startState[nextPlace]?.heavenActive ? 5 : 0) + (startState[nextPlace]?.earthActive || 0)
-
-      if (nextValue === 9) {
-        const higherPlace = place + 2
-        const higherPlaceName = getPlaceName(higherPlace)
-        carryPath = `${nextPlaceName} is 9 → ${higherPlaceName} +1; ${nextPlaceName} → 0`
+      const nextVal = (startState[nextPlace]?.heavenActive ? 5 : 0) + (startState[nextPlace]?.earthActive || 0)
+      if (nextVal === 9) {
+        // Find highest non‑9 to name the landing place
+        let k = nextPlace + 1
+        while (true) {
+          const v = (startState[k]?.heavenActive ? 5 : 0) + (startState[k]?.earthActive || 0)
+          if (v !== 9) break
+          k++
+        }
+        carryPath = `${getPlaceName(nextPlace)} is 9 ⇒ ${getPlaceName(k)} +1; reset 9s`
       } else {
         carryPath = `${nextPlaceName} +1`
       }
     } else {
-      const nextPlaceName = getPlaceName(place + 1)
       carryPath = `${nextPlaceName} +1`
     }
   }
 
-  // Generate friendly step descriptions
-  const stepsFriendly: string[] = []
-  stepIndices.forEach(stepIndex => {
-    const step = steps[stepIndex]
-    if (step) {
-      stepsFriendly.push(step.englishInstruction)
-    }
-  })
+  // Steps (kept for the expandable "details" UI)
+  const stepsFriendly = stepIndices
+    .map(i => steps[i]?.englishInstruction)
+    .filter(Boolean) as string[]
 
-  // Generate advanced math explanations
-  const showMath: { lines: string[] } = {
-    lines: []
+  // Semantic, 1–2 sentence summary
+  let summary = ''
+  if (rule === 'Direct') {
+    if (digit <= 4) {
+      summary = `Add ${digit} to the ${placeName}. It fits here, so just move ${digit} lower bead${digit > 1 ? 's' : ''}.`
+    } else {
+      const rest = digit - 5
+      summary = `Add ${digit} to the ${placeName} using the upper bead: +5${rest ? ` + ${rest}` : ''}. No carry needed.`
+    }
+  } else if (rule === 'FiveComplement') {
+    summary = `Add ${digit} to the ${placeName}, but there aren't enough lower beads. Use 5's friend: press 5 and lift ${s5} (that's +5 − ${s5}).`
+  } else if (rule === 'TenComplement') {
+    if (hasCascade) {
+      summary = `Add ${digit} to the ${placeName} to make 10. Carry to ${nextPlaceName}; because the next rod is 9, the carry ripples up, then take ${s10} here (that's +10 − ${s10}).`
+    } else {
+      summary = `Add ${digit} to the ${placeName} to make 10: carry 1 to ${nextPlaceName} and take ${s10} here (that's +10 − ${s10}).`
+    }
+  } else {
+    summary = `Apply the strategy on the ${placeName}.`
   }
 
-  if (rule === 'TenComplement') {
-    showMath.lines.push(`We take away ${10 - digit} here because that's what's needed to reach 10.`)
-    showMath.lines.push(`(That's 10 minus ${digit}.)`)
-  } else if (rule === 'FiveComplement') {
-    showMath.lines.push(`We take away ${5 - currentDigit} lower beads after pressing the heaven bead.`)
-    showMath.lines.push(`(That's 5 minus ${currentDigit}.)`)
+  // Short subtitle (optional, reused from your rule badges)
+  const subtitle =
+    rule === 'Direct' ? (digit <= 4 ? 'Simple move' : 'Upper bead helps')
+    : rule === 'FiveComplement' ? "Using 5's friend"
+    : rule === 'TenComplement' ? "Using 10's friend"
+    : undefined
+
+  // Tiny, dev-only validation of the summary against the selected rule
+  const issues: string[] = []
+  const guards = plan.flatMap(p => p.conditions)
+  if (rule === 'FiveComplement' && !(guards.some(g => /L\+d.*> *4/.test(g)))) {
+    issues.push('FiveComplement summary emitted but guard L+d>4 not present')
+  }
+  if (rule === 'TenComplement' && !(guards.some(g => /a\+d.*≥ *10/.test(g)))) {
+    issues.push('TenComplement summary emitted but guard a+d≥10 not present')
+  }
+  if (rule === 'Direct' && !(guards.some(g => /a\+d.*≤ *9/.test(g)))) {
+    issues.push('Direct summary emitted but guard a+d≤9 not present')
+  }
+  const validation = { ok: issues.length === 0, issues }
+
+  // Minimal "show the math" for students who want it
+  const showMathLines: string[] = []
+  if (rule === 'FiveComplement') {
+    showMathLines.push(`+5 − ${s5} = +${digit} (at this rod)`)
+  } else if (rule === 'TenComplement') {
+    showMathLines.push(`+10 − ${s10} = +${digit} (with a carry)`)
   }
 
   return {
     title,
     subtitle,
     chips,
-    why,
+    why: [],                            // replaced by summary
     carryPath,
     stepsFriendly,
-    showMath: showMath.lines.length > 0 ? showMath : undefined
+    showMath: showMathLines.length ? { lines: showMathLines } : undefined,
+    summary,
+    validation
   }
 }
 
