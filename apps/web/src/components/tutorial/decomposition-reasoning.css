@@ -104,13 +104,16 @@
   font-weight: 600;
   margin: 0 0 4px 0;
   color: #1f2937;
+  max-width: 48ch;
+  white-space: normal;
 }
 
 .reason-tooltip__description {
   font-size: 13px;
   margin: 0;
   color: #6b7280;
-  opacity: 0.9;
+  opacity: 0.8;
+  max-width: 56ch;
 }
 
 .reason-tooltip__explanation {
@@ -287,6 +290,76 @@
   font-weight: 500;
   color: #374151;
   font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+}
+
+/* More details disclosure */
+.reason-tooltip__details {
+  margin-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 8px;
+}
+
+.reason-tooltip__details-toggle {
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+}
+
+.reason-tooltip__details-toggle:hover .reason-tooltip__details-label {
+  color: #1f2937;
+}
+
+.reason-tooltip__details-toggle:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.reason-tooltip__details-toggle:focus .reason-tooltip__details-label {
+  color: #1f2937;
+}
+
+.reason-tooltip__details-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  font-style: italic;
+}
+
+.reason-tooltip__details-content {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f8fafc;
+}
+
+/* Visual quieting for chips in details */
+.reason-tooltip__details-content .reason-tooltip__chip {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  opacity: 0.8;
+  font-size: 9px;
+}
+
+/* Dev-only validation warning */
+.reason-tooltip__dev-warn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: 6px 0;
+  font-size: 9px;
+  color: #64748b;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  opacity: 0.7;
 }
 
 /* Expandable step section */
@@ -535,4 +608,9 @@
   .reason-popover {
     animation: none;
   }
+}
+/* Summary paragraph styling */
+.reason-tooltip__summary p {
+  margin: 8px 0 0;
+  line-height: 1.35;
 }
