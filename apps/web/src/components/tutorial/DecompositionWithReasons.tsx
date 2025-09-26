@@ -57,7 +57,7 @@ interface DecompositionWithReasonsProps {
   termPositions: Array<{ startIndex: number; endIndex: number }>
   segments?: PedagogicalSegment[]
   termReasons?: TermReason[]
-  steps?: UnifiedStepData[]
+  // NOTE: steps now comes from tutorial context, not props
 }
 
 interface TermSpanProps {
@@ -102,17 +102,26 @@ interface SegmentGroupProps {
   fullDecomposition: string
   termPositions: Array<{ startIndex: number; endIndex: number }>
   termReasons?: TermReason[]
-  steps: UnifiedStepData[]
   children: React.ReactNode
 }
 
-function SegmentGroup({ segment, fullDecomposition, steps, children }: SegmentGroupProps) {
+function SegmentGroup({ segment, fullDecomposition, children }: SegmentGroupProps) {
   const [tooltipOpen, setTooltipOpen] = useState(false)
   const { addActiveTerm, removeActiveTerm } = useContext(DecompositionContext)
+
+  // Get steps from tutorial context instead of props
+  const { unifiedSteps: steps } = useTutorialContext()
 
   // Calculate the original term that was expanded
   // digit * 10^place gives us the original value (e.g., digit=5, place=1 -> 50)
   const originalValue = (segment.digit * Math.pow(10, segment.place)).toString()
+
+  // Get provenance from the first step in this segment
+  const firstStepIndex = segment.termIndices[0]
+  const firstStep = steps[firstStepIndex]
+  const provenance = firstStep?.provenance
+
+
 
   const handleTooltipChange = (open: boolean) => {
     setTooltipOpen(open)
@@ -132,6 +141,7 @@ function SegmentGroup({ segment, fullDecomposition, steps, children }: SegmentGr
       steps={steps}
       open={tooltipOpen}
       onOpenChange={handleTooltipChange}
+      provenance={provenance} // NEW: Pass provenance data
     >
       <span
         className="segment-group"
@@ -150,8 +160,7 @@ export function DecompositionWithReasons({
   fullDecomposition,
   termPositions,
   segments,
-  termReasons,
-  steps = []
+  termReasons
 }: DecompositionWithReasonsProps) {
   const [activeTerms, setActiveTerms] = useState<Set<number>>(new Set())
 
@@ -269,7 +278,6 @@ export function DecompositionWithReasons({
             fullDecomposition={fullDecomposition}
             termPositions={termPositions}
             termReasons={termReasons}
-            steps={steps}
           >
             {segmentElements}
           </SegmentGroup>
