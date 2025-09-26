@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { AbacusReact } from './AbacusReact';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 const meta: Meta<typeof AbacusReact> = {
   title: 'Soroban/Column Customization',
@@ -1066,6 +1066,139 @@ This story tests the combination of:
 - Value changes and callbacks
 
 Use this to debug any conflicts between styling and interaction.
+        `,
+      },
+    },
+  },
+};
+
+// Two-Level Highlighting Demo
+export const TwoLevelHighlighting: Story = {
+  render: () => {
+    const [groupColumns, setGroupColumns] = useState<Set<number>>(new Set([1, 2]));
+    const [individualColumn, setIndividualColumn] = useState<number | null>(2);
+
+    const customStyles = useMemo(() => {
+      const highlights: Record<number, any> = {};
+
+      // Level 1: Group highlights (blue glow)
+      groupColumns.forEach(columnIndex => {
+        highlights[columnIndex] = {
+          backgroundGlow: {
+            fill: 'rgba(59, 130, 246, 0.2)',
+            blur: 4,
+            spread: 16
+          },
+          numerals: {
+            color: '#1e40af',
+            backgroundColor: 'rgba(219, 234, 254, 0.8)',
+            fontWeight: 'bold',
+            borderRadius: 4,
+            borderWidth: 1,
+            borderColor: '#3b82f6'
+          }
+        };
+      });
+
+      // Level 2: Individual highlight (orange glow, overrides group)
+      if (individualColumn !== null) {
+        highlights[individualColumn] = {
+          backgroundGlow: {
+            fill: 'rgba(249, 115, 22, 0.3)',
+            blur: 6,
+            spread: 20
+          },
+          numerals: {
+            color: '#c2410c',
+            backgroundColor: 'rgba(254, 215, 170, 0.9)',
+            fontWeight: 'bold',
+            borderRadius: 6,
+            borderWidth: 2,
+            borderColor: '#ea580c'
+          }
+        };
+      }
+
+      return Object.keys(highlights).length > 0 ? { columns: highlights } : undefined;
+    }, [groupColumns, individualColumn]);
+
+    return (
+      <div style={{ padding: '20px' }}>
+        <h3>Two-Level Column Highlighting</h3>
+        <p>Demonstrates group highlighting (blue) with individual term override (orange)</p>
+
+        <div style={{ marginBottom: '20px' }}>
+          <h4>Controls:</h4>
+          <div style={{ marginBottom: '10px' }}>
+            <label>
+              <strong>Group Columns (blue):</strong>
+              {[0, 1, 2, 3, 4].map(col => (
+                <label key={col} style={{ marginLeft: '10px' }}>
+                  <input
+                    type="checkbox"
+                    checked={groupColumns.has(col)}
+                    onChange={(e) => {
+                      const newGroup = new Set(groupColumns);
+                      if (e.target.checked) {
+                        newGroup.add(col);
+                      } else {
+                        newGroup.delete(col);
+                      }
+                      setGroupColumns(newGroup);
+                    }}
+                  />
+                  {col}
+                </label>
+              ))}
+            </label>
+          </div>
+          <div>
+            <label>
+              <strong>Individual Column (orange):</strong>
+              <select
+                value={individualColumn ?? ''}
+                onChange={(e) => setIndividualColumn(e.target.value ? parseInt(e.target.value) : null)}
+                style={{ marginLeft: '10px' }}
+              >
+                <option value="">None</option>
+                {[0, 1, 2, 3, 4].map(col => (
+                  <option key={col} value={col}>Column {col}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <AbacusReact
+          value={12340}
+          columns={5}
+          interactive={true}
+          animated={true}
+          scaleFactor={2}
+          customStyles={customStyles}
+        />
+
+        <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+          <h4>Two-Level Highlighting System:</h4>
+          <ul>
+            <li><strong>Blue glow:</strong> Group-level highlighting (e.g., complement group like "100 - 90 - 9")</li>
+            <li><strong>Orange glow:</strong> Individual term highlighting (overrides group styling)</li>
+            <li><strong>Use case:</strong> When hovering over "90" in "100 - 90 - 9", show orange for tens column and blue for hundreds column</li>
+          </ul>
+        </div>
+      </div>
+    );
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+This demonstrates the two-level highlighting system for term groups:
+
+**Group Level (Blue):** All terms in a complement group (e.g., "100 - 90 - 9")
+**Individual Level (Orange):** The specific term being hovered (overrides group styling)
+
+The system allows users to see both the overall group context and the specific term effect simultaneously.
         `,
       },
     },

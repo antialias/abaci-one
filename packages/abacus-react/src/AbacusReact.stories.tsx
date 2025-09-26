@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
 const meta: Meta<typeof AbacusReact> = {
-  title: 'Soroban/AbacusReact',
+  title: 'Soroban/AbacusReact/Core Examples',
   component: AbacusReact,
   parameters: {
     layout: 'centered',
@@ -26,6 +26,13 @@ A complete React component for rendering interactive Soroban (Japanese abacus) S
 - ⚡ **React Spring animations** - Smooth bead movements and transitions
 - 🔧 **Hooks interface** - Size calculation and state management hooks
 - 📱 **Responsive scaling** - Configurable scale factor for different sizes
+
+## Related Stories
+
+- **[Column Customization](/story/soroban-column-customization--basic-column-highlighting)** - Comprehensive guide to styling individual columns
+- **[Tutorial System](/story/soroban-abacusreact-core-examples--tutorial-example)** - Advanced interactive tutorial features
+- **[Color Schemes](/story/soroban-abacusreact-core-examples--color-schemes)** - All available color options
+- **[Accessibility](/story/soroban-abacusreact-core-examples--accessibility-palettes)** - Colorblind-friendly palettes
         `,
       },
     },
