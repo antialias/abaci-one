@@ -51,6 +51,13 @@ export interface NumeralStyle {
   className?: string;
 }
 
+export interface BackgroundGlowStyle {
+  fill?: string;
+  blur?: number;
+  spread?: number;
+  opacity?: number;
+}
+
 export interface AbacusCustomStyles {
   // Global defaults
   heavenBeads?: BeadStyle;
@@ -72,6 +79,7 @@ export interface AbacusCustomStyles {
       columnPost?: ColumnPostStyle;
       numerals?: NumeralStyle;
       numeralContainer?: NumeralStyle;
+      backgroundGlow?: BackgroundGlowStyle;
     };
   };
 
@@ -183,6 +191,8 @@ export interface AbacusCallbacks {
   onBeadHover?: (event: BeadClickEvent) => void;
   onBeadLeave?: (event: BeadClickEvent) => void;
   onColumnClick?: (columnIndex: number, event: React.MouseEvent) => void;
+  onColumnHover?: (columnIndex: number, event: React.MouseEvent) => void;
+  onColumnLeave?: (columnIndex: number, event: React.MouseEvent) => void;
   onNumeralClick?: (columnIndex: number, value: number, event: React.MouseEvent) => void;
   onValueChange?: (newValue: number) => void;
   onBeadRef?: (bead: BeadConfig, element: SVGElement | null) => void;
@@ -1652,6 +1662,34 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
           }
         `}</style>
       </defs>
+
+      {/* Background glow effects - rendered behind everything */}
+      {Array.from({ length: effectiveColumns }, (_, colIndex) => {
+        const columnStyles = customStyles?.columns?.[colIndex];
+        const backgroundGlow = columnStyles?.backgroundGlow;
+
+        if (!backgroundGlow) return null;
+
+        const x = (colIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
+        const glowWidth = dimensions.rodSpacing + (backgroundGlow.spread || 0);
+        const glowHeight = dimensions.height + (backgroundGlow.spread || 0);
+
+        return (
+          <rect
+            key={`background-glow-${colIndex}`}
+            x={x - glowWidth / 2}
+            y={-(backgroundGlow.spread || 0) / 2}
+            width={glowWidth}
+            height={glowHeight}
+            fill={backgroundGlow.fill || 'rgba(59, 130, 246, 0.2)'}
+            filter={backgroundGlow.blur ? `blur(${backgroundGlow.blur}px)` : 'none'}
+            opacity={0.6}
+            rx={8}
+            style={{ pointerEvents: 'none' }}
+          />
+        );
+      })}
+
       {/* Rods - positioned as rectangles like in Typst */}
       {Array.from({ length: effectiveColumns }, (_, colIndex) => {
         const x = (colIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
@@ -1660,6 +1698,15 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         const rodStartY = 0; // Start from top for now, will be refined
         const rodEndY = dimensions.height; // End at bottom for now, will be refined
 
+        // Apply custom column post styling
+        const columnStyles = customStyles?.columns?.[colIndex];
+        const rodStyle = {
+          fill: "rgb(0, 0, 0, 0.1)", // Default Typst color
+          stroke: columnStyles?.columnPost?.stroke || "none",
+          strokeWidth: columnStyles?.columnPost?.strokeWidth || 0,
+          opacity: columnStyles?.columnPost?.opacity ?? 1
+        };
+
         return (
           <rect
             key={`rod-${colIndex}`}
@@ -1667,8 +1714,10 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             y={rodStartY}
             width={dimensions.rodWidth}
             height={rodEndY - rodStartY}
-            fill="rgb(0, 0, 0, 0.1)" // Typst uses gray.lighten(80%)
-            stroke="none"
+            fill={rodStyle.fill}
+            stroke={rodStyle.stroke}
+            strokeWidth={rodStyle.strokeWidth}
+            opacity={rodStyle.opacity}
           />
         );
       })}
@@ -1929,6 +1978,35 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               {overlay.content}
             </div>
           </foreignObject>
+        );
+      })}
+
+      {/* Column interaction areas - rendered last to be on top of all other elements */}
+      {Array.from({ length: effectiveColumns }, (_, colIndex) => {
+        const x = (colIndex * dimensions.rodSpacing) + dimensions.rodSpacing / 2;
+        const columnStyles = customStyles?.columns?.[colIndex];
+        const hasColumnHighlight = columnStyles?.columnPost;
+
+        const backgroundWidth = dimensions.rodSpacing; // Full column width for better interaction
+        const backgroundHeight = dimensions.height;
+
+        return (
+          <rect
+            key={`column-interaction-${colIndex}`}
+            x={x - backgroundWidth / 2}
+            y={0}
+            width={backgroundWidth}
+            height={backgroundHeight}
+            fill="transparent"
+            stroke="none"
+            style={{
+              cursor: (callbacks?.onColumnClick || callbacks?.onColumnHover) ? 'pointer' : 'default',
+              pointerEvents: (callbacks?.onColumnClick || callbacks?.onColumnHover) ? 'all' : 'none' // Only capture events when callbacks exist
+            }}
+            onClick={(e) => callbacks?.onColumnClick?.(colIndex, e)}
+            onMouseEnter={(e) => callbacks?.onColumnHover?.(colIndex, e)}
+            onMouseLeave={(e) => callbacks?.onColumnLeave?.(colIndex, e)}
+          />
         );
       })}
 
