@@ -70,6 +70,10 @@ export interface TermProvenance {
   rhsDigitIndex: number;     // index of the digit in the addend string (for highlighting)
   rhsValue: number;          // digit * 10^place (e.g., 20)
   groupId?: string;          // same id for a complement group (e.g., +100 -90 -5)
+  // NEW: For terms that affect multiple columns (like complement operations)
+  termPlace?: number;        // the actual place this specific term affects (overrides rhsPlace for column mapping)
+  termPlaceName?: string;    // the name of the place this term affects
+  termValue?: number;        // the actual value of this term (e.g., 100, -90, -5)
 }
 
 export interface UnifiedStepData {
@@ -793,7 +797,12 @@ function processDirectAddition(
         operation: (digit * Math.pow(10, placeValue)).toString(),
         description: `Add ${digit} earth bead${digit > 1 ? 's' : ''} at place ${placeValue}`,
         targetValue: 0, // Will be calculated later
-        provenance: baseProvenance
+        provenance: {
+          ...baseProvenance,
+          termPlace: placeValue,
+          termPlaceName: getPlaceName(placeValue),
+          termValue: digit * Math.pow(10, placeValue)
+        }
       })
       newState[placeValue] = {
         ...placeState,
@@ -812,14 +821,26 @@ function processDirectAddition(
         operation: fiveValue.toString(),
         description: `Add heaven bead at place ${placeValue}`,
         targetValue: 0,
-        provenance: { ...baseProvenance, groupId }
+        provenance: {
+          ...baseProvenance,
+          groupId,
+          termPlace: placeValue,
+          termPlaceName: getPlaceName(placeValue),
+          termValue: fiveValue
+        }
       })
 
       steps.push({
         operation: `-${subtractValue}`,
         description: `Remove ${complement} earth beads at place ${placeValue}`,
         targetValue: 0,
-        provenance: { ...baseProvenance, groupId }
+        provenance: {
+          ...baseProvenance,
+          groupId,
+          termPlace: placeValue,
+          termPlaceName: getPlaceName(placeValue),
+          termValue: -subtractValue
+        }
       })
 
       newState[placeValue] = {
@@ -838,7 +859,12 @@ function processDirectAddition(
       operation: fiveValue.toString(),
       description: `Add heaven bead at place ${placeValue}`,
       targetValue: 0,
-      provenance: baseProvenance
+      provenance: {
+        ...baseProvenance,
+        termPlace: placeValue,
+        termPlaceName: getPlaceName(placeValue),
+        termValue: fiveValue
+      }
     })
 
     if (earthBeadsNeeded > 0) {
@@ -846,7 +872,12 @@ function processDirectAddition(
         operation: remainderValue.toString(),
         description: `Add ${earthBeadsNeeded} earth beads at place ${placeValue}`,
         targetValue: 0,
-        provenance: baseProvenance
+        provenance: {
+          ...baseProvenance,
+          termPlace: placeValue,
+          termPlaceName: getPlaceName(placeValue),
+          termValue: remainderValue
+        }
       })
     }
 
@@ -897,14 +928,26 @@ function processTensComplement(
       operation: higherPlaceValue.toString(),
       description: `Add 1 to ${getPlaceName(placeValue + 1)} (carry)`,
       targetValue: 0,
-      provenance: { ...baseProvenance, groupId }
+      provenance: {
+        ...baseProvenance,
+        groupId,
+        termPlace: placeValue + 1,
+        termPlaceName: getPlaceName(placeValue + 1),
+        termValue: higherPlaceValue
+      }
     })
 
     steps.push({
       operation: `-${subtractValue}`,
       description: `Remove ${complementToSubtract} earth beads (no borrow needed)`,
       targetValue: 0,
-      provenance: { ...baseProvenance, groupId }
+      provenance: {
+        ...baseProvenance,
+        groupId,
+        termPlace: placeValue,
+        termPlaceName: getPlaceName(placeValue),
+        termValue: -subtractValue
+      }
     })
   }
 
@@ -937,7 +980,13 @@ function generateCascadeComplementSteps(currentValue: number, startPlace: number
     operation: higherPlaceValue.toString(),
     description: `Add 1 to ${getPlaceName(checkPlace)} (cascade trigger)`,
     targetValue: 0,
-    provenance: { ...baseProvenance, groupId }
+    provenance: {
+      ...baseProvenance,
+      groupId,
+      termPlace: checkPlace,
+      termPlaceName: getPlaceName(checkPlace),
+      termValue: higherPlaceValue
+    }
   })
 
   // Clear all the 9s in between (working downward)
@@ -949,7 +998,13 @@ function generateCascadeComplementSteps(currentValue: number, startPlace: number
         operation: `-${clearValue}`,
         description: `Remove 9 from ${getPlaceName(clearPlace)} (cascade)`,
         targetValue: 0,
-        provenance: { ...baseProvenance, groupId }
+        provenance: {
+          ...baseProvenance,
+          groupId,
+          termPlace: clearPlace,
+          termPlaceName: getPlaceName(clearPlace),
+          termValue: -clearValue
+        }
       })
     }
   }
@@ -960,7 +1015,13 @@ function generateCascadeComplementSteps(currentValue: number, startPlace: number
     operation: `-${onesSubtractValue}`,
     description: `Remove ${onesComplement} earth beads (ten's complement)`,
     targetValue: 0,
-    provenance: { ...baseProvenance, groupId }
+    provenance: {
+      ...baseProvenance,
+      groupId,
+      termPlace: startPlace,
+      termPlaceName: getPlaceName(startPlace),
+      termValue: -onesSubtractValue
+    }
   })
 
   return steps
