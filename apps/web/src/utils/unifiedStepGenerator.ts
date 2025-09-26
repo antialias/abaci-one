@@ -297,13 +297,15 @@ function generateSegmentReadable(
       const nextVal = (startState[nextPlace]?.heavenActive ? 5 : 0) + (startState[nextPlace]?.earthActive || 0)
       if (nextVal === 9) {
         // Find highest non‑9 to name the landing place
+        const maxPlace = Math.max(0, ...Object.keys(startState).map(Number)) + 2
         let k = nextPlace + 1
-        while (true) {
+        for (; k <= maxPlace; k++) {
           const v = (startState[k]?.heavenActive ? 5 : 0) + (startState[k]?.earthActive || 0)
           if (v !== 9) break
-          k++
         }
-        carryPath = `${getPlaceName(nextPlace)} is 9 ⇒ ${getPlaceName(k)} +1; reset 9s`
+        const landingIsNewHighest = k > maxPlace
+        const toName = landingIsNewHighest ? 'next higher place' : getPlaceName(k)
+        carryPath = `${getPlaceName(nextPlace)} is 9 ⇒ ${toName} +1; clear 9s`
       } else {
         carryPath = `${nextPlaceName} +1`
       }
@@ -324,10 +326,10 @@ function generateSegmentReadable(
       summary = `Add ${digit} to the ${placeName}. It fits here, so just move ${digit} lower bead${digit > 1 ? 's' : ''}.`
     } else {
       const rest = digit - 5
-      summary = `Add ${digit} to the ${placeName} using the upper bead: +5${rest ? ` + ${rest}` : ''}. No carry needed.`
+      summary = `Add ${digit} to the ${placeName} using the heaven bead: +5${rest ? ` + ${rest}` : ''}. No carry needed.`
     }
   } else if (rule === 'FiveComplement') {
-    summary = `Add ${digit} to the ${placeName}, but there aren't enough lower beads. Use 5's friend: press 5 and lift ${s5} (that's +5 − ${s5}).`
+    summary = `Add ${digit} to the ${placeName}, but there isn't room for that many lower beads. Use 5's friend: press the heaven bead (5) and lift ${s5} — that's +5 − ${s5}.`
   } else if (rule === 'TenComplement') {
     if (hasCascade) {
       summary = `Add ${digit} to the ${placeName} to make 10. Carry to ${nextPlaceName}; because the next rod is 9, the carry ripples up, then take ${s10} here (that's +10 − ${s10}).`
@@ -340,7 +342,7 @@ function generateSegmentReadable(
 
   // Short subtitle (optional, reused from your rule badges)
   const subtitle =
-    rule === 'Direct' ? (digit <= 4 ? 'Simple move' : 'Upper bead helps')
+    rule === 'Direct' ? (digit <= 4 ? 'Simple move' : 'Heaven bead helps')
     : rule === 'FiveComplement' ? "Using 5's friend"
     : rule === 'TenComplement' ? "Using 10's friend"
     : undefined
@@ -348,13 +350,13 @@ function generateSegmentReadable(
   // Tiny, dev-only validation of the summary against the selected rule
   const issues: string[] = []
   const guards = plan.flatMap(p => p.conditions)
-  if (rule === 'FiveComplement' && !(guards.some(g => /L\+d.*> *4/.test(g)))) {
+  if (rule === 'FiveComplement' && !guards.some(g => /L\s*\+\s*d.*>\s*4/.test(g))) {
     issues.push('FiveComplement summary emitted but guard L+d>4 not present')
   }
-  if (rule === 'TenComplement' && !(guards.some(g => /a\+d.*≥ *10/.test(g)))) {
+  if (rule === 'TenComplement' && !guards.some(g => /a\s*\+\s*d.*(≥|>=)\s*10/.test(g))) {
     issues.push('TenComplement summary emitted but guard a+d≥10 not present')
   }
-  if (rule === 'Direct' && !(guards.some(g => /a\+d.*≤ *9/.test(g)))) {
+  if (rule === 'Direct' && !guards.some(g => /a\s*\+\s*d.*(≤|<=)\s*9/.test(g))) {
     issues.push('Direct summary emitted but guard a+d≤9 not present')
   }
   const validation = { ok: issues.length === 0, issues }
@@ -1044,7 +1046,7 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
       return 'deactivate heaven bead'
     } else if (value >= 6 && value <= 9) {
       const e = value - 5
-      return `deactivate heaven bead and remove ${e} earth bead${e > 1 ? 's' : ''}`
+      return `deactivate heaven bead and remove ${e} earth bead${e > 1 ? 's' : ''} in ones column`
     } else if (isPowerOfTenGE10(value)) {
       const place = Math.round(Math.log10(value))
       return `remove 1 from ${getPlaceName(place)}`
@@ -1067,7 +1069,7 @@ function generateInstructionFromTerm(term: string, stepIndex: number, isCompleme
       return `add ${value} earth bead${value > 1 ? 's' : ''} in ones column`
     } else if (value >= 6 && value <= 9) {
       const earthBeads = value - 5
-      return `activate heaven bead and add ${earthBeads} earth beads`
+      return `activate heaven bead and add ${earthBeads} earth beads in ones column`
     } else if (isPowerOfTenGE10(value)) {
       const place = Math.round(Math.log10(value))
       return `add 1 to ${getPlaceName(place)}`
@@ -1562,31 +1564,34 @@ function buildEquationAnchors(
   fullDecomposition: string
 ): EquationAnchors {
   const addend = targetValue - startValue
-  const addendStr = Math.abs(addend).toString()
+  const addendText = addend.toString()
+  const expectedPrefix = `${startValue} + `
+  // Addend starts immediately after "startValue + "
+  const startIndex = expectedPrefix.length
 
-  // Find the addend in the left side of the equation
-  // The pattern is typically: "startValue + addend = startValue + [decomposition] = targetValue"
-  const leftSide = `${startValue} + ${addend}`
-  const addendStart = leftSide.indexOf(addend.toString())
-
-  if (addendStart === -1) {
-    // Fallback: return empty positions if we can't find the addend
-    return {
-      differenceText: addendStr,
-      rhsDigitPositions: []
+  // Optional sanity check (no throw in prod)
+  if (process.env.NODE_ENV !== 'production') {
+    const head = fullDecomposition.slice(0, startIndex + addendText.length)
+    if (head !== `${expectedPrefix}${addendText}`) {
+      // fall back to a search if format changes
+      const idx = fullDecomposition.indexOf(`${expectedPrefix}${addendText}`)
+      if (idx !== -1) {
+        const start = idx + expectedPrefix.length
+        return {
+          differenceText: Math.abs(addend).toString(),
+          rhsDigitPositions: Array.from(addendText).map((_, i) => ({
+            digitIndex: i, startIndex: start + i, endIndex: start + i + 1
+          }))
+        }
+      }
     }
   }
 
-  // Calculate positions for each digit in the addend
-  const rhsDigitPositions = Array.from(addendStr).map((digit, index) => ({
-    digitIndex: index,
-    startIndex: addendStart + index,
-    endIndex: addendStart + index + 1
-  }))
-
   return {
-    differenceText: addendStr,
-    rhsDigitPositions
+    differenceText: Math.abs(addend).toString(),
+    rhsDigitPositions: Array.from(addendText).map((_, i) => ({
+      digitIndex: i, startIndex: startIndex + i, endIndex: startIndex + i + 1
+    }))
   }
 }
 
