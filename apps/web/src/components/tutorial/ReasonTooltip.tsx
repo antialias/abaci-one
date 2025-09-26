@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
-import * as Tooltip from '@radix-ui/react-tooltip'
+import React, { useState, useMemo } from 'react'
+import * as HoverCard from '@radix-ui/react-hover-card'
 import type { PedagogicalRule, PedagogicalSegment, TermReason } from './DecompositionWithReasons'
 import type { UnifiedStepData, TermProvenance } from '../../utils/unifiedStepGenerator'
 
@@ -12,8 +12,6 @@ interface ReasonTooltipProps {
   reason?: TermReason
   originalValue?: string
   steps?: UnifiedStepData[]
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
   provenance?: TermProvenance  // NEW: Provenance data for enhanced tooltips
 }
 
@@ -30,15 +28,12 @@ export function ReasonTooltip({
   reason,
   originalValue,
   steps,
-  open,
-  onOpenChange,
   provenance
 }: ReasonTooltipProps) {
   const [showBeadDetails, setShowBeadDetails] = useState(false)
   const [showMath, setShowMath] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const rule = reason?.rule ?? segment?.plan[0]?.rule
-  const shortReason = reason?.shortReason
-  const bullets = reason?.bullets
 
   if (!rule) {
     return <>{children}</>
@@ -58,9 +53,12 @@ export function ReasonTooltip({
 
       const enhancedChips = [
         { label: 'Digit we\'re using', value: `${provenance.rhsDigit} (${provenance.rhsPlaceName})` },
-        ...(readable?.chips.find(chip => chip.label === 'This rod shows') ? [
-          { label: 'This rod shows', value: readable.chips.find(chip => chip.label === 'This rod shows')!.value }
-        ] : []),
+        ...(() => {
+          const rodChip = readable?.chips.find(
+            c => /^(this )?rod shows$/i.test(c.label)
+          )
+          return rodChip ? [{ label: 'Rod shows', value: rodChip.value }] : []
+        })(),
         { label: 'So we add here', value: `+${provenance.rhsDigit} ${provenance.rhsPlaceName} → ${provenance.rhsValue}` }
       ]
 
@@ -85,9 +83,9 @@ export function ReasonTooltip({
     return null
   }
 
-  const enhancedContent = getEnhancedTooltipContent()
-
-
+  const enhancedContent = useMemo(getEnhancedTooltipContent, [
+    provenance, rule, readable?.title, readable?.subtitle, readable?.chips
+  ])
 
   const getRuleInfo = (rule: PedagogicalRule) => {
     switch (rule) {
@@ -129,42 +127,29 @@ export function ReasonTooltip({
     }
   }
 
-  const ruleInfo = getRuleInfo(rule)
+  const ruleInfo = useMemo(() => getRuleInfo(rule), [rule])
   const contentClasses = `reason-tooltip reason-tooltip--${ruleInfo.color}`
 
   const tooltipId = `tooltip-${termIndex}`
 
   return (
-    <Tooltip.Root open={open} onOpenChange={onOpenChange} delayDuration={300}>
-      <Tooltip.Trigger asChild>
+    <HoverCard.Root openDelay={150} closeDelay={400}>
+      <HoverCard.Trigger asChild>
         <span
-          role="button"
           tabIndex={0}
-          aria-labelledby={tooltipId}
           aria-describedby={`${tooltipId}-description`}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onOpenChange?.(!open)
-            }
-            if (e.key === 'Escape' && open) {
-              onOpenChange?.(false)
-            }
-          }}
         >
           {children}
         </span>
-      </Tooltip.Trigger>
+      </HoverCard.Trigger>
 
-      <Tooltip.Portal>
-        <Tooltip.Content
+      <HoverCard.Portal>
+        <HoverCard.Content
           id={tooltipId}
           className={contentClasses}
           sideOffset={8}
           side="top"
           align="center"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={() => onOpenChange?.(false)}
         >
           <div className="reason-tooltip__content">
             <div className="reason-tooltip__header">
@@ -188,21 +173,9 @@ export function ReasonTooltip({
               </div>
             )}
 
-            {/* Optional: 0–2 context chips (kept minimal) */}
-            {(enhancedContent?.chips || readable?.chips)?.length ? (
-              <div className="reason-tooltip__context">
-                <div className="reason-tooltip__chips">
-                  {(enhancedContent?.chips || readable?.chips || []).slice(0, 2).map((chip, index) => (
-                    <span key={index} className="reason-tooltip__chip">
-                      {chip.label}: {chip.value}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
-            {/* Optional provenance nudge (kept to one line when present) */}
-            {provenance && (
+            {/* Optional provenance nudge (avoid duplicating subtitle) */}
+            {provenance && !(enhancedContent?.subtitle || readable?.subtitle || '').includes('From ') && (
               <div className="reason-tooltip__reasoning">
                 <p className="reason-tooltip__explanation-text">
                   From addend <strong>{provenance.rhs}</strong>: use the <strong>{provenance.rhsPlaceName}</strong> digit <strong>{provenance.rhsDigit}</strong>.
@@ -210,77 +183,124 @@ export function ReasonTooltip({
               </div>
             )}
 
-            {/* Show carry path using readable format */}
-            {readable?.carryPath && (
-              <div className="reason-tooltip__carry-path">
-                <p className="reason-tooltip__carry-description">
-                  <strong>Carry path:</strong> {readable.carryPath}
-                </p>
-              </div>
-            )}
-
-            {/* Show the math toggle for advanced users */}
-            {readable?.showMath && (
-              <div className="reason-tooltip__advanced">
+            {/* More details disclosure for optional content */}
+            {((enhancedContent?.chips || readable?.chips)?.length ||
+              readable?.carryPath ||
+              readable?.showMath ||
+              (readable && readable.stepsFriendly.length > 1)) && (
+              <div className="reason-tooltip__details">
                 <button
-                  className="reason-tooltip__math-toggle"
-                  onClick={() => setShowMath(!showMath)}
-                  aria-expanded={showMath}
+                  className="reason-tooltip__details-toggle"
+                  onClick={() => setShowDetails(!showDetails)}
+                  aria-expanded={showDetails}
+                  aria-controls={`${tooltipId}-details`}
                   type="button"
                 >
-                  <span className="reason-tooltip__math-label">
-                    Show the math
-                    <span className="reason-tooltip__chevron" style={{ transform: showMath ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                  <span className="reason-tooltip__details-label">
+                    More details
+                    <span className="reason-tooltip__chevron" style={{ transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                       ▼
                     </span>
                   </span>
                 </button>
 
-                {showMath && (
-                  <div className="reason-tooltip__math-content">
-                    {readable.showMath.lines.map((line, index) => (
-                      <p key={index} className="reason-tooltip__math-line">
-                        {line}
-                      </p>
-                    ))}
+                {showDetails && (
+                  <div id={`${tooltipId}-details`} className="reason-tooltip__details-content">
+                    {/* Context chips */}
+                    {(enhancedContent?.chips || readable?.chips)?.length ? (
+                      <div className="reason-tooltip__context">
+                        <div className="reason-tooltip__chips">
+                          {(enhancedContent?.chips || readable?.chips || []).map((chip, index) => (
+                            <span key={index} className="reason-tooltip__chip">
+                              {chip.label}: {chip.value}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Carry path only when it's interesting (cascades) */}
+                    {segment?.plan?.some(p => p.rule === 'Cascade') && readable?.carryPath && (
+                      <div className="reason-tooltip__carry-path">
+                        <p className="reason-tooltip__carry-description">
+                          <strong>Carry path:</strong> {readable.carryPath}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Math toggle */}
+                    {readable?.showMath && (
+                      <div className="reason-tooltip__advanced">
+                        <button
+                          className="reason-tooltip__math-toggle"
+                          onClick={() => setShowMath(!showMath)}
+                          aria-expanded={showMath}
+                          type="button"
+                        >
+                          <span className="reason-tooltip__math-label">
+                            Show the math
+                            <span className="reason-tooltip__chevron" style={{ transform: showMath ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                              ▼
+                            </span>
+                          </span>
+                        </button>
+
+                        {showMath && (
+                          <div className="reason-tooltip__math-content">
+                            {readable.showMath.lines.map((line, index) => (
+                              <p key={index} className="reason-tooltip__math-line">
+                                {line}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step-by-step breakdown */}
+                    {readable && readable.stepsFriendly.length > 1 && (
+                      <div className="reason-tooltip__steps">
+                        <button
+                          className="reason-tooltip__expand-button"
+                          onClick={() => setShowBeadDetails(!showBeadDetails)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              setShowBeadDetails(!showBeadDetails)
+                            }
+                          }}
+                          aria-expanded={showBeadDetails}
+                          aria-controls={`${tooltipId}-steps`}
+                          type="button"
+                        >
+                          <span className="reason-tooltip__section-title">
+                            Step-by-step breakdown
+                            <span className="reason-tooltip__chevron" style={{ transform: showBeadDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                              ▼
+                            </span>
+                          </span>
+                        </button>
+
+                        {showBeadDetails && (
+                          <ol id={`${tooltipId}-steps`} className="reason-tooltip__step-list">
+                            {readable.stepsFriendly.map((stepInstruction, idx) => (
+                              <li key={idx} className="reason-tooltip__step">
+                                <span className="reason-tooltip__step-instruction">{stepInstruction}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Show expandable step-by-step breakdown using readable format */}
-            {readable && readable.stepsFriendly.length > 1 && (
-              <div className="reason-tooltip__steps">
-                <button
-                  className="reason-tooltip__expand-button"
-                  onClick={() => setShowBeadDetails(!showBeadDetails)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      setShowBeadDetails(!showBeadDetails)
-                    }
-                  }}
-                  aria-expanded={showBeadDetails}
-                  aria-controls={`${tooltipId}-steps`}
-                  type="button"
-                >
-                  <span className="reason-tooltip__section-title">
-                    Step-by-step breakdown
-                    <span className="reason-tooltip__chevron" style={{ transform: showBeadDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                      ▼
-                    </span>
-                  </span>
-                </button>
-
-                {showBeadDetails && (
-                  <ol id={`${tooltipId}-steps`} className="reason-tooltip__step-list">
-                    {readable.stepsFriendly.map((stepInstruction, idx) => (
-                      <li key={idx} className="reason-tooltip__step">
-                        <span className="reason-tooltip__step-instruction">{stepInstruction}</span>
-                      </li>
-                    ))}
-                  </ol>
-                )}
+            {/* Dev-only validation hint */}
+            {process.env.NODE_ENV !== 'production' && segment?.readable?.validation && !segment.readable.validation.ok && (
+              <div className="reason-tooltip__dev-warn">
+                ⚠ Summary/guard mismatch: {segment.readable.validation.issues.join('; ')}
               </div>
             )}
 
@@ -299,9 +319,9 @@ export function ReasonTooltip({
             )}
           </div>
 
-          <Tooltip.Arrow className="reason-tooltip__arrow" />
-        </Tooltip.Content>
-      </Tooltip.Portal>
-    </Tooltip.Root>
+          <HoverCard.Arrow className="reason-tooltip__arrow" />
+        </HoverCard.Content>
+      </HoverCard.Portal>
+    </HoverCard.Root>
   )
 }
