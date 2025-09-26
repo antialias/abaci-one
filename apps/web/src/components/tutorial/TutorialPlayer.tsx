@@ -212,7 +212,10 @@ function TutorialPlayerContent({
     handleValueChange: contextHandleValueChange,
     advanceMultiStep,
     previousMultiStep,
-    resetMultiStep
+    resetMultiStep,
+    activeTermIndices,
+    getColumnFromTermIndex,
+    handleAbacusColumnHover
   } = useTutorialContext()
 
   const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, multiStepStartTime, uiState, currentMultiStep } = state
@@ -814,44 +817,84 @@ function TutorialPlayerContent({
     })
   }, [uiState.autoAdvance])
 
+  // Dynamic column highlights from active terms - enhanced glowing effect
+  const dynamicColumnHighlights = useMemo(() => {
+    const highlights: Record<number, any> = {}
+
+    activeTermIndices.forEach(termIndex => {
+      const columnIndex = getColumnFromTermIndex(termIndex)
+      if (columnIndex !== null) {
+        highlights[columnIndex] = {
+          // Clean background glow effect - this will be rendered behind everything
+          backgroundGlow: {
+            fill: 'rgba(59, 130, 246, 0.25)',
+            blur: 4,
+            spread: 16
+          },
+          // Subtle numeral highlighting only
+          numerals: {
+            color: '#1e40af',
+            backgroundColor: 'rgba(219, 234, 254, 0.9)',
+            fontWeight: 'bold',
+            borderRadius: 4,
+            borderWidth: 1,
+            borderColor: '#3b82f6'
+          }
+        }
+      }
+    })
+
+    return highlights
+  }, [activeTermIndices, getColumnFromTermIndex])
+
   // Memoize custom styles calculation to avoid expensive recalculation on every render
   const customStyles = useMemo(() => {
-    if (!currentStep.highlightBeads || !Array.isArray(currentStep.highlightBeads)) {
-      return undefined;
-    }
+    // Start with static highlights from step configuration
+    const staticHighlights: Record<number, any> = {}
 
-    return {
-      beads: currentStep.highlightBeads.reduce((acc, highlight) => {
+    if (currentStep.highlightBeads && Array.isArray(currentStep.highlightBeads)) {
+      currentStep.highlightBeads.forEach(highlight => {
         // Convert placeValue to columnIndex for AbacusReact compatibility
         const columnIndex = highlight.placeValue !== undefined ? (4 - highlight.placeValue) : highlight.columnIndex;
 
         // Initialize column if it doesn't exist
-        if (!acc[columnIndex]) {
-          acc[columnIndex] = {};
+        if (!staticHighlights[columnIndex]) {
+          staticHighlights[columnIndex] = {};
         }
 
         // Add the bead style to the appropriate type
         if (highlight.beadType === 'earth' && highlight.position !== undefined) {
-          if (!acc[columnIndex].earth) {
-            acc[columnIndex].earth = {};
+          if (!staticHighlights[columnIndex].earth) {
+            staticHighlights[columnIndex].earth = {};
           }
-          acc[columnIndex].earth[highlight.position] = {
+          staticHighlights[columnIndex].earth[highlight.position] = {
             fill: '#fbbf24',
             stroke: '#f59e0b',
             strokeWidth: 3
           };
         } else {
-          acc[columnIndex][highlight.beadType] = {
+          staticHighlights[columnIndex][highlight.beadType] = {
             fill: '#fbbf24',
             stroke: '#f59e0b',
             strokeWidth: 3
           };
         }
+      })
+    }
 
-        return acc;
-      }, {} as any)
-    };
-  }, [currentStep.highlightBeads]);
+    // Merge static and dynamic highlights (dynamic takes precedence)
+    const mergedHighlights = { ...staticHighlights }
+    Object.keys(dynamicColumnHighlights).forEach(columnIndexStr => {
+      const columnIndex = parseInt(columnIndexStr)
+      if (!mergedHighlights[columnIndex]) {
+        mergedHighlights[columnIndex] = {}
+      }
+      // Merge dynamic highlights into the column
+      Object.assign(mergedHighlights[columnIndex], dynamicColumnHighlights[columnIndex])
+    })
+
+    return Object.keys(mergedHighlights).length > 0 ? { columns: mergedHighlights } : undefined
+  }, [currentStep.highlightBeads, dynamicColumnHighlights]);
 
   if (!currentStep) {
     return <div>No steps available</div>
