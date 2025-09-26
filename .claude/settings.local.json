@@ -101,7 +101,12 @@
       "Bash(turbo run:*)",
       "Bash(npx turbo run:*)",
       "Bash(open http://localhost:3003/guide)",
-      "Bash(open http://localhost:3000/games/memory-quiz)"
+      "Bash(open http://localhost:3000/games/memory-quiz)",
+      "Bash(open http://localhost:3002/tutorial-editor)",
+      "Bash(open http://localhost:3001/tutorial-editor)",
+      "Bash(timeout 30s pnpm test src/components/tutorial/__tests__/ReasonTooltip.provenance.test.tsx)",
+      "Bash(timeout 30s pnpm test src/components/tutorial/__tests__/ReasonTooltip.simple.test.tsx)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []
