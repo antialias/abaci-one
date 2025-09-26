@@ -75,7 +75,7 @@ function TermSpan({
   reason,
   isCurrentStep = false
 }: TermSpanProps) {
-  const { activeSegmentId } = useContext(DecompositionContext)
+  const { activeSegmentId, addActiveTerm, removeActiveTerm } = useContext(DecompositionContext)
   const rule = reason?.rule ?? segment?.plan[0]?.rule
 
   // Only show styling for terms that have pedagogical reasoning
@@ -89,8 +89,22 @@ function TermSpan({
     isCurrentStep && 'term--current' // New class for current step highlighting
   ].filter(Boolean).join(' ')
 
+  // Individual term hover handlers for two-level highlighting
+  const handleTermHover = (isHovering: boolean) => {
+    if (isHovering) {
+      addActiveTerm(termIndex, segment?.id)
+    } else {
+      removeActiveTerm(termIndex, segment?.id)
+    }
+  }
+
   return (
-    <span className={cssClasses}>
+    <span
+      className={cssClasses}
+      onMouseEnter={() => handleTermHover(true)}
+      onMouseLeave={() => handleTermHover(false)}
+      style={{ cursor: 'pointer' }}
+    >
       {text}
     </span>
   )
@@ -147,8 +161,6 @@ function SegmentGroup({ segment, fullDecomposition, children }: SegmentGroupProp
         className="segment-group"
         onMouseEnter={() => handleTooltipChange(true)}
         onMouseLeave={() => handleTooltipChange(false)}
-        onFocus={() => handleTooltipChange(true)}
-        onBlur={() => handleTooltipChange(false)}
       >
         {children}
       </span>
@@ -162,10 +174,16 @@ export function DecompositionWithReasons({
   segments,
   termReasons
 }: DecompositionWithReasonsProps) {
-  const [activeTerms, setActiveTerms] = useState<Set<number>>(new Set())
-
-  // Get current step index from tutorial context
-  const { state } = useTutorialContext()
+  // Get context state including term highlighting
+  const {
+    state,
+    activeTermIndices,
+    setActiveTermIndices,
+    activeIndividualTermIndex,
+    setActiveIndividualTermIndex,
+    getGroupTermIndicesFromTermIndex,
+    unifiedSteps
+  } = useTutorialContext()
   const currentStepIndex = state.currentMultiStep
 
   // Build segment boundaries and ranges
@@ -187,28 +205,73 @@ export function DecompositionWithReasons({
 
   // Determine which segment should be highlighted based on active terms
   const activeSegmentId = useMemo(() => {
-    if (activeTerms.size === 0) return null
+    if (activeTermIndices.size === 0) return null
 
     // Find the segment that contains any of the active terms
-    for (const termIndex of activeTerms) {
+    for (const termIndex of activeTermIndices) {
       const segment = termIndexToSegment.get(termIndex)
       if (segment) {
         return segment.id
       }
     }
     return null
-  }, [activeTerms, termIndexToSegment])
+  }, [activeTermIndices, termIndexToSegment])
 
   const addActiveTerm = (termIndex: number, segmentId?: string) => {
-    setActiveTerms(prev => new Set([...prev, termIndex]))
+    console.log('🎯 TERM HOVER START - termIndex:', termIndex)
+
+    // Debug: Get the unified steps to see provenance data
+    const hoveredStep = unifiedSteps[termIndex]
+
+    console.log('📊 Hovered step data:', {
+      termIndex,
+      mathematicalTerm: hoveredStep?.mathematicalTerm,
+      provenance: hoveredStep?.provenance,
+      hasGroupId: !!hoveredStep?.provenance?.groupId,
+      groupId: hoveredStep?.provenance?.groupId,
+      rhsPlace: hoveredStep?.provenance?.rhsPlace,
+      rhsValue: hoveredStep?.provenance?.rhsValue
+    })
+
+    // Set individual term highlight (orange glow)
+    setActiveIndividualTermIndex(termIndex)
+    console.log('🟠 Set individual term highlight:', termIndex)
+
+    // Set group term highlights (blue glow) - for complement groups, highlight only the target column
+    const groupTermIndices = getGroupTermIndicesFromTermIndex(termIndex)
+    console.log('🔵 Group term indices found:', groupTermIndices)
+
+    if (groupTermIndices.length > 0) {
+      // Debug: Log all terms in the group
+      console.log('📝 All terms in group:')
+      groupTermIndices.forEach(idx => {
+        const step = unifiedSteps[idx]
+        console.log(`  - Term ${idx}: "${step?.mathematicalTerm}" (termPlace: ${step?.provenance?.termPlace}, rhsPlace: ${step?.provenance?.rhsPlace}, groupId: ${step?.provenance?.groupId})`)
+      })
+
+      // For complement groups, highlight only the target column (rhsPlace, not individual termPlaces)
+      // Use any term from the group since they all share the same rhsPlace (target column)
+      setActiveTermIndices(new Set([termIndex]))
+      console.log('🎯 Set group highlight for target column (rhsPlace) using term index:', termIndex)
+    } else {
+      // This is a standalone term, just highlight it
+      setActiveTermIndices(new Set([termIndex]))
+      console.log('🎯 Set standalone term highlight')
+    }
+
+    console.log('✅ TERM HOVER COMPLETE')
   }
 
   const removeActiveTerm = (termIndex: number, segmentId?: string) => {
-    setActiveTerms(prev => {
-      const next = new Set(prev)
-      next.delete(termIndex)
-      return next
-    })
+    console.log('🚫 TERM HOVER END - termIndex:', termIndex)
+
+    // Clear individual term highlight
+    setActiveIndividualTermIndex(null)
+    console.log('🟠 Cleared individual term highlight')
+
+    // Clear group term highlights
+    setActiveTermIndices(new Set())
+    console.log('🔵 Cleared group term highlights')
   }
 
   // Slice the decomposition string using termPositions
@@ -320,7 +383,7 @@ export function DecompositionWithReasons({
   }
 
   return (
-    <DecompositionContext.Provider value={{ activeTerms, activeSegmentId, addActiveTerm, removeActiveTerm }}>
+    <DecompositionContext.Provider value={{ activeTerms: activeTermIndices, activeSegmentId, addActiveTerm, removeActiveTerm }}>
       <Tooltip.Provider delayDuration={200} skipDelayDuration={100}>
         <div className="decomposition">
           {renderElements()}
