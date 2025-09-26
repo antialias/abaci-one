@@ -143,6 +143,18 @@ interface TutorialContextType {
   unifiedSteps: UnifiedStepData[]  // NEW: Add unified steps with provenance
   customStyles: any
 
+  // Term-to-column highlighting state
+  activeTermIndices: Set<number>
+  setActiveTermIndices: (indices: Set<number>) => void
+  activeIndividualTermIndex: number | null
+  setActiveIndividualTermIndex: (index: number | null) => void
+  activeGroupTargetColumn: number | null
+  setActiveGroupTargetColumn: (columnIndex: number | null) => void
+  getColumnFromTermIndex: (termIndex: number, useGroupColumn?: boolean) => number | null
+  getTermIndicesFromColumn: (columnIndex: number) => number[]
+  getGroupTermIndicesFromTermIndex: (termIndex: number) => number[]
+  handleAbacusColumnHover: (columnIndex: number, isHovering: boolean) => void
+
   // Action functions
   goToStep: (stepIndex: number) => void
   goToNextStep: () => void
@@ -190,6 +202,11 @@ export function TutorialProvider({
   const isProgrammaticChange = useRef(false)
   const [showHelpForCurrentStep, setShowHelpForCurrentStep] = useState(false)
   const beadRefs = useRef<Map<string, SVGElement>>(new Map())
+
+  // Term-to-column highlighting state
+  const [activeTermIndices, setActiveTermIndices] = useState<Set<number>>(new Set())
+  const [activeIndividualTermIndex, setActiveIndividualTermIndex] = useState<number | null>(null)
+  const [activeGroupTargetColumn, setActiveGroupTargetColumn] = useState<number | null>(null)
 
   const [state, dispatch] = useReducer(tutorialPlayerReducer, {
     currentStepIndex: initialStepIndex,
@@ -257,6 +274,84 @@ export function TutorialProvider({
       return { expectedSteps: [], fullDecomposition: '', unifiedSteps: [] }
     }
   }, [currentStep.startValue, currentStep.targetValue])
+
+  // Term-to-column mapping function
+  const getColumnFromTermIndex = useCallback((termIndex: number, useGroupColumn = false) => {
+    const step = unifiedSteps[termIndex]
+    if (!step?.provenance) return null
+
+    // For group highlighting: use rhsPlace (target column)
+    // For individual highlighting: use termPlace (individual term column)
+    const placeValue = useGroupColumn
+      ? step.provenance.rhsPlace
+      : (step.provenance.termPlace ?? step.provenance.rhsPlace)
+
+    // Convert place value (0=ones, 1=tens, 2=hundreds) to columnIndex (4=ones, 3=tens, 2=hundreds)
+    return 4 - placeValue
+  }, [unifiedSteps])
+
+  // Column-to-terms mapping function (for bidirectional interaction)
+  const getTermIndicesFromColumn = useCallback((columnIndex: number) => {
+    const termIndices: number[] = []
+
+    unifiedSteps.forEach((step, index) => {
+      if (step.provenance) {
+        // Use termPlace if available, otherwise fallback to rhsPlace
+        const placeValue = step.provenance.termPlace ?? step.provenance.rhsPlace
+        const stepColumnIndex = 4 - placeValue
+        if (stepColumnIndex === columnIndex) {
+          termIndices.push(index)
+        }
+      }
+    })
+
+    return termIndices
+  }, [unifiedSteps])
+
+  // Group-to-terms mapping function (for complement groups)
+  const getGroupTermIndicesFromTermIndex = useCallback((termIndex: number) => {
+    console.log('🔍 getGroupTermIndicesFromTermIndex called with termIndex:', termIndex)
+
+    const step = unifiedSteps[termIndex]
+    console.log('  - Step data:', {
+      mathematicalTerm: step?.mathematicalTerm,
+      hasProvenance: !!step?.provenance,
+      groupId: step?.provenance?.groupId,
+      rhsPlace: step?.provenance?.rhsPlace,
+      rhsValue: step?.provenance?.rhsValue
+    })
+
+    if (!step?.provenance?.groupId) {
+      console.log('  - No groupId found, returning empty array')
+      return []
+    }
+
+    const groupId = step.provenance.groupId
+    console.log('  - Found groupId:', groupId)
+
+    const groupTermIndices: number[] = []
+
+    unifiedSteps.forEach((groupStep, index) => {
+      if (groupStep.provenance?.groupId === groupId) {
+        groupTermIndices.push(index)
+        console.log(`    - Found group member: term ${index} "${groupStep.mathematicalTerm}" (rhsPlace: ${groupStep.provenance.rhsPlace})`)
+      }
+    })
+
+    console.log('  - Final group term indices:', groupTermIndices)
+    return groupTermIndices
+  }, [unifiedSteps])
+
+  // Abacus column hover handler for bidirectional interaction
+  const handleAbacusColumnHover = useCallback((columnIndex: number, isHovering: boolean) => {
+    if (isHovering) {
+      // Find all terms that correspond to this column
+      const relatedTerms = getTermIndicesFromColumn(columnIndex)
+      setActiveTermIndices(new Set(relatedTerms))
+    } else {
+      setActiveTermIndices(new Set())
+    }
+  }, [getTermIndicesFromColumn, setActiveTermIndices])
 
   // Navigation state
   const navigationState = useMemo(() => ({
@@ -472,6 +567,16 @@ export function TutorialProvider({
     fullDecomposition,
     unifiedSteps,
     customStyles,
+
+    // Term-to-column highlighting state
+    activeTermIndices,
+    setActiveTermIndices,
+    activeIndividualTermIndex,
+    setActiveIndividualTermIndex,
+    getColumnFromTermIndex,
+    getTermIndicesFromColumn,
+    getGroupTermIndicesFromTermIndex,
+    handleAbacusColumnHover,
 
     // Action functions
     goToStep,
