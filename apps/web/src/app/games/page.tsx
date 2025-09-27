@@ -6,7 +6,6 @@ import { css } from '../../../styled-system/css'
 import { grid } from '../../../styled-system/patterns'
 import { useUserProfile } from '../../contexts/UserProfileContext'
 import { useGameMode } from '../../contexts/GameModeContext'
-import { ChampionArena } from '../../components/ChampionArena'
 
 export default function GamesPage() {
   const { profile } = useUserProfile()
@@ -173,11 +172,109 @@ export default function GamesPage() {
           </div>
         </div>
 
-        {/* Champion Arena - Drag & Drop Interface */}
+        {/* Enter Arcade Button */}
         <div className={css({
-          mb: '16'
+          mb: '16',
+          textAlign: 'center'
         })}>
-          <ChampionArena onConfigurePlayer={() => {}} />
+          <div className={css({
+            background: 'white',
+            rounded: '3xl',
+            p: '8',
+            border: '2px solid',
+            borderColor: 'gray.200',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+            position: 'relative',
+            overflow: 'hidden'
+          })}>
+            {/* Gradient background */}
+            <div className={css({
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'linear-gradient(135deg, #dbeafe 0%, #e9d5ff 50%, #fef3c7 100%)',
+              opacity: 0.5
+            })} />
+
+            <div className={css({
+              position: 'relative',
+              zIndex: 1
+            })}>
+              <h2 className={css({
+                fontSize: { base: '2xl', md: '3xl' },
+                fontWeight: 'bold',
+                color: 'gray.900',
+                mb: '4'
+              })}>
+                🏟️ Ready for the Arena?
+              </h2>
+
+              <p className={css({
+                fontSize: 'lg',
+                color: 'gray.700',
+                mb: '8',
+                maxW: 'xl',
+                mx: 'auto'
+              })}>
+                Select your champions, choose your battles, and dive into full-screen arcade action!
+              </p>
+
+              <button
+                onClick={() => window.location.href = '/arcade'}
+                className={css({
+                  px: '12',
+                  py: '6',
+                  background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                  color: 'white',
+                  fontSize: '2xl',
+                  fontWeight: 'bold',
+                  rounded: '2xl',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 10px 30px rgba(59, 130, 246, 0.3)',
+                  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  _hover: {
+                    transform: 'translateY(-4px) scale(1.05)',
+                    boxShadow: '0 20px 50px rgba(59, 130, 246, 0.4)',
+                    '& .button-glow': {
+                      opacity: 1
+                    }
+                  },
+                  _active: {
+                    transform: 'translateY(-2px) scale(1.02)'
+                  }
+                })}
+              >
+                {/* Button glow effect */}
+                <div className={css({
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1))',
+                  opacity: 0,
+                  transition: 'opacity 0.3s ease'
+                }) + ' button-glow'} />
+
+                <span className={css({ position: 'relative', zIndex: 1 })}>
+                  🚀 ENTER ARCADE
+                </span>
+              </button>
+
+              <p className={css({
+                fontSize: 'sm',
+                color: 'gray.600',
+                mt: '4'
+              })}>
+                Full-screen experience with immersive gameplay
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Character Showcase Header */}
@@ -881,957 +978,7 @@ export default function GamesPage() {
           </div>
         </div>
 
-        {/* Games Grid */}
-        <div className={css({
-          display: 'grid',
-          gridTemplateColumns: { base: '1fr', md: 'repeat(2, 1fr)' },
-          gap: '8',
-          mb: '16'
-        })}>
 
-          {/* Speed Memory Quiz */}
-          <div onClick={() => handleGameClick('memory-lightning')} className={css({
-            display: 'block',
-            textDecoration: 'none',
-            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            _hover: {
-              transform: 'translateY(-8px) scale(1.02)',
-              '& .card-stack': {
-                transform: 'rotateY(5deg)'
-              },
-              '& .timer-pulse': {
-                animationDuration: '0.8s'
-              },
-              '& .speech-bubble': {
-                opacity: 1,
-                transform: 'translateY(0) scale(1)'
-              }
-            }
-          })}>
-            <div className={css({
-              bg: 'white',
-              rounded: '2xl',
-              p: '8',
-              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
-              border: '1px solid',
-              borderColor: 'green.200',
-              h: 'full',
-              position: 'relative',
-              overflow: 'visible'
-            })}>
-              {/* Character Recommendation Speech Bubble */}
-              <div className={css({
-                position: 'absolute',
-                top: '-10px',
-                left: '16px',
-                background: 'white',
-                border: '2px solid',
-                borderColor: 'green.300',
-                borderRadius: '16px',
-                px: '4',
-                py: '2',
-                boxShadow: '0 4px 20px rgba(16, 185, 129, 0.15)',
-                opacity: 0,
-                transform: 'translateY(-10px) scale(0.95)',
-                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                maxW: '200px',
-                zIndex: 10,
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: '-8px',
-                  left: '20px',
-                  width: 0,
-                  height: 0,
-                  borderLeft: '8px solid transparent',
-                  borderRight: '8px solid transparent',
-                  borderTop: '8px solid',
-                  borderTopColor: 'green.300'
-                },
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: '-6px',
-                  left: '22px',
-                  width: 0,
-                  height: 0,
-                  borderLeft: '6px solid transparent',
-                  borderRight: '6px solid transparent',
-                  borderTop: '6px solid white'
-                }
-              })} style={{ className: 'speech-bubble' }}>
-                <div className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2',
-                  fontSize: 'sm',
-                  fontWeight: 'semibold',
-                  color: 'green.800'
-                })}>
-                  <span className={css({ fontSize: 'lg' })}>{profile.player1Emoji}</span>
-                  <span>"Memory Lightning is my jam! ⚡"</span>
-                </div>
-              </div>
-
-              {/* Subtle top accent */}
-              <div className={css({
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #10b981, #059669)',
-                borderRadius: '16px 16px 0 0'
-              })} />
-
-              {/* Game representation: Flash card effect */}
-              <div className={css({
-                position: 'relative',
-                w: '18',
-                h: '18',
-                mb: '6',
-                perspective: '1000px'
-              })} style={{ className: 'card-stack' }}>
-                {/* Back card (slightly offset) */}
-                <div className={css({
-                  position: 'absolute',
-                  top: '3px',
-                  left: '3px',
-                  w: 'full',
-                  h: 'full',
-                  bg: 'gray.400',
-                  rounded: 'lg',
-                  transition: 'all 0.3s ease'
-                })} />
-
-                {/* Front card with abacus */}
-                <div className={css({
-                  position: 'relative',
-                  w: 'full',
-                  h: 'full',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  rounded: 'lg',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '2xl',
-                  color: 'white',
-                  boxShadow: '0 6px 20px rgba(16, 185, 129, 0.3)',
-                  transition: 'all 0.3s ease'
-                })}>
-                  🧮
-                </div>
-
-                {/* Timer indicator */}
-                <div className={css({
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  w: '8',
-                  h: '8',
-                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                  rounded: 'full',
-                  animation: 'pulse 1.5s infinite',
-                  boxShadow: '0 0 10px rgba(239, 68, 68, 0.5)'
-                })} style={{ className: 'timer-pulse' }} />
-              </div>
-
-              <h3 className={css({
-                fontSize: '2xl',
-                fontWeight: 'bold',
-                color: 'gray.900',
-                mb: '3'
-              })}>
-                Memory Lightning ⚡
-              </h3>
-
-              <p className={css({
-                color: 'gray.600',
-                mb: '6',
-                lineHeight: 'relaxed'
-              })}>
-                Blink and you'll miss it! Cards flash faster than lightning - can you capture the patterns in your mind before they vanish? Perfect for building superhuman visual memory.
-              </p>
-
-              <div className={css({
-                display: 'flex',
-                gap: '2',
-                flexWrap: 'wrap'
-              })}>
-                <span className={css({
-                  px: '4',
-                  py: '2',
-                  background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
-                  color: 'green.800',
-                  rounded: 'full',
-                  fontSize: 'sm',
-                  fontWeight: 'semibold',
-                  border: '1px solid',
-                  borderColor: 'green.200'
-                })}>
-                  🧠 Memory Training
-                </span>
-                <span className={css({
-                  px: '4',
-                  py: '2',
-                  background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-                  color: 'blue.800',
-                  rounded: 'full',
-                  fontSize: 'sm',
-                  fontWeight: 'semibold',
-                  border: '1px solid',
-                  borderColor: 'blue.200'
-                })}>
-                  ⭐ Beginner Friendly
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Matching Pairs Game */}
-          <div onClick={() => handleGameClick('battle-arena')} className={css({
-            display: 'block',
-            textDecoration: 'none',
-            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            _hover: {
-              transform: 'translateY(-8px) scale(1.02)',
-              '& .memory-grid': {
-                '& .flipped-card': {
-                  transform: 'rotateY(180deg) scale(1.1)'
-                },
-                '& .matched-card': {
-                  animation: 'glow 0.8s ease-in-out'
-                }
-              },
-              '& .new-badge': {
-                animation: 'bounce 0.6s ease-in-out'
-              },
-              '& .speech-bubble': {
-                opacity: 1,
-                transform: 'translateY(0) scale(1)'
-              }
-            }
-          })}>
-            <div className={css({
-              bg: 'white',
-              rounded: '2xl',
-              p: '8',
-              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
-              border: '1px solid',
-              borderColor: 'purple.200',
-              h: 'full',
-              position: 'relative',
-              overflow: 'visible'
-            })}>
-              {/* Character Recommendation Speech Bubble */}
-              <div className={css({
-                position: 'absolute',
-                top: '-10px',
-                right: '16px',
-                background: 'white',
-                border: '2px solid',
-                borderColor: 'purple.300',
-                borderRadius: '16px',
-                px: '4',
-                py: '2',
-                boxShadow: '0 4px 20px rgba(139, 92, 246, 0.15)',
-                opacity: 0,
-                transform: 'translateY(-10px) scale(0.95)',
-                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                maxW: '220px',
-                zIndex: 10,
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: '-8px',
-                  right: '20px',
-                  width: 0,
-                  height: 0,
-                  borderLeft: '8px solid transparent',
-                  borderRight: '8px solid transparent',
-                  borderTop: '8px solid',
-                  borderTopColor: 'purple.300'
-                },
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: '-6px',
-                  right: '22px',
-                  width: 0,
-                  height: 0,
-                  borderLeft: '6px solid transparent',
-                  borderRight: '6px solid transparent',
-                  borderTop: '6px solid white'
-                }
-              })} style={{ className: 'speech-bubble' }}>
-                <div className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2',
-                  fontSize: 'sm',
-                  fontWeight: 'semibold',
-                  color: 'purple.800'
-                })}>
-                  <span className={css({ fontSize: 'lg' })}>{profile.player2Emoji}</span>
-                  <span>"Memory Pairs - let's crush some competition! 🧠"</span>
-                </div>
-              </div>
-
-              {/* Animated top gradient border */}
-              <div className={css({
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #667eea, #764ba2, #a855f7, #667eea)',
-                backgroundSize: '200% 100%',
-                animation: 'gradientSlide 3s ease infinite',
-                borderRadius: '16px 16px 0 0'
-              })} />
-
-              {/* Game representation: Memory cards grid */}
-              <div className={css({
-                position: 'relative',
-                w: '18',
-                h: '18',
-                mb: '6'
-              })} style={{ className: 'memory-grid' }}>
-                {/* Grid of memory cards */}
-                <div className={css({
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '1.5',
-                  w: 'full',
-                  h: 'full'
-                })}>
-                  {/* Card 1 - face down */}
-                  <div className={css({
-                    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                    rounded: 'md',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 'xs',
-                    color: 'white',
-                    boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
-                    transition: 'all 0.3s ease'
-                })}>
-                    ❓
-                  </div>
-
-                  {/* Card 2 - matched (abacus) */}
-                  <div className={css({
-                    background: 'linear-gradient(135deg, #10b981, #059669)',
-                    rounded: 'md',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 'xs',
-                    color: 'white',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
-                    transition: 'all 0.3s ease'
-                  })} style={{ className: 'matched-card' }}>
-                    🧮
-                  </div>
-
-                  {/* Card 3 - face down */}
-                  <div className={css({
-                    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                    rounded: 'md',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 'xs',
-                    color: 'white',
-                    boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
-                    transition: 'all 0.3s ease'
-                  })}>
-                    ❓
-                  </div>
-
-                  {/* Card 4 - matched (number) */}
-                  <div className={css({
-                    background: 'linear-gradient(135deg, #10b981, #059669)',
-                    rounded: 'md',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 'xs',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
-                    transition: 'all 0.3s ease'
-                  })} style={{ className: 'matched-card' }}>
-                    5
-                  </div>
-
-                  {/* Card 5 - flipped (number) */}
-                  <div className={css({
-                    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                    rounded: 'md',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 'xs',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
-                    transition: 'all 0.3s ease',
-                    transformStyle: 'preserve-3d'
-                  })} style={{ className: 'flipped-card' }}>
-                    3
-                  </div>
-
-                  {/* Card 6 - face down */}
-                  <div className={css({
-                    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                    rounded: 'md',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 'xs',
-                    color: 'white',
-                    boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
-                    transition: 'all 0.3s ease'
-                  })}>
-                    ❓
-                  </div>
-                </div>
-
-                {/* Player emoji indicator */}
-                <div className={css({
-                  position: 'absolute',
-                  top: '-6px',
-                  right: '-6px',
-                  w: '8',
-                  h: '8',
-                  background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-                  rounded: 'full',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '2xs',
-                  border: '2px solid white',
-                  boxShadow: '0 2px 8px rgba(251, 191, 36, 0.4)'
-                })}>
-                  😀
-                </div>
-              </div>
-
-              <h3 className={css({
-                fontSize: '2xl',
-                fontWeight: 'bold',
-                color: 'gray.900',
-                mb: '3',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2'
-              })}>
-                Memory Pairs 🧠
-                <span className={css({
-                  fontSize: 'xs',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  color: 'white',
-                  px: '3',
-                  py: '1',
-                  rounded: 'full',
-                  fontWeight: 'bold'
-                })} style={{ className: 'new-badge' }}>
-                  ✨ Hot!
-                </span>
-              </h3>
-
-              <p className={css({
-                color: 'gray.600',
-                mb: '6',
-                lineHeight: 'relaxed'
-              })}>
-                The ultimate memory showdown! Flip cards, claim territory, and show off your epic emoji. Challenge friends in explosive two-player battles where every match counts!
-              </p>
-
-              <div className={css({
-                display: 'flex',
-                gap: '2',
-                flexWrap: 'wrap'
-              })}>
-                <span className={css({
-                  px: '4',
-                  py: '2',
-                  background: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
-                  color: 'purple.800',
-                  rounded: 'full',
-                  fontSize: 'sm',
-                  fontWeight: 'semibold',
-                  border: '1px solid',
-                  borderColor: 'purple.200'
-                })}>
-                  🧠 Memory & Logic
-                </span>
-                <span className={css({
-                  px: '4',
-                  py: '2',
-                  background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-                  color: 'blue.800',
-                  rounded: 'full',
-                  fontSize: 'sm',
-                  fontWeight: 'semibold',
-                  border: '1px solid',
-                  borderColor: 'blue.200'
-                })}>
-                  👥 Two Players
-                </span>
-                <span className={css({
-                  px: '4',
-                  py: '2',
-                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                  color: 'yellow.800',
-                  rounded: 'full',
-                  fontSize: 'sm',
-                  fontWeight: 'semibold',
-                  border: '1px solid',
-                  borderColor: 'yellow.200'
-                })}>
-                  🎆 Epic Animations
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Speed Complement Race */}
-          <div className={css({
-            bg: 'white',
-            rounded: '2xl',
-            p: '8',
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
-            border: '1px solid',
-            borderColor: 'red.200',
-            h: 'full',
-            opacity: '0.75',
-            position: 'relative',
-            overflow: 'visible',
-            transition: 'all 0.3s ease',
-            _hover: {
-              opacity: '0.9',
-              transform: 'translateY(-2px)',
-              '& .speech-bubble': {
-                opacity: 1,
-                transform: 'translateY(0) scale(1)'
-              }
-            }
-          })}>
-            {/* Character Anticipation Speech Bubble */}
-            <div className={css({
-              position: 'absolute',
-              top: '-10px',
-              left: '16px',
-              background: 'white',
-              border: '2px solid',
-              borderColor: 'red.300',
-              borderRadius: '16px',
-              px: '4',
-              py: '2',
-              boxShadow: '0 4px 20px rgba(239, 68, 68, 0.15)',
-              opacity: 0,
-              transform: 'translateY(-10px) scale(0.95)',
-              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-              maxW: '200px',
-              zIndex: 10,
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                bottom: '-8px',
-                left: '20px',
-                width: 0,
-                height: 0,
-                borderLeft: '8px solid transparent',
-                borderRight: '8px solid transparent',
-                borderTop: '8px solid',
-                borderTopColor: 'red.300'
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                bottom: '-6px',
-                left: '22px',
-                width: 0,
-                height: 0,
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: '6px solid white'
-              }
-            })} style={{ className: 'speech-bubble' }}>
-              <div className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2',
-                fontSize: 'sm',
-                fontWeight: 'semibold',
-                color: 'red.800'
-              })}>
-                <span className={css({ fontSize: 'lg' })}>{profile.player1Emoji}</span>
-                <span>"I can't wait for this speed challenge! 🔥"</span>
-              </div>
-            </div>
-
-            {/* Coming Soon Indicator */}
-            <div className={css({
-              position: 'absolute',
-              top: '16px',
-              right: '16px',
-              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-              color: 'white',
-              px: '3',
-              py: '1',
-              rounded: 'full',
-              fontSize: 'xs',
-              fontWeight: 'bold',
-              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)'
-            })}>
-              🚀 Coming Soon
-            </div>
-
-            {/* Game representation: Timer and pairs */}
-            <div className={css({
-              position: 'relative',
-              w: '18',
-              h: '18',
-              mb: '6'
-            })}>
-              {/* Timer circle */}
-              <div className={css({
-                w: 'full',
-                h: 'full',
-                border: '4px solid',
-                borderColor: 'red.300',
-                rounded: 'full',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '2xl',
-                background: 'linear-gradient(135deg, #fef2f2, #fee2e2)'
-              })}>
-                ⏱️
-              </div>
-
-              {/* Complement pairs floating around */}
-              <div className={css({
-                position: 'absolute',
-                top: '4px',
-                left: '4px',
-                w: '8',
-                h: '8',
-                background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                rounded: 'md',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '2xs',
-                color: 'white',
-                fontWeight: 'bold',
-                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.3)'
-              })}>
-                5
-              </div>
-
-              <div className={css({
-                position: 'absolute',
-                bottom: '4px',
-                right: '4px',
-                w: '8',
-                h: '8',
-                background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                rounded: 'md',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '2xs',
-                color: 'white',
-                fontWeight: 'bold',
-                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.3)'
-              })}>
-                5
-              </div>
-            </div>
-
-            <h3 className={css({
-              fontSize: '2xl',
-              fontWeight: 'bold',
-              color: 'gray.800',
-              mb: '3'
-            })}>
-              Number Hunter 🎯
-            </h3>
-
-            <p className={css({
-              color: 'gray.600',
-              mb: '6',
-              lineHeight: 'relaxed'
-            })}>
-              The clock is ticking! Hunt down complement pairs faster than ever. Can you beat the timer and become the ultimate number ninja?
-            </p>
-
-            <div className={css({
-              display: 'flex',
-              gap: '2',
-              flexWrap: 'wrap'
-            })}>
-              <span className={css({
-                px: '4',
-                py: '2',
-                background: 'linear-gradient(135deg, #fecaca, #fca5a5)',
-                color: 'red.800',
-                rounded: 'full',
-                fontSize: 'sm',
-                fontWeight: 'semibold',
-                border: '1px solid',
-                borderColor: 'red.200',
-                opacity: 0.8
-              })}>
-                🔥 Speed Challenge
-              </span>
-              <span className={css({
-                px: '4',
-                py: '2',
-                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                color: 'yellow.800',
-                rounded: 'full',
-                fontSize: 'sm',
-                fontWeight: 'semibold',
-                border: '1px solid',
-                borderColor: 'yellow.200',
-                opacity: 0.8
-              })}>
-                🎯 Advanced
-              </span>
-            </div>
-          </div>
-
-          {/* Card Sorting Challenge */}
-          <div className={css({
-            bg: 'white',
-            rounded: '2xl',
-            p: '8',
-            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
-            border: '1px solid',
-            borderColor: 'indigo.200',
-            h: 'full',
-            opacity: '0.75',
-            position: 'relative',
-            overflow: 'visible',
-            transition: 'all 0.3s ease',
-            _hover: {
-              opacity: '0.9',
-              transform: 'translateY(-2px)',
-              '& .speech-bubble': {
-                opacity: 1,
-                transform: 'translateY(0) scale(1)'
-              }
-            }
-          })}>
-            {/* Character Development Speech Bubble */}
-            <div className={css({
-              position: 'absolute',
-              top: '-10px',
-              right: '16px',
-              background: 'white',
-              border: '2px solid',
-              borderColor: 'indigo.300',
-              borderRadius: '16px',
-              px: '4',
-              py: '2',
-              boxShadow: '0 4px 20px rgba(99, 102, 241, 0.15)',
-              opacity: 0,
-              transform: 'translateY(-10px) scale(0.95)',
-              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-              maxW: '210px',
-              zIndex: 10,
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                bottom: '-8px',
-                right: '20px',
-                width: 0,
-                height: 0,
-                borderLeft: '8px solid transparent',
-                borderRight: '8px solid transparent',
-                borderTop: '8px solid',
-                borderTopColor: 'indigo.300'
-              },
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                bottom: '-6px',
-                right: '22px',
-                width: 0,
-                height: 0,
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: '6px solid white'
-              }
-            })} style={{ className: 'speech-bubble' }}>
-              <div className={css({
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2',
-                fontSize: 'sm',
-                fontWeight: 'semibold',
-                color: 'indigo.800'
-              })}>
-                <span className={css({ fontSize: 'lg' })}>{profile.player2Emoji}</span>
-                <span>"Organizing chaos is my superpower! 🎴"</span>
-              </div>
-            </div>
-
-            {/* Coming Soon Indicator */}
-            <div className={css({
-              position: 'absolute',
-              top: '16px',
-              right: '16px',
-              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-              color: 'white',
-              px: '3',
-              py: '1',
-              rounded: 'full',
-              fontSize: 'xs',
-              fontWeight: 'bold',
-              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)'
-            })}>
-              🛠️ In Development
-            </div>
-
-            {/* Game representation: Sortable cards */}
-            <div className={css({
-              position: 'relative',
-              w: '18',
-              h: '18',
-              mb: '6'
-            })}>
-              {/* Stack of cards to sort */}
-              <div className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '2',
-                w: 'full',
-                h: 'full'
-              })}>
-                {/* Card 1 - higher value (out of order) */}
-                <div className={css({
-                  w: 'full',
-                  h: '5',
-                  background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
-                  rounded: 'md',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 'sm',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)'
-                })}>
-                  8
-                </div>
-
-                {/* Card 2 - lower value (out of order) */}
-                <div className={css({
-                  w: 'full',
-                  h: '5',
-                  background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                  rounded: 'md',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 'sm',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)'
-                })}>
-                  3
-                </div>
-
-                {/* Card 3 - middle value (out of order) */}
-                <div className={css({
-                  w: 'full',
-                  h: '5',
-                  background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                  rounded: 'md',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 'sm',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
-                })}>
-                  5
-                </div>
-              </div>
-
-              {/* Drag indicator */}
-              <div className={css({
-                position: 'absolute',
-                top: '2',
-                right: '2',
-                fontSize: 'sm',
-                opacity: 0.7
-              })}>
-                ↕️
-              </div>
-            </div>
-
-            <h3 className={css({
-              fontSize: '2xl',
-              fontWeight: 'bold',
-              color: 'gray.800',
-              mb: '3'
-            })}>
-              Master Organizer 🎴
-            </h3>
-
-            <p className={css({
-              color: 'gray.600',
-              mb: '6',
-              lineHeight: 'relaxed'
-            })}>
-              Chaos to order! Drag and sort scattered number cards into perfect harmony. Can you organize the mathematical mayhem?
-            </p>
-
-            <div className={css({
-              display: 'flex',
-              gap: '2',
-              flexWrap: 'wrap'
-            })}>
-              <span className={css({
-                px: '4',
-                py: '2',
-                background: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
-                color: 'indigo.800',
-                rounded: 'full',
-                fontSize: 'sm',
-                fontWeight: 'semibold',
-                border: '1px solid',
-                borderColor: 'indigo.200',
-                opacity: 0.8
-              })}>
-                🧩 Sorting & Logic
-              </span>
-              <span className={css({
-                px: '4',
-                py: '2',
-                background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
-                color: 'green.800',
-                rounded: 'full',
-                fontSize: 'sm',
-                fontWeight: 'semibold',
-                border: '1px solid',
-                borderColor: 'green.200',
-                opacity: 0.8
-              })}>
-                📈 Intermediate
-              </span>
-            </div>
-          </div>
-        </div>
 
         {/* Call to Action */}
         <div className={css({
