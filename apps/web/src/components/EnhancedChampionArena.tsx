@@ -12,10 +12,6 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragEndEvent,
-  CollisionDetection,
-  rectIntersection,
-  getFirstCollision,
-  pointerWithin,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -371,15 +367,8 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
     })
   )
 
-  // Custom collision detection for better drop zone detection
-  const customCollisionDetection: CollisionDetection = (args) => {
-    const pointerIntersections = pointerWithin(args)
-    const intersections = pointerIntersections.length > 0
-      ? pointerIntersections
-      : rectIntersection(args)
-
-    return getFirstCollision(intersections, 'id')
-  }
+  // Use closestCenter collision detection for simplicity
+  const customCollisionDetection = closestCenter
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as number)
