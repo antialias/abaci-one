@@ -23,7 +23,8 @@
     "format": "prettier --write .",
     "type-check": "turbo run type-check",
     "clean": "turbo run clean && rm -rf node_modules",
-    "python:api": "cd packages/core && source venv/bin/activate && python src/api.py"
+    "python:api": "cd packages/core && source venv/bin/activate && python src/api.py",
+    "release": "semantic-release"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -31,7 +32,12 @@
     "prettier": "^3.0.0",
     "turbo": "^1.10.0",
     "typescript": "^5.0.0",
-    "concurrently": "^8.0.0"
+    "concurrently": "^8.0.0",
+    "semantic-release": "^22.0.0",
+    "@semantic-release/changelog": "^6.0.0",
+    "@semantic-release/git": "^10.0.0",
+    "@semantic-release/github": "^9.0.0",
+    "conventional-changelog-conventionalcommits": "^7.0.0"
   },
   "keywords": [
     "soroban",

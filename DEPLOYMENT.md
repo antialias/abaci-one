@@ -36,10 +36,12 @@ When code is pushed to the `main` branch:
 
 ### 2. Automatic Deployment
 
-1. Watchtower polls GitHub Container Registry every 5 minutes
+1. **Global Watchtower** (located at `/volume1/homes/antialias/projects/global-services/`) polls GitHub Container Registry every 5 minutes
 2. Detects new image version and pulls it
 3. Gracefully stops old container and starts new one
 4. Traefik automatically routes traffic to new container
+
+**Note**: We use a centralized global Watchtower service that monitors ALL containers across the NAS, rather than project-specific Watchtower instances.
 
 ### 3. DNS and SSL
 
@@ -177,7 +179,7 @@ nslookup abaci.one
 - Synology NAS (hosting)
 - Docker and Docker Compose
 - Traefik reverse proxy
-- Watchtower auto-updater
+- **Global Watchtower** (centralized auto-updater for all containers)
 
 ## Backup and Recovery
 
