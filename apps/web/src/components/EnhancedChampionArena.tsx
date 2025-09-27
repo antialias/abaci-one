@@ -12,6 +12,7 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragEndEvent,
+  useDroppable,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -231,32 +232,34 @@ function DroppableZone({
   children,
   title,
   subtitle,
-  isDragOver,
   isEmpty
 }: {
   id: string
   children: React.ReactNode
   title: string
   subtitle: string
-  isDragOver: boolean
   isEmpty: boolean
 }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: id,
+  })
+
   const zoneStyle = useSpring({
-    background: isDragOver
+    background: isOver
       ? (id === 'arena'
           ? 'linear-gradient(135deg, #dcfce7, #bbf7d0)'
           : 'linear-gradient(135deg, #fef3c7, #fde68a)')
       : (id === 'arena'
           ? 'linear-gradient(135deg, #fef3c7, #fde68a)'
           : 'linear-gradient(135deg, #f8fafc, #f1f5f9)'),
-    borderColor: isDragOver ? (id === 'arena' ? '#4ade80' : '#fbbf24') : '#d1d5db',
-    scale: isDragOver ? 1.02 : 1,
+    borderColor: isOver ? (id === 'arena' ? '#4ade80' : '#fbbf24') : '#d1d5db',
+    scale: isOver ? 1.02 : 1,
     config: config.gentle,
   })
 
   const emptyStateStyle = useSpring({
-    opacity: isEmpty ? (isDragOver ? 1 : 0.6) : 0,
-    transform: isEmpty ? (isDragOver ? 'scale(1.1)' : 'scale(1)') : 'scale(0.8)',
+    opacity: isEmpty ? (isOver ? 1 : 0.6) : 0,
+    transform: isEmpty ? (isOver ? 'scale(1.1)' : 'scale(1)') : 'scale(0.8)',
     config: config.wobbly,
   })
 
@@ -273,6 +276,7 @@ function DroppableZone({
       </h3>
 
       <animated.div
+        ref={setNodeRef}
         style={zoneStyle}
         className={css({
           display: 'flex',
@@ -303,14 +307,14 @@ function DroppableZone({
               fontSize: '4xl',
               mb: '4',
             })}>
-              {isDragOver ? '✨' : (id === 'arena' ? '🏟️' : '🎯')}
+              {isOver ? '✨' : (id === 'arena' ? '🏟️' : '🎯')}
             </div>
             <p className={css({
               color: 'gray.700',
               fontWeight: 'semibold',
               fontSize: 'lg'
             })}>
-              {isDragOver ? `Drop to ${id === 'arena' ? 'enter the arena' : 'return to roster'}!` : subtitle}
+              {isOver ? `Drop to ${id === 'arena' ? 'enter the arena' : 'return to roster'}!` : subtitle}
             </p>
           </animated.div>
         )}
@@ -324,7 +328,6 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
   const { profile } = useUserProfile()
   const { gameMode, players, setGameMode, updatePlayer } = useGameMode()
   const [activeId, setActiveId] = useState<number | null>(null)
-  const [overId, setOverId] = useState<string | null>(null)
 
   // Transform players into draggable format
   const availablePlayers = useMemo(() =>
@@ -375,13 +378,12 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
   }
 
   const handleDragOver = (event: DragOverEvent) => {
-    setOverId(event.over?.id as string)
+    // Track drag over state - handled by individual DroppableZone components
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
-    setOverId(null)
 
     if (!over) return
 
@@ -509,7 +511,6 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                 id="roster"
                 title="🎯 Available Champions"
                 subtitle="Drag champions here to remove from arena"
-                isDragOver={overId === 'roster'}
                 isEmpty={availablePlayers.length === 0}
               >
                 {availablePlayers.map((player) => (
@@ -531,7 +532,6 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                 id="arena"
                 title="🏟️ Battle Arena"
                 subtitle="1 champion = Solo • 2 = Battle • 3+ = Tournament"
-                isDragOver={overId === 'arena'}
                 isEmpty={arenaPlayers.length === 0}
               >
                 {arenaPlayers.map((player) => (
