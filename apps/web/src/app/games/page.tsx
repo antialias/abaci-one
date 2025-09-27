@@ -5,28 +5,18 @@ import Link from 'next/link'
 import { css } from '../../../styled-system/css'
 import { grid } from '../../../styled-system/patterns'
 import { useUserProfile } from '../../contexts/UserProfileContext'
+import { useGameMode } from '../../contexts/GameModeContext'
+import { ChampionArena } from '../../components/ChampionArena'
 
 export default function GamesPage() {
   const { profile } = useUserProfile()
-  const [showCharacterSelection, setShowCharacterSelection] = useState<string | null>(null)
-  const [selectedGameMode, setSelectedGameMode] = useState<'single' | 'two-player'>('single')
+  const { gameMode, getActivePlayer } = useGameMode()
 
   const handleGameClick = (gameType: string) => {
-    setShowCharacterSelection(gameType)
-  }
-
-  const handleCharacterSelectionClose = () => {
-    setShowCharacterSelection(null)
-  }
-
-  const handleStartGame = (character: 1 | 2) => {
-    console.log(`Starting ${showCharacterSelection} with character ${character}`)
-    setShowCharacterSelection(null)
-
-    // Navigate directly to games - let them handle their own mode selection
-    if (showCharacterSelection === 'memory-lightning') {
+    // Navigate directly to games using the centralized game mode
+    if (gameType === 'memory-lightning') {
       window.location.href = '/games/memory-quiz'
-    } else if (showCharacterSelection === 'battle-arena') {
+    } else if (gameType === 'battle-arena') {
       window.location.href = '/games/matching'
     }
   }
@@ -183,6 +173,13 @@ export default function GamesPage() {
           </div>
         </div>
 
+        {/* Champion Arena - Drag & Drop Interface */}
+        <div className={css({
+          mb: '16'
+        })}>
+          <ChampionArena />
+        </div>
+
         {/* Character Showcase Header */}
         <div className={css({
           mb: '16'
@@ -203,7 +200,7 @@ export default function GamesPage() {
               color: 'gray.600',
               fontSize: 'lg'
             })}>
-              Choose your character and dominate the leaderboards!
+              Track your progress and achievements!
             </p>
           </div>
 
@@ -1877,230 +1874,6 @@ export default function GamesPage() {
           </Link>
         </div>
 
-        {/* Character Selection Modal */}
-        {showCharacterSelection && (
-          <div className={css({
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-            animation: 'fadeIn 0.3s ease-out'
-          })}>
-            <div className={css({
-              background: 'white',
-              rounded: '3xl',
-              p: '8',
-              maxW: '2xl',
-              w: '95%',
-              maxH: '90vh',
-              overflowY: 'auto',
-              position: 'relative',
-              boxShadow: '0 25px 50px rgba(0, 0, 0, 0.2)',
-              animation: 'slideInUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-            })}>
-              {/* Close Button */}
-              <button
-                onClick={handleCharacterSelectionClose}
-                className={css({
-                  position: 'absolute',
-                  top: '4',
-                  right: '4',
-                  w: '10',
-                  h: '10',
-                  rounded: 'full',
-                  background: 'gray.100',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 'xl',
-                  color: 'gray.500',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    background: 'gray.200',
-                    color: 'gray.700'
-                  }
-                })}
-              >
-                ✕
-              </button>
-
-              {/* Modal Header */}
-              <div className={css({
-                textAlign: 'center',
-                mb: '8'
-              })}>
-                <h2 className={css({
-                  fontSize: '3xl',
-                  fontWeight: 'bold',
-                  color: 'gray.900',
-                  mb: '2'
-                })}>
-                  🎮 Choose Your Champion
-                </h2>
-                <p className={css({
-                  color: 'gray.600',
-                  fontSize: 'lg'
-                })}>
-                  Select a character for {showCharacterSelection === 'memory-lightning' ? 'Memory Lightning ⚡' : 'Memory Pairs 🧠'}
-                </p>
-              </div>
-
-
-              {/* Character Selection */}
-              <div className={css({
-                mb: '8'
-              })}>
-                <h3 className={css({
-                  fontSize: 'xl',
-                  fontWeight: 'semibold',
-                  color: 'gray.800',
-                  mb: '4',
-                  textAlign: 'center'
-                })}>
-                  🌟 Choose Your Champion
-                </h3>
-
-                <div className={css({
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '6'
-                })}>
-                  {/* Player 1 Character */}
-                  <div
-                    onClick={() => handleStartGame(1)}
-                    className={css({
-                      background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-                      border: '3px solid',
-                      borderColor: 'blue.300',
-                      rounded: '2xl',
-                      p: '6',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                      _hover: {
-                        transform: 'translateY(-4px) scale(1.02)',
-                        boxShadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
-                        borderColor: 'blue.400'
-                      }
-                    })}
-                  >
-                    <div className={css({
-                      fontSize: '5xl',
-                      mb: '3',
-                      animation: 'characterBounce 0.6s ease-in-out infinite alternate'
-                    })}>
-                      {profile.player1Emoji}
-                    </div>
-                    <h4 className={css({
-                      fontSize: 'xl',
-                      fontWeight: 'bold',
-                      color: 'blue.800',
-                      mb: '2'
-                    })}>
-                      {profile.player1Name}
-                    </h4>
-                    <div className={css({
-                      fontSize: 'sm',
-                      color: 'blue.700',
-                      mb: '3'
-                    })}>
-                      Level {Math.floor(profile.gamesPlayed / 5) + 1} • {profile.totalWins} wins
-                    </div>
-                    <div className={css({
-                      background: 'white',
-                      rounded: 'lg',
-                      p: '3',
-                      fontSize: 'sm',
-                      color: 'blue.800',
-                      fontWeight: 'semibold'
-                    })}>
-                      🚀 Ready to dominate!
-                    </div>
-                  </div>
-
-                  {/* Player 2 Character */}
-                    <div
-                      onClick={() => handleStartGame(2)}
-                      className={css({
-                        background: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
-                        border: '3px solid',
-                        borderColor: 'purple.300',
-                        rounded: '2xl',
-                        p: '6',
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        _hover: {
-                          transform: 'translateY(-4px) scale(1.02)',
-                          boxShadow: '0 20px 40px rgba(139, 92, 246, 0.2)',
-                          borderColor: 'purple.400'
-                        }
-                      })}
-                    >
-                      <div className={css({
-                        fontSize: '5xl',
-                        mb: '3',
-                        animation: 'characterBounce 0.6s ease-in-out infinite alternate 0.3s'
-                      })}>
-                        {profile.player2Emoji}
-                      </div>
-                      <h4 className={css({
-                        fontSize: 'xl',
-                        fontWeight: 'bold',
-                        color: 'purple.800',
-                        mb: '2'
-                      })}>
-                        {profile.player2Name}
-                      </h4>
-                      <div className={css({
-                        fontSize: 'sm',
-                        color: 'purple.700',
-                        mb: '3'
-                      })}>
-                        Level {Math.floor(profile.gamesPlayed / 5) + 1} • {Math.floor(profile.totalWins / 2)} wins
-                      </div>
-                      <div className={css({
-                        background: 'white',
-                        rounded: 'lg',
-                        p: '3',
-                        fontSize: 'sm',
-                        color: 'purple.800',
-                        fontWeight: 'semibold'
-                      })}>
-                        ⚡ Bring it on!
-                      </div>
-                    </div>
-
-                </div>
-              </div>
-
-              {/* Quick Info */}
-              <div className={css({
-                background: 'gray.50',
-                rounded: 'xl',
-                p: '4',
-                textAlign: 'center'
-              })}>
-                <div className={css({
-                  fontSize: 'sm',
-                  color: 'gray.700',
-                  fontWeight: 'medium'
-                })}>
-                  💡 Tip: Each character tracks their own progress and achievements!
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

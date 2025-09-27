@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { AbacusDisplayProvider } from '@/contexts/AbacusDisplayContext'
 import { UserProfileProvider } from '@/contexts/UserProfileContext'
+import { GameModeProvider } from '@/contexts/GameModeContext'
 import { AppNavBar } from '@/components/AppNavBar'
 
 export const metadata: Metadata = {
@@ -19,8 +20,10 @@ export default function RootLayout({
       <body>
         <AbacusDisplayProvider>
           <UserProfileProvider>
-            <AppNavBar />
-            {children}
+            <GameModeProvider>
+              <AppNavBar />
+              {children}
+            </GameModeProvider>
           </UserProfileProvider>
         </AbacusDisplayProvider>
       </body>
