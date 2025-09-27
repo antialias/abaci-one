@@ -29,7 +29,7 @@ import {
   SortableContext as SortableContextType,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useSpring, animated, useTransition, config } from '@react-spring/web'
+import { useSpring, animated, config } from '@react-spring/web'
 import { css } from '../../styled-system/css'
 import { useUserProfile } from '../contexts/UserProfileContext'
 import { useGameMode } from '../contexts/GameModeContext'
@@ -71,12 +71,15 @@ function ChampionCard({
     isDragging,
   } = useSortable({ id: player.id })
 
-  // React Spring animations
+  // React Spring animations with entry effect
   const cardStyle = useSpring({
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : 'translate3d(0px, 0px, 0)',
-    scale: isDragging ? 1.05 : 1,
-    opacity: isDragging && !isOverlay ? 0.5 : 1,
-    rotateZ: isDragging ? (Math.random() - 0.5) * 10 : 0,
+    from: { opacity: 0, transform: 'scale(0.8) translateY(20px)' },
+    to: {
+      opacity: isDragging && !isOverlay ? 0.5 : 1,
+      transform: transform
+        ? `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${isDragging ? 1.05 : 1}) rotateZ(${isDragging ? (Math.random() - 0.5) * 10 : 0}deg)`
+        : `translate3d(0px, 0px, 0) scale(${isDragging ? 1.05 : 1}) rotateZ(${isDragging ? (Math.random() - 0.5) * 10 : 0}deg)`
+    },
     config: config.wobbly,
   })
 
@@ -421,22 +424,8 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
     ? [...availablePlayers, ...arenaPlayers].find(p => p.id === activeId)
     : null
 
-  // Animated transitions for players
-  const rosterTransitions = useTransition(availablePlayers, {
-    from: { opacity: 0, transform: 'scale(0.8) rotate(180deg)' },
-    enter: { opacity: 1, transform: 'scale(1) rotate(0deg)' },
-    leave: { opacity: 0, transform: 'scale(0.8) rotate(-180deg)' },
-    config: config.wobbly,
-    trail: 100,
-  })
-
-  const arenaTransitions = useTransition(arenaPlayers, {
-    from: { opacity: 0, transform: 'scale(0.8) translateY(50px)' },
-    enter: { opacity: 1, transform: 'scale(1) translateY(0px)' },
-    leave: { opacity: 0, transform: 'scale(0.8) translateY(-50px)' },
-    config: config.wobbly,
-    trail: 150,
-  })
+  // We'll handle animations within the ChampionCard component itself
+  // to avoid conflicts with dnd-kit's ref management
 
   return (
     <DndContext
@@ -534,14 +523,13 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                 isDragOver={overId === 'roster'}
                 isEmpty={availablePlayers.length === 0}
               >
-                {rosterTransitions((style, player) => (
-                  <animated.div key={player.id} style={style}>
-                    <ChampionCard
-                      player={player}
-                      zone="roster"
-                      onConfigure={onConfigurePlayer}
-                    />
-                  </animated.div>
+                {availablePlayers.map((player) => (
+                  <ChampionCard
+                    key={player.id}
+                    player={player}
+                    zone="roster"
+                    onConfigure={onConfigurePlayer}
+                  />
                 ))}
               </DroppableZone>
             </SortableContext>
@@ -557,13 +545,12 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                 isDragOver={overId === 'arena'}
                 isEmpty={arenaPlayers.length === 0}
               >
-                {arenaTransitions((style, player) => (
-                  <animated.div key={player.id} style={style}>
-                    <ChampionCard
-                      player={player}
-                      zone="arena"
-                    />
-                  </animated.div>
+                {arenaPlayers.map((player) => (
+                  <ChampionCard
+                    key={player.id}
+                    player={player}
+                    zone="arena"
+                  />
                 ))}
               </DroppableZone>
             </SortableContext>
