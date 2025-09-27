@@ -54,12 +54,14 @@ function ChampionCard({
   player,
   isOverlay = false,
   onConfigure,
+  onToggleArena,
   zone,
   crossZoneDrag = false
 }: {
   player: DraggablePlayer
   isOverlay?: boolean
   onConfigure?: (id: number) => void
+  onToggleArena?: (id: number) => void
   zone: 'roster' | 'arena'
   crossZoneDrag?: boolean
 }) {
@@ -104,13 +106,20 @@ function ChampionCard({
       style={cardStyle}
       {...attributes}
       {...listeners}
+      onClick={(e) => {
+        // Only handle click if not dragging and we have the toggle handler
+        if (!isDragging && onToggleArena) {
+          e.stopPropagation()
+          onToggleArena(player.id)
+        }
+      }}
       className={css({
         position: 'relative',
         background: 'white',
         rounded: '2xl',
         p: '4',
         textAlign: 'center',
-        cursor: isDragging ? 'grabbing' : 'grab',
+        cursor: isDragging ? 'grabbing' : 'pointer',
         border: '3px solid',
         borderColor: player.color,
         width: '120px',
@@ -118,9 +127,13 @@ function ChampionCard({
         flexShrink: 0,
         userSelect: 'none',
         touchAction: 'none',
-        transition: 'border-color 0.3s ease',
+        transition: 'border-color 0.3s ease, transform 0.2s ease',
         zIndex: isDragging ? 1000 : 1,
         transformOrigin: 'center',
+        _hover: {
+          transform: 'translateY(-2px)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+        }
       })}
     >
       <animated.div style={glowStyle} className={css({
@@ -169,11 +182,11 @@ function ChampionCard({
       )}
 
       {/* Remove Button for Arena */}
-      {zone === 'arena' && (
+      {zone === 'arena' && onToggleArena && (
         <button
           onClick={(e) => {
             e.stopPropagation()
-            // This will be handled by the parent
+            onToggleArena(player.id)
           }}
           className={css({
             position: 'absolute',
@@ -492,6 +505,28 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
     ? [...availablePlayers, ...arenaPlayers].find(p => p.id === activeId)
     : null
 
+  // Handle single-click toggle for arena
+  const handleToggleArena = (playerId: number) => {
+    const player = [...availablePlayers, ...arenaPlayers].find(p => p.id === playerId)
+    if (!player) return
+
+    const shouldActivate = !player.isActive
+    updatePlayer(playerId, { isActive: shouldActivate })
+
+    // Update game mode based on new arena count
+    const newArenaCount = shouldActivate
+      ? arenaPlayers.length + 1
+      : arenaPlayers.length - 1
+
+    let newMode: 'single' | 'battle' | 'tournament' = 'single'
+    if (newArenaCount === 1) newMode = 'single'
+    else if (newArenaCount === 2) newMode = 'battle'
+    else if (newArenaCount >= 3) newMode = 'tournament'
+
+    setGameMode(newMode)
+    onGameModeChange?.(newMode)
+  }
+
   // Entry animations are now handled within ChampionCard component
   // to avoid ref conflicts with dnd-kit
 
@@ -596,6 +631,7 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                     player={player}
                     zone="roster"
                     onConfigure={onConfigurePlayer}
+                    onToggleArena={handleToggleArena}
                     crossZoneDrag={dragOverZone === 'roster' && activeId !== player.id}
                   />
                 ))}
@@ -617,6 +653,7 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                     key={`arena-${player.id}`}
                     player={player}
                     zone="arena"
+                    onToggleArena={handleToggleArena}
                     crossZoneDrag={dragOverZone === 'arena' && activeId !== player.id}
                   />
                 ))}
@@ -644,7 +681,11 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
             transform: 'rotate(5deg) scale(1.1)',
             filter: 'drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3))',
           })}>
-            <ChampionCard player={activePlayer} isOverlay zone="roster" />
+            <ChampionCard
+              player={activePlayer}
+              isOverlay
+              zone={activePlayer.isActive ? "arena" : "roster"}
+            />
           </div>
         ) : null}
       </DragOverlay>
