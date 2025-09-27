@@ -1,3 +1,7 @@
 packages:
   - 'apps/*'
-  - 'packages/*'
+  - 'packages/templates'
+  - 'packages/abacus-react'
+  - 'packages/core/client/node'
+  - 'packages/core/client/typescript'
+  - 'packages/core/client/browser'

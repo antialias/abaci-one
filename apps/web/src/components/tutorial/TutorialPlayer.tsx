@@ -11,9 +11,12 @@ import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerat
 import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 import { TutorialProvider, useTutorialContext } from './TutorialContext'
+import { TutorialUIProvider } from './TutorialUIContext'
+import { CoachBar } from './CoachBar/CoachBar'
 import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
 import { DecompositionWithReasons } from './DecompositionWithReasons'
 import { useAbacusDisplay } from '@/contexts/AbacusDisplayContext'
+import './CoachBar/coachbar.css'
 
 // Helper function to find the topmost bead with arrows
 function findTopmostBeadWithArrows(stepBeadHighlights: StepBeadHighlight[] | undefined): StepBeadHighlight | null {
@@ -1509,16 +1512,19 @@ function TutorialPlayerContent({
 // Export wrapper component with provider
 export function TutorialPlayer(props: TutorialPlayerProps) {
   return (
-    <TutorialProvider
-      tutorial={props.tutorial}
-      initialStepIndex={props.initialStepIndex}
-      showDebugPanel={props.showDebugPanel}
-      onStepChange={props.onStepChange}
-      onStepComplete={props.onStepComplete}
-      onTutorialComplete={props.onTutorialComplete}
-      onEvent={props.onEvent}
-    >
-      <TutorialPlayerContent {...props} />
-    </TutorialProvider>
+    <TutorialUIProvider canHideCoachBar>
+      <TutorialProvider
+        tutorial={props.tutorial}
+        initialStepIndex={props.initialStepIndex}
+        showDebugPanel={props.showDebugPanel}
+        onStepChange={props.onStepChange}
+        onStepComplete={props.onStepComplete}
+        onTutorialComplete={props.onTutorialComplete}
+        onEvent={props.onEvent}
+      >
+        <CoachBar />
+        <TutorialPlayerContent {...props} />
+      </TutorialProvider>
+    </TutorialUIProvider>
   )
 }

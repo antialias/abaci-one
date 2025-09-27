@@ -1,0 +1,60 @@
+.coachbar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: var(--color-surface, #fff);
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  padding: 8px 12px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+}
+
+.coachbar__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.coachbar__title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.coachbar__summary {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.coachbar__chips {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.coachbar__chip {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.05);
+}
+
+.coachbar__hide {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.coachbar__hide:hover {
+  background: rgba(0,0,0,0.05);
+  border-radius: 4px;
+}
+
+.coachbar__hide:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+  border-radius: 4px;
+}

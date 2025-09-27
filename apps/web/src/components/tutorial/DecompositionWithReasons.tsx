@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useMemo, useState, createContext, useContext } from 'react'
+import React, { useMemo, useState, createContext, useContext, useEffect } from 'react'
 import { ReasonTooltip } from './ReasonTooltip'
 import type { UnifiedStepData } from '../../utils/unifiedStepGenerator'
 import { useTutorialContext } from './TutorialContext'
+import { useTutorialUI } from './TutorialUIContext'
 import './decomposition-reasoning.css'
 
 export type PedagogicalRule = 'Direct' | 'FiveComplement' | 'TenComplement' | 'Cascade'
@@ -178,6 +179,7 @@ export function DecompositionWithReasons({
     unifiedSteps
   } = useTutorialContext()
   const currentStepIndex = state.currentMultiStep
+  const ui = useTutorialUI()
 
   // Build segment boundaries and ranges
   const segmentRanges = useMemo(() => {
@@ -195,6 +197,12 @@ export function DecompositionWithReasons({
     segments?.forEach(seg => seg.termIndices.forEach(i => map.set(i, seg)))
     return map
   }, [segments])
+
+  // Update active segment in UI context based on current step
+  useEffect(() => {
+    const currentSegment = termIndexToSegment.get(currentStepIndex) || null
+    ui.setActiveSegment(currentSegment)
+  }, [currentStepIndex, termIndexToSegment, ui])
 
   // Determine which segment should be highlighted based on active terms
   const activeSegmentId = useMemo(() => {

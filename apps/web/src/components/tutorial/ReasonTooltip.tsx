@@ -4,6 +4,22 @@ import React, { useState, useMemo } from 'react'
 import * as HoverCard from '@radix-ui/react-hover-card'
 import type { PedagogicalRule, PedagogicalSegment, TermReason } from './DecompositionWithReasons'
 import type { UnifiedStepData, TermProvenance } from '../../utils/unifiedStepGenerator'
+import './reason-tooltip.css'
+
+// Helper hook to safely access TutorialUI context
+function useTutorialUIGate() {
+  try {
+    const { useTutorialUI } = require('./TutorialUIContext')
+    return useTutorialUI()
+  } catch {
+    // Return a fallback that allows all focus requests (non-tutorial context)
+    return {
+      requestFocus: () => true,
+      releaseFocus: () => {},
+      hintFocus: 'none' as const
+    }
+  }
+}
 
 interface ReasonTooltipProps {
   children: React.ReactNode
@@ -33,6 +49,8 @@ export function ReasonTooltip({
   const [showBeadDetails, setShowBeadDetails] = useState(false)
   const [showMath, setShowMath] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+  const ui = useTutorialUIGate()
   const rule = reason?.rule ?? segment?.plan[0]?.rule
 
   if (!rule) {
@@ -132,8 +150,25 @@ export function ReasonTooltip({
 
   const tooltipId = `tooltip-${termIndex}`
 
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      const granted = ui.requestFocus('term')
+      if (granted) {
+        setIsOpen(true)
+      }
+    } else {
+      ui.releaseFocus('term')
+      setIsOpen(false)
+    }
+  }
+
   return (
-    <HoverCard.Root openDelay={150} closeDelay={400}>
+    <HoverCard.Root
+      open={isOpen}
+      onOpenChange={handleOpenChange}
+      openDelay={150}
+      closeDelay={400}
+    >
       <HoverCard.Trigger asChild>
         <span
           tabIndex={0}
@@ -178,7 +213,7 @@ export function ReasonTooltip({
             {provenance && !(enhancedContent?.subtitle || readable?.subtitle || '').includes('From ') && (
               <div className="reason-tooltip__reasoning">
                 <p className="reason-tooltip__explanation-text">
-                  From addend <strong>{provenance.rhs}</strong>: use the <strong>{provenance.rhsPlaceName}</strong> digit <strong>{provenance.rhsDigit}</strong>.
+                  From <strong>{provenance.rhs}</strong>: use the <strong>{provenance.rhsPlaceName}</strong> digit (<strong>{provenance.rhsDigit}</strong>).
                 </p>
               </div>
             )}
@@ -209,13 +244,14 @@ export function ReasonTooltip({
                     {/* Context chips */}
                     {(enhancedContent?.chips || readable?.chips)?.length ? (
                       <div className="reason-tooltip__context">
-                        <div className="reason-tooltip__chips">
+                        <dl className="reason-tooltip__chips">
                           {(enhancedContent?.chips || readable?.chips || []).map((chip, index) => (
-                            <span key={index} className="reason-tooltip__chip">
-                              {chip.label}: {chip.value}
-                            </span>
+                            <div key={index} className="reason-tooltip__chip">
+                              <dt>{chip.label}</dt>
+                              <dd>{chip.value}</dd>
+                            </div>
                           ))}
-                        </div>
+                        </dl>
                       </div>
                     ) : null}
 
