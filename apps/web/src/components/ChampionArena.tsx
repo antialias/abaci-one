@@ -4,21 +4,28 @@ import { useState, useRef } from 'react'
 import { css } from '../../styled-system/css'
 import { useUserProfile } from '../contexts/UserProfileContext'
 import { useGameMode } from '../contexts/GameModeContext'
+import { PLAYER_EMOJIS } from '../contexts/UserProfileContext'
+import { GameSelector } from './GameSelector'
 
 interface ChampionArenaProps {
   onGameModeChange?: (mode: 'single' | 'battle' | 'tournament') => void
+  onConfigurePlayer?: (playerId: number) => void
   className?: string
 }
 
-export function ChampionArena({ onGameModeChange, className }: ChampionArenaProps) {
-  const { profile } = useUserProfile()
-  const { gameMode, players, setGameMode, updatePlayer } = useGameMode()
+export function ChampionArena({ onGameModeChange, onConfigurePlayer, className }: ChampionArenaProps) {
+  const { profile, updatePlayerEmoji, updatePlayerName } = useUserProfile()
+  const { gameMode, players, setGameMode, updatePlayer, activePlayerCount } = useGameMode()
   const [draggedPlayer, setDraggedPlayer] = useState<number | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isRosterDragOver, setIsRosterDragOver] = useState(false)
+  const [configurePlayer, setConfigurePlayer] = useState<number | null>(null)
+  const [tempName, setTempName] = useState('')
   const arenaRef = useRef<HTMLDivElement>(null)
 
   const availablePlayers = players.filter(player => !player.isActive)
   const arenaPlayers = players.filter(player => player.isActive)
+
 
   const handleDragStart = (playerId: number) => {
     setDraggedPlayer(playerId)
@@ -35,11 +42,18 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
     }
   }
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleArenaDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
 
     if (draggedPlayer) {
+      // Check if player is being dragged from arena (to avoid self-drop)
+      const playerInArena = arenaPlayers.find(p => p.id === draggedPlayer)
+      if (playerInArena) {
+        setDraggedPlayer(null)
+        return
+      }
+
       // Activate the dragged player
       updatePlayer(draggedPlayer, { isActive: true })
 
@@ -61,17 +75,82 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
     }
   }
 
-  const handleRemoveFromArena = (playerId: number) => {
-    updatePlayer(playerId, { isActive: false })
+  const handleRosterDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsRosterDragOver(true)
+  }
 
-    // Update game mode based on remaining players
+  const handleRosterDragLeave = (e: React.DragEvent) => {
+    const rosterContainer = e.currentTarget as HTMLElement
+    if (!rosterContainer.contains(e.relatedTarget as Node)) {
+      setIsRosterDragOver(false)
+    }
+  }
+
+  const handleRosterDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsRosterDragOver(false)
+
+    if (draggedPlayer) {
+      // Check if player is being dragged from arena
+      const playerInArena = arenaPlayers.find(p => p.id === draggedPlayer)
+      if (playerInArena) {
+        console.log('Removing player from arena via drag:', draggedPlayer)
+        handleRemoveFromArena(draggedPlayer)
+      }
+      setDraggedPlayer(null)
+    }
+  }
+
+  const handleAddToArena = (playerId: number) => {
+    console.log('Adding player to arena:', playerId)
+
+    // Check if player is already in the arena
+    const playerInArena = arenaPlayers.find(p => p.id === playerId)
+    if (playerInArena) {
+      console.log('Player already in arena, skipping addition')
+      return
+    }
+
+    // Activate the player
+    updatePlayer(playerId, { isActive: true })
+
+    // Determine new game mode based on new active player count
+    const newActiveCount = arenaPlayers.length + 1
+    let newMode: 'single' | 'battle' | 'tournament' = 'single'
+
+    if (newActiveCount === 1) {
+      newMode = 'single'
+    } else if (newActiveCount === 2) {
+      newMode = 'battle'
+    } else {
+      newMode = 'tournament'
+    }
+
+    console.log('New mode will be:', newMode, 'with', newActiveCount, 'active players')
+
+    // Update game mode
+    setGameMode(newMode)
+    onGameModeChange?.(newMode)
+  }
+
+  const handleRemoveFromArena = (playerId: number) => {
+    console.log('Removing player from arena:', playerId)
+
+    // Check if player is actually in the arena
+    const playerInArena = arenaPlayers.find(p => p.id === playerId)
+    if (!playerInArena) {
+      console.log('Player not in arena, skipping removal')
+      return
+    }
+
+    // Calculate what the new count will be after removing this player
     const newActiveCount = arenaPlayers.length - 1
     let newMode: 'single' | 'battle' | 'tournament' = 'single'
 
+    // Determine new mode first
     if (newActiveCount === 0) {
       newMode = 'single'
-      // Re-activate player 1 by default
-      updatePlayer(1, { isActive: true })
     } else if (newActiveCount === 1) {
       newMode = 'single'
     } else if (newActiveCount === 2) {
@@ -80,6 +159,14 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
       newMode = 'tournament'
     }
 
+    console.log('New mode will be:', newMode, 'with', newActiveCount, 'active players')
+
+    // Remove the player
+    updatePlayer(playerId, { isActive: false })
+
+    // Note: Allow arena to be completely empty - user can drag champions back in
+
+    // Update game mode
     setGameMode(newMode)
     onGameModeChange?.(newMode)
   }
@@ -127,7 +214,7 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
           fontSize: 'lg',
           mb: '4'
         })}>
-          Drag your champions into the arena to set your game mode!
+          Drag or click champions to move them between roster and arena!
         </p>
 
         {/* Current Mode Indicator */}
@@ -135,7 +222,9 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
           display: 'inline-flex',
           alignItems: 'center',
           gap: '2',
-          background: gameMode === 'single'
+          background: arenaPlayers.length === 0
+            ? 'linear-gradient(135deg, #f3f4f6, #e5e7eb)'
+            : gameMode === 'single'
             ? 'linear-gradient(135deg, #dbeafe, #bfdbfe)'
             : gameMode === 'battle'
             ? 'linear-gradient(135deg, #e9d5ff, #ddd6fe)'
@@ -144,18 +233,28 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
           py: '2',
           rounded: 'full',
           border: '2px solid',
-          borderColor: gameMode === 'single'
+          borderColor: arenaPlayers.length === 0
+            ? 'gray.300'
+            : gameMode === 'single'
             ? 'blue.300'
             : gameMode === 'battle'
             ? 'purple.300'
             : 'yellow.300'
         })}>
           <span className={css({ fontSize: 'lg' })}>
-            {gameMode === 'single' ? '👤' : gameMode === 'battle' ? '⚔️' : '🏆'}
+            {arenaPlayers.length === 0
+              ? '🎯'
+              : gameMode === 'single'
+              ? '👤'
+              : gameMode === 'battle'
+              ? '⚔️'
+              : '🏆'}
           </span>
           <span className={css({
             fontWeight: 'bold',
-            color: gameMode === 'single'
+            color: arenaPlayers.length === 0
+              ? 'gray.700'
+              : gameMode === 'single'
               ? 'blue.800'
               : gameMode === 'battle'
               ? 'purple.800'
@@ -163,7 +262,13 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
             textTransform: 'uppercase',
             fontSize: 'sm'
           })}>
-            {gameMode === 'single' ? 'Solo Mode' : gameMode === 'battle' ? 'Battle Mode' : 'Tournament Mode'}
+            {arenaPlayers.length === 0
+              ? 'Select Champions'
+              : gameMode === 'single'
+              ? 'Solo Mode'
+              : gameMode === 'battle'
+              ? 'Battle Mode'
+              : 'Tournament Mode'}
           </span>
         </div>
       </div>
@@ -189,23 +294,36 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
             🎯 Available Champions
           </h3>
 
-          <div className={css({
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-            gap: '4',
-            p: '6',
-            background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
-            rounded: '2xl',
-            border: '2px dashed',
-            borderColor: 'gray.300',
-            minH: '32'
-          })}>
+          <div
+            onDragOver={handleRosterDragOver}
+            onDragLeave={handleRosterDragLeave}
+            onDrop={handleRosterDrop}
+            className={css({
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '4',
+              justifyContent: 'center',
+              p: '6',
+              background: isRosterDragOver
+                ? 'linear-gradient(135deg, #fef3c7, #fde68a)'
+                : 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+              rounded: '2xl',
+              border: '2px dashed',
+              borderColor: isRosterDragOver ? 'yellow.400' : 'gray.300',
+              minH: '32',
+              transition: 'all 0.3s ease'
+            })}>
             {availablePlayers.map((player) => (
               <div
                 key={player.id}
                 draggable
                 onDragStart={() => handleDragStart(player.id)}
+                onClick={() => {
+                  console.log('Roster card clicked for player:', player.id)
+                  handleAddToArena(player.id)
+                }}
                 className={css({
+                  position: 'relative',
                   background: 'white',
                   rounded: '2xl',
                   p: '4',
@@ -215,6 +333,9 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
                   borderColor: player.color,
                   boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
                   transition: 'all 0.3s ease',
+                  width: '120px',
+                  minWidth: '120px',
+                  flexShrink: 0,
                   _hover: {
                     transform: 'translateY(-4px) scale(1.05)',
                     boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
@@ -252,6 +373,37 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
                 })}>
                   Level {Math.floor((profile.gamesPlayed || 0) / 5) + 1}
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onConfigurePlayer?.(player.id)
+                  }}
+                  className={css({
+                    position: 'absolute',
+                    top: '2',
+                    right: '2',
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid',
+                    borderColor: 'gray.300',
+                    rounded: 'full',
+                    w: '6',
+                    h: '6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 'xs',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    zIndex: 10,
+                    _hover: {
+                      background: 'white',
+                      borderColor: player.color,
+                      transform: 'scale(1.1)'
+                    }
+                  })}
+                >
+                  ⚙️
+                </button>
               </div>
             ))}
 
@@ -288,7 +440,7 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
             ref={arenaRef}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            onDrop={handleArenaDrop}
             className={css({
               p: '8',
               background: isDragOver
@@ -348,15 +500,18 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
               </div>
             ) : (
               <div className={css({
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+                display: 'flex',
+                flexWrap: 'wrap',
                 gap: '4',
+                justifyContent: 'center',
                 w: 'full',
                 zIndex: 1
               })}>
                 {arenaPlayers.map((player, index) => (
                   <div
                     key={player.id}
+                    draggable
+                    onDragStart={() => handleDragStart(player.id)}
                     className={css({
                       background: 'white',
                       rounded: '2xl',
@@ -367,43 +522,57 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
                       boxShadow: `0 0 20px ${player.color}40`,
                       position: 'relative',
                       animation: `arenaEntry 0.6s ease-out ${index * 0.1}s both`,
-                      cursor: 'pointer',
+                      cursor: 'grab',
                       transition: 'all 0.3s ease',
+                      _active: {
+                        cursor: 'grabbing'
+                      },
+                      width: '120px',
+                      minWidth: '120px',
+                      flexShrink: 0,
                       _hover: {
                         transform: 'translateY(-2px) scale(1.05)',
                         boxShadow: `0 8px 25px ${player.color}60`
                       }
                     })}
-                    onClick={() => handleRemoveFromArena(player.id)}
-                  >
-                    {/* Remove Button */}
-                    <div className={css({
-                      position: 'absolute',
-                      top: '-2',
-                      right: '-2',
-                      w: '6',
-                      h: '6',
-                      background: 'red.500',
-                      rounded: 'full',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 'xs',
-                      color: 'white',
-                      cursor: 'pointer',
-                      opacity: 0,
-                      transition: 'all 0.3s ease',
-                      _hover: {
-                        background: 'red.600',
-                        transform: 'scale(1.1)'
-                      }
-                    })}
-                    style={{
-                      opacity: 1  // Always show remove button
+                    onClick={() => {
+                      console.log('Arena card clicked for player:', player.id)
+                      handleRemoveFromArena(player.id)
                     }}
                   >
-                    ✕
-                  </div>
+                    {/* Remove Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        console.log('Remove button clicked for player:', player.id)
+                        handleRemoveFromArena(player.id)
+                      }}
+                      className={css({
+                        position: 'absolute',
+                        top: '-2',
+                        right: '-2',
+                        w: '6',
+                        h: '6',
+                        background: 'red.500',
+                        rounded: 'full',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 'xs',
+                        color: 'white',
+                        cursor: 'pointer',
+                        border: 'none',
+                        opacity: 1,
+                        transition: 'all 0.3s ease',
+                        zIndex: 10,
+                        _hover: {
+                          background: 'red.600',
+                          transform: 'scale(1.1)'
+                        }
+                      })}
+                    >
+                      ✕
+                    </button>
 
                     {/* Champion Ready Animation */}
                     <div className={css({
@@ -476,6 +645,17 @@ export function ChampionArena({ onGameModeChange, className }: ChampionArenaProp
           )}
         </div>
       </div>
+
+      {/* Available Games Section */}
+      <GameSelector
+        variant="detailed"
+        className={css({
+          mt: '8',
+          pt: '8',
+          borderTop: '2px solid',
+          borderColor: 'gray.200'
+        })}
+      />
     </div>
   )
 }
