@@ -2,14 +2,18 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { css } from '../../../styled-system/css'
 import { grid } from '../../../styled-system/patterns'
 import { useUserProfile } from '../../contexts/UserProfileContext'
 import { useGameMode } from '../../contexts/GameModeContext'
+import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
 
-export default function GamesPage() {
+function GamesPageContent() {
   const { profile } = useUserProfile()
   const { gameMode, getActivePlayer } = useGameMode()
+  const { enterFullscreen } = useFullscreen()
+  const router = useRouter()
 
   const handleGameClick = (gameType: string) => {
     // Navigate directly to games using the centralized game mode
@@ -222,7 +226,19 @@ export default function GamesPage() {
               </p>
 
               <button
-                onClick={() => window.location.href = '/arcade'}
+                onClick={async () => {
+                  try {
+                    await enterFullscreen()
+                    // Set a flag so arcade knows to enter fullscreen
+                    sessionStorage.setItem('enterArcadeFullscreen', 'true')
+                    router.push('/arcade')
+                  } catch (error) {
+                    console.error('Failed to enter fullscreen:', error)
+                    // Navigate anyway if fullscreen fails
+                    sessionStorage.setItem('enterArcadeFullscreen', 'true')
+                    router.push('/arcade')
+                  }
+                }}
                 className={css({
                   px: '12',
                   py: '6',
@@ -1128,6 +1144,10 @@ const globalAnimations = `
   }
 }
 `
+
+export default function GamesPage() {
+  return <GamesPageContent />
+}
 
 // Inject refined animations into the page
 if (typeof document !== 'undefined' && !document.getElementById('games-page-animations')) {

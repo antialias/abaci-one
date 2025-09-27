@@ -3,6 +3,7 @@ import './globals.css'
 import { AbacusDisplayProvider } from '@/contexts/AbacusDisplayContext'
 import { UserProfileProvider } from '@/contexts/UserProfileContext'
 import { GameModeProvider } from '@/contexts/GameModeContext'
+import { FullscreenProvider } from '@/contexts/FullscreenContext'
 import { AppNavBar } from '@/components/AppNavBar'
 
 export const metadata: Metadata = {
@@ -21,8 +22,10 @@ export default function RootLayout({
         <AbacusDisplayProvider>
           <UserProfileProvider>
             <GameModeProvider>
-              <AppNavBar />
-              {children}
+              <FullscreenProvider>
+                <AppNavBar />
+                {children}
+              </FullscreenProvider>
             </GameModeProvider>
           </UserProfileProvider>
         </AbacusDisplayProvider>

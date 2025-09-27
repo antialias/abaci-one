@@ -2,15 +2,19 @@
 
 import { useEffect } from 'react'
 import { css } from '../../../styled-system/css'
-import { ChampionArena } from '../../components/ChampionArena'
+import { EnhancedChampionArena } from '../../components/EnhancedChampionArena'
 import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
 
 function ArcadeContent() {
   const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen()
 
   useEffect(() => {
-    // Automatically enter fullscreen when page loads
-    enterFullscreen()
+    // Check if we should enter fullscreen (from games page navigation)
+    const shouldEnterFullscreen = sessionStorage.getItem('enterArcadeFullscreen')
+    if (shouldEnterFullscreen === 'true') {
+      sessionStorage.removeItem('enterArcadeFullscreen')
+      enterFullscreen()
+    }
   }, [enterFullscreen])
 
   const handleExitArcade = async () => {
@@ -41,80 +45,7 @@ function ArcadeContent() {
         animation: 'arcadeFloat 20s ease-in-out infinite'
       })} />
 
-      {/* Mini nav bar */}
-      <div className={css({
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 100,
-        background: 'rgba(0, 0, 0, 0.8)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        py: '2',
-        px: '4'
-      })}>
-        <div className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          maxW: '6xl',
-          mx: 'auto'
-        })}>
-          <div className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3'
-          })}>
-            <h1 className={css({
-              fontSize: 'xl',
-              fontWeight: 'bold',
-              background: 'linear-gradient(135deg, #60a5fa, #a78bfa)',
-              backgroundClip: 'text',
-              color: 'transparent'
-            })}>
-              🕹️ Soroban Arcade
-            </h1>
-
-            {isFullscreen && (
-              <div className={css({
-                px: '2',
-                py: '1',
-                background: 'rgba(34, 197, 94, 0.2)',
-                border: '1px solid rgba(34, 197, 94, 0.3)',
-                rounded: 'full',
-                fontSize: 'xs',
-                color: 'green.300',
-                fontWeight: 'semibold'
-              })}>
-                ✨ FULLSCREEN MODE
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={handleExitArcade}
-            className={css({
-              px: '3',
-              py: '1',
-              background: 'rgba(239, 68, 68, 0.2)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              rounded: 'lg',
-              color: 'red.300',
-              fontSize: 'sm',
-              fontWeight: 'semibold',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              _hover: {
-                background: 'rgba(239, 68, 68, 0.3)',
-                transform: 'scale(1.05)'
-              }
-            })}
-          >
-            ✕ Exit Arcade
-          </button>
-        </div>
-      </div>
+      {/* Note: Navigation is now handled by the enhanced AppNavBar */}
 
       {/* Main content */}
       <div className={css({
@@ -155,8 +86,8 @@ function ArcadeContent() {
             </p>
           </div>
 
-          {/* Full-screen Champion Arena */}
-          <ChampionArena
+          {/* Enhanced Full-screen Champion Arena */}
+          <EnhancedChampionArena
             onConfigurePlayer={() => {}}
             className={css({
               background: 'rgba(255, 255, 255, 0.05)',
@@ -172,11 +103,7 @@ function ArcadeContent() {
 }
 
 export default function ArcadePage() {
-  return (
-    <FullscreenProvider>
-      <ArcadeContent />
-    </FullscreenProvider>
-  )
+  return <ArcadeContent />
 }
 
 // Arcade-specific animations
