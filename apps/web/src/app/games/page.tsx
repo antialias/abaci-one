@@ -240,11 +240,13 @@ function GamesPageContent() {
                   }
                 }}
                 className={css({
-                  px: '12',
-                  py: '6',
+                  px: { base: '8', md: '12' },
+                  py: { base: '4', md: '6' },
+                  minH: { base: '44px', md: 'auto' },
+                  minW: { base: '44px', md: 'auto' },
                   background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
                   color: 'white',
-                  fontSize: '2xl',
+                  fontSize: { base: 'xl', md: '2xl' },
                   fontWeight: 'bold',
                   rounded: '2xl',
                   border: 'none',
@@ -253,15 +255,16 @@ function GamesPageContent() {
                   transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                   position: 'relative',
                   overflow: 'hidden',
+                  touchAction: 'manipulation',
                   _hover: {
-                    transform: 'translateY(-4px) scale(1.05)',
+                    transform: { base: 'translateY(-2px)', md: 'translateY(-4px) scale(1.05)' },
                     boxShadow: '0 20px 50px rgba(59, 130, 246, 0.4)',
                     '& .button-glow': {
                       opacity: 1
                     }
                   },
                   _active: {
-                    transform: 'translateY(-2px) scale(1.02)'
+                    transform: 'translateY(-1px) scale(1.01)'
                   }
                 })}
               >
@@ -477,17 +480,20 @@ function GamesPageContent() {
                 position: 'absolute',
                 top: '3',
                 right: '3',
-                w: '8',
-                h: '8',
+                w: { base: '12', md: '8' },
+                h: { base: '12', md: '8' },
+                minH: '44px',
+                minW: '44px',
                 background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
                 rounded: 'full',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 'sm',
+                fontSize: { base: 'md', md: 'sm' },
                 border: '1px solid',
                 borderColor: 'gray.300',
                 cursor: 'pointer',
+                touchAction: 'manipulation',
                 transition: 'all 0.3s ease',
                 _hover: {
                   transform: 'scale(1.1)',
@@ -651,17 +657,20 @@ function GamesPageContent() {
                 position: 'absolute',
                 top: '3',
                 right: '3',
-                w: '8',
-                h: '8',
+                w: { base: '12', md: '8' },
+                h: { base: '12', md: '8' },
+                minH: '44px',
+                minW: '44px',
                 background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
                 rounded: 'full',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 'sm',
+                fontSize: { base: 'md', md: 'sm' },
                 border: '1px solid',
                 borderColor: 'gray.300',
                 cursor: 'pointer',
+                touchAction: 'manipulation',
                 transition: 'all 0.3s ease',
                 _hover: {
                   transform: 'scale(1.1)',
@@ -680,8 +689,8 @@ function GamesPageContent() {
         })}>
           <div className={css({
             display: 'grid',
-            gridTemplateColumns: { base: '1fr', lg: 'repeat(3, 1fr)' },
-            gap: '6',
+            gridTemplateColumns: { base: '1fr', md: '1fr', lg: 'repeat(3, 1fr)' },
+            gap: { base: '4', md: '6' },
             maxW: '7xl',
             mx: 'auto'
           })}>
@@ -974,14 +983,16 @@ function GamesPageContent() {
 
               <button className={css({
                 w: 'full',
-                py: '3',
+                py: { base: '4', md: '3' },
+                minH: '44px',
                 background: 'linear-gradient(135deg, #10b981, #059669)',
                 color: 'white',
                 rounded: 'lg',
-                fontSize: 'sm',
+                fontSize: { base: 'md', md: 'sm' },
                 fontWeight: 'semibold',
                 border: 'none',
                 cursor: 'pointer',
+                touchAction: 'manipulation',
                 transition: 'all 0.3s ease',
                 _hover: {
                   transform: 'translateY(-1px)',
