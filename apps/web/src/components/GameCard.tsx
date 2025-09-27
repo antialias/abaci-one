@@ -25,70 +25,142 @@ export function GameCard({
   }
 
   const handleGameClick = () => {
-    if (isGameAvailable()) {
-      window.location.href = config.url
+    if (isGameAvailable() && config.available !== false) {
+      // Check if we're in fullscreen arcade mode
+      const isInArcade = window.location.pathname.includes('/arcade')
+
+      if (isInArcade) {
+        // Stay in fullscreen when navigating from arcade
+        window.location.href = config.url + '?fullscreen=true'
+      } else {
+        window.location.href = config.url
+      }
     }
   }
 
-  const available = isGameAvailable()
+  const available = isGameAvailable() && config.available !== false
 
   return (
     <div
       onClick={handleGameClick}
       className={css({
-        background: 'white',
+        background: config.gradient || 'white',
         rounded: variant === 'compact' ? 'xl' : '2xl',
-        p: variant === 'compact' ? '3' : '4',
+        p: variant === 'compact' ? '4' : '8',
         border: '2px solid',
-        borderColor: available ? 'blue.200' : 'gray.200',
+        borderColor: available ? config.borderColor || 'blue.200' : 'gray.200',
         boxShadow: variant === 'compact'
-          ? '0 2px 8px rgba(0, 0, 0, 0.1)'
-          : '0 4px 12px rgba(0, 0, 0, 0.1)',
+          ? '0 4px 12px rgba(0, 0, 0, 0.1)'
+          : '0 10px 40px rgba(0, 0, 0, 0.1)',
         opacity: available ? 1 : 0.5,
         cursor: available ? 'pointer' : 'not-allowed',
-        transition: 'all 0.3s ease',
+        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        position: 'relative',
+        overflow: 'visible',
         _hover: available ? {
-          transform: variant === 'compact' ? 'translateY(-1px)' : 'translateY(-2px)',
+          transform: variant === 'compact' ? 'translateY(-2px) scale(1.02)' : 'translateY(-8px) scale(1.02)',
           boxShadow: variant === 'compact'
-            ? '0 4px 12px rgba(59, 130, 246, 0.15)'
-            : '0 8px 20px rgba(59, 130, 246, 0.15)',
-          borderColor: 'blue.300'
+            ? '0 8px 25px rgba(59, 130, 246, 0.15)'
+            : '0 25px 50px rgba(59, 130, 246, 0.15)',
+          borderColor: config.color === 'green' ? 'green.300' : config.color === 'purple' ? 'purple.300' : 'blue.300'
         } : {}
       }, className)}
     >
+      {/* Game icon with enhanced styling */}
       <div className={css({
-        textAlign: 'center'
+        textAlign: 'center',
+        mb: variant === 'compact' ? '2' : '4'
       })}>
         <div className={css({
-          fontSize: variant === 'compact' ? 'xl' : '2xl',
-          mb: variant === 'compact' ? '1' : '2'
+          fontSize: variant === 'compact' ? '2xl' : '4xl',
+          mb: variant === 'compact' ? '2' : '3',
+          display: 'inline-block',
+          transform: 'perspective(1000px)',
+          transition: 'all 0.3s ease'
         })}>
           {config.icon}
         </div>
+
         <h4 className={css({
-          fontSize: variant === 'compact' ? 'base' : 'lg',
+          fontSize: variant === 'compact' ? 'lg' : '2xl',
           fontWeight: 'bold',
-          color: 'gray.800',
-          mb: '1'
+          color: 'gray.900',
+          mb: variant === 'compact' ? '1' : '3'
         })}>
-          {config.name}
+          {variant === 'detailed' ? config.fullName || config.name : config.name}
         </h4>
+
         {variant === 'detailed' && (
           <p className={css({
-            fontSize: 'sm',
+            fontSize: 'base',
             color: 'gray.600',
-            mb: '2'
+            mb: '4',
+            lineHeight: 'relaxed'
           })}>
-            {config.description}
+            {config.longDescription || config.description}
           </p>
         )}
+
+        {/* Feature chips */}
+        {variant === 'detailed' && config.chips && (
+          <div className={css({
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '2',
+            justifyContent: 'center',
+            mb: '4'
+          })}>
+            {config.chips.map((chip, index) => (
+              <span
+                key={index}
+                className={css({
+                  px: '3',
+                  py: '1',
+                  background: config.color === 'green'
+                    ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)'
+                    : config.color === 'purple'
+                    ? 'linear-gradient(135deg, #e0e7ff, #c7d2fe)'
+                    : 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                  color: config.color === 'green'
+                    ? 'green.800'
+                    : config.color === 'purple'
+                    ? 'indigo.800'
+                    : 'blue.800',
+                  rounded: 'full',
+                  fontSize: 'xs',
+                  fontWeight: 'semibold',
+                  border: '1px solid',
+                  borderColor: config.color === 'green'
+                    ? 'green.200'
+                    : config.color === 'purple'
+                    ? 'indigo.200'
+                    : 'blue.200',
+                  opacity: available ? 1 : 0.8
+                })}
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Player availability indicator */}
         <div className={css({
-          fontSize: 'xs',
+          fontSize: variant === 'compact' ? 'xs' : 'sm',
           color: available ? 'green.600' : 'red.600',
-          fontWeight: 'semibold'
+          fontWeight: 'semibold',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '1',
+          px: '2',
+          py: '1',
+          background: available ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+          rounded: 'full',
+          border: '1px solid',
+          borderColor: available ? 'green.200' : 'red.200'
         })}>
           {activePlayerCount <= config.maxPlayers
-            ? `✓ ${activePlayerCount}/${config.maxPlayers} players`
+            ? `✓ ${activePlayerCount}/${config.maxPlayers} ${activePlayerCount === 1 ? 'player' : 'players'}`
             : `✗ Too many players (max ${config.maxPlayers})`
           }
         </div>
