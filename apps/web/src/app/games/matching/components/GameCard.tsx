@@ -71,16 +71,12 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
 
   const getCardBackIcon = () => {
     if (isMatched) {
-      console.log('Matched card:', card.id, 'matchedBy:', card.matchedBy, 'emojis:', profile.player1Emoji, profile.player2Emoji)
       // Show player emoji for matched cards in two-player mode
       if (card.matchedBy === 1) {
-        console.log('Returning player 1 emoji:', profile.player1Emoji)
         return profile.player1Emoji
       } else if (card.matchedBy === 2) {
-        console.log('Returning player 2 emoji:', profile.player2Emoji)
         return profile.player2Emoji
       }
-      console.log('Returning default checkmark')
       return '✓' // Default checkmark for single player
     }
 
@@ -175,6 +171,85 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
               : 'none'
           }}
         >
+          {/* Player Badge for matched cards */}
+          {isMatched && card.matchedBy && (
+            <>
+              {/* Explosion Ring */}
+              <div className={css({
+                position: 'absolute',
+                top: '6px',
+                right: '6px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: '3px solid',
+                borderColor: card.matchedBy === 1 ? '#74b9ff' : '#fd79a8',
+                animation: 'explosionRing 0.6s ease-out',
+                zIndex: 9
+              })} />
+
+              {/* Main Badge */}
+              <div className={css({
+                position: 'absolute',
+                top: '6px',
+                right: '6px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                background: card.matchedBy === 1
+                  ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
+                  : 'linear-gradient(135deg, #fd79a8, #e84393)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                boxShadow: card.matchedBy === 1
+                  ? '0 0 20px rgba(116, 185, 255, 0.6), 0 0 40px rgba(116, 185, 255, 0.4)'
+                  : '0 0 20px rgba(253, 121, 168, 0.6), 0 0 40px rgba(253, 121, 168, 0.4)',
+                animation: 'epicClaim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                zIndex: 10,
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: '-2px',
+                  left: '-2px',
+                  right: '-2px',
+                  bottom: '-2px',
+                  borderRadius: '50%',
+                  background: card.matchedBy === 1
+                    ? 'linear-gradient(45deg, #74b9ff, #a29bfe, #6c5ce7, #74b9ff)'
+                    : 'linear-gradient(45deg, #fd79a8, #fdcb6e, #e17055, #fd79a8)',
+                  animation: 'spinningHalo 2s linear infinite',
+                  zIndex: -1
+                }
+              })}>
+                <span className={css({
+                  animation: 'emojiBlast 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.4s both',
+                  filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8))'
+                })}>
+                  {card.matchedBy === 1 ? profile.player1Emoji : profile.player2Emoji}
+                </span>
+              </div>
+
+              {/* Sparkle Effects */}
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className={css({
+                    position: 'absolute',
+                    top: '22px',
+                    right: '22px',
+                    width: '4px',
+                    height: '4px',
+                    background: '#ffeaa7',
+                    borderRadius: '50%',
+                    animation: `sparkle${i + 1} 1.5s ease-out`,
+                    zIndex: 8
+                  })}
+                />
+              ))}
+            </>
+          )}
           {card.type === 'abacus' ? (
             <div className={css({
               display: 'flex',
@@ -285,6 +360,127 @@ const globalCardAnimations = `
   50% {
     opacity: 1;
     transform: scale(1.02);
+  }
+}
+
+@keyframes explosionRing {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@keyframes epicClaim {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(-360deg);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.4) rotate(-180deg);
+  }
+  60% {
+    transform: scale(0.8) rotate(-90deg);
+  }
+  80% {
+    transform: scale(1.1) rotate(-30deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes emojiBlast {
+  0% {
+    transform: scale(0) rotate(180deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.5) rotate(-10deg);
+    opacity: 1;
+  }
+  85% {
+    transform: scale(0.9) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes spinningHalo {
+  0% {
+    transform: rotate(0deg);
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 0.8;
+  }
+}
+
+@keyframes sparkle1 {
+  0% { transform: translate(0, 0) scale(0); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translate(-20px, -15px) scale(1); opacity: 0; }
+}
+
+@keyframes sparkle2 {
+  0% { transform: translate(0, 0) scale(0); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translate(15px, -20px) scale(1); opacity: 0; }
+}
+
+@keyframes sparkle3 {
+  0% { transform: translate(0, 0) scale(0); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translate(-25px, 10px) scale(1); opacity: 0; }
+}
+
+@keyframes sparkle4 {
+  0% { transform: translate(0, 0) scale(0); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translate(20px, 15px) scale(1); opacity: 0; }
+}
+
+@keyframes sparkle5 {
+  0% { transform: translate(0, 0) scale(0); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translate(-10px, -25px) scale(1); opacity: 0; }
+}
+
+@keyframes sparkle6 {
+  0% { transform: translate(0, 0) scale(0); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: translate(25px, -5px) scale(1); opacity: 0; }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
