@@ -113,8 +113,8 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
     }
   }
 
-  const target: Partial<SkillSet> = { basic: {}, fiveComplements: {}, tenComplements: {} }
-  const forbidden: Partial<SkillSet> = { basic: {}, fiveComplements: {}, tenComplements: {} }
+  const target: Partial<SkillSet> = {}
+  const forbidden: Partial<SkillSet> = {}
 
   // Basic skills
   Object.entries(config.basic).forEach(([skill, mode]) => {
@@ -122,10 +122,12 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
       required.basic[skill as keyof typeof required.basic] = true
     }
     if (mode === 'target') {
-      target.basic![skill as keyof typeof target.basic] = true
+      if (!target.basic) target.basic = {} as any
+      target.basic[skill as keyof typeof required.basic] = true
     }
     if (mode === 'forbidden') {
-      forbidden.basic![skill as keyof typeof forbidden.basic] = true
+      if (!forbidden.basic) forbidden.basic = {} as any
+      forbidden.basic[skill as keyof typeof required.basic] = true
     }
   })
 
@@ -135,10 +137,12 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
       required.fiveComplements[skill as keyof typeof required.fiveComplements] = true
     }
     if (mode === 'target') {
-      target.fiveComplements![skill as keyof typeof target.fiveComplements] = true
+      if (!target.fiveComplements) target.fiveComplements = {} as any
+      target.fiveComplements[skill as keyof typeof required.fiveComplements] = true
     }
     if (mode === 'forbidden') {
-      forbidden.fiveComplements![skill as keyof typeof forbidden.fiveComplements] = true
+      if (!forbidden.fiveComplements) forbidden.fiveComplements = {} as any
+      forbidden.fiveComplements[skill as keyof typeof required.fiveComplements] = true
     }
   })
 
@@ -148,10 +152,12 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
       required.tenComplements[skill as keyof typeof required.tenComplements] = true
     }
     if (mode === 'target') {
-      target.tenComplements![skill as keyof typeof target.tenComplements] = true
+      if (!target.tenComplements) target.tenComplements = {} as any
+      target.tenComplements[skill as keyof typeof required.tenComplements] = true
     }
     if (mode === 'forbidden') {
-      forbidden.tenComplements![skill as keyof typeof forbidden.tenComplements] = true
+      if (!forbidden.tenComplements) forbidden.tenComplements = {} as any
+      forbidden.tenComplements[skill as keyof typeof required.tenComplements] = true
     }
   })
 

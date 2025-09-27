@@ -26,7 +26,19 @@ export default function TutorialEditorPage() {
     editingTitle: false
   })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [validationResult, setValidationResult] = useState(() => validateTutorialConversion())
+  const [validationResult, setValidationResult] = useState<TutorialValidation>(() => {
+    const result = validateTutorialConversion()
+    return {
+      isValid: result.isValid,
+      errors: result.errors.map(error => ({
+        stepId: '',
+        field: 'general',
+        message: error,
+        severity: 'error' as const
+      })),
+      warnings: []
+    }
+  })
   const [debugEvents, setDebugEvents] = useState<TutorialEvent[]>([])
 
   // Save tutorial (placeholder - would connect to actual backend)
@@ -179,15 +191,8 @@ export default function TutorialEditorPage() {
         })
       }
 
-      // Error messages validation
-      if (!step.errorMessages.wrongBead.trim() || !step.errorMessages.wrongAction.trim() || !step.errorMessages.hint.trim()) {
-        warnings.push({
-          stepId: step.id,
-          field: 'errorMessages',
-          message: `Step ${index + 1}: All error messages should be provided`,
-          severity: 'warning'
-        })
-      }
+      // Error messages validation removed - errorMessages property no longer exists
+      // Bead diff tooltip provides better guidance instead
     })
 
     const validation: TutorialValidation = {

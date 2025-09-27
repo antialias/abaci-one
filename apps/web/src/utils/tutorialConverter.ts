@@ -41,11 +41,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Adding earth beads',
       explanation: 'Earth beads (bottom) are worth 1 each. Push them UP to activate them.'
-    },
-    errorMessages: {
-      wrongBead: 'Click the highlighted earth bead at the bottom',
-      wrongAction: 'Move the bead UP to add it',
-      hint: 'Earth beads move up when adding numbers 1-4'
     }
   },
   {
@@ -61,11 +56,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Building up earth beads',
       explanation: 'Continue adding earth beads one by one for numbers 2, 3, and 4'
-    },
-    errorMessages: {
-      wrongBead: 'Click the highlighted earth bead',
-      wrongAction: 'Move the bead UP to add it',
-      hint: 'You need 2 earth beads for the number 2'
     }
   },
   {
@@ -81,11 +71,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Adding earth beads in sequence',
       explanation: 'Continue adding earth beads one by one until you reach 4'
-    },
-    errorMessages: {
-      wrongBead: 'Click the highlighted earth bead',
-      wrongAction: 'Move the bead UP to add it',
-      hint: 'You need 3 earth beads for the number 3'
     }
   },
   {
@@ -101,11 +86,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Maximum earth beads',
       explanation: 'Four earth beads is the maximum - next we need a different approach'
-    },
-    errorMessages: {
-      wrongBead: 'Click the highlighted earth bead',
-      wrongAction: 'Move the bead UP to add it',
-      hint: 'Four earth beads represent the number 4'
     }
   },
 
@@ -123,11 +103,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Heaven bead = 5',
       explanation: 'The single bead above the bar represents 5'
-    },
-    errorMessages: {
-      wrongBead: 'Click the heaven bead at the top',
-      wrongAction: 'Move the heaven bead DOWN to activate it',
-      hint: 'The heaven bead is worth 5 points'
     }
   },
   {
@@ -143,11 +118,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Heaven + Earth = 6',
       explanation: 'When you have room in the earth section, simply add directly'
-    },
-    errorMessages: {
-      wrongBead: 'Click the first earth bead',
-      wrongAction: 'Move the earth bead UP to add it',
-      hint: 'With the heaven bead active, add earth beads for 6, 7, 8, 9'
     }
   },
 
@@ -172,11 +142,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Five Complement: 4 = 5 - 1',
       explanation: 'When you need to add 4 but only have 1 space, use: add 5, remove 1'
-    },
-    errorMessages: {
-      wrongBead: 'Follow the two-step process: heaven bead first, then remove earth bead',
-      wrongAction: 'Add heaven bead, then remove earth bead',
-      hint: 'Complement thinking: 4 = 5 - 1, so add 5 and take away 1'
     }
   },
   {
@@ -201,11 +166,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Five Complement: 3 = 5 - 2',
       explanation: 'To add 3, think: 3 = 5 - 2, so add 5 and take away 2'
-    },
-    errorMessages: {
-      wrongBead: 'Follow the multi-step process: add heaven, then remove earth beads',
-      wrongAction: 'Add heaven bead first, then remove the necessary earth beads',
-      hint: 'Complement: 3 = 5 - 2, so add heaven and remove 2 earth'
     }
   },
 
@@ -226,11 +186,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Direct addition when possible',
       explanation: 'When you have space in the earth section, just add directly'
-    },
-    errorMessages: {
-      wrongBead: 'Click the next earth beads in sequence',
-      wrongAction: 'Move the earth beads UP to add them',
-      hint: 'You have room for 2 more earth beads'
     }
   },
   {
@@ -257,11 +212,6 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     tooltip: {
       content: 'Carrying to tens place',
       explanation: '7 + 4 = 11, which needs the tens column heaven bead'
-    },
-    errorMessages: {
-      wrongBead: 'First activate tens heaven, then clear all beads from ones place',
-      wrongAction: 'Add tens heaven first, then remove heaven and earth beads from ones',
-      hint: '7 + 4 = 11: add 10 (tens heaven), then subtract 6 by clearing ones place (7-1=6 remaining)'
     }
   }
 ]

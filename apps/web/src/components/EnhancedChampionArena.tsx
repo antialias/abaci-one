@@ -101,12 +101,11 @@ function ChampionCard({
   })
 
   return (
-    <animated.div
+    <div
       ref={setNodeRef}
-      style={cardStyle}
       {...attributes}
       {...listeners}
-      onClick={(e) => {
+      onClick={(e: React.MouseEvent) => {
         // Only handle click if not dragging and we have the toggle handler
         if (!isDragging && onToggleArena) {
           e.stopPropagation()
@@ -135,8 +134,9 @@ function ChampionCard({
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
         }
       })}
+      style={cardStyle}
     >
-      <animated.div style={glowStyle} className={css({
+      <div style={glowStyle} className={css({
         position: 'absolute',
         top: '-3px',
         left: '-3px',
@@ -215,7 +215,7 @@ function ChampionCard({
         </button>
       )}
 
-      <animated.div
+      <div
         style={emojiStyle}
         className={css({
           fontSize: '3xl',
@@ -223,7 +223,7 @@ function ChampionCard({
         })}
       >
         {player.emoji}
-      </animated.div>
+      </div>
 
       <div className={css({
         fontSize: 'sm',
@@ -241,7 +241,7 @@ function ChampionCard({
       })}>
         {zone === 'arena' ? 'READY! 🔥' : `Level ${player.level}`}
       </div>
-    </animated.div>
+    </div>
   )
 }
 
@@ -294,7 +294,7 @@ function DroppableZone({
         {title}
       </h3>
 
-      <animated.div
+      <div
         ref={setNodeRef}
         style={zoneStyle}
         className={css({
@@ -311,7 +311,7 @@ function DroppableZone({
         })}
       >
         {isEmpty && (
-          <animated.div
+          <div
             style={emptyStateStyle}
             className={css({
               position: 'absolute',
@@ -335,10 +335,10 @@ function DroppableZone({
             })}>
               {isOver ? `Drop to ${id === 'arena' ? 'enter the arena' : 'return to roster'}!` : subtitle}
             </p>
-          </animated.div>
+          </div>
         )}
         {children}
-      </animated.div>
+      </div>
     </div>
   )
 }
@@ -569,8 +569,8 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
             Drag champions to experience the most tactile arena ever built!
           </p>
 
-          {/* Mode Indicator with Spring Animation */}
-          <animated.div
+          {/* Mode Indicator */}
+          <div
             className={css({
               display: 'inline-flex',
               alignItems: 'center',
@@ -606,7 +606,7 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
             })}>
               {arenaPlayers.length === 0 ? 'Select Champions' : gameMode === 'single' ? 'Solo Mode' : gameMode === 'battle' ? 'Battle Mode' : 'Tournament Mode'}
             </span>
-          </animated.div>
+          </div>
         </div>
 
         <div className={css({

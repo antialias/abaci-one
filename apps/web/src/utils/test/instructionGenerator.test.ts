@@ -1024,7 +1024,7 @@ describe('Automatic Abacus Instruction Generator', () => {
             expect(instruction.totalSteps).toBeGreaterThan(0)
 
             // Verify pedagogical ordering if multi-step
-            if (instruction.totalSteps > 1) {
+            if (instruction.totalSteps && instruction.totalSteps > 1) {
               const stepBeads = instruction.stepBeadHighlights!
               const placeValues = [...new Set(stepBeads.map(b => b.placeValue))].sort((a, b) => b - a)
 
