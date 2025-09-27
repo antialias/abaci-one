@@ -124,7 +124,10 @@
       "Bash(cat:*)",
       "Bash(npm test:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(nslookup:*)",
+      "Bash(docker stop:*)",
+      "Bash(open http://localhost:3000/games)"
     ],
     "deny": [],
     "ask": []
