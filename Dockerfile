@@ -9,8 +9,6 @@ WORKDIR /app
 # Copy package files for dependency resolution
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/web/package.json ./apps/web/
-COPY packages/core/client/node/package.json ./packages/core/client/node/
-COPY packages/core/client/typescript/package.json ./packages/core/client/typescript/
 COPY packages/abacus-react/package.json ./packages/abacus-react/
 COPY packages/templates/package.json ./packages/templates/
 
