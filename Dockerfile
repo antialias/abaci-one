@@ -21,6 +21,9 @@ RUN pnpm install --frozen-lockfile
 FROM base AS builder
 COPY . .
 
+# Generate Panda CSS styled-system before building
+RUN cd apps/web && npx @pandacss/dev
+
 # Build using turbo for apps/web and its dependencies
 RUN turbo build --filter=@soroban/web
 
