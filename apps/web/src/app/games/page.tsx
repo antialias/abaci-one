@@ -13,12 +13,6 @@ export default function GamesPage() {
 
   const handleGameClick = (gameType: string) => {
     setShowCharacterSelection(gameType)
-    // Set default mode based on game type
-    if (gameType === 'memory-lightning') {
-      setSelectedGameMode('single') // Memory quiz is single-player only
-    } else if (gameType === 'battle-arena') {
-      setSelectedGameMode('two-player') // Default to the main feature of matching
-    }
   }
 
   const handleCharacterSelectionClose = () => {
@@ -26,17 +20,14 @@ export default function GamesPage() {
   }
 
   const handleStartGame = (character: 1 | 2) => {
-    console.log(`Starting ${showCharacterSelection} with character ${character} in ${selectedGameMode} mode`)
+    console.log(`Starting ${showCharacterSelection} with character ${character}`)
     setShowCharacterSelection(null)
 
-    // Navigate to the appropriate game with mode parameters
+    // Navigate directly to games - let them handle their own mode selection
     if (showCharacterSelection === 'memory-lightning') {
-      // Memory quiz is always single-player
       window.location.href = '/games/memory-quiz'
     } else if (showCharacterSelection === 'battle-arena') {
-      // Pass the selected game mode to matching game
-      const modeParam = selectedGameMode === 'single' ? '?mode=single' : '?mode=two-player'
-      window.location.href = `/games/matching${modeParam}`
+      window.location.href = '/games/matching'
     }
   }
 
@@ -1185,7 +1176,7 @@ export default function GamesPage() {
                   color: 'purple.800'
                 })}>
                   <span className={css({ fontSize: 'lg' })}>{profile.player2Emoji}</span>
-                  <span>"Battle Arena - let's crush some competition! 🏟️"</span>
+                  <span>"Memory Pairs - let's crush some competition! 🧠"</span>
                 </div>
               </div>
 
@@ -1340,7 +1331,7 @@ export default function GamesPage() {
                 alignItems: 'center',
                 gap: '2'
               })}>
-                Battle Arena 🏟️
+                Memory Pairs 🧠
                 <span className={css({
                   fontSize: 'xs',
                   background: 'linear-gradient(135deg, #10b981, #059669)',
@@ -1959,103 +1950,10 @@ export default function GamesPage() {
                   color: 'gray.600',
                   fontSize: 'lg'
                 })}>
-                  Select a character for {showCharacterSelection === 'memory-lightning' ? 'Memory Lightning ⚡' : 'Battle Arena 🏟️'}
+                  Select a character for {showCharacterSelection === 'memory-lightning' ? 'Memory Lightning ⚡' : 'Memory Pairs 🧠'}
                 </p>
               </div>
 
-              {/* Game Mode Selection - Only show for games that support multiple modes */}
-              {showCharacterSelection === 'battle-arena' && (
-                <div className={css({
-                  mb: '8'
-                })}>
-                  <h3 className={css({
-                    fontSize: 'xl',
-                    fontWeight: 'semibold',
-                    color: 'gray.800',
-                    mb: '4',
-                    textAlign: 'center'
-                  })}>
-                    🎯 Game Mode
-                  </h3>
-                <div className={css({
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '4'
-                })}>
-                  <button
-                    onClick={() => setSelectedGameMode('single')}
-                    className={css({
-                      p: '4',
-                      rounded: 'xl',
-                      border: '2px solid',
-                      borderColor: selectedGameMode === 'single' ? 'blue.400' : 'gray.200',
-                      background: selectedGameMode === 'single' ? 'blue.50' : 'white',
-                      transition: 'all 0.2s ease',
-                      cursor: 'pointer',
-                      _hover: {
-                        borderColor: 'blue.300',
-                        background: 'blue.25'
-                      }
-                    })}
-                  >
-                    <div className={css({
-                      fontSize: '2xl',
-                      mb: '2'
-                    })}>
-                      🎯
-                    </div>
-                    <div className={css({
-                      fontWeight: 'semibold',
-                      color: 'gray.800'
-                    })}>
-                      Solo Challenge
-                    </div>
-                    <div className={css({
-                      fontSize: 'sm',
-                      color: 'gray.600'
-                    })}>
-                      Train your skills alone
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setSelectedGameMode('two-player')}
-                    className={css({
-                      p: '4',
-                      rounded: 'xl',
-                      border: '2px solid',
-                      borderColor: selectedGameMode === 'two-player' ? 'purple.400' : 'gray.200',
-                      background: selectedGameMode === 'two-player' ? 'purple.50' : 'white',
-                      transition: 'all 0.2s ease',
-                      cursor: 'pointer',
-                      _hover: {
-                        borderColor: 'purple.300',
-                        background: 'purple.25'
-                      }
-                    })}
-                  >
-                    <div className={css({
-                      fontSize: '2xl',
-                      mb: '2'
-                    })}>
-                      ⚔️
-                    </div>
-                    <div className={css({
-                      fontWeight: 'semibold',
-                      color: 'gray.800'
-                    })}>
-                      Battle Mode
-                    </div>
-                    <div className={css({
-                      fontSize: 'sm',
-                      color: 'gray.600'
-                    })}>
-                      Face off with friends
-                    </div>
-                  </button>
-                </div>
-                </div>
-              )}
 
               {/* Character Selection */}
               <div className={css({
@@ -2068,12 +1966,12 @@ export default function GamesPage() {
                   mb: '4',
                   textAlign: 'center'
                 })}>
-                  {selectedGameMode === 'single' ? '🌟 Your Champion' : '👥 Player Selection'}
+                  🌟 Choose Your Champion
                 </h3>
 
                 <div className={css({
                   display: 'grid',
-                  gridTemplateColumns: selectedGameMode === 'single' ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
                   gap: '6'
                 })}>
                   {/* Player 1 Character */}
@@ -2130,7 +2028,6 @@ export default function GamesPage() {
                   </div>
 
                   {/* Player 2 Character */}
-                  {selectedGameMode === 'two-player' && (
                     <div
                       onClick={() => handleStartGame(2)}
                       className={css({
@@ -2182,62 +2079,7 @@ export default function GamesPage() {
                         ⚡ Bring it on!
                       </div>
                     </div>
-                  )}
 
-                  {/* Single Player second option showing both characters to choose from */}
-                  {selectedGameMode === 'single' && (
-                    <div
-                      onClick={() => handleStartGame(2)}
-                      className={css({
-                        background: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
-                        border: '3px solid',
-                        borderColor: 'purple.300',
-                        rounded: '2xl',
-                        p: '6',
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        _hover: {
-                          transform: 'translateY(-4px) scale(1.02)',
-                          boxShadow: '0 20px 40px rgba(139, 92, 246, 0.2)',
-                          borderColor: 'purple.400'
-                        }
-                      })}
-                    >
-                      <div className={css({
-                        fontSize: '5xl',
-                        mb: '3',
-                        animation: 'characterBounce 0.6s ease-in-out infinite alternate 0.3s'
-                      })}>
-                        {profile.player2Emoji}
-                      </div>
-                      <h4 className={css({
-                        fontSize: 'xl',
-                        fontWeight: 'bold',
-                        color: 'purple.800',
-                        mb: '2'
-                      })}>
-                        {profile.player2Name}
-                      </h4>
-                      <div className={css({
-                        fontSize: 'sm',
-                        color: 'purple.700',
-                        mb: '3'
-                      })}>
-                        Level {Math.floor(profile.gamesPlayed / 5) + 1} • {Math.floor(profile.totalWins / 2)} wins
-                      </div>
-                      <div className={css({
-                        background: 'white',
-                        rounded: 'lg',
-                        p: '3',
-                        fontSize: 'sm',
-                        color: 'purple.800',
-                        fontWeight: 'semibold'
-                      })}>
-                        🎯 Let's do this!
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
