@@ -26,7 +26,7 @@ import {
   SortableContext as SortableContextType,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useSpring, animated, config } from '@react-spring/web'
+import { useSpring, animated, useTransition, config } from '@react-spring/web'
 import { css } from '../../styled-system/css'
 import { useUserProfile } from '../contexts/UserProfileContext'
 import { useGameMode } from '../contexts/GameModeContext'
@@ -45,6 +45,29 @@ interface DraggablePlayer {
   color: string
   isActive: boolean
   level: number
+}
+
+// Animated Champion Card Wrapper for transitions
+function AnimatedChampionCard({
+  player,
+  zone,
+  onConfigure,
+  style: transitionStyle
+}: {
+  player: DraggablePlayer
+  zone: 'roster' | 'arena'
+  onConfigure?: (id: number) => void
+  style?: any
+}) {
+  return (
+    <animated.div style={transitionStyle}>
+      <ChampionCard
+        player={player}
+        zone={zone}
+        onConfigure={onConfigure}
+      />
+    </animated.div>
+  )
 }
 
 // Animated Champion Card Component
@@ -68,16 +91,15 @@ function ChampionCard({
     isDragging,
   } = useSortable({ id: player.id })
 
-  // React Spring animations with entry effect
+  // React Spring animations with subtle effects
   const cardStyle = useSpring({
-    from: { opacity: 0, transform: 'scale(0.8) translateY(20px)' },
     to: {
-      opacity: isDragging && !isOverlay ? 0.5 : 1,
+      opacity: isDragging && !isOverlay ? 0.7 : 1,
       transform: transform
-        ? `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${isDragging ? 1.05 : 1}) rotateZ(${isDragging ? (Math.random() - 0.5) * 10 : 0}deg)`
-        : `translate3d(0px, 0px, 0) scale(${isDragging ? 1.05 : 1}) rotateZ(${isDragging ? (Math.random() - 0.5) * 10 : 0}deg)`
+        ? `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${isDragging ? 1.02 : 1}) rotateZ(${isDragging ? (Math.random() - 0.5) * 3 : 0}deg)`
+        : `translate3d(0px, 0px, 0) scale(${isDragging ? 1.02 : 1}) rotateZ(0deg)`
     },
-    config: config.wobbly,
+    config: config.gentle,
   })
 
   const glowStyle = useSpring({
@@ -370,15 +392,45 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
     })
   )
 
-  // Use closestCenter collision detection for simplicity
-  const customCollisionDetection = closestCenter
+  // Use default collision detection
+  const collisionDetection = closestCenter
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as number)
   }
 
   const handleDragOver = (event: DragOverEvent) => {
-    // Track drag over state - handled by individual DroppableZone components
+    const { active, over } = event
+
+    if (!over) return
+
+    const activeId = active.id as number
+    const overId = over.id
+
+    // Find which containers the active and over items belong to
+    const activePlayer = [...availablePlayers, ...arenaPlayers].find(p => p.id === activeId)
+    const overPlayer = [...availablePlayers, ...arenaPlayers].find(p => p.id === overId)
+
+    if (!activePlayer) return
+
+    // If we're dragging over a player in a different zone, move to that zone
+    if (overPlayer && activePlayer.isActive !== overPlayer.isActive) {
+      const shouldActivate = overPlayer.isActive
+      updatePlayer(activeId, { isActive: shouldActivate })
+
+      // Update game mode
+      const newArenaCount = shouldActivate
+        ? arenaPlayers.length + (activePlayer.isActive ? 0 : 1)
+        : arenaPlayers.length - (activePlayer.isActive ? 1 : 0)
+
+      let newMode: 'single' | 'battle' | 'tournament' = 'single'
+      if (newArenaCount === 1) newMode = 'single'
+      else if (newArenaCount === 2) newMode = 'battle'
+      else if (newArenaCount >= 3) newMode = 'tournament'
+
+      setGameMode(newMode)
+      onGameModeChange?.(newMode)
+    }
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -388,17 +440,38 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
     if (!over) return
 
     const playerId = active.id as number
-    const targetZone = over.id as string
+    const overId = over.id
 
-    // Handle moving between zones
+    // Check if we're dragging over a player (for reordering within same zone)
+    const overPlayer = [...availablePlayers, ...arenaPlayers].find(p => p.id === overId)
+
+    if (overPlayer) {
+      // Reordering within the same zone
+      const activePlayer = [...availablePlayers, ...arenaPlayers].find(p => p.id === playerId)
+      if (activePlayer && activePlayer.isActive === overPlayer.isActive) {
+        // Same zone reordering - this is handled automatically by SortableContext
+        return
+      }
+    }
+
+    // Handle moving between zones (when dropping on zone itself)
+    const targetZone = overId as string
     if (targetZone === 'arena' || targetZone === 'roster') {
       const shouldActivate = targetZone === 'arena'
+
+      // Don't update if already in correct state
+      const currentPlayer = [...availablePlayers, ...arenaPlayers].find(p => p.id === playerId)
+      if (currentPlayer && currentPlayer.isActive === shouldActivate) {
+        return
+      }
+
       updatePlayer(playerId, { isActive: shouldActivate })
 
       // Update game mode based on arena players count
+      const currentArenaPlayer = arenaPlayers.find(p => p.id === playerId)
       const newArenaCount = shouldActivate
         ? arenaPlayers.length + 1
-        : arenaPlayers.length - (arenaPlayers.find(p => p.id === playerId) ? 1 : 0)
+        : arenaPlayers.length - (currentArenaPlayer ? 1 : 0)
 
       let newMode: 'single' | 'battle' | 'tournament' = 'single'
       if (newArenaCount === 1) newMode = 'single'
@@ -415,13 +488,29 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
     ? [...availablePlayers, ...arenaPlayers].find(p => p.id === activeId)
     : null
 
-  // We'll handle animations within the ChampionCard component itself
-  // to avoid conflicts with dnd-kit's ref management
+  // Animated transitions for smooth cross-zone movement
+  const rosterTransitions = useTransition(availablePlayers, {
+    from: { opacity: 0, transform: 'scale(0.95) translateY(10px)' },
+    enter: { opacity: 1, transform: 'scale(1) translateY(0px)' },
+    leave: { opacity: 0, transform: 'scale(0.95) translateY(-10px)' },
+    config: config.gentle,
+    trail: 30,
+    keys: (player) => `roster-${player.id}`,
+  })
+
+  const arenaTransitions = useTransition(arenaPlayers, {
+    from: { opacity: 0, transform: 'scale(0.95) translateY(15px)' },
+    enter: { opacity: 1, transform: 'scale(1) translateY(0px)' },
+    leave: { opacity: 0, transform: 'scale(0.95) translateY(-15px)' },
+    config: config.gentle,
+    trail: 40,
+    keys: (player) => `arena-${player.id}`,
+  })
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={customCollisionDetection}
+      collisionDetection={collisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -513,12 +602,13 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                 subtitle="Drag champions here to remove from arena"
                 isEmpty={availablePlayers.length === 0}
               >
-                {availablePlayers.map((player) => (
-                  <ChampionCard
-                    key={player.id}
+                {rosterTransitions((style, player) => (
+                  <AnimatedChampionCard
+                    key={`roster-${player.id}`}
                     player={player}
                     zone="roster"
                     onConfigure={onConfigurePlayer}
+                    style={style}
                   />
                 ))}
               </DroppableZone>
@@ -534,11 +624,12 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                 subtitle="1 champion = Solo • 2 = Battle • 3+ = Tournament"
                 isEmpty={arenaPlayers.length === 0}
               >
-                {arenaPlayers.map((player) => (
-                  <ChampionCard
-                    key={player.id}
+                {arenaTransitions((style, player) => (
+                  <AnimatedChampionCard
+                    key={`arena-${player.id}`}
                     player={player}
                     zone="arena"
+                    style={style}
                   />
                 ))}
               </DroppableZone>
