@@ -1,0 +1,13 @@
+{
+  "settings": [
+    {
+      "provider": "porkbun",
+      "domain": "abaci.one",
+      "host": "@",
+      "api_key": "pk1_63e91003c1059d09cbee23f4b9d96a1b8d736ce21efa7f41574159fa052ca526",
+      "secret_api_key": "sk1_aafbe4fc167069517ce3c3266d8522cd56e8b82618d690df7fd18d5857030828",
+      "ip_method": "ipinfo",
+      "ttl": 300
+    }
+  ]
+}

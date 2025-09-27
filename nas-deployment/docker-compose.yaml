@@ -1,0 +1,81 @@
+version: "3.8"
+
+services:
+  # ────────────────────────────────────
+  #  Soroban Abacus Flashcards Web App (apps/web)
+  # ────────────────────────────────────
+  soroban-abacus-flashcards:
+    image: ghcr.io/antialias/soroban-abacus-flashcards:latest
+    container_name: soroban-abacus-flashcards
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./public:/app/public
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    labels:
+      # ── Traefik Routers ───────────────────────────────────
+      # HTTPS router
+      - "traefik.enable=true"
+      - "traefik.http.routers.abaci.rule=Host(`abaci.one`)"
+      - "traefik.http.routers.abaci.entrypoints=websecure"
+      - "traefik.http.routers.abaci.tls=true"
+      - "traefik.http.routers.abaci.tls.certresolver=myresolver"
+      - "traefik.http.routers.abaci.middlewares=hsts@docker"
+
+      # HTTP → HTTPS redirect router
+      - "traefik.http.routers.abaci-http.rule=Host(`abaci.one`)"
+      - "traefik.http.routers.abaci-http.entrypoints=web"
+      - "traefik.http.routers.abaci-http.middlewares=redirect-https@docker"
+
+      # ── Abaci service definition
+      - "traefik.http.services.abaci.loadbalancer.server.port=3000"
+
+      # ── Shared middlewares
+      - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.middlewares.hsts.headers.stsSeconds=63072000"
+      - "traefik.http.middlewares.hsts.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.hsts.headers.stsPreload=true"
+    networks:
+      - webgateway
+
+  # ────────────────────────────────────
+  #  DDNS Updater (Porkbun for abaci.one)
+  # ────────────────────────────────────
+  ddns-updater:
+    image: qmcgaw/ddns-updater:latest
+    container_name: ddns-updater
+    volumes:
+      - ./ddns-data/ddns-config.json:/updater/data/config.json
+    environment:
+      - TZ=America/Chicago
+    ports:
+      - "8000:8000"   # optional web UI
+    restart: unless-stopped
+    networks:
+      - webgateway
+
+  # ────────────────────────────────────
+  #  Watchtower (auto-update)
+  # ────────────────────────────────────
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 soroban-abacus-flashcards ddns-updater
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_ROLLING_RESTART=true
+    networks:
+      - webgateway
+
+# ──────────────────────────────────────
+#  Networks & Volumes
+# ──────────────────────────────────────
+networks:
+  webgateway:
+    external: true          # same network Traefik lives on
