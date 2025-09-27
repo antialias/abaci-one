@@ -47,8 +47,7 @@ export interface MemoryPairsState {
   gameCards: GameCard[]
   flippedCards: GameCard[]
 
-  // Game configuration
-  gameMode: GameMode
+  // Game configuration (gameMode removed - now derived from global context)
   gameType: GameType
   difficulty: Difficulty
   turnTimer: number // Seconds for two-player mode
@@ -75,7 +74,6 @@ export interface MemoryPairsState {
 }
 
 export type MemoryPairsAction =
-  | { type: 'SET_GAME_MODE'; mode: GameMode }
   | { type: 'SET_GAME_TYPE'; gameType: GameType }
   | { type: 'SET_DIFFICULTY'; difficulty: Difficulty }
   | { type: 'SET_TURN_TIMER'; timer: number }
@@ -93,19 +91,19 @@ export type MemoryPairsAction =
   | { type: 'UPDATE_TIMER' }
 
 export interface MemoryPairsContextValue {
-  state: MemoryPairsState
+  state: MemoryPairsState & { gameMode: GameMode } // gameMode added as computed property
   dispatch: React.Dispatch<MemoryPairsAction>
 
   // Computed values
   isGameActive: boolean
   canFlipCard: (cardId: string) => boolean
   currentGameStatistics: GameStatistics
+  gameMode: GameMode // Derived from global context
 
   // Actions
   startGame: () => void
   flipCard: (cardId: string) => void
   resetGame: () => void
-  setGameMode: (mode: GameMode) => void
   setGameType: (type: GameType) => void
   setDifficulty: (difficulty: Difficulty) => void
 }

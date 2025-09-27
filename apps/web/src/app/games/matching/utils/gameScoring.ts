@@ -65,8 +65,8 @@ export interface Achievement {
   earned: boolean
 }
 
-export function getAchievements(state: MemoryPairsState): Achievement[] {
-  const { matchedPairs, totalPairs, moves, scores, gameMode, gameStartTime, gameEndTime } = state
+export function getAchievements(state: MemoryPairsState, gameMode: 'single' | 'two-player'): Achievement[] {
+  const { matchedPairs, totalPairs, moves, scores, gameStartTime, gameEndTime } = state
   const accuracy = moves > 0 ? (matchedPairs / moves) * 100 : 0
   const gameTime = gameStartTime && gameEndTime ? gameEndTime - gameStartTime : 0
   const gameTimeInSeconds = gameTime / 1000

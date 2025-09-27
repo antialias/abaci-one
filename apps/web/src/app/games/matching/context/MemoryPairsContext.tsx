@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react'
+import { useGameMode } from '../../../../contexts/GameModeContext'
 import { validateMatch } from '../utils/matchValidation'
 import { generateGameCards } from '../utils/cardGeneration'
 import type {
@@ -12,15 +13,14 @@ import type {
   CelebrationAnimation
 } from './types'
 
-// Initial state
+// Initial state (gameMode removed - now derived from global context)
 const initialState: MemoryPairsState = {
   // Core game data
   cards: [],
   gameCards: [],
   flippedCards: [],
 
-  // Game configuration
-  gameMode: 'single',
+  // Game configuration (gameMode removed)
   gameType: 'abacus-numeral',
   difficulty: 6,
   turnTimer: 30,
@@ -49,14 +49,7 @@ const initialState: MemoryPairsState = {
 // Reducer function
 function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction): MemoryPairsState {
   switch (action.type) {
-    case 'SET_GAME_MODE':
-      return {
-        ...state,
-        gameMode: action.mode,
-        // Reset scores when switching modes
-        scores: { player1: 0, player2: 0 },
-        currentPlayer: 1
-      }
+    // SET_GAME_MODE removed - game mode now derived from global context
 
     case 'SET_GAME_TYPE':
       return {
@@ -153,17 +146,14 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
     }
 
     case 'MATCH_FAILED': {
-      const newCurrentPlayer = state.gameMode === 'two-player'
-        ? (state.currentPlayer === 1 ? 2 : 1)
-        : state.currentPlayer
-
+      // Player switching is now handled by passing activePlayerCount
       return {
         ...state,
         flippedCards: [],
-        currentPlayer: newCurrentPlayer,
         moves: state.moves + 1,
         showMismatchFeedback: true,
-        isProcessingMove: false
+        isProcessingMove: false,
+        // currentPlayer will be updated by SWITCH_PLAYER action when needed
       }
     }
 
@@ -210,7 +200,6 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
     case 'RESET_GAME':
       return {
         ...initialState,
-        gameMode: state.gameMode,
         gameType: state.gameType,
         difficulty: state.difficulty,
         turnTimer: state.turnTimer,
@@ -232,6 +221,10 @@ const MemoryPairsContext = createContext<MemoryPairsContextValue | null>(null)
 // Provider component
 export function MemoryPairsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(memoryPairsReducer, initialState)
+  const { activePlayerCount } = useGameMode()
+
+  // Derive game mode from active player count
+  const gameMode = activePlayerCount > 1 ? 'two-player' : 'single'
 
   // Handle card matching logic when two cards are flipped
   useEffect(() => {
@@ -247,10 +240,14 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'MATCH_FOUND', cardIds: [card1.id, card2.id] })
         } else {
           dispatch({ type: 'MATCH_FAILED', cardIds: [card1.id, card2.id] })
+          // Switch player only in two-player mode
+          if (gameMode === 'two-player') {
+            dispatch({ type: 'SWITCH_PLAYER' })
+          }
         }
       }, 1000) // Give time to see both cards
     }
-  }, [state.flippedCards, state.isProcessingMove])
+  }, [state.flippedCards, state.isProcessingMove, gameMode])
 
   // Auto-hide mismatch feedback
   useEffect(() => {
@@ -307,9 +304,7 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'RESET_GAME' })
   }
 
-  const setGameMode = (mode: typeof state.gameMode) => {
-    dispatch({ type: 'SET_GAME_MODE', mode })
-  }
+  // setGameMode removed - game mode is now derived from global context
 
   const setGameType = (gameType: typeof state.gameType) => {
     dispatch({ type: 'SET_GAME_TYPE', gameType })
@@ -320,7 +315,7 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
   }
 
   const contextValue: MemoryPairsContextValue = {
-    state,
+    state: { ...state, gameMode }, // Add derived gameMode to state
     dispatch,
     isGameActive,
     canFlipCard,
@@ -328,9 +323,9 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
     startGame,
     flipCard,
     resetGame,
-    setGameMode,
     setGameType,
-    setDifficulty
+    setDifficulty,
+    gameMode // Expose derived gameMode
   }
 
   return (
