@@ -6,7 +6,7 @@ export type GamePhase = 'setup' | 'playing' | 'results'
 export type CardType = 'abacus' | 'number' | 'complement'
 export type Difficulty = 6 | 8 | 12 | 15 // Number of pairs
 export type Player = 1 | 2
-export type TargetSum = 5 | 10
+export type TargetSum = 5 | 10 | 20
 
 export interface GameCard {
   id: string

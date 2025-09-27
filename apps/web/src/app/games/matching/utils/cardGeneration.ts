@@ -27,7 +27,7 @@ function shuffleArray<T>(array: T[]): T[] {
 export function generateAbacusNumeralCards(pairs: Difficulty): GameCard[] {
   // Generate unique numbers based on difficulty
   // For easier games, use smaller numbers; for harder games, use larger ranges
-  const numberRanges = {
+  const numberRanges: Record<Difficulty, { min: number; max: number }> = {
     6: { min: 1, max: 50 },    // 6 pairs: 1-50
     8: { min: 1, max: 100 },   // 8 pairs: 1-100
     12: { min: 1, max: 200 },  // 12 pairs: 1-200
@@ -134,7 +134,13 @@ export function generateGameCards(gameType: GameType, difficulty: Difficulty): G
 
 // Utility function to get difficulty-based grid configuration
 export function getGridConfiguration(difficulty: Difficulty) {
-  const configs = {
+  const configs: Record<Difficulty, {
+    totalCards: number;
+    columns: number;
+    rows: number;
+    cardSize: { width: string; height: string };
+    gridTemplate: string;
+  }> = {
     6: {
       totalCards: 12,
       columns: 4,

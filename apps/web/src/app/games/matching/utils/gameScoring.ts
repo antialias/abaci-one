@@ -66,8 +66,9 @@ export interface Achievement {
 }
 
 export function getAchievements(state: MemoryPairsState): Achievement[] {
-  const { matchedPairs, totalPairs, moves, gameTime, scores, gameMode } = state
+  const { matchedPairs, totalPairs, moves, scores, gameMode, gameStartTime, gameEndTime } = state
   const accuracy = moves > 0 ? (matchedPairs / moves) * 100 : 0
+  const gameTime = gameStartTime && gameEndTime ? gameEndTime - gameStartTime : 0
   const gameTimeInSeconds = gameTime / 1000
 
   const achievements: Achievement[] = [
@@ -157,7 +158,8 @@ export function getPerformanceAnalysis(state: MemoryPairsState): {
   improvements: string[]
   starRating: number
 } {
-  const { matchedPairs, totalPairs, moves, gameTime, difficulty } = state
+  const { matchedPairs, totalPairs, moves, difficulty, gameStartTime, gameEndTime } = state
+  const gameTime = gameStartTime && gameEndTime ? gameEndTime - gameStartTime : 0
 
   // Calculate statistics
   const accuracy = moves > 0 ? (matchedPairs / moves) * 100 : 0

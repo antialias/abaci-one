@@ -341,8 +341,8 @@ export function SetupPhase() {
               justifyContent: 'center',
               flexWrap: 'wrap'
             })}>
-              {[15, 30, 45, 60].map(timer => {
-                const timerInfo = {
+              {([15, 30, 45, 60] as const).map(timer => {
+                const timerInfo: Record<15 | 30 | 45 | 60, { icon: string; label: string }> = {
                   15: { icon: '💨', label: 'Lightning' },
                   30: { icon: '⚡', label: 'Quick' },
                   45: { icon: '🏃', label: 'Standard' },

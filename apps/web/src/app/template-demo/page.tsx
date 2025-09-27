@@ -121,7 +121,6 @@ export default function TemplateDemoPage() {
               })}>
                 <TypstSoroban
                   number={selectedNumber}
-                  beadShape={shape}
                   width="150pt"
                   height="180pt"
                 />
@@ -163,7 +162,6 @@ export default function TemplateDemoPage() {
               })}>
                 <TypstSoroban
                   number={selectedNumber}
-                  colorScheme={scheme}
                   width="150pt"
                   height="180pt"
                 />
@@ -205,8 +203,6 @@ export default function TemplateDemoPage() {
               })}>
                 <TypstSoroban
                   number={selectedNumber}
-                  colorScheme="place-value"
-                  colorPalette={palette}
                   width="150pt"
                   height="180pt"
                 />
@@ -247,8 +243,6 @@ export default function TemplateDemoPage() {
             })}>
               <TypstSoroban
                 number={selectedNumber}
-                showEmptyColumns={true}
-                columns={6}
                 width="180pt"
                 height="200pt"
                 enableServerFallback={true}
@@ -270,7 +264,6 @@ export default function TemplateDemoPage() {
             })}>
               <TypstSoroban
                 number={selectedNumber}
-                hideInactiveBeads={true}
                 width="150pt"
                 height="180pt"
                 enableServerFallback={true}
@@ -314,7 +307,6 @@ export default function TemplateDemoPage() {
             })}>
               <TypstSoroban
                 number={selectedNumber}
-                scaleFactor={1.5}
                 width="150pt"
                 height="180pt"
                 enableServerFallback={true}

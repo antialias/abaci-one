@@ -65,6 +65,7 @@ const UserProfileContext = createContext<UserProfileContextType | null>(null)
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(defaultProfile)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Load profile from localStorage on mount
   useEffect(() => {
@@ -74,24 +75,27 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         if (stored) {
           const parsedProfile = JSON.parse(stored)
           // Merge with defaults to handle new fields
-          setProfile({ ...defaultProfile, ...parsedProfile })
+          const mergedProfile = { ...defaultProfile, ...parsedProfile }
+          setProfile(mergedProfile)
         }
+        setIsInitialized(true)
       } catch (error) {
         console.warn('Failed to load user profile from localStorage:', error)
+        setIsInitialized(true)
       }
     }
   }, [])
 
-  // Save profile to localStorage whenever it changes
+  // Save profile to localStorage whenever it changes (but not on initial load)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isInitialized) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
       } catch (error) {
         console.warn('Failed to save user profile to localStorage:', error)
       }
     }
-  }, [profile])
+  }, [profile, isInitialized])
 
   const updatePlayerEmoji = (player: 1 | 2, emoji: string) => {
     setProfile(prev => ({

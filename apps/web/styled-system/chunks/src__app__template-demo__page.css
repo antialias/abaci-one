@@ -16,6 +16,14 @@
     font-family: system-ui
     }
 
+  .color-scheme_place-value {
+    color-scheme: place-value
+    }
+
+  .columns_6 {
+    columns: 6
+    }
+
   .fs_2xl {
     font-size: var(--font-sizes-2xl)
     }
@@ -226,14 +234,6 @@
 
   .mb_2 {
     margin-bottom: var(--spacing-2)
-    }
-
-  .color-scheme_place-value {
-    color-scheme: place-value
-    }
-
-  .columns_6 {
-    columns: 6
     }
 
   .w_180pt {

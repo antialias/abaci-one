@@ -71,12 +71,16 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
 
   const getCardBackIcon = () => {
     if (isMatched) {
+      console.log('Matched card:', card.id, 'matchedBy:', card.matchedBy, 'emojis:', profile.player1Emoji, profile.player2Emoji)
       // Show player emoji for matched cards in two-player mode
       if (card.matchedBy === 1) {
+        console.log('Returning player 1 emoji:', profile.player1Emoji)
         return profile.player1Emoji
       } else if (card.matchedBy === 2) {
+        console.log('Returning player 2 emoji:', profile.player2Emoji)
         return profile.player2Emoji
       }
+      console.log('Returning default checkmark')
       return '✓' // Default checkmark for single player
     }
 
