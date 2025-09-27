@@ -1,11 +1,11 @@
 // TypeScript interfaces for Memory Pairs Challenge game
 
-export type GameMode = 'single' | 'two-player'
+export type GameMode = 'single' | 'multiplayer'
 export type GameType = 'abacus-numeral' | 'complement-pairs'
 export type GamePhase = 'setup' | 'playing' | 'results'
 export type CardType = 'abacus' | 'number' | 'complement'
 export type Difficulty = 6 | 8 | 12 | 15 // Number of pairs
-export type Player = 1 | 2
+export type Player = number // Now supports any player ID
 export type TargetSum = 5 | 10 | 20
 
 export interface GameCard {
@@ -20,8 +20,7 @@ export interface GameCard {
 }
 
 export interface PlayerScore {
-  player1: number
-  player2: number
+  [playerId: number]: number
 }
 
 export interface CelebrationAnimation {
@@ -59,6 +58,7 @@ export interface MemoryPairsState {
   totalPairs: number
   moves: number
   scores: PlayerScore
+  activePlayers: Player[] // Track active player IDs
 
   // Timing
   gameStartTime: number | null
@@ -77,7 +77,7 @@ export type MemoryPairsAction =
   | { type: 'SET_GAME_TYPE'; gameType: GameType }
   | { type: 'SET_DIFFICULTY'; difficulty: Difficulty }
   | { type: 'SET_TURN_TIMER'; timer: number }
-  | { type: 'START_GAME'; cards: GameCard[] }
+  | { type: 'START_GAME'; cards: GameCard[]; activePlayers: Player[] }
   | { type: 'FLIP_CARD'; cardId: string }
   | { type: 'MATCH_FOUND'; cardIds: [string, string] }
   | { type: 'MATCH_FAILED'; cardIds: [string, string] }
@@ -99,6 +99,7 @@ export interface MemoryPairsContextValue {
   canFlipCard: (cardId: string) => boolean
   currentGameStatistics: GameStatistics
   gameMode: GameMode // Derived from global context
+  activePlayers: Player[] // Active player IDs from arena
 
   // Actions
   startGame: () => void

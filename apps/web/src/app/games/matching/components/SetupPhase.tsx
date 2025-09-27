@@ -33,14 +33,15 @@ export function SetupPhase() {
     state,
     setGameType,
     setDifficulty,
-    dispatch
+    dispatch,
+    activePlayers
   } = useMemoryPairs()
 
   const { activePlayerCount, gameMode: globalGameMode } = useGameMode()
 
   const handleStartGame = () => {
     const cards = generateGameCards(state.gameType, state.difficulty)
-    dispatch({ type: 'START_GAME', cards })
+    dispatch({ type: 'START_GAME', cards, activePlayers })
   }
 
   const getButtonStyles = (isSelected: boolean, variant: 'primary' | 'secondary' | 'difficulty' = 'primary') => {

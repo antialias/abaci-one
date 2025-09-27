@@ -10,7 +10,8 @@ import type {
   MemoryPairsContextValue,
   GameCard,
   GameStatistics,
-  CelebrationAnimation
+  CelebrationAnimation,
+  PlayerScore
 } from './types'
 
 // Initial state (gameMode removed - now derived from global context)
@@ -31,7 +32,8 @@ const initialState: MemoryPairsState = {
   matchedPairs: 0,
   totalPairs: 6,
   moves: 0,
-  scores: { player1: 0, player2: 0 },
+  scores: {},
+  activePlayers: [],
 
   // Timing
   gameStartTime: null,
@@ -71,6 +73,12 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
       }
 
     case 'START_GAME':
+      // Initialize scores for all active players
+      const scores: PlayerScore = {}
+      action.activePlayers.forEach(playerId => {
+        scores[playerId] = 0
+      })
+
       return {
         ...state,
         gamePhase: 'playing',
@@ -79,8 +87,9 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         flippedCards: [],
         matchedPairs: 0,
         moves: 0,
-        scores: { player1: 0, player2: 0 },
-        currentPlayer: 1,
+        scores,
+        activePlayers: action.activePlayers,
+        currentPlayer: action.activePlayers[0] || 1,
         gameStartTime: Date.now(),
         gameEndTime: null,
         currentMoveStartTime: Date.now(),
@@ -123,8 +132,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
       const newMatchedPairs = state.matchedPairs + 1
       const newScores = {
         ...state.scores,
-        [`player${state.currentPlayer}` as keyof typeof state.scores]:
-          state.scores[`player${state.currentPlayer}` as keyof typeof state.scores] + 1
+        [state.currentPlayer]: (state.scores[state.currentPlayer] || 0) + 1
       }
 
       // Check if game is complete
@@ -141,7 +149,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         gamePhase: isGameComplete ? 'results' : 'playing',
         gameEndTime: isGameComplete ? Date.now() : null,
         isProcessingMove: false
-        // Note: Player keeps turn after successful match in two-player mode
+        // Note: Player keeps turn after successful match in multiplayer mode
       }
     }
 
@@ -157,11 +165,15 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
       }
     }
 
-    case 'SWITCH_PLAYER':
+    case 'SWITCH_PLAYER': {
+      // Cycle through all active players
+      const currentIndex = state.activePlayers.indexOf(state.currentPlayer)
+      const nextIndex = (currentIndex + 1) % state.activePlayers.length
       return {
         ...state,
-        currentPlayer: state.currentPlayer === 1 ? 2 : 1
+        currentPlayer: state.activePlayers[nextIndex] || state.activePlayers[0]
       }
+    }
 
     case 'ADD_CELEBRATION':
       return {
@@ -221,10 +233,13 @@ const MemoryPairsContext = createContext<MemoryPairsContextValue | null>(null)
 // Provider component
 export function MemoryPairsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(memoryPairsReducer, initialState)
-  const { activePlayerCount } = useGameMode()
+  const { activePlayerCount, players } = useGameMode()
+
+  // Get active players from GameMode context
+  const activePlayers = players.filter(player => player.isActive).map(player => player.id)
 
   // Derive game mode from active player count
-  const gameMode = activePlayerCount > 1 ? 'two-player' : 'single'
+  const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'
 
   // Handle card matching logic when two cards are flipped
   useEffect(() => {
@@ -240,8 +255,8 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'MATCH_FOUND', cardIds: [card1.id, card2.id] })
         } else {
           dispatch({ type: 'MATCH_FAILED', cardIds: [card1.id, card2.id] })
-          // Switch player only in two-player mode
-          if (gameMode === 'two-player') {
+          // Switch player only in multiplayer mode
+          if (gameMode === 'multiplayer') {
             dispatch({ type: 'SWITCH_PLAYER' })
           }
         }
@@ -292,7 +307,7 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
   // Action creators
   const startGame = () => {
     const cards = generateGameCards(state.gameType, state.difficulty)
-    dispatch({ type: 'START_GAME', cards })
+    dispatch({ type: 'START_GAME', cards, activePlayers })
   }
 
   const flipCard = (cardId: string) => {
@@ -325,7 +340,8 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
     resetGame,
     setGameType,
     setDifficulty,
-    gameMode // Expose derived gameMode
+    gameMode, // Expose derived gameMode
+    activePlayers // Expose active players
   }
 
   return (

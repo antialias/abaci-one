@@ -1,20 +1,23 @@
 'use client'
 
 import { useMemoryPairs } from '../context/MemoryPairsContext'
-import { useUserProfile } from '../../../../contexts/UserProfileContext'
-import { formatGameTime, getTwoPlayerWinner, getPerformanceAnalysis } from '../utils/gameScoring'
+import { useGameMode } from '../../../../contexts/GameModeContext'
+import { formatGameTime, getMultiplayerWinner, getPerformanceAnalysis } from '../utils/gameScoring'
 import { css } from '../../../../../styled-system/css'
 
 export function ResultsPhase() {
-  const { state, resetGame } = useMemoryPairs()
-  const { profile } = useUserProfile()
+  const { state, resetGame, activePlayers } = useMemoryPairs()
+  const { players } = useGameMode()
+
+  // Get active player data
+  const activePlayerData = players.filter(p => activePlayers.includes(p.id))
 
   const gameTime = state.gameEndTime && state.gameStartTime
     ? state.gameEndTime - state.gameStartTime
     : 0
 
   const analysis = getPerformanceAnalysis(state)
-  const twoPlayerResult = state.gameMode === 'two-player' ? getTwoPlayerWinner(state) : null
+  const multiplayerResult = state.gameMode === 'multiplayer' ? getMultiplayerWinner(state, activePlayers) : null
 
   return (
     <div className={css({
@@ -43,23 +46,31 @@ export function ResultsPhase() {
           })}>
             Congratulations on completing the memory challenge!
           </p>
-        ) : twoPlayerResult && (
+        ) : multiplayerResult && (
           <div className={css({ marginBottom: '20px' })}>
-            {twoPlayerResult.winner === 'tie' ? (
+            {multiplayerResult.isTie ? (
               <p className={css({
                 fontSize: '24px',
                 color: 'purple.600',
                 fontWeight: 'bold'
               })}>
-                🤝 It's a tie! Both players are memory champions!
+                🤝 It's a tie! All champions are memory masters!
               </p>
-            ) : (
+            ) : multiplayerResult.winners.length === 1 ? (
               <p className={css({
                 fontSize: '24px',
                 color: 'blue.600',
                 fontWeight: 'bold'
               })}>
-                🏆 Player {twoPlayerResult.winner} Wins!
+                🏆 {activePlayerData.find(p => p.id === multiplayerResult.winners[0])?.name || `Player ${multiplayerResult.winners[0]}`} Wins!
+              </p>
+            ) : (
+              <p className={css({
+                fontSize: '24px',
+                color: 'purple.600',
+                fontWeight: 'bold'
+              })}>
+                🏆 {multiplayerResult.winners.length} Champions tied for victory!
               </p>
             )}
           </div>
@@ -154,51 +165,45 @@ export function ResultsPhase() {
         </div>
       </div>
 
-      {/* Two-Player Scores */}
-      {state.gameMode === 'two-player' && twoPlayerResult && (
+      {/* Multiplayer Scores */}
+      {state.gameMode === 'multiplayer' && multiplayerResult && (
         <div className={css({
           display: 'flex',
           justifyContent: 'center',
           gap: '20px',
-          marginBottom: '40px'
+          marginBottom: '40px',
+          flexWrap: 'wrap'
         })}>
-          <div className={css({
-            background: twoPlayerResult.winner === 1 ? 'linear-gradient(135deg, #ffd700, #ff8c00)' : 'linear-gradient(135deg, #c0c0c0, #808080)',
-            color: 'white',
-            padding: '20px',
-            borderRadius: '16px',
-            textAlign: 'center',
-            minWidth: '150px'
-          })}>
-            <div className={css({ fontSize: '48px', marginBottom: '8px' })}>
-              {profile.player1Emoji}
-            </div>
-            <div className={css({ fontSize: '36px', fontWeight: 'bold' })}>
-              {state.scores.player1}
-            </div>
-            {twoPlayerResult.winner === 1 && (
-              <div className={css({ fontSize: '24px' })}>👑</div>
-            )}
-          </div>
+          {activePlayerData.map((player) => {
+            const score = multiplayerResult.scores[player.id] || 0
+            const isWinner = multiplayerResult.winners.includes(player.id)
 
-          <div className={css({
-            background: twoPlayerResult.winner === 2 ? 'linear-gradient(135deg, #ffd700, #ff8c00)' : 'linear-gradient(135deg, #c0c0c0, #808080)',
-            color: 'white',
-            padding: '20px',
-            borderRadius: '16px',
-            textAlign: 'center',
-            minWidth: '150px'
-          })}>
-            <div className={css({ fontSize: '48px', marginBottom: '8px' })}>
-              {profile.player2Emoji}
-            </div>
-            <div className={css({ fontSize: '36px', fontWeight: 'bold' })}>
-              {state.scores.player2}
-            </div>
-            {twoPlayerResult.winner === 2 && (
-              <div className={css({ fontSize: '24px' })}>👑</div>
-            )}
-          </div>
+            return (
+              <div key={player.id} className={css({
+                background: isWinner
+                  ? 'linear-gradient(135deg, #ffd700, #ff8c00)'
+                  : 'linear-gradient(135deg, #c0c0c0, #808080)',
+                color: 'white',
+                padding: '20px',
+                borderRadius: '16px',
+                textAlign: 'center',
+                minWidth: '150px'
+              })}>
+                <div className={css({ fontSize: '48px', marginBottom: '8px' })}>
+                  {player.emoji}
+                </div>
+                <div className={css({ fontSize: '14px', marginBottom: '4px', opacity: 0.9 })}>
+                  {player.name}
+                </div>
+                <div className={css({ fontSize: '36px', fontWeight: 'bold' })}>
+                  {score}
+                </div>
+                {isWinner && (
+                  <div className={css({ fontSize: '24px' })}>👑</div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 

@@ -65,7 +65,7 @@ export interface Achievement {
   earned: boolean
 }
 
-export function getAchievements(state: MemoryPairsState, gameMode: 'single' | 'two-player'): Achievement[] {
+export function getAchievements(state: MemoryPairsState, gameMode: 'single' | 'multiplayer'): Achievement[] {
   const { matchedPairs, totalPairs, moves, scores, gameStartTime, gameEndTime } = state
   const accuracy = moves > 0 ? (matchedPairs / moves) * 100 : 0
   const gameTime = gameStartTime && gameEndTime ? gameEndTime - gameStartTime : 0
@@ -112,17 +112,17 @@ export function getAchievements(state: MemoryPairsState, gameMode: 'single' | 't
       name: 'Two-Player Triumph',
       description: 'Win a two-player game',
       icon: '👥',
-      earned: gameMode === 'two-player' && matchedPairs === totalPairs &&
-        (scores.player1 > scores.player2 || scores.player2 > scores.player1)
+      earned: gameMode === 'multiplayer' && matchedPairs === totalPairs &&
+        Object.keys(scores).length > 1 && Math.max(...Object.values(scores)) > 0
     },
     {
       id: 'shutout_victory',
       name: 'Shutout Victory',
       description: 'Win a two-player game without opponent scoring',
       icon: '🛡️',
-      earned: gameMode === 'two-player' && matchedPairs === totalPairs &&
-        ((scores.player1 === totalPairs && scores.player2 === 0) ||
-         (scores.player2 === totalPairs && scores.player1 === 0))
+      earned: gameMode === 'multiplayer' && matchedPairs === totalPairs &&
+        Object.values(scores).some(score => score === totalPairs) &&
+        Object.values(scores).some(score => score === 0)
     },
     {
       id: 'comeback_kid',
@@ -259,26 +259,49 @@ export function getTwoPlayerWinner(state: MemoryPairsState): {
 } {
   const { scores } = state
 
-  if (scores.player1 > scores.player2) {
+  if (scores[1] > scores[2]) {
     return {
       winner: 1,
-      winnerScore: scores.player1,
-      loserScore: scores.player2,
-      margin: scores.player1 - scores.player2
+      winnerScore: scores[1],
+      loserScore: scores[2],
+      margin: scores[1] - scores[2]
     }
-  } else if (scores.player2 > scores.player1) {
+  } else if (scores[2] > scores[1]) {
     return {
       winner: 2,
-      winnerScore: scores.player2,
-      loserScore: scores.player1,
-      margin: scores.player2 - scores.player1
+      winnerScore: scores[2],
+      loserScore: scores[1],
+      margin: scores[2] - scores[1]
     }
   } else {
     return {
       winner: 'tie',
-      winnerScore: scores.player1,
-      loserScore: scores.player2,
+      winnerScore: scores[1],
+      loserScore: scores[2],
       margin: 0
     }
+  }
+}
+
+// Get multiplayer game winner (supports N players)
+export function getMultiplayerWinner(state: MemoryPairsState, activePlayers: Player[]): {
+  winners: Player[]
+  winnerScore: number
+  scores: { [playerId: number]: number }
+  isTie: boolean
+} {
+  const { scores } = state
+
+  // Find the highest score
+  const maxScore = Math.max(...activePlayers.map(playerId => scores[playerId] || 0))
+
+  // Find all players with the highest score
+  const winners = activePlayers.filter(playerId => (scores[playerId] || 0) === maxScore)
+
+  return {
+    winners,
+    winnerScore: maxScore,
+    scores,
+    isTie: winners.length > 1
   }
 }

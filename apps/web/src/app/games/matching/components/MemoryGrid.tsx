@@ -86,8 +86,8 @@ export function MemoryGrid() {
           </div>
         </div>
 
-        {/* Two-Player Scores */}
-        {state.gameMode === 'two-player' && (
+        {/* Multiplayer Scores */}
+        {state.gameMode === 'multiplayer' && (
           <div className={css({ display: 'flex', alignItems: 'center', gap: '24px' })}>
             <button
               className={css({
@@ -115,7 +115,7 @@ export function MemoryGrid() {
                 {profile.player1Emoji}
               </div>
               <div className={css({ fontSize: '28px', fontWeight: 'bold', color: 'blue.600' })}>
-                {state.scores.player1}
+                {state.scores[1] || 0}
               </div>
               <div className={css({ fontSize: '12px', color: 'gray.600', marginTop: '4px' })}>
                 Click to change character
@@ -156,7 +156,7 @@ export function MemoryGrid() {
                 {profile.player2Emoji}
               </div>
               <div className={css({ fontSize: '28px', fontWeight: 'bold', color: 'red.600' })}>
-                {state.scores.player2}
+                {state.scores[2] || 0}
               </div>
               <div className={css({ fontSize: '12px', color: 'gray.600', marginTop: '4px' })}>
                 Click to change character

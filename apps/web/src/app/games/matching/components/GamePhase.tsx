@@ -1,13 +1,17 @@
 'use client'
 
 import { useMemoryPairs } from '../context/MemoryPairsContext'
-import { useUserProfile } from '../../../../contexts/UserProfileContext'
+import { useGameMode } from '../../../../contexts/GameModeContext'
 import { MemoryGrid } from './MemoryGrid'
 import { css } from '../../../../../styled-system/css'
 
 export function GamePhase() {
-  const { state, resetGame } = useMemoryPairs()
-  const { profile } = useUserProfile()
+  const { state, resetGame, activePlayers } = useMemoryPairs()
+  const { players } = useGameMode()
+
+  // Get the current player from the arena champions
+  const currentPlayerData = players.find(p => p.id === state.currentPlayer)
+  const activePlayerData = players.filter(p => activePlayers.includes(p.id))
 
   return (
     <div className={css({
@@ -73,7 +77,7 @@ export function GamePhase() {
               </span>
             </div>
 
-            {state.gameMode === 'two-player' && (
+            {state.gameMode === 'multiplayer' && (
               <div className={css({
                 display: 'flex',
                 alignItems: 'center',
@@ -85,7 +89,7 @@ export function GamePhase() {
               })}>
                 <span className={css({ fontSize: '20px' })}>⚔️</span>
                 <span className={css({ fontWeight: 'bold', color: 'gray.700' })}>
-                  Two Players
+                  {activePlayers.length} Players
                 </span>
               </div>
             )}
@@ -129,8 +133,8 @@ export function GamePhase() {
               </div>
             </button>
 
-            {/* Timer (if two-player mode) */}
-            {state.gameMode === 'two-player' && (
+            {/* Timer (if multiplayer mode) */}
+            {state.gameMode === 'multiplayer' && (
               <div className={css({
                 display: 'flex',
                 alignItems: 'center',
@@ -149,8 +153,8 @@ export function GamePhase() {
           </div>
         </div>
 
-        {/* Current Player Indicator (Two-Player Mode) */}
-        {state.gameMode === 'two-player' && (
+        {/* Current Player Indicator (Multiplayer Mode) */}
+        {state.gameMode === 'multiplayer' && currentPlayerData && (
           <div className={css({
             marginTop: '16px',
             textAlign: 'center'
@@ -160,9 +164,7 @@ export function GamePhase() {
               alignItems: 'center',
               gap: '12px',
               padding: '12px 24px',
-              background: state.currentPlayer === 1
-                ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
-                : 'linear-gradient(135deg, #fd79a8, #e84393)',
+              background: `linear-gradient(135deg, ${currentPlayerData.color}, ${currentPlayerData.color}dd)`,
               color: 'white',
               borderRadius: '20px',
               fontSize: '18px',
@@ -170,11 +172,11 @@ export function GamePhase() {
               boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
             })}>
               <span className={css({ fontSize: '48px' })}>
-                {state.currentPlayer === 1 ? profile.player1Emoji : profile.player2Emoji}
+                {currentPlayerData.emoji}
               </span>
-              <span>Your Turn</span>
+              <span>{currentPlayerData.name}'s Turn</span>
               <span className={css({ fontSize: '24px' })}>
-                {state.currentPlayer === 1 ? '🎯' : '🎮'}
+                🎯
               </span>
             </div>
           </div>
@@ -205,7 +207,7 @@ export function GamePhase() {
           }
         </p>
 
-        {state.gameMode === 'two-player' && (
+        {state.gameMode === 'multiplayer' && (
           <p className={css({
             fontSize: '14px',
             color: 'gray.500',
