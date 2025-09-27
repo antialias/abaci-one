@@ -20,10 +20,15 @@ export default function GamesPage() {
   }
 
   const handleStartGame = (character: 1 | 2) => {
-    // This would normally navigate to the game with the selected character
     console.log(`Starting ${showCharacterSelection} with character ${character} in ${selectedGameMode} mode`)
     setShowCharacterSelection(null)
-    // Navigate to game (implement later)
+
+    // Navigate to the appropriate game
+    if (showCharacterSelection === 'memory-lightning') {
+      window.location.href = '/games/memory-quiz'
+    } else if (showCharacterSelection === 'battle-arena') {
+      window.location.href = '/games/matching'
+    }
   }
 
   return (
