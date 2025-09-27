@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { AbacusDisplayProvider } from '@/contexts/AbacusDisplayContext'
+import { UserProfileProvider } from '@/contexts/UserProfileContext'
 import { AppNavBar } from '@/components/AppNavBar'
 
 export const metadata: Metadata = {
@@ -17,8 +18,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AbacusDisplayProvider>
-          <AppNavBar />
-          {children}
+          <UserProfileProvider>
+            <AppNavBar />
+            {children}
+          </UserProfileProvider>
         </AbacusDisplayProvider>
       </body>
     </html>
