@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemoryPairs } from '../context/MemoryPairsContext'
+import { useGameMode } from '../../../../contexts/GameModeContext'
 import { generateGameCards } from '../utils/cardGeneration'
 import { css } from '../../../../../styled-system/css'
 
@@ -30,11 +31,12 @@ if (typeof document !== 'undefined' && !document.getElementById('setup-animation
 export function SetupPhase() {
   const {
     state,
-    setGameMode,
     setGameType,
     setDifficulty,
     dispatch
   } = useMemoryPairs()
+
+  const { activePlayerCount, gameMode: globalGameMode } = useGameMode()
 
   const handleStartGame = () => {
     const cards = generateGameCards(state.gameType, state.difficulty)
@@ -155,54 +157,53 @@ export function SetupPhase() {
         margin: '0 auto'
       })}>
 
-        {/* Game Mode Selection */}
-        <div>
-          <label className={css({
-            display: 'block',
+        {/* Current Player Setup */}
+        <div className={css({
+          background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
+          rounded: '2xl',
+          p: '6',
+          border: '2px solid',
+          borderColor: 'gray.300'
+        })}>
+          <h3 className={css({
             fontSize: '20px',
             fontWeight: 'bold',
-            marginBottom: '16px',
-            color: 'gray.700'
+            color: 'gray.700',
+            mb: '3',
+            textAlign: 'center'
           })}>
-            Game Mode
-          </label>
+            🎮 Current Setup
+          </h3>
           <div className={css({
-            display: 'flex',
-            gap: '12px',
-            justifyContent: 'center',
-            flexWrap: 'wrap'
+            fontSize: '16px',
+            color: 'gray.700',
+            textAlign: 'center'
           })}>
-            <button
-              className={getButtonStyles(state.gameMode === 'single', 'primary')}
-              onClick={() => setGameMode('single')}
-            >
-              <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' })}>
-                <span className={css({ fontSize: '24px' })}>🎯</span>
-                <span>Single Player</span>
-                <span className={css({ fontSize: '12px', opacity: 0.8 })}>Focus & Memory</span>
-              </div>
-            </button>
-            <button
-              className={getButtonStyles(state.gameMode === 'two-player', 'primary')}
-              onClick={() => setGameMode('two-player')}
-            >
-              <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' })}>
-                <span className={css({ fontSize: '24px' })}>⚔️</span>
-                <span>Two Players</span>
-                <span className={css({ fontSize: '12px', opacity: 0.8 })}>Battle Mode</span>
-              </div>
-            </button>
+            <p>
+              <strong>{activePlayerCount}</strong> player{activePlayerCount !== 1 ? 's' : ''} selected
+            </p>
+            <p className={css({ fontSize: '14px', color: 'gray.600', mt: '1' })}>
+              {activePlayerCount === 1
+                ? 'Solo challenge mode - focus & memory'
+                : `${activePlayerCount}-player battle mode - compete for the most pairs`
+              }
+            </p>
           </div>
-          <p className={css({
-            fontSize: '14px',
-            color: 'gray.500',
-            marginTop: '8px'
-          })}>
-            {state.gameMode === 'single'
-              ? 'Challenge yourself to match all pairs'
-              : 'Compete against a friend to find the most pairs'
-            }
-          </p>
+          {activePlayerCount === 0 && (
+            <div className={css({
+              mt: '3',
+              p: '3',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid',
+              borderColor: 'red.200',
+              rounded: 'lg',
+              textAlign: 'center'
+            })}>
+              <p className={css({ color: 'red.700', fontSize: '14px' })}>
+                ⚠️ Go back to select players before starting the game
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Game Type Selection */}
@@ -323,8 +324,8 @@ export function SetupPhase() {
           </p>
         </div>
 
-        {/* Two-Player Timer Setting */}
-        {state.gameMode === 'two-player' && (
+        {/* Multi-Player Timer Setting */}
+        {activePlayerCount > 1 && (
           <div>
             <label className={css({
               display: 'block',
@@ -455,10 +456,10 @@ export function SetupPhase() {
             color: 'gray.600',
             lineHeight: '1.5'
           })}>
-            <p><strong>Mode:</strong> {state.gameMode === 'single' ? 'Single Player' : 'Two Player'}</p>
+            <p><strong>Mode:</strong> {activePlayerCount === 1 ? 'Single Player' : `${activePlayerCount} Players`}</p>
             <p><strong>Type:</strong> {state.gameType === 'abacus-numeral' ? 'Abacus-Numeral Matching' : 'Complement Pairs'}</p>
             <p><strong>Difficulty:</strong> {state.difficulty} pairs ({state.difficulty * 2} cards)</p>
-            {state.gameMode === 'two-player' && (
+            {activePlayerCount > 1 && (
               <p><strong>Turn Timer:</strong> {state.turnTimer} seconds</p>
             )}
           </div>
