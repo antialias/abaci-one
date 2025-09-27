@@ -259,8 +259,10 @@ function NavLink({
     <Link
       href={href}
       className={css({
-        px: '3',
-        py: '2',
+        px: { base: '4', md: '3' },
+        py: { base: '3', md: '2' },
+        minH: { base: '44px', md: 'auto' },
+        minW: { base: '44px', md: 'auto' },
         fontSize: 'sm',
         fontWeight: 'medium',
         color: isActive ? 'brand.700' : 'gray.600',
@@ -268,6 +270,9 @@ function NavLink({
         rounded: 'lg',
         transition: 'all',
         textDecoration: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         _hover: {
           color: isActive ? 'brand.800' : 'gray.900',
           bg: isActive ? 'brand.100' : 'gray.50'
