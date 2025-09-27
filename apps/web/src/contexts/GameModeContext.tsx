@@ -17,6 +17,7 @@ export interface GameModeContextType {
   players: PlayerConfig[]
   activePlayerCount: number
   setGameMode: (mode: GameMode) => void
+  setGameModeWithPlayers: (mode: GameMode) => void
   updatePlayer: (id: number, config: Partial<PlayerConfig>) => void
   getActivePlayer: (id: number) => PlayerConfig | undefined
   resetPlayers: () => void
@@ -94,8 +95,14 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
 
   const setGameMode = (mode: GameMode) => {
     setGameModeState(mode)
+    // Note: Player activation is now handled by the ChampionArena component
+    // to allow for drag-and-drop control
+  }
 
-    // Auto-configure active players based on mode
+  const setGameModeWithPlayers = (mode: GameMode) => {
+    setGameModeState(mode)
+
+    // Auto-configure active players based on mode (for non-arena usage)
     setPlayers(prevPlayers => prevPlayers.map(player => ({
       ...player,
       isActive: mode === 'single'
@@ -130,6 +137,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     players,
     activePlayerCount,
     setGameMode,
+    setGameModeWithPlayers,
     updatePlayer,
     getActivePlayer,
     resetPlayers
