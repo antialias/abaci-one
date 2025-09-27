@@ -177,7 +177,7 @@ export default function GamesPage() {
         <div className={css({
           mb: '16'
         })}>
-          <ChampionArena />
+          <ChampionArena onConfigurePlayer={() => {}} />
         </div>
 
         {/* Character Showcase Header */}
