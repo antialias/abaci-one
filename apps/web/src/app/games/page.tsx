@@ -13,6 +13,12 @@ export default function GamesPage() {
 
   const handleGameClick = (gameType: string) => {
     setShowCharacterSelection(gameType)
+    // Set default mode based on game type
+    if (gameType === 'memory-lightning') {
+      setSelectedGameMode('single') // Memory quiz is single-player only
+    } else if (gameType === 'battle-arena') {
+      setSelectedGameMode('two-player') // Default to the main feature of matching
+    }
   }
 
   const handleCharacterSelectionClose = () => {
@@ -23,11 +29,14 @@ export default function GamesPage() {
     console.log(`Starting ${showCharacterSelection} with character ${character} in ${selectedGameMode} mode`)
     setShowCharacterSelection(null)
 
-    // Navigate to the appropriate game
+    // Navigate to the appropriate game with mode parameters
     if (showCharacterSelection === 'memory-lightning') {
+      // Memory quiz is always single-player
       window.location.href = '/games/memory-quiz'
     } else if (showCharacterSelection === 'battle-arena') {
-      window.location.href = '/games/matching'
+      // Pass the selected game mode to matching game
+      const modeParam = selectedGameMode === 'single' ? '?mode=single' : '?mode=two-player'
+      window.location.href = `/games/matching${modeParam}`
     }
   }
 
@@ -1954,19 +1963,20 @@ export default function GamesPage() {
                 </p>
               </div>
 
-              {/* Game Mode Selection */}
-              <div className={css({
-                mb: '8'
-              })}>
-                <h3 className={css({
-                  fontSize: 'xl',
-                  fontWeight: 'semibold',
-                  color: 'gray.800',
-                  mb: '4',
-                  textAlign: 'center'
+              {/* Game Mode Selection - Only show for games that support multiple modes */}
+              {showCharacterSelection === 'battle-arena' && (
+                <div className={css({
+                  mb: '8'
                 })}>
-                  🎯 Game Mode
-                </h3>
+                  <h3 className={css({
+                    fontSize: 'xl',
+                    fontWeight: 'semibold',
+                    color: 'gray.800',
+                    mb: '4',
+                    textAlign: 'center'
+                  })}>
+                    🎯 Game Mode
+                  </h3>
                 <div className={css({
                   display: 'grid',
                   gridTemplateColumns: 'repeat(2, 1fr)',
@@ -2044,7 +2054,8 @@ export default function GamesPage() {
                     </div>
                   </button>
                 </div>
-              </div>
+                </div>
+              )}
 
               {/* Character Selection */}
               <div className={css({
