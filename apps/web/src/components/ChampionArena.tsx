@@ -616,33 +616,6 @@ export function ChampionArena({ onGameModeChange, onConfigurePlayer, className }
             )}
           </div>
 
-          {/* Arena Info */}
-          {arenaPlayers.length > 0 && (
-            <div className={css({
-              mt: '4',
-              textAlign: 'center',
-              background: 'white',
-              rounded: 'xl',
-              p: '4',
-              border: '1px solid',
-              borderColor: 'gray.200'
-            })}>
-              <div className={css({
-                fontSize: 'sm',
-                fontWeight: 'semibold',
-                color: 'gray.700'
-              })}>
-                🎮 {arenaPlayers.length} champion{arenaPlayers.length > 1 ? 's' : ''} ready to battle!
-              </div>
-              <div className={css({
-                fontSize: 'xs',
-                color: 'gray.500',
-                mt: '1'
-              })}>
-                Click a champion to remove from arena
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

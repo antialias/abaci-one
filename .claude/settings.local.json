@@ -127,7 +127,11 @@
       "Bash(gh run view:*)",
       "Bash(nslookup:*)",
       "Bash(docker stop:*)",
-      "Bash(open http://localhost:3000/games)"
+      "Bash(open http://localhost:3000/games)",
+      "Bash(open http://localhost:3004/games)",
+      "Bash(npx tsc:*)",
+      "Bash(git rm:*)",
+      "Bash(git check-ignore:*)"
     ],
     "deny": [],
     "ask": []

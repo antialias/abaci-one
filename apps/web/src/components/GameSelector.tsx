@@ -7,18 +7,62 @@ import { GameCard } from './GameCard'
 // Game configuration defining player limits
 export const GAMES_CONFIG = {
   'memory-lightning': {
-    name: 'Speed Memory Quiz',
+    name: 'Memory Lightning',
+    fullName: 'Memory Lightning ⚡',
     maxPlayers: 1,
-    description: 'Solo memory challenge',
+    description: 'Test your memory speed with rapid-fire abacus calculations',
+    longDescription: 'Challenge yourself with lightning-fast memory tests. Perfect your mental math skills with this intense solo experience.',
     url: '/games/memory-quiz',
-    icon: '⚡'
+    icon: '⚡',
+    chips: ['⭐ Beginner Friendly', '🔥 Speed Challenge', '🧮 Abacus Focus'],
+    color: 'green',
+    gradient: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
+    borderColor: 'green.200',
+    difficulty: 'Beginner'
   },
   'battle-arena': {
     name: 'Matching Pairs Battle',
+    fullName: 'Matching Pairs Battle ⚔️',
     maxPlayers: 4,
-    description: 'Multiplayer memory battle',
+    description: 'Multiplayer memory battle with friends',
+    longDescription: 'Battle friends in epic memory challenges. Match pairs faster than your opponents in this exciting multiplayer experience.',
     url: '/games/matching',
-    icon: '⚔️'
+    icon: '⚔️',
+    chips: ['👥 Multiplayer', '🎯 Strategic', '🏆 Competitive'],
+    color: 'purple',
+    gradient: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
+    borderColor: 'purple.200',
+    difficulty: 'Intermediate'
+  },
+  'number-hunter': {
+    name: 'Number Hunter',
+    fullName: 'Number Hunter 🎯',
+    maxPlayers: 2,
+    description: 'Hunt down complement pairs in a race against time',
+    longDescription: 'The clock is ticking! Hunt down complement pairs faster than ever. Can you beat the timer and become the ultimate number ninja?',
+    url: '/games/number-hunter',
+    icon: '🎯',
+    chips: ['🚀 Coming Soon', '🔥 Speed Challenge', '⏱️ Time Attack'],
+    color: 'red',
+    gradient: 'linear-gradient(135deg, #fecaca, #fca5a5)',
+    borderColor: 'red.200',
+    difficulty: 'Advanced',
+    available: false
+  },
+  'master-organizer': {
+    name: 'Master Organizer',
+    fullName: 'Master Organizer 🎴',
+    maxPlayers: 3,
+    description: 'Sort scattered cards into perfect harmony',
+    longDescription: 'Chaos to order! Drag and sort scattered number cards into perfect harmony. Can you organize the mathematical mayhem?',
+    url: '/games/master-organizer',
+    icon: '🎴',
+    chips: ['🛠️ In Development', '🧩 Sorting & Logic', '📈 Intermediate'],
+    color: 'indigo',
+    gradient: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
+    borderColor: 'indigo.200',
+    difficulty: 'Intermediate',
+    available: false
   }
 } as const
 
