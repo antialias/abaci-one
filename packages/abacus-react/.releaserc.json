@@ -44,8 +44,7 @@
       {
         "npmPublish": true,
         "pkgRoot": ".",
-        "tarballDir": "dist",
-        "registry": "https://npm.pkg.github.com"
+        "tarballDir": "dist"
       }
     ],
     [

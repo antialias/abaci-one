@@ -306,21 +306,17 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               <button
                 key={count}
                 type="button"
-                className={css({
-                  background: state.selectedCount === count ? 'blue.500' : 'white',
-                  color: state.selectedCount === count ? 'white' : 'gray.800',
+                style={{
+                  background: state.selectedCount === count ? '#3b82f6' : 'white',
+                  color: state.selectedCount === count ? 'white' : '#1f2937',
                   border: '2px solid',
-                  borderColor: state.selectedCount === count ? 'blue.500' : 'gray.300',
+                  borderColor: state.selectedCount === count ? '#3b82f6' : '#d1d5db',
                   borderRadius: '8px',
-                  padding: '10px 20px',
+                  padding: '8px 16px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  fontSize: '16px',
-                  _hover: {
-                    background: state.selectedCount === count ? 'blue.600' : 'gray.50',
-                    borderColor: 'blue.400'
-                  }
-                })}
+                  fontSize: '14px',
+                  minWidth: '50px'
+                }}
                 onClick={() => handleCountSelect(count)}
               >
                 {count}
@@ -329,14 +325,16 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
           </div>
         </div>
 
-        <div className={css({ margin: '20px 0' })}>
-          <label className={css({ display: 'block', fontWeight: 'bold', marginBottom: '10px', color: 'gray.600' })}>Display Time per Card:</label>
-          <div className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '15px'
-          })}>
+        <div style={{ margin: '12px 0' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>Display Time per Card:</label>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px'
+            }}
+          >
             <input
               type="range"
               min="0.5"
@@ -344,33 +342,38 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               step="0.5"
               value={state.displayTime}
               onChange={(e) => handleTimeChange(parseFloat(e.target.value))}
-              className={css({
+              style={{
                 flex: 1,
-                maxWidth: '300px'
-              })}
+                maxWidth: '200px'
+              }}
             />
-            <span className={css({
-              fontWeight: 'bold',
-              color: 'blue.500',
-              minWidth: '50px'
-            })}>{state.displayTime.toFixed(1)}s</span>
+            <span
+              style={{
+                fontWeight: 'bold',
+                color: '#3b82f6',
+                minWidth: '40px',
+                fontSize: '14px'
+              }}
+            >
+              {state.displayTime.toFixed(1)}s
+            </span>
           </div>
         </div>
 
         <button
-          className={css({
-            background: 'green.500',
+          style={{
+            background: '#10b981',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
-            padding: '15px 30px',
-            fontSize: '18px',
+            padding: '12px 24px',
+            fontSize: '16px',
             fontWeight: 'bold',
             cursor: 'pointer',
-            transition: 'background 0.2s ease',
-            marginTop: '20px',
-            _hover: { background: 'green.600' }
-          })}
+            marginTop: '16px',
+            width: '100%',
+            maxWidth: '200px'
+          }}
           onClick={handleStartQuiz}
         >
           Start Quiz
