@@ -6,7 +6,6 @@
     [
       "@semantic-release/commit-analyzer",
       {
-        "preset": "conventionalcommits",
         "releaseRules": [
           { "type": "feat", "scope": "abacus-react", "release": "minor" },
           { "type": "fix", "scope": "abacus-react", "release": "patch" },
@@ -16,23 +15,7 @@
         ]
       }
     ],
-    [
-      "@semantic-release/release-notes-generator",
-      {
-        "preset": "conventionalcommits",
-        "presetConfig": {
-          "types": [
-            { "type": "feat", "section": "Features" },
-            { "type": "fix", "section": "Bug Fixes" },
-            { "type": "perf", "section": "Performance Improvements" },
-            { "type": "refactor", "section": "Code Refactoring" },
-            { "type": "docs", "section": "Documentation" },
-            { "type": "style", "section": "Styles" },
-            { "type": "test", "section": "Tests" }
-          ]
-        }
-      }
-    ],
+    "@semantic-release/release-notes-generator",
     [
       "@semantic-release/changelog",
       {
