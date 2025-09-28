@@ -36,6 +36,7 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setFullscreenElement = useCallback((element: HTMLElement | null) => {
+    console.log('🔧 FullscreenContext: Setting fullscreen element:', element)
     fullscreenElementRef.current = element
   }, [])
 
@@ -43,18 +44,25 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
     try {
       // Use the registered fullscreen element, fallback to document.documentElement
       const element = fullscreenElementRef.current || document.documentElement
+      console.log('🚀 FullscreenContext: Entering fullscreen with element:', element)
+      console.log('🚀 FullscreenContext: Current fullscreen element ref:', fullscreenElementRef.current)
 
       if (element.requestFullscreen) {
         await element.requestFullscreen()
+        console.log('✅ FullscreenContext: requestFullscreen() succeeded')
       } else if ((element as any).webkitRequestFullscreen) {
         await (element as any).webkitRequestFullscreen()
+        console.log('✅ FullscreenContext: webkitRequestFullscreen() succeeded')
       } else if ((element as any).mozRequestFullScreen) {
         await (element as any).mozRequestFullScreen()
+        console.log('✅ FullscreenContext: mozRequestFullScreen() succeeded')
       } else if ((element as any).msRequestFullscreen) {
         await (element as any).msRequestFullscreen()
+        console.log('✅ FullscreenContext: msRequestFullscreen() succeeded')
       }
     } catch (error) {
-      console.error('Failed to enter fullscreen:', error)
+      console.error('❌ FullscreenContext: Failed to enter fullscreen:', error)
+      throw error
     }
   }
 
