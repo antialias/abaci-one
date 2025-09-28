@@ -954,6 +954,9 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   const [keyboardDetectionAttempted, setKeyboardDetectionAttempted] = useState(false)
   const [showOnScreenKeyboard, setShowOnScreenKeyboard] = useState(false)
 
+  // Testing mode - force show keyboard toggle for demo/testing (remove this in production)
+  const [testingMode, setTestingMode] = useState(false)
+
   // Detect physical keyboard availability
   useEffect(() => {
     let detectionTimer: NodeJS.Timeout | null = null
@@ -1232,6 +1235,25 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
             : '⌨️ Type the numbers you remember'
           }
         </div>
+
+        {/* Testing control - remove in production */}
+        <div style={{
+          fontSize: '10px',
+          color: '#9ca3af',
+          marginBottom: '4px'
+        }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+            <input
+              type="checkbox"
+              checked={testingMode}
+              onChange={(e) => setTestingMode(e.target.checked)}
+            />
+            Test on-screen keyboard (for demo)
+          </label>
+          <div style={{ fontSize: '9px', opacity: 0.7 }}>
+            Keyboard detected: {hasPhysicalKeyboard === null ? 'detecting...' : hasPhysicalKeyboard ? 'yes' : 'no'}
+          </div>
+        </div>
         <div
           style={{
             minHeight: '50px',
@@ -1344,8 +1366,8 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         ))}
       </div>
 
-      {/* Toggle button for on-screen keyboard (only shown when no physical keyboard detected) */}
-      {hasPhysicalKeyboard === false && state.guessesRemaining > 0 && (
+      {/* Toggle button for on-screen keyboard (only shown when no physical keyboard detected OR testing mode) */}
+      {(hasPhysicalKeyboard === false || testingMode) && state.guessesRemaining > 0 && (
         <div style={{
           position: 'fixed',
           bottom: '16px',
@@ -1379,7 +1401,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       )}
 
       {/* Dedicated keyboard panel - part of layout flow, no overlay */}
-      {hasPhysicalKeyboard === false && state.guessesRemaining > 0 && showOnScreenKeyboard && (
+      {(hasPhysicalKeyboard === false || testingMode) && state.guessesRemaining > 0 && showOnScreenKeyboard && (
         <div style={{
           flex: '0 0 40%', // Take exactly 40% of the height
           padding: '16px',
