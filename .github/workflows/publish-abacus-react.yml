@@ -59,16 +59,26 @@ jobs:
       - name: Run tests
         run: pnpm --filter @soroban/abacus-react test:run || echo "Tests currently failing due to vitest config issue - will fix in follow-up"
 
-      - name: Configure npm for GitHub Packages only
+      - name: Semantic Release (versioning only)
+        working-directory: packages/abacus-react
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
+
+      - name: Configure npm for GitHub Packages
         working-directory: packages/abacus-react
         run: |
           echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > .npmrc
           echo "@soroban:registry=https://npm.pkg.github.com" >> .npmrc
+          echo "registry=https://npm.pkg.github.com" >> .npmrc
 
-      - name: Semantic Release
+      - name: Publish to GitHub Packages
         working-directory: packages/abacus-react
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_REGISTRY: https://npm.pkg.github.com
-          NPM_REGISTRY: https://npm.pkg.github.com
-        run: npx semantic-release
+        run: |
+          # Only publish if semantic-release created a new version
+          if git tag --list | grep -q "abacus-react-v"; then
+            echo "Publishing to GitHub Packages..."
+            npm publish
+          else
+            echo "No new version to publish"
+          fi
