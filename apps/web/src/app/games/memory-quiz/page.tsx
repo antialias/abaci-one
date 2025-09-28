@@ -42,6 +42,11 @@ interface SorobanQuizState {
     id: string
     timestamp: number
   }>
+
+  // Keyboard state (moved from InputPhase to persist across re-renders)
+  hasPhysicalKeyboard: boolean | null
+  testingMode: boolean
+  showOnScreenKeyboard: boolean
 }
 
 type QuizAction =
@@ -60,6 +65,9 @@ type QuizAction =
   | { type: 'SET_PREFIX_TIMEOUT'; timeout: NodeJS.Timeout | null }
   | { type: 'SHOW_RESULTS' }
   | { type: 'RESET_QUIZ' }
+  | { type: 'SET_PHYSICAL_KEYBOARD'; hasKeyboard: boolean | null }
+  | { type: 'SET_TESTING_MODE'; enabled: boolean }
+  | { type: 'TOGGLE_ONSCREEN_KEYBOARD' }
 
 const initialState: SorobanQuizState = {
   cards: [],
@@ -76,7 +84,11 @@ const initialState: SorobanQuizState = {
   gamePhase: 'setup',
   prefixAcceptanceTimeout: null,
   finishButtonsBound: false,
-  wrongGuessAnimations: []
+  wrongGuessAnimations: [],
+  // Keyboard state (persistent across re-renders)
+  hasPhysicalKeyboard: null,
+  testingMode: false,
+  showOnScreenKeyboard: false
 }
 
 function quizReducer(state: SorobanQuizState, action: QuizAction): SorobanQuizState {
@@ -957,8 +969,32 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   // Testing mode - force show keyboard toggle for demo/testing (remove this in production)
   const [testingMode, setTestingMode] = useState(false)
 
-  // Detect physical keyboard availability
+  // Debug: Log state changes and detect what's causing re-renders
   useEffect(() => {
+    console.log('🔍 Keyboard state changed:', { hasPhysicalKeyboard, testingMode, showOnScreenKeyboard })
+    console.trace('🔍 State change trace:')
+  }, [hasPhysicalKeyboard, testingMode, showOnScreenKeyboard])
+
+  // Debug: Monitor for unexpected state resets
+  useEffect(() => {
+    if (showOnScreenKeyboard) {
+      const timer = setTimeout(() => {
+        if (!showOnScreenKeyboard) {
+          console.error('🚨 Keyboard was unexpectedly hidden!')
+        }
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [showOnScreenKeyboard])
+
+  // Detect physical keyboard availability (disabled when testing mode is active)
+  useEffect(() => {
+    // Skip keyboard detection entirely when testing mode is enabled
+    if (testingMode) {
+      console.log('🧪 Testing mode enabled - skipping keyboard detection')
+      return
+    }
+
     let detectionTimer: NodeJS.Timeout | null = null
 
     const detectKeyboard = () => {
@@ -978,6 +1014,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       // - It's a touch device AND has mobile viewport AND lacks precise pointer
       const likelyNoKeyboard = isTouchDevice && isMobileViewport && !hasKeyboardSupport
 
+      console.log('⌨️ Keyboard detection result:', !likelyNoKeyboard)
       setHasPhysicalKeyboard(!likelyNoKeyboard)
       setKeyboardDetectionAttempted(true)
     }
@@ -986,6 +1023,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
     let keyboardDetected = false
     const handleFirstKeyPress = (e: KeyboardEvent) => {
       if (/^[0-9]$/.test(e.key)) {
+        console.log('⌨️ Physical keyboard detected via keypress')
         keyboardDetected = true
         setHasPhysicalKeyboard(true)
         document.removeEventListener('keypress', handleFirstKeyPress)
@@ -999,6 +1037,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
     // Fallback to heuristic detection after 3 seconds
     detectionTimer = setTimeout(() => {
       if (!keyboardDetected) {
+        console.log('⌨️ Using fallback keyboard detection')
         detectKeyboard()
       }
       document.removeEventListener('keypress', handleFirstKeyPress)
@@ -1012,7 +1051,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       if (detectionTimer) clearTimeout(detectionTimer)
       clearTimeout(initialDetection)
     }
-  }, [])
+  }, [testingMode])
 
   const acceptCorrectNumber = useCallback((number: number) => {
     dispatch({ type: 'ACCEPT_NUMBER', number })
@@ -1146,14 +1185,16 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
     <div style={{
       textAlign: 'center',
       padding: '12px',
-      paddingBottom: '12px', // Removed extra space since keyboard is now toggleable
+      paddingBottom: '12px',
       maxWidth: '800px',
       margin: '0 auto',
-      height: '100%',
+      height: showOnScreenKeyboard ? 'auto' : '100%', // Dynamic height based on keyboard state
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'flex-start',
-      minHeight: '100vh' // Ensure container can scroll if needed
+      minHeight: showOnScreenKeyboard ? '100vh' : 'auto', // Only enforce full height when keyboard is shown
+      maxHeight: '100vh', // Prevent overflow
+      overflow: 'hidden' // Prevent scrolling conflicts
     }}>
       <h3 style={{ marginBottom: '16px', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>Enter the Numbers You Remember</h3>
       <div style={{
@@ -1390,7 +1431,10 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               alignItems: 'center',
               justifyContent: 'center'
             }}
-            onClick={() => setShowOnScreenKeyboard(!showOnScreenKeyboard)}
+            onClick={() => {
+              console.log('🖱️ Toggle button clicked. Current state:', showOnScreenKeyboard, '→ New state:', !showOnScreenKeyboard)
+              setShowOnScreenKeyboard(!showOnScreenKeyboard)
+            }}
             onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
             onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -1411,8 +1455,12 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
           transition: 'all 0.3s ease',
           display: 'flex',
           flexDirection: 'column',
-          minHeight: '240px' // Ensure minimum usable height
+          minHeight: '240px', // Ensure minimum usable height
+          // Debug styling to make it very visible
+          border: '5px solid red',
+          boxShadow: '0 0 20px rgba(255, 0, 0, 0.5)'
         }}>
+          {console.log('🎹 Keyboard panel is rendering!')}
           <div style={{
             textAlign: 'center',
             marginBottom: '16px',
@@ -1474,7 +1522,10 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                   e.currentTarget.style.background = 'white'
                   e.currentTarget.style.borderColor = '#e5e7eb'
                 }}
-                onClick={() => handleKeyboardInput(digit.toString())}
+                onClick={() => {
+                  console.log('🔢 On-screen keyboard button clicked:', digit)
+                  handleKeyboardInput(digit.toString())
+                }}
               >
                 {digit}
               </button>
@@ -1525,7 +1576,10 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                 e.currentTarget.style.background = 'white'
                 e.currentTarget.style.borderColor = '#e5e7eb'
               }}
-              onClick={() => handleKeyboardInput('0')}
+              onClick={() => {
+                console.log('🔢 On-screen keyboard button clicked: 0')
+                handleKeyboardInput('0')
+              }}
             >
               0
             </button>
