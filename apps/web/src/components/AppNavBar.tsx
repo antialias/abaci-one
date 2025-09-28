@@ -41,8 +41,26 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
           }
         }
       } else if (color.startsWith('linear-gradient')) {
-        // For gradients, use a semi-transparent overlay
-        return `rgba(0, 0, 0, ${opacity})`
+        // Extract colors from gradient and use dominant color
+        const hexMatch = color.match(/#[0-9a-fA-F]{6}/g)
+        if (hexMatch && hexMatch.length > 0) {
+          // Use the first color from the gradient
+          const hex = hexMatch[0].slice(1)
+          const r = parseInt(hex.slice(0, 2), 16)
+          const g = parseInt(hex.slice(2, 4), 16)
+          const b = parseInt(hex.slice(4, 6), 16)
+          return `rgba(${r}, ${g}, ${b}, ${opacity})`
+        }
+        // Fallback: try to extract rgb values
+        const rgbMatch = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)
+        if (rgbMatch && rgbMatch.length > 0) {
+          const values = rgbMatch[0].match(/\d+/g)
+          if (values && values.length >= 3) {
+            return `rgba(${values[0]}, ${values[1]}, ${values[2]}, ${opacity})`
+          }
+        }
+        // Final fallback for gradients
+        return isFullscreen ? `rgba(0, 0, 0, ${opacity})` : `rgba(255, 255, 255, ${opacity})`
       }
     }
     return isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'
