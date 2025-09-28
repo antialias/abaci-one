@@ -8,6 +8,50 @@ import { EmojiPicker } from './EmojiPicker'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { css } from '../../../../../styled-system/css'
 
+// Helper function to calculate optimal grid dimensions
+function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
+  // For consistent grid layout, we need to ensure r×c = totalCards
+  // Choose columns based on viewport, then calculate exact rows needed
+
+  let targetColumns
+  const width = typeof window !== 'undefined' ? window.innerWidth : 1024
+
+  // Choose column count based on viewport
+  if (aspectRatio >= 1.6 && width >= 1200) {
+    // Ultra-wide: prefer wider grids
+    targetColumns = config.landscapeColumns || config.desktopColumns || 6
+  } else if (aspectRatio >= 1.33 && width >= 768) {
+    // Desktop/landscape: use desktop columns
+    targetColumns = config.desktopColumns || config.landscapeColumns || 6
+  } else if (aspectRatio >= 1.0 && width >= 600) {
+    // Tablet: use tablet columns
+    targetColumns = config.tabletColumns || config.desktopColumns || 4
+  } else {
+    // Mobile: use mobile columns
+    targetColumns = config.mobileColumns || 3
+  }
+
+  // Calculate exact rows needed for this column count
+  const rows = Math.ceil(cards / targetColumns)
+
+  // If we have leftover cards that would create an uneven bottom row,
+  // try to redistribute for a more balanced grid
+  const leftoverCards = cards % targetColumns
+  if (leftoverCards > 0 && leftoverCards < targetColumns / 2 && targetColumns > 3) {
+    // Try one less column for a more balanced grid
+    const altColumns = targetColumns - 1
+    const altRows = Math.ceil(cards / altColumns)
+    const altLeftover = cards % altColumns
+
+    // Use alternative if it creates a more balanced grid
+    if (altLeftover === 0 || altLeftover > leftoverCards) {
+      return { columns: altColumns, rows: altRows }
+    }
+  }
+
+  return { columns: targetColumns, rows }
+}
+
 // Custom hook to calculate proper grid dimensions for consistent r×c layout
 function useGridDimensions(gridConfig: any, totalCards: number) {
   const [gridDimensions, setGridDimensions] = useState(() => {
@@ -20,49 +64,6 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
   })
 
   useEffect(() => {
-    function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
-      // For consistent grid layout, we need to ensure r×c = totalCards
-      // Choose columns based on viewport, then calculate exact rows needed
-
-      let targetColumns
-      const width = window.innerWidth
-
-      // Choose column count based on viewport
-      if (aspectRatio >= 1.6 && width >= 1200) {
-        // Ultra-wide: prefer wider grids
-        targetColumns = config.landscapeColumns || config.desktopColumns || 6
-      } else if (aspectRatio >= 1.33 && width >= 768) {
-        // Desktop/landscape: use desktop columns
-        targetColumns = config.desktopColumns || config.landscapeColumns || 6
-      } else if (aspectRatio >= 1.0 && width >= 600) {
-        // Tablet: use tablet columns
-        targetColumns = config.tabletColumns || config.desktopColumns || 4
-      } else {
-        // Mobile: use mobile columns
-        targetColumns = config.mobileColumns || 3
-      }
-
-      // Calculate exact rows needed for this column count
-      const rows = Math.ceil(cards / targetColumns)
-
-      // If we have leftover cards that would create an uneven bottom row,
-      // try to redistribute for a more balanced grid
-      const leftoverCards = cards % targetColumns
-      if (leftoverCards > 0 && leftoverCards < targetColumns / 2 && targetColumns > 3) {
-        // Try one less column for a more balanced grid
-        const altColumns = targetColumns - 1
-        const altRows = Math.ceil(cards / altColumns)
-        const altLeftover = cards % altColumns
-
-        // Use alternative if it creates a more balanced grid
-        if (altLeftover === 0 || altLeftover > leftoverCards) {
-          return { columns: altColumns, rows: altRows }
-        }
-      }
-
-      return { columns: targetColumns, rows }
-    }
-
     const updateGrid = () => {
       if (typeof window === 'undefined') return
 

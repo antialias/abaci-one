@@ -149,7 +149,8 @@
       "Bash(gh release list:*)",
       "Bash(gh release view:*)",
       "Bash(git pull:*)",
-      "WebFetch(domain:antialias.github.io)"
+      "WebFetch(domain:antialias.github.io)",
+      "Bash(open http://localhost:3006/games/matching)"
     ],
     "deny": [],
     "ask": []
