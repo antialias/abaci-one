@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { useFullscreen } from '../../../../contexts/FullscreenContext'
 import { SetupPhase } from './SetupPhase'
@@ -10,23 +10,16 @@ import { css } from '../../../../../styled-system/css'
 
 export function MemoryPairsGame() {
   const { state } = useMemoryPairs()
-  const { enterFullscreen, setFullscreenElement } = useFullscreen()
+  const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // Register this component's main div as the fullscreen element
     if (gameRef.current) {
+      console.log('🎯 MemoryPairsGame: Registering fullscreen element:', gameRef.current)
       setFullscreenElement(gameRef.current)
     }
   }, [setFullscreenElement])
-
-  useEffect(() => {
-    // Check if we should enter fullscreen (from URL parameter)
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get('fullscreen') === 'true') {
-      enterFullscreen()
-    }
-  }, [enterFullscreen])
 
   return (
     <div
@@ -37,8 +30,11 @@ export function MemoryPairsGame() {
       padding: '20px',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center'
+      alignItems: 'center',
+      position: 'relative'
     })}>
+      {/* Note: Fullscreen restore prompt removed - client-side navigation preserves fullscreen */}
+
       <header className={css({
         textAlign: 'center',
         marginBottom: '30px'
