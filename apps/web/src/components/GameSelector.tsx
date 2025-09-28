@@ -84,14 +84,20 @@ export function GameSelector({
   const { activePlayerCount } = useGameMode()
 
   return (
-    <div className={className}>
+    <div className={css({
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }, className)}>
       {showHeader && (
         <h3 className={css({
-          fontSize: variant === 'compact' ? 'lg' : 'xl',
+          fontSize: variant === 'compact' ? 'lg' : { base: 'lg', md: 'xl' },
           fontWeight: 'bold',
           color: 'gray.800',
-          mb: '4',
-          textAlign: 'center'
+          mb: { base: '2', md: '3' },
+          textAlign: 'center',
+          flexShrink: 0
         })}>
           🎮 Available Games
         </h3>
@@ -112,9 +118,11 @@ export function GameSelector({
         <div className={css({
           display: 'grid',
           gridTemplateColumns: { base: '1fr', md: 'repeat(2, 1fr)' },
+          gridTemplateRows: { base: 'repeat(4, 1fr)', md: 'repeat(2, 1fr)' },
           gap: variant === 'compact' ? '2' : { base: '2', md: '3' },
-          height: '100%',
-          alignItems: 'start'
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden'
         })}>
           {Object.entries(GAMES_CONFIG).map(([gameType, config]) => (
             <GameCard

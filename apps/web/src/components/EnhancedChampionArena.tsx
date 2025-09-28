@@ -690,7 +690,7 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
           </div>
         </div>
 
-        {/* Prominent Game Selector - takes remaining space */}
+        {/* Prominent Game Selector - constrained to available space */}
         <div className={css({
           flex: 1,
           mt: { base: '1', md: '2' },
@@ -698,7 +698,9 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
           borderTop: '2px solid',
           borderColor: 'gray.200',
           minHeight: 0,
-          overflow: 'auto'
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
         })}>
           <GameSelector
             variant="detailed"
