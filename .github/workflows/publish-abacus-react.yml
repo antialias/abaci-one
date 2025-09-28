@@ -84,32 +84,49 @@ jobs:
             VERSION=${LATEST_TAG#abacus-react-v}
             echo "Publishing version: $VERSION"
 
-            # Set correct version in package.json
-            npm version $VERSION --no-git-tag-version --allow-same-version
-
-            # Resolve any workspace dependencies before publishing
-            # Replace "workspace:*" with actual version numbers from package.json files
+            # Create a clean package.json for publishing by updating version and cleaning workspace references
             node -e "
               const fs = require('fs');
               const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-              const replaceWorkspace = (deps) => {
+
+              // Set the correct version
+              pkg.version = '$VERSION';
+
+              // Clean workspace dependencies function
+              const cleanWorkspaceDeps = (deps) => {
                 if (!deps) return deps;
                 const result = {};
                 for (const [name, version] of Object.entries(deps)) {
-                  if (version.startsWith('workspace:')) {
-                    // For now, replace with '*' since we don't have other workspace packages to reference
-                    result[name] = version.replace('workspace:', '');
+                  if (typeof version === 'string' && version.startsWith('workspace:')) {
+                    // Replace workspace: syntax with actual version or latest
+                    result[name] = version.replace('workspace:', '') || '*';
                   } else {
                     result[name] = version;
                   }
                 }
                 return result;
               };
-              pkg.dependencies = replaceWorkspace(pkg.dependencies);
-              pkg.devDependencies = replaceWorkspace(pkg.devDependencies);
-              pkg.peerDependencies = replaceWorkspace(pkg.peerDependencies);
+
+              // Clean all dependency types
+              if (pkg.dependencies) pkg.dependencies = cleanWorkspaceDeps(pkg.dependencies);
+              if (pkg.devDependencies) pkg.devDependencies = cleanWorkspaceDeps(pkg.devDependencies);
+              if (pkg.peerDependencies) pkg.peerDependencies = cleanWorkspaceDeps(pkg.peerDependencies);
+              if (pkg.optionalDependencies) pkg.optionalDependencies = cleanWorkspaceDeps(pkg.optionalDependencies);
+
+              // Write the clean package.json
               fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+              console.log('Created clean package.json for version:', pkg.version);
             "
+
+            # Verify the package.json is clean
+            echo "Package.json version: $(node -e "console.log(JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version)")"
+
+            # Check for any remaining workspace dependencies
+            if grep -q "workspace:" package.json; then
+              echo "ERROR: Still found workspace dependencies in package.json:"
+              grep "workspace:" package.json
+              exit 1
+            fi
 
             npm publish
           else
