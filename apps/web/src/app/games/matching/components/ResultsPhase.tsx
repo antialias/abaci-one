@@ -1,11 +1,13 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { useGameMode } from '../../../../contexts/GameModeContext'
 import { formatGameTime, getMultiplayerWinner, getPerformanceAnalysis } from '../utils/gameScoring'
 import { css } from '../../../../../styled-system/css'
 
 export function ResultsPhase() {
+  const router = useRouter()
   const { state, resetGame, activePlayers } = useMemoryPairs()
   const { players } = useGameMode()
 
@@ -314,7 +316,10 @@ export function ResultsPhase() {
               boxShadow: '0 8px 25px rgba(167, 139, 250, 0.6)'
             }
           })}
-          onClick={() => window.location.href = '/games'}
+          onClick={() => {
+            console.log('🔄 ResultsPhase: Navigating to games with Next.js router (no page reload)')
+            router.push('/games')
+          }}
         >
           🏠 Back to Games
         </button>

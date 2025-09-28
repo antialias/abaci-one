@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
@@ -13,6 +13,7 @@ interface AppNavBarProps {
 
 export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const isGamePage = pathname?.startsWith('/games')
   const isArcadePage = pathname?.startsWith('/arcade')
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
@@ -160,9 +161,9 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
 
             {isArcadePage && (
               <button
-                onClick={async () => {
-                  await exitFullscreen()
-                  window.location.href = '/games'
+                onClick={() => {
+                  console.log('🔄 AppNavBar: Navigating to games with Next.js router (no page reload)')
+                  router.push('/games')
                 }}
                 title="Exit Arcade"
                 className={css({

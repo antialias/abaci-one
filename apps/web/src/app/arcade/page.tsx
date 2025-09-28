@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { css } from '../../../styled-system/css'
 import { EnhancedChampionArena } from '../../components/EnhancedChampionArena'
 import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
 
 function ArcadeContent() {
+  const router = useRouter()
   const { isFullscreen, enterFullscreen, exitFullscreen, setFullscreenElement } = useFullscreen()
   const arcadeRef = useRef<HTMLDivElement>(null)
 
@@ -16,19 +18,13 @@ function ArcadeContent() {
     }
   }, [setFullscreenElement])
 
-  useEffect(() => {
-    // Check if we should enter fullscreen (from games page navigation)
-    const shouldEnterFullscreen = sessionStorage.getItem('enterArcadeFullscreen')
-    if (shouldEnterFullscreen === 'true') {
-      sessionStorage.removeItem('enterArcadeFullscreen')
-      enterFullscreen()
-    }
-  }, [enterFullscreen])
+  // Note: Automatic fullscreen entry removed - users must manually enter fullscreen
+  // Client-side navigation now preserves fullscreen state without needing auto-entry
 
-  const handleExitArcade = async () => {
-    await exitFullscreen()
-    // Navigate back to games page
-    window.location.href = '/games'
+  const handleExitArcade = () => {
+    console.log('🔄 ArcadePage: Navigating to games with Next.js router (no page reload)')
+    // Navigate back to games page using client-side routing
+    router.push('/games')
   }
 
   return (

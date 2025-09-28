@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { css } from '../../styled-system/css'
 import { useGameMode } from '../contexts/GameModeContext'
 import { GAMES_CONFIG, GameType } from './GameSelector'
@@ -18,6 +19,7 @@ export function GameCard({
   className
 }: GameCardProps) {
   const { activePlayerCount } = useGameMode()
+  const router = useRouter()
 
   // Check if a game is available based on active player count
   const isGameAvailable = () => {
@@ -26,15 +28,9 @@ export function GameCard({
 
   const handleGameClick = () => {
     if (isGameAvailable() && config.available !== false) {
-      // Check if we're in fullscreen arcade mode
-      const isInArcade = window.location.pathname.includes('/arcade')
-
-      if (isInArcade) {
-        // Stay in fullscreen when navigating from arcade
-        window.location.href = config.url + '?fullscreen=true'
-      } else {
-        window.location.href = config.url
-      }
+      console.log('🔄 GameCard: Navigating with Next.js router (no page reload)')
+      // Use Next.js router for client-side navigation - this preserves fullscreen!
+      router.push(config.url)
     }
   }
 
