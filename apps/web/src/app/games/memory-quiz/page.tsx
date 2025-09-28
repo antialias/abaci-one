@@ -1010,45 +1010,6 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
     }
   }, [])
 
-  const handleKeyPress = useCallback((e: KeyboardEvent) => {
-    // Handle backspace
-    if (e.key === 'Backspace' || e.key === 'Delete') {
-      handleBackspace()
-      return
-    }
-
-    // Handle number input
-    if (/^[0-9]$/.test(e.key)) {
-      handleNumberInput(e.key)
-    }
-  }, [handleNumberInput, handleBackspace])
-
-  // Set up global keyboard listeners
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle backspace/delete on keydown to prevent repetition
-      if (e.key === 'Backspace' || e.key === 'Delete') {
-        e.preventDefault()
-        handleBackspace()
-      }
-    }
-
-    const handleKeyPressEvent = (e: KeyboardEvent) => {
-      // Handle number input
-      if (/^[0-9]$/.test(e.key)) {
-        handleNumberInput(e.key)
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('keypress', handleKeyPressEvent)
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('keypress', handleKeyPressEvent)
-    }
-  }, [handleNumberInput, handleBackspace])
-
   const acceptCorrectNumber = useCallback((number: number) => {
     dispatch({ type: 'ACCEPT_NUMBER', number })
     dispatch({ type: 'SET_INPUT', input: '' })
@@ -1084,54 +1045,53 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
     }
   }, [dispatch, state.guessesRemaining, state.currentInput])
 
-  // Handle number input from either physical keyboard or on-screen pad
-  const handleNumberInput = useCallback((digit: string) => {
-    // Only handle if input phase is active and guesses remain
-    if (state.guessesRemaining === 0) return
+  // Simple keyboard event handlers that will be defined after callbacks
+  const handleKeyboardInput = useCallback((key: string) => {
+    // Handle number input
+    if (/^[0-9]$/.test(key)) {
+      // Only handle if input phase is active and guesses remain
+      if (state.guessesRemaining === 0) return
 
-    // Only handle number keys
-    if (!/^[0-9]$/.test(digit)) return
+      const newInput = state.currentInput + key
+      dispatch({ type: 'SET_INPUT', input: newInput })
 
-    const newInput = state.currentInput + digit
-    dispatch({ type: 'SET_INPUT', input: newInput })
-
-    // Clear any existing timeout
-    if (state.prefixAcceptanceTimeout) {
-      clearTimeout(state.prefixAcceptanceTimeout)
-      dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout: null })
-    }
-
-    setDisplayFeedback('neutral')
-
-    const number = parseInt(newInput)
-    if (isNaN(number)) return
-
-    // Check if correct and not already found
-    if (state.correctAnswers.includes(number) && !state.foundNumbers.includes(number)) {
-      if (!isPrefix(newInput, state.correctAnswers, state.foundNumbers)) {
-        acceptCorrectNumber(number)
-      } else {
-        const timeout = setTimeout(() => {
-          acceptCorrectNumber(number)
-        }, 500)
-        dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout })
+      // Clear any existing timeout
+      if (state.prefixAcceptanceTimeout) {
+        clearTimeout(state.prefixAcceptanceTimeout)
+        dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout: null })
       }
-    } else {
-      // Check if this input could be a valid prefix or complete number
-      const couldBePrefix = state.correctAnswers.some(n => n.toString().startsWith(newInput))
-      const isCompleteWrongNumber = !state.correctAnswers.includes(number) && !couldBePrefix
 
-      // Trigger explosion if:
-      // 1. It's a complete wrong number (length >= 2 or can't be a prefix)
-      // 2. It's a single digit that can't possibly be a prefix of any target
-      if ((newInput.length >= 2 || isCompleteWrongNumber) && state.guessesRemaining > 0) {
-        handleIncorrectGuess()
+      setDisplayFeedback('neutral')
+
+      const number = parseInt(newInput)
+      if (isNaN(number)) return
+
+      // Check if correct and not already found
+      if (state.correctAnswers.includes(number) && !state.foundNumbers.includes(number)) {
+        if (!isPrefix(newInput, state.correctAnswers, state.foundNumbers)) {
+          acceptCorrectNumber(number)
+        } else {
+          const timeout = setTimeout(() => {
+            acceptCorrectNumber(number)
+          }, 500)
+          dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout })
+        }
+      } else {
+        // Check if this input could be a valid prefix or complete number
+        const couldBePrefix = state.correctAnswers.some(n => n.toString().startsWith(newInput))
+        const isCompleteWrongNumber = !state.correctAnswers.includes(number) && !couldBePrefix
+
+        // Trigger explosion if:
+        // 1. It's a complete wrong number (length >= 2 or can't be a prefix)
+        // 2. It's a single digit that can't possibly be a prefix of any target
+        if ((newInput.length >= 2 || isCompleteWrongNumber) && state.guessesRemaining > 0) {
+          handleIncorrectGuess()
+        }
       }
     }
   }, [state.currentInput, state.prefixAcceptanceTimeout, state.correctAnswers, state.foundNumbers, state.guessesRemaining, isPrefix, dispatch, acceptCorrectNumber, handleIncorrectGuess])
 
-  // Handle backspace/delete
-  const handleBackspace = useCallback(() => {
+  const handleKeyboardBackspace = useCallback(() => {
     if (state.currentInput.length > 0) {
       const newInput = state.currentInput.slice(0, -1)
       dispatch({ type: 'SET_INPUT', input: newInput })
@@ -1145,6 +1105,33 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       setDisplayFeedback('neutral')
     }
   }, [state.currentInput, state.prefixAcceptanceTimeout, dispatch])
+
+  // Set up global keyboard listeners
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle backspace/delete on keydown to prevent repetition
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        handleKeyboardBackspace()
+      }
+    }
+
+    const handleKeyPressEvent = (e: KeyboardEvent) => {
+      // Handle number input
+      if (/^[0-9]$/.test(e.key)) {
+        handleKeyboardInput(e.key)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keypress', handleKeyPressEvent)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keypress', handleKeyPressEvent)
+    }
+  }, [handleKeyboardInput, handleKeyboardBackspace])
+
 
   const hasFoundSome = state.foundNumbers.length > 0
   const hasFoundAll = state.foundNumbers.length === state.correctAnswers.length
@@ -1413,7 +1400,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                   e.currentTarget.style.transform = 'scale(1)'
                   e.currentTarget.style.background = 'white'
                 }}
-                onClick={() => handleNumberInput(digit.toString())}
+                onClick={() => handleKeyboardInput(digit.toString())}
               >
                 {digit}
               </button>
@@ -1453,7 +1440,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                 e.currentTarget.style.transform = 'scale(1)'
                 e.currentTarget.style.background = 'white'
               }}
-              onClick={() => handleNumberInput('0')}
+              onClick={() => handleKeyboardInput('0')}
             >
               0
             </button>
@@ -1499,7 +1486,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                   e.currentTarget.style.transform = 'scale(1)'
                   e.currentTarget.style.background = '#fef2f2'
                 }}
-                onClick={handleBackspace}
+                onClick={handleKeyboardBackspace}
               >
                 ⌫ Delete
               </button>
