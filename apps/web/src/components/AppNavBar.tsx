@@ -42,8 +42,8 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
 
   // Helper function to get themed background colors
   const getThemedBackground = (opacity: number = 0.85) => {
-    // Only apply theming after hydration to prevent SSR/client mismatch
-    if (isHydrated && currentTheme?.backgroundColor) {
+    // Apply theming for route-based themes immediately, or after hydration for context themes
+    if (currentTheme?.backgroundColor && (getRouteBasedTheme() || isHydrated)) {
       const color = currentTheme.backgroundColor
       if (color.startsWith('#')) {
         // Convert hex to rgba
@@ -111,7 +111,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
                 alignItems: 'center',
                 gap: '12px',
                 padding: '8px 16px',
-                background: isHydrated && currentTheme ? getThemedBackground(0.85) : 'rgba(0, 0, 0, 0.85)',
+                background: currentTheme ? getThemedBackground(0.85) : 'rgba(0, 0, 0, 0.85)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: '8px',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
@@ -125,7 +125,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
                 backgroundClip: 'text',
                 color: 'transparent'
               })}>
-                🕹️ {(isHydrated && currentTheme?.gameName) || (isArcadePage ? 'Arcade' : 'Game')}
+                🕹️ {currentTheme?.gameName || (isArcadePage ? 'Arcade' : 'Game')}
               </h1>
               <div className={css({
                 px: '2',
@@ -149,7 +149,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
               alignItems: 'center',
               gap: '8px',
               padding: '8px 12px',
-              background: isHydrated && currentTheme ? getThemedBackground(isFullscreen ? 0.85 : 1) : (isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'),
+              background: currentTheme ? getThemedBackground(isFullscreen ? 0.85 : 1) : (isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'),
               border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
               borderRadius: '8px',
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
@@ -198,7 +198,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
               alignItems: 'center',
               gap: '8px',
               padding: '8px 12px',
-              background: isHydrated && currentTheme ? getThemedBackground(isFullscreen ? 0.85 : 1) : (isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'),
+              background: currentTheme ? getThemedBackground(isFullscreen ? 0.85 : 1) : (isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'),
               border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
               borderRadius: '8px',
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
