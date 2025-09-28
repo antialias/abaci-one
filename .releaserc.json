@@ -5,7 +5,6 @@
     [
       "@semantic-release/commit-analyzer",
       {
-        "preset": "conventionalcommits",
         "releaseRules": [
           {
             "type": "feat",
@@ -57,7 +56,6 @@
     [
       "@semantic-release/release-notes-generator",
       {
-        "preset": "conventionalcommits",
         "presetConfig": {
           "types": [
             {
