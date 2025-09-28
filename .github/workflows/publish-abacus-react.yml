@@ -76,9 +76,15 @@ jobs:
         working-directory: packages/abacus-react
         run: |
           # Only publish if semantic-release created a new version
+          git fetch --tags
           if git tag --list | grep -q "abacus-react-v"; then
-            echo "Publishing to GitHub Packages..."
+            echo "Found abacus-react version tag. Publishing to GitHub Packages..."
+            # Update package.json version to match the tag
+            LATEST_TAG=$(git tag --list "abacus-react-v*" | sort -V | tail -1)
+            VERSION=${LATEST_TAG#abacus-react-v}
+            echo "Publishing version: $VERSION"
+            npm version $VERSION --no-git-tag-version --allow-same-version
             npm publish
           else
-            echo "No new version to publish"
+            echo "No new abacus-react version tag found, skipping publish"
           fi
