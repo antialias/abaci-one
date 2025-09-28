@@ -116,14 +116,14 @@ function ChampionCard({
       className={css({
         position: 'relative',
         background: 'white',
-        rounded: '2xl',
-        p: '4',
+        rounded: { base: 'md', md: 'lg' },
+        p: { base: '1', md: '1.5' },
         textAlign: 'center',
         cursor: isDragging ? 'grabbing' : 'pointer',
-        border: '3px solid',
+        border: { base: '2px solid', md: '2px solid' },
         borderColor: player.color,
-        width: '120px',
-        minWidth: '120px',
+        width: { base: '50px', md: '60px', lg: '70px' },
+        minWidth: { base: '50px', md: '60px', lg: '70px' },
         flexShrink: 0,
         userSelect: 'none',
         touchAction: 'none',
@@ -219,26 +219,27 @@ function ChampionCard({
       <div
         style={emojiStyle}
         className={css({
-          fontSize: '3xl',
-          mb: '2',
+          fontSize: { base: 'md', md: 'lg' },
+          mb: { base: '0', md: '0.5' },
         })}
       >
         {player.emoji}
       </div>
 
       <div className={css({
-        fontSize: 'sm',
+        fontSize: { base: '2xs', md: 'xs' },
         fontWeight: 'bold',
-        color: 'gray.800'
+        color: 'gray.800',
+        lineHeight: '1.1'
       })}>
         {player.name}
       </div>
 
       <div className={css({
-        fontSize: 'xs',
+        fontSize: { base: '3xs', md: '2xs' },
         color: zone === 'arena' ? 'green.700' : 'gray.600',
         fontWeight: zone === 'arena' ? 'semibold' : 'normal',
-        mt: '1'
+        mt: { base: '0.5', md: '0.5' }
       })}>
         {zone === 'arena' ? 'READY! 🔥' : `Level ${player.level}`}
       </div>
@@ -284,13 +285,19 @@ function DroppableZone({
   })
 
   return (
-    <div className={css({ position: 'relative' })}>
+    <div className={css({
+      position: 'relative',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
+    })}>
       <h3 className={css({
-        fontSize: 'xl',
+        fontSize: { base: 'sm', md: 'md' },
         fontWeight: 'bold',
         color: 'gray.800',
-        mb: '4',
-        textAlign: 'center'
+        mb: { base: '0.5', md: '1' },
+        textAlign: 'center',
+        flexShrink: 0
       })}>
         {title}
       </h3>
@@ -301,14 +308,17 @@ function DroppableZone({
         className={css({
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '4',
+          gap: { base: '1', md: '1.5' },
           justifyContent: 'center',
-          p: '6',
-          rounded: id === 'arena' ? '3xl' : '2xl',
-          border: '3px dashed',
-          minH: id === 'arena' ? '64' : '32',
+          alignContent: 'flex-start',
+          p: { base: '1.5', md: '2' },
+          rounded: id === 'arena' ? '2xl' : 'xl',
+          border: { base: '2px dashed', md: '3px dashed' },
+          flex: 1,
           position: 'relative',
-          transition: 'min-height 0.3s ease',
+          transition: 'all 0.3s ease',
+          overflow: 'auto',
+          minHeight: { base: '30px', md: '40px' }
         })}
       >
         {isEmpty && (
@@ -324,17 +334,17 @@ function DroppableZone({
             })}
           >
             <div className={css({
-              fontSize: '4xl',
-              mb: '4',
+              fontSize: { base: 'xl', md: '2xl' },
+              mb: { base: '1', md: '2' },
             })}>
               {isOver ? '✨' : (id === 'arena' ? '🏟️' : '🎯')}
             </div>
             <p className={css({
               color: 'gray.700',
               fontWeight: 'semibold',
-              fontSize: 'lg'
+              fontSize: { base: 'xs', md: 'sm' }
             })}>
-              {isOver ? `Drop to ${id === 'arena' ? 'enter the arena' : 'return to roster'}!` : subtitle}
+              {isOver ? `Drop to ${id === 'arena' ? 'enter' : 'return'}!` : subtitle}
             </p>
           </div>
         )}
@@ -548,40 +558,29 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
       <div className={css({
         background: 'white',
         rounded: '3xl',
-        p: '8',
+        p: { base: '1.5', md: '2.5' },
         border: '2px solid',
         borderColor: 'gray.200',
         boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
-        transition: 'all 0.3s ease'
+        transition: 'all 0.3s ease',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
       }) + (className ? ` ${className}` : '')}>
 
-        {/* Header */}
+        {/* Ultra-Compact Header */}
         <div className={css({
           textAlign: 'center',
-          mb: '8'
+          mb: { base: '1', md: '2' },
+          flexShrink: 0
         })}>
-          <h2 className={css({
-            fontSize: { base: '2xl', md: '3xl' },
-            fontWeight: 'bold',
-            color: 'gray.900',
-            mb: '2'
-          })}>
-            🏟️ Champion Arena
-          </h2>
-          <p className={css({
-            color: 'gray.600',
-            fontSize: 'lg',
-            mb: '4'
-          })}>
-            Drag champions to experience the most tactile arena ever built!
-          </p>
-
-          {/* Mode Indicator */}
+          {/* Mode Indicator - now the main header */}
           <div
             className={css({
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '2',
+              gap: { base: '1.5', md: '2' },
               background: arenaPlayers.length === 0
                 ? 'linear-gradient(135deg, #f3f4f6, #e5e7eb)'
                 : gameMode === 'single'
@@ -589,10 +588,10 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                 : gameMode === 'battle'
                 ? 'linear-gradient(135deg, #e9d5ff, #ddd6fe)'
                 : 'linear-gradient(135deg, #fef3c7, #fde68a)',
-              px: '4',
-              py: '2',
+              px: { base: '2', md: '2.5' },
+              py: { base: '1', md: '1.5' },
               rounded: 'full',
-              border: '2px solid',
+              border: { base: '1px solid', md: '2px solid' },
               borderColor: arenaPlayers.length === 0
                 ? 'gray.300'
                 : gameMode === 'single'
@@ -602,34 +601,51 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
                 : 'yellow.300'
             })}
           >
-            <span className={css({ fontSize: 'lg' })}>
+            <span className={css({ fontSize: { base: 'xs', md: 'sm' } })}>
               {arenaPlayers.length === 0 ? '🎯' : gameMode === 'single' ? '👤' : gameMode === 'battle' ? '⚔️' : '🏆'}
             </span>
             <span className={css({
               fontWeight: 'bold',
               color: arenaPlayers.length === 0 ? 'gray.700' : gameMode === 'single' ? 'blue.800' : gameMode === 'battle' ? 'purple.800' : 'yellow.800',
               textTransform: 'uppercase',
-              fontSize: 'sm'
+              fontSize: { base: '3xs', md: '2xs' }
             })}>
               {arenaPlayers.length === 0 ? 'Select Champions' : gameMode === 'single' ? 'Solo Mode' : gameMode === 'battle' ? 'Battle Mode' : 'Tournament Mode'}
             </span>
           </div>
+
+          <p className={css({
+            color: 'gray.600',
+            fontSize: { base: '2xs', md: 'xs' },
+            mt: { base: '0.5', md: '1' },
+            display: { base: 'none', md: 'block' }
+          })}>
+            Drag champions between zones • Click to toggle
+          </p>
         </div>
 
+        {/* Champion Zones - constrained to small fixed space */}
         <div className={css({
+          height: { base: '140px', md: '160px' },
           display: 'grid',
           gridTemplateColumns: { base: '1fr', lg: '1fr 1fr' },
-          gap: '8',
-          alignItems: 'start'
+          gap: { base: '1', md: '1.5' },
+          alignItems: 'stretch',
+          flexShrink: 0
         })}>
 
           {/* Available Champions Roster */}
-          <div className={css({ order: { base: 2, lg: 1 } })}>
+          <div className={css({
+            order: { base: 2, lg: 1 },
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0
+          })}>
             <SortableContext items={availablePlayers.map(p => p.id)} strategy={rectSortingStrategy}>
               <DroppableZone
                 id="roster"
-                title="🎯 Available Champions"
-                subtitle="Drag champions here to remove from arena"
+                title="Available"
+                subtitle="Tap to add"
                 isEmpty={availablePlayers.length === 0}
               >
                 {availablePlayers.map(player => (
@@ -647,12 +663,17 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
           </div>
 
           {/* Arena Drop Zone */}
-          <div className={css({ order: { base: 1, lg: 2 } })}>
+          <div className={css({
+            order: { base: 1, lg: 2 },
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0
+          })}>
             <SortableContext items={arenaPlayers.map(p => p.id)} strategy={rectSortingStrategy}>
               <DroppableZone
                 id="arena"
-                title="🏟️ Battle Arena"
-                subtitle="1 champion = Solo • 2 = Battle • 3+ = Tournament"
+                title="Arena"
+                subtitle="Drop here"
                 isEmpty={arenaPlayers.length === 0}
               >
                 {arenaPlayers.map(player => (
@@ -669,16 +690,21 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
           </div>
         </div>
 
-        {/* Game Selector */}
-        <GameSelector
-          variant="detailed"
-          className={css({
-            mt: '8',
-            pt: '8',
-            borderTop: '2px solid',
-            borderColor: 'gray.200'
-          })}
-        />
+        {/* Prominent Game Selector - takes remaining space */}
+        <div className={css({
+          flex: 1,
+          mt: { base: '1', md: '2' },
+          pt: { base: '1', md: '2' },
+          borderTop: '2px solid',
+          borderColor: 'gray.200',
+          minHeight: 0,
+          overflow: 'auto'
+        })}>
+          <GameSelector
+            variant="detailed"
+            showHeader={true}
+          />
+        </div>
       </div>
 
       {/* Drag Overlay */}

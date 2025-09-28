@@ -1,0 +1,187 @@
+name: Deploy Storybooks to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Storybooks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.0.0
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Panda CSS
+        working-directory: apps/web
+        run: pnpm panda codegen
+
+      - name: Build abacus-react package
+        run: pnpm --filter @soroban/abacus-react build
+
+      - name: Build web Storybook
+        working-directory: apps/web
+        run: pnpm build-storybook --output-dir ../../storybook-web
+
+      - name: Build abacus-react Storybook
+        working-directory: packages/abacus-react
+        run: pnpm build-storybook --output-dir ../../storybook-abacus-react
+
+      - name: Create combined pages directory
+        run: |
+          mkdir -p pages
+          cp -r storybook-web pages/web
+          cp -r storybook-abacus-react pages/abacus-react
+
+          # Create index page with links to both Storybooks
+          cat > pages/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Soroban Abacus Flashcards - Storybooks</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                      max-width: 800px;
+                      margin: 40px auto;
+                      padding: 20px;
+                      line-height: 1.6;
+                      color: #333;
+                  }
+                  .header {
+                      text-align: center;
+                      margin-bottom: 40px;
+                  }
+                  .storybook-links {
+                      display: grid;
+                      gap: 20px;
+                      margin-top: 30px;
+                  }
+                  .storybook-card {
+                      border: 1px solid #e1e5e9;
+                      border-radius: 8px;
+                      padding: 24px;
+                      text-decoration: none;
+                      color: inherit;
+                      transition: all 0.2s ease;
+                  }
+                  .storybook-card:hover {
+                      border-color: #ff4785;
+                      box-shadow: 0 4px 12px rgba(255, 71, 133, 0.15);
+                      transform: translateY(-2px);
+                  }
+                  .storybook-title {
+                      font-size: 1.25rem;
+                      font-weight: 600;
+                      margin-bottom: 8px;
+                      color: #ff4785;
+                  }
+                  .storybook-description {
+                      color: #666;
+                      margin: 0;
+                  }
+                  .badge {
+                      display: inline-block;
+                      background: #ff4785;
+                      color: white;
+                      padding: 4px 8px;
+                      border-radius: 4px;
+                      font-size: 0.75rem;
+                      font-weight: 500;
+                      margin-left: 8px;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>🧮 Soroban Abacus Flashcards</h1>
+                  <p>Interactive component documentation and demos</p>
+              </div>
+
+              <div class="storybook-links">
+                  <a href="./web/" class="storybook-card">
+                      <div class="storybook-title">
+                          Web Application <span class="badge">Storybook</span>
+                      </div>
+                      <p class="storybook-description">
+                          Complete web application components including games, tutorials, and UI elements
+                      </p>
+                  </a>
+
+                  <a href="./abacus-react/" class="storybook-card">
+                      <div class="storybook-title">
+                          Abacus React Component <span class="badge">Storybook</span>
+                      </div>
+                      <p class="storybook-description">
+                          Interactive React abacus component with animations and place value editing
+                      </p>
+                  </a>
+              </div>
+
+              <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e1e5e9;">
+                  <p style="color: #666; font-size: 0.9rem;">
+                      📖 <a href="https://github.com/antialias/soroban-abacus-flashcards" style="color: #0366d6;">View on GitHub</a>
+                  </p>
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v3
+
+      - name: Upload artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: ./pages
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        id: deployment
+        uses: actions/deploy-pages@v2

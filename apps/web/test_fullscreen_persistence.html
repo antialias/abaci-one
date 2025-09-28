@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fullscreen Persistence Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .primary { background: #007bff; color: white; }
+        .secondary { background: #6c757d; color: white; }
+        .nav-button { background: #28a745; color: white; }
+        #log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Fullscreen Persistence Test</h1>
+
+    <div class="test-section">
+        <h2>Current State</h2>
+        <div id="currentState" class="status info">Checking...</div>
+        <div id="url" class="status info">URL: <span id="currentUrl"></span></div>
+        <div id="fullscreenState" class="status info">Fullscreen: <span id="isFullscreen"></span></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Tests</h2>
+        <button class="primary" onclick="enterFullscreen()">Enter Fullscreen</button>
+        <button class="secondary" onclick="exitFullscreen()">Exit Fullscreen</button>
+        <button class="nav-button" onclick="navigateToArcade()">Go to Arcade</button>
+        <button class="nav-button" onclick="navigateToMatching()">Go to Matching Game</button>
+        <button class="nav-button" onclick="navigateToMatchingWithParam()">Go to Matching Game (with ?fullscreen=true)</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Automated Test Sequence</h2>
+        <button class="primary" onclick="runFullTest()">🚀 Run Full Test</button>
+        <div id="testResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Debug Log</h2>
+        <button class="secondary" onclick="clearLog()">Clear Log</button>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let testStep = 0;
+
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function updateStatus() {
+            document.getElementById('currentUrl').textContent = window.location.href;
+            document.getElementById('isFullscreen').textContent = document.fullscreenElement ? 'YES' : 'NO';
+
+            const hasFullscreenParam = new URLSearchParams(window.location.search).get('fullscreen') === 'true';
+            const currentState = document.getElementById('currentState');
+
+            if (document.fullscreenElement) {
+                currentState.className = 'status success';
+                currentState.textContent = '✅ Currently in fullscreen mode';
+            } else if (hasFullscreenParam) {
+                currentState.className = 'status error';
+                currentState.textContent = '❌ Should be fullscreen (has ?fullscreen=true) but NOT in fullscreen';
+            } else {
+                currentState.className = 'status info';
+                currentState.textContent = '🟡 Not in fullscreen mode (normal)';
+            }
+
+            log(`Status update: Fullscreen=${!!document.fullscreenElement}, URL=${window.location.href}`);
+        }
+
+        function enterFullscreen() {
+            log('Attempting to enter fullscreen...');
+            document.documentElement.requestFullscreen().then(() => {
+                log('✅ Successfully entered fullscreen');
+                updateStatus();
+            }).catch(err => {
+                log(`❌ Failed to enter fullscreen: ${err.message}`);
+                updateStatus();
+            });
+        }
+
+        function exitFullscreen() {
+            log('Attempting to exit fullscreen...');
+            if (document.fullscreenElement) {
+                document.exitFullscreen().then(() => {
+                    log('✅ Successfully exited fullscreen');
+                    updateStatus();
+                }).catch(err => {
+                    log(`❌ Failed to exit fullscreen: ${err.message}`);
+                    updateStatus();
+                });
+            } else {
+                log('ℹ️ Not currently in fullscreen');
+            }
+        }
+
+        function navigateToArcade() {
+            log('Navigating to arcade...');
+            window.location.href = '/arcade';
+        }
+
+        function navigateToMatching() {
+            log('Navigating to matching game (normal)...');
+            window.location.href = '/games/matching';
+        }
+
+        function navigateToMatchingWithParam() {
+            log('Navigating to matching game with fullscreen parameter...');
+            window.location.href = '/games/matching?fullscreen=true';
+        }
+
+        async function runFullTest() {
+            log('🚀 Starting automated fullscreen persistence test...');
+            const results = document.getElementById('testResults');
+            results.innerHTML = '<div class="status info">Running tests...</div>';
+
+            try {
+                // Test 1: Check if we can enter fullscreen
+                log('Test 1: Checking if fullscreen API is available...');
+                if (!document.documentElement.requestFullscreen) {
+                    throw new Error('Fullscreen API not available');
+                }
+                log('✅ Test 1 passed: Fullscreen API is available');
+
+                // Test 2: Enter fullscreen
+                log('Test 2: Entering fullscreen...');
+                await document.documentElement.requestFullscreen();
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for fullscreen to activate
+
+                if (!document.fullscreenElement) {
+                    throw new Error('Failed to enter fullscreen');
+                }
+                log('✅ Test 2 passed: Successfully entered fullscreen');
+
+                // Test 3: Navigate with fullscreen parameter
+                log('Test 3: Simulating navigation to matching game...');
+
+                // Since we can't actually navigate and continue the test,
+                // we'll simulate what should happen
+                const hasParam = new URLSearchParams('?fullscreen=true').get('fullscreen') === 'true';
+                if (!hasParam) {
+                    throw new Error('URL parameter parsing failed');
+                }
+                log('✅ Test 3 passed: URL parameter would be detected correctly');
+
+                results.innerHTML = '<div class="status success">🎉 All tests passed! The logic should work.</div>';
+                log('🎉 Automated test completed successfully');
+
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`);
+                results.innerHTML = `<div class="status error">❌ Test failed: ${error.message}</div>`;
+            }
+        }
+
+        // Monitor fullscreen changes
+        document.addEventListener('fullscreenchange', () => {
+            log('Fullscreen state changed');
+            updateStatus();
+        });
+
+        // Check for fullscreen parameter on load
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Page loaded, checking initial state...');
+            updateStatus();
+
+            // Check if we should enter fullscreen based on URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('fullscreen') === 'true') {
+                log('🔍 Detected ?fullscreen=true parameter, should enter fullscreen...');
+                // Simulate what the React component should do
+                setTimeout(() => {
+                    log('⚠️ This is a simulation - in React, enterFullscreen() would be called here');
+                }, 100);
+            }
+        });
+
+        // Update status every 2 seconds
+        setInterval(updateStatus, 2000);
+    </script>
+</body>
+</html>

@@ -31,10 +31,12 @@ function ArcadeContent() {
     <div
       ref={arcadeRef}
       className={css({
-        minH: 'screen',
+        height: '100vh',
         background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
       })}>
       {/* Animated background elements */}
       <div className={css({
@@ -51,58 +53,62 @@ function ArcadeContent() {
         animation: 'arcadeFloat 20s ease-in-out infinite'
       })} />
 
-      {/* Note: Navigation is now handled by the enhanced AppNavBar */}
-
-      {/* Main content */}
+      {/* Compact Header - only shows in fullscreen */}
       <div className={css({
-        pt: '16', // Account for fixed nav
-        pb: '8',
+        flexShrink: 0,
+        textAlign: 'center',
+        py: { base: '3', md: '4' },
         px: '4',
         position: 'relative',
-        zIndex: 1
+        zIndex: 2
       })}>
-        <div className={css({
-          maxW: '7xl',
-          mx: 'auto'
+        <h1 className={css({
+          fontSize: { base: '2xl', sm: '3xl', md: '4xl', lg: '5xl' },
+          fontWeight: 'black',
+          background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
+          backgroundClip: 'text',
+          color: 'transparent',
+          mb: { base: '1', md: '2' },
+          textShadow: '0 0 30px rgba(96, 165, 250, 0.5)',
+          lineHeight: '1.1'
         })}>
-          {/* Arcade title */}
-          <div className={css({
-            textAlign: 'center',
-            mb: '8'
-          })}>
-            <h2 className={css({
-              fontSize: { base: '3xl', md: '5xl' },
-              fontWeight: 'black',
-              background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
-              backgroundClip: 'text',
-              color: 'transparent',
-              mb: '4',
-              textShadow: '0 0 30px rgba(96, 165, 250, 0.5)'
-            })}>
-              🏟️ CHAMPION ARENA
-            </h2>
+          🏟️ CHAMPION ARENA
+        </h1>
 
-            <p className={css({
-              fontSize: 'xl',
-              color: 'gray.300',
-              maxW: '2xl',
-              mx: 'auto'
-            })}>
-              Select your champions and dive into epic mathematical battles!
-            </p>
-          </div>
+        <p className={css({
+          fontSize: { base: 'sm', md: 'lg', lg: 'xl' },
+          color: 'rgba(255,255,255,0.9)',
+          maxW: '2xl',
+          mx: 'auto',
+          display: { base: 'none', sm: 'block' }
+        })}>
+          Select your champions and dive into epic mathematical battles!
+        </p>
+      </div>
 
-          {/* Enhanced Full-screen Champion Arena */}
-          <EnhancedChampionArena
-            onConfigurePlayer={() => {}}
-            className={css({
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)'
-            })}
-          />
-        </div>
+      {/* Main Champion Arena - takes remaining space */}
+      <div className={css({
+        flex: 1,
+        display: 'flex',
+        px: { base: '2', md: '4' },
+        pb: { base: '2', md: '4' },
+        position: 'relative',
+        zIndex: 1,
+        minHeight: 0 // Important for flex children
+      })}>
+        <EnhancedChampionArena
+          onConfigurePlayer={() => {}}
+          className={css({
+            width: '100%',
+            height: '100%',
+            background: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+            display: 'flex',
+            flexDirection: 'column'
+          })}
+        />
       </div>
     </div>
   )

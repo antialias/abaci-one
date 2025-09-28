@@ -283,6 +283,37 @@ python3 src/generate.py --range "1,2,5,10,20,50,100"
 python3 src/generate.py --range 0-99 --shuffle --seed 42
 ```
 
+## 📚 Component Documentation
+
+Explore our comprehensive component documentation and interactive examples:
+
+<div align="center">
+
+### 🎨 Storybook Documentation
+
+<table>
+<tr>
+<td align="center">
+<a href="https://antialias.github.io/soroban-abacus-flashcards/web/" style="text-decoration: none;">
+<strong>🌐 Web Application</strong><br>
+<em>Complete web app components</em><br>
+<sub>Games • Tutorials • UI Elements</sub>
+</a>
+</td>
+<td align="center">
+<a href="https://antialias.github.io/soroban-abacus-flashcards/abacus-react/" style="text-decoration: none;">
+<strong>🧮 Abacus React Component</strong><br>
+<em>Interactive abacus library</em><br>
+<sub>Props • Stories • Examples</sub>
+</a>
+</td>
+</tr>
+</table>
+
+*Browse interactive demos, component APIs, and implementation examples*
+
+</div>
+
 ## 🎮 Interactive Learning Games
 
 The web format includes three immersive learning experiences designed to make soroban mastery engaging and fun:
