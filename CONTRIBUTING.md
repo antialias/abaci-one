@@ -61,6 +61,44 @@ This project uses semantic-release for automated versioning:
 - **fix**: Triggers a patch version bump (1.0.0 → 1.0.1)
 - **BREAKING CHANGE**: Triggers a major version bump (1.0.0 → 2.0.0)
 
+### Package-Specific Publishing
+
+The `@soroban/abacus-react` package has independent versioning and automated npm publishing. Use scoped commits to trigger package releases:
+
+#### NPM Package Release Triggers
+
+```bash
+# Minor version bump for new features
+feat(abacus-react): add new bead animation system
+
+# Patch version bump for bug fixes
+fix(abacus-react): resolve gesture detection issue
+
+# Patch version bump for performance improvements
+perf(abacus-react): optimize bead rendering performance
+
+# Major version bump for breaking changes
+feat(abacus-react)!: change callback signature
+# or
+feat(abacus-react): redesign API
+
+BREAKING CHANGE: callback functions now receive different parameters
+```
+
+#### Package Release Workflow
+
+1. **Automatic**: Any commit to `main` branch with `(abacus-react)` scope triggers npm publishing
+2. **Manual testing**: From `packages/abacus-react/`, run `pnpm release:dry-run`
+3. **Version tags**: Package releases are tagged as `abacus-react-v1.2.3` (separate from monorepo versions)
+4. **npm publishing**: Requires `NPM_TOKEN` secret in repository settings
+
+#### Important Notes
+
+- **Package scope required**: Use `feat(abacus-react):` not just `feat:` for package releases
+- **Independent versioning**: Package versions are separate from monorepo versions
+- **Path filtering**: Only changes in `packages/abacus-react/` directory trigger builds
+- **Test requirements**: Package tests must pass before publishing
+
 ## Development Workflow
 
 1. Create a feature branch from `main`

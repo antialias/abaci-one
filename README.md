@@ -698,6 +698,25 @@ curl http://localhost:8000/health
 
 ## Development
 
+### 📦 NPM Package Publishing
+
+The `@soroban/abacus-react` package is automatically published to npm using semantic versioning. To trigger a release:
+
+```bash
+# For new features (minor version bump)
+git commit -m "feat(abacus-react): add new bead animation system"
+
+# For bug fixes (patch version bump)
+git commit -m "fix(abacus-react): resolve gesture detection issue"
+
+# For breaking changes (major version bump)
+git commit -m "feat(abacus-react)!: change callback signature"
+```
+
+**Important**: Use the `(abacus-react)` scope in commit messages to trigger package releases. Regular commits without this scope only affect the monorepo versioning.
+
+📖 **Full details**: See [CONTRIBUTING.md](./CONTRIBUTING.md#package-specific-publishing) for complete workflow documentation.
+
 ### Updating Example Images
 
 If you make changes that affect the visual output, please update the example images:
