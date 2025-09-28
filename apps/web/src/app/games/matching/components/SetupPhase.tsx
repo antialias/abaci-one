@@ -130,16 +130,17 @@ export function SetupPhase() {
   return (
     <div className={css({
       textAlign: 'center',
-      padding: { base: '20px 16px', sm: '24px 20px', md: '40px 20px' },
+      padding: { base: '12px 16px', sm: '16px 20px', md: '20px' },
       maxWidth: '800px',
       margin: '0 auto',
-      height: '100%',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      minHeight: 0, // Allow shrinking
+      overflow: 'auto' // Enable scrolling if needed
     })}>
       <h2 className={css({
-        fontSize: { base: '20px', sm: '24px', md: '32px', lg: '36px' },
-        marginBottom: { base: '12px', md: '16px' },
+        fontSize: { base: '18px', sm: '20px', md: '24px' },
+        marginBottom: { base: '8px', md: '12px' },
         color: 'gray.800',
         fontWeight: 'bold'
       })}>
@@ -147,20 +148,21 @@ export function SetupPhase() {
       </h2>
 
       <p className={css({
-        fontSize: { base: '14px', sm: '16px', md: '18px' },
+        fontSize: { base: '13px', sm: '14px', md: '16px' },
         color: 'gray.600',
-        marginBottom: { base: '16px', sm: '20px', md: '32px' },
+        marginBottom: { base: '12px', sm: '16px', md: '20px' },
         lineHeight: '1.4',
-        display: { base: 'none', md: 'block' }
+        display: { base: 'none', sm: 'block' }
       })}>
         Configure your memory challenge. Choose your preferred mode, game type, and difficulty level.
       </p>
 
       <div className={css({
         display: 'grid',
-        gap: { base: '12px', sm: '16px', md: '24px' },
+        gap: { base: '8px', sm: '12px', md: '16px' },
         margin: '0 auto',
-        flex: 1
+        flex: 1,
+        minHeight: 0 // Allow shrinking
       })}>
 
         {/* Current Player Setup */}
@@ -389,24 +391,34 @@ export function SetupPhase() {
           </div>
         )}
 
-        {/* Start Game Button */}
-        <div className={css({ marginTop: { base: '16px', md: '20px' } })}>
+        {/* Start Game Button - Sticky at bottom */}
+        <div className={css({
+          marginTop: 'auto', // Push to bottom
+          paddingTop: { base: '12px', md: '16px' },
+          position: 'sticky',
+          bottom: 0,
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(10px)',
+          borderTop: '1px solid rgba(0,0,0,0.1)',
+          margin: '0 -16px -12px -16px', // Extend to edges
+          padding: { base: '12px 16px', md: '16px' }
+        })}>
           <button
             className={css({
               background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 50%, #ff9ff3 100%)',
               color: 'white',
               border: 'none',
-              borderRadius: { base: '20px', sm: '30px', md: '60px' },
-              padding: { base: '16px 32px', sm: '18px 40px', md: '20px 60px' },
-              fontSize: { base: '18px', sm: '22px', md: '28px' },
+              borderRadius: { base: '16px', sm: '20px', md: '24px' },
+              padding: { base: '14px 28px', sm: '16px 32px', md: '18px 36px' },
+              fontSize: { base: '16px', sm: '18px', md: '20px' },
               fontWeight: 'black',
               cursor: 'pointer',
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: '0 10px 30px rgba(255, 107, 107, 0.4), inset 0 2px 0 rgba(255,255,255,0.3)',
+              boxShadow: '0 8px 20px rgba(255, 107, 107, 0.4), inset 0 2px 0 rgba(255,255,255,0.3)',
               textShadow: '0 2px 4px rgba(0,0,0,0.3)',
               position: 'relative',
               overflow: 'hidden',
-              width: { base: '100%', sm: 'auto' },
+              width: '100%',
               _before: {
                 content: '""',
                 position: 'absolute',
@@ -418,8 +430,8 @@ export function SetupPhase() {
                 transition: 'left 0.6s ease',
               },
               _hover: {
-                transform: { base: 'translateY(-2px)', md: 'translateY(-5px) scale(1.05)' },
-                boxShadow: '0 15px 40px rgba(255, 107, 107, 0.6), inset 0 2px 0 rgba(255,255,255,0.3)',
+                transform: { base: 'translateY(-2px)', md: 'translateY(-3px) scale(1.02)' },
+                boxShadow: '0 12px 30px rgba(255, 107, 107, 0.6), inset 0 2px 0 rgba(255,255,255,0.3)',
                 background: 'linear-gradient(135deg, #ff5252 0%, #dd2c00 50%, #e91e63 100%)',
                 _before: {
                   left: '100%'
@@ -434,16 +446,16 @@ export function SetupPhase() {
             <div className={css({
               display: 'flex',
               alignItems: 'center',
-              gap: { base: '8px', md: '12px' },
+              gap: { base: '6px', md: '8px' },
               justifyContent: 'center'
             })}>
               <span className={css({
-                fontSize: { base: '20px', sm: '24px', md: '32px' },
+                fontSize: { base: '18px', sm: '20px', md: '24px' },
                 animation: 'bounce 2s infinite'
               })}>🚀</span>
               <span>START GAME</span>
               <span className={css({
-                fontSize: { base: '20px', sm: '24px', md: '32px' },
+                fontSize: { base: '18px', sm: '20px', md: '24px' },
                 animation: 'bounce 2s infinite',
                 animationDelay: '0.5s'
               })}>🎮</span>
@@ -451,13 +463,13 @@ export function SetupPhase() {
           </button>
         </div>
 
-        {/* Game Preview - Hidden on mobile */}
+        {/* Game Preview - Hidden on mobile and small screens */}
         <div className={css({
           background: 'gray.50',
           borderRadius: '12px',
           padding: '16px',
           marginTop: '16px',
-          display: { base: 'none', md: 'block' }
+          display: { base: 'none', lg: 'block' } // Only show on large screens
         })}>
           <h3 className={css({
             fontSize: '16px',
