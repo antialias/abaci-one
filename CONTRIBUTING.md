@@ -87,10 +87,11 @@ BREAKING CHANGE: callback functions now receive different parameters
 
 #### Package Release Workflow
 
-1. **Automatic**: Any commit to `main` branch with `(abacus-react)` scope triggers npm publishing
-2. **Manual testing**: From `packages/abacus-react/`, run `pnpm release:dry-run`
-3. **Version tags**: Package releases are tagged as `abacus-react-v1.2.3` (separate from monorepo versions)
-4. **npm publishing**: Requires `NPM_TOKEN` secret in repository settings
+1. **Automatic**: Any commit to `main` branch with `(abacus-react)` scope triggers publishing
+2. **Dual publishing**: Package is published to both npm and GitHub Packages simultaneously
+3. **Manual testing**: From `packages/abacus-react/`, run `pnpm release:dry-run`
+4. **Version tags**: Package releases are tagged as `abacus-react-v1.2.3` (separate from monorepo versions)
+5. **Authentication**: Requires `NPM_TOKEN` secret for npm and uses `GITHUB_TOKEN` for GitHub Packages
 
 #### Important Notes
 

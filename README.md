@@ -700,7 +700,7 @@ curl http://localhost:8000/health
 
 ### 📦 NPM Package Publishing
 
-The `@soroban/abacus-react` package is automatically published to npm using semantic versioning. To trigger a release:
+The `@soroban/abacus-react` package is automatically published to **both npm and GitHub Packages** using semantic versioning. To trigger a release:
 
 ```bash
 # For new features (minor version bump)

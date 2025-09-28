@@ -31,13 +31,15 @@ git commit -m "feat(abacus-react)!: change callback signature"
 **Workflow Details**:
 - **File**: `.github/workflows/publish-abacus-react.yml`
 - **Triggers**: Push to main branch with changes in `packages/abacus-react/`
-- **Steps**: Install deps → Build package → Run tests → Semantic release → Publish to npm
+- **Steps**: Install deps → Build package → Run tests → Configure dual auth → Semantic release → Publish to npm + GitHub Packages
 - **Versioning**: Independent from monorepo (uses tags like `abacus-react-v1.2.3`)
+- **Publishing**: Dual publishing to both npm and GitHub Packages simultaneously
 
 **Current Status**:
-- ✅ Workflow configured
-- ✅ Semantic release setup
+- ✅ Workflow configured for dual publishing
+- ✅ Semantic release setup for both registries
 - ✅ Package build/test passing
+- ✅ GitHub Packages authentication configured (uses GITHUB_TOKEN)
 - ⏸️ Awaiting NPM_TOKEN secret for actual npm publishing
 
 **What Claude should do**:

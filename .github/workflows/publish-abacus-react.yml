@@ -59,6 +59,13 @@ jobs:
       - name: Run tests
         run: pnpm --filter @soroban/abacus-react test:run || echo "Tests currently failing due to vitest config issue - will fix in follow-up"
 
+      - name: Configure npm for dual publishing
+        working-directory: packages/abacus-react
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+          echo "@soroban:registry=https://npm.pkg.github.com" >> .npmrc
+
       - name: Semantic Release
         working-directory: packages/abacus-react
         env:
