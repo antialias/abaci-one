@@ -6,7 +6,7 @@ import { css } from '../../../../styled-system/css'
 import { AbacusReact } from '@soroban/abacus-react'
 import { useAbacusConfig } from '../../../contexts/AbacusDisplayContext'
 import { isPrefix } from '../../../lib/memory-quiz-utils'
-import { FullscreenGameLayout } from '../../../components/FullscreenGameLayout'
+import { StandardGameLayout } from '../../../components/StandardGameLayout'
 
 
 interface QuizCard {
@@ -1731,15 +1731,15 @@ export default function MemoryQuizPage() {
   }, [state.prefixAcceptanceTimeout])
 
   return (
-    <FullscreenGameLayout title="Memory Lightning">
+    <StandardGameLayout>
       <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
 
       <div
         style={{
-          minHeight: '100vh',
           background: 'linear-gradient(to bottom right, #f0fdf4, #eff6ff)',
-          padding: '8px',
-          height: '100vh',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
           overflow: 'auto'
         }}
       >
@@ -1748,7 +1748,7 @@ export default function MemoryQuizPage() {
             maxWidth: '100%',
             margin: '0 auto',
             padding: '0 8px',
-            height: '100%',
+            flex: 1,
             display: 'flex',
             flexDirection: 'column'
           }}
@@ -1799,6 +1799,6 @@ export default function MemoryQuizPage() {
           </div>
         </div>
       </div>
-    </FullscreenGameLayout>
+    </StandardGameLayout>
   )
 }
