@@ -1731,12 +1731,16 @@ export default function MemoryQuizPage() {
   }, [state.prefixAcceptanceTimeout])
 
   return (
-    <StandardGameLayout>
+    <StandardGameLayout
+      theme={{
+        gameName: "Memory Lightning",
+        backgroundColor: "linear-gradient(to bottom right, #f0fdf4, #eff6ff)"
+      }}
+    >
       <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
 
       <div
         style={{
-          background: 'linear-gradient(to bottom right, #f0fdf4, #eff6ff)',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',

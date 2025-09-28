@@ -6,6 +6,7 @@ import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 import { useFullscreen } from '../contexts/FullscreenContext'
+import { useGameTheme } from '../contexts/GameThemeContext'
 
 interface AppNavBarProps {
   variant?: 'full' | 'minimal'
@@ -17,6 +18,35 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
   const isGamePage = pathname?.startsWith('/games')
   const isArcadePage = pathname?.startsWith('/arcade')
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
+  const { theme: gameTheme } = useGameTheme()
+
+  // Helper function to get themed background colors
+  const getThemedBackground = (opacity: number = 0.85) => {
+    if (gameTheme?.backgroundColor) {
+      const color = gameTheme.backgroundColor
+      if (color.startsWith('#')) {
+        // Convert hex to rgba
+        const hex = color.slice(1)
+        const r = parseInt(hex.slice(0, 2), 16)
+        const g = parseInt(hex.slice(2, 4), 16)
+        const b = parseInt(hex.slice(4, 6), 16)
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`
+      } else if (color.startsWith('rgb')) {
+        // Handle rgb/rgba formats
+        const match = color.match(/rgba?\(([^)]+)\)/)
+        if (match) {
+          const values = match[1].split(',').map(v => v.trim())
+          if (values.length >= 3) {
+            return `rgba(${values[0]}, ${values[1]}, ${values[2]}, ${opacity})`
+          }
+        }
+      } else if (color.startsWith('linear-gradient')) {
+        // For gradients, use a semi-transparent overlay
+        return `rgba(0, 0, 0, ${opacity})`
+      }
+    }
+    return isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'
+  }
 
   // Auto-detect variant based on context
   const actualVariant = variant === 'full' && (isGamePage || isArcadePage) ? 'minimal' : variant
@@ -34,7 +64,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
         transition: 'all 0.3s ease'
       })}>
         <div className={hstack({ gap: '2' })}>
-          {/* Arcade branding (fullscreen only) */}
+          {/* Game branding (fullscreen only) */}
           {isFullscreen && (isArcadePage || isGamePage) && (
             <div className={css({
               display: 'flex',
@@ -42,7 +72,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
               gap: '3',
               px: '4',
               py: '2',
-              bg: 'rgba(0, 0, 0, 0.85)',
+              bg: getThemedBackground(0.85),
               border: '1px solid rgba(255, 255, 255, 0.1)',
               rounded: 'lg',
               shadow: 'lg',
@@ -51,11 +81,11 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
               <h1 className={css({
                 fontSize: 'lg',
                 fontWeight: 'bold',
-                background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
+                background: gameTheme ? 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)' : 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
                 backgroundClip: 'text',
                 color: 'transparent'
               })}>
-                🕹️ {isArcadePage ? 'Arcade' : 'Game'}
+                🕹️ {gameTheme?.gameName || (isArcadePage ? 'Arcade' : 'Game')}
               </h1>
               <div className={css({
                 px: '2',
@@ -79,7 +109,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
             gap: '2',
             px: '3',
             py: '2',
-            bg: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
+            bg: getThemedBackground(isFullscreen ? 0.85 : 1),
             border: '1px solid',
             borderColor: isFullscreen ? 'rgba(255, 255, 255, 0.1)' : 'gray.200',
             rounded: 'lg',
@@ -128,7 +158,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
             gap: '2',
             px: '3',
             py: '2',
-            bg: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
+            bg: getThemedBackground(isFullscreen ? 0.85 : 1),
             border: '1px solid',
             borderColor: isFullscreen ? 'rgba(255, 255, 255, 0.1)' : 'gray.200',
             rounded: 'lg',
