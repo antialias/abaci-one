@@ -292,14 +292,16 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
           </div>
         </div>
 
-        <div className={css({ margin: '20px 0' })}>
-          <label className={css({ display: 'block', fontWeight: 'bold', marginBottom: '10px', color: 'gray.600' })}>Cards to Quiz:</label>
-          <div className={css({
-            display: 'flex',
-            gap: '10px',
-            justifyContent: 'center',
-            flexWrap: 'wrap'
-          })}>
+        <div style={{ margin: '12px 0' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>Cards to Quiz:</label>
+          <div
+            style={{
+              display: 'flex',
+              gap: '6px',
+              justifyContent: 'center',
+              flexWrap: 'wrap'
+            }}
+          >
             {[2, 5, 8, 12, 15].map(count => (
               <button
                 key={count}
