@@ -1,12 +1,20 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { css } from '../../../styled-system/css'
 import { EnhancedChampionArena } from '../../components/EnhancedChampionArena'
 import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
 
 function ArcadeContent() {
-  const { isFullscreen, enterFullscreen, exitFullscreen } = useFullscreen()
+  const { isFullscreen, enterFullscreen, exitFullscreen, setFullscreenElement } = useFullscreen()
+  const arcadeRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Register this component's main div as the fullscreen element
+    if (arcadeRef.current) {
+      setFullscreenElement(arcadeRef.current)
+    }
+  }, [setFullscreenElement])
 
   useEffect(() => {
     // Check if we should enter fullscreen (from games page navigation)
@@ -24,12 +32,14 @@ function ArcadeContent() {
   }
 
   return (
-    <div className={css({
-      minH: 'screen',
-      background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
-      position: 'relative',
-      overflow: 'hidden'
-    })}>
+    <div
+      ref={arcadeRef}
+      className={css({
+        minH: 'screen',
+        background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
+        position: 'relative',
+        overflow: 'hidden'
+      })}>
       {/* Animated background elements */}
       <div className={css({
         position: 'absolute',

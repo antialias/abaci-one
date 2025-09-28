@@ -1,18 +1,21 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react'
 
 interface FullscreenContextType {
   isFullscreen: boolean
   enterFullscreen: () => Promise<void>
   exitFullscreen: () => Promise<void>
   toggleFullscreen: () => Promise<void>
+  setFullscreenElement: (element: HTMLElement | null) => void
+  fullscreenElementRef: React.MutableRefObject<HTMLElement | null>
 }
 
 const FullscreenContext = createContext<FullscreenContextType | null>(null)
 
 export function FullscreenProvider({ children }: { children: ReactNode }) {
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const fullscreenElementRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -32,9 +35,15 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const setFullscreenElement = useCallback((element: HTMLElement | null) => {
+    fullscreenElementRef.current = element
+  }, [])
+
   const enterFullscreen = async () => {
     try {
-      const element = document.documentElement
+      // Use the registered fullscreen element, fallback to document.documentElement
+      const element = fullscreenElementRef.current || document.documentElement
+
       if (element.requestFullscreen) {
         await element.requestFullscreen()
       } else if ((element as any).webkitRequestFullscreen) {
@@ -78,7 +87,9 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
       isFullscreen,
       enterFullscreen,
       exitFullscreen,
-      toggleFullscreen
+      toggleFullscreen,
+      setFullscreenElement,
+      fullscreenElementRef
     }}>
       {children}
     </FullscreenContext.Provider>
