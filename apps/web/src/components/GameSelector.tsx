@@ -111,8 +111,10 @@ export function GameSelector({
       ) : (
         <div className={css({
           display: 'grid',
-          gridTemplateColumns: { base: '1fr', md: variant === 'compact' ? 'repeat(2, 1fr)' : 'repeat(2, 1fr)' },
-          gap: variant === 'compact' ? '3' : '4'
+          gridTemplateColumns: { base: '1fr', md: 'repeat(2, 1fr)' },
+          gap: variant === 'compact' ? '2' : { base: '2', md: '3' },
+          height: '100%',
+          alignItems: 'start'
         })}>
           {Object.entries(GAMES_CONFIG).map(([gameType, config]) => (
             <GameCard

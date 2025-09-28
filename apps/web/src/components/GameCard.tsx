@@ -42,7 +42,7 @@ export function GameCard({
       className={css({
         background: config.gradient || 'white',
         rounded: variant === 'compact' ? 'xl' : '2xl',
-        p: variant === 'compact' ? '4' : '8',
+        p: variant === 'compact' ? '3' : { base: '3', md: '4', lg: '6' },
         border: '2px solid',
         borderColor: available ? config.borderColor || 'blue.200' : 'gray.200',
         boxShadow: variant === 'compact'
@@ -65,11 +65,11 @@ export function GameCard({
       {/* Game icon with enhanced styling */}
       <div className={css({
         textAlign: 'center',
-        mb: variant === 'compact' ? '2' : '4'
+        mb: variant === 'compact' ? '1' : { base: '1', md: '2' }
       })}>
         <div className={css({
-          fontSize: variant === 'compact' ? '2xl' : '4xl',
-          mb: variant === 'compact' ? '2' : '3',
+          fontSize: variant === 'compact' ? 'xl' : { base: 'xl', md: '2xl', lg: '3xl' },
+          mb: variant === 'compact' ? '1' : { base: '1', md: '2' },
           display: 'inline-block',
           transform: 'perspective(1000px)',
           transition: 'all 0.3s ease'
@@ -78,22 +78,23 @@ export function GameCard({
         </div>
 
         <h4 className={css({
-          fontSize: variant === 'compact' ? 'lg' : '2xl',
+          fontSize: variant === 'compact' ? 'md' : { base: 'lg', md: 'xl', lg: '2xl' },
           fontWeight: 'bold',
           color: 'gray.900',
-          mb: variant === 'compact' ? '1' : '3'
+          mb: variant === 'compact' ? '0.5' : { base: '1', md: '2' }
         })}>
           {variant === 'detailed' ? config.fullName || config.name : config.name}
         </h4>
 
         {variant === 'detailed' && (
           <p className={css({
-            fontSize: 'base',
+            fontSize: { base: 'xs', md: 'sm', lg: 'base' },
             color: 'gray.600',
-            mb: '4',
-            lineHeight: 'relaxed'
+            mb: { base: '2', md: '3' },
+            lineHeight: 'relaxed',
+            display: { base: 'none', sm: 'block' }
           })}>
-            {config.longDescription || config.description}
+            {config.description}
           </p>
         )}
 
@@ -102,16 +103,16 @@ export function GameCard({
           <div className={css({
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '2',
+            gap: { base: '1', md: '2' },
             justifyContent: 'center',
-            mb: '4'
+            mb: { base: '2', md: '3' }
           })}>
             {config.chips.map((chip, index) => (
               <span
                 key={index}
                 className={css({
-                  px: '3',
-                  py: '1',
+                  px: { base: '2', md: '3' },
+                  py: { base: '0.5', md: '1' },
                   background: config.color === 'green'
                     ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)'
                     : config.color === 'purple'
@@ -123,7 +124,7 @@ export function GameCard({
                     ? 'indigo.800'
                     : 'blue.800',
                   rounded: 'full',
-                  fontSize: 'xs',
+                  fontSize: { base: '2xs', md: 'xs' },
                   fontWeight: 'semibold',
                   border: '1px solid',
                   borderColor: config.color === 'green'
@@ -142,14 +143,14 @@ export function GameCard({
 
         {/* Player availability indicator */}
         <div className={css({
-          fontSize: variant === 'compact' ? 'xs' : 'sm',
+          fontSize: variant === 'compact' ? '2xs' : { base: '2xs', md: 'xs', lg: 'sm' },
           color: available ? 'green.600' : 'red.600',
           fontWeight: 'semibold',
           display: 'inline-flex',
           alignItems: 'center',
           gap: '1',
-          px: '2',
-          py: '1',
+          px: { base: '1.5', md: '2' },
+          py: { base: '0.5', md: '1' },
           background: available ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
           rounded: 'full',
           border: '1px solid',
