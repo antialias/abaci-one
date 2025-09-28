@@ -1142,12 +1142,14 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
     <div style={{
       textAlign: 'center',
       padding: '12px',
+      paddingBottom: hasPhysicalKeyboard === false ? '180px' : '12px', // Extra space for on-screen keyboard
       maxWidth: '800px',
       margin: '0 auto',
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'flex-start'
+      justifyContent: 'flex-start',
+      minHeight: '100vh' // Ensure container can scroll if needed
     }}>
       <h3 style={{ marginBottom: '16px', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>Enter the Numbers You Remember</h3>
       <div style={{
@@ -1342,11 +1344,18 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       {/* On-screen number pad for devices without physical keyboard */}
       {hasPhysicalKeyboard === false && state.guessesRemaining > 0 && (
         <div style={{
-          marginTop: '16px',
+          position: 'fixed',
+          bottom: '12px',
+          left: '50%',
+          transform: 'translateX(-50%)',
           padding: '12px',
           background: '#f8fafc',
           borderRadius: '12px',
-          border: '1px solid #e2e8f0'
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          zIndex: 1000,
+          maxWidth: '280px',
+          width: 'calc(100vw - 24px)' // Ensure it doesn't exceed screen width
         }}>
           <div style={{
             textAlign: 'center',
@@ -1360,15 +1369,15 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '8px',
-            maxWidth: '240px',
+            gap: '6px',
+            maxWidth: '220px',
             margin: '0 auto'
           }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(digit => (
               <button
                 key={digit}
                 style={{
-                  padding: '16px 12px',
+                  padding: '14px 10px',
                   border: '2px solid #cbd5e1',
                   borderRadius: '8px',
                   background: 'white',
@@ -1408,7 +1417,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
             {/* Bottom row: 0 and backspace */}
             <button
               style={{
-                padding: '16px 12px',
+                padding: '14px 10px',
                 border: '2px solid #cbd5e1',
                 borderRadius: '8px',
                 background: 'white',
@@ -1448,7 +1457,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               <button
                 style={{
                   width: '100%',
-                  padding: '16px 12px',
+                  padding: '14px 10px',
                   border: '2px solid #dc2626',
                   borderRadius: '8px',
                   background: '#fef2f2',
