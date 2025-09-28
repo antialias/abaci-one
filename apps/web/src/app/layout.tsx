@@ -4,6 +4,7 @@ import { AbacusDisplayProvider } from '@/contexts/AbacusDisplayContext'
 import { UserProfileProvider } from '@/contexts/UserProfileContext'
 import { GameModeProvider } from '@/contexts/GameModeContext'
 import { FullscreenProvider } from '@/contexts/FullscreenContext'
+import { GameThemeProvider } from '@/contexts/GameThemeContext'
 import { AppNavBar } from '@/components/AppNavBar'
 
 export const metadata: Metadata = {
@@ -29,8 +30,10 @@ export default function RootLayout({
           <UserProfileProvider>
             <GameModeProvider>
               <FullscreenProvider>
-                <AppNavBar />
-                {children}
+                <GameThemeProvider>
+                  <AppNavBar />
+                  {children}
+                </GameThemeProvider>
               </FullscreenProvider>
             </GameModeProvider>
           </UserProfileProvider>
