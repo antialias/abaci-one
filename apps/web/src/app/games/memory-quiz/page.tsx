@@ -228,52 +228,65 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   }
 
   return (
-    <div className={css({
-      textAlign: 'center',
-      padding: '20px',
-      maxWidth: '800px',
-      margin: '0 auto'
-    })}>
-      <h2 className={css({ color: 'gray.700', marginBottom: '10px' })}>🧠 Speed Memory Quiz</h2>
-      <p className={css({ color: 'gray.600', marginBottom: '20px' })}>Test your soroban reading skills! Cards will be shown briefly, then you'll enter the numbers you remember.</p>
+    <div
+      style={{
+        textAlign: 'center',
+        padding: '12px',
+        maxWidth: '100%',
+        margin: '0 auto',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}
+    >
+      <h2 style={{ color: '#374151', margin: '0 0 8px 0', fontSize: '18px' }}>🧠 Speed Memory Quiz</h2>
+      <p style={{ color: '#6b7280', margin: '0 0 16px 0', fontSize: '14px' }}>Test your soroban reading skills! Cards will be shown briefly, then you'll enter the numbers you remember.</p>
 
-      <div className={css({ maxWidth: '600px', margin: '0 auto' })}>
-        <div className={css({ margin: '20px 0' })}>
-          <label className={css({ display: 'block', fontWeight: 'bold', marginBottom: '10px', color: 'gray.600' })}>Difficulty Level:</label>
-          <div className={css({
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: '12px',
-            justifyContent: 'center'
-          })}>
+      <div
+        style={{
+          maxWidth: '100%',
+          margin: '0 auto',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          overflow: 'auto'
+        }}
+      >
+        <div style={{ margin: '12px 0' }}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>Difficulty Level:</label>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '8px',
+              justifyContent: 'center'
+            }}
+          >
             {Object.entries(DIFFICULTY_LEVELS).map(([key, level]) => (
               <button
                 key={key}
                 type="button"
-                className={css({
-                  background: state.selectedDifficulty === key ? 'blue.500' : 'white',
-                  color: state.selectedDifficulty === key ? 'white' : 'gray.800',
+                style={{
+                  background: state.selectedDifficulty === key ? '#3b82f6' : 'white',
+                  color: state.selectedDifficulty === key ? 'white' : '#1f2937',
                   border: '2px solid',
-                  borderColor: state.selectedDifficulty === key ? 'blue.500' : 'gray.300',
+                  borderColor: state.selectedDifficulty === key ? '#3b82f6' : '#d1d5db',
                   borderRadius: '8px',
-                  padding: '12px 16px',
+                  padding: '8px 12px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
                   textAlign: 'center',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '4px',
-                  _hover: {
-                    background: state.selectedDifficulty === key ? 'blue.600' : 'gray.50',
-                    borderColor: 'blue.400',
-                    transform: 'translateY(-1px)'
-                  }
-                })}
+                  gap: '2px',
+                  fontSize: '12px'
+                }}
                 onClick={() => handleDifficultySelect(key as DifficultyLevel)}
                 title={level.description}
               >
-                <div className={css({ fontWeight: 'bold', fontSize: '14px' })}>{level.name}</div>
-                <div className={css({ fontSize: '11px', opacity: 0.8 })}>{level.description}</div>
+                <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{level.name}</div>
+                <div style={{ fontSize: '10px', opacity: 0.8 }}>{level.description}</div>
               </button>
             ))}
           </div>
@@ -1513,23 +1526,25 @@ export default function MemoryQuizPage() {
     <FullscreenGameLayout title="Memory Lightning">
       <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
 
-      <div className={css({
-        minH: 'screen',
-        bg: 'gradient-to-br',
-        gradientFrom: 'green.50',
-        gradientTo: 'blue.50',
-        py: '4',
-        height: '100vh',
-        overflow: 'auto'
-      })}>
-        <div className={css({
-          maxW: '100%',
-          mx: 'auto',
-          px: { base: '2', md: '4' },
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column'
-        })}>
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(to bottom right, #f0fdf4, #eff6ff)',
+          padding: '8px',
+          height: '100vh',
+          overflow: 'auto'
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '100%',
+            margin: '0 auto',
+            padding: '0 8px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
           <div className={css({
             textAlign: 'center',
             mb: '4',
