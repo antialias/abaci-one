@@ -20,11 +20,31 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
   const { theme: gameTheme, isHydrated } = useGameTheme()
 
+  // Route-based theme detection as fallback for page reloads
+  const getRouteBasedTheme = () => {
+    if (pathname === '/games/memory-quiz') {
+      return {
+        gameName: "Memory Lightning",
+        backgroundColor: "linear-gradient(to bottom right, #f0fdf4, #eff6ff)"
+      }
+    }
+    if (pathname === '/games/matching') {
+      return {
+        gameName: "Memory Pairs",
+        backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+      }
+    }
+    return null
+  }
+
+  // Use context theme if available, otherwise fall back to route-based detection
+  const currentTheme = gameTheme || getRouteBasedTheme()
+
   // Helper function to get themed background colors
   const getThemedBackground = (opacity: number = 0.85) => {
     // Only apply theming after hydration to prevent SSR/client mismatch
-    if (isHydrated && gameTheme?.backgroundColor) {
-      const color = gameTheme.backgroundColor
+    if (isHydrated && currentTheme?.backgroundColor) {
+      const color = currentTheme.backgroundColor
       if (color.startsWith('#')) {
         // Convert hex to rgba
         const hex = color.slice(1)
@@ -85,18 +105,19 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
         <div className={hstack({ gap: '2' })}>
           {/* Game branding (fullscreen only) */}
           {isFullscreen && (isArcadePage || isGamePage) && (
-            <div className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '3',
-              px: '4',
-              py: '2',
-              bg: getThemedBackground(0.85),
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              rounded: 'lg',
-              shadow: 'lg',
-              backdropFilter: 'blur(15px)'
-            })}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '8px 16px',
+                background: isHydrated && currentTheme ? getThemedBackground(0.85) : 'rgba(0, 0, 0, 0.85)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                backdropFilter: 'blur(15px)'
+              }}
+            >
               <h1 className={css({
                 fontSize: 'lg',
                 fontWeight: 'bold',
@@ -104,7 +125,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
                 backgroundClip: 'text',
                 color: 'transparent'
               })}>
-                🕹️ {(isHydrated && gameTheme?.gameName) || (isArcadePage ? 'Arcade' : 'Game')}
+                🕹️ {(isHydrated && currentTheme?.gameName) || (isArcadePage ? 'Arcade' : 'Game')}
               </h1>
               <div className={css({
                 px: '2',
@@ -122,19 +143,19 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
           )}
 
           {/* Navigation Links */}
-          <div className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '2',
-            px: '3',
-            py: '2',
-            bg: getThemedBackground(isFullscreen ? 0.85 : 1),
-            border: '1px solid',
-            borderColor: isFullscreen ? 'rgba(255, 255, 255, 0.1)' : 'gray.200',
-            rounded: 'lg',
-            shadow: 'lg',
-            backdropFilter: isFullscreen ? 'blur(15px)' : 'none'
-          })}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: isHydrated && currentTheme ? getThemedBackground(isFullscreen ? 0.85 : 1) : (isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'),
+              border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
+              borderRadius: '8px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+              backdropFilter: isFullscreen ? 'blur(15px)' : 'none'
+            }}
+          >
             <Link
               href="/"
               className={css({
@@ -171,19 +192,19 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
           </div>
 
           {/* Fullscreen Controls */}
-          <div className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '2',
-            px: '3',
-            py: '2',
-            bg: getThemedBackground(isFullscreen ? 0.85 : 1),
-            border: '1px solid',
-            borderColor: isFullscreen ? 'rgba(255, 255, 255, 0.1)' : 'gray.200',
-            rounded: 'lg',
-            shadow: 'lg',
-            backdropFilter: isFullscreen ? 'blur(15px)' : 'none'
-          })}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: isHydrated && currentTheme ? getThemedBackground(isFullscreen ? 0.85 : 1) : (isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'),
+              border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
+              borderRadius: '8px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+              backdropFilter: isFullscreen ? 'blur(15px)' : 'none'
+            }}
+          >
             <button
               onClick={toggleFullscreen}
               title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
