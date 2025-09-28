@@ -89,13 +89,14 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/soroban-flashcards/soroban-abacus-flashcards",
+    "url": "https://github.com/antialias/soroban-abacus-flashcards",
     "directory": "packages/abacus-react"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   }
 }

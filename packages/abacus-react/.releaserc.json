@@ -46,6 +46,15 @@
       }
     ],
     [
+      "@semantic-release/npm",
+      {
+        "npmPublish": true,
+        "pkgRoot": ".",
+        "tarballDir": "dist",
+        "registry": "https://npm.pkg.github.com"
+      }
+    ],
+    [
       "@semantic-release/github",
       {
         "assets": [

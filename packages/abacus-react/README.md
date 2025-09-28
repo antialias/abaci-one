@@ -16,6 +16,8 @@ A comprehensive React component for rendering interactive Soroban (Japanese abac
 
 ## Installation
 
+### From npm (recommended)
+
 ```bash
 npm install @soroban/abacus-react
 # or
@@ -23,6 +25,18 @@ pnpm add @soroban/abacus-react
 # or
 yarn add @soroban/abacus-react
 ```
+
+### From GitHub Packages
+
+```bash
+# Configure npm to use GitHub Packages for @soroban scope
+echo "@soroban:registry=https://npm.pkg.github.com" >> .npmrc
+
+# Then install
+npm install @soroban/abacus-react
+```
+
+The package is published to both npm and GitHub Packages simultaneously for redundancy and choice.
 
 ## Quick Start
 
@@ -404,8 +418,9 @@ BREAKING CHANGE: callback functions now receive different parameters
 ### Release Process
 
 1. **Automatic**: Releases happen automatically when changes are pushed to `main` branch
-2. **Manual testing**: Run `pnpm release:dry-run` to test release without publishing
-3. **Version tags**: Releases are tagged as `abacus-react-v1.2.3` (separate from monorepo versions)
+2. **Dual publishing**: Package is published to both npm and GitHub Packages simultaneously
+3. **Manual testing**: Run `pnpm release:dry-run` to test release without publishing
+4. **Version tags**: Releases are tagged as `abacus-react-v1.2.3` (separate from monorepo versions)
 
 ### Development Commands
 
