@@ -18,11 +18,12 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
   const isGamePage = pathname?.startsWith('/games')
   const isArcadePage = pathname?.startsWith('/arcade')
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
-  const { theme: gameTheme } = useGameTheme()
+  const { theme: gameTheme, isHydrated } = useGameTheme()
 
   // Helper function to get themed background colors
   const getThemedBackground = (opacity: number = 0.85) => {
-    if (gameTheme?.backgroundColor) {
+    // Only apply theming after hydration to prevent SSR/client mismatch
+    if (isHydrated && gameTheme?.backgroundColor) {
       const color = gameTheme.backgroundColor
       if (color.startsWith('#')) {
         // Convert hex to rgba
@@ -103,7 +104,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
                 backgroundClip: 'text',
                 color: 'transparent'
               })}>
-                🕹️ {gameTheme?.gameName || (isArcadePage ? 'Arcade' : 'Game')}
+                🕹️ {(isHydrated && gameTheme?.gameName) || (isArcadePage ? 'Arcade' : 'Game')}
               </h1>
               <div className={css({
                 px: '2',
