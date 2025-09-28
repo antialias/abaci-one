@@ -134,8 +134,16 @@ jobs:
               exit 1
             fi
 
-            # Explicitly set registry for this publish command
-            npm publish --registry=https://npm.pkg.github.com
+            # Debug and publish to GitHub Packages
+            echo "Contents of .npmrc file:"
+            cat .npmrc
+            echo "Environment variables for npm:"
+            echo "NPM_CONFIG_USERCONFIG: $NPM_CONFIG_USERCONFIG"
+            echo "NODE_AUTH_TOKEN is set: $([ -n "$NODE_AUTH_TOKEN" ] && echo "yes" || echo "no")"
+
+            # Set authentication and registry for GitHub Packages
+            echo "Publishing with explicit authentication..."
+            NPM_CONFIG_USERCONFIG=.npmrc NODE_AUTH_TOKEN="${{ secrets.GITHUB_TOKEN }}" npm publish --registry=https://npm.pkg.github.com
           else
             echo "No new abacus-react version tag found, skipping publish"
           fi
