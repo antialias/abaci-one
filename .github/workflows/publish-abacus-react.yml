@@ -113,6 +113,12 @@ jobs:
               if (pkg.peerDependencies) pkg.peerDependencies = cleanWorkspaceDeps(pkg.peerDependencies);
               if (pkg.optionalDependencies) pkg.optionalDependencies = cleanWorkspaceDeps(pkg.optionalDependencies);
 
+              // Set publishConfig for GitHub Packages
+              pkg.publishConfig = {
+                access: 'public',
+                registry: 'https://npm.pkg.github.com'
+              };
+
               // Write the clean package.json
               fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
               console.log('Created clean package.json for version:', pkg.version);
@@ -128,7 +134,8 @@ jobs:
               exit 1
             fi
 
-            npm publish
+            # Explicitly set registry for this publish command
+            npm publish --registry=https://npm.pkg.github.com
           else
             echo "No new abacus-react version tag found, skipping publish"
           fi
