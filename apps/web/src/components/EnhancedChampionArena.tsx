@@ -644,8 +644,8 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
             <SortableContext items={availablePlayers.map(p => p.id)} strategy={rectSortingStrategy}>
               <DroppableZone
                 id="roster"
-                title="Available"
-                subtitle="Tap to add"
+                title="🎯 Available Champions"
+                subtitle="Drag champions here to remove from arena"
                 isEmpty={availablePlayers.length === 0}
               >
                 {availablePlayers.map(player => (
@@ -672,8 +672,8 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
             <SortableContext items={arenaPlayers.map(p => p.id)} strategy={rectSortingStrategy}>
               <DroppableZone
                 id="arena"
-                title="Arena"
-                subtitle="Drop here"
+                title="🏟️ Arena"
+                subtitle="1 champion = Solo • 2 = Battle • 3+ = Tournament"
                 isEmpty={arenaPlayers.length === 0}
               >
                 {arenaPlayers.map(player => (

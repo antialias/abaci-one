@@ -47,13 +47,13 @@ export function SetupPhase() {
   const getButtonStyles = (isSelected: boolean, variant: 'primary' | 'secondary' | 'difficulty' = 'primary') => {
     const baseStyles = {
       border: 'none',
-      borderRadius: '16px',
-      padding: '16px 24px',
-      fontSize: '16px',
+      borderRadius: { base: '12px', md: '16px' },
+      padding: { base: '12px 16px', sm: '14px 20px', md: '16px 24px' },
+      fontSize: { base: '14px', sm: '15px', md: '16px' },
       fontWeight: 'bold',
       cursor: 'pointer',
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      minWidth: '160px',
+      minWidth: { base: '120px', sm: '140px', md: '160px' },
       textAlign: 'center' as const,
       position: 'relative' as const,
       overflow: 'hidden' as const,
@@ -130,13 +130,16 @@ export function SetupPhase() {
   return (
     <div className={css({
       textAlign: 'center',
-      padding: '40px 20px',
+      padding: { base: '20px 16px', sm: '24px 20px', md: '40px 20px' },
       maxWidth: '800px',
-      margin: '0 auto'
+      margin: '0 auto',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column'
     })}>
       <h2 className={css({
-        fontSize: '36px',
-        marginBottom: '16px',
+        fontSize: { base: '20px', sm: '24px', md: '32px', lg: '36px' },
+        marginBottom: { base: '12px', md: '16px' },
         color: 'gray.800',
         fontWeight: 'bold'
       })}>
@@ -144,46 +147,48 @@ export function SetupPhase() {
       </h2>
 
       <p className={css({
-        fontSize: '18px',
+        fontSize: { base: '14px', sm: '16px', md: '18px' },
         color: 'gray.600',
-        marginBottom: '40px',
-        lineHeight: '1.6'
+        marginBottom: { base: '24px', sm: '32px', md: '40px' },
+        lineHeight: '1.6',
+        display: { base: 'none', sm: 'block' }
       })}>
         Configure your memory challenge. Choose your preferred mode, game type, and difficulty level.
       </p>
 
       <div className={css({
         display: 'grid',
-        gap: '32px',
-        margin: '0 auto'
+        gap: { base: '20px', sm: '24px', md: '32px' },
+        margin: '0 auto',
+        flex: 1
       })}>
 
         {/* Current Player Setup */}
         <div className={css({
           background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
-          rounded: '2xl',
-          p: '6',
+          rounded: { base: 'xl', md: '2xl' },
+          p: { base: '4', md: '6' },
           border: '2px solid',
           borderColor: 'gray.300'
         })}>
           <h3 className={css({
-            fontSize: '20px',
+            fontSize: { base: '16px', sm: '18px', md: '20px' },
             fontWeight: 'bold',
             color: 'gray.700',
-            mb: '3',
+            mb: { base: '2', md: '3' },
             textAlign: 'center'
           })}>
             🎮 Current Setup
           </h3>
           <div className={css({
-            fontSize: '16px',
+            fontSize: { base: '14px', md: '16px' },
             color: 'gray.700',
             textAlign: 'center'
           })}>
             <p>
               <strong>{activePlayerCount}</strong> player{activePlayerCount !== 1 ? 's' : ''} selected
             </p>
-            <p className={css({ fontSize: '14px', color: 'gray.600', mt: '1' })}>
+            <p className={css({ fontSize: { base: '12px', md: '14px' }, color: 'gray.600', mt: '1' })}>
               {activePlayerCount === 1
                 ? 'Solo challenge mode - focus & memory'
                 : `${activePlayerCount}-player battle mode - compete for the most pairs`
@@ -211,31 +216,34 @@ export function SetupPhase() {
         <div>
           <label className={css({
             display: 'block',
-            fontSize: '20px',
+            fontSize: { base: '16px', sm: '18px', md: '20px' },
             fontWeight: 'bold',
-            marginBottom: '16px',
+            marginBottom: { base: '12px', md: '16px' },
             color: 'gray.700'
           })}>
             Game Type
           </label>
           <div className={css({
-            display: 'flex',
-            gap: '12px',
-            justifyContent: 'center',
-            flexWrap: 'wrap'
+            display: 'grid',
+            gridTemplateColumns: {
+              base: '1fr',
+              sm: 'repeat(2, 1fr)'
+            },
+            gap: { base: '8px', sm: '10px', md: '12px' },
+            justifyItems: 'stretch'
           })}>
             <button
               className={getButtonStyles(state.gameType === 'abacus-numeral', 'secondary')}
               onClick={() => setGameType('abacus-numeral')}
             >
-              <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' })}>
-                <div className={css({ fontSize: '28px', display: 'flex', alignItems: 'center', gap: '8px' })}>
+              <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: { base: '4px', md: '6px' } })}>
+                <div className={css({ fontSize: { base: '20px', sm: '24px', md: '28px' }, display: 'flex', alignItems: 'center', gap: { base: '4px', md: '8px' } })}>
                   <span>🧮</span>
-                  <span className={css({ fontSize: '20px' })}>↔️</span>
+                  <span className={css({ fontSize: { base: '16px', md: '20px' } })}>↔️</span>
                   <span>🔢</span>
                 </div>
-                <div className={css({ fontWeight: 'bold' })}>Abacus-Numeral</div>
-                <div className={css({ fontSize: '12px', opacity: 0.8, textAlign: 'center' })}>
+                <div className={css({ fontWeight: 'bold', fontSize: { base: '12px', sm: '13px', md: '14px' } })}>Abacus-Numeral</div>
+                <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, opacity: 0.8, textAlign: 'center', display: { base: 'none', sm: 'block' } })}>
                   Match visual patterns<br/>with numbers
                 </div>
               </div>
@@ -244,23 +252,25 @@ export function SetupPhase() {
               className={getButtonStyles(state.gameType === 'complement-pairs', 'secondary')}
               onClick={() => setGameType('complement-pairs')}
             >
-              <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' })}>
-                <div className={css({ fontSize: '28px', display: 'flex', alignItems: 'center', gap: '8px' })}>
+              <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: { base: '4px', md: '6px' } })}>
+                <div className={css({ fontSize: { base: '20px', sm: '24px', md: '28px' }, display: 'flex', alignItems: 'center', gap: { base: '4px', md: '8px' } })}>
                   <span>🤝</span>
-                  <span className={css({ fontSize: '20px' })}>➕</span>
+                  <span className={css({ fontSize: { base: '16px', md: '20px' } })}>➕</span>
                   <span>🔟</span>
                 </div>
-                <div className={css({ fontWeight: 'bold' })}>Complement Pairs</div>
-                <div className={css({ fontSize: '12px', opacity: 0.8, textAlign: 'center' })}>
+                <div className={css({ fontWeight: 'bold', fontSize: { base: '12px', sm: '13px', md: '14px' } })}>Complement Pairs</div>
+                <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, opacity: 0.8, textAlign: 'center', display: { base: 'none', sm: 'block' } })}>
                   Find number friends<br/>that add to 5 or 10
                 </div>
               </div>
             </button>
           </div>
           <p className={css({
-            fontSize: '14px',
+            fontSize: { base: '12px', md: '14px' },
             color: 'gray.500',
-            marginTop: '8px'
+            marginTop: { base: '6px', md: '8px' },
+            textAlign: 'center',
+            display: { base: 'none', sm: 'block' }
           })}>
             {state.gameType === 'abacus-numeral'
               ? 'Match abacus representations with their numerical values'
@@ -273,18 +283,21 @@ export function SetupPhase() {
         <div>
           <label className={css({
             display: 'block',
-            fontSize: '20px',
+            fontSize: { base: '16px', sm: '18px', md: '20px' },
             fontWeight: 'bold',
-            marginBottom: '16px',
+            marginBottom: { base: '12px', md: '16px' },
             color: 'gray.700'
           })}>
             Difficulty ({state.difficulty} pairs)
           </label>
           <div className={css({
-            display: 'flex',
-            gap: '12px',
-            justifyContent: 'center',
-            flexWrap: 'wrap'
+            display: 'grid',
+            gridTemplateColumns: {
+              base: 'repeat(2, 1fr)',
+              sm: 'repeat(4, 1fr)'
+            },
+            gap: { base: '8px', sm: '10px', md: '12px' },
+            justifyItems: 'stretch'
           })}>
             {([6, 8, 12, 15] as const).map(difficulty => {
               const difficultyInfo = {
@@ -377,15 +390,15 @@ export function SetupPhase() {
         )}
 
         {/* Start Game Button */}
-        <div className={css({ marginTop: '20px' })}>
+        <div className={css({ marginTop: { base: '16px', md: '20px' } })}>
           <button
             className={css({
               background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 50%, #ff9ff3 100%)',
               color: 'white',
               border: 'none',
-              borderRadius: '60px',
-              padding: '20px 60px',
-              fontSize: '28px',
+              borderRadius: { base: '20px', sm: '30px', md: '60px' },
+              padding: { base: '16px 32px', sm: '18px 40px', md: '20px 60px' },
+              fontSize: { base: '18px', sm: '22px', md: '28px' },
               fontWeight: 'black',
               cursor: 'pointer',
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -393,6 +406,7 @@ export function SetupPhase() {
               textShadow: '0 2px 4px rgba(0,0,0,0.3)',
               position: 'relative',
               overflow: 'hidden',
+              width: { base: '100%', sm: 'auto' },
               _before: {
                 content: '""',
                 position: 'absolute',
@@ -404,7 +418,7 @@ export function SetupPhase() {
                 transition: 'left 0.6s ease',
               },
               _hover: {
-                transform: 'translateY(-5px) scale(1.05)',
+                transform: { base: 'translateY(-2px)', md: 'translateY(-5px) scale(1.05)' },
                 boxShadow: '0 15px 40px rgba(255, 107, 107, 0.6), inset 0 2px 0 rgba(255,255,255,0.3)',
                 background: 'linear-gradient(135deg, #ff5252 0%, #dd2c00 50%, #e91e63 100%)',
                 _before: {
@@ -412,7 +426,7 @@ export function SetupPhase() {
                 }
               },
               _active: {
-                transform: 'translateY(-2px) scale(1.02)',
+                transform: 'translateY(-1px) scale(1.01)',
               }
             })}
             onClick={handleStartGame}
@@ -420,16 +434,16 @@ export function SetupPhase() {
             <div className={css({
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
+              gap: { base: '8px', md: '12px' },
               justifyContent: 'center'
             })}>
               <span className={css({
-                fontSize: '32px',
+                fontSize: { base: '20px', sm: '24px', md: '32px' },
                 animation: 'bounce 2s infinite'
               })}>🚀</span>
               <span>START GAME</span>
               <span className={css({
-                fontSize: '32px',
+                fontSize: { base: '20px', sm: '24px', md: '32px' },
                 animation: 'bounce 2s infinite',
                 animationDelay: '0.5s'
               })}>🎮</span>

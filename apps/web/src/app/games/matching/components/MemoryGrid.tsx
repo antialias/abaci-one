@@ -36,11 +36,11 @@ export function MemoryGrid() {
 
   return (
     <div className={css({
-      padding: '20px',
+      padding: { base: '12px', sm: '16px', md: '20px' },
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: '20px'
+      gap: { base: '12px', sm: '16px', md: '20px' }
     })}>
 
       {/* Game Info Header */}
@@ -50,37 +50,43 @@ export function MemoryGrid() {
         alignItems: 'center',
         width: '100%',
         maxWidth: '800px',
-        padding: '16px 24px',
+        padding: { base: '12px 16px', sm: '14px 20px', md: '16px 24px' },
         background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(248,250,252,0.9))',
         borderRadius: '16px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
         border: '1px solid rgba(255,255,255,0.8)'
       })}>
 
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '20px' })}>
+        <div className={css({
+          display: 'grid',
+          gridTemplateColumns: { base: 'repeat(3, 1fr)', sm: 'repeat(3, auto)' },
+          gap: { base: '8px', sm: '12px', md: '20px' },
+          justifyContent: { base: 'stretch', sm: 'center' },
+          width: { base: '100%', sm: 'auto' }
+        })}>
           <div className={css({ textAlign: 'center' })}>
-            <div className={css({ fontSize: '24px', fontWeight: 'bold', color: 'blue.600' })}>
+            <div className={css({ fontSize: { base: '18px', sm: '20px', md: '24px' }, fontWeight: 'bold', color: 'blue.600' })}>
               {state.matchedPairs}
             </div>
-            <div className={css({ fontSize: '12px', color: 'gray.600' })}>
+            <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, color: 'gray.600' })}>
               Matched
             </div>
           </div>
 
           <div className={css({ textAlign: 'center' })}>
-            <div className={css({ fontSize: '24px', fontWeight: 'bold', color: 'purple.600' })}>
+            <div className={css({ fontSize: { base: '18px', sm: '20px', md: '24px' }, fontWeight: 'bold', color: 'purple.600' })}>
               {state.moves}
             </div>
-            <div className={css({ fontSize: '12px', color: 'gray.600' })}>
+            <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, color: 'gray.600' })}>
               Moves
             </div>
           </div>
 
           <div className={css({ textAlign: 'center' })}>
-            <div className={css({ fontSize: '24px', fontWeight: 'bold', color: 'green.600' })}>
+            <div className={css({ fontSize: { base: '18px', sm: '20px', md: '24px' }, fontWeight: 'bold', color: 'green.600' })}>
               {state.totalPairs}
             </div>
-            <div className={css({ fontSize: '12px', color: 'gray.600' })}>
+            <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, color: 'gray.600' })}>
               Total Pairs
             </div>
           </div>

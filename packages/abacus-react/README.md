@@ -375,6 +375,54 @@ import {
 // All interfaces fully typed for excellent developer experience
 ```
 
+## Publishing and Versioning
+
+This package uses [semantic-release](https://semantic-release.gitbook.io/) for automated publishing to npm. Versions are determined by conventional commit messages:
+
+### Commit Message Format
+
+Use these prefixes for commits that affect the `packages/abacus-react` directory:
+
+```bash
+# New features (minor version bump)
+feat(abacus-react): add new bead animation system
+
+# Bug fixes (patch version bump)
+fix(abacus-react): resolve gesture detection issue
+
+# Performance improvements (patch version bump)
+perf(abacus-react): optimize bead rendering
+
+# Breaking changes (major version bump)
+feat(abacus-react)!: change callback signature
+# or
+feat(abacus-react): redesign API
+
+BREAKING CHANGE: callback functions now receive different parameters
+```
+
+### Release Process
+
+1. **Automatic**: Releases happen automatically when changes are pushed to `main` branch
+2. **Manual testing**: Run `pnpm release:dry-run` to test release without publishing
+3. **Version tags**: Releases are tagged as `abacus-react-v1.2.3` (separate from monorepo versions)
+
+### Development Commands
+
+```bash
+# Build the package
+pnpm build
+
+# Run tests
+pnpm test:run
+
+# Run Storybook locally
+pnpm storybook
+
+# Test release process (dry run)
+pnpm release:dry-run
+```
+
 ## Contributing
 
 Contributions welcome! Please see our contributing guidelines and feel free to submit issues or pull requests.

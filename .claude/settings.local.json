@@ -148,7 +148,8 @@
       "Bash(awk:*)",
       "Bash(gh release list:*)",
       "Bash(gh release view:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "WebFetch(domain:antialias.github.io)"
     ],
     "deny": [],
     "ask": []
