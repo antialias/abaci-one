@@ -149,16 +149,16 @@ export function SetupPhase() {
       <p className={css({
         fontSize: { base: '14px', sm: '16px', md: '18px' },
         color: 'gray.600',
-        marginBottom: { base: '24px', sm: '32px', md: '40px' },
-        lineHeight: '1.6',
-        display: { base: 'none', sm: 'block' }
+        marginBottom: { base: '16px', sm: '20px', md: '32px' },
+        lineHeight: '1.4',
+        display: { base: 'none', md: 'block' }
       })}>
         Configure your memory challenge. Choose your preferred mode, game type, and difficulty level.
       </p>
 
       <div className={css({
         display: 'grid',
-        gap: { base: '20px', sm: '24px', md: '32px' },
+        gap: { base: '12px', sm: '16px', md: '24px' },
         margin: '0 auto',
         flex: 1
       })}>
@@ -166,29 +166,29 @@ export function SetupPhase() {
         {/* Current Player Setup */}
         <div className={css({
           background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
-          rounded: { base: 'xl', md: '2xl' },
-          p: { base: '4', md: '6' },
+          rounded: { base: 'lg', md: 'xl' },
+          p: { base: '3', sm: '4', md: '5' },
           border: '2px solid',
           borderColor: 'gray.300'
         })}>
           <h3 className={css({
-            fontSize: { base: '16px', sm: '18px', md: '20px' },
+            fontSize: { base: '14px', sm: '16px', md: '18px' },
             fontWeight: 'bold',
             color: 'gray.700',
-            mb: { base: '2', md: '3' },
+            mb: { base: '1', sm: '2', md: '2' },
             textAlign: 'center'
           })}>
             🎮 Current Setup
           </h3>
           <div className={css({
-            fontSize: { base: '14px', md: '16px' },
+            fontSize: { base: '12px', sm: '13px', md: '14px' },
             color: 'gray.700',
             textAlign: 'center'
           })}>
             <p>
               <strong>{activePlayerCount}</strong> player{activePlayerCount !== 1 ? 's' : ''} selected
             </p>
-            <p className={css({ fontSize: { base: '12px', md: '14px' }, color: 'gray.600', mt: '1' })}>
+            <p className={css({ fontSize: { base: '11px', sm: '12px', md: '13px' }, color: 'gray.600', mt: '1', display: { base: 'none', sm: 'block' } })}>
               {activePlayerCount === 1
                 ? 'Solo challenge mode - focus & memory'
                 : `${activePlayerCount}-player battle mode - compete for the most pairs`
@@ -451,25 +451,26 @@ export function SetupPhase() {
           </button>
         </div>
 
-        {/* Game Preview */}
+        {/* Game Preview - Hidden on mobile */}
         <div className={css({
           background: 'gray.50',
           borderRadius: '12px',
-          padding: '20px',
-          marginTop: '20px'
+          padding: '16px',
+          marginTop: '16px',
+          display: { base: 'none', md: 'block' }
         })}>
           <h3 className={css({
-            fontSize: '18px',
+            fontSize: '16px',
             fontWeight: 'bold',
-            marginBottom: '12px',
+            marginBottom: '8px',
             color: 'gray.700'
           })}>
             Game Preview
           </h3>
           <div className={css({
-            fontSize: '14px',
+            fontSize: '12px',
             color: 'gray.600',
-            lineHeight: '1.5'
+            lineHeight: '1.4'
           })}>
             <p><strong>Mode:</strong> {activePlayerCount === 1 ? 'Single Player' : `${activePlayerCount} Players`}</p>
             <p><strong>Type:</strong> {state.gameType === 'abacus-numeral' ? 'Abacus-Numeral Matching' : 'Complement Pairs'}</p>

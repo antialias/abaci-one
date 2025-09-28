@@ -132,42 +132,53 @@ export function generateGameCards(gameType: GameType, difficulty: Difficulty): G
   }
 }
 
-// Utility function to get difficulty-based grid configuration
+// Utility function to get responsive grid configuration based on difficulty and screen size
 export function getGridConfiguration(difficulty: Difficulty) {
   const configs: Record<Difficulty, {
     totalCards: number;
-    columns: number;
-    rows: number;
+    // Orientation-optimized responsive columns
+    mobileColumns: number;        // Portrait mobile
+    tabletColumns: number;        // Tablet
+    desktopColumns: number;       // Desktop/landscape
+    landscapeColumns: number;     // Landscape mobile/tablet
     cardSize: { width: string; height: string };
     gridTemplate: string;
   }> = {
     6: {
       totalCards: 12,
-      columns: 4,
-      rows: 3,
+      mobileColumns: 3,      // 3x4 grid in portrait
+      tabletColumns: 4,      // 4x3 grid on tablet
+      desktopColumns: 4,     // 4x3 grid on desktop
+      landscapeColumns: 6,   // 6x2 grid in landscape
       cardSize: { width: '140px', height: '180px' },
-      gridTemplate: 'repeat(4, 1fr)'
+      gridTemplate: 'repeat(3, 1fr)'
     },
     8: {
       totalCards: 16,
-      columns: 4,
-      rows: 4,
+      mobileColumns: 3,      // 3x6 grid in portrait (some spillover)
+      tabletColumns: 4,      // 4x4 grid on tablet
+      desktopColumns: 4,     // 4x4 grid on desktop
+      landscapeColumns: 6,   // 6x3 grid in landscape (some spillover)
       cardSize: { width: '120px', height: '160px' },
-      gridTemplate: 'repeat(4, 1fr)'
+      gridTemplate: 'repeat(3, 1fr)'
     },
     12: {
       totalCards: 24,
-      columns: 6,
-      rows: 4,
+      mobileColumns: 3,      // 3x8 grid in portrait
+      tabletColumns: 4,      // 4x6 grid on tablet
+      desktopColumns: 6,     // 6x4 grid on desktop
+      landscapeColumns: 6,   // 6x4 grid in landscape (changed from 8x3)
       cardSize: { width: '100px', height: '140px' },
-      gridTemplate: 'repeat(6, 1fr)'
+      gridTemplate: 'repeat(3, 1fr)'
     },
     15: {
       totalCards: 30,
-      columns: 6,
-      rows: 5,
+      mobileColumns: 3,      // 3x10 grid in portrait
+      tabletColumns: 5,      // 5x6 grid on tablet
+      desktopColumns: 6,     // 6x5 grid on desktop
+      landscapeColumns: 10,  // 10x3 grid in landscape
       cardSize: { width: '90px', height: '120px' },
-      gridTemplate: 'repeat(6, 1fr)'
+      gridTemplate: 'repeat(3, 1fr)'
     }
   }
 

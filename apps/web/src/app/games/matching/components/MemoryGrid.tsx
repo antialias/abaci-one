@@ -1,12 +1,82 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { useUserProfile } from '../../../../contexts/UserProfileContext'
 import { GameCard } from './GameCard'
 import { EmojiPicker } from './EmojiPicker'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { css } from '../../../../../styled-system/css'
+
+// Custom hook to calculate proper grid dimensions for consistent r×c layout
+function useGridDimensions(gridConfig: any, totalCards: number) {
+  const [gridDimensions, setGridDimensions] = useState(() => {
+    // Calculate optimal rows and columns based on total cards and viewport
+    if (typeof window !== 'undefined') {
+      const aspectRatio = window.innerWidth / window.innerHeight
+      return calculateOptimalGrid(totalCards, aspectRatio, gridConfig)
+    }
+    return { columns: gridConfig.mobileColumns || 3, rows: Math.ceil(totalCards / (gridConfig.mobileColumns || 3)) }
+  })
+
+  useEffect(() => {
+    function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
+      // For consistent grid layout, we need to ensure r×c = totalCards
+      // Choose columns based on viewport, then calculate exact rows needed
+
+      let targetColumns
+      const width = window.innerWidth
+
+      // Choose column count based on viewport
+      if (aspectRatio >= 1.6 && width >= 1200) {
+        // Ultra-wide: prefer wider grids
+        targetColumns = config.landscapeColumns || config.desktopColumns || 6
+      } else if (aspectRatio >= 1.33 && width >= 768) {
+        // Desktop/landscape: use desktop columns
+        targetColumns = config.desktopColumns || config.landscapeColumns || 6
+      } else if (aspectRatio >= 1.0 && width >= 600) {
+        // Tablet: use tablet columns
+        targetColumns = config.tabletColumns || config.desktopColumns || 4
+      } else {
+        // Mobile: use mobile columns
+        targetColumns = config.mobileColumns || 3
+      }
+
+      // Calculate exact rows needed for this column count
+      const rows = Math.ceil(cards / targetColumns)
+
+      // If we have leftover cards that would create an uneven bottom row,
+      // try to redistribute for a more balanced grid
+      const leftoverCards = cards % targetColumns
+      if (leftoverCards > 0 && leftoverCards < targetColumns / 2 && targetColumns > 3) {
+        // Try one less column for a more balanced grid
+        const altColumns = targetColumns - 1
+        const altRows = Math.ceil(cards / altColumns)
+        const altLeftover = cards % altColumns
+
+        // Use alternative if it creates a more balanced grid
+        if (altLeftover === 0 || altLeftover > leftoverCards) {
+          return { columns: altColumns, rows: altRows }
+        }
+      }
+
+      return { columns: targetColumns, rows }
+    }
+
+    const updateGrid = () => {
+      if (typeof window === 'undefined') return
+
+      const aspectRatio = window.innerWidth / window.innerHeight
+      setGridDimensions(calculateOptimalGrid(totalCards, aspectRatio, gridConfig))
+    }
+
+    updateGrid()
+    window.addEventListener('resize', updateGrid)
+    return () => window.removeEventListener('resize', updateGrid)
+  }, [gridConfig, totalCards])
+
+  return gridDimensions
+}
 
 export function MemoryGrid() {
   const { state, flipCard } = useMemoryPairs()
@@ -18,6 +88,8 @@ export function MemoryGrid() {
   }
 
   const gridConfig = getGridConfiguration(state.difficulty)
+  const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length)
+
 
   const handleCardClick = (cardId: string) => {
     flipCard(cardId)
@@ -204,23 +276,18 @@ export function MemoryGrid() {
         )}
       </div>
 
-      {/* Cards Grid */}
+      {/* Cards Grid - Consistent r×c Layout */}
       <div
-        className={css({
+        style={{
           display: 'grid',
-          gap: '12px',
+          gap: '6px',
           justifyContent: 'center',
           maxWidth: '100%',
           margin: '0 auto',
-          // Responsive grid adjustments
-          '@media (max-width: 768px)': {
-            gap: '8px',
-            padding: '0 10px'
-          }
-        })}
-        style={{
-          gridTemplateColumns: gridConfig.gridTemplate,
-          width: 'fit-content'
+          padding: '0 8px',
+          // Consistent grid ensuring all cards fit in r×c layout
+          gridTemplateColumns: `repeat(${gridDimensions.columns}, 1fr)`,
+          gridTemplateRows: `repeat(${gridDimensions.rows}, 1fr)`
         }}
       >
         {state.gameCards.map(card => {
@@ -259,29 +326,15 @@ export function MemoryGrid() {
               key={card.id}
               className={css({
                 aspectRatio: '3/4',
-                // Responsive card sizing
-                '@media (min-width: 1024px)': {
-                  width: gridConfig.cardSize.width,
-                  height: gridConfig.cardSize.height
-                },
-                '@media (max-width: 1023px) and (min-width: 768px)': {
-                  width: `calc(${gridConfig.cardSize.width} * 0.8)`,
-                  height: `calc(${gridConfig.cardSize.height} * 0.8)`
-                },
-                '@media (max-width: 767px)': {
-                  width: `calc(${gridConfig.cardSize.width} * 0.6)`,
-                  height: `calc(${gridConfig.cardSize.height} * 0.6)`
-                },
+                // Fully responsive card sizing - no fixed pixel sizes
+                width: '100%',
+                minWidth: '100px',
+                maxWidth: '200px',
                 // Dimming effect for invalid cards
                 opacity: isDimmed ? 0.3 : 1,
                 transition: 'opacity 0.3s ease',
                 filter: isDimmed ? 'grayscale(0.7)' : 'none'
-              })}
-              style={{
-                width: gridConfig.cardSize.width,
-                height: gridConfig.cardSize.height
-              }}
-            >
+              })}>
               <GameCard
                 card={card}
                 isFlipped={isFlipped}

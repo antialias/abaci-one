@@ -37,28 +37,19 @@ export function MemoryPairsGame() {
 
       <header className={css({
         textAlign: 'center',
-        marginBottom: { base: '16px', sm: '20px', md: '30px' },
-        px: { base: '4', md: '0' }
+        marginBottom: { base: '8px', sm: '12px', md: '16px' },
+        px: { base: '4', md: '0' },
+        display: { base: 'none', sm: 'block' }
       })}>
         <h1 className={css({
-          fontSize: { base: '24px', sm: '32px', md: '40px', lg: '48px' },
+          fontSize: { base: '16px', sm: '20px', md: '24px' },
           fontWeight: 'bold',
           color: 'white',
-          textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
-          marginBottom: { base: '6px', md: '10px' },
-          lineHeight: { base: '1.2', md: '1.1' }
+          textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+          marginBottom: 0
         })}>
-          Memory Pairs Challenge
+          Memory Pairs
         </h1>
-        <p className={css({
-          fontSize: { base: '14px', sm: '16px', md: '18px' },
-          color: 'rgba(255,255,255,0.9)',
-          maxWidth: '600px',
-          lineHeight: { base: '1.4', md: '1.3' },
-          display: { base: 'none', sm: 'block' }
-        })}>
-          Match pairs of abacus representations with their numerical values, or find complement pairs that add up to 5 or 10!
-        </p>
       </header>
 
       <main className={css({
@@ -66,12 +57,12 @@ export function MemoryPairsGame() {
         maxWidth: '1200px',
         background: 'rgba(255,255,255,0.95)',
         borderRadius: { base: '12px', md: '20px' },
-        padding: { base: '16px', sm: '24px', md: '32px', lg: '40px' },
+        padding: { base: '12px', sm: '16px', md: '24px', lg: '32px' },
         boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-        minHeight: { base: '60vh', md: '500px' },
         flex: 1,
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        overflow: 'hidden'
       })}>
         {state.gamePhase === 'setup' && <SetupPhase />}
         {state.gamePhase === 'playing' && <GamePhase />}

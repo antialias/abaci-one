@@ -16,32 +16,34 @@ export function GamePhase() {
   return (
     <div className={css({
       width: '100%',
-      minHeight: '600px',
+      height: '100%',
+      overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column'
     })}>
 
-      {/* Game Header */}
+      {/* Game Header - Compact on mobile */}
       <div className={css({
         background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))',
-        padding: '20px',
-        borderRadius: '16px',
-        marginBottom: '20px',
-        border: '1px solid rgba(102, 126, 234, 0.2)'
+        padding: { base: '8px 12px', sm: '12px 16px', md: '16px 20px' },
+        borderRadius: { base: '8px', md: '12px' },
+        marginBottom: { base: '8px', sm: '12px', md: '16px' },
+        border: '1px solid rgba(102, 126, 234, 0.2)',
+        flexShrink: 0
       })}>
         <div className={css({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '16px'
+          gap: { base: '8px', sm: '12px', md: '16px' }
         })}>
 
-          {/* Game Type & Difficulty Info */}
+          {/* Game Type & Difficulty Info - Hidden on mobile */}
           <div className={css({
-            display: 'flex',
+            display: { base: 'none', sm: 'flex' },
             alignItems: 'center',
-            gap: '20px'
+            gap: { base: '8px', md: '16px' }
           })}>
             <div className={css({
               display: 'flex',
@@ -153,29 +155,30 @@ export function GamePhase() {
           </div>
         </div>
 
-        {/* Current Player Indicator (Multiplayer Mode) */}
+        {/* Current Player Indicator (Multiplayer Mode) - Compact on mobile */}
         {state.gameMode === 'multiplayer' && currentPlayerData && (
           <div className={css({
-            marginTop: '16px',
+            marginTop: { base: '8px', md: '12px' },
             textAlign: 'center'
           })}>
             <div className={css({
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '12px',
-              padding: '12px 24px',
+              gap: { base: '6px', sm: '8px', md: '12px' },
+              padding: { base: '6px 12px', sm: '8px 16px', md: '12px 24px' },
               background: `linear-gradient(135deg, ${currentPlayerData.color}, ${currentPlayerData.color}dd)`,
               color: 'white',
-              borderRadius: '20px',
-              fontSize: '18px',
+              borderRadius: { base: '12px', md: '20px' },
+              fontSize: { base: '12px', sm: '14px', md: '16px' },
               fontWeight: 'bold',
               boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
             })}>
-              <span className={css({ fontSize: '48px' })}>
+              <span className={css({ fontSize: { base: '20px', sm: '28px', md: '36px' } })}>
                 {currentPlayerData.emoji}
               </span>
-              <span>{currentPlayerData.name}'s Turn</span>
-              <span className={css({ fontSize: '24px' })}>
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>{currentPlayerData.name}'s Turn</span>
+              <span className={css({ display: { base: 'inline', sm: 'none' } })}>Turn</span>
+              <span className={css({ fontSize: { base: '16px', sm: '20px', md: '24px' } })}>
                 🎯
               </span>
             </div>
@@ -184,22 +187,32 @@ export function GamePhase() {
       </div>
 
       {/* Memory Grid - The main game area */}
-      <MemoryGrid />
+      <div className={css({
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        overflow: 'hidden'
+      })}>
+        <MemoryGrid />
+      </div>
 
-      {/* Helpful Instructions */}
+      {/* Helpful Instructions - Hidden on mobile */}
       <div className={css({
         textAlign: 'center',
-        marginTop: '20px',
-        padding: '16px',
+        marginTop: { base: '8px', md: '16px' },
+        padding: { base: '8px', md: '12px' },
         background: 'rgba(248, 250, 252, 0.8)',
-        borderRadius: '12px',
-        border: '1px solid rgba(226, 232, 240, 0.8)'
+        borderRadius: '8px',
+        border: '1px solid rgba(226, 232, 240, 0.8)',
+        display: { base: 'none', md: 'block' },
+        flexShrink: 0
       })}>
         <p className={css({
-          fontSize: '16px',
+          fontSize: '14px',
           color: 'gray.600',
           margin: 0,
-          lineHeight: '1.5'
+          lineHeight: '1.4'
         })}>
           {state.gameType === 'abacus-numeral'
             ? 'Match abacus representations with their numerical values! Look for patterns and remember card positions.'
@@ -209,9 +222,9 @@ export function GamePhase() {
 
         {state.gameMode === 'multiplayer' && (
           <p className={css({
-            fontSize: '14px',
+            fontSize: '12px',
             color: 'gray.500',
-            margin: '8px 0 0 0'
+            margin: '6px 0 0 0'
           })}>
             Take turns finding matches. The player with the most pairs wins!
           </p>
