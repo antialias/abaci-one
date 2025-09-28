@@ -103,7 +103,11 @@ function ArcadeContent() {
 }
 
 export default function ArcadePage() {
-  return <ArcadeContent />
+  return (
+    <FullscreenProvider>
+      <ArcadeContent />
+    </FullscreenProvider>
+  )
 }
 
 // Arcade-specific animations

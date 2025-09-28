@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
+import { useFullscreen } from '../../../../contexts/FullscreenContext'
 import { SetupPhase } from './SetupPhase'
 import { GamePhase } from './GamePhase'
 import { ResultsPhase } from './ResultsPhase'
@@ -8,6 +10,15 @@ import { css } from '../../../../../styled-system/css'
 
 export function MemoryPairsGame() {
   const { state } = useMemoryPairs()
+  const { enterFullscreen } = useFullscreen()
+
+  useEffect(() => {
+    // Check if we should enter fullscreen (from URL parameter)
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('fullscreen') === 'true') {
+      enterFullscreen()
+    }
+  }, [enterFullscreen])
 
   return (
     <div className={css({
