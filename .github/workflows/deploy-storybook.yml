@@ -58,6 +58,7 @@ jobs:
         working-directory: apps/web
         run: |
           pnpm panda codegen
+          npx @pandacss/dev cssgen || echo "CSS generation had warnings but continued"
           ls -la styled-system/
           echo "Generated CSS files:"
           ls -la styled-system/*.css || echo "No CSS files found"
