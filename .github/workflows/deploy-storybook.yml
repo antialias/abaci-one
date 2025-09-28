@@ -59,24 +59,13 @@ jobs:
         run: |
           pnpm panda codegen
           npx @pandacss/dev cssgen || echo "CSS generation had warnings but continued"
-          ls -la styled-system/
-          echo "Generated CSS files:"
-          ls -la styled-system/*.css || echo "No CSS files found"
 
       - name: Build abacus-react package
         run: pnpm --filter @soroban/abacus-react build
 
       - name: Build web Storybook
         working-directory: apps/web
-        run: |
-          echo "Current directory contents:"
-          ls -la
-          echo "Styled-system directory contents:"
-          ls -la styled-system/ || echo "No styled-system directory found"
-          echo "Checking for styles.css:"
-          ls -la styled-system/styles.css || echo "styles.css not found"
-          echo "Starting Storybook build..."
-          pnpm build-storybook --output-dir ../../storybook-web
+        run: pnpm build-storybook --output-dir ../../storybook-web
 
       - name: Build abacus-react Storybook
         working-directory: packages/abacus-react
