@@ -949,59 +949,105 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   const containerRef = useRef<HTMLDivElement>(null)
   const [displayFeedback, setDisplayFeedback] = useState<'neutral' | 'correct' | 'incorrect'>('neutral')
 
+  // Keyboard detection state
+  const [hasPhysicalKeyboard, setHasPhysicalKeyboard] = useState<boolean | null>(null)
+  const [keyboardDetectionAttempted, setKeyboardDetectionAttempted] = useState(false)
+
+  // Detect physical keyboard availability
+  useEffect(() => {
+    let detectionTimer: NodeJS.Timeout | null = null
+
+    const detectKeyboard = () => {
+      // Method 1: Check if device supports keyboard via media queries
+      const hasKeyboardSupport = window.matchMedia('(pointer: fine)').matches &&
+                                 window.matchMedia('(hover: hover)').matches
+
+      // Method 2: Check if device is likely touch-only
+      const isTouchDevice = 'ontouchstart' in window ||
+                           navigator.maxTouchPoints > 0 ||
+                           /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+
+      // Method 3: Check viewport characteristics for mobile devices
+      const isMobileViewport = window.innerWidth <= 768 && window.innerHeight <= 1024
+
+      // Combined heuristic: assume no physical keyboard if:
+      // - It's a touch device AND has mobile viewport AND lacks precise pointer
+      const likelyNoKeyboard = isTouchDevice && isMobileViewport && !hasKeyboardSupport
+
+      setHasPhysicalKeyboard(!likelyNoKeyboard)
+      setKeyboardDetectionAttempted(true)
+    }
+
+    // Test for actual keyboard input within 3 seconds
+    let keyboardDetected = false
+    const handleFirstKeyPress = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) {
+        keyboardDetected = true
+        setHasPhysicalKeyboard(true)
+        document.removeEventListener('keypress', handleFirstKeyPress)
+        if (detectionTimer) clearTimeout(detectionTimer)
+      }
+    }
+
+    // Start detection
+    document.addEventListener('keypress', handleFirstKeyPress)
+
+    // Fallback to heuristic detection after 3 seconds
+    detectionTimer = setTimeout(() => {
+      if (!keyboardDetected) {
+        detectKeyboard()
+      }
+      document.removeEventListener('keypress', handleFirstKeyPress)
+    }, 3000)
+
+    // Initial heuristic detection (but don't commit to it yet)
+    const initialDetection = setTimeout(detectKeyboard, 100)
+
+    return () => {
+      document.removeEventListener('keypress', handleFirstKeyPress)
+      if (detectionTimer) clearTimeout(detectionTimer)
+      clearTimeout(initialDetection)
+    }
+  }, [])
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
-    // Only handle if input phase is active and guesses remain
-    if (state.guessesRemaining === 0) return
-
-    // Only handle number keys
-    if (!/^[0-9]$/.test(e.key)) return
-
-    const newInput = state.currentInput + e.key
-    dispatch({ type: 'SET_INPUT', input: newInput })
-
-    // Clear any existing timeout
-    if (state.prefixAcceptanceTimeout) {
-      clearTimeout(state.prefixAcceptanceTimeout)
-      dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout: null })
+    // Handle backspace
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      handleBackspace()
+      return
     }
 
-    setDisplayFeedback('neutral')
-
-    const number = parseInt(newInput)
-    if (isNaN(number)) return
-
-    // Check if correct and not already found
-    if (state.correctAnswers.includes(number) && !state.foundNumbers.includes(number)) {
-      if (!isPrefix(newInput, state.correctAnswers, state.foundNumbers)) {
-        acceptCorrectNumber(number)
-      } else {
-        const timeout = setTimeout(() => {
-          acceptCorrectNumber(number)
-        }, 500)
-        dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout })
-      }
-    } else {
-      // Check if this input could be a valid prefix or complete number
-      const couldBePrefix = state.correctAnswers.some(n => n.toString().startsWith(newInput))
-      const isCompleteWrongNumber = !state.correctAnswers.includes(number) && !couldBePrefix
-
-      // Trigger explosion if:
-      // 1. It's a complete wrong number (length >= 2 or can't be a prefix)
-      // 2. It's a single digit that can't possibly be a prefix of any target
-      if ((newInput.length >= 2 || isCompleteWrongNumber) && state.guessesRemaining > 0) {
-        handleIncorrectGuess()
-      }
+    // Handle number input
+    if (/^[0-9]$/.test(e.key)) {
+      handleNumberInput(e.key)
     }
-  }, [state.currentInput, state.prefixAcceptanceTimeout, state.correctAnswers, state.foundNumbers, state.guessesRemaining, isPrefix, dispatch])
+  }, [handleNumberInput, handleBackspace])
 
-  // Set up global keypress listener
+  // Set up global keyboard listeners
   useEffect(() => {
-    document.addEventListener('keypress', handleKeyPress)
-    return () => {
-      document.removeEventListener('keypress', handleKeyPress)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle backspace/delete on keydown to prevent repetition
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        handleBackspace()
+      }
     }
-  }, [handleKeyPress])
+
+    const handleKeyPressEvent = (e: KeyboardEvent) => {
+      // Handle number input
+      if (/^[0-9]$/.test(e.key)) {
+        handleNumberInput(e.key)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keypress', handleKeyPressEvent)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keypress', handleKeyPressEvent)
+    }
+  }, [handleNumberInput, handleBackspace])
 
   const acceptCorrectNumber = useCallback((number: number) => {
     dispatch({ type: 'ACCEPT_NUMBER', number })
@@ -1037,6 +1083,68 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       setTimeout(() => dispatch({ type: 'SHOW_RESULTS' }), 1000)
     }
   }, [dispatch, state.guessesRemaining, state.currentInput])
+
+  // Handle number input from either physical keyboard or on-screen pad
+  const handleNumberInput = useCallback((digit: string) => {
+    // Only handle if input phase is active and guesses remain
+    if (state.guessesRemaining === 0) return
+
+    // Only handle number keys
+    if (!/^[0-9]$/.test(digit)) return
+
+    const newInput = state.currentInput + digit
+    dispatch({ type: 'SET_INPUT', input: newInput })
+
+    // Clear any existing timeout
+    if (state.prefixAcceptanceTimeout) {
+      clearTimeout(state.prefixAcceptanceTimeout)
+      dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout: null })
+    }
+
+    setDisplayFeedback('neutral')
+
+    const number = parseInt(newInput)
+    if (isNaN(number)) return
+
+    // Check if correct and not already found
+    if (state.correctAnswers.includes(number) && !state.foundNumbers.includes(number)) {
+      if (!isPrefix(newInput, state.correctAnswers, state.foundNumbers)) {
+        acceptCorrectNumber(number)
+      } else {
+        const timeout = setTimeout(() => {
+          acceptCorrectNumber(number)
+        }, 500)
+        dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout })
+      }
+    } else {
+      // Check if this input could be a valid prefix or complete number
+      const couldBePrefix = state.correctAnswers.some(n => n.toString().startsWith(newInput))
+      const isCompleteWrongNumber = !state.correctAnswers.includes(number) && !couldBePrefix
+
+      // Trigger explosion if:
+      // 1. It's a complete wrong number (length >= 2 or can't be a prefix)
+      // 2. It's a single digit that can't possibly be a prefix of any target
+      if ((newInput.length >= 2 || isCompleteWrongNumber) && state.guessesRemaining > 0) {
+        handleIncorrectGuess()
+      }
+    }
+  }, [state.currentInput, state.prefixAcceptanceTimeout, state.correctAnswers, state.foundNumbers, state.guessesRemaining, isPrefix, dispatch, acceptCorrectNumber, handleIncorrectGuess])
+
+  // Handle backspace/delete
+  const handleBackspace = useCallback(() => {
+    if (state.currentInput.length > 0) {
+      const newInput = state.currentInput.slice(0, -1)
+      dispatch({ type: 'SET_INPUT', input: newInput })
+
+      // Clear any existing timeout
+      if (state.prefixAcceptanceTimeout) {
+        clearTimeout(state.prefixAcceptanceTimeout)
+        dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout: null })
+      }
+
+      setDisplayFeedback('neutral')
+    }
+  }, [state.currentInput, state.prefixAcceptanceTimeout, dispatch])
 
   const hasFoundSome = state.foundNumbers.length > 0
   const hasFoundAll = state.foundNumbers.length === state.correctAnswers.length
@@ -1243,6 +1351,162 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
           </div>
         ))}
       </div>
+
+      {/* On-screen number pad for devices without physical keyboard */}
+      {hasPhysicalKeyboard === false && state.guessesRemaining > 0 && (
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          background: '#f8fafc',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0'
+        }}>
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '8px',
+            fontSize: '12px',
+            color: '#64748b',
+            fontWeight: '500'
+          }}>
+            📱 Tap to enter numbers
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '8px',
+            maxWidth: '240px',
+            margin: '0 auto'
+          }}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(digit => (
+              <button
+                key={digit}
+                style={{
+                  padding: '16px 12px',
+                  border: '2px solid #cbd5e1',
+                  borderRadius: '8px',
+                  background: 'white',
+                  fontSize: '20px',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  userSelect: 'none',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.95)'
+                  e.currentTarget.style.background = '#f1f5f9'
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.background = 'white'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.background = 'white'
+                }}
+                onTouchStart={(e) => {
+                  e.currentTarget.style.transform = 'scale(0.95)'
+                  e.currentTarget.style.background = '#f1f5f9'
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.background = 'white'
+                }}
+                onClick={() => handleNumberInput(digit.toString())}
+              >
+                {digit}
+              </button>
+            ))}
+            {/* Bottom row: 0 and backspace */}
+            <button
+              style={{
+                padding: '16px 12px',
+                border: '2px solid #cbd5e1',
+                borderRadius: '8px',
+                background: 'white',
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                userSelect: 'none',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform = 'scale(0.95)'
+                e.currentTarget.style.background = '#f1f5f9'
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = 'white'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = 'white'
+              }}
+              onTouchStart={(e) => {
+                e.currentTarget.style.transform = 'scale(0.95)'
+                e.currentTarget.style.background = '#f1f5f9'
+              }}
+              onTouchEnd={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = 'white'
+              }}
+              onClick={() => handleNumberInput('0')}
+            >
+              0
+            </button>
+            <div style={{ gridColumn: 'span 2' }}>
+              <button
+                style={{
+                  width: '100%',
+                  padding: '16px 12px',
+                  border: '2px solid #dc2626',
+                  borderRadius: '8px',
+                  background: '#fef2f2',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  color: '#dc2626',
+                  cursor: state.currentInput.length > 0 ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.15s ease',
+                  userSelect: 'none',
+                  opacity: state.currentInput.length > 0 ? 1 : 0.5,
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+                }}
+                disabled={state.currentInput.length === 0}
+                onMouseDown={(e) => {
+                  if (state.currentInput.length > 0) {
+                    e.currentTarget.style.transform = 'scale(0.95)'
+                    e.currentTarget.style.background = '#fee2e2'
+                  }
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.background = '#fef2f2'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.background = '#fef2f2'
+                }}
+                onTouchStart={(e) => {
+                  if (state.currentInput.length > 0) {
+                    e.currentTarget.style.transform = 'scale(0.95)'
+                    e.currentTarget.style.background = '#fee2e2'
+                  }
+                }}
+                onTouchEnd={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.background = '#fef2f2'
+                }}
+                onClick={handleBackspace}
+              >
+                ⌫ Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showFinishButtons && (
         <div style={{
