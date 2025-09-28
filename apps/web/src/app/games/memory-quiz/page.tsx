@@ -157,8 +157,18 @@ function quizReducer(state: SorobanQuizState, action: QuizAction): SorobanQuizSt
         cards: state.cards, // Preserve generated cards
         displayTime: state.displayTime,
         selectedCount: state.selectedCount,
-        selectedDifficulty: state.selectedDifficulty
+        selectedDifficulty: state.selectedDifficulty,
+        // Preserve keyboard state across resets
+        hasPhysicalKeyboard: state.hasPhysicalKeyboard,
+        testingMode: state.testingMode,
+        showOnScreenKeyboard: state.showOnScreenKeyboard
       }
+    case 'SET_PHYSICAL_KEYBOARD':
+      return { ...state, hasPhysicalKeyboard: action.hasKeyboard }
+    case 'SET_TESTING_MODE':
+      return { ...state, testingMode: action.enabled }
+    case 'TOGGLE_ONSCREEN_KEYBOARD':
+      return { ...state, showOnScreenKeyboard: !state.showOnScreenKeyboard }
     default:
       return state
   }
@@ -961,13 +971,8 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   const containerRef = useRef<HTMLDivElement>(null)
   const [displayFeedback, setDisplayFeedback] = useState<'neutral' | 'correct' | 'incorrect'>('neutral')
 
-  // Keyboard detection state
-  const [hasPhysicalKeyboard, setHasPhysicalKeyboard] = useState<boolean | null>(null)
-  const [keyboardDetectionAttempted, setKeyboardDetectionAttempted] = useState(false)
-  const [showOnScreenKeyboard, setShowOnScreenKeyboard] = useState(false)
-
-  // Testing mode - force show keyboard toggle for demo/testing (remove this in production)
-  const [testingMode, setTestingMode] = useState(false)
+  // Use keyboard state from parent state instead of local state
+  const { hasPhysicalKeyboard, testingMode, showOnScreenKeyboard } = state
 
   // Debug: Log state changes and detect what's causing re-renders
   useEffect(() => {
@@ -1015,8 +1020,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       const likelyNoKeyboard = isTouchDevice && isMobileViewport && !hasKeyboardSupport
 
       console.log('⌨️ Keyboard detection result:', !likelyNoKeyboard)
-      setHasPhysicalKeyboard(!likelyNoKeyboard)
-      setKeyboardDetectionAttempted(true)
+      dispatch({ type: 'SET_PHYSICAL_KEYBOARD', hasKeyboard: !likelyNoKeyboard })
     }
 
     // Test for actual keyboard input within 3 seconds
@@ -1025,7 +1029,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       if (/^[0-9]$/.test(e.key)) {
         console.log('⌨️ Physical keyboard detected via keypress')
         keyboardDetected = true
-        setHasPhysicalKeyboard(true)
+        dispatch({ type: 'SET_PHYSICAL_KEYBOARD', hasKeyboard: true })
         document.removeEventListener('keypress', handleFirstKeyPress)
         if (detectionTimer) clearTimeout(detectionTimer)
       }
@@ -1185,16 +1189,13 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
     <div style={{
       textAlign: 'center',
       padding: '12px',
-      paddingBottom: '12px',
+      paddingBottom: (hasPhysicalKeyboard === false || testingMode) && state.guessesRemaining > 0 ? '100px' : '12px', // Add space for keyboard
       maxWidth: '800px',
       margin: '0 auto',
-      height: showOnScreenKeyboard ? 'auto' : '100%', // Dynamic height based on keyboard state
+      height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'flex-start',
-      minHeight: showOnScreenKeyboard ? '100vh' : 'auto', // Only enforce full height when keyboard is shown
-      maxHeight: '100vh', // Prevent overflow
-      overflow: 'hidden' // Prevent scrolling conflicts
+      justifyContent: 'flex-start'
     }}>
       <h3 style={{ marginBottom: '16px', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>Enter the Numbers You Remember</h3>
       <div style={{
@@ -1287,7 +1288,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
             <input
               type="checkbox"
               checked={testingMode}
-              onChange={(e) => setTestingMode(e.target.checked)}
+              onChange={(e) => dispatch({ type: 'SET_TESTING_MODE', enabled: e.target.checked })}
             />
             Test on-screen keyboard (for demo)
           </label>
@@ -1368,11 +1369,9 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       {/* Visual card grid showing cards the user was shown */}
       <div style={{
         marginTop: '12px',
-        flex: showOnScreenKeyboard ? '0 0 60%' : 1, // Limit to 60% height when keyboard shown
+        flex: 1,
         overflow: 'auto',
-        minHeight: '0',
-        transition: 'flex 0.3s ease',
-        maxHeight: showOnScreenKeyboard ? '60vh' : 'none' // Ensure it doesn't exceed 60% viewport
+        minHeight: '0'
       }}>
         <CardGrid state={state} />
       </div>
@@ -1407,149 +1406,43 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         ))}
       </div>
 
-      {/* Toggle button for on-screen keyboard (only shown when no physical keyboard detected OR testing mode) */}
+      {/* Simple fixed keyboard bar - appears when needed, no hiding of game elements */}
       {(hasPhysicalKeyboard === false || testingMode) && state.guessesRemaining > 0 && (
         <div style={{
           position: 'fixed',
-          bottom: '16px',
-          right: '16px',
-          zIndex: 1000
-        }}>
-          <button
-            style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              border: '2px solid #3b82f6',
-              background: showOnScreenKeyboard ? '#3b82f6' : 'white',
-              color: showOnScreenKeyboard ? 'white' : '#3b82f6',
-              fontSize: '24px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onClick={() => {
-              console.log('🖱️ Toggle button clicked. Current state:', showOnScreenKeyboard, '→ New state:', !showOnScreenKeyboard)
-              setShowOnScreenKeyboard(!showOnScreenKeyboard)
-            }}
-            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
-            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            ⌨️
-          </button>
-        </div>
-      )}
-
-      {/* Dedicated keyboard panel - part of layout flow, no overlay */}
-      {(hasPhysicalKeyboard === false || testingMode) && state.guessesRemaining > 0 && showOnScreenKeyboard && (
-        <div style={{
-          flex: '0 0 40%', // Take exactly 40% of the height
-          padding: '16px',
+          bottom: 0,
+          left: 0,
+          right: 0,
           background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-          borderTop: '3px solid #3b82f6',
-          borderRadius: '16px 16px 0 0',
-          transition: 'all 0.3s ease',
+          borderTop: '2px solid #3b82f6',
+          padding: '12px',
+          zIndex: 1000,
           display: 'flex',
-          flexDirection: 'column',
-          minHeight: '240px', // Ensure minimum usable height
-          // Debug styling to make it very visible
-          border: '5px solid red',
-          boxShadow: '0 0 20px rgba(255, 0, 0, 0.5)'
+          gap: '8px',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)'
         }}>
-          {console.log('🎹 Keyboard panel is rendering!')}
-          <div style={{
-            textAlign: 'center',
-            marginBottom: '16px',
-            fontSize: '16px',
-            color: '#3b82f6',
-            fontWeight: '700',
-            padding: '8px 0',
-            borderBottom: '2px solid rgba(59, 130, 246, 0.2)'
-          }}>
-            📱 On-Screen Number Pad
-          </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '12px',
-            marginBottom: '12px',
-            flex: 1,
-            alignContent: 'center' // Center the grid vertically in available space
-          }}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(digit => (
-              <button
-                key={digit}
-                style={{
-                  padding: '20px 16px',
-                  border: '3px solid #e5e7eb',
-                  borderRadius: '16px',
-                  background: 'white',
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  color: '#1f2937',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  userSelect: 'none',
-                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                  minHeight: '60px' // Ensure consistent touch-friendly size
-                }}
-                onMouseDown={(e) => {
-                  e.currentTarget.style.transform = 'scale(0.95)'
-                  e.currentTarget.style.background = '#f3f4f6'
-                  e.currentTarget.style.borderColor = '#3b82f6'
-                }}
-                onMouseUp={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.background = 'white'
-                  e.currentTarget.style.borderColor = '#e5e7eb'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.background = 'white'
-                  e.currentTarget.style.borderColor = '#e5e7eb'
-                }}
-                onTouchStart={(e) => {
-                  e.currentTarget.style.transform = 'scale(0.95)'
-                  e.currentTarget.style.background = '#f3f4f6'
-                  e.currentTarget.style.borderColor = '#3b82f6'
-                }}
-                onTouchEnd={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.background = 'white'
-                  e.currentTarget.style.borderColor = '#e5e7eb'
-                }}
-                onClick={() => {
-                  console.log('🔢 On-screen keyboard button clicked:', digit)
-                  handleKeyboardInput(digit.toString())
-                }}
-              >
-                {digit}
-              </button>
-            ))}
-          </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 2fr',
-            gap: '12px'
-          }}>
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(digit => (
             <button
+              key={digit}
               style={{
-                padding: '20px 16px',
-                border: '3px solid #e5e7eb',
-                borderRadius: '16px',
+                padding: '12px 16px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
                 background: 'white',
-                fontSize: '24px',
+                fontSize: '18px',
                 fontWeight: 'bold',
                 color: '#1f2937',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
+                minWidth: '50px',
+                minHeight: '50px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 userSelect: 'none',
-                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                minHeight: '60px'
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.15s ease'
               }}
               onMouseDown={(e) => {
                 e.currentTarget.style.transform = 'scale(0.95)'
@@ -1566,68 +1459,34 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                 e.currentTarget.style.background = 'white'
                 e.currentTarget.style.borderColor = '#e5e7eb'
               }}
-              onTouchStart={(e) => {
-                e.currentTarget.style.transform = 'scale(0.95)'
-                e.currentTarget.style.background = '#f3f4f6'
-                e.currentTarget.style.borderColor = '#3b82f6'
-              }}
-              onTouchEnd={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.background = 'white'
-                e.currentTarget.style.borderColor = '#e5e7eb'
-              }}
-              onClick={() => {
-                console.log('🔢 On-screen keyboard button clicked: 0')
-                handleKeyboardInput('0')
-              }}
+              onClick={() => handleKeyboardInput(digit.toString())}
             >
-              0
+              {digit}
             </button>
-            <button
-              style={{
-                padding: '20px 16px',
-                border: '3px solid #dc2626',
-                borderRadius: '16px',
-                background: state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: state.currentInput.length > 0 ? '#dc2626' : '#9ca3af',
-                cursor: state.currentInput.length > 0 ? 'pointer' : 'not-allowed',
-                transition: 'all 0.15s ease',
-                userSelect: 'none',
-                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                minHeight: '60px'
-              }}
-              disabled={state.currentInput.length === 0}
-              onMouseDown={(e) => {
-                if (state.currentInput.length > 0) {
-                  e.currentTarget.style.transform = 'scale(0.95)'
-                  e.currentTarget.style.background = '#fee2e2'
-                }
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.background = state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.background = state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb'
-              }}
-              onTouchStart={(e) => {
-                if (state.currentInput.length > 0) {
-                  e.currentTarget.style.transform = 'scale(0.95)'
-                  e.currentTarget.style.background = '#fee2e2'
-                }
-              }}
-              onTouchEnd={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.background = state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb'
-              }}
-              onClick={handleKeyboardBackspace}
-            >
-              ⌫ Delete
-            </button>
-          </div>
+          ))}
+          <button
+            style={{
+              padding: '12px 16px',
+              border: '2px solid #dc2626',
+              borderRadius: '8px',
+              background: state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: state.currentInput.length > 0 ? '#dc2626' : '#9ca3af',
+              cursor: state.currentInput.length > 0 ? 'pointer' : 'not-allowed',
+              minWidth: '70px',
+              minHeight: '50px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              userSelect: 'none',
+              transition: 'all 0.15s ease'
+            }}
+            disabled={state.currentInput.length === 0}
+            onClick={handleKeyboardBackspace}
+          >
+            ⌫
+          </button>
         </div>
       )}
 
@@ -1934,7 +1793,7 @@ export default function MemoryQuizPage() {
             })}>
               {state.gamePhase === 'setup' && <SetupPhase state={state} dispatch={dispatch} />}
               {state.gamePhase === 'display' && <DisplayPhase state={state} dispatch={dispatch} />}
-              {state.gamePhase === 'input' && <InputPhase state={state} dispatch={dispatch} />}
+              {state.gamePhase === 'input' && <InputPhase key="input-phase" state={state} dispatch={dispatch} />}
               {state.gamePhase === 'results' && <ResultsPhase state={state} dispatch={dispatch} />}
             </div>
           </div>
