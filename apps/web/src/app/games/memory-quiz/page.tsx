@@ -952,6 +952,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   // Keyboard detection state
   const [hasPhysicalKeyboard, setHasPhysicalKeyboard] = useState<boolean | null>(null)
   const [keyboardDetectionAttempted, setKeyboardDetectionAttempted] = useState(false)
+  const [showOnScreenKeyboard, setShowOnScreenKeyboard] = useState(false)
 
   // Detect physical keyboard availability
   useEffect(() => {
@@ -1142,7 +1143,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
     <div style={{
       textAlign: 'center',
       padding: '12px',
-      paddingBottom: hasPhysicalKeyboard === false ? '180px' : '12px', // Extra space for on-screen keyboard
+      paddingBottom: '12px', // Removed extra space since keyboard is now toggleable
       maxWidth: '800px',
       margin: '0 auto',
       height: '100%',
@@ -1341,45 +1342,95 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         ))}
       </div>
 
-      {/* On-screen number pad for devices without physical keyboard */}
+      {/* Toggle button for on-screen keyboard (only shown when no physical keyboard detected) */}
       {hasPhysicalKeyboard === false && state.guessesRemaining > 0 && (
         <div style={{
           position: 'fixed',
-          bottom: '12px',
+          bottom: '16px',
+          right: '16px',
+          zIndex: 1000
+        }}>
+          <button
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              border: '2px solid #3b82f6',
+              background: showOnScreenKeyboard ? '#3b82f6' : 'white',
+              color: showOnScreenKeyboard ? 'white' : '#3b82f6',
+              fontSize: '24px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={() => setShowOnScreenKeyboard(!showOnScreenKeyboard)}
+            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            ⌨️
+          </button>
+        </div>
+      )}
+
+      {/* Collapsible on-screen number pad */}
+      {hasPhysicalKeyboard === false && state.guessesRemaining > 0 && showOnScreenKeyboard && (
+        <div style={{
+          position: 'fixed',
+          bottom: '80px',
           left: '50%',
           transform: 'translateX(-50%)',
-          padding: '12px',
-          background: '#f8fafc',
-          borderRadius: '12px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          zIndex: 1000,
-          maxWidth: '280px',
-          width: 'calc(100vw - 24px)' // Ensure it doesn't exceed screen width
+          padding: '16px',
+          background: 'white',
+          borderRadius: '16px',
+          border: '2px solid #3b82f6',
+          boxShadow: '0 8px 25px rgba(59, 130, 246, 0.2)',
+          zIndex: 999,
+          maxWidth: '300px',
+          width: 'calc(100vw - 32px)',
+          animation: 'slideUp 0.2s ease-out forwards'
         }}>
           <div style={{
             textAlign: 'center',
-            marginBottom: '8px',
-            fontSize: '12px',
-            color: '#64748b',
-            fontWeight: '500'
+            marginBottom: '12px',
+            fontSize: '14px',
+            color: '#3b82f6',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
           }}>
-            📱 Tap to enter numbers
+            <span>📱 Tap to enter numbers</span>
+            <button
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '18px',
+                color: '#6b7280',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+              onClick={() => setShowOnScreenKeyboard(false)}
+            >
+              ✕
+            </button>
           </div>
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '6px',
-            maxWidth: '220px',
-            margin: '0 auto'
+            gap: '8px',
+            marginBottom: '8px'
           }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(digit => (
               <button
                 key={digit}
                 style={{
-                  padding: '14px 10px',
-                  border: '2px solid #cbd5e1',
-                  borderRadius: '8px',
+                  padding: '16px 12px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '12px',
                   background: 'white',
                   fontSize: '20px',
                   fontWeight: 'bold',
@@ -1391,35 +1442,45 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                 }}
                 onMouseDown={(e) => {
                   e.currentTarget.style.transform = 'scale(0.95)'
-                  e.currentTarget.style.background = '#f1f5f9'
+                  e.currentTarget.style.background = '#f3f4f6'
+                  e.currentTarget.style.borderColor = '#3b82f6'
                 }}
                 onMouseUp={(e) => {
                   e.currentTarget.style.transform = 'scale(1)'
                   e.currentTarget.style.background = 'white'
+                  e.currentTarget.style.borderColor = '#e5e7eb'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = 'scale(1)'
                   e.currentTarget.style.background = 'white'
+                  e.currentTarget.style.borderColor = '#e5e7eb'
                 }}
                 onTouchStart={(e) => {
                   e.currentTarget.style.transform = 'scale(0.95)'
-                  e.currentTarget.style.background = '#f1f5f9'
+                  e.currentTarget.style.background = '#f3f4f6'
+                  e.currentTarget.style.borderColor = '#3b82f6'
                 }}
                 onTouchEnd={(e) => {
                   e.currentTarget.style.transform = 'scale(1)'
                   e.currentTarget.style.background = 'white'
+                  e.currentTarget.style.borderColor = '#e5e7eb'
                 }}
                 onClick={() => handleKeyboardInput(digit.toString())}
               >
                 {digit}
               </button>
             ))}
-            {/* Bottom row: 0 and backspace */}
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 2fr',
+            gap: '8px'
+          }}>
             <button
               style={{
-                padding: '14px 10px',
-                border: '2px solid #cbd5e1',
-                borderRadius: '8px',
+                padding: '16px 12px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '12px',
                 background: 'white',
                 fontSize: '20px',
                 fontWeight: 'bold',
@@ -1431,75 +1492,76 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               }}
               onMouseDown={(e) => {
                 e.currentTarget.style.transform = 'scale(0.95)'
-                e.currentTarget.style.background = '#f1f5f9'
+                e.currentTarget.style.background = '#f3f4f6'
+                e.currentTarget.style.borderColor = '#3b82f6'
               }}
               onMouseUp={(e) => {
                 e.currentTarget.style.transform = 'scale(1)'
                 e.currentTarget.style.background = 'white'
+                e.currentTarget.style.borderColor = '#e5e7eb'
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'scale(1)'
                 e.currentTarget.style.background = 'white'
+                e.currentTarget.style.borderColor = '#e5e7eb'
               }}
               onTouchStart={(e) => {
                 e.currentTarget.style.transform = 'scale(0.95)'
-                e.currentTarget.style.background = '#f1f5f9'
+                e.currentTarget.style.background = '#f3f4f6'
+                e.currentTarget.style.borderColor = '#3b82f6'
               }}
               onTouchEnd={(e) => {
                 e.currentTarget.style.transform = 'scale(1)'
                 e.currentTarget.style.background = 'white'
+                e.currentTarget.style.borderColor = '#e5e7eb'
               }}
               onClick={() => handleKeyboardInput('0')}
             >
               0
             </button>
-            <div style={{ gridColumn: 'span 2' }}>
-              <button
-                style={{
-                  width: '100%',
-                  padding: '14px 10px',
-                  border: '2px solid #dc2626',
-                  borderRadius: '8px',
-                  background: '#fef2f2',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  color: '#dc2626',
-                  cursor: state.currentInput.length > 0 ? 'pointer' : 'not-allowed',
-                  transition: 'all 0.15s ease',
-                  userSelect: 'none',
-                  opacity: state.currentInput.length > 0 ? 1 : 0.5,
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
-                }}
-                disabled={state.currentInput.length === 0}
-                onMouseDown={(e) => {
-                  if (state.currentInput.length > 0) {
-                    e.currentTarget.style.transform = 'scale(0.95)'
-                    e.currentTarget.style.background = '#fee2e2'
-                  }
-                }}
-                onMouseUp={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.background = '#fef2f2'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.background = '#fef2f2'
-                }}
-                onTouchStart={(e) => {
-                  if (state.currentInput.length > 0) {
-                    e.currentTarget.style.transform = 'scale(0.95)'
-                    e.currentTarget.style.background = '#fee2e2'
-                  }
-                }}
-                onTouchEnd={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.background = '#fef2f2'
-                }}
-                onClick={handleKeyboardBackspace}
-              >
-                ⌫ Delete
-              </button>
-            </div>
+            <button
+              style={{
+                padding: '16px 12px',
+                border: '2px solid #dc2626',
+                borderRadius: '12px',
+                background: state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: state.currentInput.length > 0 ? '#dc2626' : '#9ca3af',
+                cursor: state.currentInput.length > 0 ? 'pointer' : 'not-allowed',
+                transition: 'all 0.15s ease',
+                userSelect: 'none',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+              }}
+              disabled={state.currentInput.length === 0}
+              onMouseDown={(e) => {
+                if (state.currentInput.length > 0) {
+                  e.currentTarget.style.transform = 'scale(0.95)'
+                  e.currentTarget.style.background = '#fee2e2'
+                }
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb'
+              }}
+              onTouchStart={(e) => {
+                if (state.currentInput.length > 0) {
+                  e.currentTarget.style.transform = 'scale(0.95)'
+                  e.currentTarget.style.background = '#fee2e2'
+                }
+              }}
+              onTouchEnd={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.background = state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb'
+              }}
+              onClick={handleKeyboardBackspace}
+            >
+              ⌫ Delete
+            </button>
           </div>
         </div>
       )}
@@ -1718,6 +1780,17 @@ const globalAnimations = `
 @keyframes blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 `
 
