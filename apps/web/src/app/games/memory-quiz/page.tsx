@@ -1305,9 +1305,11 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       {/* Visual card grid showing cards the user was shown */}
       <div style={{
         marginTop: '12px',
-        flex: 1,
+        flex: showOnScreenKeyboard ? '0 0 60%' : 1, // Limit to 60% height when keyboard shown
         overflow: 'auto',
-        minHeight: '0'
+        minHeight: '0',
+        transition: 'flex 0.3s ease',
+        maxHeight: showOnScreenKeyboard ? '60vh' : 'none' // Ensure it doesn't exceed 60% viewport
       }}>
         <CardGrid state={state} />
       </div>
@@ -1376,69 +1378,54 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         </div>
       )}
 
-      {/* Collapsible on-screen number pad */}
+      {/* Dedicated keyboard panel - part of layout flow, no overlay */}
       {hasPhysicalKeyboard === false && state.guessesRemaining > 0 && showOnScreenKeyboard && (
         <div style={{
-          position: 'fixed',
-          bottom: '80px',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          flex: '0 0 40%', // Take exactly 40% of the height
           padding: '16px',
-          background: 'white',
-          borderRadius: '16px',
-          border: '2px solid #3b82f6',
-          boxShadow: '0 8px 25px rgba(59, 130, 246, 0.2)',
-          zIndex: 999,
-          maxWidth: '300px',
-          width: 'calc(100vw - 32px)',
-          animation: 'slideUp 0.2s ease-out forwards'
+          background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+          borderTop: '3px solid #3b82f6',
+          borderRadius: '16px 16px 0 0',
+          transition: 'all 0.3s ease',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '240px' // Ensure minimum usable height
         }}>
           <div style={{
             textAlign: 'center',
-            marginBottom: '12px',
-            fontSize: '14px',
+            marginBottom: '16px',
+            fontSize: '16px',
             color: '#3b82f6',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
+            fontWeight: '700',
+            padding: '8px 0',
+            borderBottom: '2px solid rgba(59, 130, 246, 0.2)'
           }}>
-            <span>📱 Tap to enter numbers</span>
-            <button
-              style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '18px',
-                color: '#6b7280',
-                cursor: 'pointer',
-                padding: '4px'
-              }}
-              onClick={() => setShowOnScreenKeyboard(false)}
-            >
-              ✕
-            </button>
+            📱 On-Screen Number Pad
           </div>
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '8px',
-            marginBottom: '8px'
+            gap: '12px',
+            marginBottom: '12px',
+            flex: 1,
+            alignContent: 'center' // Center the grid vertically in available space
           }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(digit => (
               <button
                 key={digit}
                 style={{
-                  padding: '16px 12px',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '12px',
+                  padding: '20px 16px',
+                  border: '3px solid #e5e7eb',
+                  borderRadius: '16px',
                   background: 'white',
-                  fontSize: '20px',
+                  fontSize: '24px',
                   fontWeight: 'bold',
                   color: '#1f2937',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                   userSelect: 'none',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                  minHeight: '60px' // Ensure consistent touch-friendly size
                 }}
                 onMouseDown={(e) => {
                   e.currentTarget.style.transform = 'scale(0.95)'
@@ -1474,21 +1461,22 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
           <div style={{
             display: 'grid',
             gridTemplateColumns: '1fr 2fr',
-            gap: '8px'
+            gap: '12px'
           }}>
             <button
               style={{
-                padding: '16px 12px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '12px',
+                padding: '20px 16px',
+                border: '3px solid #e5e7eb',
+                borderRadius: '16px',
                 background: 'white',
-                fontSize: '20px',
+                fontSize: '24px',
                 fontWeight: 'bold',
                 color: '#1f2937',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 userSelect: 'none',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                minHeight: '60px'
               }}
               onMouseDown={(e) => {
                 e.currentTarget.style.transform = 'scale(0.95)'
@@ -1521,17 +1509,18 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
             </button>
             <button
               style={{
-                padding: '16px 12px',
-                border: '2px solid #dc2626',
-                borderRadius: '12px',
+                padding: '20px 16px',
+                border: '3px solid #dc2626',
+                borderRadius: '16px',
                 background: state.currentInput.length > 0 ? '#fef2f2' : '#f9fafb',
-                fontSize: '16px',
+                fontSize: '18px',
                 fontWeight: 'bold',
                 color: state.currentInput.length > 0 ? '#dc2626' : '#9ca3af',
                 cursor: state.currentInput.length > 0 ? 'pointer' : 'not-allowed',
                 transition: 'all 0.15s ease',
                 userSelect: 'none',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                minHeight: '60px'
               }}
               disabled={state.currentInput.length === 0}
               onMouseDown={(e) => {
