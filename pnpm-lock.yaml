@@ -139,6 +139,9 @@ importers:
       lucide-react:
         specifier: ^0.294.0
         version: 0.294.0(react@18.2.0)
+      make-plural:
+        specifier: ^7.4.0
+        version: 7.4.0
       next:
         specifier: ^14.2.32
         version: 14.2.32(@babel/core@7.28.4)(@playwright/test@1.55.1)(react-dom@18.2.0)(react@18.2.0)
@@ -12297,6 +12300,10 @@ packages:
     dependencies:
       semver: 6.3.1
     dev: true
+
+  /make-plural@7.4.0:
+    resolution: {integrity: sha512-4/gC9KVNTV6pvYg2gFeQYTW3mWaoJt7WZE5vrp1KnQDgW92JtYZnzmZT81oj/dUTqAIu0ufI2x3dkgu3bB1tYg==}
+    dev: false
 
   /makeerror@1.0.12:
     resolution: {integrity: sha512-JmqCvUhmt43madlpFzG4BQzG2Z3m6tvQDNKdClZnO3VbIudJYmxsT0FNJMeiB2+JTSlTQTSbU8QdesVmwJcmLg==}

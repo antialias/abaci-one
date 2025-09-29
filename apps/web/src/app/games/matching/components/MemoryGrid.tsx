@@ -5,6 +5,7 @@ import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { GameCard } from './GameCard'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { css } from '../../../../../styled-system/css'
+import { gamePlurals } from '../../../../utils/pluralization'
 
 // Helper function to calculate optimal grid dimensions
 function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
@@ -122,7 +123,7 @@ export function MemoryGrid() {
         </span>
         <span className={css({ color: 'gray.400' })}>•</span>
         <span className={css({ color: 'purple.600' })}>
-          {state.moves} moves
+          {gamePlurals.move(state.moves)}
         </span>
         {state.gameMode === 'single' && (
           <>

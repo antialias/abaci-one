@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import React, { useEffect } from 'react'
 import { css } from '../../../../../styled-system/css'
+import { gamePlurals } from '../../../../utils/pluralization'
 
 // Inject the celebration animations for Storybook
 const celebrationAnimations = `
@@ -267,7 +268,7 @@ const MockPlayerCard = ({
           color: isCurrentPlayer ? playerColor : 'gray.500',
           fontWeight: isCurrentPlayer ? 'black' : 'semibold'
         })}>
-          {score} pairs
+          {gamePlurals.pair(score)}
           {isCurrentPlayer && (
             <span className={css({
               color: 'red.600',

@@ -5,6 +5,7 @@ import { useGameMode } from '../../../../contexts/GameModeContext'
 import { MemoryGrid } from './MemoryGrid'
 import { PlayerStatusBar } from './PlayerStatusBar'
 import { css } from '../../../../../styled-system/css'
+import { pluralizeWord } from '../../../../utils/pluralization'
 
 export function GamePhase() {
   const { state, resetGame, activePlayers } = useMemoryPairs()
@@ -54,7 +55,7 @@ export function GamePhase() {
           {state.gameMode === 'multiplayer' && (
             <>
               <span className={css({ color: 'gray.400' })}>•</span>
-              <span>⚔️ {activePlayers.length}P</span>
+              <span>⚔️ {activePlayers.length}{pluralizeWord(activePlayers.length, 'P')}</span>
             </>
           )}
         </div>

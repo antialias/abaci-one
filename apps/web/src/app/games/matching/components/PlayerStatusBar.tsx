@@ -4,6 +4,7 @@ import { css } from '../../../../../styled-system/css'
 import { useGameMode } from '../../../../contexts/GameModeContext'
 import { useUserProfile } from '../../../../contexts/UserProfileContext'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
+import { gamePlurals } from '../../../../utils/pluralization'
 
 interface PlayerStatusBarProps {
   className?: string
@@ -53,7 +54,8 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
         boxShadow: '0 0 0 2px white, 0 0 0 6px rgba(102, 126, 234, 0.4), 0 12px 32px rgba(0,0,0,0.2)',
         animation: 'gentle-pulse 3s ease-in-out infinite',
         position: 'relative'
-      }, className)}>
+      })}
+      className={className}>
         {/* Subtle glow effect */}
         <div className={css({
           position: 'absolute',
@@ -85,7 +87,6 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
               fontSize: { base: 'lg', md: 'xl' },
               fontWeight: 'black',
               color: 'white',
-              color: 'white',
               textShadow: '0 0 15px rgba(255,255,255,0.8)'
             })}>
               {activePlayers[0]?.displayName || 'Player 1'}
@@ -93,10 +94,9 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
             <div className={css({
               fontSize: { base: 'sm', md: 'md' },
               color: 'rgba(255,255,255,0.9)',
-              fontWeight: 'bold',
-              color: 'rgba(255,255,255,0.9)'
+              fontWeight: 'bold'
             })}>
-              Solo Challenge • {state.moves} moves
+              Solo Challenge • {gamePlurals.move(state.moves)}
             </div>
           </div>
 
@@ -129,7 +129,8 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
       border: '2px solid',
       borderColor: 'gray.200',
       mb: { base: '3', md: '4' }
-    }, className)}>
+    })}
+    className={className}>
       <div className={css({
         display: 'grid',
         gridTemplateColumns: activePlayers.length <= 2
@@ -253,7 +254,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
                   fontWeight: isCurrentPlayer ? 'black' : 'semibold',
                   animation: 'none'
                 })}>
-                  {player.score} pairs
+                  {gamePlurals.pair(player.score)}
                   {isCurrentPlayer && (
                     <span className={css({
                       color: 'red.600',
@@ -292,7 +293,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
                   fontSize: { base: 'lg', md: 'xl' },
                   fontWeight: 'black',
                   boxShadow: '0 4px 15px rgba(238, 90, 36, 0.4)',
-                  animation: 'super-bounce 1.5s ease-in-out infinite',
+                  animation: 'gentle-bounce 1.5s ease-in-out infinite',
                   textShadow: '0 0 10px rgba(255,255,255,0.8)'
                 })}>
                   ⚡{player.score}⚡
@@ -316,7 +317,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
           color: 'gray.600',
           fontWeight: 'medium'
         })}>
-          {state.matchedPairs} of {state.totalPairs} pairs found • {state.moves} total moves
+          {gamePlurals.pair(state.matchedPairs)} of {state.totalPairs} found • {gamePlurals.move(state.moves)} total
         </div>
       </div>
     </div>
