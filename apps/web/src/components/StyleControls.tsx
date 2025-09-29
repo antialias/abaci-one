@@ -7,7 +7,7 @@ import * as Switch from '@radix-ui/react-switch'
 import { css } from '../../styled-system/css'
 import { stack, hstack, grid } from '../../styled-system/patterns'
 import { FlashcardFormState } from '@/app/create/page'
-import { useAbacusDisplay } from '@/contexts/AbacusDisplayContext'
+import { useAbacusDisplay } from '@soroban/abacus-react'
 import { useEffect } from 'react'
 
 interface StyleControlsProps {

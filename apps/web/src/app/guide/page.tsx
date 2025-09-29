@@ -7,7 +7,7 @@ import { container, stack, hstack, grid } from '../../../styled-system/patterns'
 import { TypstSoroban } from '@/components/TypstSoroban'
 import { InteractiveAbacus } from '@/components/InteractiveAbacus'
 import { AbacusReact } from '@soroban/abacus-react'
-import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
+import { useAbacusConfig } from '@soroban/abacus-react'
 import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
 import { getTutorialForEditor } from '@/utils/tutorialConverter'
 

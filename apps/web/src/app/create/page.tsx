@@ -10,7 +10,7 @@ import { ConfigurationFormWithoutGenerate } from '@/components/ConfigurationForm
 import { LivePreview } from '@/components/LivePreview'
 import { GenerationProgress } from '@/components/GenerationProgress'
 import { StyleControls } from '@/components/StyleControls'
-import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
+import { useAbacusConfig } from '@soroban/abacus-react'
 
 // Complete, validated configuration ready for generation
 export interface FlashcardConfig {

@@ -7,7 +7,7 @@ import * as RadioGroup from '@radix-ui/react-radio-group'
 import * as Switch from '@radix-ui/react-switch'
 import { css } from '../../styled-system/css'
 import { stack, hstack } from '../../styled-system/patterns'
-import { useAbacusDisplay, ColorScheme, BeadShape } from '@/contexts/AbacusDisplayContext'
+import { useAbacusDisplay, ColorScheme, BeadShape } from '@soroban/abacus-react'
 
 interface AbacusDisplayDropdownProps {
   isFullscreen?: boolean

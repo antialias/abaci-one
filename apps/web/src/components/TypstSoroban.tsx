@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { generateSorobanSVG, getWasmStatus, triggerWasmPreload, type SorobanConfig } from '@/lib/typst-soroban'
 import { css } from '../../styled-system/css'
-import { useAbacusConfig } from '@/contexts/AbacusDisplayContext'
+import { useAbacusConfig } from '@soroban/abacus-react'
 
 interface TypstSorobanProps {
   number: number

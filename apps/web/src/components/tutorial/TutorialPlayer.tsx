@@ -15,7 +15,7 @@ import { TutorialUIProvider } from './TutorialUIContext'
 import { CoachBar } from './CoachBar/CoachBar'
 import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
 import { DecompositionWithReasons } from './DecompositionWithReasons'
-import { useAbacusDisplay } from '@/contexts/AbacusDisplayContext'
+import { useAbacusDisplay } from '@soroban/abacus-react'
 import './CoachBar/coachbar.css'
 
 // Helper function to find the topmost bead with arrows
@@ -1308,6 +1308,8 @@ function TutorialPlayerContent({
                   colorScheme={abacusConfig.colorScheme}
                   beadShape={abacusConfig.beadShape}
                   hideInactiveBeads={abacusConfig.hideInactiveBeads}
+                  soundEnabled={abacusConfig.soundEnabled}
+                  soundVolume={abacusConfig.soundVolume}
                   highlightBeads={currentStep.highlightBeads}
                   stepBeadHighlights={currentStepBeads}
                   currentStep={currentMultiStep}
