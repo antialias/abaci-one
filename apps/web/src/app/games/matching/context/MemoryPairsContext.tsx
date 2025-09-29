@@ -34,6 +34,7 @@ const initialState: MemoryPairsState = {
   moves: 0,
   scores: {},
   activePlayers: [],
+  consecutiveMatches: {},
 
   // Timing
   gameStartTime: null,
@@ -73,10 +74,12 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
       }
 
     case 'START_GAME':
-      // Initialize scores for all active players
+      // Initialize scores and consecutive matches for all active players
       const scores: PlayerScore = {}
+      const consecutiveMatches: { [playerId: number]: number } = {}
       action.activePlayers.forEach(playerId => {
         scores[playerId] = 0
+        consecutiveMatches[playerId] = 0
       })
 
       return {
@@ -88,6 +91,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         matchedPairs: 0,
         moves: 0,
         scores,
+        consecutiveMatches,
         activePlayers: action.activePlayers,
         currentPlayer: action.activePlayers[0] || 1,
         gameStartTime: Date.now(),
@@ -135,6 +139,11 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         [state.currentPlayer]: (state.scores[state.currentPlayer] || 0) + 1
       }
 
+      const newConsecutiveMatches = {
+        ...state.consecutiveMatches,
+        [state.currentPlayer]: (state.consecutiveMatches[state.currentPlayer] || 0) + 1
+      }
+
       // Check if game is complete
       const isGameComplete = newMatchedPairs === state.totalPairs
 
@@ -143,6 +152,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         gameCards: updatedCards,
         matchedPairs: newMatchedPairs,
         scores: newScores,
+        consecutiveMatches: newConsecutiveMatches,
         flippedCards: [],
         moves: state.moves + 1,
         lastMatchedPair: action.cardIds,
@@ -169,9 +179,17 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
       // Cycle through all active players
       const currentIndex = state.activePlayers.indexOf(state.currentPlayer)
       const nextIndex = (currentIndex + 1) % state.activePlayers.length
+
+      // Reset consecutive matches for the player who failed
+      const newConsecutiveMatches = {
+        ...state.consecutiveMatches,
+        [state.currentPlayer]: 0
+      }
+
       return {
         ...state,
-        currentPlayer: state.activePlayers[nextIndex] || state.activePlayers[0]
+        currentPlayer: state.activePlayers[nextIndex] || state.activePlayers[0],
+        consecutiveMatches: newConsecutiveMatches
       }
     }
 

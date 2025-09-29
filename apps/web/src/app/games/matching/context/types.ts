@@ -59,6 +59,7 @@ export interface MemoryPairsState {
   moves: number
   scores: PlayerScore
   activePlayers: Player[] // Track active player IDs
+  consecutiveMatches: { [playerId: number]: number } // Track consecutive matches per player
 
   // Timing
   gameStartTime: number | null
