@@ -169,6 +169,62 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
                   isFullscreen={isFullscreen}
                 />
               </FormField>
+
+              <FormField label="Sound Effects" isFullscreen={isFullscreen}>
+                <SwitchField
+                  checked={config.soundEnabled}
+                  onCheckedChange={(checked) => updateConfig({ soundEnabled: checked })}
+                  isFullscreen={isFullscreen}
+                />
+              </FormField>
+
+              {config.soundEnabled && (
+                <FormField label={`Volume: ${Math.round(config.soundVolume * 100)}%`} isFullscreen={isFullscreen}>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={config.soundVolume}
+                    onChange={(e) => updateConfig({ soundVolume: parseFloat(e.target.value) })}
+                    className={css({
+                      w: 'full',
+                      h: '2',
+                      bg: isFullscreen ? 'rgba(255, 255, 255, 0.2)' : 'gray.200',
+                      rounded: 'full',
+                      appearance: 'none',
+                      cursor: 'pointer',
+                      _focusVisible: {
+                        outline: 'none',
+                        ring: '2px',
+                        ringColor: isFullscreen ? 'blue.400' : 'brand.500'
+                      },
+                      '&::-webkit-slider-thumb': {
+                        appearance: 'none',
+                        w: '4',
+                        h: '4',
+                        bg: isFullscreen ? 'blue.400' : 'brand.600',
+                        rounded: 'full',
+                        cursor: 'pointer',
+                        transition: 'all',
+                        _hover: {
+                          bg: isFullscreen ? 'blue.500' : 'brand.700',
+                          transform: 'scale(1.1)'
+                        }
+                      },
+                      '&::-moz-range-thumb': {
+                        w: '4',
+                        h: '4',
+                        bg: isFullscreen ? 'blue.400' : 'brand.600',
+                        rounded: 'full',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }
+                    })}
+                    onClick={(e) => e.stopPropagation()} // Prevent dropdown close
+                  />
+                </FormField>
+              )}
             </div>
           </div>
         </DropdownMenu.Content>

@@ -5,6 +5,7 @@ import { useSpring, animated, config, to } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
 import NumberFlow from '@number-flow/react';
 import { useAbacusConfig, getDefaultAbacusConfig } from './AbacusContext';
+import { playBeadSound } from './soundManager';
 
 // Types
 export interface BeadConfig {
@@ -1335,7 +1336,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     animated: animated ?? contextConfig.animated,
     interactive: interactive ?? contextConfig.interactive,
     gestures: gestures ?? contextConfig.gestures,
-    showNumbers: showNumbers ?? contextConfig.showNumbers
+    showNumbers: showNumbers ?? contextConfig.showNumbers,
+    soundEnabled: contextConfig.soundEnabled,
+    soundVolume: contextConfig.soundVolume
   };
   // Calculate effective columns first, without depending on columnStates
   const effectiveColumns = useMemo(() => {
@@ -1435,6 +1438,21 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       return;
     }
 
+    // Calculate how many beads will change to determine sound intensity
+    const currentState = getPlaceState(bead.placeValue);
+    let beadMovementCount = 1; // Default for single bead movements
+
+    if (bead.type === 'earth') {
+      if (bead.active) {
+        // Deactivating: count beads from this position to end of active beads
+        beadMovementCount = currentState.earthActive - bead.position;
+      } else {
+        // Activating: count beads from current active count to this position + 1
+        beadMovementCount = (bead.position + 1) - currentState.earthActive;
+      }
+    }
+    // Heaven bead always moves just 1 bead
+
     // Create enhanced event object
     const beadClickEvent: BeadClickEvent = {
       bead,
@@ -1452,12 +1470,32 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     // Legacy callback for backward compatibility
     onClick?.(bead);
 
+    // Play sound if enabled with intensity based on bead movement count
+    if (finalConfig.soundEnabled) {
+      playBeadSound(finalConfig.soundVolume, beadMovementCount);
+    }
+
     // Toggle the bead - NO MORE EFFECTIVECOLUMNS THREADING!
     toggleBead(bead);
-  }, [onClick, callbacks, toggleBead, disabledColumns, disabledBeads]);
+  }, [onClick, callbacks, toggleBead, disabledColumns, disabledBeads, finalConfig.soundEnabled, finalConfig.soundVolume, getPlaceState]);
 
   const handleGestureToggle = useCallback((bead: BeadConfig, direction: 'activate' | 'deactivate') => {
     const currentState = getPlaceState(bead.placeValue);
+
+    // Calculate bead movement count for sound intensity
+    let beadMovementCount = 1;
+    if (bead.type === 'earth') {
+      if (direction === 'activate') {
+        beadMovementCount = Math.max(0, (bead.position + 1) - currentState.earthActive);
+      } else {
+        beadMovementCount = Math.max(0, currentState.earthActive - bead.position);
+      }
+    }
+
+    // Play sound if enabled with intensity
+    if (finalConfig.soundEnabled) {
+      playBeadSound(finalConfig.soundVolume, beadMovementCount);
+    }
 
     if (bead.type === 'heaven') {
       // Heaven bead: directly set the state based on direction
@@ -1484,7 +1522,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         earthActive: newEarthActive
       });
     }
-  }, [getPlaceState, setPlaceState]);
+  }, [getPlaceState, setPlaceState, finalConfig.soundEnabled, finalConfig.soundVolume]);
 
   // Place value editing - FRESH IMPLEMENTATION
   const [activeColumn, setActiveColumn] = React.useState<number | null>(null);
@@ -1502,12 +1540,28 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
     // Convert column index to place value
     const placeValue = (effectiveColumns - 1 - columnIndex) as ValidPlaceValues;
+    const currentState = getPlaceState(placeValue);
+
+    // Calculate how many beads change for sound intensity
+    const currentValue = (currentState.heavenActive ? 5 : 0) + currentState.earthActive;
+    const newHeavenActive = digit >= 5;
+    const newEarthActive = digit % 5;
+
+    // Count bead movements: heaven bead + earth bead changes
+    let beadMovementCount = 0;
+    if (currentState.heavenActive !== newHeavenActive) beadMovementCount += 1;
+    beadMovementCount += Math.abs(currentState.earthActive - newEarthActive);
+
+    // Play sound if enabled with intensity based on bead changes
+    if (finalConfig.soundEnabled && beadMovementCount > 0) {
+      playBeadSound(finalConfig.soundVolume, beadMovementCount);
+    }
 
     setPlaceState(placeValue, {
-      heavenActive: digit >= 5,
-      earthActive: digit % 5
+      heavenActive: newHeavenActive,
+      earthActive: newEarthActive
     });
-  }, [setPlaceState, effectiveColumns]);
+  }, [setPlaceState, effectiveColumns, finalConfig.soundEnabled, finalConfig.soundVolume, getPlaceState]);
 
   // Keyboard handler - only active when interactive
   React.useEffect(() => {

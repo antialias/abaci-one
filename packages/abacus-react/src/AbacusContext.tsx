@@ -18,6 +18,8 @@ export interface AbacusDisplayConfig {
   animated: boolean
   interactive: boolean
   gestures: boolean
+  soundEnabled: boolean
+  soundVolume: number
 }
 
 export interface AbacusDisplayContextType {
@@ -37,7 +39,9 @@ const DEFAULT_CONFIG: AbacusDisplayConfig = {
   showNumbers: true,
   animated: true,
   interactive: false,
-  gestures: false
+  gestures: false,
+  soundEnabled: true,
+  soundVolume: 0.8
 }
 
 const STORAGE_KEY = 'soroban-abacus-display-config'
@@ -71,7 +75,11 @@ function loadConfigFromStorage(): AbacusDisplayConfig {
         interactive: typeof parsed.interactive === 'boolean'
           ? parsed.interactive : DEFAULT_CONFIG.interactive,
         gestures: typeof parsed.gestures === 'boolean'
-          ? parsed.gestures : DEFAULT_CONFIG.gestures
+          ? parsed.gestures : DEFAULT_CONFIG.gestures,
+        soundEnabled: typeof parsed.soundEnabled === 'boolean'
+          ? parsed.soundEnabled : DEFAULT_CONFIG.soundEnabled,
+        soundVolume: typeof parsed.soundVolume === 'number' && parsed.soundVolume >= 0 && parsed.soundVolume <= 1
+          ? parsed.soundVolume : DEFAULT_CONFIG.soundVolume
       }
     }
   } catch (error) {

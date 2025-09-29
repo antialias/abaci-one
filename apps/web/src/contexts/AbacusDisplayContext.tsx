@@ -12,6 +12,8 @@ export interface AbacusDisplayConfig {
   hideInactiveBeads: boolean
   coloredNumerals: boolean
   scaleFactor: number
+  soundEnabled: boolean
+  soundVolume: number
 }
 
 export interface AbacusDisplayContextType {
@@ -26,7 +28,9 @@ const DEFAULT_CONFIG: AbacusDisplayConfig = {
   beadShape: 'diamond',
   hideInactiveBeads: false,
   coloredNumerals: false,
-  scaleFactor: 1.0 // Normalized for display, can be scaled per component
+  scaleFactor: 1.0, // Normalized for display, can be scaled per component
+  soundEnabled: true,
+  soundVolume: 0.8
 }
 
 const STORAGE_KEY = 'soroban-abacus-display-config'
@@ -50,7 +54,11 @@ function loadConfigFromStorage(): AbacusDisplayConfig {
         coloredNumerals: typeof parsed.coloredNumerals === 'boolean'
           ? parsed.coloredNumerals : DEFAULT_CONFIG.coloredNumerals,
         scaleFactor: typeof parsed.scaleFactor === 'number' && parsed.scaleFactor > 0
-          ? parsed.scaleFactor : DEFAULT_CONFIG.scaleFactor
+          ? parsed.scaleFactor : DEFAULT_CONFIG.scaleFactor,
+        soundEnabled: typeof parsed.soundEnabled === 'boolean'
+          ? parsed.soundEnabled : DEFAULT_CONFIG.soundEnabled,
+        soundVolume: typeof parsed.soundVolume === 'number' && parsed.soundVolume >= 0 && parsed.soundVolume <= 1
+          ? parsed.soundVolume : DEFAULT_CONFIG.soundVolume
       }
     }
   } catch (error) {
