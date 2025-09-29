@@ -22,8 +22,9 @@ export function GameCard({
   const router = useRouter()
 
   // Check if a game is available based on active player count
+  // Games are always visible but only available with valid player count
   const isGameAvailable = () => {
-    return activePlayerCount <= config.maxPlayers && activePlayerCount > 0
+    return activePlayerCount > 0 && activePlayerCount <= config.maxPlayers
   }
 
   const handleGameClick = () => {
@@ -182,7 +183,9 @@ export function GameCard({
             border: '1px solid',
             borderColor: available ? 'green.200' : 'red.200'
           })}>
-            {activePlayerCount <= config.maxPlayers
+            {activePlayerCount === 0
+              ? `⚠️ Select ${config.maxPlayers} ${config.maxPlayers === 1 ? 'player' : 'players'}`
+              : activePlayerCount <= config.maxPlayers
               ? `✓ ${activePlayerCount}/${config.maxPlayers} ${activePlayerCount === 1 ? 'player' : 'players'}`
               : `✗ Too many players (max ${config.maxPlayers})`
             }

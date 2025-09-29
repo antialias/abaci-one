@@ -103,19 +103,7 @@ export function GameSelector({
         </h3>
       )}
 
-      {activePlayerCount === 0 ? (
-        <div className={css({
-          textAlign: 'center',
-          py: variant === 'compact' ? '4' : '8',
-          color: 'gray.500'
-        })}>
-          <div className={css({ fontSize: variant === 'compact' ? '2xl' : '3xl', mb: '2' })}>🎯</div>
-          <p className={css({ fontSize: variant === 'compact' ? 'sm' : 'base' })}>
-            {emptyStateMessage}
-          </p>
-        </div>
-      ) : (
-        <div className={css({
+      <div className={css({
           display: 'grid',
           gridTemplateColumns: { base: '1fr', md: 'repeat(2, 1fr)' },
           gridTemplateRows: { base: 'repeat(4, 1fr)', md: 'repeat(2, 1fr)' },
@@ -133,7 +121,6 @@ export function GameSelector({
             />
           ))}
         </div>
-      )}
     </div>
   )
 }
