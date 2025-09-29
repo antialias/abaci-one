@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { css } from '../../../styled-system/css'
 import { EnhancedChampionArena } from '../../components/EnhancedChampionArena'
 import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
+import { PageWithNav } from '@/components/PageWithNav'
 
 function ArcadeContent() {
   const router = useRouter()
@@ -53,39 +54,6 @@ function ArcadeContent() {
         animation: 'arcadeFloat 20s ease-in-out infinite'
       })} />
 
-      {/* Compact Header - only shows in fullscreen */}
-      <div className={css({
-        flexShrink: 0,
-        textAlign: 'center',
-        py: { base: '3', md: '4' },
-        px: '4',
-        position: 'relative',
-        zIndex: 2
-      })}>
-        <h1 className={css({
-          fontSize: { base: '2xl', sm: '3xl', md: '4xl', lg: '5xl' },
-          fontWeight: 'black',
-          background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
-          backgroundClip: 'text',
-          color: 'transparent',
-          mb: { base: '1', md: '2' },
-          textShadow: '0 0 30px rgba(96, 165, 250, 0.5)',
-          lineHeight: '1.1'
-        })}>
-          🏟️ CHAMPION ARENA
-        </h1>
-
-        <p className={css({
-          fontSize: { base: 'sm', md: 'lg', lg: 'xl' },
-          color: 'rgba(255,255,255,0.9)',
-          maxW: '2xl',
-          mx: 'auto',
-          display: { base: 'none', sm: 'block' }
-        })}>
-          Select your champions and dive into epic mathematical battles!
-        </p>
-      </div>
-
       {/* Main Champion Arena - takes remaining space */}
       <div className={css({
         flex: 1,
@@ -117,7 +85,9 @@ function ArcadeContent() {
 export default function ArcadePage() {
   return (
     <FullscreenProvider>
-      <ArcadeContent />
+      <PageWithNav navTitle="Champion Arena" navEmoji="🏟️">
+        <ArcadeContent />
+      </PageWithNav>
     </FullscreenProvider>
   )
 }
