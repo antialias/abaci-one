@@ -17,7 +17,7 @@ type TabType = 'reading' | 'arithmetic'
 export default function GuidePage() {
   const [activeTab, setActiveTab] = useState<TabType>('reading')
   return (
-    <PageWithNav navTitle="Interactive Guide" navEmoji="📚">
+    <PageWithNav navTitle="Interactive Guide" navEmoji="📖">
       <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
 
       {/* Hero Section */}
