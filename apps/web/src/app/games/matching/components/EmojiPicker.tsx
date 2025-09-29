@@ -86,6 +86,8 @@ function getEmojiKeywords(emoji: string): string[] {
 export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber }: EmojiPickerProps) {
   const [searchFilter, setSearchFilter] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
+  const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null)
+  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 })
 
   // Enhanced search functionality - clear separation between default and search
   const isSearching = searchFilter.trim().length > 0
@@ -486,6 +488,15 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
                       fontSize: '24px'
                     }
                   })}
+                  onMouseEnter={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    setHoveredEmoji(emoji)
+                    setHoverPosition({
+                      x: rect.left + rect.width / 2,
+                      y: rect.top
+                    })
+                  }}
+                  onMouseLeave={() => setHoveredEmoji(null)}
                   onClick={() => {
                     onEmojiSelect(emoji)
                   }}
@@ -547,6 +558,68 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
           💡 Powered by emojibase-data • Try: "face", "smart", "heart", "animal", "food" • Click to select
         </div>
       </div>
+
+      {/* Magnifying Glass Preview */}
+      {hoveredEmoji && (
+        <div
+          style={{
+            position: 'fixed',
+            left: `${hoverPosition.x}px`,
+            top: `${hoverPosition.y - 80}px`,
+            transform: 'translateX(-50%)',
+            pointerEvents: 'none',
+            zIndex: 10000,
+            animation: 'magnifyIn 0.15s ease-out'
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '12px',
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(59, 130, 246, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '72px',
+              lineHeight: 1,
+              minWidth: '100px',
+              minHeight: '100px'
+            }}
+          >
+            {hoveredEmoji}
+          </div>
+          {/* Arrow pointing down */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '-8px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '10px solid transparent',
+              borderRight: '10px solid transparent',
+              borderTop: '10px solid white',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+            }}
+          />
+        </div>
+      )}
+
+      {/* Add magnifying animation */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes magnifyIn {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) scale(0.5);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+          }
+        }
+      ` }} />
     </div>
   )
 }
