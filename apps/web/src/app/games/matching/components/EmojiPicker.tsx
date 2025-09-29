@@ -27,8 +27,20 @@ interface EmojiPickerProps {
   playerNumber: 1 | 2 | 3 | 4
 }
 
-// Create a map of emoji to their searchable data
-const emojiMap = new Map<string, { keywords: string[] }>()
+// Emoji group categories from emojibase
+const EMOJI_GROUPS = {
+  0: { name: 'Smileys & People', icon: '😀' },
+  1: { name: 'Animals & Nature', icon: '🐶' },
+  2: { name: 'Food & Drink', icon: '🍎' },
+  3: { name: 'Activities', icon: '⚽' },
+  4: { name: 'Travel & Places', icon: '🚗' },
+  5: { name: 'Objects', icon: '💡' },
+  6: { name: 'Symbols', icon: '❤️' },
+  7: { name: 'Flags', icon: '🏁' }
+} as const
+
+// Create a map of emoji to their searchable data and group
+const emojiMap = new Map<string, { keywords: string[], group: number }>()
 ;(emojiData as EmojibaseEmoji[]).forEach((emoji) => {
   if (emoji.emoji) {
     // Handle emoticon field which can be string, array, or undefined
@@ -46,7 +58,8 @@ const emojiMap = new Map<string, { keywords: string[] }>()
         emoji.label?.toLowerCase(),
         ...(emoji.tags || []).map((tag: string) => tag.toLowerCase()),
         ...emoticons
-      ].filter(Boolean)
+      ].filter(Boolean),
+      group: emoji.group
     })
   }
 })
@@ -71,13 +84,27 @@ function getEmojiKeywords(emoji: string): string[] {
 
 export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber }: EmojiPickerProps) {
   const [searchFilter, setSearchFilter] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
 
   // Enhanced search functionality - clear separation between default and search
   const isSearching = searchFilter.trim().length > 0
+  const isCategoryFiltered = selectedCategory !== null && !isSearching
 
   const displayEmojis = useMemo(() => {
+    // Start with all emojis
+    let emojis = PLAYER_EMOJIS
+
+    // Apply category filter first (unless searching)
+    if (isCategoryFiltered) {
+      emojis = emojis.filter(emoji => {
+        const data = emojiMap.get(emoji)
+        return data && data.group === selectedCategory
+      })
+    }
+
+    // Then apply search filter
     if (!isSearching) {
-      return PLAYER_EMOJIS
+      return emojis
     }
 
     const searchTerm = searchFilter.toLowerCase().trim()
@@ -116,7 +143,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
     })
 
     return sortedResults
-  }, [searchFilter, isSearching])
+  }, [searchFilter, isSearching, selectedCategory, isCategoryFiltered])
 
   return (
     <div className={css({
@@ -251,6 +278,71 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
           )}
         </div>
 
+        {/* Category Tabs */}
+        {!isSearching && (
+          <div className={css({
+            display: 'flex',
+            gap: '8px',
+            overflowX: 'auto',
+            paddingBottom: '8px',
+            marginBottom: '12px',
+            flexShrink: 0,
+            '&::-webkit-scrollbar': {
+              height: '6px'
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: '#cbd5e1',
+              borderRadius: '3px'
+            }
+          })}>
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={css({
+                padding: '8px 16px',
+                borderRadius: '20px',
+                border: selectedCategory === null ? '2px solid #3b82f6' : '2px solid #e5e7eb',
+                background: selectedCategory === null ? '#eff6ff' : 'white',
+                color: selectedCategory === null ? '#1e40af' : '#6b7280',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s ease',
+                _hover: {
+                  background: selectedCategory === null ? '#dbeafe' : '#f9fafb',
+                  transform: 'translateY(-1px)'
+                }
+              })}
+            >
+              ✨ All
+            </button>
+            {Object.entries(EMOJI_GROUPS).map(([groupId, group]) => (
+              <button
+                key={groupId}
+                onClick={() => setSelectedCategory(Number(groupId))}
+                className={css({
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: selectedCategory === Number(groupId) ? '2px solid #3b82f6' : '2px solid #e5e7eb',
+                  background: selectedCategory === Number(groupId) ? '#eff6ff' : 'white',
+                  color: selectedCategory === Number(groupId) ? '#1e40af' : '#6b7280',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s ease',
+                  _hover: {
+                    background: selectedCategory === Number(groupId) ? '#dbeafe' : '#f9fafb',
+                    transform: 'translateY(-1px)'
+                  }
+                })}
+              >
+                {group.icon} {group.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Search Mode Header */}
         {isSearching && displayEmojis.length > 0 && (
           <div className={css({
@@ -296,13 +388,15 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
               color: 'gray.700',
               marginBottom: '4px'
             })}>
-              📝 All Available Characters
+              {selectedCategory !== null
+                ? `${EMOJI_GROUPS[selectedCategory as keyof typeof EMOJI_GROUPS].icon} ${EMOJI_GROUPS[selectedCategory as keyof typeof EMOJI_GROUPS].name}`
+                : '📝 All Available Characters'}
             </div>
             <div className={css({
               fontSize: '12px',
               color: 'gray.600'
             })}>
-              {PLAYER_EMOJIS.length} characters available • Use search to find specific emojis
+              {displayEmojis.length} emojis {selectedCategory !== null ? 'in category' : 'available'} • Use search to find specific emojis
             </div>
           </div>
         )}
@@ -311,23 +405,41 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
         {displayEmojis.length > 0 && (
           <div className={css({
             flex: 1,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(16, 1fr)',
-            gap: '4px',
-            alignContent: 'start',
-            '@media (max-width: 1200px)': {
-              gridTemplateColumns: 'repeat(14, 1fr)'
+            overflowY: 'auto',
+            minHeight: 0,
+            '&::-webkit-scrollbar': {
+              width: '10px'
             },
-            '@media (max-width: 1000px)': {
-              gridTemplateColumns: 'repeat(12, 1fr)'
+            '&::-webkit-scrollbar-track': {
+              background: '#f1f5f9',
+              borderRadius: '5px'
             },
-            '@media (max-width: 800px)': {
-              gridTemplateColumns: 'repeat(10, 1fr)'
-            },
-            '@media (max-width: 600px)': {
-              gridTemplateColumns: 'repeat(8, 1fr)'
+            '&::-webkit-scrollbar-thumb': {
+              background: '#cbd5e1',
+              borderRadius: '5px',
+              '&:hover': {
+                background: '#94a3b8'
+              }
             }
           })}>
+            <div className={css({
+              display: 'grid',
+              gridTemplateColumns: 'repeat(16, 1fr)',
+              gap: '4px',
+              padding: '4px',
+              '@media (max-width: 1200px)': {
+                gridTemplateColumns: 'repeat(14, 1fr)'
+              },
+              '@media (max-width: 1000px)': {
+                gridTemplateColumns: 'repeat(12, 1fr)'
+              },
+              '@media (max-width: 800px)': {
+                gridTemplateColumns: 'repeat(10, 1fr)'
+              },
+              '@media (max-width: 600px)': {
+                gridTemplateColumns: 'repeat(8, 1fr)'
+              }
+            })}>
             {displayEmojis.map(emoji => {
               const isSelected = emoji === currentEmoji
               const getSelectedBg = () => {
@@ -381,6 +493,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
                 </button>
               )
             })}
+            </div>
           </div>
         )}
 
