@@ -93,6 +93,20 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
   const isSearching = searchFilter.trim().length > 0
   const isCategoryFiltered = selectedCategory !== null && !isSearching
 
+  // Calculate which categories have emojis
+  const availableCategories = useMemo(() => {
+    const categoryCounts: Record<number, number> = {}
+    PLAYER_EMOJIS.forEach(emoji => {
+      const data = emojiMap.get(emoji)
+      if (data && data.group !== undefined) {
+        categoryCounts[data.group] = (categoryCounts[data.group] || 0) + 1
+      }
+    })
+    return Object.keys(EMOJI_GROUPS)
+      .map(Number)
+      .filter(groupId => categoryCounts[groupId] > 0)
+  }, [])
+
   const displayEmojis = useMemo(() => {
     // Start with all emojis
     let emojis = PLAYER_EMOJIS
@@ -319,7 +333,9 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
             >
               ✨ All
             </button>
-            {Object.entries(EMOJI_GROUPS).map(([groupId, group]) => (
+            {availableCategories.map((groupId) => {
+              const group = EMOJI_GROUPS[groupId as keyof typeof EMOJI_GROUPS]
+              return (
               <button
                 key={groupId}
                 onClick={() => setSelectedCategory(Number(groupId))}
@@ -342,7 +358,8 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
               >
                 {group.icon} {group.name}
               </button>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -559,55 +576,96 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
         </div>
       </div>
 
-      {/* Magnifying Glass Preview */}
+      {/* Magnifying Glass Preview - SUPER POWERED! */}
       {hoveredEmoji && (
         <div
           style={{
             position: 'fixed',
             left: `${hoverPosition.x}px`,
-            top: `${hoverPosition.y - 80}px`,
+            top: `${hoverPosition.y - 120}px`,
             transform: 'translateX(-50%)',
             pointerEvents: 'none',
             zIndex: 10000,
-            animation: 'magnifyIn 0.15s ease-out'
+            animation: 'magnifyIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
           }}
         >
-          <div
-            style={{
-              background: 'white',
-              borderRadius: '16px',
-              padding: '12px',
-              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(59, 130, 246, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '72px',
-              lineHeight: 1,
-              minWidth: '100px',
-              minHeight: '100px'
-            }}
-          >
-            {hoveredEmoji}
-          </div>
-          {/* Arrow pointing down */}
+          {/* Outer glow ring */}
           <div
             style={{
               position: 'absolute',
-              bottom: '-8px',
+              inset: '-20px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)',
+              animation: 'pulseGlow 2s ease-in-out infinite'
+            }}
+          />
+
+          {/* Main preview card */}
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+              borderRadius: '24px',
+              padding: '20px',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(59, 130, 246, 0.6), inset 0 2px 4px rgba(255,255,255,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '120px',
+              lineHeight: 1,
+              minWidth: '160px',
+              minHeight: '160px',
+              position: 'relative',
+              animation: 'emojiFloat 3s ease-in-out infinite'
+            }}
+          >
+            {/* Sparkle effects */}
+            <div style={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              fontSize: '20px',
+              animation: 'sparkle 1.5s ease-in-out infinite',
+              animationDelay: '0s'
+            }}>✨</div>
+            <div style={{
+              position: 'absolute',
+              bottom: '15px',
+              left: '15px',
+              fontSize: '16px',
+              animation: 'sparkle 1.5s ease-in-out infinite',
+              animationDelay: '0.5s'
+            }}>✨</div>
+            <div style={{
+              position: 'absolute',
+              top: '20px',
+              left: '20px',
+              fontSize: '12px',
+              animation: 'sparkle 1.5s ease-in-out infinite',
+              animationDelay: '1s'
+            }}>✨</div>
+
+            {hoveredEmoji}
+          </div>
+
+          {/* Arrow pointing down with glow */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '-12px',
               left: '50%',
               transform: 'translateX(-50%)',
               width: 0,
               height: 0,
-              borderLeft: '10px solid transparent',
-              borderRight: '10px solid transparent',
-              borderTop: '10px solid white',
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+              borderLeft: '14px solid transparent',
+              borderRight: '14px solid transparent',
+              borderTop: '14px solid white',
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
             }}
           />
         </div>
       )}
 
-      {/* Add magnifying animation */}
+      {/* Add magnifying animations */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes magnifyIn {
           from {
@@ -617,6 +675,34 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
           to {
             opacity: 1;
             transform: translateX(-50%) scale(1);
+          }
+        }
+        @keyframes pulseGlow {
+          0%, 100% {
+            opacity: 0.5;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.1);
+          }
+        }
+        @keyframes emojiFloat {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+        @keyframes sparkle {
+          0%, 100% {
+            opacity: 0;
+            transform: scale(0.5) rotate(0deg);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1) rotate(180deg);
           }
         }
       ` }} />
