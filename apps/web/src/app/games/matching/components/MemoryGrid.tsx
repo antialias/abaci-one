@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
-import { useUserProfile } from '../../../../contexts/UserProfileContext'
 import { GameCard } from './GameCard'
-import { EmojiPicker } from './EmojiPicker'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { css } from '../../../../../styled-system/css'
 
@@ -81,8 +79,6 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
 
 export function MemoryGrid() {
   const { state, flipCard } = useMemoryPairs()
-  const { profile, updatePlayerEmoji } = useUserProfile()
-  const [showEmojiPicker, setShowEmojiPicker] = useState<{ player: 1 | 2 } | null>(null)
 
   if (!state.gameCards.length) {
     return null
@@ -96,16 +92,6 @@ export function MemoryGrid() {
     flipCard(cardId)
   }
 
-  const handlePlayerClick = (player: 1 | 2) => {
-    setShowEmojiPicker({ player })
-  }
-
-  const handleEmojiSelect = (emoji: string) => {
-    if (showEmojiPicker) {
-      updatePlayerEmoji(showEmojiPicker.player, emoji)
-      setShowEmojiPicker(null)
-    }
-  }
 
   return (
     <div className={css({
@@ -116,164 +102,35 @@ export function MemoryGrid() {
       gap: { base: '12px', sm: '16px', md: '20px' }
     })}>
 
-      {/* Game Info Header */}
+      {/* Compact Game Progress */}
       <div className={css({
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         alignItems: 'center',
-        width: '100%',
-        maxWidth: '800px',
-        padding: { base: '12px 16px', sm: '14px 20px', md: '16px 24px' },
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(248,250,252,0.9))',
-        borderRadius: '16px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        border: '1px solid rgba(255,255,255,0.8)'
+        gap: { base: '12px', sm: '16px', md: '24px' },
+        padding: { base: '8px 12px', sm: '10px 16px', md: '12px 20px' },
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.95))',
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        border: '1px solid rgba(255,255,255,0.9)',
+        fontSize: { base: '14px', sm: '15px', md: '16px' },
+        fontWeight: 'bold',
+        color: 'gray.700'
       })}>
-
-        <div className={css({
-          display: 'grid',
-          gridTemplateColumns: { base: 'repeat(3, 1fr)', sm: 'repeat(3, auto)' },
-          gap: { base: '8px', sm: '12px', md: '20px' },
-          justifyContent: { base: 'stretch', sm: 'center' },
-          width: { base: '100%', sm: 'auto' }
-        })}>
-          <div className={css({ textAlign: 'center' })}>
-            <div className={css({ fontSize: { base: '18px', sm: '20px', md: '24px' }, fontWeight: 'bold', color: 'blue.600' })}>
-              {state.matchedPairs}
-            </div>
-            <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, color: 'gray.600' })}>
-              Matched
-            </div>
-          </div>
-
-          <div className={css({ textAlign: 'center' })}>
-            <div className={css({ fontSize: { base: '18px', sm: '20px', md: '24px' }, fontWeight: 'bold', color: 'purple.600' })}>
-              {state.moves}
-            </div>
-            <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, color: 'gray.600' })}>
-              Moves
-            </div>
-          </div>
-
-          <div className={css({ textAlign: 'center' })}>
-            <div className={css({ fontSize: { base: '18px', sm: '20px', md: '24px' }, fontWeight: 'bold', color: 'green.600' })}>
-              {state.totalPairs}
-            </div>
-            <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, color: 'gray.600' })}>
-              Total Pairs
-            </div>
-          </div>
-        </div>
-
-        {/* Multiplayer Scores */}
-        {state.gameMode === 'multiplayer' && (
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '24px' })}>
-            <button
-              className={css({
-                textAlign: 'center',
-                padding: '12px 20px',
-                borderRadius: '16px',
-                background: state.currentPlayer === 1 ? 'blue.100' : 'gray.100',
-                border: '3px solid',
-                borderColor: state.currentPlayer === 1 ? 'blue.400' : 'gray.300',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                _hover: {
-                  transform: 'scale(1.05)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                }
-              })}
-              onClick={() => handlePlayerClick(1)}
-            >
-              <div className={css({
-                fontSize: '40px',
-                marginBottom: '4px',
-                transition: 'transform 0.2s ease',
-                _hover: { transform: 'scale(1.1)' }
-              })}>
-                {profile.player1Emoji}
-              </div>
-              <div className={css({ fontSize: '28px', fontWeight: 'bold', color: 'blue.600' })}>
-                {state.scores[1] || 0}
-              </div>
-              <div className={css({ fontSize: '12px', color: 'gray.600', marginTop: '4px' })}>
-                Click to change character
-              </div>
-            </button>
-
-            <div className={css({
-              fontSize: '24px',
-              color: 'gray.500',
-              fontWeight: 'bold'
-            })}>
-              VS
-            </div>
-
-            <button
-              className={css({
-                textAlign: 'center',
-                padding: '12px 20px',
-                borderRadius: '16px',
-                background: state.currentPlayer === 2 ? 'red.100' : 'gray.100',
-                border: '3px solid',
-                borderColor: state.currentPlayer === 2 ? 'red.400' : 'gray.300',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                _hover: {
-                  transform: 'scale(1.05)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                }
-              })}
-              onClick={() => handlePlayerClick(2)}
-            >
-              <div className={css({
-                fontSize: '40px',
-                marginBottom: '4px',
-                transition: 'transform 0.2s ease',
-                _hover: { transform: 'scale(1.1)' }
-              })}>
-                {profile.player2Emoji}
-              </div>
-              <div className={css({ fontSize: '28px', fontWeight: 'bold', color: 'red.600' })}>
-                {state.scores[2] || 0}
-              </div>
-              <div className={css({ fontSize: '12px', color: 'gray.600', marginTop: '4px' })}>
-                Click to change character
-              </div>
-            </button>
-          </div>
-        )}
-
-        {/* Single Player Progress */}
+        <span className={css({ color: 'blue.600' })}>
+          {state.matchedPairs} matched
+        </span>
+        <span className={css({ color: 'gray.400' })}>•</span>
+        <span className={css({ color: 'purple.600' })}>
+          {state.moves} moves
+        </span>
         {state.gameMode === 'single' && (
-          <div className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          })}>
-            <div className={css({
-              width: '120px',
-              height: '8px',
-              background: 'gray.200',
-              borderRadius: '4px',
-              overflow: 'hidden'
-            })}>
-              <div className={css({
-                width: `${(state.matchedPairs / state.totalPairs) * 100}%`,
-                height: '100%',
-                background: 'linear-gradient(90deg, #667eea, #764ba2)',
-                transition: 'width 0.3s ease',
-                borderRadius: '4px'
-              })} />
-            </div>
-            <span className={css({
-              fontSize: '14px',
-              fontWeight: 'bold',
-              color: 'gray.600'
-            })}>
-              {Math.round((state.matchedPairs / state.totalPairs) * 100)}%
+          <>
+            <span className={css({ color: 'gray.400' })}>•</span>
+            <span className={css({ color: 'green.600' })}>
+              {Math.round((state.matchedPairs / state.totalPairs) * 100)}% complete
             </span>
-          </div>
+          </>
         )}
       </div>
 
@@ -390,15 +247,6 @@ export function MemoryGrid() {
         })} />
       )}
 
-      {/* Emoji Picker Modal */}
-      {showEmojiPicker && (
-        <EmojiPicker
-          currentEmoji={showEmojiPicker.player === 1 ? profile.player1Emoji : profile.player2Emoji}
-          onEmojiSelect={handleEmojiSelect}
-          onClose={() => setShowEmojiPicker(null)}
-          playerNumber={showEmojiPicker.player}
-        />
-      )}
     </div>
   )
 }
