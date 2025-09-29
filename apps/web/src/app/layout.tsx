@@ -1,43 +1,34 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import { AbacusDisplayProvider } from '@/contexts/AbacusDisplayContext'
-import { UserProfileProvider } from '@/contexts/UserProfileContext'
-import { GameModeProvider } from '@/contexts/GameModeContext'
-import { FullscreenProvider } from '@/contexts/FullscreenContext'
-import { GameThemeProvider } from '@/contexts/GameThemeContext'
-import { AppNavBar } from '@/components/AppNavBar'
+import { ClientProviders } from '@/components/ClientProviders'
+import { AppNav } from '@/components/AppNav'
 
 export const metadata: Metadata = {
   title: 'Soroban Flashcard Generator',
   description: 'Create beautiful, educational soroban flashcards with authentic Japanese abacus representations',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({
   children,
+  nav,
 }: {
   children: React.ReactNode
+  nav: React.ReactNode
 }) {
   return (
     <html lang="en">
       <body>
-        <AbacusDisplayProvider>
-          <UserProfileProvider>
-            <GameModeProvider>
-              <FullscreenProvider>
-                <GameThemeProvider>
-                  <AppNavBar />
-                  {children}
-                </GameThemeProvider>
-              </FullscreenProvider>
-            </GameModeProvider>
-          </UserProfileProvider>
-        </AbacusDisplayProvider>
+        <ClientProviders>
+          <AppNav>{nav}</AppNav>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   )
