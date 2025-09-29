@@ -72,7 +72,7 @@ jobs:
       - name: Configure npm for GitHub Packages
         working-directory: packages/abacus-react
         run: |
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.NPM_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}" > .npmrc
           echo "@soroban:registry=https://npm.pkg.github.com" >> .npmrc
           echo "registry=https://npm.pkg.github.com" >> .npmrc
 
@@ -147,7 +147,7 @@ jobs:
 
             # Set authentication and registry for GitHub Packages
             echo "Publishing with explicit authentication..."
-            NPM_CONFIG_USERCONFIG=.npmrc NODE_AUTH_TOKEN="${{ secrets.GITHUB_TOKEN }}" npm publish --registry=https://npm.pkg.github.com
+            NPM_CONFIG_USERCONFIG=.npmrc NODE_AUTH_TOKEN="${{ secrets.NPM_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}" npm publish --registry=https://npm.pkg.github.com
           else
             echo "No new abacus-react version tag found, skipping publish"
           fi
