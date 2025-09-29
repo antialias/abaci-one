@@ -6,7 +6,7 @@ import { css } from '../../../../styled-system/css'
 import { AbacusReact } from '@soroban/abacus-react'
 import { useAbacusConfig } from '@soroban/abacus-react'
 import { isPrefix } from '../../../lib/memory-quiz-utils'
-import { StandardGameLayout } from '../../../components/StandardGameLayout'
+import { PageWithNav } from '@/components/PageWithNav'
 
 
 interface QuizCard {
@@ -1733,7 +1733,7 @@ export default function MemoryQuizPage() {
   }, [state.prefixAcceptanceTimeout])
 
   return (
-    <StandardGameLayout>
+    <PageWithNav navTitle="Memory Lightning" navEmoji="🧠">
       <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
 
       <div
@@ -1741,14 +1741,16 @@ export default function MemoryQuizPage() {
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'auto'
+          overflow: 'auto',
+          padding: '20px 8px',
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)'
         }}
       >
         <div
           style={{
             maxWidth: '100%',
             margin: '0 auto',
-            padding: '0 8px',
             flex: 1,
             display: 'flex',
             flexDirection: 'column'
@@ -1800,6 +1802,6 @@ export default function MemoryQuizPage() {
           </div>
         </div>
       </div>
-    </StandardGameLayout>
+    </PageWithNav>
   )
 }
