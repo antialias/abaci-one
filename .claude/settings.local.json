@@ -151,7 +151,20 @@
       "Bash(git pull:*)",
       "WebFetch(domain:antialias.github.io)",
       "Bash(open http://localhost:3006/games/matching)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(open http://localhost:3001/games/matching)",
+      "Bash(open http://localhost:3001/games/memory-quiz)",
+      "Bash(open http://localhost:3002)",
+      "Bash(open \"data:text/html,<script>console.log(''Current localStorage:'', localStorage.getItem(''soroban-abacus-display-config'')); localStorage.setItem(''soroban-abacus-display-config'', JSON.stringify({colorScheme: ''place-value'', beadShape: ''diamond'', hideInactiveBeads: false, coloredNumerals: false, scaleFactor: 1.0, soundEnabled: true, soundVolume: 0.8})); console.log(''After test save:'', localStorage.getItem(''soroban-abacus-display-config''));</script><h1>Check browser console</h1>\")",
+      "Bash(npx playwright:*)",
+      "Bash(open \"data:text/html,<script>\nconsole.log(''Current localStorage:'', localStorage.getItem(''soroban-abacus-display-config'')); \nlocalStorage.setItem(''soroban-abacus-display-config'', JSON.stringify({\n  colorScheme: ''place-value'', \n  beadShape: ''diamond'', \n  hideInactiveBeads: false, \n  coloredNumerals: false, \n  scaleFactor: 1.0, \n  soundEnabled: true, \n  soundVolume: 0.8\n})); \nconsole.log(''After test save:'', localStorage.getItem(''soroban-abacus-display-config''));\n</script><h1>Check browser console</h1>\")",
+      "Bash(xargs sed:*)",
+      "Bash(open http://localhost:3003/games/matching)",
+      "Bash(open http://localhost:3003/arcade/matching)",
+      "Bash(open http://localhost:3000)",
+      "Bash(open http://localhost:3003/games/memory-quiz)",
+      "Bash(open http://localhost:3001)"
     ],
     "deny": [],
     "ask": []
