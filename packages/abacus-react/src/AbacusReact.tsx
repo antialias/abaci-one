@@ -234,6 +234,8 @@ export interface AbacusConfig {
   interactive?: boolean;
   gestures?: boolean;
   showNumbers?: boolean;
+  soundEnabled?: boolean;
+  soundVolume?: number;
 
   // Advanced customization
   customStyles?: AbacusCustomStyles;
@@ -1302,6 +1304,8 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   interactive,
   gestures,
   showNumbers,
+  soundEnabled,
+  soundVolume,
   // Advanced customization props
   customStyles,
   callbacks,
@@ -1337,8 +1341,8 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     interactive: interactive ?? contextConfig.interactive,
     gestures: gestures ?? contextConfig.gestures,
     showNumbers: showNumbers ?? contextConfig.showNumbers,
-    soundEnabled: contextConfig.soundEnabled,
-    soundVolume: contextConfig.soundVolume
+    soundEnabled: soundEnabled ?? contextConfig.soundEnabled,
+    soundVolume: soundVolume ?? contextConfig.soundVolume
   };
   // Calculate effective columns first, without depending on columnStates
   const effectiveColumns = useMemo(() => {
