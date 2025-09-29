@@ -24,7 +24,7 @@ interface EmojiPickerProps {
   currentEmoji: string
   onEmojiSelect: (emoji: string) => void
   onClose: () => void
-  playerNumber: 1 | 2
+  playerNumber: 1 | 2 | 3 | 4
 }
 
 // Create a map of emoji to their searchable data
@@ -195,7 +195,11 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
             padding: '8px 12px',
             background: playerNumber === 1
               ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
-              : 'linear-gradient(135deg, #fd79a8, #e84393)',
+              : playerNumber === 2
+              ? 'linear-gradient(135deg, #fd79a8, #e84393)'
+              : playerNumber === 3
+              ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)'
+              : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
             borderRadius: '12px',
             color: 'white',
             display: 'flex',
@@ -326,18 +330,35 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
           })}>
             {displayEmojis.map(emoji => {
               const isSelected = emoji === currentEmoji
+              const getSelectedBg = () => {
+                if (!isSelected) return 'transparent'
+                if (playerNumber === 1) return 'blue.100'
+                if (playerNumber === 2) return 'pink.100'
+                if (playerNumber === 3) return 'purple.100'
+                return 'yellow.100'
+              }
+              const getSelectedBorder = () => {
+                if (!isSelected) return 'transparent'
+                if (playerNumber === 1) return 'blue.400'
+                if (playerNumber === 2) return 'pink.400'
+                if (playerNumber === 3) return 'purple.400'
+                return 'yellow.400'
+              }
+              const getHoverBg = () => {
+                if (!isSelected) return 'gray.100'
+                if (playerNumber === 1) return 'blue.200'
+                if (playerNumber === 2) return 'pink.200'
+                if (playerNumber === 3) return 'purple.200'
+                return 'yellow.200'
+              }
               return (
                 <button
                   key={emoji}
                   className={css({
                     aspectRatio: '1',
-                    background: isSelected
-                      ? (playerNumber === 1 ? 'blue.100' : 'pink.100')
-                      : 'transparent',
+                    background: getSelectedBg(),
                     border: '2px solid',
-                    borderColor: isSelected
-                      ? (playerNumber === 1 ? 'blue.400' : 'pink.400')
-                      : 'transparent',
+                    borderColor: getSelectedBorder(),
                     borderRadius: '6px',
                     fontSize: '20px',
                     cursor: 'pointer',
@@ -346,9 +367,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
                     alignItems: 'center',
                     justifyContent: 'center',
                     _hover: {
-                      background: isSelected
-                        ? (playerNumber === 1 ? 'blue.200' : 'pink.200')
-                        : 'gray.100',
+                      background: getHoverBg(),
                       transform: 'scale(1.15)',
                       zIndex: 1,
                       fontSize: '24px'

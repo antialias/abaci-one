@@ -18,7 +18,7 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
   const { players, activePlayerCount, updatePlayer } = useGameMode()
   const { profile } = useUserProfile()
   const [mounted, setMounted] = React.useState(false)
-  const [configurePlayerId, setConfigurePlayerId] = React.useState<1 | 2 | null>(null)
+  const [configurePlayerId, setConfigurePlayerId] = React.useState<1 | 2 | 3 | 4 | null>(null)
 
   // Delay mounting animation slightly for smooth transition
   React.useEffect(() => {
@@ -35,27 +35,47 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
   }
 
   const handleConfigurePlayer = (playerId: number) => {
-    // Only support configuring players 1 and 2
-    if (playerId === 1 || playerId === 2) {
-      setConfigurePlayerId(playerId)
+    // Support configuring all players (1-4)
+    if (playerId >= 1 && playerId <= 4) {
+      setConfigurePlayerId(playerId as 1 | 2 | 3 | 4)
     }
   }
 
-  // Transform players to use profile emojis for players 1 and 2
+  // Transform players to use profile emojis and names for all players
+  const getPlayerEmoji = (playerId: number) => {
+    switch (playerId) {
+      case 1: return profile.player1Emoji
+      case 2: return profile.player2Emoji
+      case 3: return profile.player3Emoji
+      case 4: return profile.player4Emoji
+      default: return players.find(p => p.id === playerId)?.emoji || '😀'
+    }
+  }
+
+  const getPlayerName = (playerId: number) => {
+    switch (playerId) {
+      case 1: return profile.player1Name
+      case 2: return profile.player2Name
+      case 3: return profile.player3Name
+      case 4: return profile.player4Name
+      default: return players.find(p => p.id === playerId)?.name || `Player ${playerId}`
+    }
+  }
+
   const activePlayers = players
     .filter(p => p.isActive)
     .map(player => ({
       ...player,
-      emoji: player.id === 1 ? profile.player1Emoji : player.id === 2 ? profile.player2Emoji : player.emoji,
-      name: player.id === 1 ? profile.player1Name : player.id === 2 ? profile.player2Name : player.name
+      emoji: getPlayerEmoji(player.id),
+      name: getPlayerName(player.id)
     }))
 
   const inactivePlayers = players
     .filter(p => !p.isActive)
     .map(player => ({
       ...player,
-      emoji: player.id === 1 ? profile.player1Emoji : player.id === 2 ? profile.player2Emoji : player.emoji,
-      name: player.id === 1 ? profile.player1Name : player.id === 2 ? profile.player2Name : player.name
+      emoji: getPlayerEmoji(player.id),
+      name: getPlayerName(player.id)
     }))
 
   // Compute game mode from active player count

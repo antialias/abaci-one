@@ -30,8 +30,12 @@ export const PLAYER_EMOJIS = [
 export interface UserProfile {
   player1Emoji: string
   player2Emoji: string
+  player3Emoji: string
+  player4Emoji: string
   player1Name: string
   player2Name: string
+  player3Name: string
+  player4Name: string
   gamesPlayed: number
   totalWins: number
   favoriteGameType: 'abacus-numeral' | 'complement-pairs' | null
@@ -41,8 +45,8 @@ export interface UserProfile {
 
 export interface UserProfileContextType {
   profile: UserProfile
-  updatePlayerEmoji: (player: 1 | 2, emoji: string) => void
-  updatePlayerName: (player: 1 | 2, name: string) => void
+  updatePlayerEmoji: (player: 1 | 2 | 3 | 4, emoji: string) => void
+  updatePlayerName: (player: 1 | 2 | 3 | 4, name: string) => void
   updateGameStats: (stats: Partial<Pick<UserProfile, 'gamesPlayed' | 'totalWins' | 'favoriteGameType' | 'bestTime' | 'highestAccuracy'>>) => void
   resetProfile: () => void
 }
@@ -50,8 +54,12 @@ export interface UserProfileContextType {
 const defaultProfile: UserProfile = {
   player1Emoji: '😀',
   player2Emoji: '😎',
+  player3Emoji: '🤓',
+  player4Emoji: '🥳',
   player1Name: 'Player 1',
   player2Name: 'Player 2',
+  player3Name: 'Player 3',
+  player4Name: 'Player 4',
   gamesPlayed: 0,
   totalWins: 0,
   favoriteGameType: null,
