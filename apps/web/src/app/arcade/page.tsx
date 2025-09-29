@@ -32,12 +32,13 @@ function ArcadeContent() {
     <div
       ref={arcadeRef}
       className={css({
-        height: '100vh',
+        minHeight: 'calc(100vh - 80px)', // Account for mini nav height
         background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        py: { base: '4', md: '6' }
       })}>
       {/* Animated background elements */}
       <div className={css({
@@ -59,7 +60,6 @@ function ArcadeContent() {
         flex: 1,
         display: 'flex',
         px: { base: '2', md: '4' },
-        pb: { base: '2', md: '4' },
         position: 'relative',
         zIndex: 1,
         minHeight: 0 // Important for flex children
@@ -85,7 +85,7 @@ function ArcadeContent() {
 export default function ArcadePage() {
   return (
     <FullscreenProvider>
-      <PageWithNav navTitle="Champion Arena" navEmoji="🏟️">
+      <PageWithNav navTitle="Champion Arena" navEmoji="🏟️" emphasizeGameContext={true}>
         <ArcadeContent />
       </PageWithNav>
     </FullscreenProvider>
