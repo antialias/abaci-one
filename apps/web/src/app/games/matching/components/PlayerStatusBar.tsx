@@ -39,81 +39,44 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
   }
 
   if (activePlayers.length <= 1) {
-    // Epic single player mode
+    // Simple single player indicator
     return (
       <div className={css({
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #667eea, #764ba2)',
-        rounded: '2xl',
-        p: { base: '4', md: '6' },
-        border: '3px solid',
-        borderColor: 'purple.300',
-        mb: { base: '3', md: '4' },
-        boxShadow: '0 0 0 2px white, 0 0 0 6px rgba(102, 126, 234, 0.4), 0 12px 32px rgba(0,0,0,0.2)',
-        animation: 'gentle-pulse 3s ease-in-out infinite',
-        position: 'relative'
+        background: 'white',
+        rounded: 'lg',
+        p: { base: '2', md: '3' },
+        border: '2px solid',
+        borderColor: 'blue.200',
+        mb: { base: '2', md: '3' },
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
       })}
       className={className}>
-        {/* Subtle glow effect */}
-        <div className={css({
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%)',
-          pointerEvents: 'none'
-        })} />
-
         <div className={css({
           display: 'flex',
           alignItems: 'center',
-          gap: { base: '4', md: '6' },
-          position: 'relative',
-          zIndex: 2
+          gap: { base: '2', md: '3' }
         })}>
           <div className={css({
-            fontSize: { base: '3xl', md: '5xl' },
-            animation: 'gentle-sway 2s ease-in-out infinite',
-            textShadow: '0 0 20px currentColor',
-            transform: 'scale(1.2)'
+            fontSize: { base: 'xl', md: '2xl' }
           })}>
             {activePlayers[0]?.displayEmoji || '🚀'}
           </div>
-          <div>
-            <div className={css({
-              fontSize: { base: 'lg', md: 'xl' },
-              fontWeight: 'black',
-              color: 'white',
-              textShadow: '0 0 15px rgba(255,255,255,0.8)'
-            })}>
-              {activePlayers[0]?.displayName || 'Player 1'}
-            </div>
-            <div className={css({
-              fontSize: { base: 'sm', md: 'md' },
-              color: 'rgba(255,255,255,0.9)',
-              fontWeight: 'bold'
-            })}>
-              Solo Challenge • {gamePlurals.move(state.moves)}
-            </div>
-          </div>
-
-          {/* Epic progress indicator */}
           <div className={css({
-            background: 'linear-gradient(135deg, #ff6b6b, #ee5a24)',
-            color: 'white',
-            px: { base: '3', md: '4' },
-            py: { base: '2', md: '3' },
-            rounded: 'xl',
-            fontSize: { base: 'md', md: 'lg' },
-            fontWeight: 'black',
-            boxShadow: '0 4px 15px rgba(238, 90, 36, 0.4)',
-            animation: 'gentle-bounce 2s ease-in-out infinite',
-            textShadow: '0 0 10px rgba(255,255,255,0.8)'
+            fontSize: { base: 'sm', md: 'md' },
+            fontWeight: 'bold',
+            color: 'gray.700'
           })}>
-            ⚡{state.matchedPairs}/{state.totalPairs}⚡
+            {activePlayers[0]?.displayName || 'Player 1'}
+          </div>
+          <div className={css({
+            fontSize: { base: 'xs', md: 'sm' },
+            color: 'blue.600',
+            fontWeight: 'medium'
+          })}>
+            {gamePlurals.pair(state.matchedPairs)} of {state.totalPairs} • {gamePlurals.move(state.moves)}
           </div>
         </div>
       </div>
@@ -152,8 +115,8 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
               className={css({
                 display: 'flex',
                 alignItems: 'center',
-                gap: { base: '3', md: '4' },
-                p: isCurrentPlayer ? { base: '4', md: '6' } : { base: '2', md: '3' },
+                gap: { base: '2', md: '3' },
+                p: isCurrentPlayer ? { base: '3', md: '4' } : { base: '2', md: '2' },
                 rounded: isCurrentPlayer ? '2xl' : 'lg',
                 background: isCurrentPlayer
                   ? `linear-gradient(135deg, ${player.color || '#3b82f6'}15, ${player.color || '#3b82f6'}25, ${player.color || '#3b82f6'}15)`
@@ -217,7 +180,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
 
               {/* Living, breathing player emoji */}
               <div className={css({
-                fontSize: isCurrentPlayer ? { base: '3xl', md: '5xl' } : { base: 'lg', md: 'xl' },
+                fontSize: isCurrentPlayer ? { base: '2xl', md: '3xl' } : { base: 'lg', md: 'xl' },
                 flexShrink: 0,
                 animation: isCurrentPlayer
                   ? 'float 3s ease-in-out infinite'
@@ -282,43 +245,23 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
                 </div>
               </div>
 
-              {/* Epic score display for current player */}
+              {/* Simple score display for current player */}
               {isCurrentPlayer && (
                 <div className={css({
-                  background: 'linear-gradient(135deg, #ff6b6b, #ee5a24)',
+                  background: 'blue.500',
                   color: 'white',
-                  px: { base: '3', md: '4' },
-                  py: { base: '2', md: '3' },
-                  rounded: 'xl',
-                  fontSize: { base: 'lg', md: 'xl' },
-                  fontWeight: 'black',
-                  boxShadow: '0 4px 15px rgba(238, 90, 36, 0.4)',
-                  animation: 'gentle-bounce 1.5s ease-in-out infinite',
-                  textShadow: '0 0 10px rgba(255,255,255,0.8)'
+                  px: { base: '2', md: '3' },
+                  py: { base: '1', md: '2' },
+                  rounded: 'md',
+                  fontSize: { base: 'sm', md: 'md' },
+                  fontWeight: 'bold'
                 })}>
-                  ⚡{player.score}⚡
+                  {player.score}
                 </div>
               )}
             </div>
           )
         })}
-      </div>
-
-      {/* Game progress */}
-      <div className={css({
-        mt: '3',
-        pt: '2',
-        borderTop: '1px solid',
-        borderColor: 'gray.300',
-        textAlign: 'center'
-      })}>
-        <div className={css({
-          fontSize: { base: 'xs', md: 'sm' },
-          color: 'gray.600',
-          fontWeight: 'medium'
-        })}>
-          {gamePlurals.pair(state.matchedPairs)} of {state.totalPairs} found • {gamePlurals.move(state.moves)} total
-        </div>
       </div>
     </div>
   )

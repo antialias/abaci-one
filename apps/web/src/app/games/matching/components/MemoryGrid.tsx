@@ -103,37 +103,6 @@ export function MemoryGrid() {
       gap: { base: '12px', sm: '16px', md: '20px' }
     })}>
 
-      {/* Compact Game Progress */}
-      <div className={css({
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: { base: '12px', sm: '16px', md: '24px' },
-        padding: { base: '8px 12px', sm: '10px 16px', md: '12px 20px' },
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(248,250,252,0.95))',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-        border: '1px solid rgba(255,255,255,0.9)',
-        fontSize: { base: '14px', sm: '15px', md: '16px' },
-        fontWeight: 'bold',
-        color: 'gray.700'
-      })}>
-        <span className={css({ color: 'blue.600' })}>
-          {state.matchedPairs} matched
-        </span>
-        <span className={css({ color: 'gray.400' })}>•</span>
-        <span className={css({ color: 'purple.600' })}>
-          {gamePlurals.move(state.moves)}
-        </span>
-        {state.gameMode === 'single' && (
-          <>
-            <span className={css({ color: 'gray.400' })}>•</span>
-            <span className={css({ color: 'green.600' })}>
-              {Math.round((state.matchedPairs / state.totalPairs) * 100)}% complete
-            </span>
-          </>
-        )}
-      </div>
 
       {/* Cards Grid - Consistent r×c Layout */}
       <div
