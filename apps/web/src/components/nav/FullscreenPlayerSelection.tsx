@@ -120,8 +120,9 @@ export function FullscreenPlayerSelection({ inactivePlayers, onSelectPlayer, onC
               </div>
             </button>
 
-            {/* Subtle gear icon for configuration */}
-            <button
+            {/* Subtle gear icon for configuration (only for players 1 & 2) */}
+            {(player.id === 1 || player.id === 2) && (
+              <button
               onClick={(e) => {
                 e.stopPropagation()
                 onConfigurePlayer(player.id)
@@ -164,6 +165,7 @@ export function FullscreenPlayerSelection({ inactivePlayers, onSelectPlayer, onC
             >
               ⚙️
             </button>
+            )}
           </div>
         ))}
       </div>
