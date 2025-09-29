@@ -27,16 +27,17 @@ interface EmojiPickerProps {
   playerNumber: 1 | 2 | 3 | 4
 }
 
-// Emoji group categories from emojibase
+// Emoji group categories from emojibase (matching Unicode CLDR group IDs)
 const EMOJI_GROUPS = {
-  0: { name: 'Smileys & People', icon: '😀' },
-  1: { name: 'Animals & Nature', icon: '🐶' },
-  2: { name: 'Food & Drink', icon: '🍎' },
-  3: { name: 'Activities', icon: '⚽' },
-  4: { name: 'Travel & Places', icon: '🚗' },
-  5: { name: 'Objects', icon: '💡' },
-  6: { name: 'Symbols', icon: '❤️' },
-  7: { name: 'Flags', icon: '🏁' }
+  0: { name: 'Smileys & Emotion', icon: '😀' },
+  1: { name: 'People & Body', icon: '👤' },
+  3: { name: 'Animals & Nature', icon: '🐶' },
+  4: { name: 'Food & Drink', icon: '🍎' },
+  5: { name: 'Travel & Places', icon: '🚗' },
+  6: { name: 'Activities', icon: '⚽' },
+  7: { name: 'Objects', icon: '💡' },
+  8: { name: 'Symbols', icon: '❤️' },
+  9: { name: 'Flags', icon: '🏁' }
 } as const
 
 // Create a map of emoji to their searchable data and group
