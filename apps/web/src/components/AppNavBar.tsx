@@ -1,91 +1,26 @@
 'use client'
 
+import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 import { useFullscreen } from '../contexts/FullscreenContext'
-import { useGameTheme } from '../contexts/GameThemeContext'
 
 interface AppNavBarProps {
   variant?: 'full' | 'minimal'
+  navSlot?: React.ReactNode
 }
 
-export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
+export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isGamePage = pathname?.startsWith('/games')
   const isArcadePage = pathname?.startsWith('/arcade')
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
-  const { theme: gameTheme, isHydrated } = useGameTheme()
 
-  // Route-based theme detection as fallback for page reloads
-  const getRouteBasedTheme = () => {
-    if (pathname === '/games/memory-quiz') {
-      return {
-        gameName: "Memory Lightning",
-        backgroundColor: "linear-gradient(to bottom right, #f0fdf4, #eff6ff)"
-      }
-    }
-    if (pathname === '/games/matching') {
-      return {
-        gameName: "Memory Pairs",
-        backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-      }
-    }
-    return null
-  }
 
-  // Use context theme if available, otherwise fall back to route-based detection
-  const currentTheme = gameTheme || getRouteBasedTheme()
-
-  // Helper function to get themed background colors
-  const getThemedBackground = (opacity: number = 0.85) => {
-    // Apply theming for route-based themes immediately, or after hydration for context themes
-    if (currentTheme?.backgroundColor && (getRouteBasedTheme() || isHydrated)) {
-      const color = currentTheme.backgroundColor
-      if (color.startsWith('#')) {
-        // Convert hex to rgba
-        const hex = color.slice(1)
-        const r = parseInt(hex.slice(0, 2), 16)
-        const g = parseInt(hex.slice(2, 4), 16)
-        const b = parseInt(hex.slice(4, 6), 16)
-        return `rgba(${r}, ${g}, ${b}, ${opacity})`
-      } else if (color.startsWith('rgb')) {
-        // Handle rgb/rgba formats
-        const match = color.match(/rgba?\(([^)]+)\)/)
-        if (match) {
-          const values = match[1].split(',').map(v => v.trim())
-          if (values.length >= 3) {
-            return `rgba(${values[0]}, ${values[1]}, ${values[2]}, ${opacity})`
-          }
-        }
-      } else if (color.startsWith('linear-gradient')) {
-        // Extract colors from gradient and use dominant color
-        const hexMatch = color.match(/#[0-9a-fA-F]{6}/g)
-        if (hexMatch && hexMatch.length > 0) {
-          // Use the first color from the gradient
-          const hex = hexMatch[0].slice(1)
-          const r = parseInt(hex.slice(0, 2), 16)
-          const g = parseInt(hex.slice(2, 4), 16)
-          const b = parseInt(hex.slice(4, 6), 16)
-          return `rgba(${r}, ${g}, ${b}, ${opacity})`
-        }
-        // Fallback: try to extract rgb values
-        const rgbMatch = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g)
-        if (rgbMatch && rgbMatch.length > 0) {
-          const values = rgbMatch[0].match(/\d+/g)
-          if (values && values.length >= 3) {
-            return `rgba(${values[0]}, ${values[1]}, ${values[2]}, ${opacity})`
-          }
-        }
-        // Final fallback for gradients
-        return isFullscreen ? `rgba(0, 0, 0, ${opacity})` : `rgba(255, 255, 255, ${opacity})`
-      }
-    }
-    return isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'
-  }
 
   // Auto-detect variant based on context
   const actualVariant = variant === 'full' && (isGamePage || isArcadePage) ? 'minimal' : variant
@@ -103,42 +38,36 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
         transition: 'all 0.3s ease'
       })}>
         <div className={hstack({ gap: '2' })}>
-          {/* Game branding (fullscreen only) */}
-          {isFullscreen && (isArcadePage || isGamePage) && (
+          {/* Game branding from slot */}
+          {navSlot && (
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
                 padding: '8px 16px',
-                background: currentTheme ? getThemedBackground(0.85) : 'rgba(0, 0, 0, 0.85)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                background: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
+                border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
                 borderRadius: '8px',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                backdropFilter: 'blur(15px)'
+                backdropFilter: isFullscreen ? 'blur(15px)' : 'none'
               }}
             >
-              <h1 className={css({
-                fontSize: 'lg',
-                fontWeight: 'bold',
-                background: gameTheme ? 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)' : 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
-                backgroundClip: 'text',
-                color: 'transparent'
-              })}>
-                🕹️ {currentTheme?.gameName || (isArcadePage ? 'Arcade' : 'Game')}
-              </h1>
-              <div className={css({
-                px: '2',
-                py: '1',
-                background: 'rgba(34, 197, 94, 0.2)',
-                border: '1px solid rgba(34, 197, 94, 0.3)',
-                rounded: 'full',
-                fontSize: 'xs',
-                color: 'green.300',
-                fontWeight: 'semibold'
-              })}>
-                ✨ FULLSCREEN
-              </div>
+              {navSlot}
+              {isFullscreen && (
+                <div className={css({
+                  px: '2',
+                  py: '1',
+                  background: 'rgba(34, 197, 94, 0.2)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  rounded: 'full',
+                  fontSize: 'xs',
+                  color: 'green.300',
+                  fontWeight: 'semibold'
+                })}>
+                  ✨ FULLSCREEN
+                </div>
+              )}
             </div>
           )}
 
@@ -149,7 +78,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
               alignItems: 'center',
               gap: '8px',
               padding: '8px 12px',
-              background: currentTheme ? getThemedBackground(isFullscreen ? 0.85 : 1) : (isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'),
+              background: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
               border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
               borderRadius: '8px',
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
@@ -198,7 +127,7 @@ export function AppNavBar({ variant = 'full' }: AppNavBarProps) {
               alignItems: 'center',
               gap: '8px',
               padding: '8px 12px',
-              background: currentTheme ? getThemedBackground(isFullscreen ? 0.85 : 1) : (isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white'),
+              background: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
               border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
               borderRadius: '8px',
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
