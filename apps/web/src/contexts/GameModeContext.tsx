@@ -13,11 +13,9 @@ export interface PlayerConfig {
 }
 
 export interface GameModeContextType {
-  gameMode: GameMode
+  gameMode: GameMode // Computed from activePlayerCount
   players: PlayerConfig[]
   activePlayerCount: number
-  setGameMode: (mode: GameMode) => void
-  setGameModeWithPlayers: (mode: GameMode) => void
   updatePlayer: (id: number, config: Partial<PlayerConfig>) => void
   getActivePlayer: (id: number) => PlayerConfig | undefined
   resetPlayers: () => void
@@ -54,12 +52,11 @@ const defaultPlayers: PlayerConfig[] = [
   }
 ]
 
-const STORAGE_KEY = 'soroban-game-mode-config'
+const STORAGE_KEY = 'soroban-game-mode-players'
 
 const GameModeContext = createContext<GameModeContextType | null>(null)
 
 export function GameModeProvider({ children }: { children: ReactNode }) {
-  const [gameMode, setGameModeState] = useState<GameMode>('single')
   const [players, setPlayers] = useState<PlayerConfig[]>(defaultPlayers)
   const [isInitialized, setIsInitialized] = useState(false)
 
@@ -70,7 +67,6 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         const stored = localStorage.getItem(STORAGE_KEY)
         if (stored) {
           const config = JSON.parse(stored)
-          setGameModeState(config.gameMode || 'single')
           setPlayers(config.players || defaultPlayers)
         }
         setIsInitialized(true)
@@ -85,33 +81,13 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined' && isInitialized) {
       try {
-        const config = { gameMode, players }
+        const config = { players }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
       } catch (error) {
         console.warn('Failed to save game mode config to localStorage:', error)
       }
     }
-  }, [gameMode, players, isInitialized])
-
-  const setGameMode = (mode: GameMode) => {
-    setGameModeState(mode)
-    // Note: Player activation is now handled by the ChampionArena component
-    // to allow for drag-and-drop control
-  }
-
-  const setGameModeWithPlayers = (mode: GameMode) => {
-    setGameModeState(mode)
-
-    // Auto-configure active players based on mode (for non-arena usage)
-    setPlayers(prevPlayers => prevPlayers.map(player => ({
-      ...player,
-      isActive: mode === 'single'
-        ? player.id === 1
-        : mode === 'battle'
-        ? player.id <= 2
-        : player.id <= 4 // tournament mode
-    })))
-  }
+  }, [players, isInitialized])
 
   const updatePlayer = (id: number, config: Partial<PlayerConfig>) => {
     setPlayers(prevPlayers =>
@@ -127,17 +103,19 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
 
   const resetPlayers = () => {
     setPlayers(defaultPlayers)
-    setGameModeState('single')
   }
 
   const activePlayerCount = players.filter(player => player.isActive).length
+
+  // Compute game mode from active player count
+  const gameMode: GameMode = activePlayerCount === 1 ? 'single' :
+                             activePlayerCount === 2 ? 'battle' :
+                             activePlayerCount >= 3 ? 'tournament' : 'single'
 
   const contextValue: GameModeContextType = {
     gameMode,
     players,
     activePlayerCount,
-    setGameMode,
-    setGameModeWithPlayers,
     updatePlayer,
     getActivePlayer,
     resetPlayers

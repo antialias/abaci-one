@@ -356,7 +356,7 @@ function DroppableZone({
 
 export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, className }: EnhancedChampionArenaProps) {
   const { profile } = useUserProfile()
-  const { gameMode, players, setGameMode, updatePlayer } = useGameMode()
+  const { gameMode, players, updatePlayer } = useGameMode()
   const [activeId, setActiveId] = useState<number | null>(null)
   const [dragOverZone, setDragOverZone] = useState<'roster' | 'arena' | null>(null)
 
@@ -461,7 +461,7 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
       else if (newArenaCount === 2) newMode = 'battle'
       else if (newArenaCount >= 3) newMode = 'tournament'
 
-      setGameMode(newMode)
+      // gameMode is now computed from active player count
       onGameModeChange?.(newMode)
     }
   }
@@ -512,7 +512,7 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
       else if (newArenaCount === 2) newMode = 'battle'
       else if (newArenaCount >= 3) newMode = 'tournament'
 
-      setGameMode(newMode)
+      // gameMode is now computed from active player count
       onGameModeChange?.(newMode)
     }
   }
@@ -540,7 +540,7 @@ export function EnhancedChampionArena({ onGameModeChange, onConfigurePlayer, cla
     else if (newArenaCount === 2) newMode = 'battle'
     else if (newArenaCount >= 3) newMode = 'tournament'
 
-    setGameMode(newMode)
+    // gameMode is now computed from active player count
     onGameModeChange?.(newMode)
   }
 

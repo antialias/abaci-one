@@ -15,7 +15,7 @@ interface ChampionArenaProps {
 
 export function ChampionArena({ onGameModeChange, onConfigurePlayer, className }: ChampionArenaProps) {
   const { profile, updatePlayerEmoji, updatePlayerName } = useUserProfile()
-  const { gameMode, players, setGameMode, updatePlayer, activePlayerCount } = useGameMode()
+  const { gameMode, players, updatePlayer, activePlayerCount } = useGameMode()
   const [draggedPlayer, setDraggedPlayer] = useState<number | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
   const [isRosterDragOver, setIsRosterDragOver] = useState(false)
@@ -69,7 +69,7 @@ export function ChampionArena({ onGameModeChange, onConfigurePlayer, className }
         newMode = 'tournament'
       }
 
-      setGameMode(newMode)
+      // gameMode is now computed from active player count
       onGameModeChange?.(newMode)
       setDraggedPlayer(null)
     }
@@ -130,7 +130,7 @@ export function ChampionArena({ onGameModeChange, onConfigurePlayer, className }
     console.log('New mode will be:', newMode, 'with', newActiveCount, 'active players')
 
     // Update game mode
-    setGameMode(newMode)
+    // gameMode is now computed from active player count
     onGameModeChange?.(newMode)
   }
 
@@ -167,7 +167,7 @@ export function ChampionArena({ onGameModeChange, onConfigurePlayer, className }
     // Note: Allow arena to be completely empty - user can drag champions back in
 
     // Update game mode
-    setGameMode(newMode)
+    // gameMode is now computed from active player count
     onGameModeChange?.(newMode)
   }
 
