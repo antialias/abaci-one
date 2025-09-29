@@ -264,9 +264,6 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         overflow: 'hidden'
       }}
     >
-      <h2 style={{ color: '#374151', margin: '0 0 8px 0', fontSize: '18px' }}>🧠 Speed Memory Quiz</h2>
-      <p style={{ color: '#6b7280', margin: '0 0 16px 0', fontSize: '14px' }}>Test your soroban reading skills! Cards will be shown briefly, then you'll enter the numbers you remember.</p>
-
       <div
         style={{
           maxWidth: '100%',
