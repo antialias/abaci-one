@@ -9,18 +9,23 @@ interface Player {
 interface FullscreenPlayerSelectionProps {
   inactivePlayers: Player[]
   onSelectPlayer: (playerId: number) => void
+  isVisible: boolean
 }
 
-export function FullscreenPlayerSelection({ inactivePlayers, onSelectPlayer }: FullscreenPlayerSelectionProps) {
+export function FullscreenPlayerSelection({ inactivePlayers, onSelectPlayer, isVisible }: FullscreenPlayerSelectionProps) {
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       gap: '32px',
-      width: '100%',
-      padding: '40px 20px',
-      animation: 'expandIn 0.4s ease'
+      width: isVisible ? '100%' : '0',
+      padding: isVisible ? '40px 20px' : '0',
+      maxHeight: isVisible ? '800px' : '0',
+      opacity: isVisible ? 1 : 0,
+      overflow: 'hidden',
+      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+      pointerEvents: isVisible ? 'auto' : 'none'
     }}>
       <div style={{
         textAlign: 'center',

@@ -35,14 +35,35 @@ export function GameContextNav({
   onAddPlayer,
   onRemovePlayer
 }: GameContextNavProps) {
+  const [isTransitioning, setIsTransitioning] = React.useState(false)
+  const [layoutMode, setLayoutMode] = React.useState<'column' | 'row'>(showFullscreenSelection ? 'column' : 'row')
+  const [containerWidth, setContainerWidth] = React.useState<string>(showFullscreenSelection ? '100%' : 'auto')
+
+  React.useEffect(() => {
+    if (showFullscreenSelection) {
+      // Switching to fullscreen - change layout and width immediately
+      setLayoutMode('column')
+      setContainerWidth('100%')
+    } else {
+      // Switching away from fullscreen - delay layout change until transition completes
+      setIsTransitioning(true)
+      setContainerWidth('auto')
+      const timer = setTimeout(() => {
+        setLayoutMode('row')
+        setIsTransitioning(false)
+      }, 400) // Match transition duration
+      return () => clearTimeout(timer)
+    }
+  }, [showFullscreenSelection])
+
   return (
     <div style={{
       display: 'flex',
-      flexDirection: showFullscreenSelection ? 'column' : 'row',
+      flexDirection: layoutMode,
       alignItems: showFullscreenSelection ? 'stretch' : 'center',
       gap: shouldEmphasize ? '16px' : '12px',
-      width: showFullscreenSelection ? '100%' : 'auto',
-      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+      width: containerWidth,
+      transition: 'gap 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
       {/* Header row */}
       <div style={{
@@ -102,12 +123,11 @@ export function GameContextNav({
       </div>
 
       {/* Fullscreen player selection grid */}
-      {showFullscreenSelection && (
-        <FullscreenPlayerSelection
-          inactivePlayers={inactivePlayers}
-          onSelectPlayer={onAddPlayer}
-        />
-      )}
+      <FullscreenPlayerSelection
+        inactivePlayers={inactivePlayers}
+        onSelectPlayer={onAddPlayer}
+        isVisible={showFullscreenSelection}
+      />
 
       {/* Add keyframes for animations */}
       <style dangerouslySetInnerHTML={{ __html: `
