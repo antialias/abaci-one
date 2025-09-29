@@ -23,12 +23,7 @@ export function MemoryPairsGame() {
   }, [setFullscreenElement])
 
   return (
-    <StandardGameLayout
-      theme={{
-        gameName: "Memory Pairs",
-        backgroundColor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-      }}
-    >
+    <StandardGameLayout>
       <div
         ref={gameRef}
         className={css({

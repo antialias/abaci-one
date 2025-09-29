@@ -4,7 +4,7 @@ import Link from 'next/link'
 import React, { useEffect, useReducer, useRef, useCallback, useMemo, useState } from 'react'
 import { css } from '../../../../styled-system/css'
 import { AbacusReact } from '@soroban/abacus-react'
-import { useAbacusConfig } from '../../../contexts/AbacusDisplayContext'
+import { useAbacusConfig } from '@soroban/abacus-react'
 import { isPrefix } from '../../../lib/memory-quiz-utils'
 import { StandardGameLayout } from '../../../components/StandardGameLayout'
 
@@ -223,6 +223,8 @@ const generateQuizCards = (count: number, difficulty: DifficultyLevel, appConfig
       interactive={false}
       showNumbers={false}
       animated={false}
+      soundEnabled={appConfig.soundEnabled}
+      soundVolume={appConfig.soundVolume}
     />,
     element: null
   }))
@@ -1731,12 +1733,7 @@ export default function MemoryQuizPage() {
   }, [state.prefixAcceptanceTimeout])
 
   return (
-    <StandardGameLayout
-      theme={{
-        gameName: "Memory Lightning",
-        backgroundColor: "linear-gradient(to bottom right, #f0fdf4, #eff6ff)"
-      }}
-    >
+    <StandardGameLayout>
       <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
 
       <div

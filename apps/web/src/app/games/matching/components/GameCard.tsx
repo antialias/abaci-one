@@ -1,7 +1,7 @@
 'use client'
 
 import { AbacusReact } from '@soroban/abacus-react'
-import { useAbacusConfig } from '../../../../contexts/AbacusDisplayContext'
+import { useAbacusConfig } from '@soroban/abacus-react'
 import { useUserProfile } from '../../../../contexts/UserProfileContext'
 import type { GameCardProps } from '../context/types'
 import { css } from '../../../../../styled-system/css'

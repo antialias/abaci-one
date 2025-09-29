@@ -1,16 +1,11 @@
 'use client'
 
-import { ReactNode, useEffect } from 'react'
+import { ReactNode } from 'react'
 import { css } from '../../styled-system/css'
-import { useGameTheme } from '../contexts/GameThemeContext'
 
 interface StandardGameLayoutProps {
   children: ReactNode
   className?: string
-  theme?: {
-    gameName: string
-    backgroundColor: string
-  }
 }
 
 /**
@@ -20,18 +15,7 @@ interface StandardGameLayoutProps {
  * 3. Perfect viewport fit on all devices
  * 4. Consistent experience across all games
  */
-export function StandardGameLayout({ children, className, theme }: StandardGameLayoutProps) {
-  const { setTheme } = useGameTheme()
-
-  // Set the theme when component mounts and clean up on unmount
-  useEffect(() => {
-    if (theme) {
-      setTheme(theme)
-    }
-    return () => {
-      setTheme(null)
-    }
-  }, [theme, setTheme])
+export function StandardGameLayout({ children, className }: StandardGameLayoutProps) {
 
   return (
     <div className={css({
@@ -54,8 +38,8 @@ export function StandardGameLayout({ children, className, theme }: StandardGameL
       display: 'flex',
       flexDirection: 'column',
 
-      // Apply the theme background if provided
-      background: theme?.backgroundColor || 'transparent'
+      // Transparent background - themes will be applied at nav level
+      background: 'transparent'
     }, className)}>
       {children}
     </div>

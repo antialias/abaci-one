@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { useUserProfile } from '../../../../contexts/UserProfileContext'
 import { GameCard } from './GameCard'
@@ -88,7 +88,7 @@ export function MemoryGrid() {
     return null
   }
 
-  const gridConfig = getGridConfiguration(state.difficulty)
+  const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])
   const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length)
 
 
