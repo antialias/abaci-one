@@ -22,6 +22,7 @@ interface GameContextNavProps {
   showFullscreenSelection: boolean
   onAddPlayer: (playerId: number) => void
   onRemovePlayer: (playerId: number) => void
+  onConfigurePlayer: (playerId: number) => void
 }
 
 export function GameContextNav({
@@ -33,7 +34,8 @@ export function GameContextNav({
   shouldEmphasize,
   showFullscreenSelection,
   onAddPlayer,
-  onRemovePlayer
+  onRemovePlayer,
+  onConfigurePlayer
 }: GameContextNavProps) {
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   const [layoutMode, setLayoutMode] = React.useState<'column' | 'row'>(showFullscreenSelection ? 'column' : 'row')
@@ -111,6 +113,7 @@ export function GameContextNav({
               activePlayers={activePlayers}
               shouldEmphasize={shouldEmphasize}
               onRemovePlayer={onRemovePlayer}
+              onConfigurePlayer={onConfigurePlayer}
             />
 
             <AddPlayerButton
@@ -126,6 +129,7 @@ export function GameContextNav({
       <FullscreenPlayerSelection
         inactivePlayers={inactivePlayers}
         onSelectPlayer={onAddPlayer}
+        onConfigurePlayer={onConfigurePlayer}
         isVisible={showFullscreenSelection}
       />
 

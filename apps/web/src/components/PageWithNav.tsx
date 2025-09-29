@@ -5,6 +5,7 @@ import { AppNavBar } from './AppNavBar'
 import { useGameMode } from '../contexts/GameModeContext'
 import { useUserProfile } from '../contexts/UserProfileContext'
 import { GameContextNav } from './nav/GameContextNav'
+import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
 
 interface PageWithNavProps {
   navTitle?: string
@@ -17,6 +18,7 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
   const { players, activePlayerCount, updatePlayer } = useGameMode()
   const { profile } = useUserProfile()
   const [mounted, setMounted] = React.useState(false)
+  const [configurePlayerId, setConfigurePlayerId] = React.useState<1 | 2 | null>(null)
 
   // Delay mounting animation slightly for smooth transition
   React.useEffect(() => {
@@ -30,6 +32,13 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
 
   const handleAddPlayer = (playerId: number) => {
     updatePlayer(playerId, { isActive: true })
+  }
+
+  const handleConfigurePlayer = (playerId: number) => {
+    // Only support configuring players 1 and 2
+    if (playerId === 1 || playerId === 2) {
+      setConfigurePlayerId(playerId)
+    }
   }
 
   // Transform players to use profile emojis for players 1 and 2
@@ -70,6 +79,7 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
       showFullscreenSelection={showFullscreenSelection}
       onAddPlayer={handleAddPlayer}
       onRemovePlayer={handleRemovePlayer}
+      onConfigurePlayer={handleConfigurePlayer}
     />
   ) : null
 
@@ -77,6 +87,12 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
     <>
       <AppNavBar navSlot={navContent} />
       {children}
+      {configurePlayerId && (
+        <PlayerConfigDialog
+          playerId={configurePlayerId}
+          onClose={() => setConfigurePlayerId(null)}
+        />
+      )}
     </>
   )
 }
