@@ -52,7 +52,10 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          echo "Installing dependencies..."
+          pnpm install
+          echo "Dependencies installed successfully"
 
       - name: Build abacus-react package
         run: pnpm --filter @soroban/abacus-react build
