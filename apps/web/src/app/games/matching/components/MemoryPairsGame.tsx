@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { useFullscreen } from '../../../../contexts/FullscreenContext'
 import { SetupPhase } from './SetupPhase'
 import { GamePhase } from './GamePhase'
 import { ResultsPhase } from './ResultsPhase'
 import { StandardGameLayout } from '../../../../components/StandardGameLayout'
+import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../../../styled-system/css'
 
 export function MemoryPairsGame() {
@@ -23,7 +24,12 @@ export function MemoryPairsGame() {
   }, [setFullscreenElement])
 
   return (
-    <StandardGameLayout>
+    <PageWithNav
+      navTitle="Memory Pairs"
+      navEmoji="🧩"
+      emphasizeGameContext={state.gamePhase === 'setup'}
+    >
+      <StandardGameLayout>
       <div
         ref={gameRef}
         className={css({
@@ -36,23 +42,6 @@ export function MemoryPairsGame() {
           overflow: 'auto'
         })}>
         {/* Note: Fullscreen restore prompt removed - client-side navigation preserves fullscreen */}
-
-        <header className={css({
-          textAlign: 'center',
-          marginBottom: { base: '8px', sm: '12px', md: '16px' },
-          px: { base: '4', md: '0' },
-          display: { base: 'none', sm: 'block' }
-        })}>
-          <h1 className={css({
-            fontSize: { base: '16px', sm: '20px', md: '24px' },
-            fontWeight: 'bold',
-            color: 'white',
-            textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
-            marginBottom: 0
-          })}>
-            Memory Pairs
-          </h1>
-        </header>
 
         <main className={css({
           width: '100%',
@@ -72,5 +61,6 @@ export function MemoryPairsGame() {
         </main>
       </div>
     </StandardGameLayout>
+    </PageWithNav>
   )
 }
