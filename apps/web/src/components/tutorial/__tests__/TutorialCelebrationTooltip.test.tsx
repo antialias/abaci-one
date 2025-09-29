@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import { TutorialProvider, useTutorialContext } from '../TutorialContext'
 import { TutorialPlayer } from '../TutorialPlayer'
 import { Tutorial, TutorialStep } from '../../../types/tutorial'
-import { AbacusDisplayProvider } from '@/contexts/AbacusDisplayContext'
+import { AbacusDisplayProvider } from '@soroban/abacus-react'
 
 // Mock tutorial data
 const mockTutorial: Tutorial = {

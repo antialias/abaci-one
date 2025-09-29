@@ -5,7 +5,7 @@ import { vi } from 'vitest'
 import { TutorialProvider } from '../TutorialContext'
 import { TutorialPlayer } from '../TutorialPlayer'
 import { Tutorial } from '../../../types/tutorial'
-import { AbacusDisplayProvider } from '@/contexts/AbacusDisplayContext'
+import { AbacusDisplayProvider } from '@soroban/abacus-react'
 
 // Mock the AbacusReact component to make testing easier
 vi.mock('@soroban/abacus-react', () => ({
