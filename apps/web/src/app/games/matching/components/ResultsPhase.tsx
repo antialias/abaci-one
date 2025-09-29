@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { useGameMode } from '../../../../contexts/GameModeContext'
+import { useUserProfile } from '../../../../contexts/UserProfileContext'
 import { formatGameTime, getMultiplayerWinner, getPerformanceAnalysis } from '../utils/gameScoring'
 import { css } from '../../../../../styled-system/css'
 
@@ -10,9 +11,20 @@ export function ResultsPhase() {
   const router = useRouter()
   const { state, resetGame, activePlayers } = useMemoryPairs()
   const { players } = useGameMode()
+  const { profile } = useUserProfile()
 
-  // Get active player data
-  const activePlayerData = players.filter(p => activePlayers.includes(p.id))
+  // Get active player data with profile information
+  const activePlayerData = players
+    .filter(p => activePlayers.includes(p.id))
+    .map(player => ({
+      ...player,
+      displayName: player.id === 1 ? profile.player1Name :
+                   player.id === 2 ? profile.player2Name :
+                   player.name,
+      displayEmoji: player.id === 1 ? profile.player1Emoji :
+                    player.id === 2 ? profile.player2Emoji :
+                    player.emoji
+    }))
 
   const gameTime = state.gameEndTime && state.gameStartTime
     ? state.gameEndTime - state.gameStartTime
@@ -64,7 +76,7 @@ export function ResultsPhase() {
                 color: 'blue.600',
                 fontWeight: 'bold'
               })}>
-                🏆 {activePlayerData.find(p => p.id === multiplayerResult.winners[0])?.name || `Player ${multiplayerResult.winners[0]}`} Wins!
+                🏆 {activePlayerData.find(p => p.id === multiplayerResult.winners[0])?.displayName || `Player ${multiplayerResult.winners[0]}`} Wins!
               </p>
             ) : (
               <p className={css({
@@ -192,10 +204,10 @@ export function ResultsPhase() {
                 minWidth: '150px'
               })}>
                 <div className={css({ fontSize: '48px', marginBottom: '8px' })}>
-                  {player.emoji}
+                  {player.displayEmoji}
                 </div>
                 <div className={css({ fontSize: '14px', marginBottom: '4px', opacity: 0.9 })}>
-                  {player.name}
+                  {player.displayName}
                 </div>
                 <div className={css({ fontSize: '36px', fontWeight: 'bold' })}>
                   {score}
