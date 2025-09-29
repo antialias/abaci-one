@@ -167,7 +167,8 @@
       "Bash(open http://localhost:3001)",
       "Bash(open http://localhost:3001/arcade)",
       "Bash(open http://localhost:6006)",
-      "Bash(open http://localhost:3002/games/matching)"
+      "Bash(open http://localhost:3002/games/matching)",
+      "Bash(open http://localhost:3002/create)"
     ],
     "deny": [],
     "ask": []

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { css } from '../../../styled-system/css'
 import { container, stack, hstack, grid } from '../../../styled-system/patterns'
+import { PageWithNav } from '@/components/PageWithNav'
 import { TypstSoroban } from '@/components/TypstSoroban'
 import { InteractiveAbacus } from '@/components/InteractiveAbacus'
 import { AbacusReact } from '@soroban/abacus-react'
@@ -16,7 +17,8 @@ type TabType = 'reading' | 'arithmetic'
 export default function GuidePage() {
   const [activeTab, setActiveTab] = useState<TabType>('reading')
   return (
-    <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
+    <PageWithNav navTitle="Interactive Guide" navEmoji="📚">
+      <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
 
       {/* Hero Section */}
       <div className={css({
@@ -1281,6 +1283,7 @@ function ArithmeticOperationsGuide() {
           Practice Arithmetic Operations →
         </Link>
       </div>
-    </div>
+      </div>
+    </PageWithNav>
   )
 }

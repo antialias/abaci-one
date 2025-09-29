@@ -2,11 +2,13 @@
 
 import { css } from '../../styled-system/css'
 import { container, stack, hstack } from '../../styled-system/patterns'
+import { PageWithNav } from '@/components/PageWithNav'
 import Link from 'next/link'
 
 export default function HomePage() {
   return (
-    <div className={css({ minHeight: '100vh', bg: 'gradient-to-br from-brand.50 to-brand.100' })}>
+    <PageWithNav navTitle="Soroban Flashcards" navEmoji="🧮">
+      <div className={css({ minHeight: '100vh', bg: 'gradient-to-br from-brand.50 to-brand.100' })}>
 
       {/* Hero Section */}
       <main className={container({ maxW: '6xl', px: '4' })}>
@@ -109,7 +111,8 @@ export default function HomePage() {
           </div>
         </div>
       </main>
-    </div>
+      </div>
+    </PageWithNav>
   )
 }
 

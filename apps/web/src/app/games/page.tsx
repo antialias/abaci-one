@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { css } from '../../../styled-system/css'
 import { grid } from '../../../styled-system/patterns'
+import { PageWithNav } from '@/components/PageWithNav'
 import { useUserProfile } from '../../contexts/UserProfileContext'
 import { useGameMode } from '../../contexts/GameModeContext'
 import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
@@ -1158,7 +1159,11 @@ const globalAnimations = `
 `
 
 export default function GamesPage() {
-  return <GamesPageContent />
+  return (
+    <PageWithNav navTitle="Soroban Arcade" navEmoji="🕹️">
+      <GamesPageContent />
+    </PageWithNav>
+  )
 }
 
 // Inject refined animations into the page

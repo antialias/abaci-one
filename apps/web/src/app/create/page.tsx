@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { css } from '../../../styled-system/css'
 import { container, stack, hstack, grid } from '../../../styled-system/patterns'
+import { PageWithNav } from '@/components/PageWithNav'
 import Link from 'next/link'
 import { ConfigurationForm } from '@/components/ConfigurationForm'
 import { ConfigurationFormWithoutGenerate } from '@/components/ConfigurationFormWithoutGenerate'
@@ -185,7 +186,8 @@ export default function CreatePage() {
   }
 
   return (
-    <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
+    <PageWithNav navTitle="Create Flashcards" navEmoji="✨">
+      <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
 
       {/* Main Content */}
       <div className={container({ maxW: '7xl', px: '4', py: '8' })}>
@@ -378,6 +380,7 @@ export default function CreatePage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </PageWithNav>
   )
 }
