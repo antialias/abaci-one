@@ -14,8 +14,6 @@ export function GameControls() {
 
   const handleStyleSelect = (style: GameStyle) => {
     dispatch({ type: 'SET_STYLE', style })
-    // Update URL to match selected game style
-    router.push(`/games/complement-race/${style}`)
   }
 
   const handleTimeoutSelect = (timeout: TimeoutSetting) => {
@@ -23,6 +21,8 @@ export function GameControls() {
   }
 
   const handleStartRace = () => {
+    // Update URL to match selected game style when starting
+    router.push(`/games/complement-race/${state.style}`)
     dispatch({ type: 'START_COUNTDOWN' })
   }
 
