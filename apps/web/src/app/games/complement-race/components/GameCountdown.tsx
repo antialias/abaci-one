@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
 import { useGameLoop } from '../hooks/useGameLoop'
+import { useSoundEffects } from '../hooks/useSoundEffects'
 
 export function GameCountdown() {
   const { dispatch } = useComplementRace()
+  const { playSound } = useSoundEffects()
   const [count, setCount] = useState(3)
   const [showGo, setShowGo] = useState(false)
 
@@ -13,12 +15,14 @@ export function GameCountdown() {
     const countdownInterval = setInterval(() => {
       setCount(prevCount => {
         if (prevCount > 1) {
-          // TODO: Play countdown sound
+          // Play countdown beep (volume 0.4)
+          playSound('countdown', 0.4)
           return prevCount - 1
         } else if (prevCount === 1) {
           // Show GO!
           setShowGo(true)
-          // TODO: Play start sound
+          // Play race start fanfare (volume 0.6)
+          playSound('race_start', 0.6)
           return 0
         }
         return prevCount
@@ -26,7 +30,7 @@ export function GameCountdown() {
     }, 1000)
 
     return () => clearInterval(countdownInterval)
-  }, [])
+  }, [playSound])
 
   useEffect(() => {
     if (showGo) {

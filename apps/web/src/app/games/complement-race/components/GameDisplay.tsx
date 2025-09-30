@@ -5,6 +5,7 @@ import { useComplementRace } from '../context/ComplementRaceContext'
 import { useAIRacers } from '../hooks/useAIRacers'
 import { useAdaptiveDifficulty } from '../hooks/useAdaptiveDifficulty'
 import { useSteamJourney } from '../hooks/useSteamJourney'
+import { useSoundEffects } from '../hooks/useSoundEffects'
 import { LinearTrack } from './RaceTrack/LinearTrack'
 import { CircularTrack } from './RaceTrack/CircularTrack'
 import { SteamTrainJourney } from './RaceTrack/SteamTrainJourney'
@@ -16,6 +17,7 @@ export function GameDisplay() {
   useAIRacers() // Activate AI racer updates (not used in sprint mode)
   const { trackPerformance, getAdaptiveFeedbackMessage } = useAdaptiveDifficulty()
   const { boostMomentum } = useSteamJourney()
+  const { playSound } = useSoundEffects()
 
   // Show adaptive feedback with auto-hide
   useEffect(() => {
@@ -66,6 +68,22 @@ export function GameDisplay() {
               dispatch({ type: 'SUBMIT_ANSWER', answer })
               trackPerformance(true, responseTime)
 
+              // Play appropriate sound based on performance (from web_generator.py lines 11530-11542)
+              const newStreak = state.streak + 1
+              if (newStreak > 0 && newStreak % 5 === 0) {
+                // Epic streak sound for every 5th correct answer
+                playSound('streak')
+              } else if (responseTime < 800) {
+                // Whoosh sound for very fast responses (under 800ms)
+                playSound('whoosh')
+              } else if (responseTime < 1200 && state.streak >= 3) {
+                // Combo sound for rapid answers while on a streak
+                playSound('combo')
+              } else {
+                // Regular correct sound
+                playSound('correct')
+              }
+
               // Boost momentum for sprint mode
               if (state.style === 'sprint') {
                 boostMomentum()
@@ -81,6 +99,9 @@ export function GameDisplay() {
             } else {
               // Incorrect answer
               trackPerformance(false, responseTime)
+
+              // Play incorrect sound (from web_generator.py line 11589)
+              playSound('incorrect')
 
               // Show adaptive feedback
               const feedback = getAdaptiveFeedbackMessage(pairKey, false, responseTime)
@@ -99,7 +120,7 @@ export function GameDisplay() {
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [state.currentInput, state.currentQuestion, state.questionStartTime, state.style, dispatch, trackPerformance, getAdaptiveFeedbackMessage, boostMomentum])
+  }, [state.currentInput, state.currentQuestion, state.questionStartTime, state.style, state.streak, dispatch, trackPerformance, getAdaptiveFeedbackMessage, boostMomentum, playSound])
 
   // Handle route celebration continue
   const handleContinueToNextRoute = () => {
