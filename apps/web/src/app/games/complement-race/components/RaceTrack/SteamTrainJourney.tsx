@@ -125,11 +125,10 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       width: '100%',
       height: '100%',
       background: 'transparent',
-      borderRadius: '12px',
       overflow: 'visible',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'stretch'
     }}>
       {/* Route and time of day indicator */}
       <div data-component="route-info" style={{
@@ -199,7 +198,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
         viewBox="-50 -50 900 700"
         style={{
           width: '100%',
-          maxWidth: '1400px',
           height: 'auto',
           aspectRatio: '800 / 600',
           overflow: 'visible'

@@ -254,9 +254,9 @@ export function GameDisplay() {
         right: '50%',
         marginLeft: '-50vw',
         marginRight: '-50vw',
-        padding: state.style === 'sprint' ? '0 8px' : '0 20px',
+        padding: state.style === 'sprint' ? '0' : '0 20px',
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: state.style === 'sprint' ? 'stretch' : 'center',
         background: 'transparent',
         flex: state.style === 'sprint' ? 1 : 'initial',
         minHeight: state.style === 'sprint' ? 0 : 'initial'
