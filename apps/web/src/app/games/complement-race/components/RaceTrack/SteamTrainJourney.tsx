@@ -203,6 +203,42 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           overflow: 'visible'
         }}
       >
+        {/* Gradient definitions for mountain shading and ground */}
+        <defs>
+          <linearGradient id="mountainGradientLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: '#a0a0a0', stopOpacity: 0.8 }} />
+            <stop offset="50%" style={{ stopColor: '#7a7a7a', stopOpacity: 0.6 }} />
+            <stop offset="100%" style={{ stopColor: '#5a5a5a', stopOpacity: 0.4 }} />
+          </linearGradient>
+          <linearGradient id="mountainGradientRight" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style={{ stopColor: '#5a5a5a', stopOpacity: 0.4 }} />
+            <stop offset="50%" style={{ stopColor: '#7a7a7a', stopOpacity: 0.6 }} />
+            <stop offset="100%" style={{ stopColor: '#a0a0a0', stopOpacity: 0.8 }} />
+          </linearGradient>
+          <linearGradient id="groundGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: '#6a8759', stopOpacity: 0.3 }} />
+            <stop offset="100%" style={{ stopColor: '#8B7355', stopOpacity: 0 }} />
+          </linearGradient>
+        </defs>
+
+        {/* Ground layer - extends full width */}
+        <rect
+          x="-50"
+          y="450"
+          width="900"
+          height="200"
+          fill="#8B7355"
+        />
+
+        {/* Ground gradient for depth */}
+        <rect
+          x="-50"
+          y="450"
+          width="900"
+          height="40"
+          fill="url(#groundGradient)"
+        />
+
         {/* Railroad ballast (gravel bed) */}
         <path
           d={trackData.ballastPath}
@@ -212,18 +248,55 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           strokeLinecap="round"
         />
 
-        {/* Left tunnel - at absolute left edge of viewBox (x = -50) */}
+        {/* Left mountain and tunnel */}
         <g data-element="left-tunnel">
-          {/* Mountain face - extends from left edge */}
+          {/* Mountain base - extends from left edge */}
           <rect
             x="-50"
-            y="-50"
-            width="70"
-            height="700"
-            fill="#5a5a5a"
-            stroke="#4a4a4a"
-            strokeWidth="2"
+            y="200"
+            width="120"
+            height="450"
+            fill="#6b7280"
           />
+
+          {/* Mountain peak - triangular slope */}
+          <path
+            d="M -50 200 L 70 200 L 20 -50 L -50 100 Z"
+            fill="#8b8b8b"
+          />
+
+          {/* Mountain ridge shading */}
+          <path
+            d="M -50 200 L 70 200 L 20 -50 Z"
+            fill="url(#mountainGradientLeft)"
+          />
+
+          {/* Rocky texture - vertical cracks */}
+          {[0, 1, 2, 3].map((i) => (
+            <line
+              key={`rock-left-${i}`}
+              x1={-30 + i * 20}
+              y1={250 + i * 30}
+              x2={-35 + i * 20}
+              y2={350 + i * 40}
+              stroke="#4a5568"
+              strokeWidth="2"
+              opacity="0.6"
+            />
+          ))}
+
+          {/* Vegetation/bushes at base */}
+          {[0, 1, 2].map((i) => (
+            <circle
+              key={`bush-left-${i}`}
+              cx={-20 + i * 30}
+              cy={380 + i * 15}
+              r={15}
+              fill="#4a7c59"
+              opacity="0.7"
+            />
+          ))}
+
           {/* Tunnel depth/interior (dark entrance) */}
           <ellipse
             cx="20"
@@ -232,6 +305,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             ry="55"
             fill="#0a0a0a"
           />
+
           {/* Tunnel arch opening */}
           <path
             d="M 20 355 L -50 355 L -50 245 Q -50 235, 20 235 Q 70 235, 70 245 L 70 355 Z"
@@ -239,28 +313,75 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             stroke="#4a4a4a"
             strokeWidth="3"
           />
-          {/* Tunnel arch rim (stone) */}
+
+          {/* Tunnel arch rim (stone bricks) */}
           <path
             d="M -50 245 Q -50 235, 20 235 Q 70 235, 70 245"
             fill="none"
-            stroke="#6a6a6a"
-            strokeWidth="6"
+            stroke="#8b7355"
+            strokeWidth="8"
             strokeLinecap="round"
+          />
+
+          {/* Stone brick texture around arch */}
+          <path
+            d="M -50 245 Q -50 235, 20 235 Q 70 235, 70 245"
+            fill="none"
+            stroke="#654321"
+            strokeWidth="2"
+            strokeDasharray="15,10"
           />
         </g>
 
-        {/* Right tunnel - at absolute right edge of viewBox (x = 850) */}
+        {/* Right mountain and tunnel */}
         <g data-element="right-tunnel">
-          {/* Mountain face - extends to right edge */}
+          {/* Mountain base - extends to right edge */}
           <rect
-            x="780"
-            y="-50"
-            width="70"
-            height="700"
-            fill="#5a5a5a"
-            stroke="#4a4a4a"
-            strokeWidth="2"
+            x="680"
+            y="200"
+            width="170"
+            height="450"
+            fill="#6b7280"
           />
+
+          {/* Mountain peak - triangular slope */}
+          <path
+            d="M 730 200 L 850 200 L 850 100 L 780 -50 Z"
+            fill="#8b8b8b"
+          />
+
+          {/* Mountain ridge shading */}
+          <path
+            d="M 730 200 L 850 150 L 780 -50 Z"
+            fill="url(#mountainGradientRight)"
+          />
+
+          {/* Rocky texture - vertical cracks */}
+          {[0, 1, 2, 3].map((i) => (
+            <line
+              key={`rock-right-${i}`}
+              x1={750 + i * 20}
+              y1={250 + i * 30}
+              x2={745 + i * 20}
+              y2={350 + i * 40}
+              stroke="#4a5568"
+              strokeWidth="2"
+              opacity="0.6"
+            />
+          ))}
+
+          {/* Vegetation/bushes at base */}
+          {[0, 1, 2].map((i) => (
+            <circle
+              key={`bush-right-${i}`}
+              cx={720 + i * 30}
+              cy={380 + i * 15}
+              r={15}
+              fill="#4a7c59"
+              opacity="0.7"
+            />
+          ))}
+
           {/* Tunnel depth/interior (dark entrance) */}
           <ellipse
             cx="780"
@@ -269,6 +390,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             ry="55"
             fill="#0a0a0a"
           />
+
           {/* Tunnel arch opening */}
           <path
             d="M 780 355 L 730 355 L 730 245 Q 730 235, 780 235 Q 850 235, 850 245 L 850 355 Z"
@@ -276,13 +398,23 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             stroke="#4a4a4a"
             strokeWidth="3"
           />
-          {/* Tunnel arch rim (stone) */}
+
+          {/* Tunnel arch rim (stone bricks) */}
           <path
             d="M 730 245 Q 730 235, 780 235 Q 850 235, 850 245"
             fill="none"
-            stroke="#6a6a6a"
-            strokeWidth="6"
+            stroke="#8b7355"
+            strokeWidth="8"
             strokeLinecap="round"
+          />
+
+          {/* Stone brick texture around arch */}
+          <path
+            d="M 730 245 Q 730 235, 780 235 Q 850 235, 850 245"
+            fill="none"
+            stroke="#654321"
+            strokeWidth="2"
+            strokeDasharray="15,10"
           />
         </g>
 
