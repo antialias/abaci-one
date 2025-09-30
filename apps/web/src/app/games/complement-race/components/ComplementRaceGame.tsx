@@ -11,13 +11,14 @@ export function ComplementRaceGame() {
   const { state } = useComplementRace()
 
   return (
-    <div style={{
+    <div data-component="game-page-root" style={{
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'auto',
-      padding: '20px 8px',
+      overflow: 'hidden',
+      padding: state.style === 'sprint' ? '8px' : '20px 8px',
       minHeight: '100vh',
+      maxHeight: '100vh',
       background: state.style === 'sprint'
         ? 'linear-gradient(to bottom, #2563eb 0%, #60a5fa 100%)'
         : 'radial-gradient(ellipse at center, #8db978 0%, #7ba565 40%, #6a9354 100%)',

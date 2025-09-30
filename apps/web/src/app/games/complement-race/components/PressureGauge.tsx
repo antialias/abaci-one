@@ -5,9 +5,11 @@ interface PressureGaugeProps {
 }
 
 export function PressureGauge({ pressure }: PressureGaugeProps) {
-  // Calculate needle angle (-90deg at 0 PSI to +90deg at 150 PSI)
   const maxPressure = 150
-  const angle = ((pressure / maxPressure) * 180) - 90
+
+  // Calculate needle angle - sweeps 180° from left to right
+  // 0 PSI = 180° (pointing left), 150 PSI = 0° (pointing right)
+  const angle = 180 - (pressure / maxPressure) * 180
 
   // Get pressure color
   const getPressureColor = (): string => {
@@ -40,44 +42,31 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
 
       {/* SVG Gauge */}
       <svg
-        viewBox="0 0 200 120"
+        viewBox="0 0 210 130"
         style={{
           width: '100%',
           height: 'auto',
           marginBottom: '8px'
         }}
       >
-        {/* Background arc */}
+        {/* Background arc - semicircle from left to right (bottom half) */}
         <path
           d="M 20 100 A 80 80 0 0 1 180 100"
           fill="none"
           stroke="#e5e7eb"
-          strokeWidth="12"
+          strokeWidth="8"
           strokeLinecap="round"
-        />
-
-        {/* Colored arc based on pressure */}
-        <path
-          d="M 20 100 A 80 80 0 0 1 180 100"
-          fill="none"
-          stroke={color}
-          strokeWidth="12"
-          strokeLinecap="round"
-          strokeDasharray={`${(pressure / maxPressure) * 251} 251`}
-          style={{
-            transition: 'stroke 0.3s ease-out, stroke-dasharray 0.2s ease-out',
-            filter: pressure > 50 ? `drop-shadow(0 0 6px ${color})` : 'none'
-          }}
         />
 
         {/* Tick marks */}
         {[0, 50, 100, 150].map((psi, index) => {
-          const tickAngle = ((psi / maxPressure) * 180) - 90
+          // Angle from 180° (left) to 0° (right)
+          const tickAngle = 180 - (psi / maxPressure) * 180
           const tickRad = (tickAngle * Math.PI) / 180
           const x1 = 100 + Math.cos(tickRad) * 70
-          const y1 = 100 + Math.sin(tickRad) * 70
+          const y1 = 100 - Math.sin(tickRad) * 70  // Subtract for SVG coords
           const x2 = 100 + Math.cos(tickRad) * 80
-          const y2 = 100 + Math.sin(tickRad) * 80
+          const y2 = 100 - Math.sin(tickRad) * 80  // Subtract for SVG coords
 
           return (
             <g key={`tick-${index}`}>
@@ -91,8 +80,8 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
                 strokeLinecap="round"
               />
               <text
-                x={100 + Math.cos(tickRad) * 60}
-                y={100 + Math.sin(tickRad) * 60 + 4}
+                x={100 + Math.cos(tickRad) * 92}
+                y={100 - Math.sin(tickRad) * 92 + 4}  // Subtract for SVG coords
                 textAnchor="middle"
                 fontSize="10"
                 fill="#6b7280"
@@ -112,7 +101,7 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
           x1="100"
           y1="100"
           x2={100 + Math.cos((angle * Math.PI) / 180) * 70}
-          y2={100 + Math.sin((angle * Math.PI) / 180) * 70}
+          y2={100 - Math.sin((angle * Math.PI) / 180) * 70}  // Subtract for SVG coords
           stroke={color}
           strokeWidth="3"
           strokeLinecap="round"

@@ -36,7 +36,7 @@ export function LinearTrack({ playerProgress, aiRacers, raceGoal, showFinishLine
   const playerPosition = getPosition(playerProgress)
 
   return (
-    <div style={{
+    <div data-component="linear-track" style={{
       position: 'relative',
       width: '100%',
       height: '200px',

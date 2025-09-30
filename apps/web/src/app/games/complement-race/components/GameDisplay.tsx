@@ -125,7 +125,7 @@ export function GameDisplay() {
   if (!state.currentQuestion) return null
 
   return (
-    <div style={{
+    <div data-component="game-display" style={{
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
@@ -133,7 +133,7 @@ export function GameDisplay() {
     }}>
       {/* Adaptive Feedback */}
       {state.adaptiveFeedback && (
-        <div style={{
+        <div data-component="adaptive-feedback" style={{
           position: 'fixed',
           top: '80px',
           left: '50%',
@@ -154,55 +154,60 @@ export function GameDisplay() {
         </div>
       )}
 
-      {/* Stats Header - constrained width */}
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        width: '100%',
-        padding: '0 20px',
-        marginTop: '10px'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-around',
-          marginBottom: '10px',
-          background: 'white',
-          borderRadius: '12px',
-          padding: '10px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+      {/* Stats Header - constrained width, hidden for sprint mode */}
+      {state.style !== 'sprint' && (
+        <div data-component="stats-container" style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          width: '100%',
+          padding: '0 20px',
+          marginTop: '10px'
         }}>
-          <div style={{ textAlign: 'center' }}>
+          <div data-component="stats-header" style={{
+            display: 'flex',
+            justifyContent: 'space-around',
+            marginBottom: '10px',
+            background: 'white',
+            borderRadius: '12px',
+            padding: '10px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+          }}>
+          <div data-stat="score" style={{ textAlign: 'center' }}>
             <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>Score</div>
             <div style={{ fontWeight: 'bold', fontSize: '24px', color: '#3b82f6' }}>
               {state.score}
             </div>
           </div>
-          <div style={{ textAlign: 'center' }}>
+          <div data-stat="streak" style={{ textAlign: 'center' }}>
             <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>Streak</div>
             <div style={{ fontWeight: 'bold', fontSize: '24px', color: '#10b981' }}>
               {state.streak} 🔥
             </div>
           </div>
-          <div style={{ textAlign: 'center' }}>
+          <div data-stat="progress" style={{ textAlign: 'center' }}>
             <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>Progress</div>
             <div style={{ fontWeight: 'bold', fontSize: '24px', color: '#f59e0b' }}>
               {state.correctAnswers}/{state.raceGoal}
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Race Track - full width, break out of padding */}
-      <div style={{
+      <div data-component="track-container" style={{
         width: '100vw',
         position: 'relative',
         left: '50%',
         right: '50%',
         marginLeft: '-50vw',
         marginRight: '-50vw',
-        padding: '0 20px',
+        padding: state.style === 'sprint' ? '0 8px' : '0 20px',
         display: 'flex',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        background: 'transparent',
+        flex: state.style === 'sprint' ? 1 : 'initial',
+        minHeight: state.style === 'sprint' ? 0 : 'initial'
       }}>
         {state.style === 'survival' ? (
           <CircularTrack
@@ -232,13 +237,13 @@ export function GameDisplay() {
 
       {/* Question Display - only for non-sprint modes */}
       {state.style !== 'sprint' && (
-        <div style={{
+        <div data-component="question-container" style={{
           maxWidth: '1200px',
           margin: '0 auto',
           width: '100%',
           padding: '0 20px'
         }}>
-          <div style={{
+          <div data-component="question-display" style={{
             display: 'flex',
             gap: '20px',
             alignItems: 'center',
@@ -246,21 +251,21 @@ export function GameDisplay() {
             marginTop: '5px'
           }}>
             {/* Question */}
-            <div style={{
+            <div data-component="question-card" style={{
               background: 'white',
               borderRadius: '12px',
               padding: '16px 24px',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               textAlign: 'center'
             }}>
-              <div style={{
+              <div data-element="question-equation" style={{
                 fontSize: '14px',
                 color: '#6b7280',
                 marginBottom: '4px'
               }}>
                 ? + {state.currentQuestion.number} = {state.currentQuestion.targetSum}
               </div>
-              <div style={{
+              <div data-element="question-number" style={{
                 fontSize: '60px',
                 fontWeight: 'bold',
                 color: '#1f2937'
@@ -270,7 +275,7 @@ export function GameDisplay() {
             </div>
 
             {/* Input */}
-            <div style={{
+            <div data-component="answer-input" style={{
               background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
               borderRadius: '12px',
               padding: '16px 36px',
@@ -278,7 +283,7 @@ export function GameDisplay() {
               textAlign: 'center',
               minWidth: '160px'
             }}>
-              <div style={{
+              <div data-element="input-value" style={{
                 fontSize: '60px',
                 fontWeight: 'bold',
                 color: 'white',
@@ -290,7 +295,7 @@ export function GameDisplay() {
               }}>
                 {state.currentInput || '_'}
               </div>
-              <div style={{
+              <div data-element="input-hint" style={{
                 fontSize: '12px',
                 color: 'rgba(255, 255, 255, 0.9)',
                 marginTop: '4px'

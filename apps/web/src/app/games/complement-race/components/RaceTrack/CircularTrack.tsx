@@ -233,7 +233,7 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
   }
 
   return (
-    <div style={{
+    <div data-component="circular-track" style={{
       position: 'relative',
       width: `${dimensions.width}px`,
       height: `${dimensions.height}px`,
@@ -241,6 +241,7 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
     }}>
       {/* SVG Track */}
       <svg
+        data-component="track-svg"
         width={dimensions.width}
         height={dimensions.height}
         style={{
