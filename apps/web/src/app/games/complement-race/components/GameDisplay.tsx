@@ -162,21 +162,16 @@ export function GameDisplay() {
   const handleContinueToNextRoute = () => {
     const nextRoute = state.currentRoute + 1
 
-    // Hide celebration
-    dispatch({ type: 'HIDE_ROUTE_CELEBRATION' })
+    // Start new route (this also hides celebration)
+    dispatch({
+      type: 'START_NEW_ROUTE',
+      routeNumber: nextRoute,
+      stations: state.stations // Keep same stations for now
+    })
 
-    // Generate new track and passengers for next route
-    setTimeout(() => {
-      dispatch({
-        type: 'START_NEW_ROUTE',
-        routeNumber: nextRoute,
-        stations: state.stations // Keep same stations for now
-      })
-
-      // Generate new passengers
-      const newPassengers = generatePassengers(state.stations)
-      dispatch({ type: 'GENERATE_PASSENGERS', passengers: newPassengers })
-    }, 100)
+    // Generate new passengers
+    const newPassengers = generatePassengers(state.stations)
+    dispatch({ type: 'GENERATE_PASSENGERS', passengers: newPassengers })
   }
 
   if (!state.currentQuestion) return null

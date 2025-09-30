@@ -375,7 +375,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         currentRoute: action.routeNumber,
         stations: action.stations,
         trainPosition: 0,
-        deliveredPassengers: 0
+        deliveredPassengers: 0,
+        showRouteCelebration: false
       }
 
     case 'COMPLETE_ROUTE':
