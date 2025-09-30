@@ -317,11 +317,11 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
                 y={pos.y + 50}
                 textAnchor="middle"
                 fontSize="20"
-                fontWeight="900"
                 fill="#1f2937"
                 stroke="#f59e0b"
                 strokeWidth="0.5"
                 style={{
+                  fontWeight: 900,
                   pointerEvents: 'none',
                   fontFamily: '"Comic Sans MS", "Chalkboard SE", "Bradley Hand", cursive',
                   textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
