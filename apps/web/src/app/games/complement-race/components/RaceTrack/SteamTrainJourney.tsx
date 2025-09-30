@@ -221,23 +221,35 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           </linearGradient>
         </defs>
 
-        {/* Ground layer - extends full width */}
+        {/* Ground layer - extends full width and height to cover entire track area */}
         <rect
           x="-50"
-          y="450"
+          y="120"
           width="900"
-          height="200"
+          height="530"
           fill="#8B7355"
         />
 
-        {/* Ground gradient for depth */}
+        {/* Ground surface gradient for depth */}
         <rect
           x="-50"
-          y="450"
+          y="120"
           width="900"
-          height="40"
+          height="60"
           fill="url(#groundGradient)"
         />
+
+        {/* Ground texture - scattered rocks/pebbles */}
+        {Array.from({ length: 30 }).map((_, i) => (
+          <circle
+            key={`ground-texture-${i}`}
+            cx={-30 + (i * 28) + (i % 3) * 10}
+            cy={140 + (i % 5) * 60}
+            r={2 + (i % 3)}
+            fill="#654321"
+            opacity={0.3}
+          />
+        ))}
 
         {/* Railroad ballast (gravel bed) */}
         <path
