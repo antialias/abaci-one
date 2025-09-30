@@ -16,7 +16,7 @@ export function ComplementRaceGame() {
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
-      padding: state.style === 'sprint' ? '8px' : '20px 8px',
+      padding: '20px 8px',
       minHeight: '100vh',
       maxHeight: '100vh',
       background: state.style === 'sprint'
