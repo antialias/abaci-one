@@ -403,8 +403,16 @@ interface ComplementRaceContextType {
 
 const ComplementRaceContext = createContext<ComplementRaceContextType | undefined>(undefined)
 
-export function ComplementRaceProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(gameReducer, initialState)
+interface ComplementRaceProviderProps {
+  children: ReactNode
+  initialStyle?: 'practice' | 'sprint' | 'survival'
+}
+
+export function ComplementRaceProvider({ children, initialStyle }: ComplementRaceProviderProps) {
+  const [state, dispatch] = useReducer(gameReducer, {
+    ...initialState,
+    style: initialStyle || initialState.style
+  })
 
   return (
     <ComplementRaceContext.Provider value={{ state, dispatch }}>
