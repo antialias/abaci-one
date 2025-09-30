@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
 import { useAIRacers } from '../hooks/useAIRacers'
 import { useAdaptiveDifficulty } from '../hooks/useAdaptiveDifficulty'
@@ -12,12 +12,25 @@ import { SteamTrainJourney } from './RaceTrack/SteamTrainJourney'
 import { RouteCelebration } from './RouteCelebration'
 import { generatePassengers } from '../lib/passengerGenerator'
 
+type FeedbackAnimation = 'correct' | 'incorrect' | null
+
 export function GameDisplay() {
   const { state, dispatch } = useComplementRace()
   useAIRacers() // Activate AI racer updates (not used in sprint mode)
   const { trackPerformance, getAdaptiveFeedbackMessage } = useAdaptiveDifficulty()
   const { boostMomentum } = useSteamJourney()
   const { playSound } = useSoundEffects()
+  const [feedbackAnimation, setFeedbackAnimation] = useState<FeedbackAnimation>(null)
+
+  // Clear feedback animation after it plays (line 1996, 2001)
+  useEffect(() => {
+    if (feedbackAnimation) {
+      const timer = setTimeout(() => {
+        setFeedbackAnimation(null)
+      }, 500) // Match animation duration
+      return () => clearTimeout(timer)
+    }
+  }, [feedbackAnimation])
 
   // Show adaptive feedback with auto-hide
   useEffect(() => {
@@ -70,6 +83,9 @@ export function GameDisplay() {
               dispatch({ type: 'SUBMIT_ANSWER', answer })
               trackPerformance(true, responseTime)
 
+              // Trigger correct answer animation (line 1996)
+              setFeedbackAnimation('correct')
+
               // Play appropriate sound based on performance (from web_generator.py lines 11530-11542)
               const newStreak = state.streak + 1
               if (newStreak > 0 && newStreak % 5 === 0) {
@@ -116,6 +132,9 @@ export function GameDisplay() {
             } else {
               // Incorrect answer
               trackPerformance(false, responseTime)
+
+              // Trigger incorrect answer animation (line 2001)
+              setFeedbackAnimation('incorrect')
 
               // Play incorrect sound (from web_generator.py line 11589)
               playSound('incorrect')
@@ -319,7 +338,12 @@ export function GameDisplay() {
               padding: '16px 36px',
               boxShadow: '0 4px 20px rgba(59, 130, 246, 0.3)',
               textAlign: 'center',
-              minWidth: '160px'
+              minWidth: '160px',
+              animation: feedbackAnimation === 'correct'
+                ? 'successPulse 0.5s ease'
+                : feedbackAnimation === 'incorrect'
+                  ? 'errorShake 0.5s ease'
+                  : undefined
             }}>
               <div data-element="input-value" style={{
                 fontSize: '60px',
