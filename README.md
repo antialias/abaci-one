@@ -774,3 +774,15 @@ make verify-examples
 MIT License - see LICENSE file for details.
 
 This project uses DejaVu Sans font (included), which is released under a free license.
+---
+
+## 🚀 Active Development Projects
+
+### Speed Complement Race Port (In Progress)
+**Status**: Planning Complete, Ready to Implement  
+**Plan Document**: [`apps/web/COMPLEMENT_RACE_PORT_PLAN.md`](./apps/web/COMPLEMENT_RACE_PORT_PLAN.md)  
+**Source**: `packages/core/src/web_generator.py` (lines 10956-15113)  
+**Target**: `apps/web/src/app/games/complement-race/`  
+
+A comprehensive port of the sophisticated Speed Complement Race game from standalone HTML to Next.js. Features 3 game modes, 2 AI personalities with 82 unique commentary messages, adaptive difficulty, and multiple visualization systems.
+
