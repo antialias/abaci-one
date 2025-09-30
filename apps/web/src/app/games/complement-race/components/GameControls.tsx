@@ -1,10 +1,12 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useComplementRace } from '../context/ComplementRaceContext'
 import type { GameMode, GameStyle, TimeoutSetting } from '../lib/gameTypes'
 
 export function GameControls() {
   const { state, dispatch } = useComplementRace()
+  const router = useRouter()
 
   const handleModeSelect = (mode: GameMode) => {
     dispatch({ type: 'SET_MODE', mode })
@@ -12,6 +14,8 @@ export function GameControls() {
 
   const handleStyleSelect = (style: GameStyle) => {
     dispatch({ type: 'SET_STYLE', style })
+    // Update URL to match selected game style
+    router.push(`/games/complement-race/${style}`)
   }
 
   const handleTimeoutSelect = (timeout: TimeoutSetting) => {
