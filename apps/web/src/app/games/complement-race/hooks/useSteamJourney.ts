@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
 import { generatePassengers, findBoardablePassengers, findDeliverablePassengers } from '../lib/passengerGenerator'
+import { useSoundEffects } from './useSoundEffects'
 
 /**
  * Steam Sprint momentum system
@@ -38,6 +39,7 @@ const GAME_DURATION = 60000 // 60 seconds in milliseconds
 
 export function useSteamJourney() {
   const { state, dispatch } = useComplementRace()
+  const { playSound } = useSoundEffects()
   const gameStartTimeRef = useRef<number>(0)
   const lastUpdateRef = useRef<number>(0)
 
@@ -136,6 +138,11 @@ export function useSteamJourney() {
 
       // Check for route completion (train reaches 100%)
       if (trainPosition >= 100 && !state.showRouteCelebration) {
+        // Play celebration whistle (line 13541-13543)
+        playSound('train_whistle', 0.6)
+        setTimeout(() => {
+          playSound('celebration', 0.4)
+        }, 800)
         dispatch({ type: 'COMPLETE_ROUTE' })
       }
     }, UPDATE_INTERVAL)

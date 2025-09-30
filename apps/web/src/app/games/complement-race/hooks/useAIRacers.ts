@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
 import { getAICommentary, type CommentaryContext } from '../components/AISystem/aiCommentary'
+import { useSoundEffects } from './useSoundEffects'
 
 export function useAIRacers() {
   const { state, dispatch } = useComplementRace()
+  const { playSound } = useSoundEffects()
 
   useEffect(() => {
     if (!state.isGameActive) return
@@ -31,6 +33,26 @@ export function useAIRacers() {
       })
 
       dispatch({ type: 'UPDATE_AI_POSITIONS', positions: newPositions })
+
+      // Check for AI win in practice mode (line 14151)
+      if (state.style === 'practice' && state.isGameActive) {
+        const winningAI = state.aiRacers.find((racer, index) => {
+          const updatedPosition = newPositions[index]?.position || racer.position
+          return updatedPosition >= state.raceGoal
+        })
+
+        if (winningAI) {
+          // Play game over sound (line 14193)
+          playSound('gameOver')
+          // End the game
+          dispatch({ type: 'END_RACE' })
+          // Show results after a short delay
+          setTimeout(() => {
+            dispatch({ type: 'SHOW_RESULTS' })
+          }, 1500)
+          return // Exit early to prevent further updates
+        }
+      }
 
       // Check for commentary triggers after position updates
       state.aiRacers.forEach(racer => {
@@ -73,6 +95,11 @@ export function useAIRacers() {
               message,
               context
             })
+
+            // Play special turbo sound when AI goes desperate (line 11941)
+            if (context === 'desperate_catchup') {
+              playSound('ai_turbo', 0.12)
+            }
           }
         }
       })

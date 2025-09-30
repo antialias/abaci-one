@@ -32,14 +32,16 @@ export function GameDisplay() {
   // Check for finish line (player reaches race goal) - only for practice mode
   useEffect(() => {
     if (state.correctAnswers >= state.raceGoal && state.isGameActive && state.style === 'practice') {
+      // Play celebration sound (line 14182)
+      playSound('celebration')
       // End the game
       dispatch({ type: 'END_RACE' })
       // Show results after a short delay
       setTimeout(() => {
         dispatch({ type: 'SHOW_RESULTS' })
-      }, 1000)
+      }, 1500)
     }
-  }, [state.correctAnswers, state.raceGoal, state.isGameActive, state.style, dispatch])
+  }, [state.correctAnswers, state.raceGoal, state.isGameActive, state.style, dispatch, playSound])
 
   // For survival mode (endless circuit), track laps but never end
   // For sprint mode (steam sprint), end after 60 seconds (will implement later)
@@ -87,6 +89,21 @@ export function GameDisplay() {
               // Boost momentum for sprint mode
               if (state.style === 'sprint') {
                 boostMomentum()
+
+                // Play train whistle for milestones in sprint mode (line 13222-13235)
+                if (newStreak >= 5 && newStreak % 3 === 0) {
+                  // Major milestone - play train whistle
+                  setTimeout(() => {
+                    playSound('train_whistle', 0.4)
+                  }, 200)
+                } else if (state.momentum >= 90) {
+                  // High momentum celebration - occasional whistle
+                  if (Math.random() < 0.3) {
+                    setTimeout(() => {
+                      playSound('train_whistle', 0.25)
+                    }, 150)
+                  }
+                }
               }
 
               // Show adaptive feedback

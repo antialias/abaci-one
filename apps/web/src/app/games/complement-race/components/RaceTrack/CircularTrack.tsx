@@ -6,6 +6,7 @@ import { SpeechBubble } from '../AISystem/SpeechBubble'
 import { useComplementRace } from '../../context/ComplementRaceContext'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useUserProfile } from '@/contexts/UserProfileContext'
+import { useSoundEffects } from '../../hooks/useSoundEffects'
 
 interface CircularTrackProps {
   playerProgress: number
@@ -18,6 +19,7 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
   const { state, dispatch } = useComplementRace()
   const { players } = useGameMode()
   const { profile } = useUserProfile()
+  const { playSound } = useSoundEffects()
   const [celebrationCooldown, setCelebrationCooldown] = useState<Set<string>>(new Set())
 
   // Get the first active player's emoji from UserProfileContext (same as nav bar)
@@ -160,6 +162,8 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
     const playerCurrentLap = Math.floor(playerProgress / 50)
     if (playerCurrentLap > playerLap && !celebrationCooldown.has('player')) {
       dispatch({ type: 'COMPLETE_LAP', racerId: 'player' })
+      // Play celebration sound (line 12801)
+      playSound('lap_celebration', 0.6)
       setCelebrationCooldown(prev => new Set(prev).add('player'))
       setTimeout(() => {
         setCelebrationCooldown(prev => {
