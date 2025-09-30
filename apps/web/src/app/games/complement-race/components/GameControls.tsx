@@ -27,23 +27,34 @@ export function GameControls() {
       height: '100%',
       overflowY: 'auto',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      background: 'linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%)'
     }}>
       <div style={{
         textAlign: 'center',
-        padding: '20px',
+        padding: '32px 20px',
         maxWidth: '1200px',
         margin: '0 auto',
         width: '100%'
       }}>
-        <h2 style={{
-          fontSize: '28px',
+        <h1 style={{
+          fontSize: '42px',
           fontWeight: 'bold',
-          marginBottom: '20px',
-          color: '#1f2937'
+          marginBottom: '8px',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text'
         }}>
-          Race Configuration
-        </h2>
+          Configure Your Race
+        </h1>
+        <p style={{
+          fontSize: '16px',
+          color: '#64748b',
+          marginBottom: '32px'
+        }}>
+          Choose your number mode, race type, and difficulty level
+        </p>
 
         {/* Grid container for all sections on wider screens */}
         <div style={{
@@ -55,15 +66,15 @@ export function GameControls() {
           {/* Number Mode Selection */}
           <div style={{
             background: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            borderRadius: '16px',
+            padding: '20px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
             textAlign: 'left'
           }}>
             <h3 style={{
-              fontSize: '16px',
+              fontSize: '18px',
               fontWeight: 'bold',
-              marginBottom: '12px',
+              marginBottom: '16px',
               color: '#1f2937'
             }}>
               Number Mode
@@ -71,69 +82,78 @@ export function GameControls() {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px'
+              gap: '10px'
             }}>
               <button
                 onClick={() => handleModeSelect('friends5')}
                 style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '2px solid',
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  border: '3px solid',
                   borderColor: state.mode === 'friends5' ? '#3b82f6' : '#e5e7eb',
-                  background: state.mode === 'friends5' ? '#eff6ff' : 'white',
+                  background: state.mode === 'friends5'
+                    ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)'
+                    : 'white',
                   color: state.mode === 'friends5' ? '#1e40af' : '#6b7280',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  gap: '10px',
+                  boxShadow: state.mode === 'friends5' ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
                 }}
               >
-                <span style={{ fontSize: '20px' }}>5️⃣</span>
-                <span>Friends of 5</span>
+                <span style={{ fontSize: '24px' }}>5️⃣</span>
+                <span style={{ fontSize: '15px' }}>Friends of 5</span>
               </button>
 
               <button
                 onClick={() => handleModeSelect('friends10')}
                 style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '2px solid',
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  border: '3px solid',
                   borderColor: state.mode === 'friends10' ? '#3b82f6' : '#e5e7eb',
-                  background: state.mode === 'friends10' ? '#eff6ff' : 'white',
+                  background: state.mode === 'friends10'
+                    ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)'
+                    : 'white',
                   color: state.mode === 'friends10' ? '#1e40af' : '#6b7280',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  gap: '10px',
+                  boxShadow: state.mode === 'friends10' ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
                 }}
               >
-                <span style={{ fontSize: '20px' }}>🔟</span>
-                <span>Friends of 10</span>
+                <span style={{ fontSize: '24px' }}>🔟</span>
+                <span style={{ fontSize: '15px' }}>Friends of 10</span>
               </button>
 
               <button
                 onClick={() => handleModeSelect('mixed')}
                 style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '2px solid',
+                  padding: '14px 16px',
+                  borderRadius: '10px',
+                  border: '3px solid',
                   borderColor: state.mode === 'mixed' ? '#3b82f6' : '#e5e7eb',
-                  background: state.mode === 'mixed' ? '#eff6ff' : 'white',
+                  background: state.mode === 'mixed'
+                    ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)'
+                    : 'white',
                   color: state.mode === 'mixed' ? '#1e40af' : '#6b7280',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  gap: '10px',
+                  boxShadow: state.mode === 'mixed' ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
                 }}
               >
-                <span style={{ fontSize: '20px' }}>🎲</span>
-                <span>Mixed</span>
+                <span style={{ fontSize: '24px' }}>🎲</span>
+                <span style={{ fontSize: '15px' }}>Mixed</span>
               </button>
             </div>
           </div>
@@ -141,15 +161,15 @@ export function GameControls() {
           {/* Game Style Selection */}
           <div style={{
             background: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            borderRadius: '16px',
+            padding: '20px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
             textAlign: 'left'
           }}>
             <h3 style={{
-              fontSize: '16px',
+              fontSize: '18px',
               fontWeight: 'bold',
-              marginBottom: '12px',
+              marginBottom: '16px',
               color: '#1f2937'
             }}>
               Race Type
@@ -157,72 +177,87 @@ export function GameControls() {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px'
+              gap: '12px'
             }}>
               <button
                 onClick={() => handleStyleSelect('practice')}
                 style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '2px solid',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '3px solid',
                   borderColor: state.style === 'practice' ? '#10b981' : '#e5e7eb',
-                  background: state.style === 'practice' ? '#d1fae5' : 'white',
+                  background: state.style === 'practice'
+                    ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)'
+                    : 'white',
                   color: state.style === 'practice' ? '#047857' : '#6b7280',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  textAlign: 'left'
+                  textAlign: 'left',
+                  boxShadow: state.style === 'practice' ? '0 4px 12px rgba(16, 185, 129, 0.2)' : 'none'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '20px' }}>🤖</span>
-                  <span>Robot Showdown</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '28px' }}>🏁</span>
+                  <span style={{ fontSize: '16px' }}>Practice Mode</span>
                 </div>
-                <div style={{ fontSize: '11px', opacity: 0.8 }}>Race AI on track</div>
+                <div style={{ fontSize: '13px', opacity: 0.85, lineHeight: '1.4' }}>
+                  Race AI opponents on a linear track. First to reach 20 correct answers wins! Perfect for building speed and accuracy.
+                </div>
               </button>
 
               <button
                 onClick={() => handleStyleSelect('sprint')}
                 style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '2px solid',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '3px solid',
                   borderColor: state.style === 'sprint' ? '#f59e0b' : '#e5e7eb',
-                  background: state.style === 'sprint' ? '#fef3c7' : 'white',
+                  background: state.style === 'sprint'
+                    ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
+                    : 'white',
                   color: state.style === 'sprint' ? '#d97706' : '#6b7280',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  textAlign: 'left'
+                  textAlign: 'left',
+                  boxShadow: state.style === 'sprint' ? '0 4px 12px rgba(245, 158, 11, 0.2)' : 'none'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '20px' }}>🚂</span>
-                  <span>Steam Sprint</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '28px' }}>🚂</span>
+                  <span style={{ fontSize: '16px' }}>Steam Sprint</span>
                 </div>
-                <div style={{ fontSize: '11px', opacity: 0.8 }}>60-second journey</div>
+                <div style={{ fontSize: '13px', opacity: 0.85, lineHeight: '1.4' }}>
+                  Keep your train moving for 60 seconds! Build momentum with correct answers. Pick up passengers and reach stations!
+                </div>
               </button>
 
               <button
                 onClick={() => handleStyleSelect('survival')}
                 style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '2px solid',
-                  borderColor: state.style === 'survival' ? '#ef4444' : '#e5e7eb',
-                  background: state.style === 'survival' ? '#fee2e2' : 'white',
-                  color: state.style === 'survival' ? '#dc2626' : '#6b7280',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '3px solid',
+                  borderColor: state.style === 'survival' ? '#8b5cf6' : '#e5e7eb',
+                  background: state.style === 'survival'
+                    ? 'linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%)'
+                    : 'white',
+                  color: state.style === 'survival' ? '#6b21a8' : '#6b7280',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  textAlign: 'left'
+                  textAlign: 'left',
+                  boxShadow: state.style === 'survival' ? '0 4px 12px rgba(139, 92, 246, 0.2)' : 'none'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '20px' }}>🔄</span>
-                  <span>Endless Circuit</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '28px' }}>🔄</span>
+                  <span style={{ fontSize: '16px' }}>Survival Mode</span>
                 </div>
-                <div style={{ fontSize: '11px', opacity: 0.8 }}>Infinite laps</div>
+                <div style={{ fontSize: '13px', opacity: 0.85, lineHeight: '1.4' }}>
+                  Endless circular race! Complete laps before AI opponents catch you. How long can you survive?
+                </div>
               </button>
             </div>
           </div>
@@ -231,40 +266,43 @@ export function GameControls() {
         {/* Timeout Setting Selection - Full width below */}
         <div style={{
           background: 'white',
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '16px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
           textAlign: 'left'
         }}>
           <h3 style={{
-            fontSize: '16px',
+            fontSize: '18px',
             fontWeight: 'bold',
-            marginBottom: '12px',
+            marginBottom: '16px',
             color: '#1f2937'
           }}>
             Difficulty Level
           </h3>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-            gap: '8px'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+            gap: '10px'
           }}>
             {(['preschool', 'kindergarten', 'relaxed', 'slow', 'normal', 'fast', 'expert'] as TimeoutSetting[]).map((timeout) => (
               <button
                 key={timeout}
                 onClick={() => handleTimeoutSelect(timeout)}
                 style={{
-                  padding: '10px 8px',
-                  borderRadius: '8px',
-                  border: '2px solid',
-                  borderColor: state.timeoutSetting === timeout ? '#8b5cf6' : '#e5e7eb',
-                  background: state.timeoutSetting === timeout ? '#f3e8ff' : 'white',
-                  color: state.timeoutSetting === timeout ? '#6b21a8' : '#6b7280',
+                  padding: '12px 10px',
+                  borderRadius: '10px',
+                  border: '3px solid',
+                  borderColor: state.timeoutSetting === timeout ? '#ec4899' : '#e5e7eb',
+                  background: state.timeoutSetting === timeout
+                    ? 'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)'
+                    : 'white',
+                  color: state.timeoutSetting === timeout ? '#be185d' : '#6b7280',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  fontSize: '13px'
+                  fontSize: '14px',
+                  boxShadow: state.timeoutSetting === timeout ? '0 4px 12px rgba(236, 72, 153, 0.2)' : 'none'
                 }}
               >
                 {timeout.charAt(0).toUpperCase() + timeout.slice(1)}
@@ -276,30 +314,35 @@ export function GameControls() {
         <button
           onClick={handleStartRace}
           style={{
-            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
             border: 'none',
-            borderRadius: '12px',
-            padding: '14px 48px',
-            fontSize: '18px',
+            borderRadius: '16px',
+            padding: '18px 56px',
+            fontSize: '20px',
             fontWeight: 'bold',
             cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+            boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
             transition: 'all 0.2s ease',
             width: '100%',
-            maxWidth: '300px',
-            margin: '0 auto'
+            maxWidth: '400px',
+            margin: '0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)'
+            e.currentTarget.style.transform = 'translateY(-3px)'
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.5)'
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)'
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)'
           }}
         >
-          Begin Race!
+          <span style={{ fontSize: '24px' }}>🏁</span>
+          <span>Start Your Race!</span>
         </button>
       </div>
     </div>
