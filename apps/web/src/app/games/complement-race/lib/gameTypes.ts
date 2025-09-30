@@ -48,8 +48,11 @@ export interface Station {
 export interface Passenger {
   id: string
   name: string
+  avatar: string
+  originStationId: string
   destinationStationId: string
   isUrgent: boolean
+  isBoarded: boolean
   isDelivered: boolean
 }
 
@@ -142,6 +145,7 @@ export type GameAction =
   | { type: 'SHOW_RESULTS' }
   | { type: 'RESET_GAME' }
   | { type: 'GENERATE_PASSENGERS'; passengers: Passenger[] }
+  | { type: 'BOARD_PASSENGER'; passengerId: string }
   | { type: 'DELIVER_PASSENGER'; passengerId: string; points: number }
   | { type: 'START_NEW_ROUTE'; routeNumber: number; stations: Station[] }
   | { type: 'COMPLETE_ROUTE' }

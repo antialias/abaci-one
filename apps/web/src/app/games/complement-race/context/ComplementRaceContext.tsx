@@ -351,6 +351,14 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         passengers: action.passengers
       }
 
+    case 'BOARD_PASSENGER':
+      return {
+        ...state,
+        passengers: state.passengers.map(p =>
+          p.id === action.passengerId ? { ...p, isBoarded: true } : p
+        )
+      }
+
     case 'DELIVER_PASSENGER':
       return {
         ...state,

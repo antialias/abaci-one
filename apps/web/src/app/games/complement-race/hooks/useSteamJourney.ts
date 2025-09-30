@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
-import { generatePassengers, findDeliverablePassengers } from '../lib/passengerGenerator'
+import { generatePassengers, findBoardablePassengers, findDeliverablePassengers } from '../lib/passengerGenerator'
 
 /**
  * Steam Sprint momentum system
@@ -101,6 +101,21 @@ export function useSteamJourney() {
         trainPosition,
         pressure,
         elapsedTime: elapsed
+      })
+
+      // Check for passengers that should board
+      const boardable = findBoardablePassengers(
+        state.passengers,
+        state.stations,
+        trainPosition
+      )
+
+      // Board passengers at their origin station
+      boardable.forEach(passenger => {
+        dispatch({
+          type: 'BOARD_PASSENGER',
+          passengerId: passenger.id
+        })
       })
 
       // Check for deliverable passengers
