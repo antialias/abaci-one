@@ -68,7 +68,7 @@ const initialState: GameState = {
   // Game status
   isGameActive: false,
   isPaused: false,
-  gamePhase: 'intro',
+  gamePhase: 'controls',
 
   // Timing
   gameStartTime: null,
@@ -292,7 +292,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         mode: state.mode,
         style: state.style,
         timeoutSetting: state.timeoutSetting,
-        gamePhase: 'intro'
+        gamePhase: 'controls'
       }
 
     case 'TRIGGER_AI_COMMENTARY':
