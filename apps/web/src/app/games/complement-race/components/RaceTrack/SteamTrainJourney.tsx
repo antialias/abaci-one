@@ -268,7 +268,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             y={pos.y}
             textAnchor="middle"
             style={{
-              fontSize: `${(landmarks[index]?.size || 24) * 4.0}px`,
+              fontSize: `${(landmarks[index]?.size || 24) * 2.0}px`,
               pointerEvents: 'none',
               opacity: 0.7,
               filter: 'drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2))'
