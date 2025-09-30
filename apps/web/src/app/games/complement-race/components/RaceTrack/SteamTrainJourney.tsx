@@ -214,21 +214,21 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           strokeLinecap="round"
         />
 
-        {/* Left tunnel - positioned at absolute left edge */}
+        {/* Left tunnel - at absolute left edge of viewBox (x = -50) */}
         <g data-element="left-tunnel">
-          {/* Mountain face */}
+          {/* Mountain face - extends from left edge */}
           <rect
-            x="-60"
-            y="200"
-            width="80"
-            height="250"
+            x="-50"
+            y="-50"
+            width="70"
+            height="700"
             fill="#5a5a5a"
             stroke="#4a4a4a"
             strokeWidth="2"
           />
           {/* Tunnel depth/interior (dark entrance) */}
           <ellipse
-            cx="-50"
+            cx="20"
             cy="300"
             rx="50"
             ry="55"
@@ -236,14 +236,14 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           />
           {/* Tunnel arch opening */}
           <path
-            d="M -50 355 L -100 355 L -100 245 Q -100 235, -50 235 Q 0 235, 0 245 L 0 355 Z"
+            d="M 20 355 L -50 355 L -50 245 Q -50 235, 20 235 Q 70 235, 70 245 L 70 355 Z"
             fill="#1a1a1a"
             stroke="#4a4a4a"
             strokeWidth="3"
           />
           {/* Tunnel arch rim (stone) */}
           <path
-            d="M -100 245 Q -100 235, -50 235 Q 0 235, 0 245"
+            d="M -50 245 Q -50 235, 20 235 Q 70 235, 70 245"
             fill="none"
             stroke="#6a6a6a"
             strokeWidth="6"
@@ -251,21 +251,21 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           />
         </g>
 
-        {/* Right tunnel - positioned at absolute right edge */}
+        {/* Right tunnel - at absolute right edge of viewBox (x = 850) */}
         <g data-element="right-tunnel">
-          {/* Mountain face */}
+          {/* Mountain face - extends to right edge */}
           <rect
             x="780"
-            y="200"
-            width="80"
-            height="250"
+            y="-50"
+            width="70"
+            height="700"
             fill="#5a5a5a"
             stroke="#4a4a4a"
             strokeWidth="2"
           />
           {/* Tunnel depth/interior (dark entrance) */}
           <ellipse
-            cx="850"
+            cx="780"
             cy="300"
             rx="50"
             ry="55"
@@ -273,14 +273,14 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           />
           {/* Tunnel arch opening */}
           <path
-            d="M 850 355 L 800 355 L 800 245 Q 800 235, 850 235 Q 900 235, 900 245 L 900 355 Z"
+            d="M 780 355 L 730 355 L 730 245 Q 730 235, 780 235 Q 850 235, 850 245 L 850 355 Z"
             fill="#1a1a1a"
             stroke="#4a4a4a"
             strokeWidth="3"
           />
           {/* Tunnel arch rim (stone) */}
           <path
-            d="M 800 245 Q 800 235, 850 235 Q 900 235, 900 245"
+            d="M 730 245 Q 730 235, 780 235 Q 850 235, 850 245"
             fill="none"
             stroke="#6a6a6a"
             strokeWidth="6"
