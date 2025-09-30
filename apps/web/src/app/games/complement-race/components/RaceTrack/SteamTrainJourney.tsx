@@ -721,7 +721,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           bottom: '20px',
           left: '50%',
           transform: 'translateX(-50%)',
-          zIndex: 10,
+          zIndex: 100,
           background: 'rgba(255, 255, 255, 0.98)',
           borderRadius: '24px',
           padding: '28px 50px',
