@@ -48,16 +48,16 @@ export class RailroadTrackGenerator {
    * Based on route number for variety across different routes
    */
   private generateTrackWaypoints(routeNumber: number): Waypoint[] {
-    // Base waypoints for scenic railroad journey - extended to viewport edges
+    // Base waypoints for scenic railroad journey - extended beyond viewport edges
     const baseWaypoints: Waypoint[] = [
-      { x: -50, y: 300 },  // Start at left tunnel entrance
-      { x: 100, y: 260 },  // Exit tunnel
-      { x: 230, y: 200 },  // Climb into hills
+      { x: -120, y: 300 }, // Start well beyond left edge (continues into tunnel)
+      { x: 80, y: 260 },   // Emerging from left tunnel
+      { x: 220, y: 200 },  // Climb into hills
       { x: 360, y: 170 },  // Mountain pass
-      { x: 490, y: 220 },  // Descent to valley
-      { x: 620, y: 160 },  // Bridge over canyon
-      { x: 750, y: 240 },  // Rolling hills
-      { x: 850, y: 300 }   // Enter right tunnel
+      { x: 500, y: 220 },  // Descent to valley
+      { x: 640, y: 160 },  // Bridge over canyon
+      { x: 780, y: 240 },  // Rolling hills
+      { x: 920, y: 300 }   // Enter right tunnel (continues beyond right edge)
     ]
 
     // Add controlled randomness for variety (but keep start/end fixed)

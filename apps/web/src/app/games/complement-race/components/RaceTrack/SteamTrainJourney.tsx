@@ -214,57 +214,77 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           strokeLinecap="round"
         />
 
-        {/* Left tunnel entrance */}
+        {/* Left tunnel - positioned at absolute left edge */}
         <g data-element="left-tunnel">
-          {/* Tunnel depth/interior */}
+          {/* Mountain face */}
+          <rect
+            x="-60"
+            y="200"
+            width="80"
+            height="250"
+            fill="#5a5a5a"
+            stroke="#4a4a4a"
+            strokeWidth="2"
+          />
+          {/* Tunnel depth/interior (dark entrance) */}
           <ellipse
             cx="-50"
             cy="300"
-            rx="45"
-            ry="50"
-            fill="#1a1a1a"
+            rx="50"
+            ry="55"
+            fill="#0a0a0a"
           />
           {/* Tunnel arch opening */}
           <path
-            d="M -95 300 Q -95 240, -50 240 Q -5 240, -5 300 Z"
-            fill="#2d2d2d"
+            d="M -50 355 L -100 355 L -100 245 Q -100 235, -50 235 Q 0 235, 0 245 L 0 355 Z"
+            fill="#1a1a1a"
             stroke="#4a4a4a"
             strokeWidth="3"
           />
-          {/* Tunnel brickwork texture */}
+          {/* Tunnel arch rim (stone) */}
           <path
-            d="M -95 300 Q -95 240, -50 240 Q -5 240, -5 300"
+            d="M -100 245 Q -100 235, -50 235 Q 0 235, 0 245"
             fill="none"
-            stroke="#3a3a3a"
-            strokeWidth="2"
-            strokeDasharray="10,5"
+            stroke="#6a6a6a"
+            strokeWidth="6"
+            strokeLinecap="round"
           />
         </g>
 
-        {/* Right tunnel entrance */}
+        {/* Right tunnel - positioned at absolute right edge */}
         <g data-element="right-tunnel">
-          {/* Tunnel depth/interior */}
+          {/* Mountain face */}
+          <rect
+            x="780"
+            y="200"
+            width="80"
+            height="250"
+            fill="#5a5a5a"
+            stroke="#4a4a4a"
+            strokeWidth="2"
+          />
+          {/* Tunnel depth/interior (dark entrance) */}
           <ellipse
             cx="850"
             cy="300"
-            rx="45"
-            ry="50"
-            fill="#1a1a1a"
+            rx="50"
+            ry="55"
+            fill="#0a0a0a"
           />
           {/* Tunnel arch opening */}
           <path
-            d="M 805 300 Q 805 240, 850 240 Q 895 240, 895 300 Z"
-            fill="#2d2d2d"
+            d="M 850 355 L 800 355 L 800 245 Q 800 235, 850 235 Q 900 235, 900 245 L 900 355 Z"
+            fill="#1a1a1a"
             stroke="#4a4a4a"
             strokeWidth="3"
           />
-          {/* Tunnel brickwork texture */}
+          {/* Tunnel arch rim (stone) */}
           <path
-            d="M 805 300 Q 805 240, 850 240 Q 895 240, 895 300"
+            d="M 800 245 Q 800 235, 850 235 Q 900 235, 900 245"
             fill="none"
-            stroke="#3a3a3a"
-            strokeWidth="2"
-            strokeDasharray="10,5"
+            stroke="#6a6a6a"
+            strokeWidth="6"
+            strokeLinecap="round"
           />
         </g>
 
