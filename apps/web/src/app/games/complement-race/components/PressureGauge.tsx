@@ -1,5 +1,7 @@
 'use client'
 
+import { useSpring, animated } from '@react-spring/web'
+
 interface PressureGaugeProps {
   pressure: number // 0-150 PSI
 }
@@ -7,18 +9,26 @@ interface PressureGaugeProps {
 export function PressureGauge({ pressure }: PressureGaugeProps) {
   const maxPressure = 150
 
+  // Animate pressure value smoothly with spring physics
+  const spring = useSpring({
+    pressure,
+    config: {
+      tension: 120,
+      friction: 14,
+      clamp: false
+    }
+  })
+
   // Calculate needle angle - sweeps 180° from left to right
   // 0 PSI = 180° (pointing left), 150 PSI = 0° (pointing right)
-  const angle = 180 - (pressure / maxPressure) * 180
+  const angle = spring.pressure.to(p => 180 - (p / maxPressure) * 180)
 
-  // Get pressure color
-  const getPressureColor = (): string => {
-    if (pressure < 50) return '#ef4444' // Red (low)
-    if (pressure < 100) return '#f59e0b' // Orange (medium)
+  // Get pressure color (animated)
+  const color = spring.pressure.to(p => {
+    if (p < 50) return '#ef4444' // Red (low)
+    if (p < 100) return '#f59e0b' // Orange (medium)
     return '#10b981' // Green (high)
-  }
-
-  const color = getPressureColor()
+  })
 
   return (
     <div style={{
@@ -96,31 +106,30 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
         {/* Center pivot */}
         <circle cx="100" cy="100" r="4" fill="#1f2937" />
 
-        {/* Needle */}
-        <line
+        {/* Needle - animated */}
+        <animated.line
           x1="100"
           y1="100"
-          x2={100 + Math.cos((angle * Math.PI) / 180) * 70}
-          y2={100 - Math.sin((angle * Math.PI) / 180) * 70}  // Subtract for SVG coords
+          x2={angle.to(a => 100 + Math.cos((a * Math.PI) / 180) * 70)}
+          y2={angle.to(a => 100 - Math.sin((a * Math.PI) / 180) * 70)}
           stroke={color}
           strokeWidth="3"
           strokeLinecap="round"
           style={{
-            transition: 'all 0.2s ease-out',
-            filter: `drop-shadow(0 2px 3px ${color})`
+            filter: color.to(c => `drop-shadow(0 2px 3px ${c})`)
           }}
         />
       </svg>
 
-      {/* Digital readout */}
-      <div style={{
+      {/* Digital readout - animated */}
+      <animated.div style={{
         textAlign: 'center',
         fontSize: '20px',
         fontWeight: 'bold',
         color
       }}>
-        {Math.round(pressure)} <span style={{ fontSize: '12px' }}>PSI</span>
-      </div>
+        {spring.pressure.to(p => Math.round(p))} <span style={{ fontSize: '12px' }}>PSI</span>
+      </animated.div>
     </div>
   )
 }
