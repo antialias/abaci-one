@@ -214,6 +214,60 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           strokeLinecap="round"
         />
 
+        {/* Left tunnel entrance */}
+        <g data-element="left-tunnel">
+          {/* Tunnel depth/interior */}
+          <ellipse
+            cx="-50"
+            cy="300"
+            rx="45"
+            ry="50"
+            fill="#1a1a1a"
+          />
+          {/* Tunnel arch opening */}
+          <path
+            d="M -95 300 Q -95 240, -50 240 Q -5 240, -5 300 Z"
+            fill="#2d2d2d"
+            stroke="#4a4a4a"
+            strokeWidth="3"
+          />
+          {/* Tunnel brickwork texture */}
+          <path
+            d="M -95 300 Q -95 240, -50 240 Q -5 240, -5 300"
+            fill="none"
+            stroke="#3a3a3a"
+            strokeWidth="2"
+            strokeDasharray="10,5"
+          />
+        </g>
+
+        {/* Right tunnel entrance */}
+        <g data-element="right-tunnel">
+          {/* Tunnel depth/interior */}
+          <ellipse
+            cx="850"
+            cy="300"
+            rx="45"
+            ry="50"
+            fill="#1a1a1a"
+          />
+          {/* Tunnel arch opening */}
+          <path
+            d="M 805 300 Q 805 240, 850 240 Q 895 240, 895 300 Z"
+            fill="#2d2d2d"
+            stroke="#4a4a4a"
+            strokeWidth="3"
+          />
+          {/* Tunnel brickwork texture */}
+          <path
+            d="M 805 300 Q 805 240, 850 240 Q 895 240, 895 300"
+            fill="none"
+            stroke="#3a3a3a"
+            strokeWidth="2"
+            strokeDasharray="10,5"
+          />
+        </g>
+
         {/* Railroad ties */}
         {tiesAndRails?.ties.map((tie, index) => (
           <line
