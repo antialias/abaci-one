@@ -8,6 +8,8 @@ import { PassengerCard } from '../PassengerCard'
 import { getRouteTheme } from '../../lib/routeThemes'
 import { generateLandmarks, type Landmark } from '../../lib/landmarks'
 import { PressureGauge } from '../PressureGauge'
+import { useGameMode } from '@/contexts/GameModeContext'
+import { useUserProfile } from '@/contexts/UserProfileContext'
 
 interface SteamTrainJourneyProps {
   momentum: number
@@ -23,6 +25,17 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
   const { getSkyGradient, getTimeOfDayPeriod } = useSteamJourney()
   const skyGradient = getSkyGradient()
   const period = getTimeOfDayPeriod()
+  const { players } = useGameMode()
+  const { profile } = useUserProfile()
+
+  // Get the first active player's emoji from UserProfileContext (same as nav bar)
+  const activePlayer = players.find(p => p.isActive)
+  const playerEmoji = activePlayer
+    ? (activePlayer.id === 1 ? profile.player1Emoji :
+       activePlayer.id === 2 ? profile.player2Emoji :
+       activePlayer.id === 3 ? profile.player3Emoji :
+       activePlayer.id === 4 ? profile.player4Emoji : '👤')
+    : '👤'
 
   const svgRef = useRef<SVGSVGElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
@@ -107,23 +120,19 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
   if (!trackData) return null
 
   return (
-    <div style={{
+    <div data-component="steam-train-journey" style={{
       position: 'relative',
       width: '100%',
-      minHeight: '250px',
-      background: `linear-gradient(to bottom, ${skyGradient.top}, ${skyGradient.bottom})`,
+      height: '100%',
+      background: 'transparent',
       borderRadius: '12px',
-      overflow: 'hidden',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-      marginTop: '10px',
-      marginBottom: '10px',
-      transition: 'background 2s ease-in-out',
+      overflow: 'visible',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center'
     }}>
       {/* Route and time of day indicator */}
-      <div style={{
+      <div data-component="route-info" style={{
         position: 'absolute',
         top: '10px',
         left: '10px',
@@ -167,7 +176,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       </div>
 
       {/* Time remaining */}
-      <div style={{
+      <div data-component="time-remaining" style={{
         position: 'absolute',
         top: '10px',
         right: '10px',
@@ -185,13 +194,15 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
 
       {/* Railroad track SVG */}
       <svg
+        data-component="railroad-track"
         ref={svgRef}
-        viewBox="0 0 800 600"
+        viewBox="-50 -50 900 700"
         style={{
           width: '100%',
           maxWidth: '1400px',
           height: 'auto',
-          aspectRatio: '800 / 600'
+          aspectRatio: '800 / 600',
+          overflow: 'visible'
         }}
       >
         {/* Railroad ballast (gravel bed) */}
@@ -256,7 +267,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             x={pos.x}
             y={pos.y}
             textAnchor="middle"
-            fontSize={(landmarks[index]?.size || 24) * 1.5}
+            fontSize={(landmarks[index]?.size || 24) * 2.5}
             style={{
               pointerEvents: 'none',
               opacity: 0.7,
@@ -268,46 +279,102 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
         ))}
 
         {/* Station markers */}
-        {stationPositions.map((pos, index) => (
-          <g key={`station-${index}`}>
-            {/* Station platform */}
-            <circle
-              cx={pos.x}
-              cy={pos.y}
-              r="12"
-              fill="#8B4513"
-              stroke="#654321"
-              strokeWidth="3"
-            />
-            {/* Station icon */}
-            <text
-              x={pos.x}
-              y={pos.y - 28}
-              textAnchor="middle"
-              fontSize="32"
-              style={{ pointerEvents: 'none' }}
-            >
-              {state.stations[index]?.icon}
-            </text>
-            {/* Station name */}
-            <text
-              x={pos.x}
-              y={pos.y + 40}
-              textAnchor="middle"
-              fontSize="14"
-              fontWeight="bold"
-              fill="#1f2937"
-              style={{ pointerEvents: 'none' }}
-            >
-              {state.stations[index]?.name}
-            </text>
-          </g>
-        ))}
+        {stationPositions.map((pos, index) => {
+          const station = state.stations[index]
+          // Find passengers waiting at this station
+          const waitingPassengers = state.passengers.filter(p =>
+            p.originStationId === station?.id && !p.isBoarded && !p.isDelivered
+          )
+          // Find passengers delivered at this station
+          const deliveredPassengers = state.passengers.filter(p =>
+            p.destinationStationId === station?.id && p.isDelivered
+          )
+
+          return (
+            <g key={`station-${index}`}>
+              {/* Station platform */}
+              <circle
+                cx={pos.x}
+                cy={pos.y}
+                r="18"
+                fill="#8B4513"
+                stroke="#654321"
+                strokeWidth="4"
+              />
+              {/* Station icon */}
+              <text
+                x={pos.x}
+                y={pos.y - 40}
+                textAnchor="middle"
+                fontSize="48"
+                style={{ pointerEvents: 'none' }}
+              >
+                {station?.icon}
+              </text>
+              {/* Station name */}
+              <text
+                x={pos.x}
+                y={pos.y + 50}
+                textAnchor="middle"
+                fontSize="18"
+                fontWeight="900"
+                fill="#1f2937"
+                stroke="#f59e0b"
+                strokeWidth="1"
+                style={{
+                  pointerEvents: 'none',
+                  fontFamily: '"Comic Sans MS", "Chalkboard SE", "Bradley Hand", cursive',
+                  textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                  letterSpacing: '0.5px',
+                  paintOrder: 'stroke fill'
+                }}
+              >
+                {station?.name}
+              </text>
+
+              {/* Waiting passengers at this station */}
+              {waitingPassengers.map((passenger, pIndex) => (
+                <text
+                  key={`waiting-${passenger.id}`}
+                  x={pos.x + (pIndex - waitingPassengers.length / 2 + 0.5) * 90}
+                  y={pos.y - 100}
+                  textAnchor="middle"
+                  fontSize="80"
+                  style={{
+                    pointerEvents: 'none',
+                    filter: passenger.isUrgent ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.8))' : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+                  }}
+                >
+                  {passenger.avatar}
+                </text>
+              ))}
+
+              {/* Delivered passengers at this station (celebrating) */}
+              {deliveredPassengers.map((passenger, pIndex) => (
+                <text
+                  key={`delivered-${passenger.id}`}
+                  x={pos.x + (pIndex - deliveredPassengers.length / 2 + 0.5) * 90}
+                  y={pos.y - 100}
+                  textAnchor="middle"
+                  fontSize="80"
+                  style={{
+                    pointerEvents: 'none',
+                    filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.8))',
+                    animation: 'celebrateDelivery 2s ease-out forwards'
+                  }}
+                >
+                  {passenger.avatar}
+                </text>
+              ))}
+            </g>
+          )
+        })}
 
         {/* Train group with flip and rotation */}
-        <g transform={`translate(${trainTransform.x}, ${trainTransform.y}) rotate(${trainTransform.rotation}) scale(-1, 1)`}>
+        <g data-component="train-group" transform={`translate(${trainTransform.x}, ${trainTransform.y}) rotate(${trainTransform.rotation}) scale(-1, 1)`}>
           {/* Train locomotive */}
           <text
+            data-element="train-locomotive"
             x={0}
             y={0}
             textAnchor="middle"
@@ -320,8 +387,9 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             🚂
           </text>
 
-          {/* Coal shoveler - always visible behind the train */}
+          {/* Player engineer - layered over the train */}
           <text
+            data-element="player-engineer"
             x={45}
             y={0}
             textAnchor="middle"
@@ -331,54 +399,73 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
               pointerEvents: 'none'
             }}
           >
-            👷
+            {playerEmoji}
           </text>
+
+          {/* Boarded passengers riding on the train */}
+          {state.passengers.filter(p => p.isBoarded && !p.isDelivered).map((passenger, index) => (
+            <text
+              key={`train-passenger-${passenger.id}`}
+              x={90 + (index * 35)}
+              y={5}
+              textAnchor="middle"
+              fontSize="28"
+              style={{
+                filter: passenger.isUrgent
+                  ? 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.8))'
+                  : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
+                pointerEvents: 'none'
+              }}
+            >
+              {passenger.avatar}
+            </text>
+          ))}
+
+          {/* Steam puffs - positioned at smokestack, layered over train */}
+          {momentum > 10 && (
+            <>
+              {[0, 0.6, 1.2].map((delay, i) => (
+                <circle
+                  key={`steam-${i}`}
+                  cx={-35}
+                  cy={-35}
+                  r="10"
+                  fill="rgba(255, 255, 255, 0.6)"
+                  style={{
+                    filter: 'blur(4px)',
+                    animation: `steamPuffSVG 2s ease-out infinite`,
+                    animationDelay: `${delay}s`,
+                    pointerEvents: 'none'
+                  }}
+                />
+              ))}
+            </>
+          )}
+
+          {/* Coal particles - animated when shoveling */}
+          {momentum > 60 && (
+            <>
+              {[0, 0.3, 0.6].map((delay, i) => (
+                <circle
+                  key={`coal-${i}`}
+                  cx={25}
+                  cy={0}
+                  r="3"
+                  fill="#2c2c2c"
+                  style={{
+                    animation: 'coalFallingSVG 1.2s ease-out infinite',
+                    animationDelay: `${delay}s`,
+                    pointerEvents: 'none'
+                  }}
+                />
+              ))}
+            </>
+          )}
         </g>
-
-        {/* Steam puffs - animated */}
-        {momentum > 10 && (
-          <>
-            {[0, 0.6, 1.2].map((delay, i) => (
-              <circle
-                key={`steam-${i}`}
-                cx={trainTransform.x}
-                cy={trainTransform.y - 20}
-                r="10"
-                fill="rgba(255, 255, 255, 0.6)"
-                style={{
-                  filter: 'blur(4px)',
-                  animation: `steamPuffSVG 2s ease-out infinite`,
-                  animationDelay: `${delay}s`,
-                  pointerEvents: 'none'
-                }}
-              />
-            ))}
-          </>
-        )}
-
-        {/* Coal particles - animated when shoveling */}
-        {momentum > 60 && (
-          <>
-            {[0, 0.3, 0.6].map((delay, i) => (
-              <circle
-                key={`coal-${i}`}
-                cx={trainTransform.x - 25}
-                cy={trainTransform.y}
-                r="3"
-                fill="#2c2c2c"
-                style={{
-                  animation: 'coalFallingSVG 1.2s ease-out infinite',
-                  animationDelay: `${delay}s`,
-                  pointerEvents: 'none'
-                }}
-              />
-            ))}
-          </>
-        )}
       </svg>
 
       {/* Pressure gauge */}
-      <div style={{
+      <div data-component="pressure-gauge-container" style={{
         position: 'absolute',
         bottom: '10px',
         left: '10px',
@@ -388,42 +475,20 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
         <PressureGauge pressure={pressure} />
       </div>
 
-      {/* Distance traveled */}
-      <div style={{
-        position: 'absolute',
-        bottom: '10px',
-        right: '10px',
-        background: 'rgba(255, 255, 255, 0.95)',
-        padding: '10px 14px',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: 'bold',
-        color: '#1f2937',
-        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
-        zIndex: 10
-      }}>
-        <div style={{ marginBottom: '4px' }}>
-          🚩 {Math.round(trainPosition)}%
-        </div>
-        <div style={{ fontSize: '11px', color: '#6b7280' }}>
-          Total: {state.cumulativeDistance + Math.round(trainPosition)}%
-        </div>
-      </div>
-
-      {/* Passenger cards */}
-      {state.passengers.length > 0 && (
-        <div style={{
+      {/* Passenger cards - show all non-delivered passengers */}
+      {state.passengers.filter(p => !p.isDelivered).length > 0 && (
+        <div data-component="passenger-list" style={{
           position: 'absolute',
           bottom: '130px',
           right: '10px',
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
-          maxHeight: '300px',
-          overflowY: 'auto',
-          zIndex: 10
+          zIndex: 10,
+          maxHeight: 'calc(100vh - 200px)',
+          overflowY: 'auto'
         }}>
-          {state.passengers.map(passenger => (
+          {state.passengers.filter(p => !p.isDelivered).map(passenger => (
             <PassengerCard
               key={passenger.id}
               passenger={passenger}
@@ -433,71 +498,47 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
         </div>
       )}
 
-      {/* Question Display - centered at bottom */}
+      {/* Question Display - centered at bottom, equation-focused */}
       {currentQuestion && (
-        <div style={{
+        <div data-component="sprint-question-display" style={{
           position: 'absolute',
-          bottom: '10px',
+          bottom: '20px',
           left: '50%',
           transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: '20px',
-          alignItems: 'center',
-          zIndex: 10
+          zIndex: 10,
+          background: 'rgba(255, 255, 255, 0.98)',
+          borderRadius: '24px',
+          padding: '28px 50px',
+          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 5px rgba(59, 130, 246, 0.4)',
+          backdropFilter: 'blur(12px)',
+          border: '4px solid rgba(255, 255, 255, 0.95)'
         }}>
-          {/* Question */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '12px',
-            padding: '12px 20px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-            textAlign: 'center',
-            backdropFilter: 'blur(4px)'
+          {/* Complement equation as main focus */}
+          <div data-element="sprint-question-equation" style={{
+            fontSize: '96px',
+            fontWeight: 'bold',
+            color: '#1f2937',
+            lineHeight: '1.1',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+            justifyContent: 'center'
           }}>
-            <div style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              marginBottom: '2px'
-            }}>
-              ? + {currentQuestion.number} = {currentQuestion.targetSum}
-            </div>
-            <div style={{
-              fontSize: '48px',
-              fontWeight: 'bold',
-              color: '#1f2937'
-            }}>
-              {currentQuestion.number}
-            </div>
-          </div>
-
-          {/* Input */}
-          <div style={{
-            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-            borderRadius: '12px',
-            padding: '12px 28px',
-            boxShadow: '0 4px 20px rgba(59, 130, 246, 0.4)',
-            textAlign: 'center',
-            minWidth: '120px'
-          }}>
-            <div style={{
-              fontSize: '48px',
-              fontWeight: 'bold',
+            <span style={{
+              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
               color: 'white',
-              minHeight: '56px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textShadow: '0 2px 10px rgba(0, 0, 0, 0.2)'
+              padding: '12px 32px',
+              borderRadius: '16px',
+              minWidth: '140px',
+              display: 'inline-block',
+              textShadow: '0 3px 10px rgba(0, 0, 0, 0.3)'
             }}>
-              {currentInput || '_'}
-            </div>
-            <div style={{
-              fontSize: '10px',
-              color: 'rgba(255, 255, 255, 0.9)',
-              marginTop: '2px'
-            }}>
-              Type answer
-            </div>
+              {currentInput || '?'}
+            </span>
+            <span style={{ color: '#6b7280' }}>+</span>
+            <span>{currentQuestion.number}</span>
+            <span style={{ color: '#6b7280' }}>=</span>
+            <span style={{ color: '#10b981' }}>{currentQuestion.targetSum}</span>
           </div>
         </div>
       )}
@@ -507,30 +548,47 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
         @keyframes steamPuffSVG {
           0% {
             opacity: 0.8;
-            transform: scale(0.5) translateY(0);
+            transform: scale(0.5) translate(0, 0);
           }
           50% {
             opacity: 0.4;
-            transform: scale(1.5) translateY(-30px);
+            transform: scale(1.5) translate(15px, -30px);
           }
           100% {
             opacity: 0;
-            transform: scale(2) translateY(-60px);
+            transform: scale(2) translate(25px, -60px);
           }
         }
 
         @keyframes coalFallingSVG {
           0% {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            transform: translate(0, 0) scale(1);
           }
           50% {
             opacity: 0.7;
-            transform: translateY(15px) scale(0.8);
+            transform: translate(5px, 15px) scale(0.8);
           }
           100% {
             opacity: 0;
-            transform: translateY(30px) scale(0.5);
+            transform: translate(8px, 30px) scale(0.5);
+          }
+        }
+
+        @keyframes celebrateDelivery {
+          0% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+          20% {
+            transform: scale(1.3) translateY(-10px);
+          }
+          40% {
+            transform: scale(1.2) translateY(-5px);
+          }
+          100% {
+            opacity: 0;
+            transform: scale(0.8) translateY(-20px);
           }
         }
       `}</style>
