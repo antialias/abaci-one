@@ -721,13 +721,13 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           bottom: '20px',
           left: '50%',
           transform: 'translateX(-50%)',
-          zIndex: 100,
           background: 'rgba(255, 255, 255, 0.98)',
           borderRadius: '24px',
           padding: '28px 50px',
           boxShadow: '0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 5px rgba(59, 130, 246, 0.4)',
           backdropFilter: 'blur(12px)',
-          border: '4px solid rgba(255, 255, 255, 0.95)'
+          border: '4px solid rgba(255, 255, 255, 0.95)',
+          pointerEvents: 'none'
         }}>
           {/* Complement equation as main focus */}
           <div data-element="sprint-question-equation" style={{
