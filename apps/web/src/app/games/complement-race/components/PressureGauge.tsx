@@ -122,14 +122,17 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
       </svg>
 
       {/* Digital readout - animated */}
-      <animated.div style={{
+      <div style={{
         textAlign: 'center',
         fontSize: '20px',
-        fontWeight: 'bold',
-        color
+        fontWeight: 'bold'
       }}>
-        {spring.pressure.to(p => Math.round(p))} <span style={{ fontSize: '12px' }}>PSI</span>
-      </animated.div>
+        <animated.span style={{ color }}>
+          {spring.pressure.to(p => Math.round(p))}
+        </animated.span>
+        {' '}
+        <span style={{ fontSize: '12px' }}>PSI</span>
+      </div>
     </div>
   )
 }
