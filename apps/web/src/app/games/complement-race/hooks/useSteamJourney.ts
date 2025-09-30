@@ -4,22 +4,23 @@ import { generatePassengers, findBoardablePassengers, findDeliverablePassengers 
 import { useSoundEffects } from './useSoundEffects'
 
 /**
- * Steam Sprint momentum system
+ * Steam Sprint momentum system (Infinite Mode)
  *
  * Momentum mechanics:
  * - Each correct answer adds momentum (builds up steam pressure)
  * - Momentum decays over time based on skill level
- * - Train position = momentum * 0.4 (updated every 200ms)
- * - Game lasts 60 seconds
+ * - Train automatically advances to next route upon completion
+ * - Game continues indefinitely until player quits
+ * - Time-of-day cycle repeats every 60 seconds
  *
  * Skill level decay rates (momentum lost per second):
- * - Preschool: 0.5/s (very slow decay)
- * - Kindergarten: 1.0/s
- * - Relaxed: 1.5/s
- * - Slow: 2.0/s
- * - Normal: 2.5/s
- * - Fast: 3.0/s
- * - Expert: 3.5/s (rapid decay)
+ * - Preschool: 2.0/s (very slow decay)
+ * - Kindergarten: 3.5/s
+ * - Relaxed: 5.0/s
+ * - Slow: 7.0/s
+ * - Normal: 9.0/s
+ * - Fast: 11.0/s
+ * - Expert: 13.0/s (rapid decay)
  */
 
 const MOMENTUM_DECAY_RATES = {
@@ -67,14 +68,7 @@ export function useSteamJourney() {
       const deltaTime = now - lastUpdateRef.current
       lastUpdateRef.current = now
 
-      // Check if 60 seconds elapsed
-      if (elapsed >= GAME_DURATION) {
-        dispatch({ type: 'END_RACE' })
-        setTimeout(() => {
-          dispatch({ type: 'SHOW_RESULTS' })
-        }, 1000)
-        return
-      }
+      // Steam Sprint is infinite - no time limit
 
       // Get decay rate based on timeout setting (skill level)
       const decayRate = MOMENTUM_DECAY_RATES[state.timeoutSetting] || MOMENTUM_DECAY_RATES.normal
@@ -137,18 +131,30 @@ export function useSteamJourney() {
       })
 
       // Check for route completion (train reaches 100%)
-      if (trainPosition >= 100 && !state.showRouteCelebration) {
-        // Play celebration whistle (line 13541-13543)
+      // Auto-advance to next route for infinite play
+      if (trainPosition >= 100 && state.trainPosition < 100) {
+        // Play celebration whistle
         playSound('train_whistle', 0.6)
         setTimeout(() => {
           playSound('celebration', 0.4)
         }, 800)
-        dispatch({ type: 'COMPLETE_ROUTE' })
+
+        // Auto-advance to next route
+        const nextRoute = state.currentRoute + 1
+        dispatch({
+          type: 'START_NEW_ROUTE',
+          routeNumber: nextRoute,
+          stations: state.stations
+        })
+
+        // Generate new passengers
+        const newPassengers = generatePassengers(state.stations)
+        dispatch({ type: 'GENERATE_PASSENGERS', passengers: newPassengers })
       }
     }, UPDATE_INTERVAL)
 
     return () => clearInterval(interval)
-  }, [state.isGameActive, state.style, state.momentum, state.timeoutSetting, state.passengers, state.stations, state.showRouteCelebration, dispatch])
+  }, [state.isGameActive, state.style, state.momentum, state.trainPosition, state.pressure, state.elapsedTime, state.timeoutSetting, state.passengers, state.stations, state.currentRoute, dispatch, playSound])
 
   // Auto-regenerate passengers when all are delivered
   useEffect(() => {
@@ -190,11 +196,11 @@ export function useSteamJourney() {
     })
   }
 
-  // Calculate time of day period (0-5 for 6 periods over 60 seconds)
+  // Calculate time of day period (0-5 for 6 periods, cycles infinitely)
   const getTimeOfDayPeriod = (): number => {
     if (state.elapsedTime === 0) return 0
     const periodDuration = GAME_DURATION / 6
-    return Math.min(5, Math.floor(state.elapsedTime / periodDuration))
+    return Math.floor(state.elapsedTime / periodDuration) % 6
   }
 
   // Get sky gradient colors based on time of day
