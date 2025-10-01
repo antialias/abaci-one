@@ -1,6 +1,7 @@
 'use client'
 
 import { useSpring, animated } from '@react-spring/web'
+import { AbacusReact } from '@soroban/abacus-react'
 
 interface PressureGaugeProps {
   pressure: number // 0-150 PSI
@@ -36,7 +37,7 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
       background: 'rgba(255, 255, 255, 0.95)',
       padding: '16px',
       borderRadius: '12px',
-      minWidth: '160px',
+      minWidth: '220px',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
     }}>
       {/* Title */}
@@ -52,7 +53,7 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
 
       {/* SVG Gauge */}
       <svg
-        viewBox="0 0 210 130"
+        viewBox="-40 -20 280 170"
         style={{
           width: '100%',
           height: 'auto',
@@ -78,6 +79,10 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
           const x2 = 100 + Math.cos(tickRad) * 80
           const y2 = 100 - Math.sin(tickRad) * 80  // Subtract for SVG coords
 
+          // Position for abacus label
+          const labelX = 100 + Math.cos(tickRad) * 112
+          const labelY = 100 - Math.sin(tickRad) * 112
+
           return (
             <g key={`tick-${index}`}>
               <line
@@ -89,16 +94,31 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
                 strokeWidth="2"
                 strokeLinecap="round"
               />
-              <text
-                x={100 + Math.cos(tickRad) * 92}
-                y={100 - Math.sin(tickRad) * 92 + 4}  // Subtract for SVG coords
-                textAnchor="middle"
-                fontSize="10"
-                fill="#6b7280"
-                fontWeight="600"
+              <foreignObject
+                x={labelX - 30}
+                y={labelY - 25}
+                width="60"
+                height="100"
               >
-                {psi}
-              </text>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 0
+                }}>
+                  <AbacusReact
+                    value={psi}
+                    columns={3}
+                    interactive={false}
+                    showNumbers={false}
+                    hideInactiveBeads={false}
+                    scaleFactor={0.6}
+                    customStyles={{
+                      columnPosts: { opacity: 0 }
+                    }}
+                  />
+                </div>
+              </foreignObject>
             </g>
           )
         })}
@@ -121,17 +141,34 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
         />
       </svg>
 
-      {/* Digital readout - animated */}
+      {/* Abacus readout */}
       <div style={{
         textAlign: 'center',
-        fontSize: '20px',
-        fontWeight: 'bold'
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        minHeight: '32px'
       }}>
-        <animated.span style={{ color }}>
-          {spring.pressure.to(p => Math.round(p))}
-        </animated.span>
-        {' '}
-        <span style={{ fontSize: '12px' }}>PSI</span>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          lineHeight: 0
+        }}>
+          <AbacusReact
+            value={Math.round(pressure)}
+            columns={3}
+            interactive={false}
+            showNumbers={false}
+            hideInactiveBeads={true}
+            scaleFactor={0.35}
+            customStyles={{
+              columnPosts: { opacity: 0 }
+            }}
+          />
+        </div>
+        <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 'bold' }}>PSI</span>
       </div>
     </div>
   )
