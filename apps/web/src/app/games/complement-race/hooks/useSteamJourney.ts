@@ -114,10 +114,31 @@ export function useSteamJourney() {
       const maxCars = Math.max(1, maxPassengers)
       const currentBoardedPassengers = state.passengers.filter(p => p.isBoarded && !p.isDelivered)
 
-      // Build a map of which cars are occupied (car index -> passenger)
+      // FIRST: Identify which passengers will be delivered in this frame
+      const passengersToDeliver = new Set<string>()
+      currentBoardedPassengers.forEach((passenger, carIndex) => {
+        if (!passenger || passenger.isDelivered) return
+
+        const station = state.stations.find(s => s.id === passenger.destinationStationId)
+        if (!station) return
+
+        // Calculate this passenger's car position
+        const carPosition = Math.max(0, trainPosition - (carIndex + 1) * CAR_SPACING)
+        const distance = Math.abs(carPosition - station.position)
+
+        // If this car is at the destination station (within 5% tolerance), mark for delivery
+        if (distance < 5) {
+          passengersToDeliver.add(passenger.id)
+        }
+      })
+
+      // Build a map of which cars are occupied (excluding passengers being delivered this frame)
       const occupiedCars = new Map<number, typeof currentBoardedPassengers[0]>()
       currentBoardedPassengers.forEach((passenger, arrayIndex) => {
-        occupiedCars.set(arrayIndex, passenger)
+        // Don't count a car as occupied if its passenger is being delivered this frame
+        if (!passengersToDeliver.has(passenger.id)) {
+          occupiedCars.set(arrayIndex, passenger)
+        }
       })
 
       // Track which cars are assigned in THIS frame to prevent double-boarding
