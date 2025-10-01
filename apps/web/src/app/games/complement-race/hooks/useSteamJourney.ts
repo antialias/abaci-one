@@ -43,6 +43,7 @@ export function useSteamJourney() {
   const { playSound } = useSoundEffects()
   const gameStartTimeRef = useRef<number>(0)
   const lastUpdateRef = useRef<number>(0)
+  const routeExitThresholdRef = useRef<number>(107) // Default for 1 car: 100 + 7
 
   // Initialize game start time and generate initial passengers
   useEffect(() => {
@@ -54,6 +55,12 @@ export function useSteamJourney() {
       if (state.passengers.length === 0) {
         const newPassengers = generatePassengers(state.stations)
         dispatch({ type: 'GENERATE_PASSENGERS', passengers: newPassengers })
+
+        // Calculate and store exit threshold for this route
+        const CAR_SPACING = 7
+        const maxPassengers = calculateMaxConcurrentPassengers(newPassengers, state.stations)
+        const maxCars = Math.max(1, maxPassengers)
+        routeExitThresholdRef.current = 100 + (maxCars * CAR_SPACING)
       }
     }
   }, [state.isGameActive, state.style, state.stations, state.passengers.length, dispatch])
@@ -158,9 +165,8 @@ export function useSteamJourney() {
       })
 
       // Check for route completion (entire train exits tunnel)
-      // Last car is at trainPosition - (maxCars * CAR_SPACING)%
-      // So wait until trainPosition >= 100 + (maxCars * CAR_SPACING)% for entire train to exit
-      const ENTIRE_TRAIN_EXIT_THRESHOLD = 100 + (maxCars * CAR_SPACING)
+      // Use stored threshold (stable for entire route)
+      const ENTIRE_TRAIN_EXIT_THRESHOLD = routeExitThresholdRef.current
 
       if (trainPosition >= ENTIRE_TRAIN_EXIT_THRESHOLD && state.trainPosition < ENTIRE_TRAIN_EXIT_THRESHOLD) {
         // Play celebration whistle
@@ -180,6 +186,11 @@ export function useSteamJourney() {
         // Generate new passengers
         const newPassengers = generatePassengers(state.stations)
         dispatch({ type: 'GENERATE_PASSENGERS', passengers: newPassengers })
+
+        // Calculate and store new exit threshold for next route
+        const newMaxPassengers = calculateMaxConcurrentPassengers(newPassengers, state.stations)
+        const newMaxCars = Math.max(1, newMaxPassengers)
+        routeExitThresholdRef.current = 100 + (newMaxCars * CAR_SPACING)
       }
     }, UPDATE_INTERVAL)
 
