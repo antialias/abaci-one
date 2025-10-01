@@ -125,7 +125,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
   const [landmarkPositions, setLandmarkPositions] = useState<Array<{ x: number; y: number }>>([])
   const [boardingAnimations, setBoardingAnimations] = useState<Map<string, BoardingAnimation>>(new Map())
   const [disembarkingAnimations, setDisembarkingAnimations] = useState<Map<string, DisembarkingAnimation>>(new Map())
-  const previousPassengersRef = useRef<Passenger[]>([])
+  const previousPassengersRef = useRef<Passenger[]>(state.passengers)
 
   // Generate landmarks when route changes
   useEffect(() => {
@@ -148,7 +148,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
 
   // Preserve passengers during route transition
   const [displayPassengers, setDisplayPassengers] = useState(state.passengers)
-  const previousPassengersRef = useRef(state.passengers)
 
   // Generate track on mount and when route changes
   useEffect(() => {
