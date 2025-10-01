@@ -212,7 +212,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           landmarks={landmarks}
           stationPositions={stationPositions}
           stations={state.stations}
-          passengers={state.passengers}
+          passengers={displayPassengers}
           boardingAnimations={boardingAnimations}
           disembarkingAnimations={disembarkingAnimations}
         />
