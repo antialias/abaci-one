@@ -23,7 +23,13 @@ export function GameControls() {
   const handleStartRace = () => {
     // Update URL to match selected game style when starting
     router.push(`/games/complement-race/${state.style}`)
-    dispatch({ type: 'START_COUNTDOWN' })
+
+    // Train mode (sprint) doesn't need countdown - start immediately
+    if (state.style === 'sprint') {
+      dispatch({ type: 'BEGIN_GAME' })
+    } else {
+      dispatch({ type: 'START_COUNTDOWN' })
+    }
   }
 
   return (
