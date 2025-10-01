@@ -159,8 +159,6 @@ export function useSteamJourney() {
       // Check for route completion (entire train exits tunnel)
       // With 5 cars at 7% spacing, last car is at trainPosition - 35%
       // So wait until trainPosition >= 135% for entire train to exit
-      const MAX_CARS = 5
-      const CAR_SPACING = 7
       const ENTIRE_TRAIN_EXIT_THRESHOLD = 100 + (MAX_CARS * CAR_SPACING) // 135%
 
       if (trainPosition >= ENTIRE_TRAIN_EXIT_THRESHOLD && state.trainPosition < ENTIRE_TRAIN_EXIT_THRESHOLD) {
