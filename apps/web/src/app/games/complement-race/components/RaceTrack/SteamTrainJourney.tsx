@@ -682,10 +682,10 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
 
       {/* Pressure gauge */}
       <div data-component="pressure-gauge-container" style={{
-        position: 'absolute',
+        position: 'fixed',
         bottom: '10px',
         left: '10px',
-        zIndex: 10,
+        zIndex: 1000,
         width: '120px'
       }}>
         <PressureGauge pressure={pressure} />
