@@ -683,8 +683,8 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       {/* Pressure gauge */}
       <div data-component="pressure-gauge-container" style={{
         position: 'fixed',
-        bottom: '10px',
-        left: '10px',
+        bottom: '20px',
+        left: '20px',
         zIndex: 1000,
         width: '120px'
       }}>
@@ -695,13 +695,13 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       {state.passengers.filter(p => !p.isDelivered).length > 0 && (
         <div data-component="passenger-list" style={{
           position: 'fixed',
-          bottom: '220px',
-          right: '10px',
+          bottom: '20px',
+          right: '20px',
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'column-reverse',
           gap: '8px',
           zIndex: 1000,
-          maxHeight: 'calc(100vh - 240px)',
+          maxHeight: 'calc(100vh - 40px)',
           overflowY: 'auto'
         }}>
           {state.passengers.filter(p => !p.isDelivered).map(passenger => (
@@ -718,7 +718,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       {currentQuestion && (
         <div data-component="sprint-question-display" style={{
           position: 'fixed',
-          bottom: '40px',
+          bottom: '20px',
           left: '50%',
           transform: 'translateX(-50%)',
           background: 'rgba(255, 255, 255, 0.98)',
