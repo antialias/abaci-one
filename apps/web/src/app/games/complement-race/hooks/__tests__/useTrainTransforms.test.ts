@@ -31,13 +31,14 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 50,
         trackGenerator: mockTrackGenerator,
-        pathRef: nullPathRef
+        pathRef: nullPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
 
     expect(result.current.trainTransform).toEqual({ x: 50, y: 300, rotation: 0 })
-    expect(result.current.maxCars).toBe(5)
-    expect(result.current.carSpacing).toBe(7)
+    expect(result.current.trainCars).toHaveLength(5)
   })
 
   test('calculates train transform at given position', () => {
@@ -45,7 +46,9 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 50,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
 
@@ -62,7 +65,9 @@ describe('useTrainTransforms', () => {
         useTrainTransforms({
           trainPosition: position,
           trackGenerator: mockTrackGenerator,
-          pathRef: mockPathRef
+          pathRef: mockPathRef,
+          maxCars: 5,
+          carSpacing: 7
         }),
       { initialProps: { position: 20 } }
     )
@@ -73,17 +78,18 @@ describe('useTrainTransforms', () => {
     expect(result.current.trainTransform.x).toBe(600)
   })
 
-  test('calculates correct number of train cars with default maxCars', () => {
+  test('calculates correct number of train cars', () => {
     const { result } = renderHook(() =>
       useTrainTransforms({
         trainPosition: 50,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
 
     expect(result.current.trainCars).toHaveLength(5)
-    expect(result.current.maxCars).toBe(5)
   })
 
   test('respects custom maxCars parameter', () => {
@@ -92,12 +98,12 @@ describe('useTrainTransforms', () => {
         trainPosition: 50,
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
-        maxCars: 3
+        maxCars: 3,
+        carSpacing: 7
       })
     )
 
     expect(result.current.trainCars).toHaveLength(3)
-    expect(result.current.maxCars).toBe(3)
   })
 
   test('respects custom carSpacing parameter', () => {
@@ -106,11 +112,11 @@ describe('useTrainTransforms', () => {
         trainPosition: 50,
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
+        maxCars: 5,
         carSpacing: 10
       })
     )
 
-    expect(result.current.carSpacing).toBe(10)
     // First car should be at position 50 - 10 = 40
     expect(result.current.trainCars[0].position).toBe(40)
   })
@@ -137,7 +143,9 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 3,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
     expect(result1.current.locomotiveOpacity).toBe(0)
@@ -146,7 +154,9 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 5.5, // Midpoint between 3 and 8
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
     expect(result2.current.locomotiveOpacity).toBe(0.5)
@@ -155,7 +165,9 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 8,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
     expect(result3.current.locomotiveOpacity).toBe(1)
@@ -167,7 +179,9 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 92,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
     expect(result1.current.locomotiveOpacity).toBe(1)
@@ -176,7 +190,9 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 94.5, // Midpoint between 92 and 97
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
     expect(result2.current.locomotiveOpacity).toBe(0.5)
@@ -185,7 +201,9 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 97,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
     expect(result3.current.locomotiveOpacity).toBe(0)
@@ -196,7 +214,9 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 50,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
 
@@ -261,7 +281,9 @@ describe('useTrainTransforms', () => {
       useTrainTransforms({
         trainPosition: 50,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
+        maxCars: 5,
+        carSpacing: 7
       })
     )
 

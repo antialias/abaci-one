@@ -10,8 +10,8 @@ interface UseTrackManagementParams {
   pathRef: React.RefObject<SVGPathElement>
   stations: Station[]
   passengers: Passenger[]
-  maxCars?: number
-  carSpacing?: number
+  maxCars: number
+  carSpacing: number
 }
 
 export function useTrackManagement({
@@ -21,8 +21,8 @@ export function useTrackManagement({
   pathRef,
   stations,
   passengers,
-  maxCars = 5,
-  carSpacing = 7
+  maxCars,
+  carSpacing
 }: UseTrackManagementParams) {
   const [trackData, setTrackData] = useState<ReturnType<typeof trackGenerator.generateTrack> | null>(null)
   const [tiesAndRails, setTiesAndRails] = useState<{

@@ -9,6 +9,7 @@ import { useTrackManagement } from '../../hooks/useTrackManagement'
 import { useComplementRace } from '../../context/ComplementRaceContext'
 import { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
 import { getRouteTheme } from '../../lib/routeThemes'
+import { calculateMaxConcurrentPassengers } from '../../lib/passengerGenerator'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useUserProfile } from '@/contexts/UserProfileContext'
 import { TrainTerrainBackground } from './TrainTerrainBackground'
@@ -98,11 +99,22 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
   const pathRef = useRef<SVGPathElement>(null)
   const [trackGenerator] = useState(() => new RailroadTrackGenerator(800, 600))
 
-  // Train transforms (extracted to hook) - called first to get maxCars and carSpacing
-  const { trainTransform, trainCars, locomotiveOpacity, maxCars, carSpacing } = useTrainTransforms({
+  // Calculate the number of train cars dynamically based on max concurrent passengers
+  const maxCars = useMemo(() => {
+    const maxPassengers = calculateMaxConcurrentPassengers(state.passengers, state.stations)
+    // Ensure at least 1 car, even if no passengers
+    return Math.max(1, maxPassengers)
+  }, [state.passengers, state.stations])
+
+  const carSpacing = 7 // Distance between cars (in % of track)
+
+  // Train transforms (extracted to hook)
+  const { trainTransform, trainCars, locomotiveOpacity } = useTrainTransforms({
     trainPosition,
     trackGenerator,
-    pathRef
+    pathRef,
+    maxCars,
+    carSpacing
   })
 
   // Track management (extracted to hook)

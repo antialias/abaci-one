@@ -16,16 +16,16 @@ interface UseTrainTransformsParams {
   trainPosition: number
   trackGenerator: RailroadTrackGenerator
   pathRef: React.RefObject<SVGPathElement>
-  maxCars?: number
-  carSpacing?: number
+  maxCars: number
+  carSpacing: number
 }
 
 export function useTrainTransforms({
   trainPosition,
   trackGenerator,
   pathRef,
-  maxCars = 5,
-  carSpacing = 7
+  maxCars,
+  carSpacing
 }: UseTrainTransformsParams) {
   const [trainTransform, setTrainTransform] = useState<TrainTransform>({ x: 50, y: 300, rotation: 0 })
 
@@ -102,8 +102,6 @@ export function useTrainTransforms({
   return {
     trainTransform,
     trainCars,
-    locomotiveOpacity,
-    maxCars,
-    carSpacing
+    locomotiveOpacity
   }
 }

@@ -181,3 +181,52 @@ export function findDeliverablePassengers(
 
   return deliverable
 }
+
+/**
+ * Calculate the maximum number of passengers that will be on the train
+ * concurrently at any given moment during the route
+ */
+export function calculateMaxConcurrentPassengers(
+  passengers: Passenger[],
+  stations: Station[]
+): number {
+  // Create events for boarding and delivery
+  interface StationEvent {
+    position: number
+    isBoarding: boolean // true = board, false = delivery
+  }
+
+  const events: StationEvent[] = []
+
+  for (const passenger of passengers) {
+    const originStation = stations.find(s => s.id === passenger.originStationId)
+    const destStation = stations.find(s => s.id === passenger.destinationStationId)
+
+    if (originStation && destStation) {
+      events.push({ position: originStation.position, isBoarding: true })
+      events.push({ position: destStation.position, isBoarding: false })
+    }
+  }
+
+  // Sort events by position, with deliveries before boardings at the same position
+  events.sort((a, b) => {
+    if (a.position !== b.position) return a.position - b.position
+    // At same position, deliveries happen before boarding
+    return a.isBoarding ? 1 : -1
+  })
+
+  // Track current passenger count and maximum
+  let currentCount = 0
+  let maxCount = 0
+
+  for (const event of events) {
+    if (event.isBoarding) {
+      currentCount++
+      maxCount = Math.max(maxCount, currentCount)
+    } else {
+      currentCount--
+    }
+  }
+
+  return maxCount
+}
