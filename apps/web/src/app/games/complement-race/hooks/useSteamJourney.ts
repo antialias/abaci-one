@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
-import { generatePassengers } from '../lib/passengerGenerator'
+import { generatePassengers, calculateMaxConcurrentPassengers } from '../lib/passengerGenerator'
 import { useSoundEffects } from './useSoundEffects'
 
 /**
@@ -103,7 +103,8 @@ export function useSteamJourney() {
       // Check for passengers that should board
       // Passengers board when an EMPTY car reaches their station
       const CAR_SPACING = 7 // Must match SteamTrainJourney component
-      const MAX_CARS = 5
+      const maxPassengers = calculateMaxConcurrentPassengers(state.passengers, state.stations)
+      const maxCars = Math.max(1, maxPassengers)
       const currentBoardedPassengers = state.passengers.filter(p => p.isBoarded && !p.isDelivered)
 
       // Find waiting passengers whose origin station has an empty car nearby
@@ -115,7 +116,7 @@ export function useSteamJourney() {
 
         // Check if any empty car is at this station
         // Cars are at positions: trainPosition - 7, trainPosition - 14, etc.
-        for (let carIndex = 0; carIndex < MAX_CARS; carIndex++) {
+        for (let carIndex = 0; carIndex < maxCars; carIndex++) {
           // Skip if this car already has a passenger
           if (currentBoardedPassengers[carIndex]) continue
 
@@ -157,9 +158,9 @@ export function useSteamJourney() {
       })
 
       // Check for route completion (entire train exits tunnel)
-      // With 5 cars at 7% spacing, last car is at trainPosition - 35%
-      // So wait until trainPosition >= 135% for entire train to exit
-      const ENTIRE_TRAIN_EXIT_THRESHOLD = 100 + (MAX_CARS * CAR_SPACING) // 135%
+      // Last car is at trainPosition - (maxCars * CAR_SPACING)%
+      // So wait until trainPosition >= 100 + (maxCars * CAR_SPACING)% for entire train to exit
+      const ENTIRE_TRAIN_EXIT_THRESHOLD = 100 + (maxCars * CAR_SPACING)
 
       if (trainPosition >= ENTIRE_TRAIN_EXIT_THRESHOLD && state.trainPosition < ENTIRE_TRAIN_EXIT_THRESHOLD) {
         // Play celebration whistle
