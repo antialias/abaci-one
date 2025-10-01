@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
-import { generatePassengers, findBoardablePassengers, findDeliverablePassengers } from '../lib/passengerGenerator'
+import { generatePassengers } from '../lib/passengerGenerator'
 import { useSoundEffects } from './useSoundEffects'
 
 /**
@@ -101,34 +101,59 @@ export function useSteamJourney() {
       })
 
       // Check for passengers that should board
-      const boardable = findBoardablePassengers(
-        state.passengers,
-        state.stations,
-        trainPosition
-      )
+      // Passengers board when an EMPTY car reaches their station
+      const CAR_SPACING = 7 // Must match SteamTrainJourney component
+      const MAX_CARS = 5
+      const currentBoardedPassengers = state.passengers.filter(p => p.isBoarded && !p.isDelivered)
 
-      // Board passengers at their origin station
-      boardable.forEach(passenger => {
-        dispatch({
-          type: 'BOARD_PASSENGER',
-          passengerId: passenger.id
-        })
+      // Find waiting passengers whose origin station has an empty car nearby
+      state.passengers.forEach(passenger => {
+        if (passenger.isBoarded || passenger.isDelivered) return
+
+        const station = state.stations.find(s => s.id === passenger.originStationId)
+        if (!station) return
+
+        // Check if any empty car is at this station
+        // Cars are at positions: trainPosition - 7, trainPosition - 14, etc.
+        for (let carIndex = 0; carIndex < MAX_CARS; carIndex++) {
+          // Skip if this car already has a passenger
+          if (currentBoardedPassengers[carIndex]) continue
+
+          const carPosition = Math.max(0, trainPosition - (carIndex + 1) * CAR_SPACING)
+          const distance = Math.abs(carPosition - station.position)
+
+          // If car is at station (within 3% tolerance), board this passenger
+          if (distance < 3) {
+            dispatch({
+              type: 'BOARD_PASSENGER',
+              passengerId: passenger.id
+            })
+            return // Board this passenger and move on
+          }
+        }
       })
 
       // Check for deliverable passengers
-      const deliverable = findDeliverablePassengers(
-        state.passengers,
-        state.stations,
-        trainPosition
-      )
+      // Passengers disembark when THEIR car reaches their destination
+      currentBoardedPassengers.forEach((passenger, carIndex) => {
+        if (!passenger || passenger.isDelivered) return
 
-      // Deliver passengers at stations
-      deliverable.forEach(({ passenger, points }) => {
-        dispatch({
-          type: 'DELIVER_PASSENGER',
-          passengerId: passenger.id,
-          points
-        })
+        const station = state.stations.find(s => s.id === passenger.destinationStationId)
+        if (!station) return
+
+        // Calculate this passenger's car position
+        const carPosition = Math.max(0, trainPosition - (carIndex + 1) * CAR_SPACING)
+        const distance = Math.abs(carPosition - station.position)
+
+        // If this car is at the destination station (within 3% tolerance), deliver
+        if (distance < 3) {
+          const points = passenger.isUrgent ? 20 : 10
+          dispatch({
+            type: 'DELIVER_PASSENGER',
+            passengerId: passenger.id,
+            points
+          })
+        }
       })
 
       // Check for route completion (entire train exits tunnel)
