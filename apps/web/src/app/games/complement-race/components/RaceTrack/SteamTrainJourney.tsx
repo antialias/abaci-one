@@ -1,19 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState, useMemo, memo } from 'react'
+import { useRef, useState, useMemo, memo } from 'react'
 import { useSpring, animated } from '@react-spring/web'
 import { useSteamJourney } from '../../hooks/useSteamJourney'
 import { usePassengerAnimations, type BoardingAnimation, type DisembarkingAnimation } from '../../hooks/usePassengerAnimations'
 import { useTrainTransforms } from '../../hooks/useTrainTransforms'
+import { useTrackManagement } from '../../hooks/useTrackManagement'
 import { useComplementRace } from '../../context/ComplementRaceContext'
 import { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
 import { PassengerCard } from '../PassengerCard'
 import { getRouteTheme } from '../../lib/routeThemes'
-import { generateLandmarks, type Landmark } from '../../lib/landmarks'
 import { PressureGauge } from '../PressureGauge'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useUserProfile } from '@/contexts/UserProfileContext'
-import type { Passenger } from '../../lib/gameTypes'
 
 const BoardingPassengerAnimation = memo(({ animation }: { animation: BoardingAnimation }) => {
   const spring = useSpring({
@@ -96,15 +95,16 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
   const svgRef = useRef<SVGSVGElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
   const [trackGenerator] = useState(() => new RailroadTrackGenerator(800, 600))
-  const [trackData, setTrackData] = useState<ReturnType<typeof trackGenerator.generateTrack> | null>(null)
-  const [tiesAndRails, setTiesAndRails] = useState<{
-    ties: Array<{ x1: number; y1: number; x2: number; y2: number }>
-    leftRailPoints: string[]
-    rightRailPoints: string[]
-  } | null>(null)
-  const [stationPositions, setStationPositions] = useState<Array<{ x: number; y: number }>>([])
-  const [landmarks, setLandmarks] = useState<Landmark[]>([])
-  const [landmarkPositions, setLandmarkPositions] = useState<Array<{ x: number; y: number }>>([])
+
+  // Track management (extracted to hook)
+  const { trackData, tiesAndRails, stationPositions, landmarks, landmarkPositions, displayPassengers } = useTrackManagement({
+    currentRoute: state.currentRoute,
+    trainPosition,
+    trackGenerator,
+    pathRef,
+    stations: state.stations,
+    passengers: state.passengers
+  })
 
   // Train transforms (extracted to hook)
   const { trainTransform, trainCars, locomotiveOpacity, maxCars, carSpacing } = useTrainTransforms({
@@ -123,12 +123,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
     pathRef
   })
 
-  // Generate landmarks when route changes
-  useEffect(() => {
-    const newLandmarks = generateLandmarks(state.currentRoute)
-    setLandmarks(newLandmarks)
-  }, [state.currentRoute])
-
   // Time remaining (60 seconds total)
   const timeRemaining = Math.max(0, 60 - Math.floor(elapsedTime / 1000))
 
@@ -137,102 +131,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
 
   // Get current route theme
   const routeTheme = getRouteTheme(state.currentRoute)
-
-  // Track previous route data to maintain visuals during transition
-  const previousRouteRef = useRef(state.currentRoute)
-  const [pendingTrackData, setPendingTrackData] = useState<ReturnType<typeof trackGenerator.generateTrack> | null>(null)
-
-  // Preserve passengers during route transition
-  const [displayPassengers, setDisplayPassengers] = useState(state.passengers)
-
-  // Generate track on mount and when route changes
-  useEffect(() => {
-    const track = trackGenerator.generateTrack(state.currentRoute)
-
-    // If we're in the middle of a route (position > 0), store as pending
-    // Only apply new track when position resets to beginning (< 0)
-    if (state.trainPosition > 0 && previousRouteRef.current !== state.currentRoute) {
-      setPendingTrackData(track)
-    } else {
-      setTrackData(track)
-      previousRouteRef.current = state.currentRoute
-      setPendingTrackData(null)
-    }
-  }, [trackGenerator, state.currentRoute, state.trainPosition])
-
-  // Apply pending track when train resets to beginning
-  useEffect(() => {
-    if (pendingTrackData && state.trainPosition < 0) {
-      setTrackData(pendingTrackData)
-      previousRouteRef.current = state.currentRoute
-      setPendingTrackData(null)
-    }
-  }, [pendingTrackData, state.trainPosition, state.currentRoute])
-
-  // Manage passenger display during route transitions
-  useEffect(() => {
-    // If we're starting a new route (position < 0) or passengers haven't changed, update immediately
-    if (state.trainPosition < 0 || state.passengers === previousPassengersRef.current) {
-      setDisplayPassengers(state.passengers)
-      previousPassengersRef.current = state.passengers
-    }
-    // Otherwise, if we're mid-route and passengers changed, keep showing old passengers
-    else if (state.trainPosition > 0 && state.passengers !== previousPassengersRef.current) {
-      // Keep displaying old passengers until train exits
-      // Don't update displayPassengers yet
-    }
-
-    // When train resets to beginning, switch to new passengers
-    if (state.trainPosition < 0 && state.passengers !== previousPassengersRef.current) {
-      setDisplayPassengers(state.passengers)
-      previousPassengersRef.current = state.passengers
-    }
-  }, [state.passengers, state.trainPosition])
-
-  // Update display passengers during gameplay (same route)
-  useEffect(() => {
-    // Only update if we're in the same route (not transitioning)
-    if (previousRouteRef.current === state.currentRoute && state.trainPosition >= 0 && state.trainPosition < 100) {
-      setDisplayPassengers(state.passengers)
-    }
-  }, [state.passengers, state.currentRoute, state.trainPosition])
-
-  // Generate ties and rails when path is ready
-  useEffect(() => {
-    if (pathRef.current && trackData) {
-      const result = trackGenerator.generateTiesAndRails(pathRef.current)
-      setTiesAndRails(result)
-    }
-  }, [trackData, trackGenerator])
-
-  // Calculate station positions when path is ready
-  useEffect(() => {
-    if (pathRef.current) {
-      const positions = state.stations.map(station => {
-        const pathLength = pathRef.current!.getTotalLength()
-        const distance = (station.position / 100) * pathLength
-        const point = pathRef.current!.getPointAtLength(distance)
-        return { x: point.x, y: point.y }
-      })
-      setStationPositions(positions)
-    }
-  }, [trackData, state.stations])
-
-  // Calculate landmark positions when path is ready
-  useEffect(() => {
-    if (pathRef.current && landmarks.length > 0) {
-      const positions = landmarks.map(landmark => {
-        const pathLength = pathRef.current!.getTotalLength()
-        const distance = (landmark.position / 100) * pathLength
-        const point = pathRef.current!.getPointAtLength(distance)
-        return {
-          x: point.x + landmark.offset.x,
-          y: point.y + landmark.offset.y
-        }
-      })
-      setLandmarkPositions(positions)
-    }
-  }, [trackData, landmarks])
 
 
   // Memoize filtered passenger lists to avoid recalculating on every render
