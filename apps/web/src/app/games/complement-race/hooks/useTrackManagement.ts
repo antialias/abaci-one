@@ -10,6 +10,8 @@ interface UseTrackManagementParams {
   pathRef: React.RefObject<SVGPathElement>
   stations: Station[]
   passengers: Passenger[]
+  maxCars?: number
+  carSpacing?: number
 }
 
 export function useTrackManagement({
@@ -18,7 +20,9 @@ export function useTrackManagement({
   trackGenerator,
   pathRef,
   stations,
-  passengers
+  passengers,
+  maxCars = 5,
+  carSpacing = 7
 }: UseTrackManagementParams) {
   const [trackData, setTrackData] = useState<ReturnType<typeof trackGenerator.generateTrack> | null>(null)
   const [tiesAndRails, setTiesAndRails] = useState<{
@@ -68,23 +72,26 @@ export function useTrackManagement({
 
   // Manage passenger display during route transitions
   useEffect(() => {
-    // If we're starting a new route (position < 0) or passengers haven't changed, update immediately
-    if (trainPosition < 0 || passengers === previousPassengersRef.current) {
+    // Calculate the position of the last train car
+    const lastCarPosition = trainPosition - maxCars * carSpacing
+    const fadeOutEnd = 97 // Position where cars are fully faded out
+
+    // Only switch to new passengers when:
+    // 1. Train has reset to start position (< 0), OR
+    // 2. All cars (including the last one) have exited (last car position >= fadeOutEnd)
+    const allCarsExited = lastCarPosition >= fadeOutEnd
+    const trainReset = trainPosition < 0
+
+    if (trainReset || allCarsExited || passengers === previousPassengersRef.current) {
       setDisplayPassengers(passengers)
       previousPassengersRef.current = passengers
     }
     // Otherwise, if we're mid-route and passengers changed, keep showing old passengers
-    else if (trainPosition > 0 && passengers !== previousPassengersRef.current) {
-      // Keep displaying old passengers until train exits
+    else if (passengers !== previousPassengersRef.current) {
+      // Keep displaying old passengers until all cars exit
       // Don't update displayPassengers yet
     }
-
-    // When train resets to beginning, switch to new passengers
-    if (trainPosition < 0 && passengers !== previousPassengersRef.current) {
-      setDisplayPassengers(passengers)
-      previousPassengersRef.current = passengers
-    }
-  }, [passengers, trainPosition])
+  }, [passengers, trainPosition, maxCars, carSpacing])
 
   // Update display passengers during gameplay (same route)
   useEffect(() => {

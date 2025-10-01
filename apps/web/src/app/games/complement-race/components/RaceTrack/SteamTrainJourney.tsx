@@ -98,6 +98,13 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
   const pathRef = useRef<SVGPathElement>(null)
   const [trackGenerator] = useState(() => new RailroadTrackGenerator(800, 600))
 
+  // Train transforms (extracted to hook) - called first to get maxCars and carSpacing
+  const { trainTransform, trainCars, locomotiveOpacity, maxCars, carSpacing } = useTrainTransforms({
+    trainPosition,
+    trackGenerator,
+    pathRef
+  })
+
   // Track management (extracted to hook)
   const { trackData, tiesAndRails, stationPositions, landmarks, landmarkPositions, displayPassengers } = useTrackManagement({
     currentRoute: state.currentRoute,
@@ -105,14 +112,9 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
     trackGenerator,
     pathRef,
     stations: state.stations,
-    passengers: state.passengers
-  })
-
-  // Train transforms (extracted to hook)
-  const { trainTransform, trainCars, locomotiveOpacity, maxCars, carSpacing } = useTrainTransforms({
-    trainPosition,
-    trackGenerator,
-    pathRef
+    passengers: state.passengers,
+    maxCars,
+    carSpacing
   })
 
   // Passenger animations (extracted to hook)

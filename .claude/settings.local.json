@@ -169,7 +169,8 @@
       "Bash(open http://localhost:6006)",
       "Bash(open http://localhost:3002/games/matching)",
       "Bash(open http://localhost:3002/create)",
-      "Bash(open http://localhost:3002/games/complement-race/practice)"
+      "Bash(open http://localhost:3002/games/complement-race/practice)",
+      "Bash(open http://localhost:3002/games/complement-race)"
     ],
     "deny": [],
     "ask": []
