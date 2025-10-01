@@ -7,8 +7,8 @@ import type { Landmark } from '../../lib/landmarks'
 interface RailroadTrackPathProps {
   tiesAndRails: {
     ties: Array<{ x1: number; y1: number; x2: number; y2: number }>
-    leftRailPoints: string[]
-    rightRailPoints: string[]
+    leftRailPath: string
+    rightRailPath: string
   } | null
   referencePath: string
   pathRef: React.RefObject<SVGPathElement>
@@ -51,24 +51,26 @@ export const RailroadTrackPath = memo(({
       ))}
 
       {/* Left rail */}
-      {tiesAndRails && tiesAndRails.leftRailPoints.length > 1 && (
-        <polyline
-          points={tiesAndRails.leftRailPoints.join(' ')}
+      {tiesAndRails && tiesAndRails.leftRailPath && (
+        <path
+          d={tiesAndRails.leftRailPath}
           fill="none"
           stroke="#C0C0C0"
           strokeWidth="5"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       )}
 
       {/* Right rail */}
-      {tiesAndRails && tiesAndRails.rightRailPoints.length > 1 && (
-        <polyline
-          points={tiesAndRails.rightRailPoints.join(' ')}
+      {tiesAndRails && tiesAndRails.rightRailPath && (
+        <path
+          d={tiesAndRails.rightRailPath}
           fill="none"
           stroke="#C0C0C0"
           strokeWidth="5"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       )}
 

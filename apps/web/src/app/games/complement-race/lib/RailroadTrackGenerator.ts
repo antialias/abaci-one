@@ -14,8 +14,8 @@ export interface TrackElements {
   ballastPath: string
   referencePath: string
   ties: Array<{ x1: number; y1: number; x2: number; y2: number }>
-  leftRailPoints: string[]
-  rightRailPoints: string[]
+  leftRailPath: string
+  rightRailPath: string
 }
 
 export class RailroadTrackGenerator {
@@ -44,6 +44,14 @@ export class RailroadTrackGenerator {
   }
 
   /**
+   * Seeded random number generator for deterministic randomness
+   */
+  private seededRandom(seed: number): number {
+    const x = Math.sin(seed) * 10000
+    return x - Math.floor(x)
+  }
+
+  /**
    * Generate waypoints for track with controlled randomness
    * Based on route number for variety across different routes
    */
@@ -60,18 +68,17 @@ export class RailroadTrackGenerator {
       { x: 780, y: 300 }   // Enter right tunnel center
     ]
 
-    // Add controlled randomness for variety (but keep start/end fixed)
-    // Use route number as seed for consistent randomness per route
-    const seed = routeNumber * 123.456
-
+    // Add deterministic randomness based on route number (but keep start/end fixed)
     return baseWaypoints.map((point, index) => {
       if (index === 0 || index === baseWaypoints.length - 1) {
         return point // Keep start/end points fixed
       }
 
-      // Use deterministic randomness based on route and index
-      const randomX = Math.sin(seed + index * 1.1) * 30
-      const randomY = Math.cos(seed + index * 1.3) * 40
+      // Use seeded randomness for consistent track per route
+      const seed1 = routeNumber * 12.9898 + index * 78.233
+      const seed2 = routeNumber * 43.789 + index * 67.123
+      const randomX = (this.seededRandom(seed1) - 0.5) * 60 // ±30 pixels
+      const randomY = (this.seededRandom(seed2) - 0.5) * 80 // ±40 pixels
 
       return {
         x: point.x + randomX,
@@ -108,13 +115,41 @@ export class RailroadTrackGenerator {
   }
 
   /**
+   * Generate gentle curves through densely sampled waypoints
+   * Uses very gentle control points to avoid wobbles in straight sections
+   */
+  private generateGentlePath(waypoints: Waypoint[]): string {
+    if (waypoints.length < 2) return ''
+
+    let pathData = `M ${waypoints[0].x} ${waypoints[0].y}`
+
+    for (let i = 1; i < waypoints.length; i++) {
+      const current = waypoints[i]
+      const previous = waypoints[i - 1]
+
+      // Use extremely gentle control points for very dense sampling
+      const dx = current.x - previous.x
+      const dy = current.y - previous.y
+
+      const cp1x = previous.x + dx * 0.33
+      const cp1y = previous.y + dy * 0.33
+      const cp2x = current.x - dx * 0.33
+      const cp2y = current.y - dy * 0.33
+
+      pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${current.x} ${current.y}`
+    }
+
+    return pathData
+  }
+
+  /**
    * Generate railroad ties and rails along the path
    * This requires an SVG path element to measure
    */
   generateTiesAndRails(pathElement: SVGPathElement): {
     ties: Array<{ x1: number; y1: number; x2: number; y2: number }>
-    leftRailPoints: string[]
-    rightRailPoints: string[]
+    leftRailPath: string
+    rightRailPath: string
   } {
     const pathLength = pathElement.getTotalLength()
     const tieSpacing = 12 // Distance between ties in pixels
@@ -122,8 +157,6 @@ export class RailroadTrackGenerator {
     const tieCount = Math.floor(pathLength / tieSpacing)
 
     const ties: Array<{ x1: number; y1: number; x2: number; y2: number }> = []
-    const leftRailPoints: string[] = []
-    const rightRailPoints: string[] = []
 
     // Generate ties at normal spacing
     for (let i = 0; i < tieCount; i++) {
@@ -146,33 +179,39 @@ export class RailroadTrackGenerator {
       ties.push({ x1: leftX, y1: leftY, x2: rightX, y2: rightY })
     }
 
-    // Generate rail points with much higher density for smooth curves
-    // Use 3px spacing instead of 12px tie spacing to eliminate jaggies on curves
-    const railSpacing = 3
-    const railPointCount = Math.floor(pathLength / railSpacing)
+    // Generate rail paths as smooth curves (not polylines)
+    // Sample points along the path and create offset waypoints
+    const railSampling = 2 // Sample every 2 pixels for waypoints (very dense sampling for smooth curves)
+    const sampleCount = Math.floor(pathLength / railSampling)
 
-    for (let i = 0; i < railPointCount; i++) {
-      const distance = i * railSpacing
+    const leftRailWaypoints: Waypoint[] = []
+    const rightRailWaypoints: Waypoint[] = []
+
+    for (let i = 0; i <= sampleCount; i++) {
+      const distance = Math.min(i * railSampling, pathLength)
       const point = pathElement.getPointAtLength(distance)
 
-      // Calculate perpendicular angle for rail orientation
-      const nextDistance = Math.min(distance + 2, pathLength)
+      // Calculate perpendicular angle with longer lookahead for smoother curves
+      const nextDistance = Math.min(distance + 8, pathLength)
       const nextPoint = pathElement.getPointAtLength(nextDistance)
       const angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x)
       const perpAngle = angle + Math.PI / 2
 
-      // Calculate rail positions
+      // Calculate offset positions for rails
       const leftX = point.x + Math.cos(perpAngle) * gaugeWidth
       const leftY = point.y + Math.sin(perpAngle) * gaugeWidth
       const rightX = point.x - Math.cos(perpAngle) * gaugeWidth
       const rightY = point.y - Math.sin(perpAngle) * gaugeWidth
 
-      // Collect points for rails
-      leftRailPoints.push(`${leftX},${leftY}`)
-      rightRailPoints.push(`${rightX},${rightY}`)
+      leftRailWaypoints.push({ x: leftX, y: leftY })
+      rightRailWaypoints.push({ x: rightX, y: rightY })
     }
 
-    return { ties, leftRailPoints, rightRailPoints }
+    // Generate smooth curved paths through the rail waypoints with gentle control points
+    const leftRailPath = this.generateGentlePath(leftRailWaypoints)
+    const rightRailPath = this.generateGentlePath(rightRailWaypoints)
+
+    return { ties, leftRailPath, rightRailPath }
   }
 
   /**
