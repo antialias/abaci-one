@@ -374,11 +374,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         currentRoute: action.routeNumber,
         stations: action.stations,
-        trainPosition: 0,
+        trainPosition: -5, // Start off-screen to the left for smooth fade-in
         deliveredPassengers: 0,
         showRouteCelebration: false,
-        momentum: 0,
-        pressure: 0
+        momentum: 50, // Give some starting momentum for the new route
+        pressure: 50
       }
 
     case 'COMPLETE_ROUTE':
