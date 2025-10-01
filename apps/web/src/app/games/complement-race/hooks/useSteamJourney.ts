@@ -114,6 +114,9 @@ export function useSteamJourney() {
       const maxCars = Math.max(1, maxPassengers)
       const currentBoardedPassengers = state.passengers.filter(p => p.isBoarded && !p.isDelivered)
 
+      // Track which cars are assigned in THIS frame to prevent double-boarding
+      const carsAssignedThisFrame = new Set<number>()
+
       // Find waiting passengers whose origin station has an empty car nearby
       state.passengers.forEach(passenger => {
         if (passenger.isBoarded || passenger.isDelivered) return
@@ -124,8 +127,8 @@ export function useSteamJourney() {
         // Check if any empty car is at this station
         // Cars are at positions: trainPosition - 7, trainPosition - 14, etc.
         for (let carIndex = 0; carIndex < maxCars; carIndex++) {
-          // Skip if this car already has a passenger
-          if (currentBoardedPassengers[carIndex]) continue
+          // Skip if this car already has a passenger OR was assigned this frame
+          if (currentBoardedPassengers[carIndex] || carsAssignedThisFrame.has(carIndex)) continue
 
           const carPosition = Math.max(0, trainPosition - (carIndex + 1) * CAR_SPACING)
           const distance = Math.abs(carPosition - station.position)
@@ -136,6 +139,8 @@ export function useSteamJourney() {
               type: 'BOARD_PASSENGER',
               passengerId: passenger.id
             })
+            // Mark this car as assigned in this frame
+            carsAssignedThisFrame.add(carIndex)
             return // Board this passenger and move on
           }
         }
