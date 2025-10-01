@@ -4,110 +4,206 @@ import type { Passenger, Station } from '../lib/gameTypes'
 
 interface PassengerCardProps {
   passenger: Passenger
+  originStation: Station | undefined
   destinationStation: Station | undefined
 }
 
-export function PassengerCard({ passenger, destinationStation }: PassengerCardProps) {
-  if (!destinationStation) return null
+export function PassengerCard({ passenger, originStation, destinationStation }: PassengerCardProps) {
+  if (!destinationStation || !originStation) return null
+
+  // Vintage train station colors
+  const bgColor = passenger.isDelivered
+    ? '#1a3a1a' // Dark green for delivered
+    : !passenger.isBoarded
+    ? '#2a2419' // Dark brown/sepia for waiting
+    : passenger.isUrgent
+    ? '#3a2419' // Dark red-brown for urgent
+    : '#1a2a3a' // Dark blue for aboard
+
+  const accentColor = passenger.isDelivered
+    ? '#4ade80' // Green
+    : !passenger.isBoarded
+    ? '#d4af37' // Gold for waiting
+    : passenger.isUrgent
+    ? '#ff6b35' // Orange-red for urgent
+    : '#60a5fa' // Blue for aboard
+
+  const borderColor = passenger.isUrgent && passenger.isBoarded && !passenger.isDelivered
+    ? '#ff6b35'
+    : '#d4af37'
 
   return (
     <div
       style={{
-        background: passenger.isDelivered
-          ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-          : !passenger.isBoarded
-          ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)'  // Gray for waiting
-          : passenger.isUrgent
-          ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-          : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-        color: 'white',
-        padding: '12px 16px',
-        borderRadius: '12px',
+        background: bgColor,
+        border: `2px solid ${borderColor}`,
+        borderRadius: '4px',
+        padding: '8px 10px',
+        minWidth: '220px',
+        maxWidth: '280px',
         boxShadow: passenger.isUrgent && !passenger.isDelivered && passenger.isBoarded
-          ? '0 0 20px rgba(245, 158, 11, 0.6)'
-          : '0 2px 8px rgba(0, 0, 0, 0.2)',
-        minWidth: '180px',
+          ? '0 0 16px rgba(255, 107, 53, 0.5)'
+          : '0 4px 12px rgba(0, 0, 0, 0.4)',
         position: 'relative',
-        opacity: passenger.isDelivered ? 0.6 : !passenger.isBoarded ? 0.8 : 1,
-        animation: passenger.isUrgent && !passenger.isDelivered && passenger.isBoarded ? 'urgentPulse 1.5s ease-in-out infinite' : 'none',
+        fontFamily: '"Courier New", Courier, monospace',
+        animation: passenger.isUrgent && !passenger.isDelivered && passenger.isBoarded
+          ? 'urgentFlicker 1.5s ease-in-out infinite'
+          : 'none',
         transition: 'all 0.3s ease'
       }}
     >
-      {/* Passenger icon and name */}
+      {/* Top row: Passenger info and status */}
       <div style={{
         display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        marginBottom: '8px'
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        marginBottom: '6px',
+        borderBottom: `1px solid ${accentColor}33`,
+        paddingBottom: '4px',
+        paddingRight: '42px' // Make room for points badge
       }}>
-        <div style={{ fontSize: '32px' }}>
-          {passenger.isDelivered ? '✅' : passenger.avatar}
-        </div>
-        <div style={{ flex: 1 }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          flex: 1
+        }}>
+          <div style={{ fontSize: '20px', lineHeight: '1' }}>
+            {passenger.isDelivered ? '✅' : passenger.avatar}
+          </div>
           <div style={{
+            fontSize: '11px',
             fontWeight: 'bold',
-            fontSize: '16px'
+            color: accentColor,
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase'
           }}>
             {passenger.name}
           </div>
-          {/* Status badge */}
-          {!passenger.isDelivered && (
-            <div style={{
-              fontSize: '10px',
-              marginTop: '2px',
-              opacity: 0.9,
-              fontWeight: '600'
-            }}>
-              {passenger.isBoarded ? '🚂 ABOARD' : '⏳ WAITING'}
-            </div>
-          )}
         </div>
-        {passenger.isUrgent && !passenger.isDelivered && passenger.isBoarded && (
-          <div style={{
-            fontSize: '16px',
-            animation: 'urgentBlink 0.8s ease-in-out infinite'
-          }}>
-            ⚠️
-          </div>
-        )}
+
+        {/* Status indicator */}
+        <div style={{
+          fontSize: '9px',
+          color: accentColor,
+          fontWeight: 'bold',
+          letterSpacing: '0.5px',
+          background: `${accentColor}22`,
+          padding: '2px 6px',
+          borderRadius: '2px',
+          border: `1px solid ${accentColor}66`,
+          whiteSpace: 'nowrap',
+          marginTop: '0'
+        }}>
+          {passenger.isDelivered ? 'DLVRD' : passenger.isBoarded ? 'BOARD' : 'WAIT'}
+        </div>
       </div>
 
-      {/* Destination */}
+      {/* Route information */}
       <div style={{
         display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        fontSize: '14px',
-        opacity: 0.95
+        flexDirection: 'column',
+        gap: '3px',
+        fontSize: '10px',
+        color: '#e8d4a0'
       }}>
-        <span>→</span>
-        <span>{destinationStation.icon}</span>
-        <span style={{ fontWeight: '600' }}>{destinationStation.name}</span>
+        {/* From station */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          <span style={{
+            color: accentColor,
+            fontSize: '8px',
+            fontWeight: 'bold',
+            width: '28px',
+            letterSpacing: '0.3px'
+          }}>
+            FROM:
+          </span>
+          <span style={{ fontSize: '14px', lineHeight: '1' }}>
+            {originStation.icon}
+          </span>
+          <span style={{
+            fontWeight: '600',
+            fontSize: '10px',
+            letterSpacing: '0.3px'
+          }}>
+            {originStation.name}
+          </span>
+        </div>
+
+        {/* To station */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          <span style={{
+            color: accentColor,
+            fontSize: '8px',
+            fontWeight: 'bold',
+            width: '28px',
+            letterSpacing: '0.3px'
+          }}>
+            TO:
+          </span>
+          <span style={{ fontSize: '14px', lineHeight: '1' }}>
+            {destinationStation.icon}
+          </span>
+          <span style={{
+            fontWeight: '600',
+            fontSize: '10px',
+            letterSpacing: '0.3px'
+          }}>
+            {destinationStation.name}
+          </span>
+        </div>
       </div>
 
-      {/* Points indicator */}
+      {/* Points badge */}
       {!passenger.isDelivered && (
         <div style={{
           position: 'absolute',
-          top: '8px',
-          right: '8px',
-          background: 'rgba(255, 255, 255, 0.3)',
-          borderRadius: '8px',
-          padding: '2px 8px',
-          fontSize: '12px',
-          fontWeight: 'bold'
+          top: '6px',
+          right: '6px',
+          background: `${accentColor}33`,
+          border: `1px solid ${accentColor}`,
+          borderRadius: '2px',
+          padding: '2px 6px',
+          fontSize: '10px',
+          fontWeight: 'bold',
+          color: accentColor,
+          letterSpacing: '0.5px'
         }}>
           {passenger.isUrgent ? '+20' : '+10'}
         </div>
       )}
 
+      {/* Urgent indicator */}
+      {passenger.isUrgent && !passenger.isDelivered && passenger.isBoarded && (
+        <div style={{
+          position: 'absolute',
+          left: '8px',
+          bottom: '6px',
+          fontSize: '10px',
+          animation: 'urgentBlink 0.8s ease-in-out infinite',
+          filter: 'drop-shadow(0 0 4px rgba(255, 107, 53, 0.8))'
+        }}>
+          ⚠️
+        </div>
+      )}
+
       <style>{`
-        @keyframes urgentPulse {
+        @keyframes urgentFlicker {
           0%, 100% {
-            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+            box-shadow: 0 0 16px rgba(255, 107, 53, 0.5);
+            border-color: #ff6b35;
           }
           50% {
-            box-shadow: 0 0 30px rgba(245, 158, 11, 0.9);
+            box-shadow: 0 0 24px rgba(255, 107, 53, 0.8);
+            border-color: #ffaa35;
           }
         }
 
