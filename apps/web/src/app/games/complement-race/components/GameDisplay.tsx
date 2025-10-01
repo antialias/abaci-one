@@ -332,8 +332,8 @@ export function GameDisplay() {
               <span style={{ color: '#6b7280' }}>+</span>
               {state.currentQuestion.showAsAbacus ? (
                 <div style={{
-                  transform: 'scale(2.4)',
-                  transformOrigin: 'center',
+                  transform: 'scale(2.4) translateY(8%)',
+                  transformOrigin: 'center center',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'

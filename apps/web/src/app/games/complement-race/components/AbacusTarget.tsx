@@ -23,6 +23,7 @@ export function AbacusTarget({ number }: AbacusTargetProps) {
         columns={1}
         interactive={false}
         showNumbers={false}
+        hideInactiveBeads={true}
         scaleFactor={0.72}
         customStyles={{
           columnPosts: { opacity: 0 }
