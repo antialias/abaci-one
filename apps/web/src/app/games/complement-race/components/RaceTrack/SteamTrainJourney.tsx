@@ -694,14 +694,14 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       {/* Passenger cards - show all non-delivered passengers */}
       {state.passengers.filter(p => !p.isDelivered).length > 0 && (
         <div data-component="passenger-list" style={{
-          position: 'absolute',
-          bottom: '130px',
+          position: 'fixed',
+          bottom: '220px',
           right: '10px',
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',
-          zIndex: 10,
-          maxHeight: 'calc(100vh - 200px)',
+          zIndex: 1000,
+          maxHeight: 'calc(100vh - 240px)',
           overflowY: 'auto'
         }}>
           {state.passengers.filter(p => !p.isDelivered).map(passenger => (
