@@ -85,24 +85,25 @@ export function generatePassengers(stations: Station[]): Passenger[] {
     usedCombos.add(comboKey)
 
     // Pick random origin and destination stations (must be different)
+    // Destination must be ahead of origin (higher position on track)
     // 40% chance to start at depot, 60% chance to start at other stations
     let originStation: Station
     let destination: Station
 
     if (Math.random() < 0.4 || stations.length < 3) {
-      // Start at depot
+      // Start at depot (first station)
       originStation = stations[0]
-      // Pick any other station as destination
-      const otherStations = stations.slice(1)
-      destination = otherStations[Math.floor(Math.random() * otherStations.length)]
+      // Pick any station ahead as destination
+      const stationsAhead = stations.slice(1)
+      destination = stationsAhead[Math.floor(Math.random() * stationsAhead.length)]
     } else {
-      // Start at a random non-depot station
-      const nonDepotStations = stations.slice(1)
+      // Start at a random non-depot, non-final station
+      const nonDepotStations = stations.slice(1, -1) // Exclude depot and final station
       originStation = nonDepotStations[Math.floor(Math.random() * nonDepotStations.length)]
 
-      // Pick a different station as destination (can include depot)
-      const possibleDestinations = stations.filter(s => s.id !== originStation.id)
-      destination = possibleDestinations[Math.floor(Math.random() * possibleDestinations.length)]
+      // Pick a station ahead of origin (higher position)
+      const stationsAhead = stations.filter(s => s.position > originStation.position)
+      destination = stationsAhead[Math.floor(Math.random() * stationsAhead.length)]
     }
 
     // 30% chance of urgent
