@@ -1,11 +1,13 @@
 export type GameMode = 'friends5' | 'friends10' | 'mixed'
 export type GameStyle = 'practice' | 'sprint' | 'survival'
 export type TimeoutSetting = 'preschool' | 'kindergarten' | 'relaxed' | 'slow' | 'normal' | 'fast' | 'expert'
+export type ComplementDisplay = 'number' | 'abacus' | 'random' // How to display the complement number
 
 export interface ComplementQuestion {
   number: number
   targetSum: number
   correctAnswer: number
+  showAsAbacus: boolean // For random mode, this is decided once per question
 }
 
 export interface AIRacer {
@@ -61,6 +63,7 @@ export interface GameState {
   mode: GameMode
   style: GameStyle
   timeoutSetting: TimeoutSetting
+  complementDisplay: ComplementDisplay // How to display the complement number
 
   // Current question
   currentQuestion: ComplementQuestion | null
@@ -122,6 +125,7 @@ export type GameAction =
   | { type: 'SET_MODE'; mode: GameMode }
   | { type: 'SET_STYLE'; style: GameStyle }
   | { type: 'SET_TIMEOUT'; timeout: TimeoutSetting }
+  | { type: 'SET_COMPLEMENT_DISPLAY'; display: ComplementDisplay }
   | { type: 'SHOW_CONTROLS' }
   | { type: 'START_COUNTDOWN' }
   | { type: 'BEGIN_GAME' }

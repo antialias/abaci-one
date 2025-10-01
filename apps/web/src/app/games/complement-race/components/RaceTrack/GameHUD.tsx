@@ -1,9 +1,10 @@
 'use client'
 
 import { memo } from 'react'
-import type { Station, Passenger } from '../../lib/gameTypes'
+import type { Station, Passenger, ComplementQuestion } from '../../lib/gameTypes'
 import { PassengerCard } from '../PassengerCard'
 import { PressureGauge } from '../PressureGauge'
+import { AbacusTarget } from '../AbacusTarget'
 
 interface RouteTheme {
   emoji: string
@@ -18,11 +19,7 @@ interface GameHUDProps {
   pressure: number
   nonDeliveredPassengers: Passenger[]
   stations: Station[]
-  currentQuestion: {
-    number: number
-    targetSum: number
-    correctAnswer: number
-  } | null
+  currentQuestion: ComplementQuestion | null
   currentInput: string
 }
 
@@ -173,7 +170,19 @@ export const GameHUD = memo(({
               {currentInput || '?'}
             </span>
             <span style={{ color: '#6b7280' }}>+</span>
-            <span>{currentQuestion.number}</span>
+            {currentQuestion.showAsAbacus ? (
+              <div style={{
+                transform: 'scale(2.4)',
+                transformOrigin: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <AbacusTarget number={currentQuestion.number} />
+              </div>
+            ) : (
+              <span>{currentQuestion.number}</span>
+            )}
             <span style={{ color: '#6b7280' }}>=</span>
             <span style={{ color: '#10b981' }}>{currentQuestion.targetSum}</span>
           </div>

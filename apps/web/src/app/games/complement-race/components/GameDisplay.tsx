@@ -10,6 +10,7 @@ import { LinearTrack } from './RaceTrack/LinearTrack'
 import { CircularTrack } from './RaceTrack/CircularTrack'
 import { SteamTrainJourney } from './RaceTrack/SteamTrainJourney'
 import { RouteCelebration } from './RouteCelebration'
+import { AbacusTarget } from './AbacusTarget'
 import { generatePassengers } from '../lib/passengerGenerator'
 
 type FeedbackAnimation = 'correct' | 'incorrect' | null
@@ -293,72 +294,57 @@ export function GameDisplay() {
           maxWidth: '1200px',
           margin: '0 auto',
           width: '100%',
-          padding: '0 20px'
+          padding: '0 20px',
+          display: 'flex',
+          justifyContent: 'center',
+          marginTop: '20px'
         }}>
           <div data-component="question-display" style={{
-            display: 'flex',
-            gap: '20px',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginTop: '5px'
+            background: 'rgba(255, 255, 255, 0.98)',
+            borderRadius: '24px',
+            padding: '28px 50px',
+            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.3), 0 0 0 5px rgba(59, 130, 246, 0.4)',
+            backdropFilter: 'blur(12px)',
+            border: '4px solid rgba(255, 255, 255, 0.95)'
           }}>
-            {/* Question */}
-            <div data-component="question-card" style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: '16px 24px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-              textAlign: 'center'
+            {/* Complement equation as main focus */}
+            <div data-element="question-equation" style={{
+              fontSize: '96px',
+              fontWeight: 'bold',
+              color: '#1f2937',
+              lineHeight: '1.1',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '20px',
+              justifyContent: 'center'
             }}>
-              <div data-element="question-equation" style={{
-                fontSize: '14px',
-                color: '#6b7280',
-                marginBottom: '4px'
-              }}>
-                ? + {state.currentQuestion.number} = {state.currentQuestion.targetSum}
-              </div>
-              <div data-element="question-number" style={{
-                fontSize: '60px',
-                fontWeight: 'bold',
-                color: '#1f2937'
-              }}>
-                {state.currentQuestion.number}
-              </div>
-            </div>
-
-            {/* Input */}
-            <div data-component="answer-input" style={{
-              background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-              borderRadius: '12px',
-              padding: '16px 36px',
-              boxShadow: '0 4px 20px rgba(59, 130, 246, 0.3)',
-              textAlign: 'center',
-              minWidth: '160px',
-              animation: feedbackAnimation === 'correct'
-                ? 'successPulse 0.5s ease'
-                : feedbackAnimation === 'incorrect'
-                  ? 'errorShake 0.5s ease'
-                  : undefined
-            }}>
-              <div data-element="input-value" style={{
-                fontSize: '60px',
-                fontWeight: 'bold',
+              <span style={{
+                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
                 color: 'white',
-                minHeight: '70px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textShadow: '0 2px 10px rgba(0, 0, 0, 0.2)'
+                padding: '12px 32px',
+                borderRadius: '16px',
+                minWidth: '140px',
+                display: 'inline-block',
+                textShadow: '0 3px 10px rgba(0, 0, 0, 0.3)'
               }}>
-                {state.currentInput || '_'}
-              </div>
-              <div data-element="input-hint" style={{
-                fontSize: '12px',
-                color: 'rgba(255, 255, 255, 0.9)',
-                marginTop: '4px'
-              }}>
-                Type your answer
-              </div>
+                {state.currentInput || '?'}
+              </span>
+              <span style={{ color: '#6b7280' }}>+</span>
+              {state.currentQuestion.showAsAbacus ? (
+                <div style={{
+                  transform: 'scale(2.4)',
+                  transformOrigin: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <AbacusTarget number={state.currentQuestion.number} />
+                </div>
+              ) : (
+                <span>{state.currentQuestion.number}</span>
+              )}
+              <span style={{ color: '#6b7280' }}>=</span>
+              <span style={{ color: '#10b981' }}>{state.currentQuestion.targetSum}</span>
             </div>
           </div>
         </div>

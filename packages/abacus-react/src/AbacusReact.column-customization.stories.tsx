@@ -1204,3 +1204,255 @@ The system allows users to see both the overall group context and the specific t
     },
   },
 };
+
+// Invisible Column Posts
+export const InvisibleColumnPosts: Story = {
+  render: () => (
+    <div style={{ textAlign: 'center' }}>
+      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+        Invisible Column Posts
+      </h3>
+      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '500px', margin: '0 auto 20px' }}>
+        Column posts can be made completely invisible using <code>opacity: 0</code>, creating a floating bead effect ideal for inline displays.
+      </p>
+
+      <div style={{ display: 'flex', gap: '40px', justifyContent: 'center', alignItems: 'center' }}>
+        {/* Default visible posts */}
+        <div>
+          <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}>
+            Default (Visible Posts)
+          </div>
+          <AbacusReact
+            value={7}
+            columns={1}
+            scaleFactor={1.5}
+            showNumbers={true}
+          />
+        </div>
+
+        {/* Invisible posts */}
+        <div>
+          <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}>
+            Invisible Posts
+          </div>
+          <AbacusReact
+            value={7}
+            columns={1}
+            scaleFactor={1.5}
+            showNumbers={true}
+            customStyles={{
+              columnPosts: { opacity: 0 }
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
+        Notice how the beads appear to float when the column post is invisible
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `
+Makes column posts completely invisible using the \`columnPosts\` customStyles property. This creates a clean, minimal display where only the beads are visible.
+
+**Use Cases:**
+- Inline equation displays (like complement race game)
+- Minimalist UI designs
+- Focus on bead patterns without structural elements
+- Embedded abacus representations
+
+\`\`\`typescript
+customStyles={{
+  columnPosts: { opacity: 0 }
+}}
+\`\`\`
+        `,
+      },
+    },
+  },
+};
+
+// Single Column Inline
+export const SingleColumnInline: Story = {
+  render: () => (
+    <div style={{ textAlign: 'center' }}>
+      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+        Single Column for Inline Equations
+      </h3>
+      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '600px', margin: '0 auto 20px' }}>
+        Demonstrates single-column abacus with invisible posts and no numbers, perfect for embedding in complement equations.
+      </p>
+
+      {/* Example equation like in complement race */}
+      <div style={{
+        fontSize: '72px',
+        fontWeight: 'bold',
+        color: '#1f2937',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+        justifyContent: 'center',
+        marginBottom: '30px'
+      }}>
+        <span style={{
+          background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+          color: 'white',
+          padding: '8px 24px',
+          borderRadius: '12px',
+          minWidth: '100px',
+          display: 'inline-block',
+          textShadow: '0 3px 10px rgba(0, 0, 0, 0.3)'
+        }}>
+          ?
+        </span>
+        <span style={{ color: '#6b7280' }}>+</span>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          lineHeight: 0
+        }}>
+          <AbacusReact
+            value={3}
+            columns={1}
+            interactive={false}
+            showNumbers={false}
+            scaleFactor={0.72}
+            customStyles={{
+              columnPosts: { opacity: 0 }
+            }}
+          />
+        </div>
+        <span style={{ color: '#6b7280' }}>=</span>
+        <span style={{ color: '#10b981' }}>10</span>
+      </div>
+
+      <div style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
+        The abacus integrates seamlessly into the equation with no visible structure
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `
+This pattern is used in the complement race game to display abacus representations inline with equations. Key features:
+
+- **Single column** for individual digit display
+- **Invisible posts** (\`opacity: 0\`)
+- **No numbers** (\`showNumbers: false\`)
+- **Small scale** (\`scaleFactor: 0.72\`)
+- **Inline-flex container** for proper vertical alignment
+
+\`\`\`typescript
+<div style={{
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  lineHeight: 0
+}}>
+  <AbacusReact
+    value={3}
+    columns={1}
+    interactive={false}
+    showNumbers={false}
+    scaleFactor={0.72}
+    customStyles={{
+      columnPosts: { opacity: 0 }
+    }}
+  />
+</div>
+\`\`\`
+        `,
+      },
+    },
+  },
+};
+
+// Multi-Column Invisible
+export const MultiColumnInvisible: Story = {
+  render: () => (
+    <div style={{ textAlign: 'center' }}>
+      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+        Multi-Column Invisible Posts
+      </h3>
+      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '600px', margin: '0 auto 20px' }}>
+        Multi-column abacus with invisible posts creates a floating bead pattern that emphasizes the bead positions.
+      </p>
+
+      <div style={{ display: 'flex', gap: '60px', justifyContent: 'center', alignItems: 'center', marginBottom: '30px' }}>
+        {/* With visible posts */}
+        <div>
+          <div style={{ marginBottom: '15px', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}>
+            Standard Display
+          </div>
+          <AbacusReact
+            value={1234}
+            columns={4}
+            scaleFactor={1.3}
+            showNumbers={true}
+          />
+        </div>
+
+        {/* With invisible posts */}
+        <div>
+          <div style={{ marginBottom: '15px', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}>
+            Invisible Posts
+          </div>
+          <AbacusReact
+            value={1234}
+            columns={4}
+            scaleFactor={1.3}
+            showNumbers={true}
+            customStyles={{
+              columnPosts: { opacity: 0 }
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginTop: '20px', fontSize: '14px', color: '#666', maxWidth: '600px', margin: '0 auto' }}>
+        The invisible posts create a unique visual effect where beads appear to float in organized columns
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `
+Multi-column abacus with invisible posts demonstrates the floating bead effect across multiple place values.
+
+**Visual Effects:**
+- Beads appear to float in precise vertical alignment
+- Column structure is implied by bead positioning
+- Creates a more abstract, pattern-focused display
+- Useful for minimalist or artistic presentations
+
+**Global Column Post Styling:**
+
+The \`columnPosts\` property in \`customStyles\` applies to all columns globally:
+
+\`\`\`typescript
+customStyles={{
+  columnPosts: { opacity: 0 }  // Applies to ALL columns
+}}
+\`\`\`
+
+To hide specific columns only, use the column-specific approach:
+
+\`\`\`typescript
+customStyles={{
+  columns: {
+    0: { columnPost: { opacity: 0 } },  // Hide first column only
+    2: { columnPost: { opacity: 0 } }   // Hide third column only
+  }
+}}
+\`\`\`
+        `,
+      },
+    },
+  },
+};

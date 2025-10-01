@@ -114,6 +114,12 @@ export function useSteamJourney() {
       const maxCars = Math.max(1, maxPassengers)
       const currentBoardedPassengers = state.passengers.filter(p => p.isBoarded && !p.isDelivered)
 
+      // Build a map of which cars are occupied (car index -> passenger)
+      const occupiedCars = new Map<number, typeof currentBoardedPassengers[0]>()
+      currentBoardedPassengers.forEach((passenger, arrayIndex) => {
+        occupiedCars.set(arrayIndex, passenger)
+      })
+
       // Track which cars are assigned in THIS frame to prevent double-boarding
       const carsAssignedThisFrame = new Set<number>()
 
@@ -128,13 +134,14 @@ export function useSteamJourney() {
         // Cars are at positions: trainPosition - 7, trainPosition - 14, etc.
         for (let carIndex = 0; carIndex < maxCars; carIndex++) {
           // Skip if this car already has a passenger OR was assigned this frame
-          if (currentBoardedPassengers[carIndex] || carsAssignedThisFrame.has(carIndex)) continue
+          if (occupiedCars.has(carIndex) || carsAssignedThisFrame.has(carIndex)) continue
 
           const carPosition = Math.max(0, trainPosition - (carIndex + 1) * CAR_SPACING)
           const distance = Math.abs(carPosition - station.position)
 
-          // If car is at station (within 3% tolerance), board this passenger
-          if (distance < 3) {
+          // If car is at or near station (within 5% tolerance for fast trains), board this passenger
+          // Increased tolerance to ensure fast-moving trains don't miss passengers
+          if (distance < 5) {
             dispatch({
               type: 'BOARD_PASSENGER',
               passengerId: passenger.id
@@ -158,8 +165,8 @@ export function useSteamJourney() {
         const carPosition = Math.max(0, trainPosition - (carIndex + 1) * CAR_SPACING)
         const distance = Math.abs(carPosition - station.position)
 
-        // If this car is at the destination station (within 3% tolerance), deliver
-        if (distance < 3) {
+        // If this car is at the destination station (within 5% tolerance), deliver
+        if (distance < 5) {
           const points = passenger.isUrgent ? 20 : 10
           dispatch({
             type: 'DELIVER_PASSENGER',

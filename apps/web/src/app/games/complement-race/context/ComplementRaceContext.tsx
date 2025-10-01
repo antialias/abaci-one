@@ -53,6 +53,7 @@ const initialState: GameState = {
   mode: 'friends5',
   style: 'practice',
   timeoutSetting: 'normal',
+  complementDisplay: 'abacus', // Default to showing abacus
 
   // Current question
   currentQuestion: null,
@@ -121,6 +122,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'SET_TIMEOUT':
       return { ...state, timeoutSetting: action.timeout }
 
+    case 'SET_COMPLEMENT_DISPLAY':
+      return { ...state, complementDisplay: action.display }
+
     case 'SHOW_CONTROLS':
       return { ...state, gamePhase: 'controls' }
 
@@ -143,10 +147,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ? Math.floor(Math.random() * 5)
           : Math.floor(Math.random() * 10)
 
+        // Decide once whether to show as abacus
+        const showAsAbacus = state.complementDisplay === 'abacus' ||
+          (state.complementDisplay === 'random' && Math.random() < 0.5)
+
         return {
           number: newNumber,
           targetSum,
-          correctAnswer: targetSum - newNumber
+          correctAnswer: targetSum - newNumber,
+          showAsAbacus
         }
       }
 
@@ -188,10 +197,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           attempts < 10
         )
 
+        // Decide once whether to show as abacus
+        const showAsAbacus = state.complementDisplay === 'abacus' ||
+          (state.complementDisplay === 'random' && Math.random() < 0.5)
+
         return {
           number: newNumber,
           targetSum,
-          correctAnswer: targetSum - newNumber
+          correctAnswer: targetSum - newNumber,
+          showAsAbacus
         }
       }
 
@@ -292,6 +306,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         mode: state.mode,
         style: state.style,
         timeoutSetting: state.timeoutSetting,
+        complementDisplay: state.complementDisplay,
         gamePhase: 'controls'
       }
 
