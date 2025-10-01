@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useSpring, animated } from '@react-spring/web'
 import { useSteamJourney } from '../../hooks/useSteamJourney'
 import { useComplementRace } from '../../context/ComplementRaceContext'
 import { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
@@ -10,6 +11,76 @@ import { generateLandmarks, type Landmark } from '../../lib/landmarks'
 import { PressureGauge } from '../PressureGauge'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useUserProfile } from '@/contexts/UserProfileContext'
+import type { Passenger } from '../../lib/gameTypes'
+
+interface BoardingAnimation {
+  passenger: Passenger
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+  carIndex: number
+  startTime: number
+}
+
+interface DisembarkingAnimation {
+  passenger: Passenger
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+  startTime: number
+}
+
+function BoardingPassengerAnimation({ animation }: { animation: BoardingAnimation }) {
+  const spring = useSpring({
+    from: { x: animation.fromX, y: animation.fromY, opacity: 1 },
+    to: { x: animation.toX, y: animation.toY, opacity: 1 },
+    config: { tension: 120, friction: 14 }
+  })
+
+  return (
+    <animated.text
+      x={spring.x}
+      y={spring.y}
+      textAnchor="middle"
+      opacity={spring.opacity}
+      style={{
+        fontSize: '55px',
+        pointerEvents: 'none',
+        filter: animation.passenger.isUrgent
+          ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.8))'
+          : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+      }}
+    >
+      {animation.passenger.avatar}
+    </animated.text>
+  )
+}
+
+function DisembarkingPassengerAnimation({ animation }: { animation: DisembarkingAnimation }) {
+  const spring = useSpring({
+    from: { x: animation.fromX, y: animation.fromY, opacity: 1 },
+    to: { x: animation.toX, y: animation.toY, opacity: 1 },
+    config: { tension: 120, friction: 14 }
+  })
+
+  return (
+    <animated.text
+      x={spring.x}
+      y={spring.y}
+      textAnchor="middle"
+      opacity={spring.opacity}
+      style={{
+        fontSize: '55px',
+        pointerEvents: 'none',
+        filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.8))'
+      }}
+    >
+      {animation.passenger.avatar}
+    </animated.text>
+  )
+}
 
 interface SteamTrainJourneyProps {
   momentum: number
@@ -50,6 +121,9 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
   const [stationPositions, setStationPositions] = useState<Array<{ x: number; y: number }>>([])
   const [landmarks, setLandmarks] = useState<Landmark[]>([])
   const [landmarkPositions, setLandmarkPositions] = useState<Array<{ x: number; y: number }>>([])
+  const [boardingAnimations, setBoardingAnimations] = useState<Map<string, BoardingAnimation>>(new Map())
+  const [disembarkingAnimations, setDisembarkingAnimations] = useState<Map<string, DisembarkingAnimation>>(new Map())
+  const previousPassengersRef = useRef<Passenger[]>([])
 
   // Generate landmarks when route changes
   useEffect(() => {
@@ -116,6 +190,153 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       setTrainTransform(transform)
     }
   }, [trainPosition, trackGenerator])
+
+  // Detect passengers boarding and start animations
+  useEffect(() => {
+    if (!pathRef.current || stationPositions.length === 0) return
+
+    const previousPassengers = previousPassengersRef.current
+    const currentPassengers = state.passengers
+
+    // Find newly boarded passengers
+    const newlyBoarded = currentPassengers.filter(curr => {
+      const prev = previousPassengers.find(p => p.id === curr.id)
+      return curr.isBoarded && prev && !prev.isBoarded
+    })
+
+    // Start animation for each newly boarded passenger
+    newlyBoarded.forEach(passenger => {
+      // Find origin station
+      const originStation = state.stations.find(s => s.id === passenger.originStationId)
+      if (!originStation) return
+
+      const stationIndex = state.stations.indexOf(originStation)
+      const stationPos = stationPositions[stationIndex]
+      if (!stationPos) return
+
+      // Find which car this passenger will be in
+      const boardedPassengers = currentPassengers.filter(p => p.isBoarded && !p.isDelivered)
+      const carIndex = boardedPassengers.indexOf(passenger)
+
+      // Calculate train car position
+      const carPosition = Math.max(0, trainPosition - (carIndex + 1) * 7) // 7% spacing
+      const carTransform = trackGenerator.getTrainTransform(pathRef.current!, carPosition)
+
+      // Create boarding animation
+      const animation: BoardingAnimation = {
+        passenger,
+        fromX: stationPos.x,
+        fromY: stationPos.y - 30,
+        toX: carTransform.x,
+        toY: carTransform.y,
+        carIndex,
+        startTime: Date.now()
+      }
+
+      setBoardingAnimations(prev => {
+        const next = new Map(prev)
+        next.set(passenger.id, animation)
+        return next
+      })
+
+      // Remove animation after 800ms
+      setTimeout(() => {
+        setBoardingAnimations(prev => {
+          const next = new Map(prev)
+          next.delete(passenger.id)
+          return next
+        })
+      }, 800)
+    })
+
+    // Update ref
+    previousPassengersRef.current = currentPassengers
+  }, [state.passengers, state.stations, stationPositions, trainPosition, trackGenerator, pathRef])
+
+  // Detect passengers disembarking and start animations
+  useEffect(() => {
+    if (!pathRef.current || stationPositions.length === 0) return
+
+    const previousPassengers = previousPassengersRef.current
+    const currentPassengers = state.passengers
+
+    // Find newly delivered passengers
+    const newlyDelivered = currentPassengers.filter(curr => {
+      const prev = previousPassengers.find(p => p.id === curr.id)
+      return curr.isDelivered && prev && !prev.isDelivered
+    })
+
+    // Start animation for each newly delivered passenger
+    newlyDelivered.forEach(passenger => {
+      // Find destination station
+      const destinationStation = state.stations.find(s => s.id === passenger.destinationStationId)
+      if (!destinationStation) return
+
+      const stationIndex = state.stations.indexOf(destinationStation)
+      const stationPos = stationPositions[stationIndex]
+      if (!stationPos) return
+
+      // Find which car this passenger was in (before delivery)
+      const prevBoardedPassengers = previousPassengers.filter(p => p.isBoarded && !p.isDelivered)
+      const carIndex = prevBoardedPassengers.findIndex(p => p.id === passenger.id)
+      if (carIndex === -1) return
+
+      // Calculate train car position at time of disembarking
+      const carPosition = Math.max(0, trainPosition - (carIndex + 1) * 7) // 7% spacing
+      const carTransform = trackGenerator.getTrainTransform(pathRef.current!, carPosition)
+
+      // Create disembarking animation (from car to station)
+      const animation: DisembarkingAnimation = {
+        passenger,
+        fromX: carTransform.x,
+        fromY: carTransform.y,
+        toX: stationPos.x,
+        toY: stationPos.y - 30,
+        startTime: Date.now()
+      }
+
+      setDisembarkingAnimations(prev => {
+        const next = new Map(prev)
+        next.set(passenger.id, animation)
+        return next
+      })
+
+      // Remove animation after 800ms
+      setTimeout(() => {
+        setDisembarkingAnimations(prev => {
+          const next = new Map(prev)
+          next.delete(passenger.id)
+          return next
+        })
+      }, 800)
+    })
+  }, [state.passengers, state.stations, stationPositions, trainPosition, trackGenerator, pathRef])
+
+  // Calculate train car transforms (each car follows behind the locomotive)
+  const maxCars = 5 // Maximum passengers per route
+  const carSpacing = 7 // Percentage of track between cars
+  const trainCars = Array.from({ length: maxCars }).map((_, carIndex) => {
+    if (!pathRef.current) return { x: 0, y: 0, rotation: 0, position: 0, opacity: 0 }
+
+    // Calculate position for this car (behind the locomotive)
+    const carPosition = Math.max(0, trainPosition - (carIndex + 1) * carSpacing)
+
+    // Calculate opacity: fade in as car emerges from tunnel (after 3% of track)
+    const fadeStartPosition = 3
+    const fadeEndPosition = 8
+    let opacity = 0
+    if (carPosition > fadeEndPosition) {
+      opacity = 1
+    } else if (carPosition > fadeStartPosition) {
+      opacity = (carPosition - fadeStartPosition) / (fadeEndPosition - fadeStartPosition)
+    }
+
+    return {
+      ...trackGenerator.getTrainTransform(pathRef.current, carPosition),
+      position: carPosition,
+      opacity
+    }
+  })
 
   if (!trackData) return null
 
@@ -283,31 +504,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             fill="url(#mountainGradientLeft)"
           />
 
-          {/* Rocky texture - vertical cracks */}
-          {[0, 1, 2, 3].map((i) => (
-            <line
-              key={`rock-left-${i}`}
-              x1={-30 + i * 20}
-              y1={250 + i * 30}
-              x2={-35 + i * 20}
-              y2={350 + i * 40}
-              stroke="#4a5568"
-              strokeWidth="2"
-              opacity="0.6"
-            />
-          ))}
-
-          {/* Vegetation/bushes at base */}
-          {[0, 1, 2].map((i) => (
-            <circle
-              key={`bush-left-${i}`}
-              cx={-20 + i * 30}
-              cy={380 + i * 15}
-              r={15}
-              fill="#4a7c59"
-              opacity="0.7"
-            />
-          ))}
 
           {/* Tunnel depth/interior (dark entrance) */}
           <ellipse
@@ -368,31 +564,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             fill="url(#mountainGradientRight)"
           />
 
-          {/* Rocky texture - vertical cracks */}
-          {[0, 1, 2, 3].map((i) => (
-            <line
-              key={`rock-right-${i}`}
-              x1={750 + i * 20}
-              y1={250 + i * 30}
-              x2={745 + i * 20}
-              y2={350 + i * 40}
-              stroke="#4a5568"
-              strokeWidth="2"
-              opacity="0.6"
-            />
-          ))}
-
-          {/* Vegetation/bushes at base */}
-          {[0, 1, 2].map((i) => (
-            <circle
-              key={`bush-right-${i}`}
-              cx={720 + i * 30}
-              cy={380 + i * 15}
-              r={15}
-              fill="#4a7c59"
-              opacity="0.7"
-            />
-          ))}
 
           {/* Tunnel depth/interior (dark entrance) */}
           <ellipse
@@ -497,13 +668,13 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
         {/* Station markers */}
         {stationPositions.map((pos, index) => {
           const station = state.stations[index]
-          // Find passengers waiting at this station
+          // Find passengers waiting at this station (exclude currently boarding)
           const waitingPassengers = state.passengers.filter(p =>
-            p.originStationId === station?.id && !p.isBoarded && !p.isDelivered
+            p.originStationId === station?.id && !p.isBoarded && !p.isDelivered && !boardingAnimations.has(p.id)
           )
-          // Find passengers delivered at this station
+          // Find passengers delivered at this station (exclude currently disembarking)
           const deliveredPassengers = state.passengers.filter(p =>
-            p.destinationStationId === station?.id && p.isDelivered
+            p.destinationStationId === station?.id && p.isDelivered && !disembarkingAnimations.has(p.id)
           )
 
           return (
@@ -552,11 +723,11 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
               {waitingPassengers.map((passenger, pIndex) => (
                 <text
                   key={`waiting-${passenger.id}`}
-                  x={pos.x + (pIndex - waitingPassengers.length / 2 + 0.5) * 90}
-                  y={pos.y - 100}
+                  x={pos.x + (pIndex - waitingPassengers.length / 2 + 0.5) * 28}
+                  y={pos.y - 30}
                   textAnchor="middle"
-                  fontSize="80"
                   style={{
+                    fontSize: '55px',
                     pointerEvents: 'none',
                     filter: passenger.isUrgent ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.8))' : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
                   }}
@@ -569,11 +740,11 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
               {deliveredPassengers.map((passenger, pIndex) => (
                 <text
                   key={`delivered-${passenger.id}`}
-                  x={pos.x + (pIndex - deliveredPassengers.length / 2 + 0.5) * 90}
-                  y={pos.y - 100}
+                  x={pos.x + (pIndex - deliveredPassengers.length / 2 + 0.5) * 28}
+                  y={pos.y - 30}
                   textAnchor="middle"
-                  fontSize="80"
                   style={{
+                    fontSize: '55px',
                     pointerEvents: 'none',
                     filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.8))',
                     animation: 'celebrateDelivery 2s ease-out forwards'
@@ -586,8 +757,78 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           )
         })}
 
-        {/* Train group with flip and rotation */}
-        <g data-component="train-group" transform={`translate(${trainTransform.x}, ${trainTransform.y}) rotate(${trainTransform.rotation}) scale(-1, 1)`}>
+        {/* Boarding animations - passengers moving from station to train car */}
+        {Array.from(boardingAnimations.values()).map(animation => (
+          <BoardingPassengerAnimation
+            key={`boarding-${animation.passenger.id}`}
+            animation={animation}
+          />
+        ))}
+
+        {/* Disembarking animations - passengers moving from train car to station */}
+        {Array.from(disembarkingAnimations.values()).map(animation => (
+          <DisembarkingPassengerAnimation
+            key={`disembarking-${animation.passenger.id}`}
+            animation={animation}
+          />
+        ))}
+
+        {/* Train cars - render in reverse order so locomotive appears on top */}
+        {trainCars.map((carTransform, carIndex) => {
+          // Get boarded passengers
+          const boardedPassengers = state.passengers.filter(p => p.isBoarded && !p.isDelivered)
+          // Assign passenger to this car (if one exists for this car index)
+          const passenger = boardedPassengers[carIndex]
+
+          return (
+            <g
+              key={`train-car-${carIndex}`}
+              data-component="train-car"
+              transform={`translate(${carTransform.x}, ${carTransform.y}) rotate(${carTransform.rotation}) scale(-1, 1)`}
+              opacity={carTransform.opacity}
+              style={{
+                transition: 'opacity 0.5s ease-in'
+              }}
+            >
+              {/* Train car */}
+              <text
+                data-element="train-car-body"
+                x={0}
+                y={0}
+                textAnchor="middle"
+                style={{
+                  fontSize: '65px',
+                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
+                  pointerEvents: 'none'
+                }}
+              >
+                🚃
+              </text>
+
+              {/* Passenger inside this car (hide if currently boarding) */}
+              {passenger && !boardingAnimations.has(passenger.id) && (
+                <text
+                  data-element="car-passenger"
+                  x={0}
+                  y={0}
+                  textAnchor="middle"
+                  style={{
+                    fontSize: '42px',
+                    filter: passenger.isUrgent
+                      ? 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.8))'
+                      : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
+                    pointerEvents: 'none'
+                  }}
+                >
+                  {passenger.avatar}
+                </text>
+              )}
+            </g>
+          )
+        })}
+
+        {/* Locomotive - rendered last so it appears on top */}
+        <g data-component="locomotive-group" transform={`translate(${trainTransform.x}, ${trainTransform.y}) rotate(${trainTransform.rotation}) scale(-1, 1)`}>
           {/* Train locomotive */}
           <text
             data-element="train-locomotive"
@@ -617,25 +858,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           >
             {playerEmoji}
           </text>
-
-          {/* Boarded passengers riding on the train */}
-          {state.passengers.filter(p => p.isBoarded && !p.isDelivered).map((passenger, index) => (
-            <text
-              key={`train-passenger-${passenger.id}`}
-              x={90 + (index * 35)}
-              y={5}
-              textAnchor="middle"
-              fontSize="28"
-              style={{
-                filter: passenger.isUrgent
-                  ? 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.8))'
-                  : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
-                pointerEvents: 'none'
-              }}
-            >
-              {passenger.avatar}
-            </text>
-          ))}
 
           {/* Steam puffs - positioned at smokestack, layered over train */}
           {momentum > 10 && (
@@ -708,6 +930,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
             <PassengerCard
               key={passenger.id}
               passenger={passenger}
+              originStation={state.stations.find(s => s.id === passenger.originStationId)}
               destinationStation={state.stations.find(s => s.id === passenger.destinationStationId)}
             />
           ))}
