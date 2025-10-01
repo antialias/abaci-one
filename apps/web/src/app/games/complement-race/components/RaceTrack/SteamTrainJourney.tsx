@@ -717,8 +717,8 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       {/* Question Display - centered at bottom, equation-focused */}
       {currentQuestion && (
         <div data-component="sprint-question-display" style={{
-          position: 'absolute',
-          bottom: '20px',
+          position: 'fixed',
+          bottom: '40px',
           left: '50%',
           transform: 'translateX(-50%)',
           background: 'rgba(255, 255, 255, 0.98)',
@@ -727,7 +727,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           boxShadow: '0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 5px rgba(59, 130, 246, 0.4)',
           backdropFilter: 'blur(12px)',
           border: '4px solid rgba(255, 255, 255, 0.95)',
-          pointerEvents: 'none'
+          zIndex: 1000
         }}>
           {/* Complement equation as main focus */}
           <div data-element="sprint-question-equation" style={{
