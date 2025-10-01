@@ -83,8 +83,9 @@ export function useSteamJourney() {
       const speed = newMomentum * SPEED_MULTIPLIER
 
       // Update train position (accumulate, never go backward)
+      // Allow position to go past 100% so entire train (including cars) can exit tunnel
       const positionDelta = (speed * deltaTime) / 1000
-      const trainPosition = Math.min(100, state.trainPosition + positionDelta)
+      const trainPosition = state.trainPosition + positionDelta
 
       // Calculate pressure (0-150 PSI) - based on momentum as percentage of max
       const maxMomentum = 100 // Theoretical max momentum
@@ -130,9 +131,14 @@ export function useSteamJourney() {
         })
       })
 
-      // Check for route completion (train reaches 100%)
-      // Auto-advance to next route for infinite play
-      if (trainPosition >= 100 && state.trainPosition < 100) {
+      // Check for route completion (entire train exits tunnel)
+      // With 5 cars at 7% spacing, last car is at trainPosition - 35%
+      // So wait until trainPosition >= 135% for entire train to exit
+      const MAX_CARS = 5
+      const CAR_SPACING = 7
+      const ENTIRE_TRAIN_EXIT_THRESHOLD = 100 + (MAX_CARS * CAR_SPACING) // 135%
+
+      if (trainPosition >= ENTIRE_TRAIN_EXIT_THRESHOLD && state.trainPosition < ENTIRE_TRAIN_EXIT_THRESHOLD) {
         // Play celebration whistle
         playSound('train_whistle', 0.6)
         setTimeout(() => {

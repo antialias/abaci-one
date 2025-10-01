@@ -318,14 +318,25 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       // Calculate position for this car (behind the locomotive)
       const carPosition = Math.max(0, trainPosition - (carIndex + 1) * carSpacing)
 
-      // Calculate opacity: fade in as car emerges from tunnel (after 3% of track)
-      const fadeStartPosition = 3
-      const fadeEndPosition = 8
-      let opacity = 0
-      if (carPosition > fadeEndPosition) {
-        opacity = 1
-      } else if (carPosition > fadeStartPosition) {
-        opacity = (carPosition - fadeStartPosition) / (fadeEndPosition - fadeStartPosition)
+      // Calculate opacity: fade in at left tunnel (3-8%), fade out at right tunnel (92-97%)
+      const fadeInStart = 3
+      const fadeInEnd = 8
+      const fadeOutStart = 92
+      const fadeOutEnd = 97
+
+      let opacity = 1 // Default to fully visible
+
+      // Fade in from left tunnel
+      if (carPosition <= fadeInStart) {
+        opacity = 0
+      } else if (carPosition < fadeInEnd) {
+        opacity = (carPosition - fadeInStart) / (fadeInEnd - fadeInStart)
+      }
+      // Fade out into right tunnel
+      else if (carPosition >= fadeOutEnd) {
+        opacity = 0
+      } else if (carPosition > fadeOutStart) {
+        opacity = 1 - ((carPosition - fadeOutStart) / (fadeOutEnd - fadeOutStart))
       }
 
       return {
@@ -335,6 +346,29 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       }
     })
   }, [trainPosition, trackGenerator, maxCars, carSpacing])
+
+  // Calculate locomotive opacity (fade in/out through tunnels)
+  const locomotiveOpacity = useMemo(() => {
+    const fadeInStart = 3
+    const fadeInEnd = 8
+    const fadeOutStart = 92
+    const fadeOutEnd = 97
+
+    // Fade in from left tunnel
+    if (trainPosition <= fadeInStart) {
+      return 0
+    } else if (trainPosition < fadeInEnd) {
+      return (trainPosition - fadeInStart) / (fadeInEnd - fadeInStart)
+    }
+    // Fade out into right tunnel
+    else if (trainPosition >= fadeOutEnd) {
+      return 0
+    } else if (trainPosition > fadeOutStart) {
+      return 1 - ((trainPosition - fadeOutStart) / (fadeOutEnd - fadeOutStart))
+    }
+
+    return 1 // Default to fully visible
+  }, [trainPosition])
 
   // Memoize filtered passenger lists to avoid recalculating on every render
   const boardedPassengers = useMemo(() =>
@@ -846,7 +880,14 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
         })}
 
         {/* Locomotive - rendered last so it appears on top */}
-        <g data-component="locomotive-group" transform={`translate(${trainTransform.x}, ${trainTransform.y}) rotate(${trainTransform.rotation}) scale(-1, 1)`}>
+        <g
+          data-component="locomotive-group"
+          transform={`translate(${trainTransform.x}, ${trainTransform.y}) rotate(${trainTransform.rotation}) scale(-1, 1)`}
+          opacity={locomotiveOpacity}
+          style={{
+            transition: 'opacity 0.5s ease-in'
+          }}
+        >
           {/* Train locomotive */}
           <text
             data-element="train-locomotive"
