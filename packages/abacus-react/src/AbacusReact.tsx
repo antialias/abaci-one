@@ -1756,13 +1756,14 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         const rodStartY = 0; // Start from top for now, will be refined
         const rodEndY = dimensions.height; // End at bottom for now, will be refined
 
-        // Apply custom column post styling
+        // Apply custom column post styling (column-specific overrides global)
         const columnStyles = customStyles?.columns?.[colIndex];
+        const globalColumnPosts = customStyles?.columnPosts;
         const rodStyle = {
           fill: "rgb(0, 0, 0, 0.1)", // Default Typst color
-          stroke: columnStyles?.columnPost?.stroke || "none",
-          strokeWidth: columnStyles?.columnPost?.strokeWidth || 0,
-          opacity: columnStyles?.columnPost?.opacity ?? 1
+          stroke: columnStyles?.columnPost?.stroke || globalColumnPosts?.stroke || "none",
+          strokeWidth: columnStyles?.columnPost?.strokeWidth ?? globalColumnPosts?.strokeWidth ?? 0,
+          opacity: columnStyles?.columnPost?.opacity ?? globalColumnPosts?.opacity ?? 1
         };
 
         return (
@@ -1780,11 +1781,11 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         );
       })}
 
-      {/* Reckoning bar - matching Typst implementation */}
+      {/* Reckoning bar - spans from leftmost to rightmost bead */}
       <rect
-        x={0}
+        x={dimensions.rodSpacing / 2 - dimensions.beadSize / 2}
         y={barY}
-        width={dimensions.width}
+        width={(effectiveColumns - 1) * dimensions.rodSpacing + dimensions.beadSize}
         height={dimensions.barThickness}
         fill="black" // Typst uses black
         stroke="none"
