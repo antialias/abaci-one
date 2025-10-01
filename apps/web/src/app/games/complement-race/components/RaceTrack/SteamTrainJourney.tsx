@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo, memo } from 'react'
 import { useSpring, animated } from '@react-spring/web'
 import { useSteamJourney } from '../../hooks/useSteamJourney'
 import { usePassengerAnimations, type BoardingAnimation, type DisembarkingAnimation } from '../../hooks/usePassengerAnimations'
+import { useTrainTransforms } from '../../hooks/useTrainTransforms'
 import { useComplementRace } from '../../context/ComplementRaceContext'
 import { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
 import { PassengerCard } from '../PassengerCard'
@@ -101,10 +102,16 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
     leftRailPoints: string[]
     rightRailPoints: string[]
   } | null>(null)
-  const [trainTransform, setTrainTransform] = useState({ x: 50, y: 300, rotation: 0 })
   const [stationPositions, setStationPositions] = useState<Array<{ x: number; y: number }>>([])
   const [landmarks, setLandmarks] = useState<Landmark[]>([])
   const [landmarkPositions, setLandmarkPositions] = useState<Array<{ x: number; y: number }>>([])
+
+  // Train transforms (extracted to hook)
+  const { trainTransform, trainCars, locomotiveOpacity, maxCars, carSpacing } = useTrainTransforms({
+    trainPosition,
+    trackGenerator,
+    pathRef
+  })
 
   // Passenger animations (extracted to hook)
   const { boardingAnimations, disembarkingAnimations } = usePassengerAnimations({
@@ -227,77 +234,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
     }
   }, [trackData, landmarks])
 
-  // Update train position and rotation
-  useEffect(() => {
-    if (pathRef.current) {
-      const transform = trackGenerator.getTrainTransform(pathRef.current, trainPosition)
-      setTrainTransform(transform)
-    }
-  }, [trainPosition, trackGenerator])
-
-  // Calculate train car transforms (each car follows behind the locomotive)
-  const maxCars = 5 // Maximum passengers per route
-  const carSpacing = 7 // Percentage of track between cars
-  const trainCars = useMemo(() => {
-    if (!pathRef.current) {
-      return Array.from({ length: maxCars }, () => ({ x: 0, y: 0, rotation: 0, position: 0, opacity: 0 }))
-    }
-
-    return Array.from({ length: maxCars }).map((_, carIndex) => {
-      // Calculate position for this car (behind the locomotive)
-      const carPosition = Math.max(0, trainPosition - (carIndex + 1) * carSpacing)
-
-      // Calculate opacity: fade in at left tunnel (3-8%), fade out at right tunnel (92-97%)
-      const fadeInStart = 3
-      const fadeInEnd = 8
-      const fadeOutStart = 92
-      const fadeOutEnd = 97
-
-      let opacity = 1 // Default to fully visible
-
-      // Fade in from left tunnel
-      if (carPosition <= fadeInStart) {
-        opacity = 0
-      } else if (carPosition < fadeInEnd) {
-        opacity = (carPosition - fadeInStart) / (fadeInEnd - fadeInStart)
-      }
-      // Fade out into right tunnel
-      else if (carPosition >= fadeOutEnd) {
-        opacity = 0
-      } else if (carPosition > fadeOutStart) {
-        opacity = 1 - ((carPosition - fadeOutStart) / (fadeOutEnd - fadeOutStart))
-      }
-
-      return {
-        ...trackGenerator.getTrainTransform(pathRef.current!, carPosition),
-        position: carPosition,
-        opacity
-      }
-    })
-  }, [trainPosition, trackGenerator, maxCars, carSpacing])
-
-  // Calculate locomotive opacity (fade in/out through tunnels)
-  const locomotiveOpacity = useMemo(() => {
-    const fadeInStart = 3
-    const fadeInEnd = 8
-    const fadeOutStart = 92
-    const fadeOutEnd = 97
-
-    // Fade in from left tunnel
-    if (trainPosition <= fadeInStart) {
-      return 0
-    } else if (trainPosition < fadeInEnd) {
-      return (trainPosition - fadeInStart) / (fadeInEnd - fadeInStart)
-    }
-    // Fade out into right tunnel
-    else if (trainPosition >= fadeOutEnd) {
-      return 0
-    } else if (trainPosition > fadeOutStart) {
-      return 1 - ((trainPosition - fadeOutStart) / (fadeOutEnd - fadeOutStart))
-    }
-
-    return 1 // Default to fully visible
-  }, [trainPosition])
 
   // Memoize filtered passenger lists to avoid recalculating on every render
   const boardedPassengers = useMemo(() =>
