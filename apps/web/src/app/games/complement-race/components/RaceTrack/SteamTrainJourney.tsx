@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo, memo } from 'react'
 import { useSpring, animated } from '@react-spring/web'
 import { useSteamJourney } from '../../hooks/useSteamJourney'
 import { useComplementRace } from '../../context/ComplementRaceContext'
@@ -32,7 +32,7 @@ interface DisembarkingAnimation {
   startTime: number
 }
 
-function BoardingPassengerAnimation({ animation }: { animation: BoardingAnimation }) {
+const BoardingPassengerAnimation = memo(({ animation }: { animation: BoardingAnimation }) => {
   const spring = useSpring({
     from: { x: animation.fromX, y: animation.fromY, opacity: 1 },
     to: { x: animation.toX, y: animation.toY, opacity: 1 },
@@ -56,9 +56,10 @@ function BoardingPassengerAnimation({ animation }: { animation: BoardingAnimatio
       {animation.passenger.avatar}
     </animated.text>
   )
-}
+})
+BoardingPassengerAnimation.displayName = 'BoardingPassengerAnimation'
 
-function DisembarkingPassengerAnimation({ animation }: { animation: DisembarkingAnimation }) {
+const DisembarkingPassengerAnimation = memo(({ animation }: { animation: DisembarkingAnimation }) => {
   const spring = useSpring({
     from: { x: animation.fromX, y: animation.fromY, opacity: 1 },
     to: { x: animation.toX, y: animation.toY, opacity: 1 },
@@ -80,7 +81,8 @@ function DisembarkingPassengerAnimation({ animation }: { animation: Disembarking
       {animation.passenger.avatar}
     </animated.text>
   )
-}
+})
+DisembarkingPassengerAnimation.displayName = 'DisembarkingPassengerAnimation'
 
 interface SteamTrainJourneyProps {
   momentum: number
@@ -191,7 +193,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
     }
   }, [trainPosition, trackGenerator])
 
-  // Detect passengers boarding and start animations
+  // Detect passengers boarding/disembarking and start animations (consolidated for performance)
   useEffect(() => {
     if (!pathRef.current || stationPositions.length === 0) return
 
@@ -202,6 +204,12 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
     const newlyBoarded = currentPassengers.filter(curr => {
       const prev = previousPassengers.find(p => p.id === curr.id)
       return curr.isBoarded && prev && !prev.isBoarded
+    })
+
+    // Find newly delivered passengers
+    const newlyDelivered = currentPassengers.filter(curr => {
+      const prev = previousPassengers.find(p => p.id === curr.id)
+      return curr.isDelivered && prev && !prev.isDelivered
     })
 
     // Start animation for each newly boarded passenger
@@ -249,23 +257,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       }, 800)
     })
 
-    // Update ref
-    previousPassengersRef.current = currentPassengers
-  }, [state.passengers, state.stations, stationPositions, trainPosition, trackGenerator, pathRef])
-
-  // Detect passengers disembarking and start animations
-  useEffect(() => {
-    if (!pathRef.current || stationPositions.length === 0) return
-
-    const previousPassengers = previousPassengersRef.current
-    const currentPassengers = state.passengers
-
-    // Find newly delivered passengers
-    const newlyDelivered = currentPassengers.filter(curr => {
-      const prev = previousPassengers.find(p => p.id === curr.id)
-      return curr.isDelivered && prev && !prev.isDelivered
-    })
-
     // Start animation for each newly delivered passenger
     newlyDelivered.forEach(passenger => {
       // Find destination station
@@ -310,33 +301,62 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
         })
       }, 800)
     })
+
+    // Update ref
+    previousPassengersRef.current = currentPassengers
   }, [state.passengers, state.stations, stationPositions, trainPosition, trackGenerator, pathRef])
 
   // Calculate train car transforms (each car follows behind the locomotive)
   const maxCars = 5 // Maximum passengers per route
   const carSpacing = 7 // Percentage of track between cars
-  const trainCars = Array.from({ length: maxCars }).map((_, carIndex) => {
-    if (!pathRef.current) return { x: 0, y: 0, rotation: 0, position: 0, opacity: 0 }
-
-    // Calculate position for this car (behind the locomotive)
-    const carPosition = Math.max(0, trainPosition - (carIndex + 1) * carSpacing)
-
-    // Calculate opacity: fade in as car emerges from tunnel (after 3% of track)
-    const fadeStartPosition = 3
-    const fadeEndPosition = 8
-    let opacity = 0
-    if (carPosition > fadeEndPosition) {
-      opacity = 1
-    } else if (carPosition > fadeStartPosition) {
-      opacity = (carPosition - fadeStartPosition) / (fadeEndPosition - fadeStartPosition)
+  const trainCars = useMemo(() => {
+    if (!pathRef.current) {
+      return Array.from({ length: maxCars }, () => ({ x: 0, y: 0, rotation: 0, position: 0, opacity: 0 }))
     }
 
-    return {
-      ...trackGenerator.getTrainTransform(pathRef.current, carPosition),
-      position: carPosition,
-      opacity
-    }
-  })
+    return Array.from({ length: maxCars }).map((_, carIndex) => {
+      // Calculate position for this car (behind the locomotive)
+      const carPosition = Math.max(0, trainPosition - (carIndex + 1) * carSpacing)
+
+      // Calculate opacity: fade in as car emerges from tunnel (after 3% of track)
+      const fadeStartPosition = 3
+      const fadeEndPosition = 8
+      let opacity = 0
+      if (carPosition > fadeEndPosition) {
+        opacity = 1
+      } else if (carPosition > fadeStartPosition) {
+        opacity = (carPosition - fadeStartPosition) / (fadeEndPosition - fadeStartPosition)
+      }
+
+      return {
+        ...trackGenerator.getTrainTransform(pathRef.current!, carPosition),
+        position: carPosition,
+        opacity
+      }
+    })
+  }, [trainPosition, trackGenerator, maxCars, carSpacing])
+
+  // Memoize filtered passenger lists to avoid recalculating on every render
+  const boardedPassengers = useMemo(() =>
+    state.passengers.filter(p => p.isBoarded && !p.isDelivered),
+    [state.passengers]
+  )
+
+  const nonDeliveredPassengers = useMemo(() =>
+    state.passengers.filter(p => !p.isDelivered),
+    [state.passengers]
+  )
+
+  // Memoize ground texture circles to avoid recreating on every render
+  const groundTextureCircles = useMemo(() =>
+    Array.from({ length: 30 }).map((_, i) => ({
+      key: `ground-texture-${i}`,
+      cx: -30 + (i * 28) + (i % 3) * 10,
+      cy: 140 + (i % 5) * 60,
+      r: 2 + (i % 3)
+    })),
+    []
+  )
 
   if (!trackData) return null
 
@@ -461,12 +481,12 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
         />
 
         {/* Ground texture - scattered rocks/pebbles */}
-        {Array.from({ length: 30 }).map((_, i) => (
+        {groundTextureCircles.map((circle) => (
           <circle
-            key={`ground-texture-${i}`}
-            cx={-30 + (i * 28) + (i % 3) * 10}
-            cy={140 + (i % 5) * 60}
-            r={2 + (i % 3)}
+            key={circle.key}
+            cx={circle.cx}
+            cy={circle.cy}
+            r={circle.r}
             fill="#654321"
             opacity={0.3}
           />
@@ -775,8 +795,6 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
 
         {/* Train cars - render in reverse order so locomotive appears on top */}
         {trainCars.map((carTransform, carIndex) => {
-          // Get boarded passengers
-          const boardedPassengers = state.passengers.filter(p => p.isBoarded && !p.isDelivered)
           // Assign passenger to this car (if one exists for this car index)
           const passenger = boardedPassengers[carIndex]
 
@@ -914,7 +932,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
       </div>
 
       {/* Passenger cards - show all non-delivered passengers */}
-      {state.passengers.filter(p => !p.isDelivered).length > 0 && (
+      {nonDeliveredPassengers.length > 0 && (
         <div data-component="passenger-list" style={{
           position: 'fixed',
           bottom: '20px',
@@ -926,7 +944,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           maxHeight: 'calc(100vh - 40px)',
           overflowY: 'auto'
         }}>
-          {state.passengers.filter(p => !p.isDelivered).map(passenger => (
+          {nonDeliveredPassengers.map(passenger => (
             <PassengerCard
               key={passenger.id}
               passenger={passenger}

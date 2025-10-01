@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
 import { useAIRacers } from '../hooks/useAIRacers'
 import { useAdaptiveDifficulty } from '../hooks/useAdaptiveDifficulty'

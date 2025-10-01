@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import type { Passenger, Station } from '../lib/gameTypes'
 
 interface PassengerCardProps {
@@ -8,7 +9,7 @@ interface PassengerCardProps {
   destinationStation: Station | undefined
 }
 
-export function PassengerCard({ passenger, originStation, destinationStation }: PassengerCardProps) {
+export const PassengerCard = memo(function PassengerCard({ passenger, originStation, destinationStation }: PassengerCardProps) {
   if (!destinationStation || !originStation) return null
 
   // Vintage train station colors
@@ -218,4 +219,4 @@ export function PassengerCard({ passenger, originStation, destinationStation }: 
       `}</style>
     </div>
   )
-}
+})
