@@ -27,8 +27,8 @@ export function useTrackManagement({
   const [trackData, setTrackData] = useState<ReturnType<typeof trackGenerator.generateTrack> | null>(null)
   const [tiesAndRails, setTiesAndRails] = useState<{
     ties: Array<{ x1: number; y1: number; x2: number; y2: number }>
-    leftRailPoints: string[]
-    rightRailPoints: string[]
+    leftRailPath: string
+    rightRailPath: string
   } | null>(null)
   const [stationPositions, setStationPositions] = useState<Array<{ x: number; y: number }>>([])
   const [landmarks, setLandmarks] = useState<Landmark[]>([])
@@ -38,7 +38,7 @@ export function useTrackManagement({
   // Track previous route data to maintain visuals during transition
   const previousRouteRef = useRef(currentRoute)
   const [pendingTrackData, setPendingTrackData] = useState<ReturnType<typeof trackGenerator.generateTrack> | null>(null)
-  const previousPassengersRef = useRef<Passenger[]>(passengers)
+  const displayRouteRef = useRef(currentRoute) // Track which route's passengers are being displayed
 
   // Generate landmarks when route changes
   useEffect(() => {
@@ -74,24 +74,21 @@ export function useTrackManagement({
   useEffect(() => {
     // Only switch to new passengers when:
     // 1. Train has reset to start position (< 0) - track has changed, OR
-    // 2. Same passengers (same route, gameplay updates like boarding/delivering)
+    // 2. Same route AND train is in middle of track (10-90%) - gameplay updates like boarding/delivering
     const trainReset = trainPosition < 0
-    const samePassengers = passengers === previousPassengersRef.current
+    const sameRoute = currentRoute === displayRouteRef.current
+    const inMiddleOfTrack = trainPosition >= 10 && trainPosition < 90 // Avoid start/end transition zones
 
-    if (trainReset || samePassengers) {
+    if (trainReset) {
+      // Train reset - update to new route's passengers
       setDisplayPassengers(passengers)
-      previousPassengersRef.current = passengers
-    }
-    // Otherwise, keep displaying old passengers until train resets and track changes
-  }, [passengers, trainPosition])
-
-  // Update display passengers during gameplay (same route)
-  useEffect(() => {
-    // Only update if we're in the same route (not transitioning)
-    if (previousRouteRef.current === currentRoute && trainPosition >= 0 && trainPosition < 100) {
+      displayRouteRef.current = currentRoute
+    } else if (sameRoute && inMiddleOfTrack) {
+      // Same route and train in middle of track - update passengers for gameplay changes (boarding/delivery)
       setDisplayPassengers(passengers)
     }
-  }, [passengers, currentRoute, trainPosition])
+    // Otherwise, keep displaying old passengers until train resets
+  }, [passengers, trainPosition, currentRoute])
 
   // Generate ties and rails when path is ready
   useEffect(() => {
