@@ -125,6 +125,7 @@ export class RailroadTrackGenerator {
     const leftRailPoints: string[] = []
     const rightRailPoints: string[] = []
 
+    // Generate ties at normal spacing
     for (let i = 0; i < tieCount; i++) {
       const distance = i * tieSpacing
       const point = pathElement.getPointAtLength(distance)
@@ -143,6 +144,28 @@ export class RailroadTrackGenerator {
 
       // Store tie
       ties.push({ x1: leftX, y1: leftY, x2: rightX, y2: rightY })
+    }
+
+    // Generate rail points with much higher density for smooth curves
+    // Use 3px spacing instead of 12px tie spacing to eliminate jaggies on curves
+    const railSpacing = 3
+    const railPointCount = Math.floor(pathLength / railSpacing)
+
+    for (let i = 0; i < railPointCount; i++) {
+      const distance = i * railSpacing
+      const point = pathElement.getPointAtLength(distance)
+
+      // Calculate perpendicular angle for rail orientation
+      const nextDistance = Math.min(distance + 2, pathLength)
+      const nextPoint = pathElement.getPointAtLength(nextDistance)
+      const angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x)
+      const perpAngle = angle + Math.PI / 2
+
+      // Calculate rail positions
+      const leftX = point.x + Math.cos(perpAngle) * gaugeWidth
+      const leftY = point.y + Math.sin(perpAngle) * gaugeWidth
+      const rightX = point.x - Math.cos(perpAngle) * gaugeWidth
+      const rightY = point.y - Math.sin(perpAngle) * gaugeWidth
 
       // Collect points for rails
       leftRailPoints.push(`${leftX},${leftY}`)
