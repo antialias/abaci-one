@@ -269,7 +269,7 @@ describe('useTrackManagement', () => {
     expect(result.current.displayPassengers).toBe(mockPassengers)
   })
 
-  test('updates passenger display after all cars exit', () => {
+  test('does not update passenger display until train resets', () => {
     const newPassengers: Passenger[] = [
       {
         id: 'passenger-2',
@@ -299,11 +299,17 @@ describe('useTrackManagement', () => {
       }
     )
 
-    // Change passengers, locomotive at position where last car has exited
-    // Last car exits at position 97%, so locomotive needs to be at 97 + (5*7) = 132%
+    // Change passengers, locomotive at position where all cars have exited
+    // Last car exits at position 97%, so locomotive at 132%
     rerender({ passengers: newPassengers, position: 132 })
 
-    // Display passengers should update now (all cars exited)
+    // Display passengers should NOT update yet (waiting for train reset)
+    expect(result.current.displayPassengers).toBe(mockPassengers)
+
+    // Now train resets to beginning
+    rerender({ passengers: newPassengers, position: -5 })
+
+    // Display passengers should update now (train reset)
     expect(result.current.displayPassengers).toBe(newPassengers)
   })
 

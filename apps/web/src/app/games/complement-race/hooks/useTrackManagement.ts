@@ -72,26 +72,18 @@ export function useTrackManagement({
 
   // Manage passenger display during route transitions
   useEffect(() => {
-    // Calculate the position of the last train car
-    const lastCarPosition = trainPosition - maxCars * carSpacing
-    const fadeOutEnd = 97 // Position where cars are fully faded out
-
     // Only switch to new passengers when:
-    // 1. Train has reset to start position (< 0), OR
-    // 2. All cars (including the last one) have exited (last car position >= fadeOutEnd)
-    const allCarsExited = lastCarPosition >= fadeOutEnd
+    // 1. Train has reset to start position (< 0) - track has changed, OR
+    // 2. Same passengers (same route, gameplay updates like boarding/delivering)
     const trainReset = trainPosition < 0
+    const samePassengers = passengers === previousPassengersRef.current
 
-    if (trainReset || allCarsExited || passengers === previousPassengersRef.current) {
+    if (trainReset || samePassengers) {
       setDisplayPassengers(passengers)
       previousPassengersRef.current = passengers
     }
-    // Otherwise, if we're mid-route and passengers changed, keep showing old passengers
-    else if (passengers !== previousPassengersRef.current) {
-      // Keep displaying old passengers until all cars exit
-      // Don't update displayPassengers yet
-    }
-  }, [passengers, trainPosition, maxCars, carSpacing])
+    // Otherwise, keep displaying old passengers until train resets and track changes
+  }, [passengers, trainPosition])
 
   // Update display passengers during gameplay (same route)
   useEffect(() => {
