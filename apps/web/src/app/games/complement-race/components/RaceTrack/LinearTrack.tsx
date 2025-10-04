@@ -18,14 +18,10 @@ export function LinearTrack({ playerProgress, aiRacers, raceGoal, showFinishLine
   const { players } = useGameMode()
   const { profile } = useUserProfile()
 
-  // Get the first active player's emoji from UserProfileContext (same as nav bar)
-  const activePlayer = players.find(p => p.isActive)
-  const playerEmoji = activePlayer
-    ? (activePlayer.id === 1 ? profile.player1Emoji :
-       activePlayer.id === 2 ? profile.player2Emoji :
-       activePlayer.id === 3 ? profile.player3Emoji :
-       activePlayer.id === 4 ? profile.player4Emoji : '👤')
-    : '👤'
+  // Get the first active player's emoji
+  const activePlayers = Array.from(players.values()).filter(p => p.id)
+  const firstActivePlayer = activePlayers[0]
+  const playerEmoji = firstActivePlayer?.emoji ?? '👤'
 
   // Position calculation: leftPercent = Math.min(98, (progress / raceGoal) * 96 + 2)
   // 2% minimum (start), 98% maximum (near finish), 96% range for race
