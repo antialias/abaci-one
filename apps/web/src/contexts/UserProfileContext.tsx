@@ -1,65 +1,16 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-
-// Available character emojis for players (deduplicated)
-export const PLAYER_EMOJIS = [
-  // People & Characters
-  '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😉', '😊', '😇',
-  '🥰', '😍', '🤩', '😘', '😗', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨',
-  '🧐', '🤓', '😎', '🥸', '🥳', '😏', '😒', '😞', '😔', '😟', '😕',
-
-  // Fantasy & Fun
-  '🤠', '🥷', '👑', '🎭', '🤖', '👻', '💀', '👽', '🤡', '🧙‍♂️', '🧙‍♀️', '🧚‍♂️',
-  '🧚‍♀️', '🧛‍♂️', '🧛‍♀️', '🧜‍♂️', '🧜‍♀️', '🧝‍♂️', '🧝‍♀️', '🦸‍♂️', '🦸‍♀️', '🦹‍♂️',
-
-  // Animals
-  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐻‍❄️', '🐨', '🐯', '🦁',
-  '🐮', '🐷', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🦆', '🐧', '🐦', '🐤',
-  '🐣', '🐥', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋',
-
-  // Objects & Symbols
-  '⭐', '🌟', '💫', '✨', '⚡', '🔥', '🌈', '🎪', '🎨', '🎯',
-  '🎲', '🎮', '🕹️', '🎸', '🎺', '🎷', '🥁', '🎻', '🎤', '🎧', '🎬', '🎥',
-
-  // Food & Drinks
-  '🍎', '🍊', '🍌', '🍇', '🍓', '🥝', '🍑', '🥭', '🍍', '🥥', '🥑', '🍆',
-  '🥕', '🌽', '🌶️', '🫑', '🥒', '🥬', '🥦', '🧄', '🧅', '🍄', '🥜', '🌰'
-]
-
-export interface UserProfile {
-  player1Emoji: string
-  player2Emoji: string
-  player3Emoji: string
-  player4Emoji: string
-  player1Name: string
-  player2Name: string
-  player3Name: string
-  player4Name: string
-  gamesPlayed: number
-  totalWins: number
-  favoriteGameType: 'abacus-numeral' | 'complement-pairs' | null
-  bestTime: number | null
-  highestAccuracy: number
-}
+import { UserStatsProfile } from '../types/player'
+import { STORAGE_KEY_STATS, STORAGE_KEY_V1, extractStatsFromV1 } from '../lib/playerMigration'
 
 export interface UserProfileContextType {
-  profile: UserProfile
-  updatePlayerEmoji: (player: 1 | 2 | 3 | 4, emoji: string) => void
-  updatePlayerName: (player: 1 | 2 | 3 | 4, name: string) => void
-  updateGameStats: (stats: Partial<Pick<UserProfile, 'gamesPlayed' | 'totalWins' | 'favoriteGameType' | 'bestTime' | 'highestAccuracy'>>) => void
+  profile: UserStatsProfile
+  updateGameStats: (stats: Partial<UserStatsProfile>) => void
   resetProfile: () => void
 }
 
-const defaultProfile: UserProfile = {
-  player1Emoji: '😀',
-  player2Emoji: '😎',
-  player3Emoji: '🤓',
-  player4Emoji: '🥳',
-  player1Name: 'Player 1',
-  player2Name: 'Player 2',
-  player3Name: 'Player 3',
-  player4Name: 'Player 4',
+const defaultProfile: UserStatsProfile = {
   gamesPlayed: 0,
   totalWins: 0,
   favoriteGameType: null,
@@ -67,28 +18,40 @@ const defaultProfile: UserProfile = {
   highestAccuracy: 0
 }
 
-const STORAGE_KEY = 'soroban-memory-pairs-profile'
-
 const UserProfileContext = createContext<UserProfileContextType | null>(null)
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<UserProfile>(defaultProfile)
+  const [profile, setProfile] = useState<UserStatsProfile>(defaultProfile)
   const [isInitialized, setIsInitialized] = useState(false)
 
   // Load profile from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (stored) {
+        // Try to load from new stats storage
+        let stored = localStorage.getItem(STORAGE_KEY_STATS)
+
+        if (!stored) {
+          // Check for V1 data to migrate stats from
+          const v1Data = localStorage.getItem(STORAGE_KEY_V1)
+          if (v1Data) {
+            const v1Profile = JSON.parse(v1Data)
+            const migratedStats = extractStatsFromV1(v1Profile)
+            setProfile(migratedStats)
+            // Save to new location
+            localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(migratedStats))
+            console.log('✅ Migrated stats from V1 to new storage')
+          }
+        } else {
           const parsedProfile = JSON.parse(stored)
           // Merge with defaults to handle new fields
           const mergedProfile = { ...defaultProfile, ...parsedProfile }
           setProfile(mergedProfile)
         }
+
         setIsInitialized(true)
       } catch (error) {
-        console.warn('Failed to load user profile from localStorage:', error)
+        console.warn('Failed to load user stats from localStorage:', error)
         setIsInitialized(true)
       }
     }
@@ -98,28 +61,14 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined' && isInitialized) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+        localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(profile))
       } catch (error) {
-        console.warn('Failed to save user profile to localStorage:', error)
+        console.warn('Failed to save user stats to localStorage:', error)
       }
     }
   }, [profile, isInitialized])
 
-  const updatePlayerEmoji = (player: 1 | 2, emoji: string) => {
-    setProfile(prev => ({
-      ...prev,
-      [`player${player}Emoji`]: emoji
-    }))
-  }
-
-  const updatePlayerName = (player: 1 | 2, name: string) => {
-    setProfile(prev => ({
-      ...prev,
-      [`player${player}Name`]: name
-    }))
-  }
-
-  const updateGameStats = (stats: Partial<Pick<UserProfile, 'gamesPlayed' | 'totalWins' | 'favoriteGameType' | 'bestTime' | 'highestAccuracy'>>) => {
+  const updateGameStats = (stats: Partial<UserStatsProfile>) => {
     setProfile(prev => ({
       ...prev,
       ...stats
@@ -132,8 +81,6 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
 
   const contextValue: UserProfileContextType = {
     profile,
-    updatePlayerEmoji,
-    updatePlayerName,
     updateGameStats,
     resetProfile
   }
