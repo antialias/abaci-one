@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, test, expect, beforeEach, vi } from 'vitest'
 import { EmojiPicker } from '../EmojiPicker'
-import { PLAYER_EMOJIS } from '../../../../../contexts/UserProfileContext'
+import { PLAYER_EMOJIS } from '../../../../../constants/playerEmojis'
 
 // Mock the emoji keywords function for testing
 vi.mock('emojibase-data/en/data.json', () => ({

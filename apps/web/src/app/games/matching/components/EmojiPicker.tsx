@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { PLAYER_EMOJIS } from '../../../../contexts/UserProfileContext'
+import { PLAYER_EMOJIS } from '../../../../constants/playerEmojis'
 import { css } from '../../../../../styled-system/css'
 import emojiData from 'emojibase-data/en/data.json'
 
@@ -24,7 +24,7 @@ interface EmojiPickerProps {
   currentEmoji: string
   onEmojiSelect: (emoji: string) => void
   onClose: () => void
-  playerNumber: 1 | 2 | 3 | 4
+  playerNumber: number
 }
 
 // Emoji group categories from emojibase (matching Unicode CLDR group IDs)

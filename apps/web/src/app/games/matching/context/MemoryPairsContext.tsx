@@ -251,10 +251,10 @@ const MemoryPairsContext = createContext<MemoryPairsContextValue | null>(null)
 // Provider component
 export function MemoryPairsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(memoryPairsReducer, initialState)
-  const { activePlayerCount, players } = useGameMode()
+  const { activePlayerCount, activePlayers: activePlayerIds } = useGameMode()
 
-  // Get active players from GameMode context
-  const activePlayers = players.filter(player => player.isActive).map(player => player.id)
+  // Get active player IDs as numbers (convert from string IDs for now to maintain compatibility)
+  const activePlayers = Array.from(activePlayerIds).map((id, index) => index + 1)
 
   // Derive game mode from active player count
   const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'

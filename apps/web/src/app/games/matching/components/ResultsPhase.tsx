@@ -9,21 +9,18 @@ import { css } from '../../../../../styled-system/css'
 
 export function ResultsPhase() {
   const router = useRouter()
-  const { state, resetGame, activePlayers } = useMemoryPairs()
-  const { players } = useGameMode()
-  const { profile } = useUserProfile()
+  const { state, resetGame, activePlayers, gameMode } = useMemoryPairs()
+  const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
 
-  // Get active player data with profile information
-  const activePlayerData = players
-    .filter(p => activePlayers.includes(p.id))
-    .map(player => ({
+  // Get active player data array
+  const activePlayerData = Array.from(activePlayerIds)
+    .map(id => playerMap.get(id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined)
+    .map((player, index) => ({
       ...player,
-      displayName: player.id === 1 ? profile.player1Name :
-                   player.id === 2 ? profile.player2Name :
-                   player.name,
-      displayEmoji: player.id === 1 ? profile.player1Emoji :
-                    player.id === 2 ? profile.player2Emoji :
-                    player.emoji
+      displayName: player.name,
+      displayEmoji: player.emoji,
+      numericId: index + 1 // For compatibility with state.scores
     }))
 
   const gameTime = state.gameEndTime && state.gameStartTime
@@ -31,7 +28,7 @@ export function ResultsPhase() {
     : 0
 
   const analysis = getPerformanceAnalysis(state)
-  const multiplayerResult = state.gameMode === 'multiplayer' ? getMultiplayerWinner(state, activePlayers) : null
+  const multiplayerResult = gameMode === 'multiplayer' ? getMultiplayerWinner(state, activePlayers) : null
 
   return (
     <div className={css({
@@ -52,7 +49,7 @@ export function ResultsPhase() {
           🎉 Game Complete! 🎉
         </h2>
 
-        {state.gameMode === 'single' ? (
+        {gameMode === 'single' ? (
           <p className={css({
             fontSize: '24px',
             color: 'gray.700',
@@ -76,7 +73,7 @@ export function ResultsPhase() {
                 color: 'blue.600',
                 fontWeight: 'bold'
               })}>
-                🏆 {activePlayerData.find(p => p.id === multiplayerResult.winners[0])?.displayName || `Player ${multiplayerResult.winners[0]}`} Wins!
+                🏆 {activePlayerData.find(p => p.numericId === multiplayerResult.winners[0])?.displayName || `Player ${multiplayerResult.winners[0]}`} Wins!
               </p>
             ) : (
               <p className={css({
@@ -180,7 +177,7 @@ export function ResultsPhase() {
       </div>
 
       {/* Multiplayer Scores */}
-      {state.gameMode === 'multiplayer' && multiplayerResult && (
+      {gameMode === 'multiplayer' && multiplayerResult && (
         <div className={css({
           display: 'flex',
           justifyContent: 'center',
@@ -189,8 +186,8 @@ export function ResultsPhase() {
           flexWrap: 'wrap'
         })}>
           {activePlayerData.map((player) => {
-            const score = multiplayerResult.scores[player.id] || 0
-            const isWinner = multiplayerResult.winners.includes(player.id)
+            const score = multiplayerResult.scores[player.numericId] || 0
+            const isWinner = multiplayerResult.winners.includes(player.numericId)
 
             return (
               <div key={player.id} className={css({

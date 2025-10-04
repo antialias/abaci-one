@@ -2,13 +2,18 @@
 
 import { AbacusReact } from '@soroban/abacus-react'
 import { useAbacusConfig } from '@soroban/abacus-react'
-import { useUserProfile } from '../../../../contexts/UserProfileContext'
+import { useGameMode } from '../../../../contexts/GameModeContext'
 import type { GameCardProps } from '../context/types'
 import { css } from '../../../../../styled-system/css'
 
 export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false }: GameCardProps) {
   const appConfig = useAbacusConfig()
-  const { profile } = useUserProfile()
+  const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
+
+  // Get active players array for mapping numeric IDs to actual players
+  const activePlayers = Array.from(activePlayerIds)
+    .map(id => playerMap.get(id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined)
 
   const cardBackStyles = css({
     position: 'absolute',
@@ -71,11 +76,9 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
 
   const getCardBackIcon = () => {
     if (isMatched) {
-      // Show player emoji for matched cards in two-player mode
-      if (card.matchedBy === 1) {
-        return profile.player1Emoji
-      } else if (card.matchedBy === 2) {
-        return profile.player2Emoji
+      // Show player emoji for matched cards in multiplayer mode
+      if (card.matchedBy && card.matchedBy <= activePlayers.length) {
+        return activePlayers[card.matchedBy - 1]?.emoji || '✓'
       }
       return '✓' // Default checkmark for single player
     }
@@ -227,7 +230,9 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                   animation: 'emojiBlast 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.4s both',
                   filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8))'
                 })}>
-                  {card.matchedBy === 1 ? profile.player1Emoji : profile.player2Emoji}
+                  {card.matchedBy && card.matchedBy <= activePlayers.length
+                    ? activePlayers[card.matchedBy - 1]?.emoji || '✓'
+                    : '✓'}
                 </span>
               </div>
 

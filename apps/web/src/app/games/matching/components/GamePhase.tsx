@@ -9,11 +9,17 @@ import { pluralizeWord } from '../../../../utils/pluralization'
 
 export function GamePhase() {
   const { state, resetGame, activePlayers } = useMemoryPairs()
-  const { players } = useGameMode()
+  const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
 
-  // Get the current player from the arena champions
-  const currentPlayerData = players.find(p => p.id === state.currentPlayer)
-  const activePlayerData = players.filter(p => activePlayers.includes(p.id))
+  // Convert Map to array and create mapping from numeric index to player
+  const playersArray = Array.from(playerMap.values())
+  const activePlayersArray = Array.from(activePlayerIds)
+    .map(id => playerMap.get(id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined)
+
+  // Map numeric player ID (1, 2, 3...) to actual player data
+  const currentPlayerData = activePlayersArray[state.currentPlayer - 1]
+  const activePlayerData = activePlayersArray
 
   return (
     <div className={css({

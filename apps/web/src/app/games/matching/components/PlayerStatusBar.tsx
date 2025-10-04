@@ -11,24 +11,23 @@ interface PlayerStatusBarProps {
 }
 
 export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
-  const { players } = useGameMode()
-  const { profile } = useUserProfile()
+  const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
   const { state } = useMemoryPairs()
 
-  // Get active players with their profile data
-  const activePlayers = players
-    .filter(player => player.isActive)
-    .map(player => ({
-      ...player,
-      displayName: player.id === 1 ? profile.player1Name :
-                   player.id === 2 ? profile.player2Name :
-                   player.name,
-      displayEmoji: player.id === 1 ? profile.player1Emoji :
-                    player.id === 2 ? profile.player2Emoji :
-                    player.emoji,
-      score: state.scores[player.id] || 0,
-      consecutiveMatches: state.consecutiveMatches?.[player.id] || 0
-    }))
+  // Get active players array
+  const activePlayersData = Array.from(activePlayerIds)
+    .map(id => playerMap.get(id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined)
+
+  // Map active players to display data with scores
+  // State uses numeric player IDs (1, 2, 3...), so we map by index
+  const activePlayers = activePlayersData.map((player, index) => ({
+    ...player,
+    displayName: player.name,
+    displayEmoji: player.emoji,
+    score: state.scores[index + 1] || 0,
+    consecutiveMatches: state.consecutiveMatches?.[index + 1] || 0
+  }))
 
   // Get celebration level based on consecutive matches
   const getCelebrationLevel = (consecutiveMatches: number) => {
@@ -41,7 +40,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
   if (activePlayers.length <= 1) {
     // Simple single player indicator
     return (
-      <div className={css({
+      <div className={`${css({
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
@@ -52,8 +51,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
         borderColor: 'blue.200',
         mb: { base: '2', md: '3' },
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      })}
-      className={className}>
+      })} ${className || ''}`}>
         <div className={css({
           display: 'flex',
           alignItems: 'center',
@@ -85,15 +83,14 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
 
   // For multiplayer, show competitive status bar
   return (
-    <div className={css({
+    <div className={`${css({
       background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
       rounded: 'xl',
       p: { base: '2', md: '3' },
       border: '2px solid',
       borderColor: 'gray.200',
       mb: { base: '3', md: '4' }
-    })}
-    className={className}>
+    })} ${className || ''}`}>
       <div className={css({
         display: 'grid',
         gridTemplateColumns: activePlayers.length <= 2
@@ -105,7 +102,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
         alignItems: 'center'
       })}>
         {activePlayers.map((player, index) => {
-          const isCurrentPlayer = player.id === state.currentPlayer
+          const isCurrentPlayer = (index + 1) === state.currentPlayer
           const isLeading = player.score === Math.max(...activePlayers.map(p => p.score)) && player.score > 0
           const celebrationLevel = getCelebrationLevel(player.consecutiveMatches)
 
