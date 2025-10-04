@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { css } from '../../../styled-system/css'
@@ -12,9 +12,12 @@ import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenCont
 
 function GamesPageContent() {
   const { profile } = useUserProfile()
-  const { gameMode, getActivePlayer } = useGameMode()
+  const { gameMode, getAllPlayers } = useGameMode()
   const { enterFullscreen } = useFullscreen()
   const router = useRouter()
+
+  // Get all players sorted by creation time
+  const allPlayers = getAllPlayers().sort((a, b) => a.createdAt - b.createdAt)
 
   const handleGameClick = (gameType: string) => {
     // Navigate directly to games using the centralized game mode with Next.js router
@@ -324,364 +327,231 @@ function GamesPageContent() {
 
           <div className={css({
             display: 'grid',
-            gridTemplateColumns: { base: '1fr', md: 'repeat(2, 1fr)' },
+            gridTemplateColumns: { base: '1fr', md: 'repeat(auto-fit, minmax(300px, 1fr))' },
             gap: '6',
-            maxW: '4xl',
+            maxW: '6xl',
             mx: 'auto'
           })}>
-            {/* Player 1 Character Card */}
-            <div className={css({
-              position: 'relative',
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(10px)',
-              rounded: '2xl',
-              p: '6',
-              border: '2px solid rgba(59, 130, 246, 0.3)',
-              boxShadow: '0 20px 40px rgba(59, 130, 246, 0.1)',
-              transition: 'all 0.4s ease',
-              animation: 'characterFloat 4s ease-in-out infinite',
-              _hover: {
-                transform: 'translateY(-5px) scale(1.02)',
-                boxShadow: '0 25px 50px rgba(59, 130, 246, 0.15)',
-                '& .character-emoji': {
-                  transform: 'scale(1.1) rotate(5deg)',
-                  animation: 'characterBounce 0.6s ease-in-out'
+            {/* Dynamic Player Character Cards */}
+            {allPlayers.map((player, index) => {
+              // Rotate through different color schemes for visual variety
+              const colorSchemes = [
+                {
+                  border: 'rgba(59, 130, 246, 0.3)',
+                  shadow: 'rgba(59, 130, 246, 0.1)',
+                  gradient: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+                  statBg: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                  statBorder: 'blue.200',
+                  statColor: 'blue.800',
+                  levelColor: 'blue.700'
+                },
+                {
+                  border: 'rgba(139, 92, 246, 0.3)',
+                  shadow: 'rgba(139, 92, 246, 0.1)',
+                  gradient: 'linear-gradient(90deg, #8b5cf6, #7c3aed)',
+                  statBg: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
+                  statBorder: 'purple.200',
+                  statColor: 'purple.800',
+                  levelColor: 'purple.700'
+                },
+                {
+                  border: 'rgba(16, 185, 129, 0.3)',
+                  shadow: 'rgba(16, 185, 129, 0.1)',
+                  gradient: 'linear-gradient(90deg, #10b981, #059669)',
+                  statBg: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
+                  statBorder: 'green.200',
+                  statColor: 'green.800',
+                  levelColor: 'green.700'
+                },
+                {
+                  border: 'rgba(245, 158, 11, 0.3)',
+                  shadow: 'rgba(245, 158, 11, 0.1)',
+                  gradient: 'linear-gradient(90deg, #f59e0b, #d97706)',
+                  statBg: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                  statBorder: 'yellow.200',
+                  statColor: 'yellow.800',
+                  levelColor: 'yellow.700'
                 }
-              }
-            })}>
-              {/* Player 1 Gradient Border */}
-              <div className={css({
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
-                borderRadius: '16px 16px 0 0'
-              })} />
+              ]
+              const theme = colorSchemes[index % colorSchemes.length]
 
-              {/* Character Display */}
-              <div className={css({
-                textAlign: 'center',
-                mb: '4'
-              })}>
-                <div className={css({
-                  fontSize: '4xl',
-                  mb: '2',
-                  transition: 'all 0.3s ease'
-                }) + ' character-emoji'}>
-                  {profile.player1Emoji}
-                </div>
-                <h3 className={css({
-                  fontSize: 'xl',
-                  fontWeight: 'bold',
-                  color: 'blue.800'
-                })}>
-                  {profile.player1Name}
-                </h3>
-              </div>
+              return (
+                <div
+                  key={player.id}
+                  className={css({
+                    position: 'relative',
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    rounded: '2xl',
+                    p: '6',
+                    border: '2px solid',
+                    boxShadow: `0 20px 40px ${theme.shadow}`,
+                    transition: 'all 0.4s ease',
+                    animation: `characterFloat 4s ease-in-out infinite ${index * 0.5}s`,
+                    _hover: {
+                      transform: 'translateY(-5px) scale(1.02)',
+                      boxShadow: `0 25px 50px ${theme.shadow}`,
+                      '& .character-emoji': {
+                        transform: `scale(1.1) rotate(${index % 2 === 0 ? 5 : -5}deg)`,
+                        animation: 'characterBounce 0.6s ease-in-out'
+                      }
+                    }
+                  })}
+                  style={{ borderColor: theme.border }}
+                >
+                  {/* Gradient Border */}
+                  <div className={css({
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '4px',
+                    borderRadius: '16px 16px 0 0'
+                  })} style={{ background: theme.gradient }} />
 
-              {/* Stats */}
-              <div className={css({
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '3'
-              })}>
-                <div className={css({
-                  textAlign: 'center',
-                  background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-                  p: '3',
-                  rounded: 'lg',
-                  border: '1px solid',
-                  borderColor: 'blue.200'
-                })}>
+                  {/* Character Display */}
                   <div className={css({
-                    fontSize: '2xl',
-                    fontWeight: 'bold',
-                    color: 'blue.800'
+                    textAlign: 'center',
+                    mb: '4'
                   })}>
-                    {profile.gamesPlayed}
+                    <div className={css({
+                      fontSize: '4xl',
+                      mb: '2',
+                      transition: 'all 0.3s ease'
+                    }) + ' character-emoji'}>
+                      {player.emoji}
+                    </div>
+                    <h3 className={css({
+                      fontSize: 'xl',
+                      fontWeight: 'bold'
+                    })} style={{ color: player.color }}>
+                      {player.name}
+                    </h3>
                   </div>
-                  <div className={css({
-                    fontSize: 'xs',
-                    color: 'blue.600',
-                    fontWeight: 'semibold'
-                  })}>
-                    GAMES PLAYED
-                  </div>
-                </div>
 
-                <div className={css({
-                  textAlign: 'center',
-                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                  p: '3',
-                  rounded: 'lg',
-                  border: '1px solid',
-                  borderColor: 'yellow.200'
-                })}>
+                  {/* Stats */}
                   <div className={css({
-                    fontSize: '2xl',
-                    fontWeight: 'bold',
-                    color: 'yellow.800'
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '3'
                   })}>
-                    {profile.totalWins}
-                  </div>
-                  <div className={css({
-                    fontSize: 'xs',
-                    color: 'yellow.700',
-                    fontWeight: 'semibold'
-                  })}>
-                    VICTORIES
-                  </div>
-                </div>
-              </div>
+                    <div className={css({
+                      textAlign: 'center',
+                      p: '3',
+                      rounded: 'lg',
+                      border: '1px solid'
+                    })} style={{
+                      background: theme.statBg,
+                      borderColor: theme.statBorder
+                    }}>
+                      <div className={css({
+                        fontSize: '2xl',
+                        fontWeight: 'bold'
+                      })} style={{ color: theme.statColor }}>
+                        {profile.gamesPlayed}
+                      </div>
+                      <div className={css({
+                        fontSize: 'xs',
+                        fontWeight: 'semibold'
+                      })} style={{ color: theme.statColor }}>
+                        GAMES PLAYED
+                      </div>
+                    </div>
 
-              {/* Level Progress */}
-              <div className={css({
-                mt: '4'
-              })}>
-                <div className={css({
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  mb: '2'
-                })}>
-                  <span className={css({
-                    fontSize: 'sm',
-                    fontWeight: 'semibold',
-                    color: 'blue.700'
-                  })}>
-                    Level {Math.floor(profile.gamesPlayed / 5) + 1}
-                  </span>
-                  <span className={css({
-                    fontSize: 'xs',
-                    color: 'blue.600'
-                  })}>
-                    {profile.gamesPlayed % 5}/5 XP
-                  </span>
-                </div>
-                <div className={css({
-                  w: 'full',
-                  h: '2',
-                  bg: 'blue.200',
-                  rounded: 'full',
-                  overflow: 'hidden'
-                })}>
+                    <div className={css({
+                      textAlign: 'center',
+                      background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                      p: '3',
+                      rounded: 'lg',
+                      border: '1px solid',
+                      borderColor: 'yellow.200'
+                    })}>
+                      <div className={css({
+                        fontSize: '2xl',
+                        fontWeight: 'bold',
+                        color: 'yellow.800'
+                      })}>
+                        {Math.floor(profile.totalWins / allPlayers.length)}
+                      </div>
+                      <div className={css({
+                        fontSize: 'xs',
+                        color: 'yellow.700',
+                        fontWeight: 'semibold'
+                      })}>
+                        VICTORIES
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Level Progress */}
                   <div className={css({
-                    h: 'full',
-                    background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+                    mt: '4'
+                  })}>
+                    <div className={css({
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      mb: '2'
+                    })}>
+                      <span className={css({
+                        fontSize: 'sm',
+                        fontWeight: 'semibold'
+                      })} style={{ color: theme.levelColor }}>
+                        Level {Math.floor(profile.gamesPlayed / 5) + 1}
+                      </span>
+                      <span className={css({
+                        fontSize: 'xs'
+                      })} style={{ color: theme.levelColor }}>
+                        {profile.gamesPlayed % 5}/5 XP
+                      </span>
+                    </div>
+                    <div className={css({
+                      w: 'full',
+                      h: '2',
+                      rounded: 'full',
+                      overflow: 'hidden'
+                    })} style={{ background: `${player.color}33` }}>
+                      <div className={css({
+                        h: 'full',
+                        rounded: 'full',
+                        transition: 'width 0.5s ease'
+                      })} style={{
+                        background: theme.gradient,
+                        width: `${(profile.gamesPlayed % 5) * 20}%`
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Quick Customize Button */}
+                  <button className={css({
+                    position: 'absolute',
+                    top: '3',
+                    right: '3',
+                    w: { base: '12', md: '8' },
+                    h: { base: '12', md: '8' },
+                    minH: '44px',
+                    minW: '44px',
+                    background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
                     rounded: 'full',
-                    transition: 'width 0.5s ease',
-                    width: `${(profile.gamesPlayed % 5) * 20}%`
-                  })} />
-                </div>
-              </div>
-
-              {/* Quick Customize Button */}
-              <button className={css({
-                position: 'absolute',
-                top: '3',
-                right: '3',
-                w: { base: '12', md: '8' },
-                h: { base: '12', md: '8' },
-                minH: '44px',
-                minW: '44px',
-                background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
-                rounded: 'full',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: { base: 'md', md: 'sm' },
-                border: '1px solid',
-                borderColor: 'gray.300',
-                cursor: 'pointer',
-                touchAction: 'manipulation',
-                transition: 'all 0.3s ease',
-                _hover: {
-                  transform: 'scale(1.1)',
-                  background: 'linear-gradient(135deg, #e5e7eb, #d1d5db)'
-                }
-              })}>
-                ⚙️
-              </button>
-            </div>
-
-            {/* Player 2 Character Card */}
-            <div className={css({
-              position: 'relative',
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(10px)',
-              rounded: '2xl',
-              p: '6',
-              border: '2px solid rgba(139, 92, 246, 0.3)',
-              boxShadow: '0 20px 40px rgba(139, 92, 246, 0.1)',
-              transition: 'all 0.4s ease',
-              animation: 'characterFloat 4s ease-in-out infinite 2s',
-              _hover: {
-                transform: 'translateY(-5px) scale(1.02)',
-                boxShadow: '0 25px 50px rgba(139, 92, 246, 0.15)',
-                '& .character-emoji': {
-                  transform: 'scale(1.1) rotate(-5deg)',
-                  animation: 'characterBounce 0.6s ease-in-out'
-                }
-              }
-            })}>
-              {/* Player 2 Gradient Border */}
-              <div className={css({
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '4px',
-                background: 'linear-gradient(90deg, #8b5cf6, #7c3aed)',
-                borderRadius: '16px 16px 0 0'
-              })} />
-
-              {/* Character Display */}
-              <div className={css({
-                textAlign: 'center',
-                mb: '4'
-              })}>
-                <div className={css({
-                  fontSize: '4xl',
-                  mb: '2',
-                  transition: 'all 0.3s ease'
-                }) + ' character-emoji'}>
-                  {profile.player2Emoji}
-                </div>
-                <h3 className={css({
-                  fontSize: 'xl',
-                  fontWeight: 'bold',
-                  color: 'purple.800'
-                })}>
-                  {profile.player2Name}
-                </h3>
-              </div>
-
-              {/* Stats */}
-              <div className={css({
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '3'
-              })}>
-                <div className={css({
-                  textAlign: 'center',
-                  background: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
-                  p: '3',
-                  rounded: 'lg',
-                  border: '1px solid',
-                  borderColor: 'purple.200'
-                })}>
-                  <div className={css({
-                    fontSize: '2xl',
-                    fontWeight: 'bold',
-                    color: 'purple.800'
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: { base: 'md', md: 'sm' },
+                    border: '1px solid',
+                    borderColor: 'gray.300',
+                    cursor: 'pointer',
+                    touchAction: 'manipulation',
+                    transition: 'all 0.3s ease',
+                    _hover: {
+                      transform: 'scale(1.1)',
+                      background: 'linear-gradient(135deg, #e5e7eb, #d1d5db)'
+                    }
                   })}>
-                    {profile.gamesPlayed}
-                  </div>
-                  <div className={css({
-                    fontSize: 'xs',
-                    color: 'purple.600',
-                    fontWeight: 'semibold'
-                  })}>
-                    GAMES PLAYED
-                  </div>
+                    ⚙️
+                  </button>
                 </div>
-
-                <div className={css({
-                  textAlign: 'center',
-                  background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
-                  p: '3',
-                  rounded: 'lg',
-                  border: '1px solid',
-                  borderColor: 'green.200'
-                })}>
-                  <div className={css({
-                    fontSize: '2xl',
-                    fontWeight: 'bold',
-                    color: 'green.800'
-                  })}>
-                    {Math.floor(profile.totalWins / 2)}
-                  </div>
-                  <div className={css({
-                    fontSize: 'xs',
-                    color: 'green.700',
-                    fontWeight: 'semibold'
-                  })}>
-                    VICTORIES
-                  </div>
-                </div>
-              </div>
-
-              {/* Level Progress */}
-              <div className={css({
-                mt: '4'
-              })}>
-                <div className={css({
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  mb: '2'
-                })}>
-                  <span className={css({
-                    fontSize: 'sm',
-                    fontWeight: 'semibold',
-                    color: 'purple.700'
-                  })}>
-                    Level {Math.floor(profile.gamesPlayed / 5) + 1}
-                  </span>
-                  <span className={css({
-                    fontSize: 'xs',
-                    color: 'purple.600'
-                  })}>
-                    {profile.gamesPlayed % 5}/5 XP
-                  </span>
-                </div>
-                <div className={css({
-                  w: 'full',
-                  h: '2',
-                  bg: 'purple.200',
-                  rounded: 'full',
-                  overflow: 'hidden'
-                })}>
-                  <div className={css({
-                    h: 'full',
-                    background: 'linear-gradient(90deg, #8b5cf6, #7c3aed)',
-                    rounded: 'full',
-                    transition: 'width 0.5s ease',
-                    width: `${(profile.gamesPlayed % 5) * 20}%`
-                  })} />
-                </div>
-              </div>
-
-              {/* Quick Customize Button */}
-              <button className={css({
-                position: 'absolute',
-                top: '3',
-                right: '3',
-                w: { base: '12', md: '8' },
-                h: { base: '12', md: '8' },
-                minH: '44px',
-                minW: '44px',
-                background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
-                rounded: 'full',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: { base: 'md', md: 'sm' },
-                border: '1px solid',
-                borderColor: 'gray.300',
-                cursor: 'pointer',
-                touchAction: 'manipulation',
-                transition: 'all 0.3s ease',
-                _hover: {
-                  transform: 'scale(1.1)',
-                  background: 'linear-gradient(135deg, #e5e7eb, #d1d5db)'
-                }
-              })}>
-                ⚙️
-              </button>
-            </div>
+              )
+            })}
           </div>
         </div>
 
@@ -737,68 +607,47 @@ function GamesPageContent() {
                 justifyContent: 'space-between',
                 mb: '4'
               })}>
-                <div className={css({
-                  textAlign: 'center'
-                })}>
-                  <div className={css({
-                    fontSize: '2xl',
-                    mb: '1'
-                  })}>
-                    {profile.player1Emoji}
-                  </div>
-                  <div className={css({
-                    fontSize: '2xl',
-                    fontWeight: 'bold',
-                    color: 'blue.600'
-                  })}>
-                    {Math.floor(profile.totalWins * 0.6)}
-                  </div>
-                  <div className={css({
-                    fontSize: 'xs',
-                    color: 'blue.600',
-                    fontWeight: 'semibold'
-                  })}>
-                    WINS
-                  </div>
-                </div>
+                {allPlayers.slice(0, 2).map((player, idx) => (
+                  <React.Fragment key={player.id}>
+                    <div className={css({
+                      textAlign: 'center'
+                    })}>
+                      <div className={css({
+                        fontSize: '2xl',
+                        mb: '1'
+                      })}>
+                        {player.emoji}
+                      </div>
+                      <div className={css({
+                        fontSize: '2xl',
+                        fontWeight: 'bold'
+                      })} style={{ color: player.color }}>
+                        {Math.floor(profile.totalWins * (idx === 0 ? 0.6 : 0.4))}
+                      </div>
+                      <div className={css({
+                        fontSize: 'xs',
+                        fontWeight: 'semibold'
+                      })} style={{ color: player.color }}>
+                        WINS
+                      </div>
+                    </div>
 
-                <div className={css({
-                  textAlign: 'center',
-                  mx: '4'
-                })}>
-                  <div className={css({
-                    fontSize: 'sm',
-                    color: 'gray.500',
-                    fontWeight: 'semibold'
-                  })}>
-                    VS
-                  </div>
-                </div>
-
-                <div className={css({
-                  textAlign: 'center'
-                })}>
-                  <div className={css({
-                    fontSize: '2xl',
-                    mb: '1'
-                  })}>
-                    {profile.player2Emoji}
-                  </div>
-                  <div className={css({
-                    fontSize: '2xl',
-                    fontWeight: 'bold',
-                    color: 'purple.600'
-                  })}>
-                    {Math.floor(profile.totalWins * 0.4)}
-                  </div>
-                  <div className={css({
-                    fontSize: 'xs',
-                    color: 'purple.600',
-                    fontWeight: 'semibold'
-                  })}>
-                    WINS
-                  </div>
-                </div>
+                    {idx === 0 && allPlayers.length > 1 && (
+                      <div className={css({
+                        textAlign: 'center',
+                        mx: '4'
+                      })}>
+                        <div className={css({
+                          fontSize: 'sm',
+                          color: 'gray.500',
+                          fontWeight: 'semibold'
+                        })}>
+                          VS
+                        </div>
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))}
               </div>
 
               <div className={css({
@@ -850,61 +699,40 @@ function GamesPageContent() {
                 flexDirection: 'column',
                 gap: '3'
               })}>
-                <div className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3',
-                  p: '3',
-                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                  rounded: 'lg',
-                  border: '1px solid',
-                  borderColor: 'yellow.200'
-                })}>
-                  <span className={css({ fontSize: 'lg' })}>{profile.player1Emoji}</span>
-                  <div>
-                    <div className={css({
-                      fontSize: 'sm',
-                      fontWeight: 'semibold',
-                      color: 'yellow.800'
-                    })}>
-                      🔥 First Win!
-                    </div>
-                    <div className={css({
-                      fontSize: 'xs',
-                      color: 'yellow.700'
-                    })}>
-                      Victory in Battle Arena
-                    </div>
-                  </div>
-                </div>
-
-                <div className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3',
-                  p: '3',
-                  background: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
-                  rounded: 'lg',
-                  border: '1px solid',
-                  borderColor: 'purple.200'
-                })}>
-                  <span className={css({ fontSize: 'lg' })}>{profile.player2Emoji}</span>
-                  <div>
-                    <div className={css({
-                      fontSize: 'sm',
-                      fontWeight: 'semibold',
-                      color: 'purple.800'
-                    })}>
-                      ⚡ Speed Demon
-                    </div>
-                    <div className={css({
-                      fontSize: 'xs',
-                      color: 'purple.700'
-                    })}>
-                      Sub-5 second memory
+                {allPlayers.slice(0, 2).map((player, idx) => (
+                  <div
+                    key={player.id}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3',
+                      p: '3',
+                      rounded: 'lg',
+                      border: '1px solid'
+                    })}
+                    style={{
+                      background: idx === 0
+                        ? 'linear-gradient(135deg, #fef3c7, #fde68a)'
+                        : 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
+                      borderColor: idx === 0 ? '#fde68a' : '#ddd6fe'
+                    }}
+                  >
+                    <span className={css({ fontSize: 'lg' })}>{player.emoji}</span>
+                    <div>
+                      <div className={css({
+                        fontSize: 'sm',
+                        fontWeight: 'semibold'
+                      })} style={{ color: idx === 0 ? '#92400e' : '#581c87' }}>
+                        {idx === 0 ? '🔥 First Win!' : '⚡ Speed Demon'}
+                      </div>
+                      <div className={css({
+                        fontSize: 'xs'
+                      })} style={{ color: idx === 0 ? '#a16207' : '#6b21a8' }}>
+                        {idx === 0 ? 'Victory in Battle Arena' : 'Sub-5 second memory'}
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -943,45 +771,47 @@ function GamesPageContent() {
                 </p>
               </div>
 
-              <div className={css({
-                background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-                rounded: 'lg',
-                p: '4',
-                border: '1px solid',
-                borderColor: 'blue.200',
-                mb: '4'
-              })}>
+              {allPlayers.length >= 2 && (
                 <div className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2',
-                  mb: '2'
+                  background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                  rounded: 'lg',
+                  p: '4',
+                  border: '1px solid',
+                  borderColor: 'blue.200',
+                  mb: '4'
                 })}>
-                  <span className={css({ fontSize: 'lg' })}>{profile.player1Emoji}</span>
-                  <span className={css({
-                    fontSize: 'sm',
-                    color: 'blue.800',
-                    fontWeight: 'semibold'
+                  <div className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2',
+                    mb: '2'
                   })}>
-                    challenges
-                  </span>
-                  <span className={css({ fontSize: 'lg' })}>{profile.player2Emoji}</span>
+                    <span className={css({ fontSize: 'lg' })}>{allPlayers[0].emoji}</span>
+                    <span className={css({
+                      fontSize: 'sm',
+                      color: 'blue.800',
+                      fontWeight: 'semibold'
+                    })}>
+                      challenges
+                    </span>
+                    <span className={css({ fontSize: 'lg' })}>{allPlayers[1].emoji}</span>
+                  </div>
+                  <div className={css({
+                    fontSize: 'sm',
+                    color: 'blue.700',
+                    fontWeight: 'medium'
+                  })}>
+                    "Beat my Memory Lightning score!"
+                  </div>
+                  <div className={css({
+                    fontSize: 'xs',
+                    color: 'blue.600',
+                    mt: '1'
+                  })}>
+                    Current best: 850 points
+                  </div>
                 </div>
-                <div className={css({
-                  fontSize: 'sm',
-                  color: 'blue.700',
-                  fontWeight: 'medium'
-                })}>
-                  "Beat my Memory Lightning score!"
-                </div>
-                <div className={css({
-                  fontSize: 'xs',
-                  color: 'blue.600',
-                  mt: '1'
-                })}>
-                  Current best: 850 points
-                </div>
-              </div>
+              )}
 
               <button className={css({
                 w: 'full',
