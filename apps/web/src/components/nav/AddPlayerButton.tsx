@@ -1,7 +1,7 @@
 import React from 'react'
 
 interface Player {
-  id: number
+  id: string
   name: string
   emoji: string
 }
@@ -9,7 +9,7 @@ interface Player {
 interface AddPlayerButtonProps {
   inactivePlayers: Player[]
   shouldEmphasize: boolean
-  onAddPlayer: (playerId: number) => void
+  onAddPlayer: (playerId: string) => void
 }
 
 export function AddPlayerButton({ inactivePlayers, shouldEmphasize, onAddPlayer }: AddPlayerButtonProps) {
@@ -30,7 +30,7 @@ export function AddPlayerButton({ inactivePlayers, shouldEmphasize, onAddPlayer 
     }
   }, [showPopover])
 
-  const handleAddPlayerClick = (playerId: number) => {
+  const handleAddPlayerClick = (playerId: string) => {
     onAddPlayer(playerId)
     setShowPopover(false)
   }

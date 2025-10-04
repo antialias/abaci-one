@@ -7,7 +7,7 @@ import { FullscreenPlayerSelection } from './FullscreenPlayerSelection'
 type GameMode = 'none' | 'single' | 'battle' | 'tournament'
 
 interface Player {
-  id: number
+  id: string
   name: string
   emoji: string
 }
@@ -20,9 +20,9 @@ interface GameContextNavProps {
   inactivePlayers: Player[]
   shouldEmphasize: boolean
   showFullscreenSelection: boolean
-  onAddPlayer: (playerId: number) => void
-  onRemovePlayer: (playerId: number) => void
-  onConfigurePlayer: (playerId: number) => void
+  onAddPlayer: (playerId: string) => void
+  onRemovePlayer: (playerId: string) => void
+  onConfigurePlayer: (playerId: string) => void
 }
 
 export function GameContextNav({

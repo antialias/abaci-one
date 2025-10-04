@@ -1,7 +1,7 @@
 import React from 'react'
 
 interface Player {
-  id: number
+  id: string
   name: string
   emoji: string
 }
@@ -9,12 +9,12 @@ interface Player {
 interface ActivePlayersListProps {
   activePlayers: Player[]
   shouldEmphasize: boolean
-  onRemovePlayer: (playerId: number) => void
-  onConfigurePlayer: (playerId: number) => void
+  onRemovePlayer: (playerId: string) => void
+  onConfigurePlayer: (playerId: string) => void
 }
 
 export function ActivePlayersList({ activePlayers, shouldEmphasize, onRemovePlayer, onConfigurePlayer }: ActivePlayersListProps) {
-  const [hoveredPlayerId, setHoveredPlayerId] = React.useState<number | null>(null)
+  const [hoveredPlayerId, setHoveredPlayerId] = React.useState<string | null>(null)
 
   return (
     <>

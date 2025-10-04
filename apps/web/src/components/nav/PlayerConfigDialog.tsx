@@ -1,54 +1,49 @@
 import React, { useState } from 'react'
-import { useUserProfile } from '../../contexts/UserProfileContext'
+import { useGameMode } from '../../contexts/GameModeContext'
 import { EmojiPicker } from '../../app/games/matching/components/EmojiPicker'
 
 interface PlayerConfigDialogProps {
-  playerId: 1 | 2 | 3 | 4
+  playerId: string
   onClose: () => void
 }
 
 export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProps) {
-  const { profile, updatePlayerEmoji, updatePlayerName } = useUserProfile()
+  const { getPlayer, updatePlayer } = useGameMode()
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
-  const getCurrentName = () => {
-    switch (playerId) {
-      case 1: return profile.player1Name
-      case 2: return profile.player2Name
-      case 3: return profile.player3Name
-      case 4: return profile.player4Name
-    }
+  const player = getPlayer(playerId)
+
+  if (!player) {
+    return null
   }
 
-  const getCurrentEmoji = () => {
-    switch (playerId) {
-      case 1: return profile.player1Emoji
-      case 2: return profile.player2Emoji
-      case 3: return profile.player3Emoji
-      case 4: return profile.player4Emoji
-    }
-  }
-
-  const [tempName, setTempName] = useState(getCurrentName())
-  const currentEmoji = getCurrentEmoji()
+  const [tempName, setTempName] = useState(player.name)
 
   const handleSave = () => {
-    updatePlayerName(playerId, tempName)
+    updatePlayer(playerId, { name: tempName })
     onClose()
   }
 
   const handleEmojiSelect = (emoji: string) => {
-    updatePlayerEmoji(playerId, emoji)
+    updatePlayer(playerId, { emoji })
     setShowEmojiPicker(false)
   }
+
+  // Get player number for UI theming (first 4 players get special colors)
+  const allPlayers = Array.from(useGameMode().players.values()).sort((a, b) => a.createdAt - b.createdAt)
+  const playerIndex = allPlayers.findIndex(p => p.id === playerId)
+  const displayNumber = playerIndex + 1
+
+  // Color based on player's actual color
+  const gradientColor = player.color
 
   if (showEmojiPicker) {
     return (
       <EmojiPicker
-        currentEmoji={currentEmoji}
+        currentEmoji={player.emoji}
         onEmojiSelect={handleEmojiSelect}
         onClose={() => setShowEmojiPicker(false)}
-        playerNumber={playerId}
+        playerNumber={displayNumber}
       />
     )
   }
@@ -87,18 +82,12 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
           <h2 style={{
             fontSize: '24px',
             fontWeight: 'bold',
-            background: playerId === 1
-              ? 'linear-gradient(135deg, #60a5fa, #3b82f6)'
-              : playerId === 2
-              ? 'linear-gradient(135deg, #f472b6, #ec4899)'
-              : playerId === 3
-              ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)'
-              : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+            background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
             backgroundClip: 'text',
             color: 'transparent',
             margin: 0
           }}>
-            Configure Player {playerId}
+            Configure Player
           </h2>
           <button
             onClick={onClose}
@@ -144,8 +133,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               gap: '12px'
             }}
             onMouseEnter={(e) => {
-              const borderColor = playerId === 1 ? '#60a5fa' : playerId === 2 ? '#f472b6' : playerId === 3 ? '#a78bfa' : '#fbbf24'
-              e.currentTarget.style.borderColor = borderColor
+              e.currentTarget.style.borderColor = gradientColor
               e.currentTarget.style.transform = 'translateY(-2px)'
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'
             }}
@@ -159,7 +147,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               fontSize: '48px',
               lineHeight: 1
             }}>
-              {currentEmoji}
+              {player.emoji}
             </div>
             <div style={{
               flex: 1,
@@ -204,7 +192,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
             type="text"
             value={tempName}
             onChange={(e) => setTempName(e.target.value)}
-            placeholder={`Player ${playerId}`}
+            placeholder="Player Name"
             maxLength={20}
             style={{
               width: '100%',
@@ -217,16 +205,8 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               fontWeight: '500'
             }}
             onFocus={(e) => {
-              const focusColor = playerId === 1 ? '#60a5fa' : playerId === 2 ? '#f472b6' : playerId === 3 ? '#a78bfa' : '#fbbf24'
-              const shadowColor = playerId === 1
-                ? 'rgba(96, 165, 250, 0.1)'
-                : playerId === 2
-                ? 'rgba(244, 114, 182, 0.1)'
-                : playerId === 3
-                ? 'rgba(167, 139, 250, 0.1)'
-                : 'rgba(251, 191, 36, 0.1)'
-              e.currentTarget.style.borderColor = focusColor
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${shadowColor}`
+              e.currentTarget.style.borderColor = gradientColor
+              e.currentTarget.style.boxShadow = `0 0 0 3px ${gradientColor}20`
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = '#e5e7eb'
@@ -278,13 +258,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
             style={{
               flex: 1,
               padding: '12px',
-              background: playerId === 1
-                ? 'linear-gradient(135deg, #60a5fa, #3b82f6)'
-                : playerId === 2
-                ? 'linear-gradient(135deg, #f472b6, #ec4899)'
-                : playerId === 3
-                ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)'
-                : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+              background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
               border: 'none',
               borderRadius: '12px',
               fontSize: '14px',

@@ -3,7 +3,6 @@
 import React from 'react'
 import { AppNavBar } from './AppNavBar'
 import { useGameMode } from '../contexts/GameModeContext'
-import { useUserProfile } from '../contexts/UserProfileContext'
 import { GameContextNav } from './nav/GameContextNav'
 import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
 
@@ -15,10 +14,9 @@ interface PageWithNavProps {
 }
 
 export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, children }: PageWithNavProps) {
-  const { players, activePlayerCount, updatePlayer } = useGameMode()
-  const { profile } = useUserProfile()
+  const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const [mounted, setMounted] = React.useState(false)
-  const [configurePlayerId, setConfigurePlayerId] = React.useState<1 | 2 | 3 | 4 | null>(null)
+  const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
 
   // Delay mounting animation slightly for smooth transition
   React.useEffect(() => {
@@ -26,57 +24,27 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
     return () => clearTimeout(timer)
   }, [])
 
-  const handleRemovePlayer = (playerId: number) => {
-    updatePlayer(playerId, { isActive: false })
+  const handleRemovePlayer = (playerId: string) => {
+    setActive(playerId, false)
   }
 
-  const handleAddPlayer = (playerId: number) => {
-    updatePlayer(playerId, { isActive: true })
+  const handleAddPlayer = (playerId: string) => {
+    setActive(playerId, true)
   }
 
-  const handleConfigurePlayer = (playerId: number) => {
-    // Support configuring all players (1-4)
-    if (playerId >= 1 && playerId <= 4) {
-      setConfigurePlayerId(playerId as 1 | 2 | 3 | 4)
-    }
+  const handleConfigurePlayer = (playerId: string) => {
+    setConfigurePlayerId(playerId)
   }
 
-  // Transform players to use profile emojis and names for all players
-  const getPlayerEmoji = (playerId: number) => {
-    switch (playerId) {
-      case 1: return profile.player1Emoji
-      case 2: return profile.player2Emoji
-      case 3: return profile.player3Emoji
-      case 4: return profile.player4Emoji
-      default: return players.find(p => p.id === playerId)?.emoji || '😀'
-    }
-  }
+  // Get active and inactive players as arrays
+  const activePlayerList = Array.from(activePlayers)
+    .map(id => players.get(id))
+    .filter(p => p !== undefined)
+    .map(p => ({ id: p.id, name: p.name, emoji: p.emoji }))
 
-  const getPlayerName = (playerId: number) => {
-    switch (playerId) {
-      case 1: return profile.player1Name
-      case 2: return profile.player2Name
-      case 3: return profile.player3Name
-      case 4: return profile.player4Name
-      default: return players.find(p => p.id === playerId)?.name || `Player ${playerId}`
-    }
-  }
-
-  const activePlayers = players
-    .filter(p => p.isActive)
-    .map(player => ({
-      ...player,
-      emoji: getPlayerEmoji(player.id),
-      name: getPlayerName(player.id)
-    }))
-
-  const inactivePlayers = players
-    .filter(p => !p.isActive)
-    .map(player => ({
-      ...player,
-      emoji: getPlayerEmoji(player.id),
-      name: getPlayerName(player.id)
-    }))
+  const inactivePlayerList = Array.from(players.values())
+    .filter(p => !activePlayers.has(p.id))
+    .map(p => ({ id: p.id, name: p.name, emoji: p.emoji }))
 
   // Compute game mode from active player count
   const gameMode = activePlayerCount === 0 ? 'none' :
@@ -93,8 +61,8 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
       navTitle={navTitle}
       navEmoji={navEmoji}
       gameMode={gameMode}
-      activePlayers={activePlayers}
-      inactivePlayers={inactivePlayers}
+      activePlayers={activePlayerList}
+      inactivePlayers={inactivePlayerList}
       shouldEmphasize={shouldEmphasize}
       showFullscreenSelection={showFullscreenSelection}
       onAddPlayer={handleAddPlayer}

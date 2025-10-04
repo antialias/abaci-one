@@ -1,15 +1,15 @@
 import React from 'react'
 
 interface Player {
-  id: number
+  id: string
   name: string
   emoji: string
 }
 
 interface FullscreenPlayerSelectionProps {
   inactivePlayers: Player[]
-  onSelectPlayer: (playerId: number) => void
-  onConfigurePlayer: (playerId: number) => void
+  onSelectPlayer: (playerId: string) => void
+  onConfigurePlayer: (playerId: string) => void
   isVisible: boolean
 }
 
