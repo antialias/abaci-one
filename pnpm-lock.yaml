@@ -130,6 +130,9 @@ importers:
       '@tanstack/react-form':
         specifier: ^0.19.0
         version: 0.19.0(@types/react@18.2.0)(react-dom@18.2.0)(react@18.2.0)
+      '@tanstack/react-query':
+        specifier: ^5.90.2
+        version: 5.90.2(react@18.2.0)
       '@types/jsdom':
         specifier: ^21.1.7
         version: 21.1.7
@@ -6362,6 +6365,10 @@ packages:
       '@tanstack/store': 0.3.1
     dev: false
 
+  /@tanstack/query-core@5.90.2:
+    resolution: {integrity: sha512-k/TcR3YalnzibscALLwxeiLUub6jN5EDLwKDiO7q5f4ICEoptJ+n9+7vcEFy5/x/i6Q+Lb/tXrsKCggf5uQJXQ==}
+    dev: false
+
   /@tanstack/react-form@0.19.0(@types/react@18.2.0)(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-9cE+ic8iHN8UtR4k65286qwDk1pF3ESHiLw3aWDUySezduz4K61Jl3CkwDbuMUnUvzymoSlqWm0Lppqzj3ASng==}
     peerDependencies:
@@ -6375,6 +6382,15 @@ packages:
     transitivePeerDependencies:
       - '@types/react'
       - react-dom
+    dev: false
+
+  /@tanstack/react-query@5.90.2(react@18.2.0):
+    resolution: {integrity: sha512-CLABiR+h5PYfOWr/z+vWFt5VsOA2ekQeRQBFSKlcoW6Ndx/f8rfyVmq4LbgOM4GG2qtxAxjLYLOpCNTYm4uKzw==}
+    peerDependencies:
+      react: ^18 || ^19
+    dependencies:
+      '@tanstack/query-core': 5.90.2
+      react: 18.2.0
     dev: false
 
   /@tanstack/react-store@0.3.1(react-dom@18.2.0)(react@18.2.0):

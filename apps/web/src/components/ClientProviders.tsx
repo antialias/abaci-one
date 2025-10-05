@@ -1,27 +1,34 @@
 'use client'
 
-import { ReactNode } from 'react'
+import { ReactNode, useState } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { AbacusDisplayProvider } from '@soroban/abacus-react'
 import { UserProfileProvider } from '@/contexts/UserProfileContext'
 import { GameModeProvider } from '@/contexts/GameModeContext'
 import { FullscreenProvider } from '@/contexts/FullscreenContext'
 import { DeploymentInfo } from './DeploymentInfo'
+import { createQueryClient } from '@/lib/queryClient'
 
 interface ClientProvidersProps {
   children: ReactNode
 }
 
 export function ClientProviders({ children }: ClientProvidersProps) {
+  // Create a stable QueryClient instance that persists across renders
+  const [queryClient] = useState(() => createQueryClient())
+
   return (
-    <AbacusDisplayProvider>
-      <UserProfileProvider>
-        <GameModeProvider>
-          <FullscreenProvider>
-            {children}
-            <DeploymentInfo />
-          </FullscreenProvider>
-        </GameModeProvider>
-      </UserProfileProvider>
-    </AbacusDisplayProvider>
+    <QueryClientProvider client={queryClient}>
+      <AbacusDisplayProvider>
+        <UserProfileProvider>
+          <GameModeProvider>
+            <FullscreenProvider>
+              {children}
+              <DeploymentInfo />
+            </FullscreenProvider>
+          </GameModeProvider>
+        </UserProfileProvider>
+      </AbacusDisplayProvider>
+    </QueryClientProvider>
   )
 }
