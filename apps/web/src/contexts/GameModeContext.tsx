@@ -1,9 +1,25 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { nanoid } from 'nanoid'
-import { Player, PlayerStorageV2, getNextPlayerColor } from '../types/player'
-import { loadPlayerStorage, savePlayerStorage } from '../lib/playerMigration'
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react'
+import { Player as DBPlayer } from '@/db/schema/players'
+import { getNextPlayerColor } from '../types/player'
+import {
+  useUserPlayers,
+  useCreatePlayer,
+  useUpdatePlayer,
+  useDeletePlayer,
+} from '@/hooks/useUserPlayers'
+
+// Client-side Player type (compatible with old type)
+export interface Player {
+  id: string
+  name: string
+  emoji: string
+  color: string
+  createdAt: Date | number
+  isActive?: boolean
+  isLocal?: boolean
+}
 
 export type GameMode = 'single' | 'battle' | 'tournament'
 
@@ -12,7 +28,7 @@ export interface GameModeContextType {
   players: Map<string, Player>
   activePlayers: Set<string>
   activePlayerCount: number
-  addPlayer: (player?: Partial<Player>) => string
+  addPlayer: (player?: Partial<Player>) => void
   updatePlayer: (id: string, updates: Partial<Player>) => void
   removePlayer: (id: string) => void
   setActive: (id: string, active: boolean) => void
@@ -20,156 +36,104 @@ export interface GameModeContextType {
   getPlayer: (id: string) => Player | undefined
   getAllPlayers: () => Player[]
   resetPlayers: () => void
+  isLoading: boolean
 }
 
 const GameModeContext = createContext<GameModeContextType | null>(null)
 
-// Create initial default players
-function createDefaultPlayers(): Map<string, Player> {
-  const players = new Map<string, Player>()
-  const defaultData = [
-    { name: 'Player 1', emoji: '😀', color: '#3b82f6' },
-    { name: 'Player 2', emoji: '😎', color: '#8b5cf6' },
-    { name: 'Player 3', emoji: '🤠', color: '#10b981' },
-    { name: 'Player 4', emoji: '🚀', color: '#f59e0b' },
-  ]
+// Default players to create if none exist
+const DEFAULT_PLAYERS = [
+  { name: 'Player 1', emoji: '😀', color: '#3b82f6' },
+  { name: 'Player 2', emoji: '😎', color: '#8b5cf6' },
+  { name: 'Player 3', emoji: '🤠', color: '#10b981' },
+  { name: 'Player 4', emoji: '🚀', color: '#f59e0b' },
+]
 
-  defaultData.forEach((data) => {
-    const id = nanoid()
-    players.set(id, {
-      id,
-      ...data,
-      createdAt: Date.now(),
-      isLocal: true,
-    })
-  })
-
-  return players
+// Convert DB player to client Player type
+function toClientPlayer(dbPlayer: DBPlayer): Player {
+  return {
+    id: dbPlayer.id,
+    name: dbPlayer.name,
+    emoji: dbPlayer.emoji,
+    color: dbPlayer.color,
+    createdAt: dbPlayer.createdAt,
+    isActive: dbPlayer.isActive,
+  }
 }
 
 export function GameModeProvider({ children }: { children: ReactNode }) {
-  const [players, setPlayers] = useState<Map<string, Player>>(new Map())
-  const [activePlayers, setActivePlayers] = useState<Set<string>>(new Set())
+  const { data: dbPlayers = [], isLoading } = useUserPlayers()
+  const { mutate: createPlayer } = useCreatePlayer()
+  const { mutate: updatePlayerMutation } = useUpdatePlayer()
+  const { mutate: deletePlayer } = useDeletePlayer()
+
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Load from storage on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const storage = loadPlayerStorage()
+  // Convert DB players to Map
+  const players = useMemo(() => {
+    const map = new Map<string, Player>()
+    dbPlayers.forEach(dbPlayer => {
+      map.set(dbPlayer.id, toClientPlayer(dbPlayer))
+    })
+    return map
+  }, [dbPlayers])
 
-        if (storage) {
-          // Load from V2 storage
-          const playerMap = new Map<string, Player>()
-          Object.values(storage.players).forEach(player => {
-            playerMap.set(player.id, player)
-          })
-
-          setPlayers(playerMap)
-          setActivePlayers(new Set(storage.activePlayerIds))
-          console.log('✅ Loaded player storage (V2)', {
-            playerCount: playerMap.size,
-            activeCount: storage.activePlayerIds.length,
-          })
-        } else {
-          // No storage, create defaults
-          const defaultPlayers = createDefaultPlayers()
-          const firstPlayerId = Array.from(defaultPlayers.keys())[0]
-
-          setPlayers(defaultPlayers)
-          setActivePlayers(new Set([firstPlayerId]))
-          console.log('✅ Created default players', {
-            playerCount: defaultPlayers.size,
-          })
-        }
-
-        setIsInitialized(true)
-      } catch (error) {
-        console.error('Failed to load player storage:', error)
-        // Fallback to defaults
-        const defaultPlayers = createDefaultPlayers()
-        const firstPlayerId = Array.from(defaultPlayers.keys())[0]
-        setPlayers(defaultPlayers)
-        setActivePlayers(new Set([firstPlayerId]))
-        setIsInitialized(true)
+  // Track active players from DB isActive status
+  const activePlayers = useMemo(() => {
+    const set = new Set<string>()
+    dbPlayers.forEach(player => {
+      if (player.isActive) {
+        set.add(player.id)
       }
-    }
-  }, [])
+    })
+    return set
+  }, [dbPlayers])
 
-  // Save to storage whenever players or active players change
+  // Initialize with default players if none exist
   useEffect(() => {
-    if (typeof window !== 'undefined' && isInitialized) {
-      try {
-        const storage: PlayerStorageV2 = {
-          version: 2,
-          players: Object.fromEntries(players),
-          activePlayerIds: Array.from(activePlayers),
-          activationOrder: Object.fromEntries(
-            Array.from(activePlayers).map((id, idx) => [id, idx])
-          ),
-        }
-
-        savePlayerStorage(storage)
-      } catch (error) {
-        console.error('Failed to save player storage:', error)
+    if (!isLoading && !isInitialized) {
+      if (dbPlayers.length === 0) {
+        // Create default players
+        DEFAULT_PLAYERS.forEach((data, index) => {
+          createPlayer({
+            ...data,
+            isActive: index === 0, // First player active by default
+          })
+        })
+        console.log('✅ Created default players via API')
+      } else {
+        console.log('✅ Loaded players from API', {
+          playerCount: dbPlayers.length,
+          activeCount: dbPlayers.filter(p => p.isActive).length,
+        })
       }
+      setIsInitialized(true)
     }
-  }, [players, activePlayers, isInitialized])
+  }, [dbPlayers, isLoading, isInitialized, createPlayer])
 
-  const addPlayer = (playerData?: Partial<Player>): string => {
-    const id = nanoid()
+  const addPlayer = (playerData?: Partial<Player>) => {
     const playerList = Array.from(players.values())
 
-    const newPlayer: Player = {
-      id,
+    const newPlayer = {
       name: playerData?.name ?? `Player ${players.size + 1}`,
       emoji: playerData?.emoji ?? '🎮',
       color: playerData?.color ?? getNextPlayerColor(playerList),
-      createdAt: playerData?.createdAt ?? Date.now(),
-      isLocal: playerData?.isLocal ?? true,
-      ...playerData,
+      isActive: playerData?.isActive ?? false,
     }
 
-    setPlayers(prev => new Map(prev).set(id, newPlayer))
-    return id
+    createPlayer(newPlayer)
   }
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
-    setPlayers(prev => {
-      const newMap = new Map(prev)
-      const existing = newMap.get(id)
-      if (existing) {
-        newMap.set(id, { ...existing, ...updates })
-      }
-      return newMap
-    })
+    updatePlayerMutation({ id, updates })
   }
 
   const removePlayer = (id: string) => {
-    setPlayers(prev => {
-      const newMap = new Map(prev)
-      newMap.delete(id)
-      return newMap
-    })
-
-    // Also remove from active if was active
-    setActivePlayers(prev => {
-      const newSet = new Set(prev)
-      newSet.delete(id)
-      return newSet
-    })
+    deletePlayer(id)
   }
 
   const setActive = (id: string, active: boolean) => {
-    setActivePlayers(prev => {
-      const newSet = new Set(prev)
-      if (active) {
-        newSet.add(id)
-      } else {
-        newSet.delete(id)
-      }
-      return newSet
-    })
+    updatePlayerMutation({ id, updates: { isActive: active } })
   }
 
   const getActivePlayers = (): Player[] => {
@@ -187,11 +151,18 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   }
 
   const resetPlayers = () => {
-    const defaultPlayers = createDefaultPlayers()
-    const firstPlayerId = Array.from(defaultPlayers.keys())[0]
+    // Delete all existing players
+    dbPlayers.forEach(player => {
+      deletePlayer(player.id)
+    })
 
-    setPlayers(defaultPlayers)
-    setActivePlayers(new Set([firstPlayerId]))
+    // Create default players
+    DEFAULT_PLAYERS.forEach((data, index) => {
+      createPlayer({
+        ...data,
+        isActive: index === 0,
+      })
+    })
   }
 
   const activePlayerCount = activePlayers.size
@@ -214,6 +185,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     getPlayer,
     getAllPlayers,
     resetPlayers,
+    isLoading,
   }
 
   return (

@@ -1,13 +1,23 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { UserStatsProfile } from '../types/player'
-import { STORAGE_KEY_STATS, STORAGE_KEY_V1, extractStatsFromV1 } from '../lib/playerMigration'
+import React, { createContext, useContext, ReactNode } from 'react'
+import { useUserStats, useUpdateUserStats } from '@/hooks/useUserStats'
+import { UserStats } from '@/db/schema/user-stats'
+
+// Client-side stats type (compatible with old UserStatsProfile)
+export interface UserStatsProfile {
+  gamesPlayed: number
+  totalWins: number
+  favoriteGameType: 'abacus-numeral' | 'complement-pairs' | null
+  bestTime: number | null
+  highestAccuracy: number
+}
 
 export interface UserProfileContextType {
   profile: UserStatsProfile
   updateGameStats: (stats: Partial<UserStatsProfile>) => void
   resetProfile: () => void
+  isLoading: boolean
 }
 
 const defaultProfile: UserStatsProfile = {
@@ -20,69 +30,38 @@ const defaultProfile: UserStatsProfile = {
 
 const UserProfileContext = createContext<UserProfileContextType | null>(null)
 
+// Convert DB stats to client profile type
+function toClientProfile(dbStats: UserStats | undefined): UserStatsProfile {
+  if (!dbStats) return defaultProfile
+
+  return {
+    gamesPlayed: dbStats.gamesPlayed,
+    totalWins: dbStats.totalWins,
+    favoriteGameType: dbStats.favoriteGameType,
+    bestTime: dbStats.bestTime,
+    highestAccuracy: dbStats.highestAccuracy,
+  }
+}
+
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<UserStatsProfile>(defaultProfile)
-  const [isInitialized, setIsInitialized] = useState(false)
+  const { data: dbStats, isLoading } = useUserStats()
+  const { mutate: updateStats } = useUpdateUserStats()
 
-  // Load profile from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        // Try to load from new stats storage
-        let stored = localStorage.getItem(STORAGE_KEY_STATS)
-
-        if (!stored) {
-          // Check for V1 data to migrate stats from
-          const v1Data = localStorage.getItem(STORAGE_KEY_V1)
-          if (v1Data) {
-            const v1Profile = JSON.parse(v1Data)
-            const migratedStats = extractStatsFromV1(v1Profile)
-            setProfile(migratedStats)
-            // Save to new location
-            localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(migratedStats))
-            console.log('✅ Migrated stats from V1 to new storage')
-          }
-        } else {
-          const parsedProfile = JSON.parse(stored)
-          // Merge with defaults to handle new fields
-          const mergedProfile = { ...defaultProfile, ...parsedProfile }
-          setProfile(mergedProfile)
-        }
-
-        setIsInitialized(true)
-      } catch (error) {
-        console.warn('Failed to load user stats from localStorage:', error)
-        setIsInitialized(true)
-      }
-    }
-  }, [])
-
-  // Save profile to localStorage whenever it changes (but not on initial load)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && isInitialized) {
-      try {
-        localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(profile))
-      } catch (error) {
-        console.warn('Failed to save user stats to localStorage:', error)
-      }
-    }
-  }, [profile, isInitialized])
+  const profile = toClientProfile(dbStats)
 
   const updateGameStats = (stats: Partial<UserStatsProfile>) => {
-    setProfile(prev => ({
-      ...prev,
-      ...stats
-    }))
+    updateStats(stats)
   }
 
   const resetProfile = () => {
-    setProfile(defaultProfile)
+    updateStats(defaultProfile)
   }
 
   const contextValue: UserProfileContextType = {
     profile,
     updateGameStats,
-    resetProfile
+    resetProfile,
+    isLoading,
   }
 
   return (
