@@ -10,6 +10,9 @@ dist/
 # Generated CSS (Panda CSS / styled-system)
 **/styled-system/
 
+# Generated build info
+**/generated/build-info.json
+
 # Environment
 .env*
 
