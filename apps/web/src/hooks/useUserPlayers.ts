@@ -88,8 +88,34 @@ export function useCreatePlayer() {
 
   return useMutation({
     mutationFn: createPlayer,
-    onSuccess: () => {
-      // Invalidate and refetch players list
+    onMutate: async (newPlayer) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: playerKeys.lists() })
+
+      // Snapshot previous value
+      const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
+
+      // Optimistically update to new value
+      if (previousPlayers) {
+        const optimisticPlayer: Player = {
+          id: `temp-${Date.now()}`, // Temporary ID
+          ...newPlayer,
+          createdAt: new Date(),
+          isActive: newPlayer.isActive ?? false,
+        }
+        queryClient.setQueryData<Player[]>(playerKeys.list(), [...previousPlayers, optimisticPlayer])
+      }
+
+      return { previousPlayers }
+    },
+    onError: (_err, _newPlayer, context) => {
+      // Rollback on error
+      if (context?.previousPlayers) {
+        queryClient.setQueryData(playerKeys.list(), context.previousPlayers)
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: playerKeys.lists() })
     },
   })
@@ -103,11 +129,35 @@ export function useUpdatePlayer() {
 
   return useMutation({
     mutationFn: updatePlayer,
-    onSuccess: (updatedPlayer) => {
-      // Invalidate players list
+    onMutate: async ({ id, updates }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: playerKeys.lists() })
+
+      // Snapshot previous value
+      const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
+
+      // Optimistically update
+      if (previousPlayers) {
+        const optimisticPlayers = previousPlayers.map(player =>
+          player.id === id ? { ...player, ...updates } : player
+        )
+        queryClient.setQueryData<Player[]>(playerKeys.list(), optimisticPlayers)
+      }
+
+      return { previousPlayers }
+    },
+    onError: (_err, _variables, context) => {
+      // Rollback on error
+      if (context?.previousPlayers) {
+        queryClient.setQueryData(playerKeys.list(), context.previousPlayers)
+      }
+    },
+    onSettled: (_data, _error, { id }) => {
+      // Refetch after error or success
       queryClient.invalidateQueries({ queryKey: playerKeys.lists() })
-      // Update detail cache if it exists
-      queryClient.setQueryData(playerKeys.detail(updatedPlayer.id), updatedPlayer)
+      if (_data) {
+        queryClient.setQueryData(playerKeys.detail(id), _data)
+      }
     },
   })
 }
@@ -120,8 +170,29 @@ export function useDeletePlayer() {
 
   return useMutation({
     mutationFn: deletePlayer,
-    onSuccess: () => {
-      // Invalidate players list
+    onMutate: async (id) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: playerKeys.lists() })
+
+      // Snapshot previous value
+      const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
+
+      // Optimistically remove from list
+      if (previousPlayers) {
+        const optimisticPlayers = previousPlayers.filter(player => player.id !== id)
+        queryClient.setQueryData<Player[]>(playerKeys.list(), optimisticPlayers)
+      }
+
+      return { previousPlayers }
+    },
+    onError: (_err, _id, context) => {
+      // Rollback on error
+      if (context?.previousPlayers) {
+        queryClient.setQueryData(playerKeys.list(), context.previousPlayers)
+      }
+    },
+    onSettled: () => {
+      // Refetch after error or success
       queryClient.invalidateQueries({ queryKey: playerKeys.lists() })
     },
   })

@@ -56,9 +56,32 @@ export function useUpdateUserStats() {
 
   return useMutation({
     mutationFn: updateUserStats,
-    onSuccess: (updatedStats) => {
-      // Update cache with new stats
-      queryClient.setQueryData(statsKeys.detail(), updatedStats)
+    onMutate: async (updates) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: statsKeys.detail() })
+
+      // Snapshot previous value
+      const previousStats = queryClient.getQueryData<UserStats>(statsKeys.detail())
+
+      // Optimistically update
+      if (previousStats) {
+        const optimisticStats = { ...previousStats, ...updates }
+        queryClient.setQueryData<UserStats>(statsKeys.detail(), optimisticStats)
+      }
+
+      return { previousStats }
+    },
+    onError: (_err, _updates, context) => {
+      // Rollback on error
+      if (context?.previousStats) {
+        queryClient.setQueryData(statsKeys.detail(), context.previousStats)
+      }
+    },
+    onSettled: (updatedStats) => {
+      // Update with server data on success
+      if (updatedStats) {
+        queryClient.setQueryData(statsKeys.detail(), updatedStats)
+      }
     },
   })
 }
