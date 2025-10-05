@@ -1,5 +1,5 @@
-import { auth } from '@/auth'
-import { cookies } from 'next/headers'
+import { auth } from '../../auth'
+import { cookies, headers } from 'next/headers'
 import { verifyGuestToken, GUEST_COOKIE_NAME } from './guest-token'
 
 /**
@@ -21,7 +21,14 @@ export async function getViewer(): Promise<
     return { kind: 'user', session }
   }
 
-  // Check for guest cookie
+  // Check for guest ID in header (set by middleware)
+  const headerStore = await headers()
+  const headerGuestId = headerStore.get('x-guest-id')
+  if (headerGuestId) {
+    return { kind: 'guest', guestId: headerGuestId }
+  }
+
+  // Fallback: check for guest cookie
   const cookieStore = await cookies()
   const guestCookie = cookieStore.get(GUEST_COOKIE_NAME)?.value
 
