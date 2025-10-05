@@ -43,6 +43,14 @@ Thumbs.db
 # Test coverage
 coverage/
 
+# Test reports
+playwright-report/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
 # Temporary files
 tmp/
 temp/
