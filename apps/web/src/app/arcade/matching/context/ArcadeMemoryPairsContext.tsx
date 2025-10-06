@@ -21,7 +21,7 @@ const initialState: MemoryPairsState = {
   difficulty: 6,
   turnTimer: 30,
   gamePhase: 'setup',
-  currentPlayer: 1,
+  currentPlayer: '', // Will be set to first player ID on START_GAME
   matchedPairs: 0,
   totalPairs: 6,
   moves: 0,
@@ -54,10 +54,10 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
         flippedCards: [],
         matchedPairs: 0,
         moves: 0,
-        scores: move.data.activePlayers.reduce((acc: any, p: number) => ({ ...acc, [p]: 0 }), {}),
-        consecutiveMatches: move.data.activePlayers.reduce((acc: any, p: number) => ({ ...acc, [p]: 0 }), {}),
+        scores: move.data.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
+        consecutiveMatches: move.data.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
         activePlayers: move.data.activePlayers,
-        currentPlayer: move.data.activePlayers[0] || 1,
+        currentPlayer: move.data.activePlayers[0] || '',
         gameStartTime: Date.now(),
         gameEndTime: null,
         currentMoveStartTime: Date.now(),
@@ -106,8 +106,8 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
   const { data: viewerId } = useViewerId()
   const { activePlayerCount, activePlayers: activePlayerIds } = useGameMode()
 
-  // Get active player IDs as numbers
-  const activePlayers = Array.from(activePlayerIds).map((id, index) => index + 1)
+  // Get active player IDs directly as strings (UUIDs)
+  const activePlayers = Array.from(activePlayerIds)
 
   // Derive game mode from active player count
   const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'

@@ -8,7 +8,7 @@ import type {
   ValidationResult,
   MatchingGameMove,
 } from './types'
-import type { MemoryPairsState, GameCard, Difficulty, GameType } from '@/app/games/matching/context/types'
+import type { MemoryPairsState, GameCard, Difficulty, GameType, Player } from '@/app/games/matching/context/types'
 import { validateMatch, canFlipCard } from '@/app/games/matching/utils/matchValidation'
 import { generateGameCards } from '@/app/games/matching/utils/cardGeneration'
 
@@ -45,11 +45,13 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
       }
     }
 
-    // Skip turn validation in arcade mode where a single user controls multiple players
-    // In this case, playerId is the viewer ID (UUID), not a player number
-    // Turn validation only applies to true multiplayer with different users
-    // Since we can't distinguish here, we disable turn validation for arcade sessions
-    // (A better solution would be to pass both viewerId and playerNumber in moves)
+    // Check if it's the player's turn (in multiplayer)
+    if (state.activePlayers.length > 1 && state.currentPlayer !== playerId) {
+      return {
+        valid: false,
+        error: 'Not your turn',
+      }
+    }
 
     // Find the card
     const card = state.gameCards.find(c => c.id === cardId)
@@ -147,7 +149,7 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
 
   private validateStartGame(
     state: MemoryPairsState,
-    activePlayers: number[],
+    activePlayers: Player[],
     cards?: GameCard[]
   ): ValidationResult {
     // Allow starting a new game from any phase (for "New Game" button)
@@ -214,7 +216,7 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
       difficulty: config.difficulty,
       turnTimer: config.turnTimer,
       gamePhase: 'setup',
-      currentPlayer: 1,
+      currentPlayer: '',
       matchedPairs: 0,
       totalPairs: config.difficulty,
       moves: 0,

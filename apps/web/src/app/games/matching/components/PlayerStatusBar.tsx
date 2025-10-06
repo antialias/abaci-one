@@ -102,7 +102,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
         alignItems: 'center'
       })}>
         {activePlayers.map((player, index) => {
-          const isCurrentPlayer = (index + 1) === state.currentPlayer
+          const isCurrentPlayer = player.id === state.currentPlayer
           const isLeading = player.score === Math.max(...activePlayers.map(p => p.score)) && player.score > 0
           const celebrationLevel = getCelebrationLevel(player.consecutiveMatches)
 

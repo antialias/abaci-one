@@ -17,8 +17,9 @@ export function GamePhase() {
     .map(id => playerMap.get(id))
     .filter((p): p is NonNullable<typeof p> => p !== undefined)
 
-  // Map numeric player ID (1, 2, 3...) to actual player data
-  const currentPlayerData = activePlayersArray[state.currentPlayer - 1]
+  // Map player ID (UUID string) to actual player data using array index
+  const currentPlayerIndex = activePlayers.findIndex(id => id === state.currentPlayer)
+  const currentPlayerData = currentPlayerIndex >= 0 ? activePlayersArray[currentPlayerIndex] : undefined
   const activePlayerData = activePlayersArray
 
   return (

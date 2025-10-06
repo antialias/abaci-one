@@ -28,7 +28,7 @@ const initialState: MemoryPairsState = {
 
   // Game progression
   gamePhase: 'setup',
-  currentPlayer: 1,
+  currentPlayer: '', // Will be set to first player ID on START_GAME
   matchedPairs: 0,
   totalPairs: 6,
   moves: 0,
@@ -76,7 +76,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
     case 'START_GAME':
       // Initialize scores and consecutive matches for all active players
       const scores: PlayerScore = {}
-      const consecutiveMatches: { [playerId: number]: number } = {}
+      const consecutiveMatches: { [playerId: string]: number } = {}
       action.activePlayers.forEach(playerId => {
         scores[playerId] = 0
         consecutiveMatches[playerId] = 0
@@ -93,7 +93,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         scores,
         consecutiveMatches,
         activePlayers: action.activePlayers,
-        currentPlayer: action.activePlayers[0] || 1,
+        currentPlayer: action.activePlayers[0] || '',
         gameStartTime: Date.now(),
         gameEndTime: null,
         currentMoveStartTime: Date.now(),
@@ -253,8 +253,8 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(memoryPairsReducer, initialState)
   const { activePlayerCount, activePlayers: activePlayerIds } = useGameMode()
 
-  // Get active player IDs as numbers (convert from string IDs for now to maintain compatibility)
-  const activePlayers = Array.from(activePlayerIds).map((id, index) => index + 1)
+  // Get active player IDs directly from GameModeContext
+  const activePlayers = Array.from(activePlayerIds)
 
   // Derive game mode from active player count
   const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'
@@ -358,6 +358,7 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
     resetGame,
     setGameType,
     setDifficulty,
+    exitSession: () => {}, // No-op for non-arcade mode
     gameMode, // Expose derived gameMode
     activePlayers // Expose active players
   }

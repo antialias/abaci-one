@@ -20,13 +20,13 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
     .filter((p): p is NonNullable<typeof p> => p !== undefined)
 
   // Map active players to display data with scores
-  // State uses numeric player IDs (1, 2, 3...), so we map by index
-  const activePlayers = activePlayersData.map((player, index) => ({
+  // State now uses player IDs (UUIDs) as keys
+  const activePlayers = activePlayersData.map((player) => ({
     ...player,
     displayName: player.name,
     displayEmoji: player.emoji,
-    score: state.scores[index + 1] || 0,
-    consecutiveMatches: state.consecutiveMatches?.[index + 1] || 0
+    score: state.scores[player.id] || 0,
+    consecutiveMatches: state.consecutiveMatches?.[player.id] || 0
   }))
 
   // Get celebration level based on consecutive matches
@@ -101,8 +101,8 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
         gap: { base: '2', md: '3' },
         alignItems: 'center'
       })}>
-        {activePlayers.map((player, index) => {
-          const isCurrentPlayer = (index + 1) === state.currentPlayer
+        {activePlayers.map((player) => {
+          const isCurrentPlayer = player.id === state.currentPlayer
           const isLeading = player.score === Math.max(...activePlayers.map(p => p.score)) && player.score > 0
           const celebrationLevel = getCelebrationLevel(player.consecutiveMatches)
 

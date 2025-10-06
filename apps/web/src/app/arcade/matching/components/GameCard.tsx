@@ -15,6 +15,12 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
     .map(id => playerMap.get(id))
     .filter((p): p is NonNullable<typeof p> => p !== undefined)
 
+  // Helper to get player index from ID (0-based)
+  const getPlayerIndex = (playerId: string | undefined): number => {
+    if (!playerId) return -1
+    return activePlayers.findIndex(p => p.id === playerId)
+  }
+
   const cardBackStyles = css({
     position: 'absolute',
     width: '100%',
@@ -53,13 +59,14 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
   // Dynamic styling based on card type and state
   const getCardBackGradient = () => {
     if (isMatched) {
-      // Player-specific colors for matched cards
-      if (card.matchedBy === 1) {
-        return 'linear-gradient(135deg, #74b9ff, #0984e3)' // Blue for player 1
-      } else if (card.matchedBy === 2) {
-        return 'linear-gradient(135deg, #fd79a8, #e84393)' // Pink for player 2
+      // Player-specific colors for matched cards - find player index by ID
+      const playerIndex = getPlayerIndex(card.matchedBy)
+      if (playerIndex === 0) {
+        return 'linear-gradient(135deg, #74b9ff, #0984e3)' // Blue for first player
+      } else if (playerIndex === 1) {
+        return 'linear-gradient(135deg, #fd79a8, #e84393)' // Pink for second player
       }
-      return 'linear-gradient(135deg, #48bb78, #38a169)' // Default green for single player
+      return 'linear-gradient(135deg, #48bb78, #38a169)' // Default green for single player or 3+
     }
 
     switch (card.type) {
@@ -77,8 +84,9 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
   const getCardBackIcon = () => {
     if (isMatched) {
       // Show player emoji for matched cards in multiplayer mode
-      if (card.matchedBy && card.matchedBy <= activePlayers.length) {
-        return activePlayers[card.matchedBy - 1]?.emoji || '✓'
+      if (card.matchedBy) {
+        const matchedPlayer = activePlayers.find(p => p.id === card.matchedBy)
+        return matchedPlayer?.emoji || '✓'
       }
       return '✓' // Default checkmark for single player
     }
@@ -98,12 +106,13 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
   const getBorderColor = () => {
     if (isMatched) {
       // Player-specific border colors for matched cards
-      if (card.matchedBy === 1) {
-        return '#74b9ff' // Blue for player 1
-      } else if (card.matchedBy === 2) {
-        return '#fd79a8' // Pink for player 2
+      const playerIndex = getPlayerIndex(card.matchedBy)
+      if (playerIndex === 0) {
+        return '#74b9ff' // Blue for first player
+      } else if (playerIndex === 1) {
+        return '#fd79a8' // Pink for second player
       }
-      return '#48bb78' // Default green for single player
+      return '#48bb78' // Default green for single player or 3+
     }
     if (isFlipped) return '#667eea'
     return '#e2e8f0'
@@ -164,9 +173,9 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
           style={{
             borderColor: getBorderColor(),
             boxShadow: isMatched
-              ? card.matchedBy === 1
+              ? getPlayerIndex(card.matchedBy) === 0
                 ? '0 0 20px rgba(116, 185, 255, 0.4)' // Blue glow for player 1
-                : card.matchedBy === 2
+                : getPlayerIndex(card.matchedBy) === 1
                 ? '0 0 20px rgba(253, 121, 168, 0.4)' // Pink glow for player 2
                 : '0 0 20px rgba(72, 187, 120, 0.4)' // Default green glow
               : isFlipped
@@ -186,7 +195,7 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                 height: '32px',
                 borderRadius: '50%',
                 border: '3px solid',
-                borderColor: card.matchedBy === 1 ? '#74b9ff' : '#fd79a8',
+                borderColor: getPlayerIndex(card.matchedBy) === 0 ? '#74b9ff' : '#fd79a8',
                 animation: 'explosionRing 0.6s ease-out',
                 zIndex: 9
               })} />
@@ -199,14 +208,14 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                 width: '32px',
                 height: '32px',
                 borderRadius: '50%',
-                background: card.matchedBy === 1
+                background: getPlayerIndex(card.matchedBy) === 0
                   ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
                   : 'linear-gradient(135deg, #fd79a8, #e84393)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '18px',
-                boxShadow: card.matchedBy === 1
+                boxShadow: getPlayerIndex(card.matchedBy) === 0
                   ? '0 0 20px rgba(116, 185, 255, 0.6), 0 0 40px rgba(116, 185, 255, 0.4)'
                   : '0 0 20px rgba(253, 121, 168, 0.6), 0 0 40px rgba(253, 121, 168, 0.4)',
                 animation: 'epicClaim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
@@ -219,7 +228,7 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                   right: '-2px',
                   bottom: '-2px',
                   borderRadius: '50%',
-                  background: card.matchedBy === 1
+                  background: getPlayerIndex(card.matchedBy) === 0
                     ? 'linear-gradient(45deg, #74b9ff, #a29bfe, #6c5ce7, #74b9ff)'
                     : 'linear-gradient(45deg, #fd79a8, #fdcb6e, #e17055, #fd79a8)',
                   animation: 'spinningHalo 2s linear infinite',
@@ -230,8 +239,8 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                   animation: 'emojiBlast 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.4s both',
                   filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8))'
                 })}>
-                  {card.matchedBy && card.matchedBy <= activePlayers.length
-                    ? activePlayers[card.matchedBy - 1]?.emoji || '✓'
+                  {card.matchedBy
+                    ? activePlayers.find(p => p.id === card.matchedBy)?.emoji || '✓'
                     : '✓'}
                 </span>
               </div>

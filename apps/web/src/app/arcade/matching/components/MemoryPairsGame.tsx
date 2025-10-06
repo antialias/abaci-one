@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
 import { useFullscreen } from '../../../../contexts/FullscreenContext'
+import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
 import { SetupPhase } from './SetupPhase'
 import { GamePhase } from './GamePhase'
 import { ResultsPhase } from './ResultsPhase'
@@ -11,8 +13,10 @@ import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../../../styled-system/css'
 
 export function MemoryPairsGame() {
+  const router = useRouter()
   const { state, exitSession } = useArcadeMemoryPairs()
   const { setFullscreenElement } = useFullscreen()
+  const { canModifyPlayers } = useArcadeRedirect({ currentGame: 'matching' })
   const gameRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -28,9 +32,10 @@ export function MemoryPairsGame() {
       navTitle="Memory Pairs"
       navEmoji="🧩"
       emphasizeGameContext={state.gamePhase === 'setup'}
+      canModifyPlayers={canModifyPlayers}
       onExitSession={() => {
         exitSession()
-        window.location.reload()
+        router.push('/arcade')
       }}
     >
       <StandardGameLayout>

@@ -31,7 +31,7 @@ export interface MatchingFlipCardMove extends GameMove {
 export interface MatchingStartGameMove extends GameMove {
   type: 'START_GAME'
   data: {
-    activePlayers: number[]
+    activePlayers: string[] // Player IDs (UUIDs)
     cards?: any[] // GameCard type from context
   }
 }

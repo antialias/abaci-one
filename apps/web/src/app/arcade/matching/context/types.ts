@@ -5,7 +5,7 @@ export type GameType = 'abacus-numeral' | 'complement-pairs'
 export type GamePhase = 'setup' | 'playing' | 'results'
 export type CardType = 'abacus' | 'number' | 'complement'
 export type Difficulty = 6 | 8 | 12 | 15 // Number of pairs
-export type Player = number // Now supports any player ID
+export type Player = string // Player ID (UUID)
 export type TargetSum = 5 | 10 | 20
 
 export interface GameCard {
@@ -20,7 +20,7 @@ export interface GameCard {
 }
 
 export interface PlayerScore {
-  [playerId: number]: number
+  [playerId: string]: number
 }
 
 export interface CelebrationAnimation {
@@ -59,7 +59,7 @@ export interface MemoryPairsState {
   moves: number
   scores: PlayerScore
   activePlayers: Player[] // Track active player IDs
-  consecutiveMatches: { [playerId: number]: number } // Track consecutive matches per player
+  consecutiveMatches: { [playerId: string]: number } // Track consecutive matches per player
 
   // Timing
   gameStartTime: number | null

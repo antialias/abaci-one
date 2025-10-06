@@ -251,33 +251,42 @@ export function formatGameTime(milliseconds: number): string {
 }
 
 // Get two-player game winner
-export function getTwoPlayerWinner(state: MemoryPairsState): {
+// @deprecated Use getMultiplayerWinner instead which supports N players
+export function getTwoPlayerWinner(state: MemoryPairsState, activePlayers: Player[]): {
   winner: Player | 'tie'
   winnerScore: number
   loserScore: number
   margin: number
 } {
   const { scores } = state
+  const [player1, player2] = activePlayers
 
-  if (scores[1] > scores[2]) {
+  if (!player1 || !player2) {
+    throw new Error('getTwoPlayerWinner requires at least 2 active players')
+  }
+
+  const score1 = scores[player1] || 0
+  const score2 = scores[player2] || 0
+
+  if (score1 > score2) {
     return {
-      winner: 1,
-      winnerScore: scores[1],
-      loserScore: scores[2],
-      margin: scores[1] - scores[2]
+      winner: player1,
+      winnerScore: score1,
+      loserScore: score2,
+      margin: score1 - score2
     }
-  } else if (scores[2] > scores[1]) {
+  } else if (score2 > score1) {
     return {
-      winner: 2,
-      winnerScore: scores[2],
-      loserScore: scores[1],
-      margin: scores[2] - scores[1]
+      winner: player2,
+      winnerScore: score2,
+      loserScore: score1,
+      margin: score2 - score1
     }
   } else {
     return {
       winner: 'tie',
-      winnerScore: scores[1],
-      loserScore: scores[2],
+      winnerScore: score1,
+      loserScore: score2,
       margin: 0
     }
   }
@@ -287,7 +296,7 @@ export function getTwoPlayerWinner(state: MemoryPairsState): {
 export function getMultiplayerWinner(state: MemoryPairsState, activePlayers: Player[]): {
   winners: Player[]
   winnerScore: number
-  scores: { [playerId: number]: number }
+  scores: { [playerId: string]: number }
   isTie: boolean
 } {
   const { scores } = state

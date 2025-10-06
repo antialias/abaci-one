@@ -53,11 +53,12 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
   // Dynamic styling based on card type and state
   const getCardBackGradient = () => {
     if (isMatched) {
-      // Player-specific colors for matched cards
-      if (card.matchedBy === 1) {
-        return 'linear-gradient(135deg, #74b9ff, #0984e3)' // Blue for player 1
-      } else if (card.matchedBy === 2) {
-        return 'linear-gradient(135deg, #fd79a8, #e84393)' // Pink for player 2
+      // Player-specific colors for matched cards - use array index lookup
+      const playerIndex = card.matchedBy ? activePlayers.findIndex(p => p.id === card.matchedBy) : -1
+      if (playerIndex === 0) {
+        return 'linear-gradient(135deg, #74b9ff, #0984e3)' // Blue for first player
+      } else if (playerIndex === 1) {
+        return 'linear-gradient(135deg, #fd79a8, #e84393)' // Pink for second player
       }
       return 'linear-gradient(135deg, #48bb78, #38a169)' // Default green for single player
     }
@@ -77,8 +78,9 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
   const getCardBackIcon = () => {
     if (isMatched) {
       // Show player emoji for matched cards in multiplayer mode
-      if (card.matchedBy && card.matchedBy <= activePlayers.length) {
-        return activePlayers[card.matchedBy - 1]?.emoji || '✓'
+      if (card.matchedBy) {
+        const player = activePlayers.find(p => p.id === card.matchedBy)
+        return player?.emoji || '✓'
       }
       return '✓' // Default checkmark for single player
     }
@@ -97,11 +99,12 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
 
   const getBorderColor = () => {
     if (isMatched) {
-      // Player-specific border colors for matched cards
-      if (card.matchedBy === 1) {
-        return '#74b9ff' // Blue for player 1
-      } else if (card.matchedBy === 2) {
-        return '#fd79a8' // Pink for player 2
+      // Player-specific border colors for matched cards - use array index lookup
+      const playerIndex = card.matchedBy ? activePlayers.findIndex(p => p.id === card.matchedBy) : -1
+      if (playerIndex === 0) {
+        return '#74b9ff' // Blue for first player
+      } else if (playerIndex === 1) {
+        return '#fd79a8' // Pink for second player
       }
       return '#48bb78' // Default green for single player
     }
@@ -164,11 +167,15 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
           style={{
             borderColor: getBorderColor(),
             boxShadow: isMatched
-              ? card.matchedBy === 1
-                ? '0 0 20px rgba(116, 185, 255, 0.4)' // Blue glow for player 1
-                : card.matchedBy === 2
-                ? '0 0 20px rgba(253, 121, 168, 0.4)' // Pink glow for player 2
-                : '0 0 20px rgba(72, 187, 120, 0.4)' // Default green glow
+              ? (() => {
+                  const playerIndex = card.matchedBy ? activePlayers.findIndex(p => p.id === card.matchedBy) : -1
+                  if (playerIndex === 0) {
+                    return '0 0 20px rgba(116, 185, 255, 0.4)' // Blue glow for first player
+                  } else if (playerIndex === 1) {
+                    return '0 0 20px rgba(253, 121, 168, 0.4)' // Pink glow for second player
+                  }
+                  return '0 0 20px rgba(72, 187, 120, 0.4)' // Default green glow
+                })()
               : isFlipped
               ? '0 0 15px rgba(102, 126, 234, 0.3)'
               : 'none'
@@ -186,7 +193,10 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                 height: '32px',
                 borderRadius: '50%',
                 border: '3px solid',
-                borderColor: card.matchedBy === 1 ? '#74b9ff' : '#fd79a8',
+                borderColor: (() => {
+                  const playerIndex = activePlayers.findIndex(p => p.id === card.matchedBy)
+                  return playerIndex === 0 ? '#74b9ff' : '#fd79a8'
+                })(),
                 animation: 'explosionRing 0.6s ease-out',
                 zIndex: 9
               })} />
@@ -199,16 +209,22 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                 width: '32px',
                 height: '32px',
                 borderRadius: '50%',
-                background: card.matchedBy === 1
-                  ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
-                  : 'linear-gradient(135deg, #fd79a8, #e84393)',
+                background: (() => {
+                  const playerIndex = activePlayers.findIndex(p => p.id === card.matchedBy)
+                  return playerIndex === 0
+                    ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
+                    : 'linear-gradient(135deg, #fd79a8, #e84393)'
+                })(),
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '18px',
-                boxShadow: card.matchedBy === 1
-                  ? '0 0 20px rgba(116, 185, 255, 0.6), 0 0 40px rgba(116, 185, 255, 0.4)'
-                  : '0 0 20px rgba(253, 121, 168, 0.6), 0 0 40px rgba(253, 121, 168, 0.4)',
+                boxShadow: (() => {
+                  const playerIndex = activePlayers.findIndex(p => p.id === card.matchedBy)
+                  return playerIndex === 0
+                    ? '0 0 20px rgba(116, 185, 255, 0.6), 0 0 40px rgba(116, 185, 255, 0.4)'
+                    : '0 0 20px rgba(253, 121, 168, 0.6), 0 0 40px rgba(253, 121, 168, 0.4)'
+                })(),
                 animation: 'epicClaim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 zIndex: 10,
                 '&::before': {
@@ -219,9 +235,12 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                   right: '-2px',
                   bottom: '-2px',
                   borderRadius: '50%',
-                  background: card.matchedBy === 1
-                    ? 'linear-gradient(45deg, #74b9ff, #a29bfe, #6c5ce7, #74b9ff)'
-                    : 'linear-gradient(45deg, #fd79a8, #fdcb6e, #e17055, #fd79a8)',
+                  background: (() => {
+                    const playerIndex = activePlayers.findIndex(p => p.id === card.matchedBy)
+                    return playerIndex === 0
+                      ? 'linear-gradient(45deg, #74b9ff, #a29bfe, #6c5ce7, #74b9ff)'
+                      : 'linear-gradient(45deg, #fd79a8, #fdcb6e, #e17055, #fd79a8)'
+                  })(),
                   animation: 'spinningHalo 2s linear infinite',
                   zIndex: -1
                 }
@@ -230,9 +249,7 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                   animation: 'emojiBlast 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.4s both',
                   filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8))'
                 })}>
-                  {card.matchedBy && card.matchedBy <= activePlayers.length
-                    ? activePlayers[card.matchedBy - 1]?.emoji || '✓'
-                    : '✓'}
+                  {activePlayers.find(p => p.id === card.matchedBy)?.emoji || '✓'}
                 </span>
               </div>
 

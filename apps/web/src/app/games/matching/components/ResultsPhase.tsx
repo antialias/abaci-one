@@ -16,11 +16,10 @@ export function ResultsPhase() {
   const activePlayerData = Array.from(activePlayerIds)
     .map(id => playerMap.get(id))
     .filter((p): p is NonNullable<typeof p> => p !== undefined)
-    .map((player, index) => ({
+    .map((player) => ({
       ...player,
       displayName: player.name,
-      displayEmoji: player.emoji,
-      numericId: index + 1 // For compatibility with state.scores
+      displayEmoji: player.emoji
     }))
 
   const gameTime = state.gameEndTime && state.gameStartTime
@@ -73,7 +72,7 @@ export function ResultsPhase() {
                 color: 'blue.600',
                 fontWeight: 'bold'
               })}>
-                🏆 {activePlayerData.find(p => p.numericId === multiplayerResult.winners[0])?.displayName || `Player ${multiplayerResult.winners[0]}`} Wins!
+                🏆 {activePlayerData.find(p => p.id === multiplayerResult.winners[0])?.displayName || `Player ${multiplayerResult.winners[0]}`} Wins!
               </p>
             ) : (
               <p className={css({
@@ -186,8 +185,8 @@ export function ResultsPhase() {
           flexWrap: 'wrap'
         })}>
           {activePlayerData.map((player) => {
-            const score = multiplayerResult.scores[player.numericId] || 0
-            const isWinner = multiplayerResult.winners.includes(player.numericId)
+            const score = multiplayerResult.scores[player.id] || 0
+            const isWinner = multiplayerResult.winners.includes(player.id)
 
             return (
               <div key={player.id} className={css({
