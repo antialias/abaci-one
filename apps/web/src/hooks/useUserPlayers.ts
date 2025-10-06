@@ -55,7 +55,15 @@ async function updatePlayer({
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
   })
-  if (!res.ok) throw new Error('Failed to update player')
+  if (!res.ok) {
+    // Extract error message from response if available
+    try {
+      const errorData = await res.json()
+      throw new Error(errorData.error || 'Failed to update player')
+    } catch (jsonError) {
+      throw new Error('Failed to update player')
+    }
+  }
   const data = await res.json()
   return data.player
 }
@@ -146,7 +154,10 @@ export function useUpdatePlayer() {
 
       return { previousPlayers }
     },
-    onError: (_err, _variables, context) => {
+    onError: (err, _variables, context) => {
+      // Log error for debugging
+      console.error('Failed to update player:', err.message)
+
       // Rollback on error
       if (context?.previousPlayers) {
         queryClient.setQueryData(playerKeys.list(), context.previousPlayers)

@@ -27,6 +27,25 @@ export async function PATCH(
       )
     }
 
+    // Check if user has an active arcade session
+    // If so, prevent changing isActive status (players are locked during games)
+    if (body.isActive !== undefined) {
+      const activeSession = await db.query.arcadeSessions.findFirst({
+        where: eq(schema.arcadeSessions.userId, viewerId),
+      })
+
+      if (activeSession) {
+        return NextResponse.json(
+          {
+            error: 'Cannot modify active players during an active game session',
+            activeGame: activeSession.currentGame,
+            gameUrl: activeSession.gameUrl
+          },
+          { status: 403 }
+        )
+      }
+    }
+
     // Security: Only allow updating specific fields (excludes userId)
     // Update player (only if it belongs to this user)
     const [updatedPlayer] = await db
