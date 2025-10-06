@@ -1,4 +1,4 @@
-import { auth } from '../../auth'
+import { auth } from '@/auth'
 import { cookies, headers } from 'next/headers'
 import { verifyGuestToken, GUEST_COOKIE_NAME } from './guest-token'
 
