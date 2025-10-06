@@ -45,6 +45,10 @@ export async function PATCH(req: NextRequest) {
   try {
     const viewerId = await getViewerId()
     const body = await req.json()
+
+    // Security: Strip userId from request body - it must come from session only
+    const { userId: _, ...updates } = body
+
     const user = await getOrCreateUser(viewerId)
 
     // Ensure settings exist
@@ -56,7 +60,7 @@ export async function PATCH(req: NextRequest) {
       // Create new settings with updates
       const [newSettings] = await db
         .insert(schema.abacusSettings)
-        .values({ userId: user.id, ...body })
+        .values({ userId: user.id, ...updates })
         .returning()
       return NextResponse.json({ settings: newSettings })
     }
@@ -64,7 +68,7 @@ export async function PATCH(req: NextRequest) {
     // Update existing settings
     const [updatedSettings] = await db
       .update(schema.abacusSettings)
-      .set(body)
+      .set(updates)
       .where(eq(schema.abacusSettings.userId, user.id))
       .returning()
 

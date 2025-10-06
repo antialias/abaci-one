@@ -27,6 +27,7 @@ export async function PATCH(
       )
     }
 
+    // Security: Only allow updating specific fields (excludes userId)
     // Update player (only if it belongs to this user)
     const [updatedPlayer] = await db
       .update(schema.players)
@@ -35,6 +36,7 @@ export async function PATCH(
         ...(body.emoji !== undefined && { emoji: body.emoji }),
         ...(body.color !== undefined && { color: body.color }),
         ...(body.isActive !== undefined && { isActive: body.isActive }),
+        // userId is explicitly NOT included - it comes from session
       })
       .where(
         and(

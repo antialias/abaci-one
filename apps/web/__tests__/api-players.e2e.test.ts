@@ -219,4 +219,115 @@ describe('Players API', () => {
       expect(players).toHaveLength(0)
     })
   })
+
+  describe('Security: userId injection prevention', () => {
+    it('rejects creating player with non-existent userId', async () => {
+      // Attempt to create a player with a fake userId
+      await expect(async () => {
+        await db.insert(schema.players).values({
+          userId: 'HACKER_ID_NON_EXISTENT',
+          name: 'Hacker Player',
+          emoji: '🦹',
+          color: '#ff0000',
+        })
+      }).rejects.toThrow(/FOREIGN KEY constraint failed/)
+    })
+
+    it('prevents modifying another user\'s player via userId injection (DB layer alone is insufficient)', async () => {
+      // Create victim user and their player
+      const victimGuestId = `victim-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const [victimUser] = await db
+        .insert(schema.users)
+        .values({ guestId: victimGuestId })
+        .returning()
+
+      try {
+        // Create attacker's player
+        const [attackerPlayer] = await db
+          .insert(schema.players)
+          .values({
+            userId: testUserId,
+            name: 'Attacker Player',
+            emoji: '😈',
+            color: '#ff0000',
+          })
+          .returning()
+
+        const [victimPlayer] = await db
+          .insert(schema.players)
+          .values({
+            userId: victimUser.id,
+            name: 'Victim Player',
+            emoji: '👤',
+            color: '#00ff00',
+            isActive: true,
+          })
+          .returning()
+
+        // IMPORTANT: At the DB level, changing userId to another valid userId SUCCEEDS
+        // This is why API layer MUST filter userId from request body!
+        const [updated] = await db
+          .update(schema.players)
+          .set({
+            userId: victimUser.id, // This WILL succeed at DB level!
+            name: 'Stolen Player',
+          })
+          .where(eq(schema.players.id, attackerPlayer.id))
+          .returning()
+
+        // The update succeeded - the player now belongs to victim!
+        expect(updated.userId).toBe(victimUser.id)
+        expect(updated.name).toBe('Stolen Player')
+
+        // This test demonstrates why the API route MUST:
+        // 1. Strip userId from request body
+        // 2. Derive userId from session cookie
+        // 3. Use WHERE clause to scope updates to current user's data only
+      } finally {
+        await db.delete(schema.users).where(eq(schema.users.id, victimUser.id))
+      }
+    })
+
+    it('ensures players are isolated per user', async () => {
+      // Create another user
+      const user2GuestId = `user2-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const [user2] = await db
+        .insert(schema.users)
+        .values({ guestId: user2GuestId })
+        .returning()
+
+      try {
+        // Create players for both users
+        await db.insert(schema.players).values({
+          userId: testUserId,
+          name: 'User 1 Player',
+          emoji: '🎮',
+          color: '#0000ff',
+        })
+
+        await db.insert(schema.players).values({
+          userId: user2.id,
+          name: 'User 2 Player',
+          emoji: '🎯',
+          color: '#ff00ff',
+        })
+
+        // Verify each user only sees their own players
+        const user1Players = await db.query.players.findMany({
+          where: eq(schema.players.userId, testUserId),
+        })
+        const user2Players = await db.query.players.findMany({
+          where: eq(schema.players.userId, user2.id),
+        })
+
+        expect(user1Players).toHaveLength(1)
+        expect(user1Players[0].name).toBe('User 1 Player')
+
+        expect(user2Players).toHaveLength(1)
+        expect(user2Players[0].name).toBe('User 2 Player')
+      } finally {
+        await db.delete(schema.users).where(eq(schema.users.id, user2.id))
+      }
+    })
+  })
 })
