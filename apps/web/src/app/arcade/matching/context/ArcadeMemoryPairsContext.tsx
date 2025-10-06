@@ -126,13 +126,14 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
       const timeout = setTimeout(() => {
         sendMove({
           type: 'CLEAR_MISMATCH',
+          playerId: state.currentPlayer, // Use current player ID for CLEAR_MISMATCH
           data: {}
         })
       }, 1500)
 
       return () => clearTimeout(timeout)
     }
-  }, [state.showMismatchFeedback, state.flippedCards.length, sendMove])
+  }, [state.showMismatchFeedback, state.flippedCards.length, sendMove, state.currentPlayer])
 
   // Computed values
   const isGameActive = state.gamePhase === 'playing'
@@ -165,9 +166,18 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
 
   // Action creators - send moves to arcade session
   const startGame = useCallback(() => {
+    // Must have at least one active player
+    if (activePlayers.length === 0) {
+      console.error('[ArcadeMemoryPairs] Cannot start game without active players')
+      return
+    }
+
     const cards = generateGameCards(state.gameType, state.difficulty)
+    // Use first active player as playerId for START_GAME move
+    const firstPlayer = activePlayers[0]
     sendMove({
       type: 'START_GAME',
+      playerId: firstPlayer,
       data: {
         cards,
         activePlayers
@@ -176,18 +186,43 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
   }, [state.gameType, state.difficulty, activePlayers, sendMove])
 
   const flipCard = useCallback((cardId: string) => {
-    if (!canFlipCard(cardId)) return
-    sendMove({
-      type: 'FLIP_CARD',
-      data: { cardId }
+    console.log('[Client] flipCard called:', {
+      cardId,
+      viewerId,
+      currentPlayer: state.currentPlayer,
+      activePlayers: state.activePlayers,
+      gamePhase: state.gamePhase,
+      canFlip: canFlipCard(cardId)
     })
-  }, [canFlipCard, sendMove])
+
+    if (!canFlipCard(cardId)) {
+      console.log('[Client] Cannot flip card - canFlipCard returned false')
+      return
+    }
+
+    const move = {
+      type: 'FLIP_CARD' as const,
+      playerId: state.currentPlayer, // Use the current player ID from game state (database player ID)
+      data: { cardId }
+    }
+    console.log('[Client] Sending FLIP_CARD move via sendMove:', move)
+    sendMove(move)
+  }, [canFlipCard, sendMove, viewerId, state.currentPlayer, state.activePlayers, state.gamePhase])
 
   const resetGame = useCallback(() => {
+    // Must have at least one active player
+    if (activePlayers.length === 0) {
+      console.error('[ArcadeMemoryPairs] Cannot reset game without active players')
+      return
+    }
+
     // Delete current session and start a new game
     const cards = generateGameCards(state.gameType, state.difficulty)
+    // Use first active player as playerId for START_GAME move
+    const firstPlayer = activePlayers[0]
     sendMove({
       type: 'START_GAME',
+      playerId: firstPlayer,
       data: {
         cards,
         activePlayers
