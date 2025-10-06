@@ -51,7 +51,13 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Handle game moves
     socket.on('game-move', async (data: { userId: string; move: GameMove }) => {
-      console.log('🎮 Game move:', data.userId, data.move.type)
+      console.log('🎮 Game move received:', {
+        userId: data.userId,
+        moveType: data.move.type,
+        playerId: data.move.playerId,
+        timestamp: data.move.timestamp,
+        fullMove: JSON.stringify(data.move, null, 2)
+      })
 
       try {
         // Special handling for START_GAME - create session if it doesn't exist
@@ -60,6 +66,17 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
           if (!existingSession) {
             console.log('🎯 Creating new session for START_GAME')
+
+            // activePlayers must be provided in the START_GAME move data
+            const activePlayers = (data.move.data as any)?.activePlayers
+            if (!activePlayers || activePlayers.length === 0) {
+              console.error('❌ START_GAME move missing activePlayers')
+              socket.emit('move-rejected', {
+                error: 'START_GAME requires at least one active player',
+                move: data.move,
+              })
+              return
+            }
 
             // Get initial state from validator
             const initialState = matchingGameValidator.getInitialState({
@@ -73,7 +90,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               gameName: 'matching',
               gameUrl: '/arcade/matching',
               initialState,
-              activePlayers: (data.move.data as any)?.activePlayers || [data.userId],
+              activePlayers,
             })
 
             console.log('✅ Session created successfully')
