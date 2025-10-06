@@ -1,6 +1,9 @@
 # Multi-stage build for Soroban Abacus Flashcards
 FROM node:18-alpine AS base
 
+# Install Python and build tools for better-sqlite3
+RUN apk add --no-cache python3 py3-setuptools make g++
+
 # Install pnpm and turbo
 RUN npm install -g pnpm@8.0.0 turbo@1.10.0
 
