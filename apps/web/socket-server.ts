@@ -73,7 +73,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               gameName: 'matching',
               gameUrl: '/arcade/matching',
               initialState,
-              activePlayers: (data.move.data as any)?.activePlayers || [1],
+              activePlayers: (data.move.data as any)?.activePlayers || [data.userId],
             })
 
             console.log('✅ Session created successfully')

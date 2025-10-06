@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"npx @pandacss/dev --watch\"",
+    "dev": "concurrently \"node server.js\" \"npx @pandacss/dev --watch\"",
     "build": "node scripts/generate-build-info.js && next build",
-    "start": "next start",
+    "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
     "test": "vitest",
     "test:run": "vitest run",
@@ -65,7 +65,9 @@
     "python-bridge": "^1.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-resizable-layout": "^0.7.3"
+    "react-resizable-layout": "^0.7.3",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.1",

@@ -15,6 +15,13 @@
       "when": 1759706755851,
       "tag": "0001_friendly_stingray",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1759752980924,
+      "tag": "0002_loose_ultimatum",
+      "breakpoints": true
     }
   ]
 }

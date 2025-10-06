@@ -6,10 +6,10 @@ import { css } from '../../../styled-system/css'
 import { EnhancedChampionArena } from '../../components/EnhancedChampionArena'
 import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
 import { PageWithNav } from '@/components/PageWithNav'
+import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
 
 function ArcadeContent() {
-  const router = useRouter()
-  const { isFullscreen, enterFullscreen, exitFullscreen, setFullscreenElement } = useFullscreen()
+  const { setFullscreenElement } = useFullscreen()
   const arcadeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -18,15 +18,6 @@ function ArcadeContent() {
       setFullscreenElement(arcadeRef.current)
     }
   }, [setFullscreenElement])
-
-  // Note: Automatic fullscreen entry removed - users must manually enter fullscreen
-  // Client-side navigation now preserves fullscreen state without needing auto-entry
-
-  const handleExitArcade = () => {
-    console.log('🔄 ArcadePage: Navigating to games with Next.js router (no page reload)')
-    // Navigate back to games page using client-side routing
-    router.push('/games')
-  }
 
   return (
     <div
@@ -82,12 +73,25 @@ function ArcadeContent() {
   )
 }
 
+function ArcadePageWithRedirect() {
+  const { canModifyPlayers } = useArcadeRedirect({ currentGame: null })
+
+  return (
+    <PageWithNav
+      navTitle="Champion Arena"
+      navEmoji="🏟️"
+      emphasizeGameContext={true}
+      canModifyPlayers={canModifyPlayers}
+    >
+      <ArcadeContent />
+    </PageWithNav>
+  )
+}
+
 export default function ArcadePage() {
   return (
     <FullscreenProvider>
-      <PageWithNav navTitle="Champion Arena" navEmoji="🏟️" emphasizeGameContext={true}>
-        <ArcadeContent />
-      </PageWithNav>
+      <ArcadePageWithRedirect />
     </FullscreenProvider>
   )
 }

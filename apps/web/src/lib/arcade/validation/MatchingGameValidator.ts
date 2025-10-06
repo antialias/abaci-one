@@ -47,6 +47,14 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
 
     // Check if it's the player's turn (in multiplayer)
     if (state.activePlayers.length > 1 && state.currentPlayer !== playerId) {
+      console.log('[Validator] Turn check failed:', {
+        activePlayers: state.activePlayers,
+        currentPlayer: state.currentPlayer,
+        currentPlayerType: typeof state.currentPlayer,
+        playerId,
+        playerIdType: typeof playerId,
+        matches: state.currentPlayer === playerId
+      })
       return {
         valid: false,
         error: 'Not your turn',
