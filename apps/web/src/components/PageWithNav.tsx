@@ -11,11 +11,13 @@ interface PageWithNavProps {
   navEmoji?: string
   emphasizeGameContext?: boolean
   onExitSession?: () => void
+  onSetup?: () => void
+  onNewGame?: () => void
   canModifyPlayers?: boolean
   children: React.ReactNode
 }
 
-export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, onExitSession, canModifyPlayers = true, children }: PageWithNavProps) {
+export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, onExitSession, onSetup, onNewGame, canModifyPlayers = true, children }: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const [mounted, setMounted] = React.useState(false)
   const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
@@ -73,6 +75,8 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
       onRemovePlayer={handleRemovePlayer}
       onConfigurePlayer={handleConfigurePlayer}
       onExitSession={onExitSession}
+      onSetup={onSetup}
+      onNewGame={onNewGame}
       canModifyPlayers={canModifyPlayers}
     />
   ) : null

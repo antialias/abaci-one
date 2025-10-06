@@ -3,6 +3,7 @@ import { GameModeIndicator } from './GameModeIndicator'
 import { ActivePlayersList } from './ActivePlayersList'
 import { AddPlayerButton } from './AddPlayerButton'
 import { FullscreenPlayerSelection } from './FullscreenPlayerSelection'
+import { GameControlButtons } from './GameControlButtons'
 
 type GameMode = 'none' | 'single' | 'battle' | 'tournament'
 
@@ -24,6 +25,8 @@ interface GameContextNavProps {
   onRemovePlayer: (playerId: string) => void
   onConfigurePlayer: (playerId: string) => void
   onExitSession?: () => void
+  onSetup?: () => void
+  onNewGame?: () => void
   canModifyPlayers?: boolean
 }
 
@@ -39,6 +42,8 @@ export function GameContextNav({
   onRemovePlayer,
   onConfigurePlayer,
   onExitSession,
+  onSetup,
+  onNewGame,
   canModifyPlayers = true
 }: GameContextNavProps) {
   const [isTransitioning, setIsTransitioning] = React.useState(false)
@@ -97,39 +102,13 @@ export function GameContextNav({
           showFullscreenSelection={showFullscreenSelection}
         />
 
-        {/* Exit Session / Return to Arcade Button - only show during active game */}
-        {onExitSession && !showFullscreenSelection && !canModifyPlayers && (
-          <button
-            onClick={onExitSession}
-            style={{
-              background: 'linear-gradient(135deg, #3498db, #2980b9)',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              fontSize: '13px',
-              fontWeight: 'bold',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #2980b9, #1c6ca1)'
-              e.currentTarget.style.transform = 'translateY(-1px)'
-              e.currentTarget.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.15)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #3498db, #2980b9)'
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            <span>🏟️</span>
-            <span>Return to Arcade</span>
-          </button>
+        {/* Game Control Buttons - only show during active game */}
+        {!showFullscreenSelection && !canModifyPlayers && (
+          <GameControlButtons
+            onSetup={onSetup}
+            onNewGame={onNewGame}
+            onQuit={onExitSession}
+          />
         )}
 
         {/* Active Players + Add Button */}
