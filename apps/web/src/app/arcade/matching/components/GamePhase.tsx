@@ -67,43 +67,6 @@ export function GamePhase() {
           )}
         </div>
 
-        {/* Game Controls */}
-        <div className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        })}>
-          {/* New Game Button */}
-          <button
-            className={css({
-              background: 'linear-gradient(135deg, #ffeaa7, #fab1a0)',
-              color: '#2d3436',
-              border: 'none',
-              borderRadius: '10px',
-              padding: { base: '8px 12px', sm: '10px 16px' },
-              fontSize: { base: '13px', sm: '14px' },
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 2px 6px rgba(255, 234, 167, 0.3)',
-              _hover: {
-                transform: 'translateY(-1px)',
-                boxShadow: '0 3px 8px rgba(255, 234, 167, 0.5)',
-                background: 'linear-gradient(135deg, #fdcb6e, #e17055)'
-              }
-            })}
-            onClick={resetGame}
-          >
-            <div className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            })}>
-              <span>🔄</span>
-              <span>New Game</span>
-            </div>
-          </button>
-        </div>
       </div>
 
       {/* Player Status Bar */}

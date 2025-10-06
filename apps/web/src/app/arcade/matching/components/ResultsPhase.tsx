@@ -270,11 +270,12 @@ export function ResultsPhase() {
             }
           })}
           onClick={() => {
-            console.log('🔄 ResultsPhase: Navigating to games with Next.js router (no page reload)')
-            router.push('/games')
+            console.log('🔄 ResultsPhase: Exiting session and navigating to arcade')
+            exitSession()
+            router.push('/arcade')
           }}
         >
-          🏠 Back to Games
+          🏟️ Back to Arcade
         </button>
       </div>
     </div>
