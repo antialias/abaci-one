@@ -126,10 +126,15 @@ export function useArcadeSession<TState>(
   }, [connected, autoJoin, userId, joinSession])
 
   // Send move with optimistic update
-  const sendMove = useCallback((move: Omit<GameMove, 'playerId' | 'timestamp'>) => {
+  const sendMove = useCallback((move: Omit<GameMove, 'timestamp'>) => {
+    // IMPORTANT: playerId must always be explicitly provided by caller
+    // playerId is the database player ID (avatar), never the userId/viewerId
+    if (!('playerId' in move) || !move.playerId) {
+      throw new Error('playerId is required in all moves and must be a valid player ID')
+    }
+
     const fullMove: GameMove = {
       ...move,
-      playerId: userId,
       timestamp: Date.now(),
     } as GameMove
 
