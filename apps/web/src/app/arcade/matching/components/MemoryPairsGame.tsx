@@ -14,7 +14,7 @@ import { css } from '../../../../../styled-system/css'
 
 export function MemoryPairsGame() {
   const router = useRouter()
-  const { state, exitSession } = useArcadeMemoryPairs()
+  const { state, exitSession, resetGame } = useArcadeMemoryPairs()
   const { setFullscreenElement } = useFullscreen()
   const { canModifyPlayers } = useArcadeRedirect({ currentGame: 'matching' })
   const gameRef = useRef<HTMLDivElement>(null)
@@ -36,6 +36,14 @@ export function MemoryPairsGame() {
       onExitSession={() => {
         exitSession()
         router.push('/arcade')
+      }}
+      onSetup={() => {
+        // Exit current session and return to arcade (which will redirect to setup)
+        exitSession()
+        router.push('/arcade/matching')
+      }}
+      onNewGame={() => {
+        resetGame()
       }}
     >
       <StandardGameLayout>
