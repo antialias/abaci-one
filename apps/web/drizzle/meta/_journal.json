@@ -22,6 +22,13 @@
       "when": 1759752980924,
       "tag": "0002_loose_ultimatum",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1759781243105,
+      "tag": "0003_naive_reptil",
+      "breakpoints": true
     }
   ]
 }

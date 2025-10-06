@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 import { users } from './users'
+import { arcadeRooms } from './arcade-rooms'
 
 export const arcadeSessions = sqliteTable('arcade_sessions', {
   userId: text('user_id')
@@ -18,6 +19,9 @@ export const arcadeSessions = sqliteTable('arcade_sessions', {
 
   // Active players snapshot (for quick access)
   activePlayers: text('active_players', { mode: 'json' }).notNull(),
+
+  // Room association (null for solo play)
+  roomId: text('room_id').references(() => arcadeRooms.id, { onDelete: 'set null' }),
 
   // Timing & TTL
   startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
