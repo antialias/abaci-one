@@ -24,6 +24,7 @@ interface GameContextNavProps {
   onRemovePlayer: (playerId: string) => void
   onConfigurePlayer: (playerId: string) => void
   onExitSession?: () => void
+  canModifyPlayers?: boolean
 }
 
 export function GameContextNav({
@@ -37,7 +38,8 @@ export function GameContextNav({
   onAddPlayer,
   onRemovePlayer,
   onConfigurePlayer,
-  onExitSession
+  onExitSession,
+  canModifyPlayers = true
 }: GameContextNavProps) {
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   const [layoutMode, setLayoutMode] = React.useState<'column' | 'row'>(showFullscreenSelection ? 'column' : 'row')
@@ -95,18 +97,18 @@ export function GameContextNav({
           showFullscreenSelection={showFullscreenSelection}
         />
 
-        {/* Exit Session Button */}
-        {onExitSession && !showFullscreenSelection && (
+        {/* Exit Session / Return to Arcade Button - only show during active game */}
+        {onExitSession && !showFullscreenSelection && !canModifyPlayers && (
           <button
             onClick={onExitSession}
             style={{
-              background: 'linear-gradient(135deg, #dfe6e9, #b2bec3)',
+              background: 'linear-gradient(135deg, #3498db, #2980b9)',
               border: 'none',
               borderRadius: '8px',
               padding: '6px 12px',
               fontSize: '13px',
               fontWeight: 'bold',
-              color: 'rgb(51, 51, 51)',
+              color: 'white',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -115,23 +117,23 @@ export function GameContextNav({
               boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #b2bec3, #636e72)'
+              e.currentTarget.style.background = 'linear-gradient(135deg, #2980b9, #1c6ca1)'
               e.currentTarget.style.transform = 'translateY(-1px)'
               e.currentTarget.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.15)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #dfe6e9, #b2bec3)'
+              e.currentTarget.style.background = 'linear-gradient(135deg, #3498db, #2980b9)'
               e.currentTarget.style.transform = 'translateY(0)'
               e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)'
             }}
           >
-            <span>⚙️</span>
-            <span>Setup</span>
+            <span>🏟️</span>
+            <span>Return to Arcade</span>
           </button>
         )}
 
         {/* Active Players + Add Button */}
-        {(activePlayers.length > 0 || (shouldEmphasize && inactivePlayers.length > 0)) && (
+        {(activePlayers.length > 0 || (shouldEmphasize && inactivePlayers.length > 0 && canModifyPlayers)) && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -144,7 +146,9 @@ export function GameContextNav({
             border: shouldEmphasize ? '3px solid rgba(255, 255, 255, 0.25)' : 'none',
             boxShadow: shouldEmphasize ? '0 6px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.3)' : 'none',
             transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)'
+            transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)',
+            opacity: canModifyPlayers ? 1 : 0.6,
+            pointerEvents: canModifyPlayers ? 'auto' : 'none'
           }}>
             <ActivePlayersList
               activePlayers={activePlayers}
@@ -153,11 +157,13 @@ export function GameContextNav({
               onConfigurePlayer={onConfigurePlayer}
             />
 
-            <AddPlayerButton
-              inactivePlayers={inactivePlayers}
-              shouldEmphasize={shouldEmphasize}
-              onAddPlayer={onAddPlayer}
-            />
+            {canModifyPlayers && (
+              <AddPlayerButton
+                inactivePlayers={inactivePlayers}
+                shouldEmphasize={shouldEmphasize}
+                onAddPlayer={onAddPlayer}
+              />
+            )}
           </div>
         )}
       </div>
