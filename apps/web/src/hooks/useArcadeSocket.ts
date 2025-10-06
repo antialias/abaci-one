@@ -124,8 +124,9 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
       console.warn('[ArcadeSocket] Cannot send move - socket not connected')
       return
     }
-    console.log('[ArcadeSocket] Sending move:', move)
-    socket.emit('game-move', { userId, move })
+    const payload = { userId, move }
+    console.log('[ArcadeSocket] Sending game-move event with payload:', JSON.stringify(payload, null, 2))
+    socket.emit('game-move', payload)
   }, [socket])
 
   const exitSession = useCallback((userId: string) => {

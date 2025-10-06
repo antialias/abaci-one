@@ -129,8 +129,21 @@ export async function applyGameMove(
   // Get the validator for this game
   const validator = getValidator(session.currentGame as GameName)
 
+  console.log('[SessionManager] About to validate move:', {
+    moveType: move.type,
+    playerId: move.playerId,
+    gameStateCurrentPlayer: (session.gameState as any)?.currentPlayer,
+    gameStateActivePlayers: (session.gameState as any)?.activePlayers,
+    gameStatePhase: (session.gameState as any)?.gamePhase
+  })
+
   // Validate the move
   const validationResult = validator.validateMove(session.gameState, move)
+
+  console.log('[SessionManager] Validation result:', {
+    valid: validationResult.valid,
+    error: validationResult.error
+  })
 
   if (!validationResult.valid) {
     return {
