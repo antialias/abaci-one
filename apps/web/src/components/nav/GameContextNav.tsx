@@ -23,6 +23,7 @@ interface GameContextNavProps {
   onAddPlayer: (playerId: string) => void
   onRemovePlayer: (playerId: string) => void
   onConfigurePlayer: (playerId: string) => void
+  onExitSession?: () => void
 }
 
 export function GameContextNav({
@@ -35,7 +36,8 @@ export function GameContextNav({
   showFullscreenSelection,
   onAddPlayer,
   onRemovePlayer,
-  onConfigurePlayer
+  onConfigurePlayer,
+  onExitSession
 }: GameContextNavProps) {
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   const [layoutMode, setLayoutMode] = React.useState<'column' | 'row'>(showFullscreenSelection ? 'column' : 'row')
@@ -92,6 +94,41 @@ export function GameContextNav({
           shouldEmphasize={shouldEmphasize}
           showFullscreenSelection={showFullscreenSelection}
         />
+
+        {/* Exit Session Button */}
+        {onExitSession && !showFullscreenSelection && (
+          <button
+            onClick={onExitSession}
+            style={{
+              background: 'linear-gradient(135deg, #dfe6e9, #b2bec3)',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '13px',
+              fontWeight: 'bold',
+              color: 'rgb(51, 51, 51)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #b2bec3, #636e72)'
+              e.currentTarget.style.transform = 'translateY(-1px)'
+              e.currentTarget.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.15)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #dfe6e9, #b2bec3)'
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <span>⚙️</span>
+            <span>Setup</span>
+          </button>
+        )}
 
         {/* Active Players + Add Button */}
         {(activePlayers.length > 0 || (shouldEmphasize && inactivePlayers.length > 0)) && (

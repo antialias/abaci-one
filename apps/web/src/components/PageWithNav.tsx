@@ -10,10 +10,11 @@ interface PageWithNavProps {
   navTitle?: string
   navEmoji?: string
   emphasizeGameContext?: boolean
+  onExitSession?: () => void
   children: React.ReactNode
 }
 
-export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, children }: PageWithNavProps) {
+export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, onExitSession, children }: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const [mounted, setMounted] = React.useState(false)
   const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
@@ -68,6 +69,7 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
       onAddPlayer={handleAddPlayer}
       onRemovePlayer={handleRemovePlayer}
       onConfigurePlayer={handleConfigurePlayer}
+      onExitSession={onExitSession}
     />
   ) : null
 
