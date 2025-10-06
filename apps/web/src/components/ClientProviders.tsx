@@ -7,6 +7,7 @@ import { UserProfileProvider } from '@/contexts/UserProfileContext'
 import { GameModeProvider } from '@/contexts/GameModeContext'
 import { FullscreenProvider } from '@/contexts/FullscreenContext'
 import { DeploymentInfo } from './DeploymentInfo'
+import { AbacusSettingsSync } from './AbacusSettingsSync'
 import { createQueryClient } from '@/lib/queryClient'
 
 interface ClientProvidersProps {
@@ -20,6 +21,7 @@ export function ClientProviders({ children }: ClientProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <AbacusDisplayProvider>
+        <AbacusSettingsSync />
         <UserProfileProvider>
           <GameModeProvider>
             <FullscreenProvider>

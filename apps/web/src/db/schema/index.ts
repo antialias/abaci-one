@@ -8,3 +8,4 @@
 export * from './users'
 export * from './players'
 export * from './user-stats'
+export * from './abacus-settings'
