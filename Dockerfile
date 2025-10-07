@@ -10,7 +10,7 @@ RUN npm install -g pnpm@9.15.4 turbo@1.10.0
 WORKDIR /app
 
 # Copy package files for dependency resolution
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/core/client/node/package.json ./packages/core/client/node/
 COPY packages/core/client/typescript/package.json ./packages/core/client/typescript/
