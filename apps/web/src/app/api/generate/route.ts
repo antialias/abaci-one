@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     const filename = `soroban-flashcards-${config.range || 'cards'}.pdf`
 
     // Return PDF directly as download
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,

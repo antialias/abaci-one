@@ -17,7 +17,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     headers.set('Content-Length', asset.data.length.toString())
     headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
 
-    return new NextResponse(asset.data, {
+    return new NextResponse(new Uint8Array(asset.data), {
       status: 200,
       headers,
     })

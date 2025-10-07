@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     console.log('✅ Asset found, serving download')
 
     // Return file with appropriate headers
-    return new NextResponse(asset.data, {
+    return new NextResponse(new Uint8Array(asset.data), {
       status: 200,
       headers: {
         'Content-Type': asset.mimeType,
