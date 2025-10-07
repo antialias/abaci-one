@@ -49,9 +49,8 @@ const ProgressiveTestComponent: React.FC<{
 
     stepIndices.forEach((stepIndex, i) => {
       const description = fullInstruction.multiStepInstructions?.[i] || `Step ${i + 1}`
-      const stepBeads = fullInstruction.stepBeadHighlights?.filter(
-        (bead) => bead.stepIndex === stepIndex
-      ) || []
+      const stepBeads =
+        fullInstruction.stepBeadHighlights?.filter((bead) => bead.stepIndex === stepIndex) || []
 
       // Calculate the value change for this step by applying all bead movements
       let valueChange = 0

@@ -76,7 +76,7 @@ describe('Middleware E2E', () => {
     const originalEnv = process.env.NODE_ENV
     Object.defineProperty(process.env, 'NODE_ENV', {
       value: 'production',
-      configurable: true
+      configurable: true,
     })
 
     const req = new NextRequest('http://localhost:3000/')
@@ -87,7 +87,7 @@ describe('Middleware E2E', () => {
 
     Object.defineProperty(process.env, 'NODE_ENV', {
       value: originalEnv,
-      configurable: true
+      configurable: true,
     })
   })
 
@@ -95,7 +95,7 @@ describe('Middleware E2E', () => {
     const originalEnv = process.env.NODE_ENV
     Object.defineProperty(process.env, 'NODE_ENV', {
       value: 'development',
-      configurable: true
+      configurable: true,
     })
 
     const req = new NextRequest('http://localhost:3000/')
@@ -106,7 +106,7 @@ describe('Middleware E2E', () => {
 
     Object.defineProperty(process.env, 'NODE_ENV', {
       value: originalEnv,
-      configurable: true
+      configurable: true,
     })
   })
 
