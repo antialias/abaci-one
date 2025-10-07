@@ -3,6 +3,7 @@ import * as nextNavigation from 'next/navigation'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useArcadeGuard } from '../useArcadeGuard'
 import * as arcadeSocket from '../useArcadeSocket'
+import * as viewerId from '../useViewerId'
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
@@ -13,6 +14,11 @@ vi.mock('next/navigation', () => ({
 // Mock useArcadeSocket
 vi.mock('../useArcadeSocket', () => ({
   useArcadeSocket: vi.fn(),
+}))
+
+// Mock useViewerId
+vi.mock('../useViewerId', () => ({
+  useViewerId: vi.fn(),
 }))
 
 describe('useArcadeGuard', () => {
@@ -36,6 +42,11 @@ describe('useArcadeGuard', () => {
     vi.spyOn(nextNavigation, 'useRouter').mockReturnValue(mockRouter as any)
     vi.spyOn(nextNavigation, 'usePathname').mockReturnValue('/arcade/matching')
     vi.spyOn(arcadeSocket, 'useArcadeSocket').mockReturnValue(mockUseArcadeSocket)
+    vi.spyOn(viewerId, 'useViewerId').mockReturnValue({
+      data: 'test-user',
+      isLoading: false,
+      error: null,
+    } as any)
     global.fetch = vi.fn()
   })
 
@@ -45,11 +56,7 @@ describe('useArcadeGuard', () => {
       status: 404,
     })
 
-    const { result } = renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-      })
-    )
+    const { result } = renderHook(() => useArcadeGuard())
 
     expect(result.current.loading).toBe(true)
     expect(result.current.hasActiveSession).toBe(false)
@@ -68,11 +75,7 @@ describe('useArcadeGuard', () => {
       json: async () => mockSession,
     })
 
-    const { result } = renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-      })
-    )
+    const { result } = renderHook(() => useArcadeGuard())
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -100,11 +103,7 @@ describe('useArcadeGuard', () => {
 
     vi.spyOn(nextNavigation, 'usePathname').mockReturnValue('/arcade/matching')
 
-    renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-      })
-    )
+    renderHook(() => useArcadeGuard())
 
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith('/arcade/memory-quiz')
@@ -125,11 +124,7 @@ describe('useArcadeGuard', () => {
 
     vi.spyOn(nextNavigation, 'usePathname').mockReturnValue('/arcade/matching')
 
-    renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-      })
-    )
+    renderHook(() => useArcadeGuard())
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalled()
@@ -144,11 +139,7 @@ describe('useArcadeGuard', () => {
       status: 404,
     })
 
-    const { result } = renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-      })
-    )
+    const { result } = renderHook(() => useArcadeGuard())
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -173,12 +164,7 @@ describe('useArcadeGuard', () => {
 
     vi.spyOn(nextNavigation, 'usePathname').mockReturnValue('/arcade/matching')
 
-    renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-        onRedirect,
-      })
-    )
+    renderHook(() => useArcadeGuard({ onRedirect }))
 
     await waitFor(() => {
       expect(onRedirect).toHaveBeenCalledWith('/arcade/memory-quiz')
@@ -186,22 +172,19 @@ describe('useArcadeGuard', () => {
   })
 
   it('should not fetch session when disabled', () => {
-    renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-        enabled: false,
-      })
-    )
+    renderHook(() => useArcadeGuard({ enabled: false }))
 
     expect(global.fetch).not.toHaveBeenCalled()
   })
 
-  it('should not fetch session when userId is null', () => {
-    renderHook(() =>
-      useArcadeGuard({
-        userId: null,
-      })
-    )
+  it('should not fetch session when viewerId is null', () => {
+    vi.spyOn(viewerId, 'useViewerId').mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: null,
+    } as any)
+
+    renderHook(() => useArcadeGuard())
 
     expect(global.fetch).not.toHaveBeenCalled()
   })
@@ -212,11 +195,7 @@ describe('useArcadeGuard', () => {
       status: 404,
     })
 
-    renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-      })
-    )
+    renderHook(() => useArcadeGuard())
 
     await waitFor(() => {
       expect(mockUseArcadeSocket.joinSession).toHaveBeenCalledWith('test-user')
@@ -227,7 +206,7 @@ describe('useArcadeGuard', () => {
     let onSessionStateCallback: ((data: any) => void) | null = null
 
     vi.spyOn(arcadeSocket, 'useArcadeSocket').mockImplementation((events) => {
-      onSessionStateCallback = events.onSessionState || null
+      onSessionStateCallback = events?.onSessionState || null
       return mockUseArcadeSocket
     })
 
@@ -236,11 +215,7 @@ describe('useArcadeGuard', () => {
       status: 404,
     })
 
-    const { result } = renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-      })
-    )
+    const { result } = renderHook(() => useArcadeGuard())
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -268,7 +243,7 @@ describe('useArcadeGuard', () => {
     let onSessionEndedCallback: (() => void) | null = null
 
     vi.spyOn(arcadeSocket, 'useArcadeSocket').mockImplementation((events) => {
-      onSessionEndedCallback = events.onSessionEnded || null
+      onSessionEndedCallback = events?.onSessionEnded || null
       return mockUseArcadeSocket
     })
 
@@ -283,11 +258,7 @@ describe('useArcadeGuard', () => {
       json: async () => mockSession,
     })
 
-    const { result } = renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-      })
-    )
+    const { result } = renderHook(() => useArcadeGuard())
 
     await waitFor(() => {
       expect(result.current.hasActiveSession).toBe(true)
@@ -305,11 +276,7 @@ describe('useArcadeGuard', () => {
   it('should handle fetch errors gracefully', async () => {
     ;(global.fetch as any).mockRejectedValue(new Error('Network error'))
 
-    const { result } = renderHook(() =>
-      useArcadeGuard({
-        userId: 'test-user',
-      })
-    )
+    const { result } = renderHook(() => useArcadeGuard())
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
