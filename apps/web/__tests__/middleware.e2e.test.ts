@@ -74,7 +74,10 @@ describe('Middleware E2E', () => {
 
   it('sets secure flag in production', async () => {
     const originalEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'production'
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: 'production',
+      configurable: true
+    })
 
     const req = new NextRequest('http://localhost:3000/')
     const res = await middleware(req)
@@ -82,12 +85,18 @@ describe('Middleware E2E', () => {
     const cookie = res.cookies.get(GUEST_COOKIE_NAME)
     expect(cookie?.secure).toBe(true)
 
-    process.env.NODE_ENV = originalEnv
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: originalEnv,
+      configurable: true
+    })
   })
 
   it('does not set secure flag in development', async () => {
     const originalEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'development'
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: 'development',
+      configurable: true
+    })
 
     const req = new NextRequest('http://localhost:3000/')
     const res = await middleware(req)
@@ -95,7 +104,10 @@ describe('Middleware E2E', () => {
     const cookie = res.cookies.get(GUEST_COOKIE_NAME)
     expect(cookie?.secure).toBe(false)
 
-    process.env.NODE_ENV = originalEnv
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      value: originalEnv,
+      configurable: true
+    })
   })
 
   it('sets maxAge correctly', async () => {
