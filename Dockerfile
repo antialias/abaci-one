@@ -5,7 +5,7 @@ FROM node:18-alpine AS base
 RUN apk add --no-cache python3 py3-setuptools make g++
 
 # Install pnpm and turbo
-RUN npm install -g pnpm@8.0.0 turbo@1.10.0
+RUN npm install -g pnpm@9.15.4 turbo@1.10.0
 
 WORKDIR /app
 
