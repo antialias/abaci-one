@@ -17,6 +17,10 @@ COPY packages/core/client/typescript/package.json ./packages/core/client/typescr
 COPY packages/abacus-react/package.json ./packages/abacus-react/
 COPY packages/templates/package.json ./packages/templates/
 
+# Remove .npmrc if it exists (Docker should use default pnpm mode, not hoisted)
+COPY .npmrc* ./
+RUN rm -f .npmrc
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
