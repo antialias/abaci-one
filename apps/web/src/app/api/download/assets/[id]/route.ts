@@ -1,19 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { assetStore } from '@/lib/asset-store'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params
 
     const asset = await assetStore.get(id)
     if (!asset) {
-      return NextResponse.json(
-        { error: 'Asset not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Asset not found' }, { status: 404 })
     }
 
     // Set appropriate headers for download
@@ -25,14 +19,10 @@ export async function GET(
 
     return new NextResponse(asset.data, {
       status: 200,
-      headers
+      headers,
     })
-
   } catch (error) {
     console.error('Asset download error:', error)
-    return NextResponse.json(
-      { error: 'Failed to download asset' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to download asset' }, { status: 500 })
   }
 }

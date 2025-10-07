@@ -1,17 +1,20 @@
 import { render } from '@testing-library/react'
-import { describe, test, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { TrainTerrainBackground } from '../TrainTerrainBackground'
 
 describe('TrainTerrainBackground', () => {
   const mockGroundCircles = [
     { key: 'ground-1', cx: 10, cy: 150, r: 2 },
-    { key: 'ground-2', cx: 40, cy: 180, r: 3 }
+    { key: 'ground-2', cx: 40, cy: 180, r: 3 },
   ]
 
   test('renders without crashing', () => {
     const { container } = render(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 
@@ -21,7 +24,10 @@ describe('TrainTerrainBackground', () => {
   test('renders gradient definitions', () => {
     const { container } = render(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 
@@ -37,7 +43,10 @@ describe('TrainTerrainBackground', () => {
   test('renders ground layer rects', () => {
     const { container } = render(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 
@@ -46,7 +55,7 @@ describe('TrainTerrainBackground', () => {
 
     // Check for ground base layer
     const groundRect = Array.from(rects).find(
-      rect => rect.getAttribute('fill') === '#8B7355' && rect.getAttribute('width') === '900'
+      (rect) => rect.getAttribute('fill') === '#8B7355' && rect.getAttribute('width') === '900'
     )
     expect(groundRect).toBeTruthy()
   })
@@ -54,7 +63,10 @@ describe('TrainTerrainBackground', () => {
   test('renders ground texture circles', () => {
     const { container } = render(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 
@@ -71,12 +83,16 @@ describe('TrainTerrainBackground', () => {
   test('renders ballast path with correct attributes', () => {
     const { container } = render(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 
     const ballastPath = Array.from(container.querySelectorAll('path')).find(
-      path => path.getAttribute('d') === 'M 0 300 L 800 300' && path.getAttribute('stroke') === '#8B7355'
+      (path) =>
+        path.getAttribute('d') === 'M 0 300 L 800 300' && path.getAttribute('stroke') === '#8B7355'
     )
     expect(ballastPath).toBeTruthy()
     expect(ballastPath?.getAttribute('stroke-width')).toBe('40')
@@ -85,7 +101,10 @@ describe('TrainTerrainBackground', () => {
   test('renders left tunnel structure', () => {
     const { container } = render(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 
@@ -100,7 +119,10 @@ describe('TrainTerrainBackground', () => {
   test('renders right tunnel structure', () => {
     const { container } = render(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 
@@ -115,12 +137,15 @@ describe('TrainTerrainBackground', () => {
   test('renders mountains with gradient fills', () => {
     const { container } = render(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 
     // Check for paths with gradient fills
-    const gradientPaths = Array.from(container.querySelectorAll('path')).filter(path =>
+    const gradientPaths = Array.from(container.querySelectorAll('path')).filter((path) =>
       path.getAttribute('fill')?.includes('url(#mountainGradient')
     )
     expect(gradientPaths.length).toBeGreaterThanOrEqual(2)
@@ -141,7 +166,10 @@ describe('TrainTerrainBackground', () => {
   test('memoization: does not re-render with same props', () => {
     const { rerender, container } = render(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 
@@ -150,7 +178,10 @@ describe('TrainTerrainBackground', () => {
     // Rerender with same props
     rerender(
       <svg>
-        <TrainTerrainBackground ballastPath="M 0 300 L 800 300" groundTextureCircles={mockGroundCircles} />
+        <TrainTerrainBackground
+          ballastPath="M 0 300 L 800 300"
+          groundTextureCircles={mockGroundCircles}
+        />
       </svg>
     )
 

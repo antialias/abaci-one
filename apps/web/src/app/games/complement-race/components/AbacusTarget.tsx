@@ -12,12 +12,14 @@ interface AbacusTargetProps {
  */
 export function AbacusTarget({ number }: AbacusTargetProps) {
   return (
-    <div style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      lineHeight: 0
-    }}>
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        lineHeight: 0,
+      }}
+    >
       <AbacusReact
         value={number}
         columns={1}
@@ -26,7 +28,7 @@ export function AbacusTarget({ number }: AbacusTargetProps) {
         hideInactiveBeads={true}
         scaleFactor={0.72}
         customStyles={{
-          columnPosts: { opacity: 0 }
+          columnPosts: { opacity: 0 },
         }}
       />
     </div>

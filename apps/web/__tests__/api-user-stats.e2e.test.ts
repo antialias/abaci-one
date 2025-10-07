@@ -2,9 +2,9 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { db, schema } from '../src/db'
 import { eq } from 'drizzle-orm'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { db, schema } from '../src/db'
 
 /**
  * API User Stats E2E Tests
@@ -19,10 +19,7 @@ describe('User Stats API', () => {
   beforeEach(async () => {
     // Create a test user with unique guest ID
     testGuestId = `test-guest-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const [user] = await db
-      .insert(schema.users)
-      .values({ guestId: testGuestId })
-      .returning()
+    const [user] = await db.insert(schema.users).values({ guestId: testGuestId }).returning()
     testUserId = user.id
   })
 
@@ -33,10 +30,7 @@ describe('User Stats API', () => {
 
   describe('GET /api/user-stats', () => {
     it('creates stats with defaults if none exist', async () => {
-      const [stats] = await db
-        .insert(schema.userStats)
-        .values({ userId: testUserId })
-        .returning()
+      const [stats] = await db.insert(schema.userStats).values({ userId: testUserId }).returning()
 
       expect(stats).toBeDefined()
       expect(stats.gamesPlayed).toBe(0)

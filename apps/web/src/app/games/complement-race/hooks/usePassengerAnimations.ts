@@ -36,10 +36,14 @@ export function usePassengerAnimations({
   stationPositions,
   trainPosition,
   trackGenerator,
-  pathRef
+  pathRef,
 }: UsePassengerAnimationsParams) {
-  const [boardingAnimations, setBoardingAnimations] = useState<Map<string, BoardingAnimation>>(new Map())
-  const [disembarkingAnimations, setDisembarkingAnimations] = useState<Map<string, DisembarkingAnimation>>(new Map())
+  const [boardingAnimations, setBoardingAnimations] = useState<Map<string, BoardingAnimation>>(
+    new Map()
+  )
+  const [disembarkingAnimations, setDisembarkingAnimations] = useState<
+    Map<string, DisembarkingAnimation>
+  >(new Map())
   const previousPassengersRef = useRef<Passenger[]>(passengers)
 
   // Detect passengers boarding/disembarking and start animations
@@ -50,21 +54,21 @@ export function usePassengerAnimations({
     const currentPassengers = passengers
 
     // Find newly boarded passengers
-    const newlyBoarded = currentPassengers.filter(curr => {
-      const prev = previousPassengers.find(p => p.id === curr.id)
+    const newlyBoarded = currentPassengers.filter((curr) => {
+      const prev = previousPassengers.find((p) => p.id === curr.id)
       return curr.isBoarded && prev && !prev.isBoarded
     })
 
     // Find newly delivered passengers
-    const newlyDelivered = currentPassengers.filter(curr => {
-      const prev = previousPassengers.find(p => p.id === curr.id)
+    const newlyDelivered = currentPassengers.filter((curr) => {
+      const prev = previousPassengers.find((p) => p.id === curr.id)
       return curr.isDelivered && prev && !prev.isDelivered
     })
 
     // Start animation for each newly boarded passenger
-    newlyBoarded.forEach(passenger => {
+    newlyBoarded.forEach((passenger) => {
       // Find origin station
-      const originStation = stations.find(s => s.id === passenger.originStationId)
+      const originStation = stations.find((s) => s.id === passenger.originStationId)
       if (!originStation) return
 
       const stationIndex = stations.indexOf(originStation)
@@ -72,7 +76,7 @@ export function usePassengerAnimations({
       if (!stationPos) return
 
       // Find which car this passenger will be in
-      const boardedPassengers = currentPassengers.filter(p => p.isBoarded && !p.isDelivered)
+      const boardedPassengers = currentPassengers.filter((p) => p.isBoarded && !p.isDelivered)
       const carIndex = boardedPassengers.indexOf(passenger)
 
       // Calculate train car position
@@ -87,10 +91,10 @@ export function usePassengerAnimations({
         toX: carTransform.x,
         toY: carTransform.y,
         carIndex,
-        startTime: Date.now()
+        startTime: Date.now(),
       }
 
-      setBoardingAnimations(prev => {
+      setBoardingAnimations((prev) => {
         const next = new Map(prev)
         next.set(passenger.id, animation)
         return next
@@ -98,7 +102,7 @@ export function usePassengerAnimations({
 
       // Remove animation after 800ms
       setTimeout(() => {
-        setBoardingAnimations(prev => {
+        setBoardingAnimations((prev) => {
           const next = new Map(prev)
           next.delete(passenger.id)
           return next
@@ -107,9 +111,9 @@ export function usePassengerAnimations({
     })
 
     // Start animation for each newly delivered passenger
-    newlyDelivered.forEach(passenger => {
+    newlyDelivered.forEach((passenger) => {
       // Find destination station
-      const destinationStation = stations.find(s => s.id === passenger.destinationStationId)
+      const destinationStation = stations.find((s) => s.id === passenger.destinationStationId)
       if (!destinationStation) return
 
       const stationIndex = stations.indexOf(destinationStation)
@@ -117,8 +121,8 @@ export function usePassengerAnimations({
       if (!stationPos) return
 
       // Find which car this passenger was in (before delivery)
-      const prevBoardedPassengers = previousPassengers.filter(p => p.isBoarded && !p.isDelivered)
-      const carIndex = prevBoardedPassengers.findIndex(p => p.id === passenger.id)
+      const prevBoardedPassengers = previousPassengers.filter((p) => p.isBoarded && !p.isDelivered)
+      const carIndex = prevBoardedPassengers.findIndex((p) => p.id === passenger.id)
       if (carIndex === -1) return
 
       // Calculate train car position at time of disembarking
@@ -132,10 +136,10 @@ export function usePassengerAnimations({
         fromY: carTransform.y,
         toX: stationPos.x,
         toY: stationPos.y - 30,
-        startTime: Date.now()
+        startTime: Date.now(),
       }
 
-      setDisembarkingAnimations(prev => {
+      setDisembarkingAnimations((prev) => {
         const next = new Map(prev)
         next.set(passenger.id, animation)
         return next
@@ -143,7 +147,7 @@ export function usePassengerAnimations({
 
       // Remove animation after 800ms
       setTimeout(() => {
-        setDisembarkingAnimations(prev => {
+        setDisembarkingAnimations((prev) => {
           const next = new Map(prev)
           next.delete(passenger.id)
           return next
@@ -157,6 +161,6 @@ export function usePassengerAnimations({
 
   return {
     boardingAnimations,
-    disembarkingAnimations
+    disembarkingAnimations,
   }
 }

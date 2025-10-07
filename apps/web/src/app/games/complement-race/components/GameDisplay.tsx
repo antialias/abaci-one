@@ -1,17 +1,17 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
-import { useAIRacers } from '../hooks/useAIRacers'
 import { useAdaptiveDifficulty } from '../hooks/useAdaptiveDifficulty'
-import { useSteamJourney } from '../hooks/useSteamJourney'
+import { useAIRacers } from '../hooks/useAIRacers'
 import { useSoundEffects } from '../hooks/useSoundEffects'
-import { LinearTrack } from './RaceTrack/LinearTrack'
+import { useSteamJourney } from '../hooks/useSteamJourney'
+import { generatePassengers } from '../lib/passengerGenerator'
+import { AbacusTarget } from './AbacusTarget'
 import { CircularTrack } from './RaceTrack/CircularTrack'
+import { LinearTrack } from './RaceTrack/LinearTrack'
 import { SteamTrainJourney } from './RaceTrack/SteamTrainJourney'
 import { RouteCelebration } from './RouteCelebration'
-import { AbacusTarget } from './AbacusTarget'
-import { generatePassengers } from '../lib/passengerGenerator'
 
 type FeedbackAnimation = 'correct' | 'incorrect' | null
 
@@ -45,7 +45,11 @@ export function GameDisplay() {
 
   // Check for finish line (player reaches race goal) - only for practice mode
   useEffect(() => {
-    if (state.correctAnswers >= state.raceGoal && state.isGameActive && state.style === 'practice') {
+    if (
+      state.correctAnswers >= state.raceGoal &&
+      state.isGameActive &&
+      state.style === 'practice'
+    ) {
       // Play celebration sound (line 14182)
       playSound('celebration')
       // End the game
@@ -70,7 +74,7 @@ export function GameDisplay() {
 
         // Check if answer is complete
         if (state.currentQuestion) {
-          const answer = parseInt(newInput)
+          const answer = parseInt(newInput, 10)
           const correctAnswer = state.currentQuestion.correctAnswer
 
           // If we have enough digits to match the answer, submit
@@ -157,7 +161,19 @@ export function GameDisplay() {
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [state.currentInput, state.currentQuestion, state.questionStartTime, state.style, state.streak, dispatch, trackPerformance, getAdaptiveFeedbackMessage, boostMomentum, playSound])
+  }, [
+    state.currentInput,
+    state.currentQuestion,
+    state.questionStartTime,
+    state.style,
+    state.streak,
+    dispatch,
+    trackPerformance,
+    getAdaptiveFeedbackMessage,
+    boostMomentum,
+    playSound,
+    state.momentum,
+  ])
 
   // Handle route celebration continue
   const handleContinueToNextRoute = () => {
@@ -167,7 +183,7 @@ export function GameDisplay() {
     dispatch({
       type: 'START_NEW_ROUTE',
       routeNumber: nextRoute,
-      stations: state.stations // Keep same stations for now
+      stations: state.stations, // Keep same stations for now
     })
 
     // Generate new passengers
@@ -178,90 +194,107 @@ export function GameDisplay() {
   if (!state.currentQuestion) return null
 
   return (
-    <div data-component="game-display" style={{
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      width: '100%'
-    }}>
+    <div
+      data-component="game-display"
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+      }}
+    >
       {/* Adaptive Feedback */}
       {state.adaptiveFeedback && (
-        <div data-component="adaptive-feedback" style={{
-          position: 'fixed',
-          top: '80px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          padding: '12px 24px',
-          borderRadius: '12px',
-          boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
-          fontSize: '16px',
-          fontWeight: 'bold',
-          zIndex: 1000,
-          animation: 'slideDown 0.3s ease-out',
-          maxWidth: '600px',
-          textAlign: 'center'
-        }}>
+        <div
+          data-component="adaptive-feedback"
+          style={{
+            position: 'fixed',
+            top: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            zIndex: 1000,
+            animation: 'slideDown 0.3s ease-out',
+            maxWidth: '600px',
+            textAlign: 'center',
+          }}
+        >
           {state.adaptiveFeedback.message}
         </div>
       )}
 
       {/* Stats Header - constrained width, hidden for sprint mode */}
       {state.style !== 'sprint' && (
-        <div data-component="stats-container" style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          width: '100%',
-          padding: '0 20px',
-          marginTop: '10px'
-        }}>
-          <div data-component="stats-header" style={{
-            display: 'flex',
-            justifyContent: 'space-around',
-            marginBottom: '10px',
-            background: 'white',
-            borderRadius: '12px',
-            padding: '10px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-          }}>
-          <div data-stat="score" style={{ textAlign: 'center' }}>
-            <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>Score</div>
-            <div style={{ fontWeight: 'bold', fontSize: '24px', color: '#3b82f6' }}>
-              {state.score}
+        <div
+          data-component="stats-container"
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            width: '100%',
+            padding: '0 20px',
+            marginTop: '10px',
+          }}
+        >
+          <div
+            data-component="stats-header"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-around',
+              marginBottom: '10px',
+              background: 'white',
+              borderRadius: '12px',
+              padding: '10px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <div data-stat="score" style={{ textAlign: 'center' }}>
+              <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>Score</div>
+              <div style={{ fontWeight: 'bold', fontSize: '24px', color: '#3b82f6' }}>
+                {state.score}
+              </div>
+            </div>
+            <div data-stat="streak" style={{ textAlign: 'center' }}>
+              <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>Streak</div>
+              <div style={{ fontWeight: 'bold', fontSize: '24px', color: '#10b981' }}>
+                {state.streak} 🔥
+              </div>
+            </div>
+            <div data-stat="progress" style={{ textAlign: 'center' }}>
+              <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>
+                Progress
+              </div>
+              <div style={{ fontWeight: 'bold', fontSize: '24px', color: '#f59e0b' }}>
+                {state.correctAnswers}/{state.raceGoal}
+              </div>
             </div>
           </div>
-          <div data-stat="streak" style={{ textAlign: 'center' }}>
-            <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>Streak</div>
-            <div style={{ fontWeight: 'bold', fontSize: '24px', color: '#10b981' }}>
-              {state.streak} 🔥
-            </div>
-          </div>
-          <div data-stat="progress" style={{ textAlign: 'center' }}>
-            <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>Progress</div>
-            <div style={{ fontWeight: 'bold', fontSize: '24px', color: '#f59e0b' }}>
-              {state.correctAnswers}/{state.raceGoal}
-            </div>
-          </div>
-        </div>
         </div>
       )}
 
       {/* Race Track - full width, break out of padding */}
-      <div data-component="track-container" style={{
-        width: '100vw',
-        position: 'relative',
-        left: '50%',
-        right: '50%',
-        marginLeft: '-50vw',
-        marginRight: '-50vw',
-        padding: state.style === 'sprint' ? '0' : '0 20px',
-        display: 'flex',
-        justifyContent: state.style === 'sprint' ? 'stretch' : 'center',
-        background: 'transparent',
-        flex: state.style === 'sprint' ? 1 : 'initial',
-        minHeight: state.style === 'sprint' ? 0 : 'initial'
-      }}>
+      <div
+        data-component="track-container"
+        style={{
+          width: '100vw',
+          position: 'relative',
+          left: '50%',
+          right: '50%',
+          marginLeft: '-50vw',
+          marginRight: '-50vw',
+          padding: state.style === 'sprint' ? '0' : '0 20px',
+          display: 'flex',
+          justifyContent: state.style === 'sprint' ? 'stretch' : 'center',
+          background: 'transparent',
+          flex: state.style === 'sprint' ? 1 : 'initial',
+          minHeight: state.style === 'sprint' ? 0 : 'initial',
+        }}
+      >
         {state.style === 'survival' ? (
           <CircularTrack
             playerProgress={state.correctAnswers}
@@ -290,54 +323,67 @@ export function GameDisplay() {
 
       {/* Question Display - only for non-sprint modes */}
       {state.style !== 'sprint' && (
-        <div data-component="question-container" style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          width: '100%',
-          padding: '0 20px',
-          display: 'flex',
-          justifyContent: 'center',
-          marginTop: '20px'
-        }}>
-          <div data-component="question-display" style={{
-            background: 'rgba(255, 255, 255, 0.98)',
-            borderRadius: '24px',
-            padding: '28px 50px',
-            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.3), 0 0 0 5px rgba(59, 130, 246, 0.4)',
-            backdropFilter: 'blur(12px)',
-            border: '4px solid rgba(255, 255, 255, 0.95)'
-          }}>
+        <div
+          data-component="question-container"
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            width: '100%',
+            padding: '0 20px',
+            display: 'flex',
+            justifyContent: 'center',
+            marginTop: '20px',
+          }}
+        >
+          <div
+            data-component="question-display"
+            style={{
+              background: 'rgba(255, 255, 255, 0.98)',
+              borderRadius: '24px',
+              padding: '28px 50px',
+              boxShadow: '0 16px 40px rgba(0, 0, 0, 0.3), 0 0 0 5px rgba(59, 130, 246, 0.4)',
+              backdropFilter: 'blur(12px)',
+              border: '4px solid rgba(255, 255, 255, 0.95)',
+            }}
+          >
             {/* Complement equation as main focus */}
-            <div data-element="question-equation" style={{
-              fontSize: '96px',
-              fontWeight: 'bold',
-              color: '#1f2937',
-              lineHeight: '1.1',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '20px',
-              justifyContent: 'center'
-            }}>
-              <span style={{
-                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                color: 'white',
-                padding: '12px 32px',
-                borderRadius: '16px',
-                minWidth: '140px',
-                display: 'inline-block',
-                textShadow: '0 3px 10px rgba(0, 0, 0, 0.3)'
-              }}>
+            <div
+              data-element="question-equation"
+              style={{
+                fontSize: '96px',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                lineHeight: '1.1',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '20px',
+                justifyContent: 'center',
+              }}
+            >
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                  color: 'white',
+                  padding: '12px 32px',
+                  borderRadius: '16px',
+                  minWidth: '140px',
+                  display: 'inline-block',
+                  textShadow: '0 3px 10px rgba(0, 0, 0, 0.3)',
+                }}
+              >
                 {state.currentInput || '?'}
               </span>
               <span style={{ color: '#6b7280' }}>+</span>
               {state.currentQuestion.showAsAbacus ? (
-                <div style={{
-                  transform: 'scale(2.4) translateY(8%)',
-                  transformOrigin: 'center center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
+                <div
+                  style={{
+                    transform: 'scale(2.4) translateY(8%)',
+                    transformOrigin: 'center center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
                   <AbacusTarget number={state.currentQuestion.number} />
                 </div>
               ) : (

@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
-import {
-  createArcadeSession,
-  getArcadeSession,
-  deleteArcadeSession,
-  applyGameMove,
-} from '../session-manager'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { MemoryPairsState } from '@/app/games/matching/context/types'
+import { db, schema } from '@/db'
+import {
+  applyGameMove,
+  createArcadeSession,
+  deleteArcadeSession,
+  getArcadeSession,
+} from '../session-manager'
 
 /**
  * Integration test for the full arcade session flow

@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
-import { GameCard } from './GameCard'
-import { getGridConfiguration } from '../utils/cardGeneration'
+import { useEffect, useMemo, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
-import { gamePlurals } from '../../../../utils/pluralization'
+import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
+import { getGridConfiguration } from '../utils/cardGeneration'
+import { GameCard } from './GameCard'
 
 // Helper function to calculate optimal grid dimensions
 function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
@@ -59,7 +58,10 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
       const aspectRatio = window.innerWidth / window.innerHeight
       return calculateOptimalGrid(totalCards, aspectRatio, gridConfig)
     }
-    return { columns: gridConfig.mobileColumns || 3, rows: Math.ceil(totalCards / (gridConfig.mobileColumns || 3)) }
+    return {
+      columns: gridConfig.mobileColumns || 3,
+      rows: Math.ceil(totalCards / (gridConfig.mobileColumns || 3)),
+    }
   })
 
   useEffect(() => {
@@ -81,29 +83,28 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
 export function MemoryGrid() {
   const { state, flipCard } = useArcadeMemoryPairs()
 
-  if (!state.gameCards.length) {
-    return null
-  }
-
+  // Hooks must be called before early return
   const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])
   const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length)
 
+  if (!state.gameCards.length) {
+    return null
+  }
 
   const handleCardClick = (cardId: string) => {
     flipCard(cardId)
   }
 
-
   return (
-    <div className={css({
-      padding: { base: '12px', sm: '16px', md: '20px' },
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: { base: '12px', sm: '16px', md: '20px' }
-    })}>
-
-
+    <div
+      className={css({
+        padding: { base: '12px', sm: '16px', md: '20px' },
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: { base: '12px', sm: '16px', md: '20px' },
+      })}
+    >
       {/* Cards Grid - Consistent r×c Layout */}
       <div
         style={{
@@ -115,18 +116,23 @@ export function MemoryGrid() {
           padding: '0 8px',
           // Consistent grid ensuring all cards fit in r×c layout
           gridTemplateColumns: `repeat(${gridDimensions.columns}, 1fr)`,
-          gridTemplateRows: `repeat(${gridDimensions.rows}, 1fr)`
+          gridTemplateRows: `repeat(${gridDimensions.rows}, 1fr)`,
         }}
       >
-        {state.gameCards.map(card => {
-          const isFlipped = state.flippedCards.some(c => c.id === card.id) || card.matched
+        {state.gameCards.map((card) => {
+          const isFlipped = state.flippedCards.some((c) => c.id === card.id) || card.matched
           const isMatched = card.matched
 
           // Smart card filtering for abacus-numeral mode
           let isValidForSelection = true
           let isDimmed = false
 
-          if (state.gameType === 'abacus-numeral' && state.flippedCards.length === 1 && !isFlipped && !isMatched) {
+          if (
+            state.gameType === 'abacus-numeral' &&
+            state.flippedCards.length === 1 &&
+            !isFlipped &&
+            !isMatched
+          ) {
             const firstFlippedCard = state.flippedCards[0]
 
             // If first card is abacus, only numeral cards should be clickable
@@ -141,8 +147,12 @@ export function MemoryGrid() {
             }
             // Also check if it's a potential match by number
             else if (
-              (firstFlippedCard.type === 'abacus' && card.type === 'number' && card.number !== firstFlippedCard.number) ||
-              (firstFlippedCard.type === 'number' && card.type === 'abacus' && card.number !== firstFlippedCard.number)
+              (firstFlippedCard.type === 'abacus' &&
+                card.type === 'number' &&
+                card.number !== firstFlippedCard.number) ||
+              (firstFlippedCard.type === 'number' &&
+                card.type === 'abacus' &&
+                card.number !== firstFlippedCard.number)
             ) {
               // Don't completely disable, but could add subtle visual hint for non-matching numbers
               // For now, keep all valid type combinations clickable
@@ -161,13 +171,14 @@ export function MemoryGrid() {
                 // Dimming effect for invalid cards
                 opacity: isDimmed ? 0.3 : 1,
                 transition: 'opacity 0.3s ease',
-                filter: isDimmed ? 'grayscale(0.7)' : 'none'
-              })}>
+                filter: isDimmed ? 'grayscale(0.7)' : 'none',
+              })}
+            >
               <GameCard
                 card={card}
                 isFlipped={isFlipped}
                 isMatched={isMatched}
-                onClick={() => isValidForSelection ? handleCardClick(card.id) : undefined}
+                onClick={() => (isValidForSelection ? handleCardClick(card.id) : undefined)}
                 disabled={state.isProcessingMove || !isValidForSelection}
               />
             </div>
@@ -177,26 +188,30 @@ export function MemoryGrid() {
 
       {/* Mismatch Feedback */}
       {state.showMismatchFeedback && (
-        <div className={css({
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'linear-gradient(135deg, #ff6b6b, #ee5a24)',
-          color: 'white',
-          padding: '16px 24px',
-          borderRadius: '16px',
-          fontSize: '18px',
-          fontWeight: 'bold',
-          boxShadow: '0 8px 25px rgba(255, 107, 107, 0.4)',
-          zIndex: 1000,
-          animation: 'shake 0.5s ease-in-out'
-        })}>
-          <div className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          })}>
+        <div
+          className={css({
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'linear-gradient(135deg, #ff6b6b, #ee5a24)',
+            color: 'white',
+            padding: '16px 24px',
+            borderRadius: '16px',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            boxShadow: '0 8px 25px rgba(255, 107, 107, 0.4)',
+            zIndex: 1000,
+            animation: 'shake 0.5s ease-in-out',
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            })}
+          >
             <span>❌</span>
             <span>Not a match! Try again.</span>
           </div>
@@ -205,18 +220,19 @@ export function MemoryGrid() {
 
       {/* Processing Overlay */}
       {state.isProcessingMove && (
-        <div className={css({
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.1)',
-          zIndex: 999,
-          pointerEvents: 'none'
-        })} />
+        <div
+          className={css({
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.1)',
+            zIndex: 999,
+            pointerEvents: 'none',
+          })}
+        />
       )}
-
     </div>
   )
 }

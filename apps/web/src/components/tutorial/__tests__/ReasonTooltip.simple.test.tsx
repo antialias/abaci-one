@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { TermProvenance } from '../../../utils/unifiedStepGenerator'
 
 // Simple unit test for the tooltip content generation logic
@@ -10,7 +10,7 @@ describe('ReasonTooltip Provenance Logic', () => {
       rhsPlace: 1,
       rhsPlaceName: 'tens',
       rhsDigitIndex: 0,
-      rhsValue: 20
+      rhsValue: 20,
     }
 
     // This is the logic from getEnhancedTooltipContent
@@ -28,23 +28,26 @@ describe('ReasonTooltip Provenance Logic', () => {
       rhsPlace: 1,
       rhsPlaceName: 'tens',
       rhsDigitIndex: 0,
-      rhsValue: 20
+      rhsValue: 20,
     }
 
     // This is the logic from getEnhancedTooltipContent
     const enhancedChips = [
-      { label: 'Digit we\'re using', value: `${provenance.rhsDigit} (${provenance.rhsPlaceName})` },
-      { label: 'So we add here', value: `+${provenance.rhsDigit} ${provenance.rhsPlaceName} → ${provenance.rhsValue}` }
+      { label: "Digit we're using", value: `${provenance.rhsDigit} (${provenance.rhsPlaceName})` },
+      {
+        label: 'So we add here',
+        value: `+${provenance.rhsDigit} ${provenance.rhsPlaceName} → ${provenance.rhsValue}`,
+      },
     ]
 
     expect(enhancedChips[0]).toEqual({
-      label: 'Digit we\'re using',
-      value: '2 (tens)'
+      label: "Digit we're using",
+      value: '2 (tens)',
     })
 
     expect(enhancedChips[1]).toEqual({
       label: 'So we add here',
-      value: '+2 tens → 20'
+      value: '+2 tens → 20',
     })
   })
 
@@ -55,13 +58,13 @@ describe('ReasonTooltip Provenance Logic', () => {
       rhsPlace: 1,
       rhsPlaceName: 'tens',
       rhsDigitIndex: 0,
-      rhsValue: 20
+      rhsValue: 20,
     }
 
     // This is the logic from the "Why this step" section
     const explanationText = `We're adding the ${provenance.rhsPlaceName} digit of ${provenance.rhs} → ${provenance.rhsDigit} ${provenance.rhsPlaceName}.`
 
-    expect(explanationText).toBe('We\'re adding the tens digit of 25 → 2 tens.')
+    expect(explanationText).toBe("We're adding the tens digit of 25 → 2 tens.")
   })
 
   it('should handle ones digit provenance correctly', () => {
@@ -71,7 +74,7 @@ describe('ReasonTooltip Provenance Logic', () => {
       rhsPlace: 0,
       rhsPlaceName: 'ones',
       rhsDigitIndex: 1, // '5' is the second digit in '25'
-      rhsValue: 5
+      rhsValue: 5,
     }
 
     const title = `Add the ${onesProvenance.rhsPlaceName} digit — ${onesProvenance.rhsDigit} ${onesProvenance.rhsPlaceName} (${onesProvenance.rhsValue})`
@@ -89,7 +92,7 @@ describe('ReasonTooltip Provenance Logic', () => {
       rhsPlaceName: 'ones',
       rhsDigitIndex: 1,
       rhsValue: 5,
-      groupId: '10comp-0-5'
+      groupId: '10comp-0-5',
     }
 
     // All terms in a complement group should trace back to the same source digit
@@ -110,7 +113,7 @@ describe('ReasonTooltip Provenance Logic', () => {
       rhsPlace: 1,
       rhsPlaceName: 'tens',
       rhsDigitIndex: 0, // '2' is the first character in '25'
-      rhsValue: 20      // 2 * 10^1 = 20
+      rhsValue: 20, // 2 * 10^1 = 20
     }
 
     // This should generate the exact text the user is expecting
@@ -120,10 +123,10 @@ describe('ReasonTooltip Provenance Logic', () => {
 
     expect(title).toBe('Add the tens digit — 2 tens (20)')
     expect(subtitle).toBe('From addend 25')
-    expect(explanation).toBe('We\'re adding the tens digit of 25 → 2 tens.')
+    expect(explanation).toBe("We're adding the tens digit of 25 → 2 tens.")
 
     // The key insight: the "20" pill now explicitly shows it came from the "2" in "25"
     expect(tensDigitProvenance.rhsDigitIndex).toBe(0) // Points to the '2' in '25'
-    expect(tensDigitProvenance.rhsValue).toBe(20)     // Shows the transformation 2 → 20
+    expect(tensDigitProvenance.rhsValue).toBe(20) // Shows the transformation 2 → 20
   })
 })

@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify } from 'jose'
+import { jwtVerify, SignJWT } from 'jose'
 
 /**
  * Guest token utilities for stateless guest session management
@@ -10,8 +10,7 @@ import { SignJWT, jwtVerify } from 'jose'
 // Cookie name with __Host- prefix for security in production
 // __Host- prefix requires: Secure, Path=/, no Domain
 // In development (http://localhost), __Host- won't work without Secure flag
-export const GUEST_COOKIE_NAME =
-  process.env.NODE_ENV === 'production' ? '__Host-guest' : 'guest'
+export const GUEST_COOKIE_NAME = process.env.NODE_ENV === 'production' ? '__Host-guest' : 'guest'
 
 /**
  * Get the secret key for signing/verifying JWTs

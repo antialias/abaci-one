@@ -18,7 +18,7 @@ global.ResizeObserver = vi.fn(() => ({
 // Mock window.matchMedia for responsive components
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -91,7 +91,7 @@ expect.extend({
         pass: false,
       }
     }
-  }
+  },
 })
 
 // Mock the unified step generator for consistent test results
@@ -103,18 +103,18 @@ vi.mock('../../../utils/unifiedStepGenerator', () => ({
         expectedValue: startValue + Math.ceil((targetValue - startValue) / 2),
         englishInstruction: `Change value to ${startValue + Math.ceil((targetValue - startValue) / 2)}`,
         mathematicalTerm: `${Math.ceil((targetValue - startValue) / 2)}`,
-        termPosition: { startIndex: 0, endIndex: 2 }
+        termPosition: { startIndex: 0, endIndex: 2 },
       },
       {
         stepIndex: 1,
         expectedValue: targetValue,
         englishInstruction: `Change value to ${targetValue}`,
         mathematicalTerm: `${targetValue}`,
-        termPosition: { startIndex: 4, endIndex: 6 }
-      }
+        termPosition: { startIndex: 4, endIndex: 6 },
+      },
     ],
-    fullDecomposition: `${startValue} + ${targetValue - startValue} = ${targetValue}`
-  }))
+    fullDecomposition: `${startValue} + ${targetValue - startValue} = ${targetValue}`,
+  })),
 }))
 
 // Type declarations for custom matchers

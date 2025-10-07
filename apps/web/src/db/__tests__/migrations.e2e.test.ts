@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
 import Database from 'better-sqlite3'
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 describe('Migrations E2E', () => {
   let sqlite: Database.Database
@@ -82,9 +82,7 @@ describe('Migrations E2E', () => {
     migrate(db, { migrationsFolder: './drizzle' })
 
     // Insert user
-    sqlite
-      .prepare("INSERT INTO users (id, guest_id, created_at) VALUES ('u1', 'g1', 0)")
-      .run()
+    sqlite.prepare("INSERT INTO users (id, guest_id, created_at) VALUES ('u1', 'g1', 0)").run()
 
     // Insert player for that user
     sqlite
@@ -110,9 +108,7 @@ describe('Migrations E2E', () => {
     migrate(db, { migrationsFolder: './drizzle' })
 
     // Insert user
-    sqlite
-      .prepare("INSERT INTO users (id, guest_id, created_at) VALUES ('u1', 'g1', 0)")
-      .run()
+    sqlite.prepare("INSERT INTO users (id, guest_id, created_at) VALUES ('u1', 'g1', 0)").run()
 
     // Insert stats for that user
     sqlite

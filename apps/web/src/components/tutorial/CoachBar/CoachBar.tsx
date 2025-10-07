@@ -1,8 +1,7 @@
 'use client'
 
-import React from 'react'
-import { useTutorialUI } from '../TutorialUIContext'
 import type { PedagogicalSegment } from '../DecompositionWithReasons'
+import { useTutorialUI } from '../TutorialUIContext'
 
 export function CoachBar() {
   const ui = useTutorialUI()
@@ -13,12 +12,7 @@ export function CoachBar() {
   const r = seg.readable
 
   return (
-    <aside
-      className="coachbar"
-      role="status"
-      aria-live="polite"
-      data-test-id="coachbar"
-    >
+    <aside className="coachbar" role="status" aria-live="polite" data-test-id="coachbar">
       <div className="coachbar__row">
         <div className="coachbar__title">{r.title ?? 'Step'}</div>
         {ui.canHideCoachBar && (

@@ -1,18 +1,15 @@
-import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { TutorialPlayer } from '../TutorialPlayer'
-import { getTutorialForEditor } from '../../../utils/tutorialConverter'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tutorial } from '../../../types/tutorial'
+import { getTutorialForEditor } from '../../../utils/tutorialConverter'
+import { TutorialPlayer } from '../TutorialPlayer'
 
 // Mock the AbacusReact component for integration tests
 vi.mock('@soroban/abacus-react', () => ({
   AbacusReact: ({ value, onValueChange, callbacks, stepBeadHighlights }: any) => (
     <div data-testid="mock-abacus">
       <div data-testid="abacus-value">{value}</div>
-      <div data-testid="step-bead-highlights">
-        {stepBeadHighlights?.length || 0} arrows
-      </div>
+      <div data-testid="step-bead-highlights">{stepBeadHighlights?.length || 0} arrows</div>
       <button
         data-testid="mock-bead-0"
         onClick={() => {
@@ -21,7 +18,7 @@ vi.mock('@soroban/abacus-react', () => ({
             placeValue: 0,
             beadType: 'earth',
             position: 0,
-            active: false
+            active: false,
           })
         }}
       >
@@ -34,14 +31,14 @@ vi.mock('@soroban/abacus-react', () => ({
           callbacks?.onBeadClick?.({
             placeValue: 0,
             beadType: 'heaven',
-            active: false
+            active: false,
           })
         }}
       >
         Mock Heaven Bead
       </button>
     </div>
-  )
+  ),
 }))
 
 describe('TutorialPlayer New Layout Integration Tests', () => {
@@ -94,7 +91,7 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
       renderTutorialPlayer()
 
       // Should show current instruction in inline guidance area
-      const firstStep = mockTutorial.steps[0]
+      const _firstStep = mockTutorial.steps[0]
       expect(screen.getByText('Click the earth bead to add 1')).toBeInTheDocument()
     })
 
@@ -226,12 +223,14 @@ describe('TutorialPlayer New Layout Integration Tests', () => {
       // Test with a tutorial step that has very long instructions
       const longInstructionTutorial = {
         ...mockTutorial,
-        steps: [{
-          ...mockTutorial.steps[0],
-          multiStepInstructions: [
-            'This is a very long instruction that should be handled gracefully within the fixed height guidance area without breaking the layout or causing the abacus to move from its fixed position'
-          ]
-        }]
+        steps: [
+          {
+            ...mockTutorial.steps[0],
+            multiStepInstructions: [
+              'This is a very long instruction that should be handled gracefully within the fixed height guidance area without breaking the layout or causing the abacus to move from its fixed position',
+            ],
+          },
+        ],
       }
 
       render(

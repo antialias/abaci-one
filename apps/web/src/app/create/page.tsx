@@ -1,17 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import { useForm } from '@tanstack/react-form'
-import { css } from '../../../styled-system/css'
-import { container, stack, hstack, grid } from '../../../styled-system/patterns'
-import { PageWithNav } from '@/components/PageWithNav'
-import Link from 'next/link'
-import { ConfigurationForm } from '@/components/ConfigurationForm'
-import { ConfigurationFormWithoutGenerate } from '@/components/ConfigurationFormWithoutGenerate'
-import { LivePreview } from '@/components/LivePreview'
-import { GenerationProgress } from '@/components/GenerationProgress'
-import { StyleControls } from '@/components/StyleControls'
 import { useAbacusConfig } from '@soroban/abacus-react'
+import { useForm } from '@tanstack/react-form'
+import { useState } from 'react'
+import { ConfigurationFormWithoutGenerate } from '@/components/ConfigurationFormWithoutGenerate'
+import { GenerationProgress } from '@/components/GenerationProgress'
+import { LivePreview } from '@/components/LivePreview'
+import { PageWithNav } from '@/components/PageWithNav'
+import { StyleControls } from '@/components/StyleControls'
+import { css } from '../../../styled-system/css'
+import { container, grid, hstack, stack } from '../../../styled-system/patterns'
 
 // Complete, validated configuration ready for generation
 export interface FlashcardConfig {
@@ -99,7 +97,7 @@ function validateAndCompleteConfig(formState: FlashcardFormState): FlashcardConf
     coloredNumerals: formState.coloredNumerals ?? false,
     scaleFactor: formState.scaleFactor ?? 0.9,
     format: formState.format ?? 'pdf',
-    margins: formState.margins
+    margins: formState.margins,
   }
 }
 
@@ -131,8 +129,8 @@ export default function CreatePage() {
       colorScheme: globalConfig.colorScheme,
       coloredNumerals: globalConfig.coloredNumerals,
       scaleFactor: globalConfig.scaleFactor,
-      format: 'pdf'
-    }
+      format: 'pdf',
+    },
   })
 
   const handleGenerate = async (formState: FlashcardFormState) => {
@@ -188,198 +186,225 @@ export default function CreatePage() {
   return (
     <PageWithNav navTitle="Create Flashcards" navEmoji="✨">
       <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
-
-      {/* Main Content */}
-      <div className={container({ maxW: '7xl', px: '4', py: '8' })}>
-        <div className={stack({ gap: '6', mb: '8' })}>
-          <div className={stack({ gap: '2', textAlign: 'center' })}>
-            <h1 className={css({
-              fontSize: '3xl',
-              fontWeight: 'bold',
-              color: 'gray.900'
-            })}>
-              Create Your Flashcards
-            </h1>
-            <p className={css({
-              fontSize: 'lg',
-              color: 'gray.600'
-            })}>
-              Configure content and style, preview instantly, then generate your flashcards
-            </p>
-          </div>
-        </div>
-
-        {/* Configuration Interface */}
-        <div className={grid({
-          columns: { base: 1, lg: 3 },
-          gap: '8',
-          alignItems: 'start'
-        })}>
-          {/* Main Configuration Panel */}
-          <div className={css({
-            bg: 'white',
-            rounded: '2xl',
-            shadow: 'card',
-            p: '8'
-          })}>
-            <ConfigurationFormWithoutGenerate form={form} />
-          </div>
-
-          {/* Style Controls Panel */}
-          <div className={css({
-            bg: 'white',
-            rounded: '2xl',
-            shadow: 'card',
-            p: '6'
-          })}>
-            <div className={stack({ gap: '4' })}>
-              <div className={stack({ gap: '1' })}>
-                <h3 className={css({
-                  fontSize: 'lg',
+        {/* Main Content */}
+        <div className={container({ maxW: '7xl', px: '4', py: '8' })}>
+          <div className={stack({ gap: '6', mb: '8' })}>
+            <div className={stack({ gap: '2', textAlign: 'center' })}>
+              <h1
+                className={css({
+                  fontSize: '3xl',
                   fontWeight: 'bold',
-                  color: 'gray.900'
-                })}>
-                  🎨 Visual Style
-                </h3>
-                <p className={css({
-                  fontSize: 'sm',
-                  color: 'gray.600'
-                })}>
-                  See changes instantly in the preview
-                </p>
-              </div>
-
-              <form.Subscribe
-                selector={(state) => state}
-                children={(state) => <StyleControls form={form} />}
-              />
+                  color: 'gray.900',
+                })}
+              >
+                Create Your Flashcards
+              </h1>
+              <p
+                className={css({
+                  fontSize: 'lg',
+                  color: 'gray.600',
+                })}
+              >
+                Configure content and style, preview instantly, then generate your flashcards
+              </p>
             </div>
           </div>
 
-          {/* Live Preview Panel */}
-          <div className={css({
-            bg: 'white',
-            rounded: '2xl',
-            shadow: 'card',
-            p: '6'
-          })}>
-            <div className={stack({ gap: '6' })}>
-              <form.Subscribe
-                selector={(state) => state}
-                children={(state) => <LivePreview config={state.values} />}
-              />
+          {/* Configuration Interface */}
+          <div
+            className={grid({
+              columns: { base: 1, lg: 3 },
+              gap: '8',
+              alignItems: 'start',
+            })}
+          >
+            {/* Main Configuration Panel */}
+            <div
+              className={css({
+                bg: 'white',
+                rounded: '2xl',
+                shadow: 'card',
+                p: '8',
+              })}
+            >
+              <ConfigurationFormWithoutGenerate form={form} />
+            </div>
 
-              {/* Generate Button within Preview */}
-              <div className={css({
-                borderTop: '1px solid',
-                borderColor: 'gray.200',
-                pt: '6'
-              })}>
-                {/* Generation Status */}
-                {generationStatus === 'generating' && (
-                  <div className={css({ mb: '4' })}>
-                    <GenerationProgress config={form.state.values} />
-                  </div>
-                )}
+            {/* Style Controls Panel */}
+            <div
+              className={css({
+                bg: 'white',
+                rounded: '2xl',
+                shadow: 'card',
+                p: '6',
+              })}
+            >
+              <div className={stack({ gap: '4' })}>
+                <div className={stack({ gap: '1' })}>
+                  <h3
+                    className={css({
+                      fontSize: 'lg',
+                      fontWeight: 'bold',
+                      color: 'gray.900',
+                    })}
+                  >
+                    🎨 Visual Style
+                  </h3>
+                  <p
+                    className={css({
+                      fontSize: 'sm',
+                      color: 'gray.600',
+                    })}
+                  >
+                    See changes instantly in the preview
+                  </p>
+                </div>
 
-                <button
-                  onClick={() => handleGenerate(form.state.values)}
-                  disabled={generationStatus === 'generating'}
+                <form.Subscribe
+                  selector={(state) => state}
+                  children={(_state) => <StyleControls form={form} />}
+                />
+              </div>
+            </div>
+
+            {/* Live Preview Panel */}
+            <div
+              className={css({
+                bg: 'white',
+                rounded: '2xl',
+                shadow: 'card',
+                p: '6',
+              })}
+            >
+              <div className={stack({ gap: '6' })}>
+                <form.Subscribe
+                  selector={(state) => state}
+                  children={(state) => <LivePreview config={state.values} />}
+                />
+
+                {/* Generate Button within Preview */}
+                <div
                   className={css({
-                    w: 'full',
-                    px: '6',
-                    py: '4',
-                    bg: 'brand.600',
-                    color: 'white',
-                    fontSize: 'lg',
-                    fontWeight: 'semibold',
-                    rounded: 'xl',
-                    shadow: 'card',
-                    transition: 'all',
-                    cursor: generationStatus === 'generating' ? 'not-allowed' : 'pointer',
-                    opacity: generationStatus === 'generating' ? '0.7' : '1',
-                    _hover: generationStatus === 'generating' ? {} : {
-                      bg: 'brand.700',
-                      transform: 'translateY(-1px)',
-                      shadow: 'modal'
-                    }
+                    borderTop: '1px solid',
+                    borderColor: 'gray.200',
+                    pt: '6',
                   })}
                 >
-                  <span className={hstack({ gap: '3', justify: 'center' })}>
-                    {generationStatus === 'generating' ? (
-                      <>
-                        <div className={css({
-                          w: '5',
-                          h: '5',
-                          border: '2px solid',
-                          borderColor: 'white',
-                          borderTopColor: 'transparent',
-                          rounded: 'full',
-                          animation: 'spin 1s linear infinite'
-                        })} />
-                        Generating Your Flashcards...
-                      </>
-                    ) : (
-                      <>
-                        <div className={css({ fontSize: 'xl' })}>✨</div>
-                        Generate Flashcards
-                      </>
-                    )}
-                  </span>
+                  {/* Generation Status */}
+                  {generationStatus === 'generating' && (
+                    <div className={css({ mb: '4' })}>
+                      <GenerationProgress config={form.state.values} />
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => handleGenerate(form.state.values)}
+                    disabled={generationStatus === 'generating'}
+                    className={css({
+                      w: 'full',
+                      px: '6',
+                      py: '4',
+                      bg: 'brand.600',
+                      color: 'white',
+                      fontSize: 'lg',
+                      fontWeight: 'semibold',
+                      rounded: 'xl',
+                      shadow: 'card',
+                      transition: 'all',
+                      cursor: generationStatus === 'generating' ? 'not-allowed' : 'pointer',
+                      opacity: generationStatus === 'generating' ? '0.7' : '1',
+                      _hover:
+                        generationStatus === 'generating'
+                          ? {}
+                          : {
+                              bg: 'brand.700',
+                              transform: 'translateY(-1px)',
+                              shadow: 'modal',
+                            },
+                    })}
+                  >
+                    <span className={hstack({ gap: '3', justify: 'center' })}>
+                      {generationStatus === 'generating' ? (
+                        <>
+                          <div
+                            className={css({
+                              w: '5',
+                              h: '5',
+                              border: '2px solid',
+                              borderColor: 'white',
+                              borderTopColor: 'transparent',
+                              rounded: 'full',
+                              animation: 'spin 1s linear infinite',
+                            })}
+                          />
+                          Generating Your Flashcards...
+                        </>
+                      ) : (
+                        <>
+                          <div className={css({ fontSize: 'xl' })}>✨</div>
+                          Generate Flashcards
+                        </>
+                      )}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Error Display - moved to global level */}
+          {generationStatus === 'error' && error && (
+            <div
+              className={css({
+                bg: 'red.50',
+                border: '1px solid',
+                borderColor: 'red.200',
+                rounded: '2xl',
+                p: '8',
+                mt: '8',
+              })}
+            >
+              <div className={stack({ gap: '4' })}>
+                <div className={hstack({ gap: '3', alignItems: 'center' })}>
+                  <div className={css({ fontSize: '2xl' })}>❌</div>
+                  <h3
+                    className={css({
+                      fontSize: 'xl',
+                      fontWeight: 'semibold',
+                      color: 'red.800',
+                    })}
+                  >
+                    Generation Failed
+                  </h3>
+                </div>
+                <p
+                  className={css({
+                    color: 'red.700',
+                    lineHeight: 'relaxed',
+                  })}
+                >
+                  {error}
+                </p>
+                <button
+                  onClick={handleNewGeneration}
+                  className={css({
+                    alignSelf: 'start',
+                    px: '4',
+                    py: '2',
+                    bg: 'red.600',
+                    color: 'white',
+                    fontWeight: 'medium',
+                    rounded: 'lg',
+                    transition: 'all',
+                    _hover: { bg: 'red.700' },
+                  })}
+                >
+                  Try Again
                 </button>
               </div>
             </div>
-          </div>
+          )}
         </div>
-
-
-        {/* Error Display - moved to global level */}
-        {generationStatus === 'error' && error && (
-          <div className={css({
-            bg: 'red.50',
-            border: '1px solid',
-            borderColor: 'red.200',
-            rounded: '2xl',
-            p: '8',
-            mt: '8'
-          })}>
-            <div className={stack({ gap: '4' })}>
-              <div className={hstack({ gap: '3', alignItems: 'center' })}>
-                <div className={css({ fontSize: '2xl' })}>❌</div>
-                <h3 className={css({
-                  fontSize: 'xl',
-                  fontWeight: 'semibold',
-                  color: 'red.800'
-                })}>
-                  Generation Failed
-                </h3>
-              </div>
-              <p className={css({
-                color: 'red.700',
-                lineHeight: 'relaxed'
-              })}>
-                {error}
-              </p>
-              <button
-                onClick={handleNewGeneration}
-                className={css({
-                  alignSelf: 'start',
-                  px: '4',
-                  py: '2',
-                  bg: 'red.600',
-                  color: 'white',
-                  fontWeight: 'medium',
-                  rounded: 'lg',
-                  transition: 'all',
-                  _hover: { bg: 'red.700' }
-                })}
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
       </div>
     </PageWithNav>
   )

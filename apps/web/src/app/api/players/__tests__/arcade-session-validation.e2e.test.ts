@@ -2,11 +2,11 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { db, schema } from '../../../../db'
 import { eq } from 'drizzle-orm'
-import { PATCH } from '../[id]/route'
 import { NextRequest } from 'next/server'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { db, schema } from '../../../../db'
+import { PATCH } from '../[id]/route'
 
 /**
  * Arcade Session Validation E2E Tests
@@ -23,10 +23,7 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
   beforeEach(async () => {
     // Create a test user with unique guest ID
     testGuestId = `test-guest-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const [user] = await db
-      .insert(schema.users)
-      .values({ guestId: testGuestId })
-      .returning()
+    const [user] = await db.insert(schema.users).values({ guestId: testGuestId }).returning()
     testUserId = user.id
 
     // Create a test player
@@ -66,17 +63,14 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
     })
 
     // Mock request to change isActive
-    const mockRequest = new NextRequest(
-      `http://localhost:3000/api/players/${testPlayerId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Cookie: `guest_id=${testGuestId}`,
-        },
-        body: JSON.stringify({ isActive: true }),
-      }
-    )
+    const mockRequest = new NextRequest(`http://localhost:3000/api/players/${testPlayerId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: `guest_id=${testGuestId}`,
+      },
+      body: JSON.stringify({ isActive: true }),
+    })
 
     // Mock getViewerId by setting cookie
     const response = await PATCH(mockRequest, { params: { id: testPlayerId } })
@@ -99,17 +93,14 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
     // No arcade session created
 
     // Mock request to change isActive
-    const mockRequest = new NextRequest(
-      `http://localhost:3000/api/players/${testPlayerId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Cookie: `guest_id=${testGuestId}`,
-        },
-        body: JSON.stringify({ isActive: true }),
-      }
-    )
+    const mockRequest = new NextRequest(`http://localhost:3000/api/players/${testPlayerId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: `guest_id=${testGuestId}`,
+      },
+      body: JSON.stringify({ isActive: true }),
+    })
 
     const response = await PATCH(mockRequest, { params: { id: testPlayerId } })
     const data = await response.json()
@@ -141,21 +132,18 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
     })
 
     // Mock request to change name/emoji/color (NOT isActive)
-    const mockRequest = new NextRequest(
-      `http://localhost:3000/api/players/${testPlayerId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Cookie: `guest_id=${testGuestId}`,
-        },
-        body: JSON.stringify({
-          name: 'Updated Name',
-          emoji: '🎉',
-          color: '#ff0000',
-        }),
-      }
-    )
+    const mockRequest = new NextRequest(`http://localhost:3000/api/players/${testPlayerId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: `guest_id=${testGuestId}`,
+      },
+      body: JSON.stringify({
+        name: 'Updated Name',
+        emoji: '🎉',
+        color: '#ff0000',
+      }),
+    })
 
     const response = await PATCH(mockRequest, { params: { id: testPlayerId } })
     const data = await response.json()
@@ -194,17 +182,14 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
     await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.userId, testGuestId))
 
     // Mock request to change isActive
-    const mockRequest = new NextRequest(
-      `http://localhost:3000/api/players/${testPlayerId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Cookie: `guest_id=${testGuestId}`,
-        },
-        body: JSON.stringify({ isActive: true }),
-      }
-    )
+    const mockRequest = new NextRequest(`http://localhost:3000/api/players/${testPlayerId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: `guest_id=${testGuestId}`,
+      },
+      body: JSON.stringify({ isActive: true }),
+    })
 
     const response = await PATCH(mockRequest, { params: { id: testPlayerId } })
     const data = await response.json()
@@ -242,33 +227,27 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
     })
 
     // Try to toggle player1 (inactive -> active) - should fail
-    const request1 = new NextRequest(
-      `http://localhost:3000/api/players/${testPlayerId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Cookie: `guest_id=${testGuestId}`,
-        },
-        body: JSON.stringify({ isActive: true }),
-      }
-    )
+    const request1 = new NextRequest(`http://localhost:3000/api/players/${testPlayerId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: `guest_id=${testGuestId}`,
+      },
+      body: JSON.stringify({ isActive: true }),
+    })
 
     const response1 = await PATCH(request1, { params: { id: testPlayerId } })
     expect(response1.status).toBe(403)
 
     // Try to toggle player2 (active -> inactive) - should also fail
-    const request2 = new NextRequest(
-      `http://localhost:3000/api/players/${player2.id}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Cookie: `guest_id=${testGuestId}`,
-        },
-        body: JSON.stringify({ isActive: false }),
-      }
-    )
+    const request2 = new NextRequest(`http://localhost:3000/api/players/${player2.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: `guest_id=${testGuestId}`,
+      },
+      body: JSON.stringify({ isActive: false }),
+    })
 
     const response2 = await PATCH(request2, { params: { id: player2.id } })
     expect(response2.status).toBe(403)

@@ -1,8 +1,8 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
+import type React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { PedagogicalSegment, TermProvenance } from '../../../utils/unifiedStepGenerator'
 import { ReasonTooltip } from '../ReasonTooltip'
-import type { TermProvenance, PedagogicalSegment } from '../../../utils/unifiedStepGenerator'
 
 // Mock the Radix Tooltip to make testing easier
 const MockTooltipProvider = ({ children }: { children: React.ReactNode }) => (
@@ -11,7 +11,7 @@ const MockTooltipProvider = ({ children }: { children: React.ReactNode }) => (
 
 const MockTooltipRoot = ({
   children,
-  open = true
+  open = true,
 }: {
   children: React.ReactNode
   open?: boolean
@@ -23,15 +23,11 @@ const MockTooltipRoot = ({
 
 const MockTooltipTrigger = ({
   children,
-  asChild
+  asChild,
 }: {
   children: React.ReactNode
   asChild?: boolean
-}) => (
-  <div data-testid="tooltip-trigger">
-    {children}
-  </div>
-)
+}) => <div data-testid="tooltip-trigger">{children}</div>
 
 const MockTooltipPortal = ({ children }: { children: React.ReactNode }) => (
   <div data-testid="tooltip-portal">{children}</div>
@@ -49,9 +45,7 @@ const MockTooltipContent = ({
   </div>
 )
 
-const MockTooltipArrow = (props: any) => (
-  <div data-testid="tooltip-arrow" {...props} />
-)
+const MockTooltipArrow = (props: any) => <div data-testid="tooltip-arrow" {...props} />
 
 // Mock Radix UI components
 vi.mock('@radix-ui/react-tooltip', () => ({
@@ -70,7 +64,7 @@ describe('ReasonTooltip with Provenance', () => {
     rhsPlace: 1,
     rhsPlaceName: 'tens',
     rhsDigitIndex: 0,
-    rhsValue: 20
+    rhsValue: 20,
   }
 
   const mockSegment: PedagogicalSegment = {
@@ -81,11 +75,13 @@ describe('ReasonTooltip with Provenance', () => {
     L: 2,
     U: 0,
     goal: 'Increase tens by 2 without carry',
-    plan: [{
-      rule: 'Direct',
-      conditions: ['a+d=7+2=9 ≤ 9'],
-      explanation: ['Fits inside this place; add earth beads directly.']
-    }],
+    plan: [
+      {
+        rule: 'Direct',
+        conditions: ['a+d=7+2=9 ≤ 9'],
+        explanation: ['Fits inside this place; add earth beads directly.'],
+      },
+    ],
     expression: '20',
     stepIndices: [0],
     termIndices: [0],
@@ -99,15 +95,11 @@ describe('ReasonTooltip with Provenance', () => {
       subtitle: 'Simple bead movement',
       chips: [
         { label: 'This rod shows', value: '7' },
-        { label: "We're adding", value: '2' }
+        { label: "We're adding", value: '2' },
       ],
-      why: [
-        'We can add beads directly to this rod.'
-      ],
-      stepsFriendly: [
-        'Add 2 earth beads in tens column'
-      ]
-    }
+      why: ['We can add beads directly to this rod.'],
+      stepsFriendly: ['Add 2 earth beads in tens column'],
+    },
   }
 
   const defaultProps = {
@@ -115,7 +107,7 @@ describe('ReasonTooltip with Provenance', () => {
     segment: mockSegment,
     open: true,
     onOpenChange: vi.fn(),
-    provenance: mockProvenance
+    provenance: mockProvenance,
   }
 
   beforeEach(() => {
@@ -176,7 +168,7 @@ describe('ReasonTooltip with Provenance', () => {
       rhsPlaceName: 'ones',
       rhsDigitIndex: 1,
       rhsValue: 5,
-      groupId: '10comp-0-5'
+      groupId: '10comp-0-5',
     }
 
     const complementSegment: PedagogicalSegment = {
@@ -184,16 +176,18 @@ describe('ReasonTooltip with Provenance', () => {
       id: 'place-0-digit-5',
       place: 0,
       digit: 5,
-      plan: [{
-        rule: 'TenComplement',
-        conditions: ['a+d=5+5=10 ≥ 10'],
-        explanation: ['Need a carry to the next higher place.']
-      }],
+      plan: [
+        {
+          rule: 'TenComplement',
+          conditions: ['a+d=5+5=10 ≥ 10'],
+          explanation: ['Need a carry to the next higher place.'],
+        },
+      ],
       readable: {
         ...mockSegment.readable,
         title: 'Make 10 — ones',
-        subtitle: 'Using pairs that make 10'
-      }
+        subtitle: 'Using pairs that make 10',
+      },
     }
 
     render(
@@ -213,10 +207,7 @@ describe('ReasonTooltip with Provenance', () => {
 
   it('should fallback to readable content when provenance is not available', () => {
     render(
-      <ReasonTooltip
-        {...defaultProps}
-        provenance={undefined}
-      >
+      <ReasonTooltip {...defaultProps} provenance={undefined}>
         <span>20</span>
       </ReasonTooltip>
     )
@@ -230,14 +221,11 @@ describe('ReasonTooltip with Provenance', () => {
   it('should not render enhanced content when no rule is provided', () => {
     const segmentWithoutRule = {
       ...mockSegment,
-      plan: []
+      plan: [],
     }
 
     render(
-      <ReasonTooltip
-        {...defaultProps}
-        segment={segmentWithoutRule}
-      >
+      <ReasonTooltip {...defaultProps} segment={segmentWithoutRule}>
         <span>20</span>
       </ReasonTooltip>
     )
@@ -259,13 +247,16 @@ describe('ReasonTooltip with Provenance', () => {
     // Should log debug information
     expect(consoleSpy).toHaveBeenCalledWith('ReasonTooltip - provenance data:', mockProvenance)
     expect(consoleSpy).toHaveBeenCalledWith('ReasonTooltip - rule:', 'Direct')
-    expect(consoleSpy).toHaveBeenCalledWith('ReasonTooltip - enhancedContent:', expect.objectContaining({
-      title: 'Add the tens digit — 2 tens (20)',
-      subtitle: 'From addend 25',
-      chips: expect.arrayContaining([
-        expect.objectContaining({ label: 'Digit we\'re using', value: '2 (tens)' })
-      ])
-    }))
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'ReasonTooltip - enhancedContent:',
+      expect.objectContaining({
+        title: 'Add the tens digit — 2 tens (20)',
+        subtitle: 'From addend 25',
+        chips: expect.arrayContaining([
+          expect.objectContaining({ label: "Digit we're using", value: '2 (tens)' }),
+        ]),
+      })
+    )
 
     consoleSpy.mockRestore()
   })
@@ -278,14 +269,11 @@ describe('ReasonTooltip with Provenance', () => {
       rhsPlace: 1,
       rhsPlaceName: 'tens',
       rhsDigitIndex: 0, // '2' is the first digit in '25'
-      rhsValue: 20
+      rhsValue: 20,
     }
 
     render(
-      <ReasonTooltip
-        {...defaultProps}
-        provenance={exactProvenance}
-      >
+      <ReasonTooltip {...defaultProps} provenance={exactProvenance}>
         <span>20</span>
       </ReasonTooltip>
     )

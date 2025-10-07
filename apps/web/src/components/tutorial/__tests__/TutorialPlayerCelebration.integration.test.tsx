@@ -1,11 +1,11 @@
 import './test-setup'
+import { AbacusDisplayProvider } from '@soroban/abacus-react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { vi } from 'vitest'
+import type { Tutorial } from '../../../types/tutorial'
 import { TutorialProvider } from '../TutorialContext'
 import { TutorialPlayer } from '../TutorialPlayer'
-import { Tutorial } from '../../../types/tutorial'
-import { AbacusDisplayProvider } from '@soroban/abacus-react'
 
 // Mock the AbacusReact component to make testing easier
 vi.mock('@soroban/abacus-react', () => ({
@@ -38,7 +38,7 @@ vi.mock('@soroban/abacus-react', () => ({
       </div>
     )
   },
-  StepBeadHighlight: {}
+  StepBeadHighlight: {},
 }))
 
 const mockTutorial: Tutorial = {
@@ -57,11 +57,11 @@ const mockTutorial: Tutorial = {
       actionDescription: '3 + 2 = 5',
       tooltip: {
         content: 'Add 2 to reach 5',
-        explanation: 'Move two earth beads up to add 2'
+        explanation: 'Move two earth beads up to add 2',
       },
-      multiStepInstructions: ['Move two earth beads up']
-    }
-  ]
+      multiStepInstructions: ['Move two earth beads up'],
+    },
+  ],
 }
 
 describe('TutorialPlayer Celebration Integration', () => {
@@ -73,11 +73,7 @@ describe('TutorialPlayer Celebration Integration', () => {
     return render(
       <AbacusDisplayProvider>
         <TutorialProvider tutorial={tutorial}>
-          <TutorialPlayer
-            tutorial={tutorial}
-            isDebugMode={false}
-            {...props}
-          />
+          <TutorialPlayer tutorial={tutorial} isDebugMode={false} {...props} />
         </TutorialProvider>
       </AbacusDisplayProvider>
     )
@@ -106,16 +102,22 @@ describe('TutorialPlayer Celebration Integration', () => {
       })
 
       // Wait for step completion and celebration tooltip
-      await waitFor(() => {
-        expect(onStepComplete).toHaveBeenCalled()
-      }, { timeout: 5000 })
+      await waitFor(
+        () => {
+          expect(onStepComplete).toHaveBeenCalled()
+        },
+        { timeout: 5000 }
+      )
 
       // Look for celebration content in overlays
-      await waitFor(() => {
-        const celebration = screen.queryByText('🎉')
-        const excellentWork = screen.queryByText('Excellent work!')
-        expect(celebration || excellentWork).toBeTruthy()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          const celebration = screen.queryByText('🎉')
+          const excellentWork = screen.queryByText('Excellent work!')
+          expect(celebration || excellentWork).toBeTruthy()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it('should hide celebration tooltip when user moves away from target', async () => {
@@ -139,11 +141,14 @@ describe('TutorialPlayer Celebration Integration', () => {
       })
 
       // Wait for celebration to appear
-      await waitFor(() => {
-        const celebration = screen.queryByText('🎉')
-        const excellentWork = screen.queryByText('Excellent work!')
-        expect(celebration || excellentWork).toBeTruthy()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          const celebration = screen.queryByText('🎉')
+          const excellentWork = screen.queryByText('Excellent work!')
+          expect(celebration || excellentWork).toBeTruthy()
+        },
+        { timeout: 3000 }
+      )
 
       // Now move away from target (to 6)
       await act(async () => {
@@ -155,12 +160,15 @@ describe('TutorialPlayer Celebration Integration', () => {
       })
 
       // Celebration should disappear
-      await waitFor(() => {
-        const celebration = screen.queryByText('🎉')
-        const excellentWork = screen.queryByText('Excellent work!')
-        expect(celebration).toBeFalsy()
-        expect(excellentWork).toBeFalsy()
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          const celebration = screen.queryByText('🎉')
+          const excellentWork = screen.queryByText('Excellent work!')
+          expect(celebration).toBeFalsy()
+          expect(excellentWork).toBeFalsy()
+        },
+        { timeout: 2000 }
+      )
     })
 
     it('should return celebration when user goes back to target value', async () => {
@@ -182,11 +190,14 @@ describe('TutorialPlayer Celebration Integration', () => {
       })
 
       // Verify celebration appears
-      await waitFor(() => {
-        const celebration = screen.queryByText('🎉')
-        const excellentWork = screen.queryByText('Excellent work!')
-        expect(celebration || excellentWork).toBeTruthy()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          const celebration = screen.queryByText('🎉')
+          const excellentWork = screen.queryByText('Excellent work!')
+          expect(celebration || excellentWork).toBeTruthy()
+        },
+        { timeout: 3000 }
+      )
 
       // Move away (to 6)
       await act(async () => {
@@ -221,11 +232,14 @@ describe('TutorialPlayer Celebration Integration', () => {
       })
 
       // Celebration should return
-      await waitFor(() => {
-        const celebration = screen.queryByText('🎉')
-        const excellentWork = screen.queryByText('Excellent work!')
-        expect(celebration || excellentWork).toBeTruthy()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          const celebration = screen.queryByText('🎉')
+          const excellentWork = screen.queryByText('Excellent work!')
+          expect(celebration || excellentWork).toBeTruthy()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it('should handle multiple step navigation with celebration tooltips', async () => {
@@ -244,11 +258,11 @@ describe('TutorialPlayer Celebration Integration', () => {
             actionDescription: '4 + 1 = 5',
             tooltip: {
               content: 'Add 1 to reach 5',
-              explanation: 'Move one earth bead up to add 1'
+              explanation: 'Move one earth bead up to add 1',
             },
-            multiStepInstructions: ['Move one earth bead up']
-          }
-        ]
+            multiStepInstructions: ['Move one earth bead up'],
+          },
+        ],
       }
 
       renderTutorialPlayer(multiStepTutorial)
@@ -265,11 +279,14 @@ describe('TutorialPlayer Celebration Integration', () => {
       })
 
       // Wait for celebration
-      await waitFor(() => {
-        const celebration = screen.queryByText('🎉')
-        const excellentWork = screen.queryByText('Excellent work!')
-        expect(celebration || excellentWork).toBeTruthy()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          const celebration = screen.queryByText('🎉')
+          const excellentWork = screen.queryByText('Excellent work!')
+          expect(celebration || excellentWork).toBeTruthy()
+        },
+        { timeout: 3000 }
+      )
 
       // Navigate to next step
       const nextButton = screen.getByText(/Next/)
@@ -289,11 +306,14 @@ describe('TutorialPlayer Celebration Integration', () => {
       })
 
       // Celebration should appear for second step too
-      await waitFor(() => {
-        const celebration = screen.queryByText('🎉')
-        const excellentWork = screen.queryByText('Excellent work!')
-        expect(celebration || excellentWork).toBeTruthy()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          const celebration = screen.queryByText('🎉')
+          const excellentWork = screen.queryByText('Excellent work!')
+          expect(celebration || excellentWork).toBeTruthy()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it('should properly reset celebration state between steps', async () => {
@@ -312,11 +332,11 @@ describe('TutorialPlayer Celebration Integration', () => {
             actionDescription: '2 + 4 = 6',
             tooltip: {
               content: 'Add 4 to reach 6',
-              explanation: 'Move four earth beads up to add 4'
+              explanation: 'Move four earth beads up to add 4',
             },
-            multiStepInstructions: ['Move four earth beads up']
-          }
-        ]
+            multiStepInstructions: ['Move four earth beads up'],
+          },
+        ],
       }
 
       renderTutorialPlayer(multiStepTutorial)
@@ -377,10 +397,13 @@ describe('TutorialPlayer Celebration Integration', () => {
       })
 
       // Verify both celebration elements appear
-      await waitFor(() => {
-        expect(screen.queryByText('🎉')).toBeTruthy()
-        expect(screen.queryByText('Excellent work!')).toBeTruthy()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(screen.queryByText('🎉')).toBeTruthy()
+          expect(screen.queryByText('Excellent work!')).toBeTruthy()
+        },
+        { timeout: 3000 }
+      )
 
       // The overlay should have celebration styling
       const overlay = screen.queryByTestId('overlay-0')

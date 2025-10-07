@@ -1,7 +1,9 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 test.describe('Game navigation slots', () => {
-  test('should show Memory Pairs game name in nav when navigating to matching game', async ({ page }) => {
+  test('should show Memory Pairs game name in nav when navigating to matching game', async ({
+    page,
+  }) => {
     await page.goto('/games/matching')
 
     // Wait for the page to load
@@ -13,7 +15,9 @@ test.describe('Game navigation slots', () => {
     await expect(gameNav).toContainText('Memory Pairs')
   })
 
-  test('should show Memory Lightning game name in nav when navigating to memory quiz', async ({ page }) => {
+  test('should show Memory Lightning game name in nav when navigating to memory quiz', async ({
+    page,
+  }) => {
     await page.goto('/games/memory-quiz')
 
     // Wait for the page to load

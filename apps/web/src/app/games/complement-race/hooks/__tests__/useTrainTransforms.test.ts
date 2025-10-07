@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
-import { describe, test, expect, beforeEach, vi } from 'vitest'
-import { useTrainTransforms } from '../useTrainTransforms'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
+import { useTrainTransforms } from '../useTrainTransforms'
 
 describe('useTrainTransforms', () => {
   let mockPathRef: React.RefObject<SVGPathElement>
@@ -14,11 +14,11 @@ describe('useTrainTransforms', () => {
 
     // Mock track generator
     mockTrackGenerator = {
-      getTrainTransform: vi.fn((path: SVGPathElement, position: number) => ({
+      getTrainTransform: vi.fn((_path: SVGPathElement, position: number) => ({
         x: position * 10,
         y: 300,
-        rotation: position / 10
-      }))
+        rotation: position / 10,
+      })),
     } as unknown as RailroadTrackGenerator
 
     vi.clearAllMocks()
@@ -33,7 +33,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: nullPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 
@@ -48,14 +48,14 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 
     expect(result.current.trainTransform).toEqual({
       x: 500, // 50 * 10
       y: 300,
-      rotation: 5 // 50 / 10
+      rotation: 5, // 50 / 10
     })
   })
 
@@ -67,7 +67,7 @@ describe('useTrainTransforms', () => {
           trackGenerator: mockTrackGenerator,
           pathRef: mockPathRef,
           maxCars: 5,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { position: 20 } }
     )
@@ -85,7 +85,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 
@@ -99,7 +99,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 3,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 
@@ -113,7 +113,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 10
+        carSpacing: 10,
       })
     )
 
@@ -128,7 +128,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 3,
-        carSpacing: 10
+        carSpacing: 10,
       })
     )
 
@@ -145,7 +145,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
     expect(result1.current.locomotiveOpacity).toBe(0)
@@ -156,7 +156,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
     expect(result2.current.locomotiveOpacity).toBe(0.5)
@@ -167,7 +167,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
     expect(result3.current.locomotiveOpacity).toBe(1)
@@ -181,7 +181,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
     expect(result1.current.locomotiveOpacity).toBe(1)
@@ -192,7 +192,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
     expect(result2.current.locomotiveOpacity).toBe(0.5)
@@ -203,7 +203,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
     expect(result3.current.locomotiveOpacity).toBe(0)
@@ -216,7 +216,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 
@@ -230,7 +230,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 2,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 
@@ -250,7 +250,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 3,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 
@@ -267,7 +267,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 
@@ -283,7 +283,7 @@ describe('useTrainTransforms', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         maxCars: 5,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 

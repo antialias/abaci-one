@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
-import { useOptimisticGameState } from '../useOptimisticGameState'
+import { act, renderHook } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import type { GameMove } from '@/lib/arcade/validation'
+import { useOptimisticGameState } from '../useOptimisticGameState'
 
 interface TestGameState {
   value: number

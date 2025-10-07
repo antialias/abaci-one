@@ -1,5 +1,5 @@
 // Utility to extract and convert the existing GuidedAdditionTutorial data
-import { Tutorial, TutorialStep as NewTutorialStep } from '../types/tutorial'
+import type { Tutorial } from '../types/tutorial'
 import { generateAbacusInstructions } from './abacusInstructionGenerator'
 
 // Import the existing tutorial step interface to match the current structure
@@ -40,8 +40,8 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     actionDescription: 'Click the first earth bead to move it up',
     tooltip: {
       content: 'Adding earth beads',
-      explanation: 'Earth beads (bottom) are worth 1 each. Push them UP to activate them.'
-    }
+      explanation: 'Earth beads (bottom) are worth 1 each. Push them UP to activate them.',
+    },
   },
   {
     id: 'basic-2',
@@ -55,8 +55,8 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     actionDescription: 'Click the second earth bead to move it up',
     tooltip: {
       content: 'Building up earth beads',
-      explanation: 'Continue adding earth beads one by one for numbers 2, 3, and 4'
-    }
+      explanation: 'Continue adding earth beads one by one for numbers 2, 3, and 4',
+    },
   },
   {
     id: 'basic-3',
@@ -70,8 +70,8 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     actionDescription: 'Click the third earth bead to move it up',
     tooltip: {
       content: 'Adding earth beads in sequence',
-      explanation: 'Continue adding earth beads one by one until you reach 4'
-    }
+      explanation: 'Continue adding earth beads one by one until you reach 4',
+    },
   },
   {
     id: 'basic-4',
@@ -85,8 +85,8 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     actionDescription: 'Click the fourth earth bead to complete 4',
     tooltip: {
       content: 'Maximum earth beads',
-      explanation: 'Four earth beads is the maximum - next we need a different approach'
-    }
+      explanation: 'Four earth beads is the maximum - next we need a different approach',
+    },
   },
 
   // Phase 2: Introduction to Heaven Bead
@@ -102,8 +102,8 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     actionDescription: 'Click the heaven bead to activate it',
     tooltip: {
       content: 'Heaven bead = 5',
-      explanation: 'The single bead above the bar represents 5'
-    }
+      explanation: 'The single bead above the bar represents 5',
+    },
   },
   {
     id: 'heaven-plus-earth',
@@ -117,8 +117,8 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     actionDescription: 'Click the first earth bead to make 6',
     tooltip: {
       content: 'Heaven + Earth = 6',
-      explanation: 'When you have room in the earth section, simply add directly'
-    }
+      explanation: 'When you have room in the earth section, simply add directly',
+    },
   },
 
   // Phase 3: Five Complements (when earth section is full)
@@ -131,18 +131,18 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     targetValue: 7,
     highlightBeads: [
       { placeValue: 0, beadType: 'heaven' },
-      { placeValue: 0, beadType: 'earth', position: 0 }
+      { placeValue: 0, beadType: 'earth', position: 0 },
     ],
     expectedAction: 'multi-step',
     actionDescription: 'First add heaven bead (5), then remove 1 earth bead',
     multiStepInstructions: [
       'Click the heaven bead to add 5',
-      'Click the first earth bead to remove 1'
+      'Click the first earth bead to remove 1',
     ],
     tooltip: {
       content: 'Five Complement: 4 = 5 - 1',
-      explanation: 'When you need to add 4 but only have 1 space, use: add 5, remove 1'
-    }
+      explanation: 'When you need to add 4 but only have 1 space, use: add 5, remove 1',
+    },
   },
   {
     id: 'complement-2',
@@ -154,19 +154,19 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     highlightBeads: [
       { placeValue: 0, beadType: 'heaven' },
       { placeValue: 0, beadType: 'earth', position: 0 },
-      { placeValue: 0, beadType: 'earth', position: 1 }
+      { placeValue: 0, beadType: 'earth', position: 1 },
     ],
     expectedAction: 'multi-step',
     actionDescription: 'Add heaven bead (5), then remove 2 earth beads',
     multiStepInstructions: [
       'Click the heaven bead to add 5',
       'Click the first earth bead to remove it',
-      'Click the second earth bead to remove it'
+      'Click the second earth bead to remove it',
     ],
     tooltip: {
       content: 'Five Complement: 3 = 5 - 2',
-      explanation: 'To add 3, think: 3 = 5 - 2, so add 5 and take away 2'
-    }
+      explanation: 'To add 3, think: 3 = 5 - 2, so add 5 and take away 2',
+    },
   },
 
   // Phase 4: More complex combinations
@@ -179,14 +179,14 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
     targetValue: 8,
     highlightBeads: [
       { placeValue: 0, beadType: 'earth', position: 1 },
-      { placeValue: 0, beadType: 'earth', position: 2 }
+      { placeValue: 0, beadType: 'earth', position: 2 },
     ],
     expectedAction: 'add',
     actionDescription: 'Add two more earth beads',
     tooltip: {
       content: 'Direct addition when possible',
-      explanation: 'When you have space in the earth section, just add directly'
-    }
+      explanation: 'When you have space in the earth section, just add directly',
+    },
   },
   {
     id: 'complex-2',
@@ -199,7 +199,7 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
       { placeValue: 1, beadType: 'heaven' },
       { placeValue: 0, beadType: 'heaven' },
       { placeValue: 0, beadType: 'earth', position: 0 },
-      { placeValue: 0, beadType: 'earth', position: 1 }
+      { placeValue: 0, beadType: 'earth', position: 1 },
     ],
     expectedAction: 'multi-step',
     actionDescription: 'Add tens heaven, then clear ones place: remove heaven + 2 earth',
@@ -207,19 +207,19 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
       'Click the heaven bead in the tens column (left)',
       'Click the heaven bead in the ones column to remove it',
       'Click the first earth bead to remove it',
-      'Click the second earth bead to remove it'
+      'Click the second earth bead to remove it',
     ],
     tooltip: {
       content: 'Carrying to tens place',
-      explanation: '7 + 4 = 11, which needs the tens column heaven bead'
-    }
-  }
+      explanation: '7 + 4 = 11, which needs the tens column heaven bead',
+    },
+  },
 ]
 
 // Convert the existing tutorial format to our new format
 export function convertGuidedAdditionTutorial(): Tutorial {
   // Convert existing static steps to progressive step data
-  const convertedSteps = guidedAdditionSteps.map(step => {
+  const convertedSteps = guidedAdditionSteps.map((step) => {
     // Generate progressive instruction data
     const generatedInstruction = generateAbacusInstructions(step.startValue, step.targetValue)
 
@@ -231,10 +231,11 @@ export function convertGuidedAdditionTutorial(): Tutorial {
       stepBeadHighlights: generatedInstruction.stepBeadHighlights,
       totalSteps: generatedInstruction.totalSteps,
       // Keep existing multi-step instructions if available, otherwise use generated ones
-      multiStepInstructions: step.multiStepInstructions || generatedInstruction.multiStepInstructions,
+      multiStepInstructions:
+        step.multiStepInstructions || generatedInstruction.multiStepInstructions,
       // Update action description if multi-step was generated
       expectedAction: generatedInstruction.expectedAction,
-      actionDescription: generatedInstruction.actionDescription
+      actionDescription: generatedInstruction.actionDescription,
     }
   })
 
@@ -244,17 +245,26 @@ export function convertGuidedAdditionTutorial(): Tutorial {
   const tutorial: Tutorial = {
     id: 'guided-addition-tutorial',
     title: 'Progressive Multi-Step Tutorial',
-    description: 'Learn basic addition on the soroban abacus with progressive step-by-step guidance, direction indicators, and pedagogical decomposition',
+    description:
+      'Learn basic addition on the soroban abacus with progressive step-by-step guidance, direction indicators, and pedagogical decomposition',
     category: 'Basic Operations',
     difficulty: 'beginner',
     estimatedDuration: 15, // minutes
     steps: testSteps,
-    tags: ['addition', 'basic', 'earth beads', 'heaven beads', 'complements', 'progressive', 'step-by-step'],
+    tags: [
+      'addition',
+      'basic',
+      'earth beads',
+      'heaven beads',
+      'complements',
+      'progressive',
+      'step-by-step',
+    ],
     author: 'Soroban Abacus System',
     version: '2.0.0',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date(),
-    isPublished: true
+    isPublished: true,
   }
 
   return tutorial
@@ -288,18 +298,20 @@ export function validateTutorialConversion(): { isValid: boolean; errors: string
 
       // errorMessages validation removed - no longer needed
 
-      if (step.expectedAction === 'multi-step' && (!step.multiStepInstructions || step.multiStepInstructions.length === 0)) {
+      if (
+        step.expectedAction === 'multi-step' &&
+        (!step.multiStepInstructions || step.multiStepInstructions.length === 0)
+      ) {
         errors.push(`Step ${index + 1}: Multi-step action missing instructions`)
       }
     })
-
   } catch (error) {
     errors.push(`Conversion failed: ${error}`)
   }
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   }
 }
 

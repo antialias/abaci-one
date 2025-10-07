@@ -1,9 +1,9 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import type { ReactNode } from 'react'
 import { css } from '../../../../styled-system/css'
 import { hstack, vstack } from '../../../../styled-system/patterns'
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 
 // Shared input styles
 export const inputStyles = {
@@ -13,14 +13,14 @@ export const inputStyles = {
   border: '1px solid',
   borderColor: 'gray.300',
   rounded: 'sm',
-  fontSize: 'xs'
+  fontSize: 'xs',
 } as const
 
 export const labelStyles = {
   fontSize: 'xs',
   color: 'gray.600',
   mb: 1,
-  display: 'block'
+  display: 'block',
 } as const
 
 // Shared Editor Layout Component - wraps entire editor with consistent styling
@@ -33,17 +33,29 @@ interface EditorLayoutProps {
   className?: string
 }
 
-export function EditorLayout({ title, onClose, onDelete, deleteLabel = 'Delete', children, className }: EditorLayoutProps) {
+export function EditorLayout({
+  title,
+  onClose,
+  onDelete,
+  deleteLabel = 'Delete',
+  children,
+  className,
+}: EditorLayoutProps) {
   return (
-    <div className={css({
-      p: 3,
-      bg: 'purple.50',
-      border: '1px solid',
-      borderColor: 'purple.200',
-      rounded: 'lg',
-      height: '100%',
-      overflowY: 'auto'
-    }, className)}>
+    <div
+      className={css(
+        {
+          p: 3,
+          bg: 'purple.50',
+          border: '1px solid',
+          borderColor: 'purple.200',
+          rounded: 'lg',
+          height: '100%',
+          overflowY: 'auto',
+        },
+        className
+      )}
+    >
       <div className={vstack({ gap: 3, alignItems: 'stretch' })}>
         {/* Header */}
         <EditorHeader
@@ -68,14 +80,21 @@ interface EditorHeaderProps {
   deleteLabel?: string
 }
 
-export function EditorHeader({ title, onClose, onDelete, deleteLabel = 'Delete' }: EditorHeaderProps) {
+export function EditorHeader({
+  title,
+  onClose,
+  onDelete,
+  deleteLabel = 'Delete',
+}: EditorHeaderProps) {
   return (
     <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
-      <h3 className={css({
-        fontSize: 'md',
-        fontWeight: 'semibold',
-        color: 'purple.800'
-      })}>
+      <h3
+        className={css({
+          fontSize: 'md',
+          fontWeight: 'semibold',
+          color: 'purple.800',
+        })}
+      >
         {title}
       </h3>
       <div className={hstack({ gap: 1 })}>
@@ -90,7 +109,7 @@ export function EditorHeader({ title, onClose, onDelete, deleteLabel = 'Delete' 
               rounded: 'sm',
               fontSize: 'xs',
               cursor: 'pointer',
-              _hover: { bg: 'red.600' }
+              _hover: { bg: 'red.600' },
             })}
           >
             {deleteLabel}
@@ -102,7 +121,7 @@ export function EditorHeader({ title, onClose, onDelete, deleteLabel = 'Delete' 
             p: 1,
             borderRadius: 'sm',
             cursor: 'pointer',
-            _hover: { bg: 'gray.100' }
+            _hover: { bg: 'gray.100' },
           })}
         >
           ✕
@@ -121,9 +140,7 @@ interface FieldProps {
 export function Field({ label, children }: FieldProps) {
   return (
     <div>
-      <label className={css(labelStyles)}>
-        {label}
-      </label>
+      <label className={css(labelStyles)}>{label}</label>
       {children}
     </div>
   )
@@ -139,7 +156,14 @@ interface TextInputProps {
   rows?: number
 }
 
-export function TextInput({ label, value, onChange, placeholder, multiline = false, rows = 2 }: TextInputProps) {
+export function TextInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  multiline = false,
+  rows = 2,
+}: TextInputProps) {
   return (
     <Field label={label}>
       {multiline ? (
@@ -149,7 +173,7 @@ export function TextInput({ label, value, onChange, placeholder, multiline = fal
           rows={rows}
           className={css({
             ...inputStyles,
-            resize: 'none'
+            resize: 'none',
           })}
           placeholder={placeholder}
         />
@@ -184,7 +208,7 @@ export function NumberInput({ label, value, onChange, min, max, placeholder }: N
         min={min}
         max={max}
         value={value}
-        onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+        onChange={(e) => onChange(parseInt(e.target.value, 10) || 0)}
         className={css(inputStyles)}
         placeholder={placeholder}
       />
@@ -204,15 +228,17 @@ export function GridLayout({ columns, gap = 2, children }: GridLayoutProps) {
     1: '1fr',
     2: '1fr 1fr',
     3: '1fr 1fr 1fr',
-    4: '1fr 1fr 1fr 1fr'
+    4: '1fr 1fr 1fr 1fr',
   }
 
   return (
-    <div className={css({
-      display: 'grid',
-      gridTemplateColumns: gridCols[columns],
-      gap: gap
-    })}>
+    <div
+      className={css({
+        display: 'grid',
+        gridTemplateColumns: gridCols[columns],
+        gap: gap,
+      })}
+    >
       {children}
     </div>
   )
@@ -231,18 +257,20 @@ export function Section({ title, children, background = 'white' }: SectionProps)
   const bgStyles = {
     white: { p: 2, bg: 'white', border: '1px solid', borderColor: 'gray.200', rounded: 'md' },
     gray: { p: 2, bg: 'gray.50', border: '1px solid', borderColor: 'gray.200', rounded: 'sm' },
-    none: {}
+    none: {},
   }
 
   return (
     <div className={css(bgStyles[background])}>
       {title && (
-        <h4 className={css({
-          fontSize: 'sm',
-          fontWeight: 'medium',
-          mb: 2,
-          color: 'gray.800'
-        })}>
+        <h4
+          className={css({
+            fontSize: 'sm',
+            fontWeight: 'medium',
+            mb: 2,
+            color: 'gray.800',
+          })}
+        >
           {title}
         </h4>
       )}
@@ -260,11 +288,7 @@ interface FormGroupProps {
 
 export function FormGroup({ children, columns = 1, gap = 2 }: FormGroupProps) {
   if (columns === 1) {
-    return (
-      <div className={vstack({ gap: gap, alignItems: 'stretch' })}>
-        {children}
-      </div>
-    )
+    return <div className={vstack({ gap: gap, alignItems: 'stretch' })}>{children}</div>
   }
 
   return (
@@ -315,7 +339,7 @@ export function CompactStepItem({
   onAddStepBefore,
   onAddPracticeStepBefore,
   onAddStepAfter,
-  onAddPracticeStepAfter
+  onAddPracticeStepAfter,
 }: CompactStepItemProps) {
   const getBorderColor = () => {
     if (isSelected) return 'blue.500'
@@ -337,7 +361,8 @@ export function CompactStepItem({
   const typeIcon = type === 'concept' ? '📝' : '🎯'
   const typeLabel = type === 'concept' ? 'Step' : 'Practice'
 
-  const hasAddActions = onAddStepBefore || onAddPracticeStepBefore || onAddStepAfter || onAddPracticeStepAfter
+  const _hasAddActions =
+    onAddStepBefore || onAddPracticeStepBefore || onAddStepAfter || onAddPracticeStepAfter
 
   return (
     <div className={css({ position: 'relative' })}>
@@ -352,138 +377,147 @@ export function CompactStepItem({
           borderRadius: 'sm',
           bg: getBgColor(),
           cursor: onClick ? 'pointer' : 'default',
-          _hover: onClick ? { bg: getHoverBg() } : {}
+          _hover: onClick ? { bg: getHoverBg() } : {},
         })}
       >
-      <div className={hstack({ justifyContent: 'space-between', alignItems: 'center', gap: 2 })}>
-        <div className={css({ flex: 1, minWidth: 0 })}>
-          {/* Inline header: badges, title, and subtitle on same line when possible */}
-          <div className={hstack({ gap: 1.5, alignItems: 'center', flexWrap: 'wrap' })}>
-            <span className={css({
-              fontSize: 'xs',
-              fontWeight: 'bold',
-              color: type === 'concept' ? 'blue.800' : 'purple.800',
-              bg: type === 'concept' ? 'blue.100' : 'purple.100',
-              px: 0.5,
-              py: 0.5,
-              borderRadius: 'xs',
-              flexShrink: 0
-            })}>
-              {typeIcon} {typeLabel} {index + 1}
-            </span>
+        <div className={hstack({ justifyContent: 'space-between', alignItems: 'center', gap: 2 })}>
+          <div className={css({ flex: 1, minWidth: 0 })}>
+            {/* Inline header: badges, title, and subtitle on same line when possible */}
+            <div className={hstack({ gap: 1.5, alignItems: 'center', flexWrap: 'wrap' })}>
+              <span
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: 'bold',
+                  color: type === 'concept' ? 'blue.800' : 'purple.800',
+                  bg: type === 'concept' ? 'blue.100' : 'purple.100',
+                  px: 0.5,
+                  py: 0.5,
+                  borderRadius: 'xs',
+                  flexShrink: 0,
+                })}
+              >
+                {typeIcon} {typeLabel} {index + 1}
+              </span>
 
-            {/* Title inline */}
-            <div className={css({
-              fontWeight: 'medium',
-              fontSize: 'xs',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              flex: 1,
-              minWidth: 0
-            })}>
-              {title}
+              {/* Title inline */}
+              <div
+                className={css({
+                  fontWeight: 'medium',
+                  fontSize: 'xs',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flex: 1,
+                  minWidth: 0,
+                })}
+              >
+                {title}
+              </div>
+
+              {/* Error/warning badges - compact */}
+              {hasErrors && (
+                <span
+                  className={css({
+                    fontSize: 'xs',
+                    color: 'red.600',
+                    bg: 'red.100',
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: 'xs',
+                    flexShrink: 0,
+                  })}
+                >
+                  {errorCount}❌
+                </span>
+              )}
+
+              {hasWarnings && (
+                <span
+                  className={css({
+                    fontSize: 'xs',
+                    color: 'yellow.600',
+                    bg: 'yellow.100',
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: 'xs',
+                    flexShrink: 0,
+                  })}
+                >
+                  {warningCount}⚠️
+                </span>
+              )}
             </div>
 
-            {/* Error/warning badges - compact */}
-            {hasErrors && (
-              <span className={css({
-                fontSize: 'xs',
-                color: 'red.600',
-                bg: 'red.100',
-                px: 1,
-                py: 0.5,
-                borderRadius: 'xs',
-                flexShrink: 0
-              })}>
-                {errorCount}❌
-              </span>
+            {/* Subtitle on separate line if provided */}
+            {subtitle && (
+              <div
+                className={css({
+                  fontSize: 'xs',
+                  color: 'gray.600',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  mt: 0.5,
+                })}
+              >
+                {subtitle}
+              </div>
             )}
 
-            {hasWarnings && (
-              <span className={css({
-                fontSize: 'xs',
-                color: 'yellow.600',
-                bg: 'yellow.100',
-                px: 1,
-                py: 0.5,
-                borderRadius: 'xs',
-                flexShrink: 0
-              })}>
-                {warningCount}⚠️
-              </span>
-            )}
+            {/* Custom children content */}
+            {children}
           </div>
 
-          {/* Subtitle on separate line if provided */}
-          {subtitle && (
-            <div className={css({
-              fontSize: 'xs',
-              color: 'gray.600',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              mt: 0.5
-            })}>
-              {subtitle}
-            </div>
-          )}
+          {/* Action buttons */}
+          <div className={hstack({ gap: 1, flexShrink: 0 })}>
+            {onPreview && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onPreview()
+                }}
+                className={css({
+                  p: 1,
+                  bg: 'blue.100',
+                  color: 'blue.700',
+                  border: '1px solid',
+                  borderColor: 'blue.300',
+                  borderRadius: 'sm',
+                  fontSize: 'xs',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.200' },
+                })}
+                title="Preview"
+              >
+                👁
+              </button>
+            )}
 
-          {/* Custom children content */}
-          {children}
-        </div>
-
-        {/* Action buttons */}
-        <div className={hstack({ gap: 1, flexShrink: 0 })}>
-          {onPreview && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onPreview()
-              }}
-              className={css({
-                p: 1,
-                bg: 'blue.100',
-                color: 'blue.700',
-                border: '1px solid',
-                borderColor: 'blue.300',
-                borderRadius: 'sm',
-                fontSize: 'xs',
-                cursor: 'pointer',
-                _hover: { bg: 'blue.200' }
-              })}
-              title="Preview"
-            >
-              👁
-            </button>
-          )}
-
-          {onDelete && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-              }}
-              className={css({
-                p: 1,
-                bg: 'red.100',
-                color: 'red.700',
-                border: '1px solid',
-                borderColor: 'red.300',
-                borderRadius: 'sm',
-                fontSize: 'xs',
-                cursor: 'pointer',
-                _hover: { bg: 'red.200' }
-              })}
-              title="Delete"
-            >
-              🗑
-            </button>
-          )}
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete()
+                }}
+                className={css({
+                  p: 1,
+                  bg: 'red.100',
+                  color: 'red.700',
+                  border: '1px solid',
+                  borderColor: 'red.300',
+                  borderRadius: 'sm',
+                  fontSize: 'xs',
+                  cursor: 'pointer',
+                  _hover: { bg: 'red.200' },
+                })}
+                title="Delete"
+              >
+                🗑
+              </button>
+            )}
+          </div>
         </div>
       </div>
-      </div>
-
     </div>
   )
 }
@@ -496,17 +530,19 @@ interface BetweenStepAddProps {
 
 export function BetweenStepAdd({ onAddStep, onAddPracticeStep }: BetweenStepAddProps) {
   return (
-    <div className={css({
-      position: 'relative',
-      height: '16px',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 50, // Higher z-index for the container
-      '&:hover .add-button': {
-        opacity: 0.5
-      }
-    })}>
+    <div
+      className={css({
+        position: 'relative',
+        height: '16px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 50, // Higher z-index for the container
+        '&:hover .add-button': {
+          opacity: 0.5,
+        },
+      })}
+    >
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button
@@ -527,8 +563,8 @@ export function BetweenStepAdd({ onAddStep, onAddPracticeStep }: BetweenStepAddP
               _hover: {
                 opacity: '1 !important',
                 bg: 'gray.200',
-                borderColor: 'gray.400'
-              }
+                borderColor: 'gray.400',
+              },
             })} add-button`}
           >
             + New
@@ -545,7 +581,7 @@ export function BetweenStepAdd({ onAddStep, onAddPracticeStep }: BetweenStepAddP
               borderRadius: 'md',
               shadow: 'md',
               zIndex: 100, // Very high z-index for dropdown content
-              minW: '150px'
+              minW: '150px',
             })}
             sideOffset={4}
           >
@@ -563,7 +599,7 @@ export function BetweenStepAdd({ onAddStep, onAddPracticeStep }: BetweenStepAddP
                   bg: 'transparent',
                   _hover: { bg: 'blue.50', color: 'blue.700' },
                   borderBottom: '1px solid',
-                  borderColor: 'gray.100'
+                  borderColor: 'gray.100',
                 })}
               >
                 📝 Concept Step
@@ -581,7 +617,7 @@ export function BetweenStepAdd({ onAddStep, onAddPracticeStep }: BetweenStepAddP
                   cursor: 'pointer',
                   border: 'none',
                   bg: 'transparent',
-                  _hover: { bg: 'purple.50', color: 'purple.700' }
+                  _hover: { bg: 'purple.50', color: 'purple.700' },
                 })}
               >
                 🎯 Problem Page
@@ -610,18 +646,30 @@ export function Button({
   variant = 'secondary',
   size = 'sm',
   disabled = false,
-  title
+  title,
 }: ButtonProps) {
   const variantStyles = {
     primary: { bg: 'blue.500', color: 'white', _hover: { bg: 'blue.600' } },
-    secondary: { bg: 'blue.100', color: 'blue.800', border: '1px solid', borderColor: 'blue.300', _hover: { bg: 'blue.200' } },
-    outline: { bg: 'gray.100', color: 'gray.700', border: '1px solid', borderColor: 'gray.300', _hover: { bg: 'gray.200' } }
+    secondary: {
+      bg: 'blue.100',
+      color: 'blue.800',
+      border: '1px solid',
+      borderColor: 'blue.300',
+      _hover: { bg: 'blue.200' },
+    },
+    outline: {
+      bg: 'gray.100',
+      color: 'gray.700',
+      border: '1px solid',
+      borderColor: 'gray.300',
+      _hover: { bg: 'gray.200' },
+    },
   }
 
   const sizeStyles = {
     xs: { px: 1, py: 1, fontSize: 'xs' },
     sm: { px: 2, py: 1, fontSize: 'xs' },
-    md: { px: 3, py: 2, fontSize: 'sm' }
+    md: { px: 3, py: 2, fontSize: 'sm' },
   }
 
   return (
@@ -635,7 +683,7 @@ export function Button({
         rounded: 'sm',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        textAlign: 'center'
+        textAlign: 'center',
       })}
     >
       {children}

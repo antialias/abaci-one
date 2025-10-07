@@ -1,30 +1,30 @@
 import { render, screen } from '@testing-library/react'
-import { describe, test, expect, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
+import type { Passenger, Station } from '../../../lib/gameTypes'
 import { GameHUD } from '../GameHUD'
-import type { Station, Passenger } from '../../../lib/gameTypes'
 
 // Mock child components
 vi.mock('../../PassengerCard', () => ({
   PassengerCard: ({ passenger }: { passenger: Passenger }) => (
     <div data-testid="passenger-card">{passenger.avatar}</div>
-  )
+  ),
 }))
 
 vi.mock('../../PressureGauge', () => ({
   PressureGauge: ({ pressure }: { pressure: number }) => (
     <div data-testid="pressure-gauge">{pressure}</div>
-  )
+  ),
 }))
 
 describe('GameHUD', () => {
   const mockRouteTheme = {
     emoji: '🚂',
-    name: 'Mountain Pass'
+    name: 'Mountain Pass',
   }
 
   const mockStations: Station[] = [
     { id: 'station-1', name: 'Station 1', position: 20, icon: '🏭' },
-    { id: 'station-2', name: 'Station 2', position: 60, icon: '🏛️' }
+    { id: 'station-2', name: 'Station 2', position: 60, icon: '🏛️' },
   ]
 
   const mockPassenger: Passenger = {
@@ -34,7 +34,7 @@ describe('GameHUD', () => {
     destinationStationId: 'station-2',
     isBoarded: false,
     isDelivered: false,
-    isUrgent: false
+    isUrgent: false,
   }
 
   const defaultProps = {
@@ -48,9 +48,9 @@ describe('GameHUD', () => {
     currentQuestion: {
       number: 3,
       targetSum: 10,
-      correctAnswer: 7
+      correctAnswer: 7,
     },
-    currentInput: '7'
+    currentInput: '7',
   }
 
   test('renders route information', () => {
@@ -120,7 +120,7 @@ describe('GameHUD', () => {
     const passengers = [
       mockPassenger,
       { ...mockPassenger, id: 'passenger-2', avatar: '👩' },
-      { ...mockPassenger, id: 'passenger-3', avatar: '👧' }
+      { ...mockPassenger, id: 'passenger-3', avatar: '👧' },
     ]
 
     render(<GameHUD {...defaultProps} nonDeliveredPassengers={passengers} />)

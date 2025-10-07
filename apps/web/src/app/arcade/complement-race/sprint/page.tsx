@@ -1,8 +1,8 @@
 'use client'
 
 import { PageWithNav } from '@/components/PageWithNav'
-import { ComplementRaceProvider } from '../context/ComplementRaceContext'
 import { ComplementRaceGame } from '../components/ComplementRaceGame'
+import { ComplementRaceProvider } from '../context/ComplementRaceContext'
 
 export default function SprintModePage() {
   return (

@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, ReactNode } from 'react'
-import { AccessContext, UserRole, Permission } from '../types/tutorial'
+import { createContext, type ReactNode, useContext } from 'react'
+import type { AccessContext, Permission, UserRole } from '../types/tutorial'
 
 // Default context value (no permissions)
 const defaultAccessContext: AccessContext = {
@@ -29,26 +29,23 @@ export function AccessControlProvider({
   children,
   userId,
   roles = [],
-  isAuthenticated = false
+  isAuthenticated = false,
 }: AccessControlProviderProps) {
   // Calculate permissions based on roles
-  const permissions = roles.flatMap(role => role.permissions)
+  const permissions = roles.flatMap((role) => role.permissions)
 
   // Check if user has admin role
-  const isAdmin = roles.some(role => role.name === 'admin' || role.name === 'superuser')
+  const isAdmin = roles.some((role) => role.name === 'admin' || role.name === 'superuser')
 
   // Check specific permissions
-  const canEdit = isAdmin || permissions.some(p =>
-    p.resource === 'tutorial' && p.actions.includes('update')
-  )
+  const canEdit =
+    isAdmin || permissions.some((p) => p.resource === 'tutorial' && p.actions.includes('update'))
 
-  const canPublish = isAdmin || permissions.some(p =>
-    p.resource === 'tutorial' && p.actions.includes('publish')
-  )
+  const canPublish =
+    isAdmin || permissions.some((p) => p.resource === 'tutorial' && p.actions.includes('publish'))
 
-  const canDelete = isAdmin || permissions.some(p =>
-    p.resource === 'tutorial' && p.actions.includes('delete')
-  )
+  const canDelete =
+    isAdmin || permissions.some((p) => p.resource === 'tutorial' && p.actions.includes('delete'))
 
   const accessContext: AccessContext = {
     userId,
@@ -61,9 +58,7 @@ export function AccessControlProvider({
   }
 
   return (
-    <AccessControlContext.Provider value={accessContext}>
-      {children}
-    </AccessControlContext.Provider>
+    <AccessControlContext.Provider value={accessContext}>{children}</AccessControlContext.Provider>
   )
 }
 
@@ -85,9 +80,9 @@ export function usePermission(
 
   if (isAdmin) return true
 
-  return roles.some(role =>
-    role.permissions.some(permission =>
-      permission.resource === resource && permission.actions.includes(action)
+  return roles.some((role) =>
+    role.permissions.some(
+      (permission) => permission.resource === resource && permission.actions.includes(action)
     )
   )
 }
@@ -108,7 +103,7 @@ export function useEditorAccess(): {
       canEditTutorials: false,
       canPublishTutorials: false,
       canDeleteTutorials: false,
-      reason: 'Authentication required'
+      reason: 'Authentication required',
     }
   }
 
@@ -119,7 +114,7 @@ export function useEditorAccess(): {
     canEditTutorials: canEdit,
     canPublishTutorials: canPublish,
     canDeleteTutorials: canDelete,
-    reason: canAccessEditor ? undefined : 'Insufficient permissions'
+    reason: canAccessEditor ? undefined : 'Insufficient permissions',
   }
 }
 
@@ -136,7 +131,7 @@ interface ProtectedComponentProps {
 export function ProtectedComponent({
   children,
   fallback = <div>Access denied</div>,
-  requirePermissions = []
+  requirePermissions = [],
 }: ProtectedComponentProps) {
   const { isAuthenticated, roles, isAdmin } = useAccessControl()
 
@@ -150,10 +145,11 @@ export function ProtectedComponent({
 
   // Check if user has all required permissions
   const hasAllPermissions = requirePermissions.every(({ resource, actions }) =>
-    roles.some(role =>
-      role.permissions.some(permission =>
-        permission.resource === resource &&
-        actions.every(action => permission.actions.includes(action))
+    roles.some((role) =>
+      role.permissions.some(
+        (permission) =>
+          permission.resource === resource &&
+          actions.every((action) => permission.actions.includes(action))
       )
     )
   )
@@ -176,12 +172,14 @@ export function EditorProtected({ children, fallback }: EditorProtectedProps) {
 
   if (!canAccessEditor) {
     return (
-      <>{fallback || (
-        <div className="text-center p-8">
-          <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-          <p className="text-gray-600">{reason}</p>
-        </div>
-      )}</>
+      <>
+        {fallback || (
+          <div className="text-center p-8">
+            <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
+            <p className="text-gray-600">{reason}</p>
+          </div>
+        )}
+      </>
     )
   }
 
@@ -197,30 +195,26 @@ export function DevAccessProvider({ children }: { children: ReactNode }) {
       permissions: [
         {
           resource: 'tutorial',
-          actions: ['create', 'read', 'update', 'delete', 'publish']
+          actions: ['create', 'read', 'update', 'delete', 'publish'],
         },
         {
           resource: 'step',
-          actions: ['create', 'read', 'update', 'delete']
+          actions: ['create', 'read', 'update', 'delete'],
         },
         {
           resource: 'user',
-          actions: ['read', 'update']
+          actions: ['read', 'update'],
         },
         {
           resource: 'system',
-          actions: ['read']
-        }
-      ]
-    }
+          actions: ['read'],
+        },
+      ],
+    },
   ]
 
   return (
-    <AccessControlProvider
-      userId="dev-user"
-      roles={devRoles}
-      isAuthenticated={true}
-    >
+    <AccessControlProvider userId="dev-user" roles={devRoles} isAuthenticated={true}>
       {children}
     </AccessControlProvider>
   )

@@ -1,6 +1,13 @@
 export type GameMode = 'friends5' | 'friends10' | 'mixed'
 export type GameStyle = 'practice' | 'sprint' | 'survival'
-export type TimeoutSetting = 'preschool' | 'kindergarten' | 'relaxed' | 'slow' | 'normal' | 'fast' | 'expert'
+export type TimeoutSetting =
+  | 'preschool'
+  | 'kindergarten'
+  | 'relaxed'
+  | 'slow'
+  | 'normal'
+  | 'fast'
+  | 'expert'
 export type ComplementDisplay = 'number' | 'abacus' | 'random' // How to display the complement number
 
 export interface ComplementQuestion {
@@ -117,7 +124,7 @@ export interface GameState {
 
   // UI state
   showScoreModal: boolean
-  activeSpeechBubbles: Map<string, string>  // racerId -> message
+  activeSpeechBubbles: Map<string, string> // racerId -> message
   adaptiveFeedback: { message: string; type: string } | null
 }
 
@@ -132,7 +139,7 @@ export type GameAction =
   | { type: 'NEXT_QUESTION' }
   | { type: 'SUBMIT_ANSWER'; answer: number }
   | { type: 'UPDATE_INPUT'; input: string }
-  | { type: 'UPDATE_AI_POSITIONS'; positions: Array<{id: string, position: number}> }
+  | { type: 'UPDATE_AI_POSITIONS'; positions: Array<{ id: string; position: number }> }
   | { type: 'TRIGGER_AI_COMMENTARY'; racerId: string; message: string; context: string }
   | { type: 'CLEAR_AI_COMMENT'; racerId: string }
   | { type: 'UPDATE_DIFFICULTY_TRACKER'; tracker: DifficultyTracker }
@@ -141,7 +148,13 @@ export type GameAction =
   | { type: 'CLEAR_ADAPTIVE_FEEDBACK' }
   | { type: 'UPDATE_MOMENTUM'; momentum: number }
   | { type: 'UPDATE_TRAIN_POSITION'; position: number }
-  | { type: 'UPDATE_STEAM_JOURNEY'; momentum: number; trainPosition: number; pressure: number; elapsedTime: number }
+  | {
+      type: 'UPDATE_STEAM_JOURNEY'
+      momentum: number
+      trainPosition: number
+      pressure: number
+      elapsedTime: number
+    }
   | { type: 'COMPLETE_LAP'; racerId: string }
   | { type: 'PAUSE_RACE' }
   | { type: 'RESUME_RACE' }

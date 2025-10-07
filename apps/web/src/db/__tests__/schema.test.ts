@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { users, players, userStats, arcadeSessions } from '../schema'
+import { describe, expect, it } from 'vitest'
+import { arcadeSessions, players, userStats, users } from '../schema'
 
 describe('Schema validation', () => {
   describe('users table', () => {

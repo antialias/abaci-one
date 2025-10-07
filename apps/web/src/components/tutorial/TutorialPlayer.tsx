@@ -1,29 +1,41 @@
 'use client'
 
-import React, { useState, useCallback, useEffect, useRef, useReducer, useMemo } from 'react'
-import { AbacusReact, StepBeadHighlight, AbacusOverlay } from '@soroban/abacus-react'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import {
+  type AbacusOverlay,
+  AbacusReact,
+  type StepBeadHighlight,
+  useAbacusDisplay,
+} from '@soroban/abacus-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '../../../styled-system/css'
-import { stack, hstack, vstack } from '../../../styled-system/patterns'
-import { Tutorial, TutorialStep, PracticeStep, TutorialEvent, NavigationState, UIState } from '../../types/tutorial'
-import { PracticeProblemPlayer, PracticeResults } from './PracticeProblemPlayer'
-import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
+import { hstack, stack, vstack } from '../../../styled-system/patterns'
+import type {
+  NavigationState,
+  Tutorial,
+  TutorialEvent,
+  TutorialStep,
+  UIState,
+} from '../../types/tutorial'
 import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
+import { CoachBar } from './CoachBar/CoachBar'
+import { DecompositionWithReasons } from './DecompositionWithReasons'
+import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
 import { TutorialProvider, useTutorialContext } from './TutorialContext'
 import { TutorialUIProvider } from './TutorialUIContext'
-import { CoachBar } from './CoachBar/CoachBar'
-import { PedagogicalDecompositionDisplay } from './PedagogicalDecompositionDisplay'
-import { DecompositionWithReasons } from './DecompositionWithReasons'
-import { useAbacusDisplay } from '@soroban/abacus-react'
 import './CoachBar/coachbar.css'
 
 // Helper function to find the topmost bead with arrows
-function findTopmostBeadWithArrows(stepBeadHighlights: StepBeadHighlight[] | undefined): StepBeadHighlight | null {
+function findTopmostBeadWithArrows(
+  stepBeadHighlights: StepBeadHighlight[] | undefined
+): StepBeadHighlight | null {
   if (!stepBeadHighlights || stepBeadHighlights.length === 0) return null
 
   // Filter only beads that have direction arrows (should have highlights)
-  const beadsWithArrows = stepBeadHighlights.filter(bead => bead.direction && bead.direction !== 'none')
+  const beadsWithArrows = stepBeadHighlights.filter(
+    (bead) => bead.direction && bead.direction !== 'none'
+  )
 
   if (beadsWithArrows.length === 0) {
     console.warn('No beads with arrows found in step highlights:', stepBeadHighlights)
@@ -89,7 +101,10 @@ type TutorialPlayerAction =
   | { type: 'PREVIOUS_MULTI_STEP' }
   | { type: 'RESET_MULTI_STEP' }
 
-function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlayerAction): TutorialPlayerState {
+function _tutorialPlayerReducer(
+  state: TutorialPlayerState,
+  action: TutorialPlayerAction
+): TutorialPlayerState {
   switch (action.type) {
     case 'INITIALIZE_STEP':
       return {
@@ -101,24 +116,30 @@ function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlaye
         stepStartTime: Date.now(),
         multiStepStartTime: Date.now(), // Start timing for first multi-step
         currentMultiStep: 0, // Reset to first multi-step
-        events: [...state.events, {
-          type: 'STEP_STARTED',
-          stepId: action.stepId,
-          timestamp: new Date()
-        }]
+        events: [
+          ...state.events,
+          {
+            type: 'STEP_STARTED',
+            stepId: action.stepId,
+            timestamp: new Date(),
+          },
+        ],
       }
 
     case 'USER_VALUE_CHANGE':
       return {
         ...state,
         currentValue: action.newValue,
-        events: [...state.events, {
-          type: 'VALUE_CHANGED',
-          stepId: action.stepId,
-          oldValue: action.oldValue,
-          newValue: action.newValue,
-          timestamp: new Date()
-        }]
+        events: [
+          ...state.events,
+          {
+            type: 'VALUE_CHANGED',
+            stepId: action.stepId,
+            oldValue: action.oldValue,
+            newValue: action.newValue,
+            timestamp: new Date(),
+          },
+        ],
       }
 
     case 'COMPLETE_STEP':
@@ -126,49 +147,52 @@ function tutorialPlayerReducer(state: TutorialPlayerState, action: TutorialPlaye
         ...state,
         isStepCompleted: true,
         error: null,
-        events: [...state.events, {
-          type: 'STEP_COMPLETED',
-          stepId: action.stepId,
-          success: true,
-          timestamp: new Date()
-        }]
+        events: [
+          ...state.events,
+          {
+            type: 'STEP_COMPLETED',
+            stepId: action.stepId,
+            success: true,
+            timestamp: new Date(),
+          },
+        ],
       }
 
     case 'SET_ERROR':
       return {
         ...state,
-        error: action.error
+        error: action.error,
       }
 
     case 'ADD_EVENT':
       return {
         ...state,
-        events: [...state.events, action.event]
+        events: [...state.events, action.event],
       }
 
     case 'UPDATE_UI_STATE':
       return {
         ...state,
-        uiState: { ...state.uiState, ...action.updates }
+        uiState: { ...state.uiState, ...action.updates },
       }
 
     case 'ADVANCE_MULTI_STEP':
       return {
         ...state,
         currentMultiStep: state.currentMultiStep + 1,
-        multiStepStartTime: Date.now() // Reset timer for new multi-step
+        multiStepStartTime: Date.now(), // Reset timer for new multi-step
       }
 
     case 'PREVIOUS_MULTI_STEP':
       return {
         ...state,
-        currentMultiStep: Math.max(0, state.currentMultiStep - 1)
+        currentMultiStep: Math.max(0, state.currentMultiStep - 1),
       }
 
     case 'RESET_MULTI_STEP':
       return {
         ...state,
-        currentMultiStep: 0
+        currentMultiStep: 0,
       }
 
     default:
@@ -197,12 +221,11 @@ function TutorialPlayerContent({
   onStepComplete,
   onTutorialComplete,
   onEvent,
-  className
+  className,
 }: TutorialPlayerProps) {
-  const [startTime] = useState(Date.now())
+  const [_startTime] = useState(Date.now())
   const isProgrammaticChange = useRef(false)
   const [showHelpForCurrentStep, setShowHelpForCurrentStep] = useState(false)
-
 
   // Use tutorial context instead of local state
   const {
@@ -220,10 +243,20 @@ function TutorialPlayerContent({
     activeIndividualTermIndex,
     getColumnFromTermIndex,
     getGroupTermIndicesFromTermIndex,
-    handleAbacusColumnHover
+    handleAbacusColumnHover,
   } = useTutorialContext()
 
-  const { currentStepIndex, currentValue, isStepCompleted, error, events, stepStartTime, multiStepStartTime, uiState, currentMultiStep } = state
+  const {
+    currentStepIndex,
+    currentValue,
+    isStepCompleted,
+    error,
+    events,
+    stepStartTime,
+    multiStepStartTime,
+    uiState,
+    currentMultiStep,
+  } = state
 
   // Use universal abacus display configuration
   const { config: abacusConfig } = useAbacusDisplay()
@@ -237,7 +270,7 @@ function TutorialPlayerContent({
   // Reset success popup when moving to new step
   useEffect(() => {
     setIsSuccessPopupDismissed(false)
-  }, [currentStepIndex])
+  }, [])
 
   // Auto-dismiss success toast after 3 seconds
   useEffect(() => {
@@ -258,27 +291,38 @@ function TutorialPlayerContent({
     canGoNext: currentStepIndex < tutorial.steps.length - 1,
     canGoPrevious: currentStepIndex > 0,
     totalSteps: tutorial.steps.length,
-    completionPercentage: (currentStepIndex / tutorial.steps.length) * 100
+    completionPercentage: (currentStepIndex / tutorial.steps.length) * 100,
   }
 
   // Define the static expected steps using our unified step generator
-  const { expectedSteps, fullDecomposition, isMeaningfulDecomposition, pedagogicalSegments, termPositions, unifiedSteps } = useMemo(() => {
+  const {
+    expectedSteps,
+    fullDecomposition,
+    isMeaningfulDecomposition,
+    pedagogicalSegments,
+    termPositions,
+    unifiedSteps,
+  } = useMemo(() => {
     try {
-      const unifiedSequence = generateUnifiedInstructionSequence(currentStep.startValue, currentStep.targetValue)
+      const unifiedSequence = generateUnifiedInstructionSequence(
+        currentStep.startValue,
+        currentStep.targetValue
+      )
 
       // Convert unified sequence to expected steps format
       const steps = unifiedSequence.steps.map((step, index) => ({
         index: index,
         stepIndex: index,
         targetValue: step.expectedValue,
-        startValue: index === 0 ? currentStep.startValue : unifiedSequence.steps[index - 1].expectedValue,
+        startValue:
+          index === 0 ? currentStep.startValue : unifiedSequence.steps[index - 1].expectedValue,
         description: step.englishInstruction,
-        mathematicalTerm: step.mathematicalTerm,  // Add the pedagogical term
-        termPosition: step.termPosition  // Add the precise position information
+        mathematicalTerm: step.mathematicalTerm, // Add the pedagogical term
+        termPosition: step.termPosition, // Add the precise position information
       }))
 
       // Extract term positions from steps for DecompositionWithReasons
-      const positions = unifiedSequence.steps.map(step => step.termPosition).filter(Boolean)
+      const positions = unifiedSequence.steps.map((step) => step.termPosition).filter(Boolean)
 
       return {
         expectedSteps: steps,
@@ -286,16 +330,16 @@ function TutorialPlayerContent({
         isMeaningfulDecomposition: unifiedSequence.isMeaningfulDecomposition,
         pedagogicalSegments: unifiedSequence.segments,
         termPositions: positions,
-        unifiedSteps: unifiedSequence.steps  // NEW: Include the raw unified steps with provenance
+        unifiedSteps: unifiedSequence.steps, // NEW: Include the raw unified steps with provenance
       }
-    } catch (error) {
+    } catch (_error) {
       return {
         expectedSteps: [],
         fullDecomposition: '',
         isMeaningfulDecomposition: false,
         pedagogicalSegments: [],
         termPositions: [],
-        unifiedSteps: []  // NEW: Also add empty array for error case
+        unifiedSteps: [], // NEW: Also add empty array for error case
       }
     }
   }, [currentStep.startValue, currentStep.targetValue])
@@ -307,7 +351,6 @@ function TutorialPlayerContent({
 
     // Get the current expected step we're working toward
     const currentExpectedStep = expectedSteps[currentMultiStep]
-
 
     if (!currentExpectedStep) {
       // If we're past the last step, check if we've reached the final target
@@ -321,28 +364,32 @@ function TutorialPlayerContent({
     try {
       const beadDiff = calculateBeadDiffFromValues(currentValue, currentExpectedStep.targetValue)
 
-
       if (!beadDiff.hasChanges) {
         return undefined
       }
 
       // Convert bead diff results to StepBeadHighlight format expected by AbacusReact
-      const stepBeadHighlights: StepBeadHighlight[] = beadDiff.changes.map((change, index) => ({
+      const stepBeadHighlights: StepBeadHighlight[] = beadDiff.changes.map((change, _index) => ({
         placeValue: change.placeValue,
         beadType: change.beadType,
         position: change.position,
         direction: change.direction,
         stepIndex: currentMultiStep, // Use current multi-step index to match AbacusReact filtering
-        order: change.order
+        order: change.order,
       }))
-
 
       return stepBeadHighlights
     } catch (error) {
       console.error('Error generating step beads with bead diff:', error)
       return undefined
     }
-  }, [currentValue, currentStep.targetValue, expectedSteps, currentMultiStep])
+  }, [
+    currentValue,
+    currentStep.targetValue,
+    expectedSteps,
+    currentMultiStep,
+    currentStep.stepBeadHighlights,
+  ])
 
   // Get the current step's bead diff summary for real-time user feedback
   const getCurrentStepSummary = useCallback(() => {
@@ -354,14 +401,13 @@ function TutorialPlayerContent({
     try {
       const beadDiff = calculateBeadDiffFromValues(currentValue, currentExpectedStep.targetValue)
       return beadDiff.hasChanges ? beadDiff.summary : null
-    } catch (error) {
+    } catch (_error) {
       return null
     }
   }, [currentValue, expectedSteps, currentMultiStep])
 
   // Get current step beads (dynamic arrows for static expected steps)
   const currentStepBeads = getCurrentStepBeads()
-
 
   // Get current step summary for real-time user feedback
   const currentStepSummary = getCurrentStepSummary()
@@ -385,7 +431,7 @@ function TutorialPlayerContent({
         return {
           before: fullDecomposition.substring(0, startIndex),
           highlighted,
-          after: fullDecomposition.substring(endIndex)
+          after: fullDecomposition.substring(endIndex),
         }
       }
     }
@@ -395,18 +441,18 @@ function TutorialPlayerContent({
     const searchIndex = fullDecomposition.indexOf(searchTerm)
 
     if (searchIndex !== -1) {
-      const startIndex = mathTerm.startsWith('-') ?
-        // For negative terms, try to include the preceding dash
-        Math.max(0, searchIndex - 1) :
-        searchIndex
-      const endIndex = mathTerm.startsWith('-') ?
-        searchIndex + searchTerm.length :
-        searchIndex + mathTerm.length
+      const startIndex = mathTerm.startsWith('-')
+        ? // For negative terms, try to include the preceding dash
+          Math.max(0, searchIndex - 1)
+        : searchIndex
+      const endIndex = mathTerm.startsWith('-')
+        ? searchIndex + searchTerm.length
+        : searchIndex + mathTerm.length
 
       return {
         before: fullDecomposition.substring(0, startIndex),
         highlighted: fullDecomposition.substring(startIndex, endIndex),
-        after: fullDecomposition.substring(endIndex)
+        after: fullDecomposition.substring(endIndex),
       }
     }
 
@@ -419,7 +465,7 @@ function TutorialPlayerContent({
         return {
           before: fullDecomposition.substring(0, numberIndex),
           highlighted: fullDecomposition.substring(numberIndex, numberIndex + number.length),
-          after: fullDecomposition.substring(numberIndex + number.length)
+          after: fullDecomposition.substring(numberIndex + number.length),
         }
       }
     }
@@ -451,7 +497,7 @@ function TutorialPlayerContent({
           position: 0,
           direction: 'none' as const,
           stepIndex: currentMultiStep,
-          order: 0
+          order: 0,
         }
       }
     } else if (showInstructions) {
@@ -472,7 +518,7 @@ function TutorialPlayerContent({
       const abacusDigits = currentValue.toString().padStart(5, '0').split('').map(Number)
 
       for (let col = 0; col < targetColumnIndex; col++) {
-        const placeValue = 4 - col // Convert columnIndex back to placeValue
+        const _placeValue = 4 - col // Convert columnIndex back to placeValue
         const digitValue = abacusDigits[col]
 
         // Check if any beads are active (against reckoning bar) in this column
@@ -486,10 +532,11 @@ function TutorialPlayerContent({
         }
 
         // Also check if this column has beads with direction arrows (from current step)
-        const hasArrowsInColumn = currentStepBeads?.some(bead => {
-          const beadColumnIndex = 4 - bead.placeValue
-          return beadColumnIndex === col && bead.direction && bead.direction !== 'none'
-        }) ?? false
+        const hasArrowsInColumn =
+          currentStepBeads?.some((bead) => {
+            const beadColumnIndex = 4 - bead.placeValue
+            return beadColumnIndex === col && bead.direction && bead.direction !== 'none'
+          }) ?? false
         if (hasArrowsInColumn) {
           return true
         }
@@ -501,19 +548,21 @@ function TutorialPlayerContent({
     // Determine tooltip position and target
     const shouldPositionAbove = hasActiveBeadsToLeft
     const tooltipSide = shouldPositionAbove ? 'top' : 'left'
-    const tooltipTarget = shouldPositionAbove ? {
-      // Target the heaven bead position for the column
-      type: 'bead' as const,
-      columnIndex: targetColumnIndex,
-      beadType: 'heaven' as const,
-      beadPosition: 0 // Heaven beads are always at position 0
-    } : {
-      // Target the actual bead
-      type: 'bead' as const,
-      columnIndex: targetColumnIndex,
-      beadType: topmostBead.beadType,
-      beadPosition: topmostBead.position
-    }
+    const tooltipTarget = shouldPositionAbove
+      ? {
+          // Target the heaven bead position for the column
+          type: 'bead' as const,
+          columnIndex: targetColumnIndex,
+          beadType: 'heaven' as const,
+          beadPosition: 0, // Heaven beads are always at position 0
+        }
+      : {
+          // Target the actual bead
+          type: 'bead' as const,
+          columnIndex: targetColumnIndex,
+          beadType: topmostBead.beadType,
+          beadPosition: topmostBead.position,
+        }
 
     // Create an overlay that positions tooltip to avoid covering active beads
     const overlay: AbacusOverlay = {
@@ -551,7 +600,7 @@ function TutorialPlayerContent({
                   opacity: 0.95,
                   transition: 'all 0.3s ease',
                   transform: showCelebration ? 'scale(1.05)' : 'scale(1)',
-                  animation: showCelebration ? 'celebrationPulse 0.6s ease-out' : 'none'
+                  animation: showCelebration ? 'celebrationPulse 0.6s ease-out' : 'none',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.opacity = '1'
@@ -562,13 +611,15 @@ function TutorialPlayerContent({
               >
                 <div style={{ fontSize: '12px', opacity: 0.9 }}>
                   {showCelebration ? (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      fontSize: '14px',
-                      fontWeight: 'bold'
-                    }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                      }}
+                    >
                       <span style={{ fontSize: '18px' }}>🎉</span>
                       <span>Excellent work!</span>
                     </div>
@@ -587,7 +638,7 @@ function TutorialPlayerContent({
                 </div>
                 <Tooltip.Arrow
                   style={{
-                    fill: showCelebration ? '#15803d' : '#1e40af'
+                    fill: showCelebration ? '#15803d' : '#1e40af',
                   }}
                 />
               </Tooltip.Content>
@@ -596,11 +647,20 @@ function TutorialPlayerContent({
         </Tooltip.Provider>
       ),
       offset: { x: 0, y: 0 },
-      visible: true
+      visible: true,
     }
 
     return overlay
-  }, [currentStepSummary, currentStepBeads, isStepCompleted, currentMultiStep, renderHighlightedDecomposition, currentValue, currentStep])
+  }, [
+    currentStepSummary,
+    currentStepBeads,
+    isStepCompleted,
+    currentMultiStep,
+    renderHighlightedDecomposition,
+    currentValue,
+    currentStep,
+    isMeaningfulDecomposition,
+  ])
 
   // Timer for smart help detection
   useEffect(() => {
@@ -611,12 +671,15 @@ function TutorialPlayerContent({
     }, 8000) // 8 seconds
 
     return () => clearTimeout(timer)
-  }, [currentMultiStep, multiStepStartTime]) // Reset when step changes or timer resets
+  }, []) // Reset when step changes or timer resets
 
   // Event logging - now just notifies parent, state is managed by reducer
-  const notifyEvent = useCallback((event: TutorialEvent) => {
-    onEvent?.(event)
-  }, [onEvent])
+  const notifyEvent = useCallback(
+    (event: TutorialEvent) => {
+      onEvent?.(event)
+    },
+    [onEvent]
+  )
 
   // Navigation functions - declare these first since they're used in useEffects
   // Use context goToStep function instead of local one
@@ -639,13 +702,19 @@ function TutorialPlayerContent({
         type: 'INITIALIZE_STEP',
         stepIndex: currentStepIndex,
         startValue: currentStep.startValue,
-        stepId: currentStep.id
+        stepId: currentStep.id,
       })
 
       // Notify parent of step change
       onStepChange?.(currentStepIndex, currentStep)
     }
-  }, []) // Only run on mount
+  }, [
+    currentStep,
+    currentStepIndex, // Dispatch initialization action
+    dispatch,
+    initialStepIndex, // Notify parent of step change
+    onStepChange,
+  ]) // Only run on mount
 
   // Check if step is completed - only complete when we've gone through all multi-steps AND reached target
   useEffect(() => {
@@ -667,7 +736,19 @@ function TutorialPlayerContent({
         }
       }
     }
-  }, [currentValue, currentStep, isStepCompleted, expectedSteps, currentMultiStep, uiState.autoAdvance, navigationState.canGoNext, onStepComplete, currentStepIndex, goToNextStep])
+  }, [
+    currentValue,
+    currentStep,
+    isStepCompleted,
+    expectedSteps,
+    currentMultiStep,
+    uiState.autoAdvance,
+    navigationState.canGoNext,
+    onStepComplete,
+    currentStepIndex,
+    goToNextStep,
+    dispatch,
+  ])
 
   // These refs are already defined above
 
@@ -685,13 +766,20 @@ function TutorialPlayerContent({
       userHasInteracted: userHasInteracted.current,
       expectedStepIndex: currentMultiStep,
       expectedStepTarget: currentExpectedStep?.targetValue,
-      expectedStepReached: currentExpectedStep ? currentValue === currentExpectedStep.targetValue : false,
+      expectedStepReached: currentExpectedStep
+        ? currentValue === currentExpectedStep.targetValue
+        : false,
       totalExpectedSteps: expectedSteps.length,
-      finalTargetReached: currentValue === currentStep?.targetValue
+      finalTargetReached: currentValue === currentStep?.targetValue,
     })
 
     // Only advance if user interacted and we have expected steps
-    if (valueChanged && userHasInteracted.current && expectedSteps.length > 0 && currentExpectedStep) {
+    if (
+      valueChanged &&
+      userHasInteracted.current &&
+      expectedSteps.length > 0 &&
+      currentExpectedStep
+    ) {
       // Check if user reached the current expected step's target
       if (currentValue === currentExpectedStep.targetValue) {
         const hasMoreExpectedSteps = currentMultiStep < expectedSteps.length - 1
@@ -707,7 +795,7 @@ function TutorialPlayerContent({
         }
       }
     }
-  }, [currentValue, currentStep, currentMultiStep, expectedSteps, showDebugPanel])
+  }, [currentValue, currentStep, currentMultiStep, expectedSteps, advanceMultiStep])
 
   // Update the reference when the step changes (not just value changes)
   useEffect(() => {
@@ -716,7 +804,7 @@ function TutorialPlayerContent({
     userHasInteracted.current = false
     // Reset last moved bead when step changes
     lastMovedBead.current = null
-  }, [currentStepIndex, currentMultiStep])
+  }, [currentValue])
 
   // Notify parent of events when they're added to state
   useEffect(() => {
@@ -726,70 +814,77 @@ function TutorialPlayerContent({
     }
   }, [events, notifyEvent])
 
-
   // Wrap context handleValueChange to track user interaction
-  const handleValueChange = useCallback((newValue: number) => {
-    // Mark that user has interacted
-    userHasInteracted.current = true
+  const handleValueChange = useCallback(
+    (newValue: number) => {
+      // Mark that user has interacted
+      userHasInteracted.current = true
 
-    // Try to determine which bead was moved by looking at current step beads
-    if (currentStepBeads?.length) {
-      // Find the first bead with direction arrows as the likely moved bead
-      const likelyMovedBead = findTopmostBeadWithArrows(currentStepBeads)
-      if (likelyMovedBead) {
-        lastMovedBead.current = likelyMovedBead
+      // Try to determine which bead was moved by looking at current step beads
+      if (currentStepBeads?.length) {
+        // Find the first bead with direction arrows as the likely moved bead
+        const likelyMovedBead = findTopmostBeadWithArrows(currentStepBeads)
+        if (likelyMovedBead) {
+          lastMovedBead.current = likelyMovedBead
+        }
       }
-    }
 
-    // Call the context's handleValueChange
-    contextHandleValueChange(newValue)
-  }, [contextHandleValueChange, currentValue, currentStepBeads])
+      // Call the context's handleValueChange
+      contextHandleValueChange(newValue)
+    },
+    [contextHandleValueChange, currentStepBeads]
+  )
 
   // Cleanup handled by context
 
   // Value tracking handled by context
 
-  const handleBeadClick = useCallback((beadInfo: any) => {
-    dispatch({
-      type: 'ADD_EVENT',
-      event: {
-        type: 'BEAD_CLICKED',
-        stepId: currentStep.id,
-        beadInfo,
-        timestamp: new Date()
-      }
-    })
+  const handleBeadClick = useCallback(
+    (beadInfo: any) => {
+      dispatch({
+        type: 'ADD_EVENT',
+        event: {
+          type: 'BEAD_CLICKED',
+          stepId: currentStep.id,
+          beadInfo,
+          timestamp: new Date(),
+        },
+      })
 
-    // Check if this is the correct action
-    if (currentStep.highlightBeads && Array.isArray(currentStep.highlightBeads)) {
-      const isCorrectBead = currentStep.highlightBeads.some(highlight => {
-        // Get place value from highlight (convert columnIndex to placeValue if needed)
-        const highlightPlaceValue = highlight.placeValue ?? (4 - highlight.columnIndex);
-        // Get place value from bead click event
-        const beadPlaceValue = beadInfo.bead ? beadInfo.bead.placeValue : (4 - beadInfo.columnIndex);
+      // Check if this is the correct action
+      if (currentStep.highlightBeads && Array.isArray(currentStep.highlightBeads)) {
+        const isCorrectBead = currentStep.highlightBeads.some((highlight) => {
+          // Get place value from highlight (convert columnIndex to placeValue if needed)
+          const highlightPlaceValue = highlight.placeValue ?? 4 - highlight.columnIndex
+          // Get place value from bead click event
+          const beadPlaceValue = beadInfo.bead ? beadInfo.bead.placeValue : 4 - beadInfo.columnIndex
 
-        return highlightPlaceValue === beadPlaceValue &&
-               highlight.beadType === beadInfo.beadType &&
-               (highlight.position === undefined || highlight.position === beadInfo.position);
-      });
-
-      if (!isCorrectBead) {
-        dispatch({ type: 'SET_ERROR', error: currentStep.errorMessages.wrongBead })
-
-        dispatch({
-          type: 'ADD_EVENT',
-          event: {
-            type: 'ERROR_OCCURRED',
-            stepId: currentStep.id,
-            error: currentStep.errorMessages.wrongBead,
-            timestamp: new Date()
-          }
+          return (
+            highlightPlaceValue === beadPlaceValue &&
+            highlight.beadType === beadInfo.beadType &&
+            (highlight.position === undefined || highlight.position === beadInfo.position)
+          )
         })
-      } else {
-        dispatch({ type: 'SET_ERROR', error: null })
+
+        if (!isCorrectBead) {
+          dispatch({ type: 'SET_ERROR', error: currentStep.errorMessages.wrongBead })
+
+          dispatch({
+            type: 'ADD_EVENT',
+            event: {
+              type: 'ERROR_OCCURRED',
+              stepId: currentStep.id,
+              error: currentStep.errorMessages.wrongBead,
+              timestamp: new Date(),
+            },
+          })
+        } else {
+          dispatch({ type: 'SET_ERROR', error: null })
+        }
       }
-    }
-  }, [currentStep])
+    },
+    [currentStep, dispatch]
+  )
 
   const handleBeadRef = useCallback((bead: any, element: SVGElement | null) => {
     const key = `${bead.placeValue}-${bead.type}-${bead.position}`
@@ -804,23 +899,23 @@ function TutorialPlayerContent({
   const toggleDebugPanel = useCallback(() => {
     dispatch({
       type: 'UPDATE_UI_STATE',
-      updates: { showDebugPanel: !uiState.showDebugPanel }
+      updates: { showDebugPanel: !uiState.showDebugPanel },
     })
-  }, [uiState.showDebugPanel])
+  }, [uiState.showDebugPanel, dispatch])
 
   const toggleStepList = useCallback(() => {
     dispatch({
       type: 'UPDATE_UI_STATE',
-      updates: { showStepList: !uiState.showStepList }
+      updates: { showStepList: !uiState.showStepList },
     })
-  }, [uiState.showStepList])
+  }, [uiState.showStepList, dispatch])
 
   const toggleAutoAdvance = useCallback(() => {
     dispatch({
       type: 'UPDATE_UI_STATE',
-      updates: { autoAdvance: !uiState.autoAdvance }
+      updates: { autoAdvance: !uiState.autoAdvance },
     })
-  }, [uiState.autoAdvance])
+  }, [uiState.autoAdvance, dispatch])
 
   // Two-level dynamic column highlights: group terms + individual term
   const dynamicColumnHighlights = useMemo(() => {
@@ -831,7 +926,7 @@ function TutorialPlayerContent({
     const highlights: Record<number, any> = {}
 
     // Level 1: Group highlights (blue glow for all terms in activeTermIndices)
-    activeTermIndices.forEach(termIndex => {
+    activeTermIndices.forEach((termIndex) => {
       const columnIndex = getColumnFromTermIndex(termIndex, true) // Use group column (rhsPlace)
       console.log(`  - Group term ${termIndex} maps to column ${columnIndex} (using rhsPlace)`)
       if (columnIndex !== null) {
@@ -840,7 +935,7 @@ function TutorialPlayerContent({
           backgroundGlow: {
             fill: 'rgba(59, 130, 246, 0.2)',
             blur: 4,
-            spread: 16
+            spread: 16,
           },
           // Group numeral highlighting
           numerals: {
@@ -849,8 +944,8 @@ function TutorialPlayerContent({
             fontWeight: 'bold',
             borderRadius: 4,
             borderWidth: 1,
-            borderColor: '#3b82f6'
-          }
+            borderColor: '#3b82f6',
+          },
         }
         console.log(`  🔵 Added BLUE highlight for column ${columnIndex}`)
       }
@@ -859,14 +954,16 @@ function TutorialPlayerContent({
     // Level 2: Individual term highlight (orange glow, overrides group styling)
     if (activeIndividualTermIndex !== null) {
       const individualColumnIndex = getColumnFromTermIndex(activeIndividualTermIndex, false) // Use individual column (termPlace)
-      console.log(`  - Individual term ${activeIndividualTermIndex} maps to column ${individualColumnIndex} (using termPlace)`)
+      console.log(
+        `  - Individual term ${activeIndividualTermIndex} maps to column ${individualColumnIndex} (using termPlace)`
+      )
       if (individualColumnIndex !== null) {
         highlights[individualColumnIndex] = {
           // Individual background glow effect (orange) - overrides group glow
           backgroundGlow: {
             fill: 'rgba(249, 115, 22, 0.3)',
             blur: 6,
-            spread: 20
+            spread: 20,
           },
           // Individual numeral highlighting (orange)
           numerals: {
@@ -875,14 +972,19 @@ function TutorialPlayerContent({
             fontWeight: 'bold',
             borderRadius: 6,
             borderWidth: 2,
-            borderColor: '#ea580c'
-          }
+            borderColor: '#ea580c',
+          },
         }
-        console.log(`  🟠 Added ORANGE highlight for column ${individualColumnIndex} (overriding blue)`)
+        console.log(
+          `  🟠 Added ORANGE highlight for column ${individualColumnIndex} (overriding blue)`
+        )
       }
     }
 
-    console.log('🎨 Final highlights:', Object.keys(highlights).map(col => `Column ${col}`))
+    console.log(
+      '🎨 Final highlights:',
+      Object.keys(highlights).map((col) => `Column ${col}`)
+    )
     return highlights
   }, [activeTermIndices, activeIndividualTermIndex, getColumnFromTermIndex])
 
@@ -892,39 +994,40 @@ function TutorialPlayerContent({
     const staticHighlights: Record<number, any> = {}
 
     if (currentStep.highlightBeads && Array.isArray(currentStep.highlightBeads)) {
-      currentStep.highlightBeads.forEach(highlight => {
+      currentStep.highlightBeads.forEach((highlight) => {
         // Convert placeValue to columnIndex for AbacusReact compatibility
-        const columnIndex = highlight.placeValue !== undefined ? (4 - highlight.placeValue) : highlight.columnIndex;
+        const columnIndex =
+          highlight.placeValue !== undefined ? 4 - highlight.placeValue : highlight.columnIndex
 
         // Initialize column if it doesn't exist
         if (!staticHighlights[columnIndex]) {
-          staticHighlights[columnIndex] = {};
+          staticHighlights[columnIndex] = {}
         }
 
         // Add the bead style to the appropriate type
         if (highlight.beadType === 'earth' && highlight.position !== undefined) {
           if (!staticHighlights[columnIndex].earth) {
-            staticHighlights[columnIndex].earth = {};
+            staticHighlights[columnIndex].earth = {}
           }
           staticHighlights[columnIndex].earth[highlight.position] = {
             fill: '#fbbf24',
             stroke: '#f59e0b',
-            strokeWidth: 3
-          };
+            strokeWidth: 3,
+          }
         } else {
           staticHighlights[columnIndex][highlight.beadType] = {
             fill: '#fbbf24',
             stroke: '#f59e0b',
-            strokeWidth: 3
-          };
+            strokeWidth: 3,
+          }
         }
       })
     }
 
     // Merge static and dynamic highlights (dynamic takes precedence)
     const mergedHighlights = { ...staticHighlights }
-    Object.keys(dynamicColumnHighlights).forEach(columnIndexStr => {
-      const columnIndex = parseInt(columnIndexStr)
+    Object.keys(dynamicColumnHighlights).forEach((columnIndexStr) => {
+      const columnIndex = parseInt(columnIndexStr, 10)
       if (!mergedHighlights[columnIndex]) {
         mergedHighlights[columnIndex] = {}
       }
@@ -933,31 +1036,33 @@ function TutorialPlayerContent({
     })
 
     return Object.keys(mergedHighlights).length > 0 ? { columns: mergedHighlights } : undefined
-  }, [currentStep.highlightBeads, dynamicColumnHighlights]);
+  }, [currentStep.highlightBeads, dynamicColumnHighlights])
 
   if (!currentStep) {
     return <div>No steps available</div>
   }
 
   return (
-    <div className={`${css({
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      minHeight: '600px'
-    })} ${className || ''}`}>
+    <div
+      className={`${css({
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: '600px',
+      })} ${className || ''}`}
+    >
       {/* Header */}
-      <div className={css({
-        borderBottom: '1px solid',
-        borderColor: 'gray.200',
-        p: 4,
-        bg: 'white'
-      })}>
+      <div
+        className={css({
+          borderBottom: '1px solid',
+          borderColor: 'gray.200',
+          p: 4,
+          bg: 'white',
+        })}
+      >
         <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
           <div>
-            <h1 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>
-              {tutorial.title}
-            </h1>
+            <h1 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>{tutorial.title}</h1>
             <p className={css({ fontSize: 'sm', color: 'gray.600' })}>
               Step {currentStepIndex + 1} of {tutorial.steps.length}: {currentStep.title}
             </p>
@@ -978,7 +1083,7 @@ function TutorialPlayerContent({
                     bg: uiState.showDebugPanel ? 'blue.100' : 'white',
                     color: 'blue.700',
                     cursor: 'pointer',
-                    _hover: { bg: 'blue.50' }
+                    _hover: { bg: 'blue.50' },
                   })}
                 >
                   Debug
@@ -994,82 +1099,101 @@ function TutorialPlayerContent({
                     borderRadius: 'md',
                     bg: uiState.showStepList ? 'gray.100' : 'white',
                     cursor: 'pointer',
-                    _hover: { bg: 'gray.50' }
+                    _hover: { bg: 'gray.50' },
                   })}
                 >
                   Steps
                 </button>
 
                 {/* Multi-step navigation controls */}
-                {currentStep.multiStepInstructions && currentStep.multiStepInstructions.length > 1 && (
-                  <>
-                    <div className={css({
-                      fontSize: 'xs',
-                      color: 'gray.600',
-                      px: 2,
-                      borderLeft: '1px solid',
-                      borderColor: 'gray.300',
-                      ml: 2,
-                      pl: 3
-                    })}>
-                      Multi-Step: {currentMultiStep + 1} / {currentStep.multiStepInstructions.length}
-                    </div>
-                    <button
-                      onClick={() => dispatch({ type: 'RESET_MULTI_STEP' })}
-                      disabled={currentMultiStep === 0}
-                      className={css({
-                        px: 2,
-                        py: 1,
-                        fontSize: 'xs',
-                        border: '1px solid',
-                        borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
-                        borderRadius: 'md',
-                        bg: currentMultiStep === 0 ? 'gray.100' : 'white',
-                        color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
-                        cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
-                        _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' }
-                      })}
-                    >
-                      ⏮ First
-                    </button>
-                    <button
-                      onClick={() => previousMultiStep()}
-                      disabled={currentMultiStep === 0}
-                      className={css({
-                        px: 2,
-                        py: 1,
-                        fontSize: 'xs',
-                        border: '1px solid',
-                        borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
-                        borderRadius: 'md',
-                        bg: currentMultiStep === 0 ? 'gray.100' : 'white',
-                        color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
-                        cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
-                        _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' }
-                      })}
-                    >
-                      ⏪ Prev
-                    </button>
-                    <button
-                      onClick={() => advanceMultiStep()}
-                      disabled={currentMultiStep >= currentStep.multiStepInstructions.length - 1}
-                      className={css({
-                        px: 2,
-                        py: 1,
-                        fontSize: 'xs',
-                        border: '1px solid',
-                        borderColor: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? 'gray.200' : 'green.300',
-                        borderRadius: 'md',
-                        bg: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? 'gray.100' : 'white',
-                        color: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? 'gray.400' : 'green.700',
-                        cursor: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? 'not-allowed' : 'pointer',
-                        _hover: currentMultiStep >= currentStep.multiStepInstructions.length - 1 ? {} : { bg: 'green.50' }
-                      })}
-                    >
-                      Next ⏩
-                    </button>
-                  </>
-                )}
+                {currentStep.multiStepInstructions &&
+                  currentStep.multiStepInstructions.length > 1 && (
+                    <>
+                      <div
+                        className={css({
+                          fontSize: 'xs',
+                          color: 'gray.600',
+                          px: 2,
+                          borderLeft: '1px solid',
+                          borderColor: 'gray.300',
+                          ml: 2,
+                          pl: 3,
+                        })}
+                      >
+                        Multi-Step: {currentMultiStep + 1} /{' '}
+                        {currentStep.multiStepInstructions.length}
+                      </div>
+                      <button
+                        onClick={() => dispatch({ type: 'RESET_MULTI_STEP' })}
+                        disabled={currentMultiStep === 0}
+                        className={css({
+                          px: 2,
+                          py: 1,
+                          fontSize: 'xs',
+                          border: '1px solid',
+                          borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
+                          borderRadius: 'md',
+                          bg: currentMultiStep === 0 ? 'gray.100' : 'white',
+                          color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
+                          cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
+                          _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' },
+                        })}
+                      >
+                        ⏮ First
+                      </button>
+                      <button
+                        onClick={() => previousMultiStep()}
+                        disabled={currentMultiStep === 0}
+                        className={css({
+                          px: 2,
+                          py: 1,
+                          fontSize: 'xs',
+                          border: '1px solid',
+                          borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
+                          borderRadius: 'md',
+                          bg: currentMultiStep === 0 ? 'gray.100' : 'white',
+                          color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
+                          cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
+                          _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' },
+                        })}
+                      >
+                        ⏪ Prev
+                      </button>
+                      <button
+                        onClick={() => advanceMultiStep()}
+                        disabled={currentMultiStep >= currentStep.multiStepInstructions.length - 1}
+                        className={css({
+                          px: 2,
+                          py: 1,
+                          fontSize: 'xs',
+                          border: '1px solid',
+                          borderColor:
+                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                              ? 'gray.200'
+                              : 'green.300',
+                          borderRadius: 'md',
+                          bg:
+                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                              ? 'gray.100'
+                              : 'white',
+                          color:
+                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                              ? 'gray.400'
+                              : 'green.700',
+                          cursor:
+                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                              ? 'not-allowed'
+                              : 'pointer',
+                          _hover:
+                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                              ? {}
+                              : { bg: 'green.50' },
+                        })}
+                      >
+                        Next ⏩
+                      </button>
+                    </>
+                  )}
                 <label className={hstack({ gap: 2, fontSize: 'sm' })}>
                   <input
                     type="checkbox"
@@ -1090,7 +1214,7 @@ function TutorialPlayerContent({
               bg: 'blue.500',
               h: 'full',
               borderRadius: 'full',
-              transition: 'width 0.3s ease'
+              transition: 'width 0.3s ease',
             })}
             style={{ width: `${navigationState.completionPercentage}%` }}
           />
@@ -1100,39 +1224,43 @@ function TutorialPlayerContent({
       <div className={hstack({ flex: 1, gap: 0 })}>
         {/* Step list sidebar */}
         {uiState.showStepList && (
-          <div className={css({
-            w: '300px',
-            borderRight: '1px solid',
-            borderColor: 'gray.200',
-            bg: 'gray.50',
-            p: 4,
-            overflowY: 'auto'
-          })}>
+          <div
+            className={css({
+              w: '300px',
+              borderRight: '1px solid',
+              borderColor: 'gray.200',
+              bg: 'gray.50',
+              p: 4,
+              overflowY: 'auto',
+            })}
+          >
             <h3 className={css({ fontWeight: 'bold', mb: 3 })}>Tutorial Steps</h3>
             <div className={stack({ gap: 2 })}>
-              {tutorial.steps && Array.isArray(tutorial.steps) ? tutorial.steps.map((step, index) => (
-                <button
-                  key={step.id}
-                  onClick={() => goToStep(index)}
-                  className={css({
-                    p: 3,
-                    textAlign: 'left',
-                    border: '1px solid',
-                    borderColor: index === currentStepIndex ? 'blue.300' : 'gray.200',
-                    borderRadius: 'md',
-                    bg: index === currentStepIndex ? 'blue.50' : 'white',
-                    cursor: 'pointer',
-                    _hover: { bg: index === currentStepIndex ? 'blue.100' : 'gray.50' }
-                  })}
-                >
-                  <div className={css({ fontSize: 'sm', fontWeight: 'medium' })}>
-                    {index + 1}. {step.title}
-                  </div>
-                  <div className={css({ fontSize: 'xs', color: 'gray.600', mt: 1 })}>
-                    {step.problem}
-                  </div>
-                </button>
-              )) : (
+              {tutorial.steps && Array.isArray(tutorial.steps) ? (
+                tutorial.steps.map((step, index) => (
+                  <button
+                    key={step.id}
+                    onClick={() => goToStep(index)}
+                    className={css({
+                      p: 3,
+                      textAlign: 'left',
+                      border: '1px solid',
+                      borderColor: index === currentStepIndex ? 'blue.300' : 'gray.200',
+                      borderRadius: 'md',
+                      bg: index === currentStepIndex ? 'blue.50' : 'white',
+                      cursor: 'pointer',
+                      _hover: { bg: index === currentStepIndex ? 'blue.100' : 'gray.50' },
+                    })}
+                  >
+                    <div className={css({ fontSize: 'sm', fontWeight: 'medium' })}>
+                      {index + 1}. {step.title}
+                    </div>
+                    <div className={css({ fontSize: 'xs', color: 'gray.600', mt: 1 })}>
+                      {step.problem}
+                    </div>
+                  </button>
+                ))
+              ) : (
                 <div className={css({ color: 'gray.500', textAlign: 'center', py: 4 })}>
                   No tutorial steps available
                 </div>
@@ -1163,127 +1291,151 @@ function TutorialPlayerContent({
               </div>
 
               {/* Multi-step instructions panel */}
-              {currentStep.multiStepInstructions && currentStep.multiStepInstructions.length > 0 && (
-                <div className={css({
-                  p: 5,
-                  background: 'linear-gradient(135deg, rgba(255,248,225,0.95) 0%, rgba(254,252,232,0.95) 50%, rgba(255,245,157,0.15) 100%)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(251,191,36,0.3)',
-                  borderRadius: 'xl',
-                  boxShadow: '0 8px 32px rgba(251,191,36,0.1), 0 2px 8px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.6)',
-                  position: 'relative',
-                  maxW: '600px',
-                  w: 'full',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    inset: '0',
-                    borderRadius: 'xl',
-                    background: 'linear-gradient(135deg, rgba(251,191,36,0.1) 0%, rgba(168,85,247,0.05) 100%)',
-                    zIndex: -1
-                  }
-                })}>
-                  <p className={css({
-                    fontSize: 'base',
-                    fontWeight: '600',
-                    color: 'amber.900',
-                    mb: 4,
-                    letterSpacing: 'wide',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                  })}>
-                    Guidance
-                  </p>
-
-                  {/* Pedagogical decomposition with interactive reasoning */}
-                  {fullDecomposition && isMeaningfulDecomposition && (
-                    <div className={css({
-                      mb: 4,
-                      p: 3,
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(248,250,252,0.9) 100%)',
-                      border: '1px solid rgba(203,213,225,0.4)',
-                      borderRadius: 'lg',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7)',
-                      backdropFilter: 'blur(4px)'
-                    })}>
-                      <p className={css({
+              {currentStep.multiStepInstructions &&
+                currentStep.multiStepInstructions.length > 0 && (
+                  <div
+                    className={css({
+                      p: 5,
+                      background:
+                        'linear-gradient(135deg, rgba(255,248,225,0.95) 0%, rgba(254,252,232,0.95) 50%, rgba(255,245,157,0.15) 100%)',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(251,191,36,0.3)',
+                      borderRadius: 'xl',
+                      boxShadow:
+                        '0 8px 32px rgba(251,191,36,0.1), 0 2px 8px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.6)',
+                      position: 'relative',
+                      maxW: '600px',
+                      w: 'full',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        inset: '0',
+                        borderRadius: 'xl',
+                        background:
+                          'linear-gradient(135deg, rgba(251,191,36,0.1) 0%, rgba(168,85,247,0.05) 100%)',
+                        zIndex: -1,
+                      },
+                    })}
+                  >
+                    <p
+                      className={css({
                         fontSize: 'base',
-                        color: 'slate.800',
-                        fontFamily: 'mono',
+                        fontWeight: '600',
+                        color: 'amber.900',
+                        mb: 4,
+                        letterSpacing: 'wide',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      })}
+                    >
+                      Guidance
+                    </p>
+
+                    {/* Pedagogical decomposition with interactive reasoning */}
+                    {fullDecomposition && isMeaningfulDecomposition && (
+                      <div
+                        className={css({
+                          mb: 4,
+                          p: 3,
+                          background:
+                            'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(248,250,252,0.9) 100%)',
+                          border: '1px solid rgba(203,213,225,0.4)',
+                          borderRadius: 'lg',
+                          boxShadow:
+                            '0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7)',
+                          backdropFilter: 'blur(4px)',
+                        })}
+                      >
+                        <p
+                          className={css({
+                            fontSize: 'base',
+                            color: 'slate.800',
+                            fontFamily: 'mono',
+                            fontWeight: '500',
+                            letterSpacing: 'tight',
+                            lineHeight: '1.5',
+                          })}
+                        >
+                          <DecompositionWithReasons
+                            fullDecomposition={fullDecomposition}
+                            termPositions={termPositions}
+                            segments={pedagogicalSegments}
+                          />
+                        </p>
+                      </div>
+                    )}
+
+                    <div
+                      className={css({
+                        fontSize: 'sm',
+                        color: 'amber.800',
                         fontWeight: '500',
-                        letterSpacing: 'tight',
-                        lineHeight: '1.5'
-                      })}>
-                        <DecompositionWithReasons
-                          fullDecomposition={fullDecomposition}
-                          termPositions={termPositions}
-                          segments={pedagogicalSegments}
-                        />
-                      </p>
-                    </div>
-                  )}
+                        lineHeight: '1.6',
+                      })}
+                    >
+                      {(() => {
+                        // Only show the current step instruction
+                        const currentInstruction =
+                          currentStep.multiStepInstructions[currentMultiStep]
+                        const _mathTerm = expectedSteps[currentMultiStep]?.mathematicalTerm
 
+                        if (!currentInstruction) return null
 
-                  <div className={css({
-                    fontSize: 'sm',
-                    color: 'amber.800',
-                    fontWeight: '500',
-                    lineHeight: '1.6'
-                  })}>
-                    {(() => {
-                      // Only show the current step instruction
-                      const currentInstruction = currentStep.multiStepInstructions[currentMultiStep]
-                      const mathTerm = expectedSteps[currentMultiStep]?.mathematicalTerm
+                        // Hide "Next Action" when at the expected starting state for this step
+                        const isAtExpectedStartingState = (() => {
+                          if (currentMultiStep === 0) {
+                            // First step: check if current value matches tutorial step start value
+                            return currentValue === currentStep.startValue
+                          } else {
+                            // Subsequent steps: check if current value matches previous step's target
+                            const previousStepTarget =
+                              expectedSteps[currentMultiStep - 1]?.targetValue
+                            return currentValue === previousStepTarget
+                          }
+                        })()
 
-                      if (!currentInstruction) return null
+                        const hasMeaningfulSummary =
+                          currentStepSummary && !currentStepSummary.includes('No changes needed')
 
-                      // Hide "Next Action" when at the expected starting state for this step
-                      const isAtExpectedStartingState = (() => {
-                        if (currentMultiStep === 0) {
-                          // First step: check if current value matches tutorial step start value
-                          return currentValue === currentStep.startValue
-                        } else {
-                          // Subsequent steps: check if current value matches previous step's target
-                          const previousStepTarget = expectedSteps[currentMultiStep - 1]?.targetValue
-                          return currentValue === previousStepTarget
-                        }
-                      })()
+                        // Only show help if:
+                        // 1. Not at expected starting state (user needs to do something)
+                        // 2. Has meaningful summary to show
+                        // 3. Timer has expired (user appears stuck for 8+ seconds)
+                        const _needsAction =
+                          !isAtExpectedStartingState &&
+                          hasMeaningfulSummary &&
+                          showHelpForCurrentStep
 
-                      const hasMeaningfulSummary = currentStepSummary && !currentStepSummary.includes('No changes needed')
-
-                      // Only show help if:
-                      // 1. Not at expected starting state (user needs to do something)
-                      // 2. Has meaningful summary to show
-                      // 3. Timer has expired (user appears stuck for 8+ seconds)
-                      const needsAction = !isAtExpectedStartingState && hasMeaningfulSummary && showHelpForCurrentStep
-
-                      return (
-                        <div>
-                          <div className={css({
-                            mb: 1,
-                            fontWeight: 'bold',
-                            color: 'yellow.900'
-                          })}>
-                            {currentInstruction}
+                        return (
+                          <div>
+                            <div
+                              className={css({
+                                mb: 1,
+                                fontWeight: 'bold',
+                                color: 'yellow.900',
+                              })}
+                            >
+                              {currentInstruction}
+                            </div>
                           </div>
-
-                        </div>
-                      )
-                    })()}
+                        )
+                      })()}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Error message */}
               {error && (
-                <div className={css({
-                  p: 4,
-                  bg: 'red.50',
-                  border: '1px solid',
-                  borderColor: 'red.200',
-                  borderRadius: 'md',
-                  color: 'red.700',
-                  maxW: '600px'
-                })}>
+                <div
+                  className={css({
+                    p: 4,
+                    bg: 'red.50',
+                    border: '1px solid',
+                    borderColor: 'red.200',
+                    borderRadius: 'md',
+                    color: 'red.700',
+                    maxW: '600px',
+                  })}
+                >
                   {error}
                 </div>
               )}
@@ -1291,14 +1443,16 @@ function TutorialPlayerContent({
               {/* Success message removed from inline layout - now positioned as overlay */}
 
               {/* Abacus */}
-              <div className={css({
-                bg: 'white',
-                border: '2px solid',
-                borderColor: 'gray.200',
-                borderRadius: 'lg',
-                p: 6,
-                shadow: 'lg'
-              })}>
+              <div
+                className={css({
+                  bg: 'white',
+                  border: '2px solid',
+                  borderColor: 'gray.200',
+                  borderRadius: 'lg',
+                  p: 6,
+                  shadow: 'lg',
+                })}
+              >
                 <AbacusReact
                   value={currentValue}
                   columns={5}
@@ -1319,40 +1473,55 @@ function TutorialPlayerContent({
                   onValueChange={handleValueChange}
                   callbacks={{
                     onBeadClick: handleBeadClick,
-                    onBeadRef: handleBeadRef
+                    onBeadRef: handleBeadRef,
                   }}
                 />
 
                 {/* Debug info */}
                 {isDebugMode && (
-                  <div className={css({
-                    mt: 4,
-                    p: 3,
-                    bg: 'purple.50',
-                    border: '1px solid',
-                    borderColor: 'purple.200',
-                    borderRadius: 'md',
-                    fontSize: 'xs',
-                    fontFamily: 'mono'
-                  })}>
-                    <div><strong>Step Debug Info:</strong></div>
+                  <div
+                    className={css({
+                      mt: 4,
+                      p: 3,
+                      bg: 'purple.50',
+                      border: '1px solid',
+                      borderColor: 'purple.200',
+                      borderRadius: 'md',
+                      fontSize: 'xs',
+                      fontFamily: 'mono',
+                    })}
+                  >
+                    <div>
+                      <strong>Step Debug Info:</strong>
+                    </div>
                     <div>Current Multi-Step: {currentMultiStep}</div>
                     <div>Total Steps: {currentStep.totalSteps || 'undefined'}</div>
-                    <div>Step Bead Highlights: {currentStepBeads ? currentStepBeads.length : 'undefined'}</div>
-                    <div>Dynamic Recalc: {currentValue} → {currentStep.targetValue}</div>
+                    <div>
+                      Step Bead Highlights:{' '}
+                      {currentStepBeads ? currentStepBeads.length : 'undefined'}
+                    </div>
+                    <div>
+                      Dynamic Recalc: {currentValue} → {currentStep.targetValue}
+                    </div>
                     <div>Show Direction Indicators: true</div>
-                    <div>Multi-Step Instructions: {currentStep.multiStepInstructions?.length || 'undefined'}</div>
+                    <div>
+                      Multi-Step Instructions:{' '}
+                      {currentStep.multiStepInstructions?.length || 'undefined'}
+                    </div>
                     {currentStepBeads && (
                       <div className={css({ mt: 2 })}>
-                        <div><strong>Current Step Beads ({currentMultiStep}):</strong></div>
+                        <div>
+                          <strong>Current Step Beads ({currentMultiStep}):</strong>
+                        </div>
                         {currentStepBeads
-                          .filter(bead => bead.stepIndex === currentMultiStep)
+                          .filter((bead) => bead.stepIndex === currentMultiStep)
                           .map((bead, i) => (
                             <div key={i}>
-                              - Place {bead.placeValue} {bead.beadType} {bead.position !== undefined ? `pos ${bead.position}` : ''} → {bead.direction}
+                              - Place {bead.placeValue} {bead.beadType}{' '}
+                              {bead.position !== undefined ? `pos ${bead.position}` : ''} →{' '}
+                              {bead.direction}
                             </div>
-                          ))
-                        }
+                          ))}
                       </div>
                     )}
                   </div>
@@ -1361,14 +1530,16 @@ function TutorialPlayerContent({
 
               {/* Tooltip */}
               {currentStep.tooltip && (
-                <div className={css({
-                  maxW: '500px',
-                  p: 4,
-                  bg: 'yellow.50',
-                  border: '1px solid',
-                  borderColor: 'yellow.200',
-                  borderRadius: 'md'
-                })}>
+                <div
+                  className={css({
+                    maxW: '500px',
+                    p: 4,
+                    bg: 'yellow.50',
+                    border: '1px solid',
+                    borderColor: 'yellow.200',
+                    borderRadius: 'md',
+                  })}
+                >
                   <h4 className={css({ fontWeight: 'bold', color: 'yellow.800', mb: 1 })}>
                     {currentStep.tooltip.content}
                   </h4>
@@ -1381,12 +1552,14 @@ function TutorialPlayerContent({
           </div>
 
           {/* Navigation controls */}
-          <div className={css({
-            borderTop: '1px solid',
-            borderColor: 'gray.200',
-            p: 4,
-            bg: 'gray.50'
-          })}>
+          <div
+            className={css({
+              borderTop: '1px solid',
+              borderColor: 'gray.200',
+              p: 4,
+              bg: 'gray.50',
+            })}
+          >
             <div className={hstack({ justifyContent: 'space-between' })}>
               <button
                 onClick={goToPreviousStep}
@@ -1400,7 +1573,7 @@ function TutorialPlayerContent({
                   bg: 'white',
                   cursor: navigationState.canGoPrevious ? 'pointer' : 'not-allowed',
                   opacity: navigationState.canGoPrevious ? 1 : 0.5,
-                  _hover: navigationState.canGoPrevious ? { bg: 'gray.50' } : {}
+                  _hover: navigationState.canGoPrevious ? { bg: 'gray.50' } : {},
                 })}
               >
                 ← Previous
@@ -1417,12 +1590,13 @@ function TutorialPlayerContent({
                   px: 4,
                   py: 2,
                   border: '1px solid',
-                  borderColor: navigationState.canGoNext || isStepCompleted ? 'blue.300' : 'gray.300',
+                  borderColor:
+                    navigationState.canGoNext || isStepCompleted ? 'blue.300' : 'gray.300',
                   borderRadius: 'md',
                   bg: navigationState.canGoNext || isStepCompleted ? 'blue.500' : 'gray.200',
                   color: navigationState.canGoNext || isStepCompleted ? 'white' : 'gray.500',
                   cursor: navigationState.canGoNext || isStepCompleted ? 'pointer' : 'not-allowed',
-                  _hover: navigationState.canGoNext || isStepCompleted ? { bg: 'blue.600' } : {}
+                  _hover: navigationState.canGoNext || isStepCompleted ? { bg: 'blue.600' } : {},
                 })}
               >
                 {navigationState.canGoNext ? 'Next →' : 'Complete Tutorial'}
@@ -1433,22 +1607,34 @@ function TutorialPlayerContent({
 
         {/* Debug panel */}
         {uiState.showDebugPanel && (
-          <div className={css({
-            w: '400px',
-            borderLeft: '1px solid',
-            borderColor: 'gray.200',
-            bg: 'gray.50',
-            p: 4,
-            overflowY: 'auto'
-          })}>
+          <div
+            className={css({
+              w: '400px',
+              borderLeft: '1px solid',
+              borderColor: 'gray.200',
+              bg: 'gray.50',
+              p: 4,
+              overflowY: 'auto',
+            })}
+          >
             <h3 className={css({ fontWeight: 'bold', mb: 3 })}>Debug Panel</h3>
 
             <div className={stack({ gap: 4 })}>
               {/* Current state */}
               <div>
                 <h4 className={css({ fontWeight: 'medium', mb: 2 })}>Current State</h4>
-                <div className={css({ fontSize: 'sm', fontFamily: 'mono', bg: 'white', p: 2, borderRadius: 'md' })}>
-                  <div>Step: {currentStepIndex + 1}/{navigationState.totalSteps}</div>
+                <div
+                  className={css({
+                    fontSize: 'sm',
+                    fontFamily: 'mono',
+                    bg: 'white',
+                    p: 2,
+                    borderRadius: 'md',
+                  })}
+                >
+                  <div>
+                    Step: {currentStepIndex + 1}/{navigationState.totalSteps}
+                  </div>
                   <div>Value: {currentValue}</div>
                   <div>Target: {currentStep.targetValue}</div>
                   <div>Completed: {isStepCompleted ? 'Yes' : 'No'}</div>
@@ -1459,38 +1645,51 @@ function TutorialPlayerContent({
               {/* Event log */}
               <div>
                 <h4 className={css({ fontWeight: 'medium', mb: 2 })}>Event Log</h4>
-                <div className={css({
-                  maxH: '300px',
-                  overflowY: 'auto',
-                  fontSize: 'xs',
-                  fontFamily: 'mono',
-                  bg: 'white',
-                  border: '1px solid',
-                  borderColor: 'gray.200',
-                  borderRadius: 'md'
-                })}>
-                  {events.slice(-20).reverse().map((event, index) => (
-                    <div key={index} className={css({ p: 2, borderBottom: '1px solid', borderColor: 'gray.100' })}>
-                      <div className={css({ fontWeight: 'bold', color: 'blue.600' })}>
-                        {event.type}
+                <div
+                  className={css({
+                    maxH: '300px',
+                    overflowY: 'auto',
+                    fontSize: 'xs',
+                    fontFamily: 'mono',
+                    bg: 'white',
+                    border: '1px solid',
+                    borderColor: 'gray.200',
+                    borderRadius: 'md',
+                  })}
+                >
+                  {events
+                    .slice(-20)
+                    .reverse()
+                    .map((event, index) => (
+                      <div
+                        key={index}
+                        className={css({
+                          p: 2,
+                          borderBottom: '1px solid',
+                          borderColor: 'gray.100',
+                        })}
+                      >
+                        <div className={css({ fontWeight: 'bold', color: 'blue.600' })}>
+                          {event.type}
+                        </div>
+                        <div className={css({ color: 'gray.600' })}>
+                          {event.timestamp.toLocaleTimeString()}
+                        </div>
+                        {event.type === 'VALUE_CHANGED' && (
+                          <div>
+                            {event.oldValue} → {event.newValue}
+                          </div>
+                        )}
+                        {event.type === 'ERROR_OCCURRED' && (
+                          <div className={css({ color: 'red.600' })}>{event.error}</div>
+                        )}
                       </div>
-                      <div className={css({ color: 'gray.600' })}>
-                        {event.timestamp.toLocaleTimeString()}
-                      </div>
-                      {event.type === 'VALUE_CHANGED' && (
-                        <div>{event.oldValue} → {event.newValue}</div>
-                      )}
-                      {event.type === 'ERROR_OCCURRED' && (
-                        <div className={css({ color: 'red.600' })}>{event.error}</div>
-                      )}
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             </div>
           </div>
         )}
-
       </div>
 
       {/* Add CSS animations */}

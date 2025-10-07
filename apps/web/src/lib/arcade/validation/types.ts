@@ -41,7 +41,10 @@ export interface MatchingClearMismatchMove extends GameMove {
   data: Record<string, never>
 }
 
-export type MatchingGameMove = MatchingFlipCardMove | MatchingStartGameMove | MatchingClearMismatchMove
+export type MatchingGameMove =
+  | MatchingFlipCardMove
+  | MatchingStartGameMove
+  | MatchingClearMismatchMove
 
 // Generic game state union
 export type GameState = MemoryPairsState // Add other game states as union later

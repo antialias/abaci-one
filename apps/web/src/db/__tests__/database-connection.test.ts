@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { describe, expect, it } from 'vitest'
 
 describe('Database connection', () => {
   it('connects to in-memory database', () => {
@@ -21,7 +21,7 @@ describe('Database connection', () => {
 
   it('can run simple queries', () => {
     const sqlite = new Database(':memory:')
-    const db = drizzle(sqlite)
+    const _db = drizzle(sqlite)
 
     // Create simple table
     sqlite.exec(`

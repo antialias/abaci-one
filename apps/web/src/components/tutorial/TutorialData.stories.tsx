@@ -33,10 +33,11 @@ const meta: Meta<typeof TutorialDataDisplay> = {
   parameters: {
     docs: {
       description: {
-        component: 'Simple display of tutorial data to test data structure without complex components'
-      }
-    }
-  }
+        component:
+          'Simple display of tutorial data to test data structure without complex components',
+      },
+    },
+  },
 }
 
 export default meta

@@ -32,7 +32,7 @@ export interface Player {
  * Get a color for a new player (cycles through defaults)
  */
 export function getNextPlayerColor(existingPlayers: Player[]): string {
-  const usedColors = new Set(existingPlayers.map(p => p.color))
+  const usedColors = new Set(existingPlayers.map((p) => p.color))
 
   // Find first unused color
   for (const color of DEFAULT_PLAYER_COLORS) {

@@ -43,10 +43,10 @@ const meta: Meta<typeof AccessControlWithProvider> = {
   parameters: {
     docs: {
       description: {
-        component: 'Test the access control hook in isolation'
-      }
-    }
-  }
+        component: 'Test the access control hook in isolation',
+      },
+    },
+  },
 }
 
 export default meta
@@ -56,5 +56,5 @@ export const WithDevAccess: Story = {}
 
 // Test without provider to see if that causes issues
 export const WithoutProvider: Story = {
-  render: () => <AccessControlDisplay />
+  render: () => <AccessControlDisplay />,
 }

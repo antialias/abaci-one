@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { PLAYER_EMOJIS } from '../../../../constants/playerEmojis'
-import { css } from '../../../../../styled-system/css'
 import emojiData from 'emojibase-data/en/data.json'
+import { useMemo, useState } from 'react'
+import { css } from '../../../../../styled-system/css'
+import { PLAYER_EMOJIS } from '../../../../constants/playerEmojis'
 
 // Proper TypeScript interface for emojibase-data structure
 interface EmojibaseEmoji {
@@ -37,11 +37,11 @@ const EMOJI_GROUPS = {
   6: { name: 'Activities', icon: '⚽' },
   7: { name: 'Objects', icon: '💡' },
   8: { name: 'Symbols', icon: '❤️' },
-  9: { name: 'Flags', icon: '🏁' }
+  9: { name: 'Flags', icon: '🏁' },
 } as const
 
 // Create a map of emoji to their searchable data and group
-const emojiMap = new Map<string, { keywords: string[], group: number }>()
+const emojiMap = new Map<string, { keywords: string[]; group: number }>()
 ;(emojiData as EmojibaseEmoji[]).forEach((emoji) => {
   if (emoji.emoji) {
     // Handle emoticon field which can be string, array, or undefined
@@ -58,9 +58,9 @@ const emojiMap = new Map<string, { keywords: string[], group: number }>()
       keywords: [
         emoji.label?.toLowerCase(),
         ...(emoji.tags || []).map((tag: string) => tag.toLowerCase()),
-        ...emoticons
+        ...emoticons,
       ].filter(Boolean),
-      group: emoji.group
+      group: emoji.group,
     })
   }
 })
@@ -83,7 +83,12 @@ function getEmojiKeywords(emoji: string): string[] {
   return ['misc', 'other']
 }
 
-export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber }: EmojiPickerProps) {
+export function EmojiPicker({
+  currentEmoji,
+  onEmojiSelect,
+  onClose,
+  playerNumber,
+}: EmojiPickerProps) {
   const [searchFilter, setSearchFilter] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null)
@@ -96,7 +101,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
   // Calculate which categories have emojis
   const availableCategories = useMemo(() => {
     const categoryCounts: Record<number, number> = {}
-    PLAYER_EMOJIS.forEach(emoji => {
+    PLAYER_EMOJIS.forEach((emoji) => {
       const data = emojiMap.get(emoji)
       if (data && data.group !== undefined) {
         categoryCounts[data.group] = (categoryCounts[data.group] || 0) + 1
@@ -104,7 +109,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
     })
     return Object.keys(EMOJI_GROUPS)
       .map(Number)
-      .filter(groupId => categoryCounts[groupId] > 0)
+      .filter((groupId) => categoryCounts[groupId] > 0)
   }, [])
 
   const displayEmojis = useMemo(() => {
@@ -113,7 +118,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
 
     // Apply category filter first (unless searching)
     if (isCategoryFiltered) {
-      emojis = emojis.filter(emoji => {
+      emojis = emojis.filter((emoji) => {
         const data = emojiMap.get(emoji)
         return data && data.group === selectedCategory
       })
@@ -126,11 +131,9 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
 
     const searchTerm = searchFilter.toLowerCase().trim()
 
-    const results = PLAYER_EMOJIS.filter(emoji => {
+    const results = PLAYER_EMOJIS.filter((emoji) => {
       const keywords = getEmojiKeywords(emoji)
-      return keywords.some(keyword =>
-        keyword && keyword.includes(searchTerm)
-      )
+      return keywords.some((keyword) => keyword?.includes(searchTerm))
     })
 
     // Sort results by relevance
@@ -139,22 +142,22 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
       const bKeywords = getEmojiKeywords(b)
 
       // Exact match priority
-      const aExact = aKeywords.some(k => k === searchTerm)
-      const bExact = bKeywords.some(k => k === searchTerm)
+      const aExact = aKeywords.some((k) => k === searchTerm)
+      const bExact = bKeywords.some((k) => k === searchTerm)
 
       if (aExact && !bExact) return -1
       if (!aExact && bExact) return 1
 
       // Word boundary matches (start of word)
-      const aStartsWithTerm = aKeywords.some(k => k && k.startsWith(searchTerm))
-      const bStartsWithTerm = bKeywords.some(k => k && k.startsWith(searchTerm))
+      const aStartsWithTerm = aKeywords.some((k) => k?.startsWith(searchTerm))
+      const bStartsWithTerm = bKeywords.some((k) => k?.startsWith(searchTerm))
 
       if (aStartsWithTerm && !bStartsWithTerm) return -1
       if (!aStartsWithTerm && bStartsWithTerm) return 1
 
       // Score by number of matching keywords
-      const aScore = aKeywords.filter(k => k && k.includes(searchTerm)).length
-      const bScore = bKeywords.filter(k => k && k.includes(searchTerm)).length
+      const aScore = aKeywords.filter((k) => k?.includes(searchTerm)).length
+      const bScore = bKeywords.filter((k) => k?.includes(searchTerm)).length
 
       return bScore - aScore
     })
@@ -163,52 +166,59 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
   }, [searchFilter, isSearching, selectedCategory, isCategoryFiltered])
 
   return (
-    <div className={css({
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0, 0, 0, 0.8)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      animation: 'fadeIn 0.2s ease',
-      padding: '20px'
-    })}>
-      <div className={css({
-        background: 'white',
-        borderRadius: '20px',
-        padding: '24px',
-        width: '90vw',
-        height: '90vh',
-        maxWidth: '1200px',
-        maxHeight: '800px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-        position: 'relative',
-        overflow: 'hidden',
+    <div
+      className={css({
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.8)',
         display: 'flex',
-        flexDirection: 'column'
-      })}>
-
-        {/* Header */}
-        <div className={css({
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        animation: 'fadeIn 0.2s ease',
+        padding: '20px',
+      })}
+    >
+      <div
+        className={css({
+          background: 'white',
+          borderRadius: '20px',
+          padding: '24px',
+          width: '90vw',
+          height: '90vh',
+          maxWidth: '1200px',
+          maxHeight: '800px',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+          position: 'relative',
+          overflow: 'hidden',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '16px',
-          borderBottom: '2px solid',
-          borderColor: 'gray.100',
-          paddingBottom: '12px',
-          flexShrink: 0
-        })}>
-          <h3 className={css({
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: 'gray.800',
-            margin: 0
-          })}>
+          flexDirection: 'column',
+        })}
+      >
+        {/* Header */}
+        <div
+          className={css({
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+            borderBottom: '2px solid',
+            borderColor: 'gray.100',
+            paddingBottom: '12px',
+            flexShrink: 0,
+          })}
+        >
+          <h3
+            className={css({
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: 'gray.800',
+              margin: 0,
+            })}
+          >
             Choose Character for Player {playerNumber}
           </h3>
           <button
@@ -219,7 +229,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
               cursor: 'pointer',
               color: 'gray.500',
               _hover: { color: 'gray.700' },
-              padding: '4px'
+              padding: '4px',
             })}
             onClick={onClose}
           >
@@ -228,35 +238,36 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
         </div>
 
         {/* Current Selection & Search */}
-        <div className={css({
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          marginBottom: '16px',
-          flexShrink: 0
-        })}>
-          <div className={css({
-            padding: '8px 12px',
-            background: playerNumber === 1
-              ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
-              : playerNumber === 2
-              ? 'linear-gradient(135deg, #fd79a8, #e84393)'
-              : playerNumber === 3
-              ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)'
-              : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-            borderRadius: '12px',
-            color: 'white',
+        <div
+          className={css({
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            flexShrink: 0
-          })}>
-            <div className={css({ fontSize: '24px' })}>
-              {currentEmoji}
-            </div>
-            <div className={css({ fontSize: '12px', fontWeight: 'bold' })}>
-              Current
-            </div>
+            gap: '16px',
+            marginBottom: '16px',
+            flexShrink: 0,
+          })}
+        >
+          <div
+            className={css({
+              padding: '8px 12px',
+              background:
+                playerNumber === 1
+                  ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
+                  : playerNumber === 2
+                    ? 'linear-gradient(135deg, #fd79a8, #e84393)'
+                    : playerNumber === 3
+                      ? 'linear-gradient(135deg, #a78bfa, #8b5cf6)'
+                      : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+              borderRadius: '12px',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexShrink: 0,
+            })}
+          >
+            <div className={css({ fontSize: '24px' })}>{currentEmoji}</div>
+            <div className={css({ fontSize: '12px', fontWeight: 'bold' })}>Current</div>
           </div>
 
           <input
@@ -274,22 +285,24 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
               _focus: {
                 outline: 'none',
                 borderColor: 'blue.400',
-                boxShadow: '0 0 0 3px rgba(66, 153, 225, 0.1)'
-              }
+                boxShadow: '0 0 0 3px rgba(66, 153, 225, 0.1)',
+              },
             })}
           />
 
           {isSearching && (
-            <div className={css({
-              fontSize: '12px',
-              color: 'gray.600',
-              flexShrink: 0,
-              padding: '4px 8px',
-              background: displayEmojis.length > 0 ? 'green.100' : 'red.100',
-              borderRadius: '8px',
-              border: '1px solid',
-              borderColor: displayEmojis.length > 0 ? 'green.300' : 'red.300'
-            })}>
+            <div
+              className={css({
+                fontSize: '12px',
+                color: 'gray.600',
+                flexShrink: 0,
+                padding: '4px 8px',
+                background: displayEmojis.length > 0 ? 'green.100' : 'red.100',
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: displayEmojis.length > 0 ? 'green.300' : 'red.300',
+              })}
+            >
               {displayEmojis.length > 0 ? `✓ ${displayEmojis.length} found` : '✗ No matches'}
             </div>
           )}
@@ -297,21 +310,23 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
 
         {/* Category Tabs */}
         {!isSearching && (
-          <div className={css({
-            display: 'flex',
-            gap: '8px',
-            overflowX: 'auto',
-            paddingBottom: '8px',
-            marginBottom: '12px',
-            flexShrink: 0,
-            '&::-webkit-scrollbar': {
-              height: '6px'
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#cbd5e1',
-              borderRadius: '3px'
-            }
-          })}>
+          <div
+            className={css({
+              display: 'flex',
+              gap: '8px',
+              overflowX: 'auto',
+              paddingBottom: '8px',
+              marginBottom: '12px',
+              flexShrink: 0,
+              '&::-webkit-scrollbar': {
+                height: '6px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: '#cbd5e1',
+                borderRadius: '3px',
+              },
+            })}
+          >
             <button
               onClick={() => setSelectedCategory(null)}
               className={css({
@@ -327,8 +342,8 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
                 transition: 'all 0.2s ease',
                 _hover: {
                   background: selectedCategory === null ? '#dbeafe' : '#f9fafb',
-                  transform: 'translateY(-1px)'
-                }
+                  transform: 'translateY(-1px)',
+                },
               })}
             >
               ✨ All
@@ -336,28 +351,31 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
             {availableCategories.map((groupId) => {
               const group = EMOJI_GROUPS[groupId as keyof typeof EMOJI_GROUPS]
               return (
-              <button
-                key={groupId}
-                onClick={() => setSelectedCategory(Number(groupId))}
-                className={css({
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  border: selectedCategory === Number(groupId) ? '2px solid #3b82f6' : '2px solid #e5e7eb',
-                  background: selectedCategory === Number(groupId) ? '#eff6ff' : 'white',
-                  color: selectedCategory === Number(groupId) ? '#1e40af' : '#6b7280',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.2s ease',
-                  _hover: {
-                    background: selectedCategory === Number(groupId) ? '#dbeafe' : '#f9fafb',
-                    transform: 'translateY(-1px)'
-                  }
-                })}
-              >
-                {group.icon} {group.name}
-              </button>
+                <button
+                  key={groupId}
+                  onClick={() => setSelectedCategory(Number(groupId))}
+                  className={css({
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    border:
+                      selectedCategory === Number(groupId)
+                        ? '2px solid #3b82f6'
+                        : '2px solid #e5e7eb',
+                    background: selectedCategory === Number(groupId) ? '#eff6ff' : 'white',
+                    color: selectedCategory === Number(groupId) ? '#1e40af' : '#6b7280',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s ease',
+                    _hover: {
+                      background: selectedCategory === Number(groupId) ? '#dbeafe' : '#f9fafb',
+                      transform: 'translateY(-1px)',
+                    },
+                  })}
+                >
+                  {group.icon} {group.name}
+                </button>
               )
             })}
           </div>
@@ -365,177 +383,198 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
 
         {/* Search Mode Header */}
         {isSearching && displayEmojis.length > 0 && (
-          <div className={css({
-            padding: '8px 12px',
-            background: 'blue.50',
-            border: '1px solid',
-            borderColor: 'blue.200',
-            borderRadius: '8px',
-            marginBottom: '12px',
-            flexShrink: 0
-          })}>
-            <div className={css({
-              fontSize: '14px',
-              fontWeight: 'bold',
-              color: 'blue.700',
-              marginBottom: '4px'
-            })}>
+          <div
+            className={css({
+              padding: '8px 12px',
+              background: 'blue.50',
+              border: '1px solid',
+              borderColor: 'blue.200',
+              borderRadius: '8px',
+              marginBottom: '12px',
+              flexShrink: 0,
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: 'blue.700',
+                marginBottom: '4px',
+              })}
+            >
               🔍 Search Results for "{searchFilter}"
             </div>
-            <div className={css({
-              fontSize: '12px',
-              color: 'blue.600'
-            })}>
-              Showing {displayEmojis.length} of {PLAYER_EMOJIS.length} emojis • Clear search to see all
+            <div
+              className={css({
+                fontSize: '12px',
+                color: 'blue.600',
+              })}
+            >
+              Showing {displayEmojis.length} of {PLAYER_EMOJIS.length} emojis • Clear search to see
+              all
             </div>
           </div>
         )}
 
         {/* Default Mode Header */}
         {!isSearching && (
-          <div className={css({
-            padding: '8px 12px',
-            background: 'gray.50',
-            border: '1px solid',
-            borderColor: 'gray.200',
-            borderRadius: '8px',
-            marginBottom: '12px',
-            flexShrink: 0
-          })}>
-            <div className={css({
-              fontSize: '14px',
-              fontWeight: 'bold',
-              color: 'gray.700',
-              marginBottom: '4px'
-            })}>
+          <div
+            className={css({
+              padding: '8px 12px',
+              background: 'gray.50',
+              border: '1px solid',
+              borderColor: 'gray.200',
+              borderRadius: '8px',
+              marginBottom: '12px',
+              flexShrink: 0,
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: 'gray.700',
+                marginBottom: '4px',
+              })}
+            >
               {selectedCategory !== null
                 ? `${EMOJI_GROUPS[selectedCategory as keyof typeof EMOJI_GROUPS].icon} ${EMOJI_GROUPS[selectedCategory as keyof typeof EMOJI_GROUPS].name}`
                 : '📝 All Available Characters'}
             </div>
-            <div className={css({
-              fontSize: '12px',
-              color: 'gray.600'
-            })}>
-              {displayEmojis.length} emojis {selectedCategory !== null ? 'in category' : 'available'} • Use search to find specific emojis
+            <div
+              className={css({
+                fontSize: '12px',
+                color: 'gray.600',
+              })}
+            >
+              {displayEmojis.length} emojis{' '}
+              {selectedCategory !== null ? 'in category' : 'available'} • Use search to find
+              specific emojis
             </div>
           </div>
         )}
 
         {/* Emoji Grid - Only show when there are emojis to display */}
         {displayEmojis.length > 0 && (
-          <div className={css({
-            flex: 1,
-            overflowY: 'auto',
-            minHeight: 0,
-            '&::-webkit-scrollbar': {
-              width: '10px'
-            },
-            '&::-webkit-scrollbar-track': {
-              background: '#f1f5f9',
-              borderRadius: '5px'
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#cbd5e1',
-              borderRadius: '5px',
-              '&:hover': {
-                background: '#94a3b8'
-              }
-            }
-          })}>
-            <div className={css({
-              display: 'grid',
-              gridTemplateColumns: 'repeat(16, 1fr)',
-              gap: '4px',
-              padding: '4px',
-              '@media (max-width: 1200px)': {
-                gridTemplateColumns: 'repeat(14, 1fr)'
+          <div
+            className={css({
+              flex: 1,
+              overflowY: 'auto',
+              minHeight: 0,
+              '&::-webkit-scrollbar': {
+                width: '10px',
               },
-              '@media (max-width: 1000px)': {
-                gridTemplateColumns: 'repeat(12, 1fr)'
+              '&::-webkit-scrollbar-track': {
+                background: '#f1f5f9',
+                borderRadius: '5px',
               },
-              '@media (max-width: 800px)': {
-                gridTemplateColumns: 'repeat(10, 1fr)'
+              '&::-webkit-scrollbar-thumb': {
+                background: '#cbd5e1',
+                borderRadius: '5px',
+                '&:hover': {
+                  background: '#94a3b8',
+                },
               },
-              '@media (max-width: 600px)': {
-                gridTemplateColumns: 'repeat(8, 1fr)'
-              }
-            })}>
-            {displayEmojis.map(emoji => {
-              const isSelected = emoji === currentEmoji
-              const getSelectedBg = () => {
-                if (!isSelected) return 'transparent'
-                if (playerNumber === 1) return 'blue.100'
-                if (playerNumber === 2) return 'pink.100'
-                if (playerNumber === 3) return 'purple.100'
-                return 'yellow.100'
-              }
-              const getSelectedBorder = () => {
-                if (!isSelected) return 'transparent'
-                if (playerNumber === 1) return 'blue.400'
-                if (playerNumber === 2) return 'pink.400'
-                if (playerNumber === 3) return 'purple.400'
-                return 'yellow.400'
-              }
-              const getHoverBg = () => {
-                if (!isSelected) return 'gray.100'
-                if (playerNumber === 1) return 'blue.200'
-                if (playerNumber === 2) return 'pink.200'
-                if (playerNumber === 3) return 'purple.200'
-                return 'yellow.200'
-              }
-              return (
-                <button
-                  key={emoji}
-                  className={css({
-                    aspectRatio: '1',
-                    background: getSelectedBg(),
-                    border: '2px solid',
-                    borderColor: getSelectedBorder(),
-                    borderRadius: '6px',
-                    fontSize: '20px',
-                    cursor: 'pointer',
-                    transition: 'all 0.1s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    _hover: {
-                      background: getHoverBg(),
-                      transform: 'scale(1.15)',
-                      zIndex: 1,
-                      fontSize: '24px'
-                    }
-                  })}
-                  onMouseEnter={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    setHoveredEmoji(emoji)
-                    setHoverPosition({
-                      x: rect.left + rect.width / 2,
-                      y: rect.top
-                    })
-                  }}
-                  onMouseLeave={() => setHoveredEmoji(null)}
-                  onClick={() => {
-                    onEmojiSelect(emoji)
-                  }}
-                >
-                  {emoji}
-                </button>
-              )
             })}
+          >
+            <div
+              className={css({
+                display: 'grid',
+                gridTemplateColumns: 'repeat(16, 1fr)',
+                gap: '4px',
+                padding: '4px',
+                '@media (max-width: 1200px)': {
+                  gridTemplateColumns: 'repeat(14, 1fr)',
+                },
+                '@media (max-width: 1000px)': {
+                  gridTemplateColumns: 'repeat(12, 1fr)',
+                },
+                '@media (max-width: 800px)': {
+                  gridTemplateColumns: 'repeat(10, 1fr)',
+                },
+                '@media (max-width: 600px)': {
+                  gridTemplateColumns: 'repeat(8, 1fr)',
+                },
+              })}
+            >
+              {displayEmojis.map((emoji) => {
+                const isSelected = emoji === currentEmoji
+                const getSelectedBg = () => {
+                  if (!isSelected) return 'transparent'
+                  if (playerNumber === 1) return 'blue.100'
+                  if (playerNumber === 2) return 'pink.100'
+                  if (playerNumber === 3) return 'purple.100'
+                  return 'yellow.100'
+                }
+                const getSelectedBorder = () => {
+                  if (!isSelected) return 'transparent'
+                  if (playerNumber === 1) return 'blue.400'
+                  if (playerNumber === 2) return 'pink.400'
+                  if (playerNumber === 3) return 'purple.400'
+                  return 'yellow.400'
+                }
+                const getHoverBg = () => {
+                  if (!isSelected) return 'gray.100'
+                  if (playerNumber === 1) return 'blue.200'
+                  if (playerNumber === 2) return 'pink.200'
+                  if (playerNumber === 3) return 'purple.200'
+                  return 'yellow.200'
+                }
+                return (
+                  <button
+                    key={emoji}
+                    className={css({
+                      aspectRatio: '1',
+                      background: getSelectedBg(),
+                      border: '2px solid',
+                      borderColor: getSelectedBorder(),
+                      borderRadius: '6px',
+                      fontSize: '20px',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      _hover: {
+                        background: getHoverBg(),
+                        transform: 'scale(1.15)',
+                        zIndex: 1,
+                        fontSize: '24px',
+                      },
+                    })}
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      setHoveredEmoji(emoji)
+                      setHoverPosition({
+                        x: rect.left + rect.width / 2,
+                        y: rect.top,
+                      })
+                    }}
+                    onMouseLeave={() => setHoveredEmoji(null)}
+                    onClick={() => {
+                      onEmojiSelect(emoji)
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
 
         {/* No results message */}
         {isSearching && displayEmojis.length === 0 && (
-          <div className={css({
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            textAlign: 'center',
-            color: 'gray.500'
-          })}>
+          <div
+            className={css({
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+              color: 'gray.500',
+            })}
+          >
             <div className={css({ fontSize: '48px', marginBottom: '16px' })}>🔍</div>
             <div className={css({ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' })}>
               No emojis found for "{searchFilter}"
@@ -552,7 +591,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
                 padding: '8px 16px',
                 fontSize: '12px',
                 cursor: 'pointer',
-                _hover: { background: 'blue.600' }
+                _hover: { background: 'blue.600' },
               })}
               onClick={() => setSearchFilter('')}
             >
@@ -562,17 +601,20 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
         )}
 
         {/* Quick selection hint */}
-        <div className={css({
-          marginTop: '8px',
-          padding: '6px 12px',
-          background: 'gray.50',
-          borderRadius: '8px',
-          fontSize: '11px',
-          color: 'gray.600',
-          textAlign: 'center',
-          flexShrink: 0
-        })}>
-          💡 Powered by emojibase-data • Try: "face", "smart", "heart", "animal", "food" • Click to select
+        <div
+          className={css({
+            marginTop: '8px',
+            padding: '6px 12px',
+            background: 'gray.50',
+            borderRadius: '8px',
+            fontSize: '11px',
+            color: 'gray.600',
+            textAlign: 'center',
+            flexShrink: 0,
+          })}
+        >
+          💡 Powered by emojibase-data • Try: "face", "smart", "heart", "animal", "food" • Click to
+          select
         </div>
       </div>
 
@@ -586,7 +628,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
             transform: 'translateX(-50%)',
             pointerEvents: 'none',
             zIndex: 10000,
-            animation: 'magnifyIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            animation: 'magnifyIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
           }}
         >
           {/* Outer glow ring */}
@@ -596,7 +638,7 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
               inset: '-20px',
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)',
-              animation: 'pulseGlow 2s ease-in-out infinite'
+              animation: 'pulseGlow 2s ease-in-out infinite',
             }}
           />
 
@@ -606,7 +648,8 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
               background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
               borderRadius: '24px',
               padding: '20px',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(59, 130, 246, 0.6), inset 0 2px 4px rgba(255,255,255,0.8)',
+              boxShadow:
+                '0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(59, 130, 246, 0.6), inset 0 2px 4px rgba(255,255,255,0.8)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -615,34 +658,46 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
               minWidth: '160px',
               minHeight: '160px',
               position: 'relative',
-              animation: 'emojiFloat 3s ease-in-out infinite'
+              animation: 'emojiFloat 3s ease-in-out infinite',
             }}
           >
             {/* Sparkle effects */}
-            <div style={{
-              position: 'absolute',
-              top: '10px',
-              right: '10px',
-              fontSize: '20px',
-              animation: 'sparkle 1.5s ease-in-out infinite',
-              animationDelay: '0s'
-            }}>✨</div>
-            <div style={{
-              position: 'absolute',
-              bottom: '15px',
-              left: '15px',
-              fontSize: '16px',
-              animation: 'sparkle 1.5s ease-in-out infinite',
-              animationDelay: '0.5s'
-            }}>✨</div>
-            <div style={{
-              position: 'absolute',
-              top: '20px',
-              left: '20px',
-              fontSize: '12px',
-              animation: 'sparkle 1.5s ease-in-out infinite',
-              animationDelay: '1s'
-            }}>✨</div>
+            <div
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                fontSize: '20px',
+                animation: 'sparkle 1.5s ease-in-out infinite',
+                animationDelay: '0s',
+              }}
+            >
+              ✨
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '15px',
+                left: '15px',
+                fontSize: '16px',
+                animation: 'sparkle 1.5s ease-in-out infinite',
+                animationDelay: '0.5s',
+              }}
+            >
+              ✨
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                top: '20px',
+                left: '20px',
+                fontSize: '12px',
+                animation: 'sparkle 1.5s ease-in-out infinite',
+                animationDelay: '1s',
+              }}
+            >
+              ✨
+            </div>
 
             {hoveredEmoji}
           </div>
@@ -659,14 +714,16 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
               borderLeft: '14px solid transparent',
               borderRight: '14px solid transparent',
               borderTop: '14px solid white',
-              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
             }}
           />
         </div>
       )}
 
       {/* Add magnifying animations */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes magnifyIn {
           from {
             opacity: 0;
@@ -705,7 +762,9 @@ export function EmojiPicker({ currentEmoji, onEmojiSelect, onClose, playerNumber
             transform: scale(1) rotate(180deg);
           }
         }
-      ` }} />
+      `,
+        }}
+      />
     </div>
   )
 }

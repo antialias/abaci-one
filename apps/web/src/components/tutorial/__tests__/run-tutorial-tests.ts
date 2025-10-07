@@ -13,35 +13,34 @@
  */
 
 import { execSync } from 'child_process'
-import path from 'path'
 
 const TEST_CATEGORIES = [
   {
     name: 'AbacusReact Controlled Input',
     pattern: '**/AbacusReact.controlled-input.test.tsx',
-    description: 'Tests the React controlled input pattern implementation in AbacusReact'
+    description: 'Tests the React controlled input pattern implementation in AbacusReact',
   },
   {
     name: 'TutorialContext State Management',
     pattern: '**/TutorialContext.test.tsx',
-    description: 'Tests step initialization, navigation, and multi-step functionality'
+    description: 'Tests step initialization, navigation, and multi-step functionality',
   },
   {
     name: 'TutorialPlayer Integration',
     pattern: '**/TutorialPlayer.integration.test.tsx',
-    description: 'Tests integration between TutorialPlayer and context state'
+    description: 'Tests integration between TutorialPlayer and context state',
   },
   {
     name: 'End-to-End Workflow',
     pattern: '**/TutorialWorkflow.e2e.test.ts',
-    description: 'Tests complete tutorial workflow from user perspective'
-  }
+    description: 'Tests complete tutorial workflow from user perspective',
+  },
 ]
 
-async function runTestCategory(category: typeof TEST_CATEGORIES[0]) {
+async function runTestCategory(category: (typeof TEST_CATEGORIES)[0]) {
   console.log(`\n🧪 Running ${category.name} Tests`)
   console.log(`   ${category.description}`)
-  console.log('   ' + '─'.repeat(50))
+  console.log(`   ${'─'.repeat(50)}`)
 
   try {
     const cmd = category.pattern.endsWith('.e2e.test.ts')
@@ -50,12 +49,12 @@ async function runTestCategory(category: typeof TEST_CATEGORIES[0]) {
 
     execSync(cmd, {
       stdio: 'inherit',
-      cwd: process.cwd()
+      cwd: process.cwd(),
     })
 
     console.log(`✅ ${category.name} tests passed`)
     return true
-  } catch (error) {
+  } catch (_error) {
     console.error(`❌ ${category.name} tests failed`)
     return false
   }
@@ -89,14 +88,14 @@ async function runAllTests() {
 }
 
 async function runSpecificTest(testName: string) {
-  const category = TEST_CATEGORIES.find(cat =>
+  const category = TEST_CATEGORIES.find((cat) =>
     cat.name.toLowerCase().includes(testName.toLowerCase())
   )
 
   if (!category) {
     console.error(`❌ Test category "${testName}" not found`)
     console.log('Available categories:')
-    TEST_CATEGORIES.forEach(cat => console.log(`  - ${cat.name}`))
+    TEST_CATEGORIES.forEach((cat) => console.log(`  - ${cat.name}`))
     process.exit(1)
   }
 

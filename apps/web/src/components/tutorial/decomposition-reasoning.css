@@ -2,7 +2,7 @@
 
 .decomposition {
   display: inline;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
   font-size: inherit;
   line-height: inherit;
 }
@@ -29,7 +29,6 @@
   margin: 0;
   border: none;
 }
-
 
 .term:focus {
   outline: none;
@@ -62,7 +61,6 @@
   border-color: transparent;
 }
 
-
 /* Reason tooltip styling */
 .reason-tooltip {
   background: #ffffff;
@@ -74,7 +72,7 @@
   max-width: 240px;
   z-index: 50;
   animation: fadeIn 0.2s ease-out;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
 }
 
 .reason-tooltip__content {
@@ -174,7 +172,7 @@
   border: 1px solid #ffd93d;
   border-radius: 4px;
   padding: 4px 8px;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
   font-size: 14px;
   font-weight: 600;
   color: #b45309;
@@ -191,7 +189,7 @@
   border: 1px solid #7dd3fc;
   border-radius: 4px;
   padding: 4px 8px;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
   font-size: 12px;
   color: #1e40af;
   flex: 1;
@@ -249,7 +247,7 @@
   border: 1px solid #d1d5db;
   border-radius: 3px;
   padding: 2px 6px;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
   font-size: 11px;
   color: #1f2937;
   font-weight: 600;
@@ -289,7 +287,7 @@
   font-size: 10px;
   font-weight: 500;
   color: #374151;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
 }
 
 /* More details disclosure */
@@ -358,7 +356,7 @@
   margin: 6px 0;
   font-size: 9px;
   color: #64748b;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
   opacity: 0.7;
 }
 
@@ -480,7 +478,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 4px;
   padding: 4px 6px;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-family: "JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace;
   font-size: 12px;
   color: #1f2937;
 }
@@ -567,7 +565,9 @@
     box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
   }
   50% {
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.5), 0 0 8px rgba(245, 158, 11, 0.3);
+    box-shadow:
+      0 0 0 3px rgba(245, 158, 11, 0.5),
+      0 0 8px rgba(245, 158, 11, 0.3);
   }
   100% {
     box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);

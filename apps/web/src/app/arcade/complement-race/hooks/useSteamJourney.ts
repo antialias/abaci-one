@@ -1,6 +1,6 @@
-import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useRef } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
-import { generatePassengers, calculateMaxConcurrentPassengers } from '../lib/passengerGenerator'
+import { calculateMaxConcurrentPassengers, generatePassengers } from '../lib/passengerGenerator'
 import { useSoundEffects } from './useSoundEffects'
 
 /**
@@ -30,7 +30,7 @@ const MOMENTUM_DECAY_RATES = {
   slow: 7.0,
   normal: 9.0,
   fast: 11.0,
-  expert: 13.0
+  expert: 13.0,
 }
 
 const MOMENTUM_GAIN_PER_CORRECT = 15 // Momentum added for each correct answer
@@ -60,7 +60,7 @@ export function useSteamJourney() {
         const CAR_SPACING = 7
         const maxPassengers = calculateMaxConcurrentPassengers(newPassengers, state.stations)
         const maxCars = Math.max(1, maxPassengers)
-        routeExitThresholdRef.current = 100 + (maxCars * CAR_SPACING)
+        routeExitThresholdRef.current = 100 + maxCars * CAR_SPACING
       }
     }
   }, [state.isGameActive, state.style, state.stations, state.passengers.length, dispatch])
@@ -104,7 +104,7 @@ export function useSteamJourney() {
         momentum: newMomentum,
         trainPosition,
         pressure,
-        elapsedTime: elapsed
+        elapsedTime: elapsed,
       })
 
       // Check for passengers that should board
@@ -112,7 +112,7 @@ export function useSteamJourney() {
       const CAR_SPACING = 7 // Must match SteamTrainJourney component
       const maxPassengers = calculateMaxConcurrentPassengers(state.passengers, state.stations)
       const maxCars = Math.max(1, maxPassengers)
-      const currentBoardedPassengers = state.passengers.filter(p => p.isBoarded && !p.isDelivered)
+      const currentBoardedPassengers = state.passengers.filter((p) => p.isBoarded && !p.isDelivered)
 
       // Debug logging flag - enable when debugging passenger boarding issues
       // TO ENABLE: Change this to true, save, and the logs will appear in the browser console
@@ -137,18 +137,22 @@ export function useSteamJourney() {
         console.log(`  Distance Tolerance: 5`)
 
         console.log('\n🚉 STATIONS:')
-        state.stations.forEach(station => {
+        state.stations.forEach((station) => {
           console.log(`  ${station.emoji} ${station.name} (ID: ${station.id})`)
           console.log(`    Position: ${station.position}`)
         })
 
         console.log('\n👥 ALL PASSENGERS:')
         state.passengers.forEach((p, idx) => {
-          const origin = state.stations.find(s => s.id === p.originStationId)
-          const dest = state.stations.find(s => s.id === p.destinationStationId)
+          const origin = state.stations.find((s) => s.id === p.originStationId)
+          const dest = state.stations.find((s) => s.id === p.destinationStationId)
           console.log(`  [${idx}] ${p.name} (ID: ${p.id})`)
-          console.log(`    Status: ${p.isDelivered ? 'DELIVERED' : p.isBoarded ? 'BOARDED' : 'WAITING'}`)
-          console.log(`    Route: ${origin?.emoji} ${origin?.name} (pos ${origin?.position}) → ${dest?.emoji} ${dest?.name} (pos ${dest?.position})`)
+          console.log(
+            `    Status: ${p.isDelivered ? 'DELIVERED' : p.isBoarded ? 'BOARDED' : 'WAITING'}`
+          )
+          console.log(
+            `    Route: ${origin?.emoji} ${origin?.name} (pos ${origin?.position}) → ${dest?.emoji} ${dest?.name} (pos ${dest?.position})`
+          )
           console.log(`    Urgent: ${p.isUrgent}`)
         })
 
@@ -161,7 +165,7 @@ export function useSteamJourney() {
         console.log('\n🔍 CURRENTLY BOARDED PASSENGERS:')
         currentBoardedPassengers.forEach((p, carIndex) => {
           const carPos = Math.max(0, trainPosition - (carIndex + 1) * CAR_SPACING)
-          const dest = state.stations.find(s => s.id === p.destinationStationId)
+          const dest = state.stations.find((s) => s.id === p.destinationStationId)
           const distToDest = Math.abs(carPos - (dest?.position || 0))
           console.log(`  Car ${carIndex}: ${p.name}`)
           console.log(`    Car position: ${carPos.toFixed(2)}`)
@@ -176,7 +180,7 @@ export function useSteamJourney() {
       currentBoardedPassengers.forEach((passenger, carIndex) => {
         if (!passenger || passenger.isDelivered) return
 
-        const station = state.stations.find(s => s.id === passenger.destinationStationId)
+        const station = state.stations.find((s) => s.id === passenger.destinationStationId)
         if (!station) return
 
         // Calculate this passenger's car position
@@ -190,7 +194,7 @@ export function useSteamJourney() {
       })
 
       // Build a map of which cars are occupied (excluding passengers being delivered this frame)
-      const occupiedCars = new Map<number, typeof currentBoardedPassengers[0]>()
+      const occupiedCars = new Map<number, (typeof currentBoardedPassengers)[0]>()
       currentBoardedPassengers.forEach((passenger, arrayIndex) => {
         // Don't count a car as occupied if its passenger is being delivered this frame
         if (!passengersToDeliver.has(passenger.id)) {
@@ -203,8 +207,8 @@ export function useSteamJourney() {
         if (passengersToDeliver.size === 0) {
           console.log('  None')
         } else {
-          passengersToDeliver.forEach(id => {
-            const p = state.passengers.find(passenger => passenger.id === id)
+          passengersToDeliver.forEach((id) => {
+            const p = state.passengers.find((passenger) => passenger.id === id)
             console.log(`  - ${p?.name} (ID: ${id})`)
           })
         }
@@ -225,14 +229,16 @@ export function useSteamJourney() {
       const carsAssignedThisFrame = new Set<number>()
 
       // Find waiting passengers whose origin station has an empty car nearby
-      state.passengers.forEach(passenger => {
+      state.passengers.forEach((passenger) => {
         if (passenger.isBoarded || passenger.isDelivered) return
 
-        const station = state.stations.find(s => s.id === passenger.originStationId)
+        const station = state.stations.find((s) => s.id === passenger.originStationId)
         if (!station) return
 
         if (DEBUG_PASSENGER_BOARDING) {
-          console.log(`\n  Passenger: ${passenger.name} waiting at ${station.emoji} ${station.name} (pos ${station.position})`)
+          console.log(
+            `\n  Passenger: ${passenger.name} waiting at ${station.emoji} ${station.name} (pos ${station.position})`
+          )
         }
 
         // Check if any empty car is at this station
@@ -251,7 +257,9 @@ export function useSteamJourney() {
             console.log(`    Car ${carIndex} @ pos ${carPosition.toFixed(2)}:`)
             console.log(`      Distance to station: ${distance.toFixed(2)}`)
             console.log(`      In range (<5): ${inRange}`)
-            console.log(`      Occupied: ${isOccupied}${isOccupied ? ` (by ${occupant?.name})` : ''}`)
+            console.log(
+              `      Occupied: ${isOccupied}${isOccupied ? ` (by ${occupant?.name})` : ''}`
+            )
             console.log(`      Assigned this frame: ${isAssigned}`)
             console.log(`      Can board: ${!isOccupied && !isAssigned && inRange}`)
           }
@@ -269,7 +277,7 @@ export function useSteamJourney() {
             }
             dispatch({
               type: 'BOARD_PASSENGER',
-              passengerId: passenger.id
+              passengerId: passenger.id,
             })
             // Mark this car as assigned in this frame
             carsAssignedThisFrame.add(carIndex)
@@ -292,7 +300,7 @@ export function useSteamJourney() {
       currentBoardedPassengers.forEach((passenger, carIndex) => {
         if (!passenger || passenger.isDelivered) return
 
-        const station = state.stations.find(s => s.id === passenger.destinationStationId)
+        const station = state.stations.find((s) => s.id === passenger.destinationStationId)
         if (!station) return
 
         // Calculate this passenger's car position
@@ -302,23 +310,31 @@ export function useSteamJourney() {
         // If this car is at the destination station (within 5% tolerance), deliver
         if (distance < 5) {
           if (DEBUG_PASSENGER_BOARDING) {
-            console.log(`  ✅ DELIVERING ${passenger.name} from Car ${carIndex} to ${station.emoji} ${station.name}`)
-            console.log(`    Car position: ${carPosition.toFixed(2)}, Station: ${station.position}, Distance: ${distance.toFixed(2)}`)
+            console.log(
+              `  ✅ DELIVERING ${passenger.name} from Car ${carIndex} to ${station.emoji} ${station.name}`
+            )
+            console.log(
+              `    Car position: ${carPosition.toFixed(2)}, Station: ${station.position}, Distance: ${distance.toFixed(2)}`
+            )
           }
           const points = passenger.isUrgent ? 20 : 10
           dispatch({
             type: 'DELIVER_PASSENGER',
             passengerId: passenger.id,
-            points
+            points,
           })
         } else if (DEBUG_PASSENGER_BOARDING) {
-          console.log(`  ⏳ ${passenger.name} in Car ${carIndex} heading to ${station.emoji} ${station.name}`)
-          console.log(`    Car position: ${carPosition.toFixed(2)}, Station: ${station.position}, Distance: ${distance.toFixed(2)}`)
+          console.log(
+            `  ⏳ ${passenger.name} in Car ${carIndex} heading to ${station.emoji} ${station.name}`
+          )
+          console.log(
+            `    Car position: ${carPosition.toFixed(2)}, Station: ${station.position}, Distance: ${distance.toFixed(2)}`
+          )
         }
       })
 
       if (DEBUG_PASSENGER_BOARDING) {
-        console.log('\n' + '='.repeat(80))
+        console.log(`\n${'='.repeat(80)}`)
         console.log('END OF DEBUG LOG')
         console.log('='.repeat(80))
       }
@@ -327,7 +343,10 @@ export function useSteamJourney() {
       // Use stored threshold (stable for entire route)
       const ENTIRE_TRAIN_EXIT_THRESHOLD = routeExitThresholdRef.current
 
-      if (trainPosition >= ENTIRE_TRAIN_EXIT_THRESHOLD && state.trainPosition < ENTIRE_TRAIN_EXIT_THRESHOLD) {
+      if (
+        trainPosition >= ENTIRE_TRAIN_EXIT_THRESHOLD &&
+        state.trainPosition < ENTIRE_TRAIN_EXIT_THRESHOLD
+      ) {
         // Play celebration whistle
         playSound('train_whistle', 0.6)
         setTimeout(() => {
@@ -339,7 +358,7 @@ export function useSteamJourney() {
         dispatch({
           type: 'START_NEW_ROUTE',
           routeNumber: nextRoute,
-          stations: state.stations
+          stations: state.stations,
         })
 
         // Generate new passengers
@@ -349,20 +368,30 @@ export function useSteamJourney() {
         // Calculate and store new exit threshold for next route
         const newMaxPassengers = calculateMaxConcurrentPassengers(newPassengers, state.stations)
         const newMaxCars = Math.max(1, newMaxPassengers)
-        routeExitThresholdRef.current = 100 + (newMaxCars * CAR_SPACING)
+        routeExitThresholdRef.current = 100 + newMaxCars * CAR_SPACING
       }
     }, UPDATE_INTERVAL)
 
     return () => clearInterval(interval)
-  }, [state.isGameActive, state.style, state.momentum, state.trainPosition, state.pressure, state.elapsedTime, state.timeoutSetting, state.passengers, state.stations, state.currentRoute, dispatch, playSound])
+  }, [
+    state.isGameActive,
+    state.style,
+    state.momentum,
+    state.trainPosition,
+    state.timeoutSetting,
+    state.passengers,
+    state.stations,
+    state.currentRoute,
+    dispatch,
+    playSound,
+  ])
 
   // Auto-regenerate passengers when all are delivered
   useEffect(() => {
     if (!state.isGameActive || state.style !== 'sprint') return
 
     // Check if all passengers are delivered
-    const allDelivered = state.passengers.length > 0 &&
-      state.passengers.every(p => p.isDelivered)
+    const allDelivered = state.passengers.length > 0 && state.passengers.every((p) => p.isDelivered)
 
     if (allDelivered) {
       // Generate new passengers after a short delay
@@ -380,7 +409,7 @@ export function useSteamJourney() {
 
     // This effect triggers when correctAnswers increases
     // We use a ref to track previous value to detect changes
-  }, [state.correctAnswers, state.style])
+  }, [state.style])
 
   // Function to boost momentum (called when answer is correct)
   const boostMomentum = () => {
@@ -392,7 +421,7 @@ export function useSteamJourney() {
       momentum: newMomentum,
       trainPosition: state.trainPosition, // Keep current position
       pressure: state.pressure,
-      elapsedTime: state.elapsedTime
+      elapsedTime: state.elapsedTime,
     })
   }
 
@@ -414,7 +443,7 @@ export function useSteamJourney() {
       { top: '#60a5fa', bottom: '#93c5fd' }, // Midday - bright blue
       { top: '#3b82f6', bottom: '#f59e0b' }, // Afternoon - blue to orange
       { top: '#7c3aed', bottom: '#f97316' }, // Dusk - purple to orange
-      { top: '#1e1b4b', bottom: '#312e81' }  // Night - dark purple
+      { top: '#1e1b4b', bottom: '#312e81' }, // Night - dark purple
     ]
 
     return gradients[period] || gradients[0]
@@ -423,6 +452,6 @@ export function useSteamJourney() {
   return {
     boostMomentum,
     getTimeOfDayPeriod,
-    getSkyGradient
+    getSkyGradient,
   }
 }

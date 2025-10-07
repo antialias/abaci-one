@@ -1,7 +1,10 @@
-import React, { useState } from 'react'
-import { generateAbacusInstructions, validateInstruction } from '../../utils/abacusInstructionGenerator'
+import { useState } from 'react'
 import { css } from '../../../styled-system/css'
-import { vstack, hstack } from '../../../styled-system/patterns'
+import { hstack, vstack } from '../../../styled-system/patterns'
+import {
+  generateAbacusInstructions,
+  validateInstruction,
+} from '../../utils/abacusInstructionGenerator'
 
 export function AutoInstructionDemo() {
   const [startValue, setStartValue] = useState(0)
@@ -14,18 +17,18 @@ export function AutoInstructionDemo() {
 
     setGeneratedInstruction({
       ...instruction,
-      validation
+      validation,
     })
   }
 
   const presetExamples = [
-    { start: 0, target: 1, name: "Basic: 0 + 1" },
-    { start: 0, target: 5, name: "Heaven: 0 + 5" },
-    { start: 3, target: 7, name: "Five complement: 3 + 4" },
-    { start: 2, target: 5, name: "Five complement: 2 + 3" },
-    { start: 6, target: 8, name: "Direct: 6 + 2" },
-    { start: 7, target: 11, name: "Ten complement: 7 + 4" },
-    { start: 15, target: 23, name: "Multi-place: 15 + 8" }
+    { start: 0, target: 1, name: 'Basic: 0 + 1' },
+    { start: 0, target: 5, name: 'Heaven: 0 + 5' },
+    { start: 3, target: 7, name: 'Five complement: 3 + 4' },
+    { start: 2, target: 5, name: 'Five complement: 2 + 3' },
+    { start: 6, target: 8, name: 'Direct: 6 + 2' },
+    { start: 7, target: 11, name: 'Ten complement: 7 + 4' },
+    { start: 15, target: 23, name: 'Multi-place: 15 + 8' },
   ]
 
   return (
@@ -34,16 +37,19 @@ export function AutoInstructionDemo() {
         🤖 Automatic Abacus Instruction Generator
       </h2>
 
-      <div className={css({
-        p: 4,
-        bg: 'blue.50',
-        borderRadius: 'md',
-        border: '1px solid',
-        borderColor: 'blue.200'
-      })}>
+      <div
+        className={css({
+          p: 4,
+          bg: 'blue.50',
+          borderRadius: 'md',
+          border: '1px solid',
+          borderColor: 'blue.200',
+        })}
+      >
         <p className={css({ fontSize: 'sm', color: 'blue.800' })}>
-          Enter any start and target values, and the system will automatically generate correct abacus instructions,
-          including complement operations, multi-step procedures, and proper bead highlighting.
+          Enter any start and target values, and the system will automatically generate correct
+          abacus instructions, including complement operations, multi-step procedures, and proper
+          bead highlighting.
         </p>
       </div>
 
@@ -56,14 +62,14 @@ export function AutoInstructionDemo() {
             min="0"
             max="99"
             value={startValue}
-            onChange={(e) => setStartValue(parseInt(e.target.value) || 0)}
+            onChange={(e) => setStartValue(parseInt(e.target.value, 10) || 0)}
             className={css({
               p: 2,
               border: '1px solid',
               borderColor: 'gray.300',
               borderRadius: 'md',
               w: '80px',
-              textAlign: 'center'
+              textAlign: 'center',
             })}
           />
         </div>
@@ -77,14 +83,14 @@ export function AutoInstructionDemo() {
             min="0"
             max="99"
             value={targetValue}
-            onChange={(e) => setTargetValue(parseInt(e.target.value) || 0)}
+            onChange={(e) => setTargetValue(parseInt(e.target.value, 10) || 0)}
             className={css({
               p: 2,
               border: '1px solid',
               borderColor: 'gray.300',
               borderRadius: 'md',
               w: '80px',
-              textAlign: 'center'
+              textAlign: 'center',
             })}
           />
         </div>
@@ -100,7 +106,7 @@ export function AutoInstructionDemo() {
             fontWeight: 'medium',
             cursor: 'pointer',
             alignSelf: 'end',
-            _hover: { bg: 'blue.700' }
+            _hover: { bg: 'blue.700' },
           })}
         >
           Generate Instructions
@@ -110,7 +116,9 @@ export function AutoInstructionDemo() {
       {/* Preset Examples */}
       <div className={vstack({ gap: 3 })}>
         <h3 className={css({ fontSize: 'lg', fontWeight: 'medium' })}>Quick Examples:</h3>
-        <div className={css({ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' })}>
+        <div
+          className={css({ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' })}
+        >
           {presetExamples.map((example, index) => (
             <button
               key={index}
@@ -127,7 +135,7 @@ export function AutoInstructionDemo() {
                 borderColor: 'gray.300',
                 borderRadius: 'md',
                 cursor: 'pointer',
-                _hover: { bg: 'gray.200' }
+                _hover: { bg: 'gray.200' },
               })}
             >
               {example.name}
@@ -138,19 +146,30 @@ export function AutoInstructionDemo() {
 
       {/* Generated Instructions */}
       {generatedInstruction && (
-        <div className={vstack({ gap: 4, p: 4, bg: 'white', border: '2px solid', borderColor: 'gray.200', borderRadius: 'lg' })}>
+        <div
+          className={vstack({
+            gap: 4,
+            p: 4,
+            bg: 'white',
+            border: '2px solid',
+            borderColor: 'gray.200',
+            borderRadius: 'lg',
+          })}
+        >
           <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
             <h3 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>
               Generated Instructions: {startValue} → {targetValue}
             </h3>
-            <div className={css({
-              px: 2,
-              py: 1,
-              fontSize: 'xs',
-              bg: generatedInstruction.validation.isValid ? 'green.100' : 'red.100',
-              color: generatedInstruction.validation.isValid ? 'green.800' : 'red.800',
-              borderRadius: 'md'
-            })}>
+            <div
+              className={css({
+                px: 2,
+                py: 1,
+                fontSize: 'xs',
+                bg: generatedInstruction.validation.isValid ? 'green.100' : 'red.100',
+                color: generatedInstruction.validation.isValid ? 'green.800' : 'red.800',
+                borderRadius: 'md',
+              })}
+            >
               {generatedInstruction.validation.isValid ? '✅ Valid' : '❌ Invalid'}
             </div>
           </div>
@@ -175,8 +194,14 @@ export function AutoInstructionDemo() {
               <ul className={css({ ml: 4, mt: 1 })}>
                 {generatedInstruction.highlightBeads.map((bead: any, index: number) => (
                   <li key={index} className={css({ fontSize: 'sm' })}>
-                    Place {bead.placeValue} ({bead.placeValue === 0 ? 'ones' : bead.placeValue === 1 ? 'tens' : 'place ' + bead.placeValue}) -
-                    {bead.beadType} {bead.position !== undefined ? `position ${bead.position}` : 'bead'}
+                    Place {bead.placeValue} (
+                    {bead.placeValue === 0
+                      ? 'ones'
+                      : bead.placeValue === 1
+                        ? 'tens'
+                        : `place ${bead.placeValue}`}
+                    ) -{bead.beadType}{' '}
+                    {bead.position !== undefined ? `position ${bead.position}` : 'bead'}
                   </li>
                 ))}
               </ul>
@@ -186,11 +211,13 @@ export function AutoInstructionDemo() {
               <div>
                 <strong>Step-by-Step Instructions:</strong>
                 <ol className={css({ ml: 4, mt: 1 })}>
-                  {generatedInstruction.multiStepInstructions.map((instruction: string, index: number) => (
-                    <li key={index} className={css({ fontSize: 'sm' })}>
-                      {instruction}
-                    </li>
-                  ))}
+                  {generatedInstruction.multiStepInstructions.map(
+                    (instruction: string, index: number) => (
+                      <li key={index} className={css({ fontSize: 'sm' })}>
+                        {instruction}
+                      </li>
+                    )
+                  )}
                 </ol>
               </div>
             )}
@@ -205,7 +232,9 @@ export function AutoInstructionDemo() {
             </div>
 
             <div className={vstack({ gap: 1, alignItems: 'start' })}>
-              <div><strong>Error Messages:</strong></div>
+              <div>
+                <strong>Error Messages:</strong>
+              </div>
               <div className={css({ fontSize: 'sm' })}>
                 <strong>Wrong Bead:</strong> {generatedInstruction.errorMessages.wrongBead}
               </div>

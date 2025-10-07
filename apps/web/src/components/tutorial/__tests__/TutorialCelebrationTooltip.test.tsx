@@ -1,10 +1,9 @@
-import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { vi } from 'vitest'
-import { TutorialProvider, useTutorialContext } from '../TutorialContext'
-import { TutorialPlayer } from '../TutorialPlayer'
-import { Tutorial, TutorialStep } from '../../../types/tutorial'
 import { AbacusDisplayProvider } from '@soroban/abacus-react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { vi } from 'vitest'
+import type { Tutorial } from '../../../types/tutorial'
+import { TutorialProvider } from '../TutorialContext'
+import { TutorialPlayer } from '../TutorialPlayer'
 
 // Mock tutorial data
 const mockTutorial: Tutorial = {
@@ -18,9 +17,9 @@ const mockTutorial: Tutorial = {
       problem: '3 + 2',
       description: 'Add 2 to 3',
       startValue: 3,
-      targetValue: 5
-    }
-  ]
+      targetValue: 5,
+    },
+  ],
 }
 
 // Test component that exposes internal state for testing
@@ -28,11 +27,7 @@ const TestCelebrationComponent = ({ tutorial }: { tutorial: Tutorial }) => {
   return (
     <AbacusDisplayProvider>
       <TutorialProvider tutorial={tutorial}>
-        <TutorialPlayer
-          tutorial={tutorial}
-          isDebugMode={true}
-          showDebugPanel={false}
-        />
+        <TutorialPlayer tutorial={tutorial} isDebugMode={true} showDebugPanel={false} />
       </TutorialProvider>
     </AbacusDisplayProvider>
   )
@@ -55,7 +50,8 @@ describe('TutorialPlayer Celebration Tooltip', () => {
       // Simulate reaching target value (5) by finding and clicking appropriate beads
       // We need to add 2 to get from 3 to 5
       // Look for earth beads in the ones place that we can activate
-      const abacusContainer = screen.getByRole('img', { hidden: true }) || document.querySelector('svg')
+      const abacusContainer =
+        screen.getByRole('img', { hidden: true }) || document.querySelector('svg')
 
       if (abacusContainer) {
         // Simulate clicking beads to reach value 5
@@ -64,16 +60,19 @@ describe('TutorialPlayer Celebration Tooltip', () => {
         // In a real scenario, we'd need to trigger the actual value change
         // For testing, we'll use a more direct approach
         const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 }
+          detail: { newValue: 5 },
         })
         abacusContainer.dispatchEvent(valueChangeEvent)
       }
 
       // Wait for celebration tooltip to appear
-      await waitFor(() => {
-        const celebrationElements = screen.queryAllByText(/excellent work/i)
-        expect(celebrationElements.length).toBeGreaterThan(0)
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          const celebrationElements = screen.queryAllByText(/excellent work/i)
+          expect(celebrationElements.length).toBeGreaterThan(0)
+        },
+        { timeout: 3000 }
+      )
     })
 
     it('should hide celebration tooltip when user moves away from target value', async () => {
@@ -88,30 +87,36 @@ describe('TutorialPlayer Celebration Tooltip', () => {
       const abacusContainer = document.querySelector('svg')
       if (abacusContainer) {
         const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 }
+          detail: { newValue: 5 },
         })
         abacusContainer.dispatchEvent(valueChangeEvent)
       }
 
       // Verify celebration appears
-      await waitFor(() => {
-        const celebrationElements = screen.queryAllByText(/excellent work/i)
-        expect(celebrationElements.length).toBeGreaterThan(0)
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          const celebrationElements = screen.queryAllByText(/excellent work/i)
+          expect(celebrationElements.length).toBeGreaterThan(0)
+        },
+        { timeout: 2000 }
+      )
 
       // Now move away from target value (change to 6)
       if (abacusContainer) {
         const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 6 }
+          detail: { newValue: 6 },
         })
         abacusContainer.dispatchEvent(valueChangeEvent)
       }
 
       // Verify celebration tooltip disappears
-      await waitFor(() => {
-        const celebrationElements = screen.queryAllByText(/excellent work/i)
-        expect(celebrationElements.length).toBe(0)
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          const celebrationElements = screen.queryAllByText(/excellent work/i)
+          expect(celebrationElements.length).toBe(0)
+        },
+        { timeout: 2000 }
+      )
     })
 
     it('should return to instruction tooltip when moved away from target', async () => {
@@ -127,7 +132,7 @@ describe('TutorialPlayer Celebration Tooltip', () => {
       if (abacusContainer) {
         fireEvent.click(abacusContainer)
         const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 }
+          detail: { newValue: 5 },
         })
         abacusContainer.dispatchEvent(valueChangeEvent)
       }
@@ -140,7 +145,7 @@ describe('TutorialPlayer Celebration Tooltip', () => {
       // Move away from target (to value 4)
       if (abacusContainer) {
         const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 4 }
+          detail: { newValue: 4 },
         })
         abacusContainer.dispatchEvent(valueChangeEvent)
       }
@@ -181,15 +186,18 @@ describe('TutorialPlayer Celebration Tooltip', () => {
       if (abacusContainer) {
         fireEvent.click(abacusContainer)
         const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 }
+          detail: { newValue: 5 },
         })
         abacusContainer.dispatchEvent(valueChangeEvent)
       }
 
       // Wait for step completion callback
-      await waitFor(() => {
-        expect(onStepComplete).toHaveBeenCalled()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(onStepComplete).toHaveBeenCalled()
+        },
+        { timeout: 3000 }
+      )
 
       // Verify celebration tooltip is positioned (should be visible in DOM)
       const tooltipPortal = document.querySelector('[data-radix-popper-content-wrapper]')
@@ -204,16 +212,19 @@ describe('TutorialPlayer Celebration Tooltip', () => {
       if (abacusContainer) {
         // Skip the gradual movement and go straight to target
         const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 }
+          detail: { newValue: 5 },
         })
         abacusContainer.dispatchEvent(valueChangeEvent)
       }
 
       // Should still show celebration tooltip with fallback positioning
-      await waitFor(() => {
-        const celebrationElements = screen.queryAllByText(/excellent work/i)
-        expect(celebrationElements.length).toBeGreaterThan(0)
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          const celebrationElements = screen.queryAllByText(/excellent work/i)
+          expect(celebrationElements.length).toBeGreaterThan(0)
+        },
+        { timeout: 2000 }
+      )
     })
   })
 
@@ -229,9 +240,9 @@ describe('TutorialPlayer Celebration Tooltip', () => {
             problem: '2 + 3',
             description: 'Add 3 to 2',
             startValue: 2,
-            targetValue: 5
-          }
-        ]
+            targetValue: 5,
+          },
+        ],
       }
 
       render(<TestCelebrationComponent tutorial={multiStepTutorial} />)
@@ -240,7 +251,7 @@ describe('TutorialPlayer Celebration Tooltip', () => {
       const abacusContainer = document.querySelector('svg')
       if (abacusContainer) {
         const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 }
+          detail: { newValue: 5 },
         })
         abacusContainer.dispatchEvent(valueChangeEvent)
       }
@@ -257,15 +268,18 @@ describe('TutorialPlayer Celebration Tooltip', () => {
       // Complete second step - should use appropriate positioning
       if (abacusContainer) {
         const valueChangeEvent = new CustomEvent('valueChange', {
-          detail: { newValue: 5 }
+          detail: { newValue: 5 },
         })
         abacusContainer.dispatchEvent(valueChangeEvent)
       }
 
       // Celebration should appear for second step
-      await waitFor(() => {
-        expect(screen.queryAllByText(/excellent work/i).length).toBeGreaterThan(0)
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.queryAllByText(/excellent work/i).length).toBeGreaterThan(0)
+        },
+        { timeout: 2000 }
+      )
     })
   })
 })

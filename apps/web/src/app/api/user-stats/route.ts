@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
-import { eq } from 'drizzle-orm'
 
 /**
  * GET /api/user-stats
@@ -49,10 +49,7 @@ export async function GET() {
     return NextResponse.json({ stats })
   } catch (error) {
     console.error('Failed to fetch user stats:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch user stats' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch user stats' }, { status: 500 })
   }
 }
 
@@ -83,7 +80,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Get existing stats
-    let stats = await db.query.userStats.findFirst({
+    const stats = await db.query.userStats.findFirst({
       where: eq(schema.userStats.userId, user.id),
     })
 
@@ -118,9 +115,6 @@ export async function PATCH(req: NextRequest) {
     }
   } catch (error) {
     console.error('Failed to update user stats:', error)
-    return NextResponse.json(
-      { error: 'Failed to update user stats' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to update user stats' }, { status: 500 })
   }
 }

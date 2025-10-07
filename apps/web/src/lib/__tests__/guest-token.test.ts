@@ -2,8 +2,8 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createGuestToken, verifyGuestToken, GUEST_COOKIE_NAME } from '../guest-token'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { createGuestToken, GUEST_COOKIE_NAME, verifyGuestToken } from '../guest-token'
 
 describe('Guest Token Utilities', () => {
   beforeEach(() => {
@@ -93,9 +93,7 @@ describe('Guest Token Utilities', () => {
         .setProtectedHeader({ alg: 'HS256' })
         .sign(key)
 
-      await expect(verifyGuestToken(wrongToken)).rejects.toThrow(
-        'Invalid guest token payload'
-      )
+      await expect(verifyGuestToken(wrongToken)).rejects.toThrow('Invalid guest token payload')
     })
 
     it('rejects tokens without sid', async () => {
@@ -106,9 +104,7 @@ describe('Guest Token Utilities', () => {
         .setProtectedHeader({ alg: 'HS256' })
         .sign(key)
 
-      await expect(verifyGuestToken(wrongToken)).rejects.toThrow(
-        'Invalid guest token payload'
-      )
+      await expect(verifyGuestToken(wrongToken)).rejects.toThrow('Invalid guest token payload')
     })
 
     it('rejects expired tokens', async () => {

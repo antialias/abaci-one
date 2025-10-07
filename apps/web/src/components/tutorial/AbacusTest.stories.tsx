@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/react'
 import { AbacusReact } from '@soroban/abacus-react'
+import type { Meta, StoryObj } from '@storybook/react'
 
 // Test AbacusReact in isolation
 function AbacusTestComponent() {
@@ -14,7 +14,7 @@ function AbacusTestComponent() {
         colorScheme="place-value"
         onValueChange={(value) => console.log('Value changed:', value)}
         callbacks={{
-          onBeadClick: (beadInfo) => console.log('Bead clicked:', beadInfo)
+          onBeadClick: (beadInfo) => console.log('Bead clicked:', beadInfo),
         }}
       />
     </div>
@@ -27,10 +27,10 @@ const meta: Meta<typeof AbacusTestComponent> = {
   parameters: {
     docs: {
       description: {
-        component: 'Test AbacusReact component in isolation to see if it causes the c.some error'
-      }
-    }
-  }
+        component: 'Test AbacusReact component in isolation to see if it causes the c.some error',
+      },
+    },
+  },
 }
 
 export default meta
@@ -48,23 +48,21 @@ export const AbacusWithHighlights: Story = {
         animated={false}
         scaleFactor={1.5}
         colorScheme="place-value"
-        highlightBeads={[
-          { columnIndex: 4, beadType: 'earth', position: 0 }
-        ]}
+        highlightBeads={[{ columnIndex: 4, beadType: 'earth', position: 0 }]}
         customStyles={{
           beads: {
             0: {
               earth: {
-                0: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 3 }
-              }
-            }
-          }
+                0: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 3 },
+              },
+            },
+          },
         }}
         onValueChange={(value) => console.log('Value changed:', value)}
         callbacks={{
-          onBeadClick: (beadInfo) => console.log('Bead clicked:', beadInfo)
+          onBeadClick: (beadInfo) => console.log('Bead clicked:', beadInfo),
         }}
       />
     </div>
-  )
+  ),
 }

@@ -2,9 +2,9 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { db, schema } from '../src/db'
 import { eq } from 'drizzle-orm'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { db, schema } from '../src/db'
 
 /**
  * API Abacus Settings E2E Tests
@@ -19,10 +19,7 @@ describe('Abacus Settings API', () => {
   beforeEach(async () => {
     // Create a test user with unique guest ID
     testGuestId = `test-guest-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const [user] = await db
-      .insert(schema.users)
-      .values({ guestId: testGuestId })
-      .returning()
+    const [user] = await db.insert(schema.users).values({ guestId: testGuestId }).returning()
     testUserId = user.id
   })
 
@@ -218,10 +215,7 @@ describe('Abacus Settings API', () => {
     it('ensures settings are isolated per user', async () => {
       // Create another user
       const testGuestId2 = `test-guest-2-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const [user2] = await db
-        .insert(schema.users)
-        .values({ guestId: testGuestId2 })
-        .returning()
+      const [user2] = await db.insert(schema.users).values({ guestId: testGuestId2 }).returning()
 
       try {
         // Create settings for both users
@@ -272,7 +266,7 @@ describe('Abacus Settings API', () => {
       }).rejects.toThrow(/FOREIGN KEY constraint failed/)
     })
 
-    it('prevents modifying another user\'s settings via userId injection', async () => {
+    it("prevents modifying another user's settings via userId injection", async () => {
       // Create victim user
       const victimGuestId = `victim-${Date.now()}-${Math.random().toString(36).slice(2)}`
       const [victimUser] = await db

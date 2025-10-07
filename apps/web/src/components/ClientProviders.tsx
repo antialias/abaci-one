@@ -1,14 +1,14 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { AbacusDisplayProvider } from '@soroban/abacus-react'
-import { UserProfileProvider } from '@/contexts/UserProfileContext'
-import { GameModeProvider } from '@/contexts/GameModeContext'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { type ReactNode, useState } from 'react'
 import { FullscreenProvider } from '@/contexts/FullscreenContext'
-import { DeploymentInfo } from './DeploymentInfo'
-import { AbacusSettingsSync } from './AbacusSettingsSync'
+import { GameModeProvider } from '@/contexts/GameModeContext'
+import { UserProfileProvider } from '@/contexts/UserProfileContext'
 import { createQueryClient } from '@/lib/queryClient'
+import { AbacusSettingsSync } from './AbacusSettingsSync'
+import { DeploymentInfo } from './DeploymentInfo'
 
 interface ClientProvidersProps {
   children: ReactNode

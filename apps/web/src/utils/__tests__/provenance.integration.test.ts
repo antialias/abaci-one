@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { generateUnifiedInstructionSequence } from '../unifiedStepGenerator'
 
 describe('Provenance Integration Test - 3475 + 25 = 3500', () => {
@@ -17,7 +17,7 @@ describe('Provenance Integration Test - 3475 + 25 = 3500', () => {
     console.log('Total segments:', result.segments.length)
 
     // Find the "20" step (tens digit)
-    const twentyStep = result.steps.find(step => step.mathematicalTerm === '20')
+    const twentyStep = result.steps.find((step) => step.mathematicalTerm === '20')
     expect(twentyStep).toBeDefined()
     expect(twentyStep?.provenance).toBeDefined()
 
@@ -36,9 +36,7 @@ describe('Provenance Integration Test - 3475 + 25 = 3500', () => {
     }
 
     // Find the corresponding segment
-    const tensSegment = result.segments.find(seg =>
-      seg.place === 1 && seg.digit === 2
-    )
+    const tensSegment = result.segments.find((seg) => seg.place === 1 && seg.digit === 2)
     expect(tensSegment).toBeDefined()
 
     if (tensSegment) {
@@ -69,7 +67,7 @@ describe('Provenance Integration Test - 3475 + 25 = 3500', () => {
       // Verify these match what the user is expecting
       expect(expectedTitle).toBe('Add the tens digit — 2 tens (20)')
       expect(expectedSubtitle).toBe('From addend 25')
-      expect(expectedExplanation).toBe('We\'re adding the tens digit of 25 → 2 tens.')
+      expect(expectedExplanation).toBe("We're adding the tens digit of 25 → 2 tens.")
     }
 
     // Verify equation anchors for digit highlighting
@@ -93,7 +91,7 @@ describe('Provenance Integration Test - 3475 + 25 = 3500', () => {
 
   it('should provide data for UI requirements', () => {
     const result = generateUnifiedInstructionSequence(3475, 3500)
-    const twentyStep = result.steps.find(step => step.mathematicalTerm === '20')
+    const twentyStep = result.steps.find((step) => step.mathematicalTerm === '20')
 
     // Verify we have all the data needed for the UI requirements
     expect(twentyStep?.provenance).toBeDefined()

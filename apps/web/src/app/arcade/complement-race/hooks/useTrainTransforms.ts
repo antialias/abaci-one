@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { RailroadTrackGenerator } from '../lib/RailroadTrackGenerator'
 
 interface TrainTransform {
@@ -25,9 +25,13 @@ export function useTrainTransforms({
   trackGenerator,
   pathRef,
   maxCars,
-  carSpacing
+  carSpacing,
 }: UseTrainTransformsParams) {
-  const [trainTransform, setTrainTransform] = useState<TrainTransform>({ x: 50, y: 300, rotation: 0 })
+  const [trainTransform, setTrainTransform] = useState<TrainTransform>({
+    x: 50,
+    y: 300,
+    rotation: 0,
+  })
 
   // Update train position and rotation
   useEffect(() => {
@@ -40,7 +44,13 @@ export function useTrainTransforms({
   // Calculate train car transforms (each car follows behind the locomotive)
   const trainCars = useMemo((): TrainCarTransform[] => {
     if (!pathRef.current) {
-      return Array.from({ length: maxCars }, () => ({ x: 0, y: 0, rotation: 0, position: 0, opacity: 0 }))
+      return Array.from({ length: maxCars }, () => ({
+        x: 0,
+        y: 0,
+        rotation: 0,
+        position: 0,
+        opacity: 0,
+      }))
     }
 
     return Array.from({ length: maxCars }).map((_, carIndex) => {
@@ -65,13 +75,13 @@ export function useTrainTransforms({
       else if (carPosition >= fadeOutEnd) {
         opacity = 0
       } else if (carPosition > fadeOutStart) {
-        opacity = 1 - ((carPosition - fadeOutStart) / (fadeOutEnd - fadeOutStart))
+        opacity = 1 - (carPosition - fadeOutStart) / (fadeOutEnd - fadeOutStart)
       }
 
       return {
         ...trackGenerator.getTrainTransform(pathRef.current!, carPosition),
         position: carPosition,
-        opacity
+        opacity,
       }
     })
   }, [trainPosition, trackGenerator, pathRef, maxCars, carSpacing])
@@ -93,7 +103,7 @@ export function useTrainTransforms({
     else if (trainPosition >= fadeOutEnd) {
       return 0
     } else if (trainPosition > fadeOutStart) {
-      return 1 - ((trainPosition - fadeOutStart) / (fadeOutEnd - fadeOutStart))
+      return 1 - (trainPosition - fadeOutStart) / (fadeOutEnd - fadeOutStart)
     }
 
     return 1 // Default to fully visible
@@ -102,6 +112,6 @@ export function useTrainTransforms({
   return {
     trainTransform,
     trainCars,
-    locomotiveOpacity
+    locomotiveOpacity,
   }
 }

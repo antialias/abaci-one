@@ -1,8 +1,8 @@
 'use client'
 
-import React, { createContext, useContext, ReactNode } from 'react'
-import { useUserStats, useUpdateUserStats } from '@/hooks/useUserStats'
-import { UserStats } from '@/db/schema/user-stats'
+import { createContext, type ReactNode, useContext } from 'react'
+import type { UserStats } from '@/db/schema/user-stats'
+import { useUpdateUserStats, useUserStats } from '@/hooks/useUserStats'
 
 // Client-side stats type (compatible with old UserStatsProfile)
 export interface UserStatsProfile {
@@ -25,7 +25,7 @@ const defaultProfile: UserStatsProfile = {
   totalWins: 0,
   favoriteGameType: null,
   bestTime: null,
-  highestAccuracy: 0
+  highestAccuracy: 0,
 }
 
 const UserProfileContext = createContext<UserProfileContextType | null>(null)
@@ -64,11 +64,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     isLoading,
   }
 
-  return (
-    <UserProfileContext.Provider value={contextValue}>
-      {children}
-    </UserProfileContext.Provider>
-  )
+  return <UserProfileContext.Provider value={contextValue}>{children}</UserProfileContext.Provider>
 }
 
 export function useUserProfile(): UserProfileContextType {

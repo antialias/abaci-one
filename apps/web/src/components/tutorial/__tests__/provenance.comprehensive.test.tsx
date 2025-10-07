@@ -1,10 +1,10 @@
-import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { TutorialProvider, useTutorialContext } from '../TutorialContext'
-import { DecompositionWithReasons } from '../DecompositionWithReasons'
-import { generateUnifiedInstructionSequence } from '../../../utils/unifiedStepGenerator'
+import { render, screen } from '@testing-library/react'
+import type React from 'react'
+import { describe, expect, it, vi } from 'vitest'
 import type { Tutorial } from '../../../types/tutorial'
+import { generateUnifiedInstructionSequence } from '../../../utils/unifiedStepGenerator'
+import { DecompositionWithReasons } from '../DecompositionWithReasons'
+import { TutorialProvider, useTutorialContext } from '../TutorialContext'
 
 // Mock Radix Tooltip for reliable testing
 vi.mock('@radix-ui/react-tooltip', () => ({
@@ -17,7 +17,7 @@ vi.mock('@radix-ui/react-tooltip', () => ({
       {children}
     </div>
   ),
-  Arrow: (props: any) => <div data-testid="tooltip-arrow" {...props} />
+  Arrow: (props: any) => <div data-testid="tooltip-arrow" {...props} />,
 }))
 
 describe('Provenance System - Comprehensive Tests', () => {
@@ -35,11 +35,11 @@ describe('Provenance System - Comprehensive Tests', () => {
         targetValue: 3500,
         expectedAction: 'multi-step' as const,
         actionDescription: 'Follow the steps',
-        tooltip: { content: 'Test', explanation: 'Test explanation' }
-      }
+        tooltip: { content: 'Test', explanation: 'Test explanation' },
+      },
     ],
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
   }
 
   function renderWithTutorialContext(component: React.ReactElement) {
@@ -65,30 +65,30 @@ describe('Provenance System - Comprehensive Tests', () => {
       expect(result.fullDecomposition).toContain('3475 + 25')
 
       // Find the "20" step (tens digit)
-      const twentyStep = result.steps.find(step => step.mathematicalTerm === '20')
+      const twentyStep = result.steps.find((step) => step.mathematicalTerm === '20')
       expect(twentyStep).toBeDefined()
       expect(twentyStep?.provenance).toBeDefined()
 
       if (twentyStep?.provenance) {
         // Verify provenance data matches the specification exactly
         expect(twentyStep.provenance).toEqual({
-          rhs: 25,                    // the addend
-          rhsDigit: 2,               // digit from tens place
-          rhsPlace: 1,               // tens = place 1
-          rhsPlaceName: 'tens',      // human readable
-          rhsDigitIndex: 0,          // '2' is first character in '25'
-          rhsValue: 20               // 2 * 10^1 = 20
+          rhs: 25, // the addend
+          rhsDigit: 2, // digit from tens place
+          rhsPlace: 1, // tens = place 1
+          rhsPlaceName: 'tens', // human readable
+          rhsDigitIndex: 0, // '2' is first character in '25'
+          rhsValue: 20, // 2 * 10^1 = 20
         })
       }
 
       // Verify ones digit complement group
-      const complementSteps = result.steps.filter(step =>
+      const complementSteps = result.steps.filter((step) =>
         step.provenance?.groupId?.includes('10comp-0-5')
       )
       expect(complementSteps.length).toBeGreaterThan(0)
 
       // All complement steps should trace back to the same source digit
-      complementSteps.forEach(step => {
+      complementSteps.forEach((step) => {
         expect(step.provenance?.rhs).toBe(25)
         expect(step.provenance?.rhsDigit).toBe(5)
         expect(step.provenance?.rhsPlace).toBe(0)
@@ -110,7 +110,7 @@ describe('Provenance System - Comprehensive Tests', () => {
         rhsPlace: 1,
         rhsPlaceName: 'tens' as const,
         rhsDigitIndex: 0,
-        rhsValue: 20
+        rhsValue: 20,
       }
 
       // Test the exact logic from getEnhancedTooltipContent
@@ -122,23 +122,29 @@ describe('Provenance System - Comprehensive Tests', () => {
 
       // Test breadcrumb chips
       const chips = [
-        { label: 'Digit we\'re using', value: `${provenance.rhsDigit} (${provenance.rhsPlaceName})` },
-        { label: 'So we add here', value: `+${provenance.rhsDigit} ${provenance.rhsPlaceName} → ${provenance.rhsValue}` }
+        {
+          label: "Digit we're using",
+          value: `${provenance.rhsDigit} (${provenance.rhsPlaceName})`,
+        },
+        {
+          label: 'So we add here',
+          value: `+${provenance.rhsDigit} ${provenance.rhsPlaceName} → ${provenance.rhsValue}`,
+        },
       ]
 
       expect(chips[0]).toEqual({
-        label: 'Digit we\'re using',
-        value: '2 (tens)'
+        label: "Digit we're using",
+        value: '2 (tens)',
       })
 
       expect(chips[1]).toEqual({
         label: 'So we add here',
-        value: '+2 tens → 20'
+        value: '+2 tens → 20',
       })
 
       // Test explanation text
       const explanation = `We're adding the ${provenance.rhsPlaceName} digit of ${provenance.rhs} → ${provenance.rhsDigit} ${provenance.rhsPlaceName}.`
-      expect(explanation).toBe('We\'re adding the tens digit of 25 → 2 tens.')
+      expect(explanation).toBe("We're adding the tens digit of 25 → 2 tens.")
     })
   })
 
@@ -174,7 +180,7 @@ describe('Provenance System - Comprehensive Tests', () => {
       renderWithTutorialContext(
         <DecompositionWithReasons
           fullDecomposition={result.fullDecomposition}
-          termPositions={result.steps.map(step => step.termPosition)}
+          termPositions={result.steps.map((step) => step.termPosition)}
           segments={result.segments}
         />
       )
@@ -190,7 +196,7 @@ describe('Provenance System - Comprehensive Tests', () => {
       const enhancedContent = [
         screen.queryAllByText('Add the tens digit — 2 tens (20)'),
         screen.queryAllByText('From addend 25'),
-        screen.queryAllByText(/We're adding the tens digit of 25/)
+        screen.queryAllByText(/We're adding the tens digit of 25/),
       ].flat()
 
       // The provenance system should generate enhanced content for mathematical terms
@@ -207,7 +213,7 @@ describe('Provenance System - Comprehensive Tests', () => {
           termPositions={[
             { startIndex: 0, endIndex: 1 },
             { startIndex: 4, endIndex: 5 },
-            { startIndex: 8, endIndex: 10 }
+            { startIndex: 8, endIndex: 10 },
           ]}
           segments={[]}
         />
@@ -221,11 +227,7 @@ describe('Provenance System - Comprehensive Tests', () => {
 
     it('should handle empty or malformed data gracefully', () => {
       renderWithTutorialContext(
-        <DecompositionWithReasons
-          fullDecomposition=""
-          termPositions={[]}
-          segments={[]}
-        />
+        <DecompositionWithReasons fullDecomposition="" termPositions={[]} segments={[]} />
       )
 
       // Should render without throwing
@@ -238,7 +240,7 @@ describe('Provenance System - Comprehensive Tests', () => {
       const result = generateUnifiedInstructionSequence(3475, 3500)
 
       // Verify that every step with provenance clearly indicates its source
-      result.steps.forEach(step => {
+      result.steps.forEach((step) => {
         if (step.provenance) {
           // Each step should know which addend digit it came from
           expect(step.provenance.rhs).toBe(25)
@@ -258,13 +260,13 @@ describe('Provenance System - Comprehensive Tests', () => {
       expect(result.equationAnchors?.rhsDigitPositions[0]).toEqual({
         digitIndex: 0,
         startIndex: expect.any(Number),
-        endIndex: expect.any(Number)
+        endIndex: expect.any(Number),
       })
 
       expect(result.equationAnchors?.rhsDigitPositions[1]).toEqual({
         digitIndex: 1,
         startIndex: expect.any(Number),
-        endIndex: expect.any(Number)
+        endIndex: expect.any(Number),
       })
     })
   })

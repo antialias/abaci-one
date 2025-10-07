@@ -11,25 +11,28 @@ interface EnhancedChampionArenaProps {
 
 export function EnhancedChampionArena({ className }: EnhancedChampionArenaProps) {
   return (
-    <div className={css({
-      rounded: { base: 'xl', md: '2xl' },
-      padding: { base: '2', sm: '3', md: '4' },
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden'
-    }) + (className ? ` ${className}` : '')}>
+    <div
+      className={
+        css({
+          rounded: { base: 'xl', md: '2xl' },
+          padding: { base: '2', sm: '3', md: '4' },
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }) + (className ? ` ${className}` : '')
+      }
+    >
       {/* Game Selector - takes full height */}
-      <div className={css({
-        flex: 1,
-        minHeight: 0,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column'
-      })}>
-        <GameSelector
-          variant="detailed"
-          showHeader={true}
-        />
+      <div
+        className={css({
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        })}
+      >
+        <GameSelector variant="detailed" showHeader={true} />
       </div>
     </div>
   )

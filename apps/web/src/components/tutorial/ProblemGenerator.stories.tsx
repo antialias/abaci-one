@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
 import { css } from '../../../styled-system/css'
-import { vstack, hstack } from '../../../styled-system/patterns'
+import { hstack, vstack } from '../../../styled-system/patterns'
+import { createBasicSkillSet, type PracticeStep } from '../../types/tutorial'
+import { generateProblems, validatePracticeStepConfiguration } from '../../utils/problemGenerator'
 import { PracticeProblemPlayer } from './PracticeProblemPlayer'
 import { PracticeStepEditor } from './PracticeStepEditor'
-import { createBasicSkillSet, createEmptySkillSet, PracticeStep } from '../../types/tutorial'
-import { generateProblems, validatePracticeStepConfiguration } from '../../utils/problemGenerator'
 
 const meta: Meta = {
   title: 'Tutorial/Problem Generator',
@@ -29,18 +29,18 @@ const defaultPracticeStep: PracticeStep = {
     basic: {
       directAddition: true,
       heavenBead: true,
-      simpleCombinations: false
-    }
+      simpleCombinations: false,
+    },
   },
   targetSkills: {
     basic: {
       directAddition: true,
       heavenBead: true,
-      simpleCombinations: false
-    }
+      simpleCombinations: false,
+    },
   },
   numberRange: { min: 1, max: 9 },
-  sumConstraints: { maxSum: 9 }
+  sumConstraints: { maxSum: 9 },
 }
 
 const advancedPracticeStep: PracticeStep = {
@@ -55,25 +55,25 @@ const advancedPracticeStep: PracticeStep = {
     basic: {
       directAddition: true,
       heavenBead: true,
-      simpleCombinations: true
+      simpleCombinations: true,
     },
     fiveComplements: {
-      "4=5-1": true,
-      "3=5-2": true,
-      "2=5-3": false,
-      "1=5-4": false
-    }
+      '4=5-1': true,
+      '3=5-2': true,
+      '2=5-3': false,
+      '1=5-4': false,
+    },
   },
   targetSkills: {
     fiveComplements: {
-      "4=5-1": true,
-      "3=5-2": true,
-      "2=5-3": false,
-      "1=5-4": false
-    }
+      '4=5-1': true,
+      '3=5-2': true,
+      '2=5-3': false,
+      '1=5-4': false,
+    },
   },
   numberRange: { min: 1, max: 9 },
-  sumConstraints: { maxSum: 15 }
+  sumConstraints: { maxSum: 15 },
 }
 
 // Interactive Problem Generator Demo
@@ -99,25 +99,27 @@ function ProblemGeneratorDemo() {
   return (
     <div className={css({ h: '100vh', display: 'flex', flexDirection: 'column' })}>
       {/* Header */}
-      <div className={css({
-        bg: 'white',
-        borderBottom: '1px solid',
-        borderColor: 'gray.200',
-        p: 4
-      })}>
+      <div
+        className={css({
+          bg: 'white',
+          borderBottom: '1px solid',
+          borderColor: 'gray.200',
+          p: 4,
+        })}
+      >
         <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
-          <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>
-            Problem Generator Demo
-          </h1>
+          <h1 className={css({ fontSize: '2xl', fontWeight: 'bold' })}>Problem Generator Demo</h1>
 
           <div className={hstack({ gap: 2 })}>
             <button
               onClick={() => setMode('editor')}
               className={css({
-                px: 3, py: 2, rounded: 'md',
+                px: 3,
+                py: 2,
+                rounded: 'md',
                 bg: mode === 'editor' ? 'blue.500' : 'gray.200',
                 color: mode === 'editor' ? 'white' : 'gray.700',
-                cursor: 'pointer'
+                cursor: 'pointer',
               })}
             >
               Editor
@@ -125,10 +127,12 @@ function ProblemGeneratorDemo() {
             <button
               onClick={() => setMode('player')}
               className={css({
-                px: 3, py: 2, rounded: 'md',
+                px: 3,
+                py: 2,
+                rounded: 'md',
                 bg: mode === 'player' ? 'blue.500' : 'gray.200',
                 color: mode === 'player' ? 'white' : 'gray.700',
-                cursor: 'pointer'
+                cursor: 'pointer',
               })}
             >
               Player
@@ -136,9 +140,12 @@ function ProblemGeneratorDemo() {
             <button
               onClick={handleGenerate}
               className={css({
-                px: 3, py: 2, rounded: 'md',
-                bg: 'green.500', color: 'white',
-                cursor: 'pointer'
+                px: 3,
+                py: 2,
+                rounded: 'md',
+                bg: 'green.500',
+                color: 'white',
+                cursor: 'pointer',
               })}
             >
               Generate Problems
@@ -153,10 +160,7 @@ function ProblemGeneratorDemo() {
           <div className={css({ w: '100%', display: 'flex' })}>
             {/* Editor */}
             <div className={css({ w: '50%', p: 4, overflowY: 'auto' })}>
-              <PracticeStepEditor
-                step={practiceStep}
-                onChange={setPracticeStep}
-              />
+              <PracticeStepEditor step={practiceStep} onChange={setPracticeStep} />
             </div>
 
             {/* Generated Problems Display */}
@@ -166,12 +170,16 @@ function ProblemGeneratorDemo() {
               </h3>
 
               {validationResult && (
-                <div className={css({
-                  p: 3, mb: 4, rounded: 'md',
-                  bg: validationResult.isValid ? 'green.50' : 'yellow.50',
-                  border: '1px solid',
-                  borderColor: validationResult.isValid ? 'green.200' : 'yellow.200'
-                })}>
+                <div
+                  className={css({
+                    p: 3,
+                    mb: 4,
+                    rounded: 'md',
+                    bg: validationResult.isValid ? 'green.50' : 'yellow.50',
+                    border: '1px solid',
+                    borderColor: validationResult.isValid ? 'green.200' : 'yellow.200',
+                  })}
+                >
                   <h4 className={css({ fontWeight: 'bold', mb: 2 })}>
                     {validationResult.isValid ? '✅ Valid Configuration' : '⚠️ Configuration Issues'}
                   </h4>
@@ -184,37 +192,66 @@ function ProblemGeneratorDemo() {
               )}
 
               <div className={vstack({ gap: 2 })}>
-                {generatedProblems.map((problem, index) => (
-                  <div key={problem.id} className={css({
-                    p: 3, bg: 'white', rounded: 'md',
-                    border: '1px solid', borderColor: 'gray.200'
-                  })}>
+                {generatedProblems.map((problem, _index) => (
+                  <div
+                    key={problem.id}
+                    className={css({
+                      p: 3,
+                      bg: 'white',
+                      rounded: 'md',
+                      border: '1px solid',
+                      borderColor: 'gray.200',
+                    })}
+                  >
                     <div className={hstack({ justifyContent: 'space-between', mb: 2 })}>
                       <div className={hstack({ gap: 4, alignItems: 'center' })}>
-                      <div className={css({
-                        textAlign: 'right',
-                        fontFamily: 'mono',
-                        fontSize: 'sm',
-                        bg: 'gray.100',
-                        p: 2,
-                        rounded: 'sm'
-                      })}>
-                        {problem.terms.map((term, index) => (
-                          <div key={index}>{term}</div>
-                        ))}
-                        <div className={css({ borderTop: '1px solid', borderColor: 'gray.400', pt: 1 })}>
-                          {problem.answer}
+                        <div
+                          className={css({
+                            textAlign: 'right',
+                            fontFamily: 'mono',
+                            fontSize: 'sm',
+                            bg: 'gray.100',
+                            p: 2,
+                            rounded: 'sm',
+                          })}
+                        >
+                          {problem.terms.map((term, index) => (
+                            <div key={index}>{term}</div>
+                          ))}
+                          <div
+                            className={css({
+                              borderTop: '1px solid',
+                              borderColor: 'gray.400',
+                              pt: 1,
+                            })}
+                          >
+                            {problem.answer}
+                          </div>
                         </div>
+                        <span className={css({ fontSize: 'sm', color: 'gray.600' })}>
+                          = {problem.answer}
+                        </span>
                       </div>
-                      <span className={css({ fontSize: 'sm', color: 'gray.600' })}>= {problem.answer}</span>
-                    </div>
-                      <span className={css({
-                        px: 2, py: 1, rounded: 'sm', fontSize: 'xs',
-                        bg: problem.difficulty === 'easy' ? 'green.100' :
-                            problem.difficulty === 'medium' ? 'yellow.100' : 'red.100',
-                        color: problem.difficulty === 'easy' ? 'green.800' :
-                               problem.difficulty === 'medium' ? 'yellow.800' : 'red.800'
-                      })}>
+                      <span
+                        className={css({
+                          px: 2,
+                          py: 1,
+                          rounded: 'sm',
+                          fontSize: 'xs',
+                          bg:
+                            problem.difficulty === 'easy'
+                              ? 'green.100'
+                              : problem.difficulty === 'medium'
+                                ? 'yellow.100'
+                                : 'red.100',
+                          color:
+                            problem.difficulty === 'easy'
+                              ? 'green.800'
+                              : problem.difficulty === 'medium'
+                                ? 'yellow.800'
+                                : 'red.800',
+                        })}
+                      >
                         {problem.difficulty}
                       </span>
                     </div>
@@ -227,10 +264,13 @@ function ProblemGeneratorDemo() {
               </div>
 
               {generatedProblems.length === 0 && (
-                <div className={css({
-                  textAlign: 'center', py: 8,
-                  color: 'gray.500'
-                })}>
+                <div
+                  className={css({
+                    textAlign: 'center',
+                    py: 8,
+                    color: 'gray.500',
+                  })}
+                >
                   Click "Generate Problems" to see sample problems
                 </div>
               )}
@@ -251,7 +291,7 @@ function ProblemGeneratorDemo() {
 }
 
 export const InteractiveDemo: StoryObj = {
-  render: () => <ProblemGeneratorDemo />
+  render: () => <ProblemGeneratorDemo />,
 }
 
 export const BasicAdditionPractice: StoryObj = {
@@ -265,7 +305,7 @@ export const BasicAdditionPractice: StoryObj = {
         }}
       />
     </div>
-  )
+  ),
 }
 
 export const FiveComplementsPractice: StoryObj = {
@@ -279,23 +319,21 @@ export const FiveComplementsPractice: StoryObj = {
         }}
       />
     </div>
+  ),
+}
+
+// Extract component wrapper for hooks
+function PracticeStepEditorWrapper() {
+  const [step, setStep] = useState<PracticeStep>(defaultPracticeStep)
+
+  return (
+    <div className={css({ p: 6, maxW: '800px', mx: 'auto' })}>
+      <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 6 })}>Practice Step Editor</h1>
+      <PracticeStepEditor step={step} onChange={setStep} />
+    </div>
   )
 }
 
 export const PracticeStepEditorStory: StoryObj = {
-  render: () => {
-    const [step, setStep] = useState<PracticeStep>(defaultPracticeStep)
-
-    return (
-      <div className={css({ p: 6, maxW: '800px', mx: 'auto' })}>
-        <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 6 })}>
-          Practice Step Editor
-        </h1>
-        <PracticeStepEditor
-          step={step}
-          onChange={setStep}
-        />
-      </div>
-    )
-  }
+  render: () => <PracticeStepEditorWrapper />,
 }

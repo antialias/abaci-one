@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
-import { verifyGuestToken, GUEST_COOKIE_NAME } from '@/lib/guest-token'
+import { GUEST_COOKIE_NAME, verifyGuestToken } from '@/lib/guest-token'
 
 /**
  * NextAuth v5 configuration with guest session support
@@ -153,7 +153,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
 
   // Events for side effects (e.g., data migration on upgrade)
   events: {
-    async signIn(message) {
+    async signIn(_message) {
       // Future: Handle guest → user data migration here
       // const guestId = message.token?.guestId
       // if (guestId && message.user.id) {

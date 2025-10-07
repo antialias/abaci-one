@@ -1,8 +1,8 @@
 'use client'
 
 import React from 'react'
-import { AppNavBar } from './AppNavBar'
 import { useGameMode } from '../contexts/GameModeContext'
+import { AppNavBar } from './AppNavBar'
 import { GameContextNav } from './nav/GameContextNav'
 import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
 
@@ -17,7 +17,16 @@ interface PageWithNavProps {
   children: React.ReactNode
 }
 
-export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, onExitSession, onSetup, onNewGame, canModifyPlayers = true, children }: PageWithNavProps) {
+export function PageWithNav({
+  navTitle,
+  navEmoji,
+  emphasizeGameContext = false,
+  onExitSession,
+  onSetup,
+  onNewGame,
+  canModifyPlayers = true,
+  children,
+}: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const [mounted, setMounted] = React.useState(false)
   const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
@@ -44,19 +53,25 @@ export function PageWithNav({ navTitle, navEmoji, emphasizeGameContext = false, 
 
   // Get active and inactive players as arrays
   const activePlayerList = Array.from(activePlayers)
-    .map(id => players.get(id))
-    .filter(p => p !== undefined)
-    .map(p => ({ id: p.id, name: p.name, emoji: p.emoji }))
+    .map((id) => players.get(id))
+    .filter((p) => p !== undefined)
+    .map((p) => ({ id: p.id, name: p.name, emoji: p.emoji }))
 
   const inactivePlayerList = Array.from(players.values())
-    .filter(p => !activePlayers.has(p.id))
-    .map(p => ({ id: p.id, name: p.name, emoji: p.emoji }))
+    .filter((p) => !activePlayers.has(p.id))
+    .map((p) => ({ id: p.id, name: p.name, emoji: p.emoji }))
 
   // Compute game mode from active player count
-  const gameMode = activePlayerCount === 0 ? 'none' :
-                   activePlayerCount === 1 ? 'single' :
-                   activePlayerCount === 2 ? 'battle' :
-                   activePlayerCount >= 3 ? 'tournament' : 'none'
+  const gameMode =
+    activePlayerCount === 0
+      ? 'none'
+      : activePlayerCount === 1
+        ? 'single'
+        : activePlayerCount === 2
+          ? 'battle'
+          : activePlayerCount >= 3
+            ? 'tournament'
+            : 'none'
 
   const shouldEmphasize = emphasizeGameContext && mounted
   const showFullscreenSelection = shouldEmphasize && activePlayerCount === 0

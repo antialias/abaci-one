@@ -1,11 +1,11 @@
-import { Server as SocketIOServer } from 'socket.io'
 import type { Server as HTTPServer } from 'http'
+import { Server as SocketIOServer } from 'socket.io'
 import {
-  getArcadeSession,
   applyGameMove,
-  updateSessionActivity,
-  deleteArcadeSession,
   createArcadeSession,
+  deleteArcadeSession,
+  getArcadeSession,
+  updateSessionActivity,
 } from './src/lib/arcade/session-manager'
 import type { GameMove } from './src/lib/arcade/validation'
 import { matchingGameValidator } from './src/lib/arcade/validation/MatchingGameValidator'
@@ -56,7 +56,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         moveType: data.move.type,
         playerId: data.move.playerId,
         timestamp: data.move.timestamp,
-        fullMove: JSON.stringify(data.move, null, 2)
+        fullMove: JSON.stringify(data.move, null, 2),
       })
 
       try {

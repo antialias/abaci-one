@@ -36,7 +36,7 @@ export const assetStore = {
     const metadata = {
       filename: asset.filename,
       mimeType: asset.mimeType,
-      createdAt: asset.createdAt.toISOString()
+      createdAt: asset.createdAt.toISOString(),
     }
     await writeFile(metaPath, JSON.stringify(metadata))
     console.log('💾 Asset stored to file:', assetPath)
@@ -54,9 +54,9 @@ export const assetStore = {
         data,
         filename: metaData.filename,
         mimeType: metaData.mimeType,
-        createdAt: new Date(metaData.createdAt)
+        createdAt: new Date(metaData.createdAt),
       }
-    } catch (error) {
+    } catch (_error) {
       console.log('❌ Asset not found in file system:', assetPath)
       return undefined
     }
@@ -65,7 +65,7 @@ export const assetStore = {
   async keys(): Promise<string[]> {
     try {
       const files = await readdir(ASSETS_DIR)
-      return files.filter(f => f.endsWith('.bin')).map(f => f.replace('.bin', ''))
+      return files.filter((f) => f.endsWith('.bin')).map((f) => f.replace('.bin', ''))
     } catch {
       return []
     }
@@ -73,32 +73,35 @@ export const assetStore = {
 
   get size(): number {
     try {
-      return fs.readdirSync(ASSETS_DIR).filter(f => f.endsWith('.bin')).length
+      return fs.readdirSync(ASSETS_DIR).filter((f) => f.endsWith('.bin')).length
     } catch {
       return 0
     }
-  }
+  },
 }
 
 // Clean up old assets every hour
-setInterval(async () => {
-  const cutoff = Date.now() - 60 * 60 * 1000 // 1 hour ago
-  try {
-    const files = await readdir(ASSETS_DIR)
-    for (const file of files) {
-      if (!file.endsWith('.bin')) continue
+setInterval(
+  async () => {
+    const cutoff = Date.now() - 60 * 60 * 1000 // 1 hour ago
+    try {
+      const files = await readdir(ASSETS_DIR)
+      for (const file of files) {
+        if (!file.endsWith('.bin')) continue
 
-      const filePath = path.join(ASSETS_DIR, file)
-      const stats = await stat(filePath)
+        const filePath = path.join(ASSETS_DIR, file)
+        const stats = await stat(filePath)
 
-      if (stats.mtime.getTime() < cutoff) {
-        const id = file.replace('.bin', '')
-        await unlink(filePath).catch(() => {})
-        await unlink(path.join(ASSETS_DIR, `${id}.meta.json`)).catch(() => {})
-        console.log('🗑️ Cleaned up old asset:', id)
+        if (stats.mtime.getTime() < cutoff) {
+          const id = file.replace('.bin', '')
+          await unlink(filePath).catch(() => {})
+          await unlink(path.join(ASSETS_DIR, `${id}.meta.json`)).catch(() => {})
+          console.log('🗑️ Cleaned up old asset:', id)
+        }
       }
+    } catch (error) {
+      console.error('❌ Error cleaning up assets:', error)
     }
-  } catch (error) {
-    console.error('❌ Error cleaning up assets:', error)
-  }
-}, 60 * 60 * 1000)
+  },
+  60 * 60 * 1000
+)

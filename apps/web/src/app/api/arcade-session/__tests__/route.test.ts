@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { GET, POST, DELETE } from '../route'
-import { NextRequest } from 'next/server'
-import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
+import { NextRequest } from 'next/server'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { db, schema } from '@/db'
 import { deleteArcadeSession } from '@/lib/arcade/session-manager'
+import { DELETE, GET, POST } from '../route'
 
 describe('Arcade Session API Routes', () => {
   const testUserId = 'test-user-for-api-routes'
@@ -100,9 +100,7 @@ describe('Arcade Session API Routes', () => {
       await POST(createRequest)
 
       // Now retrieve it
-      const request = new NextRequest(
-        `${baseUrl}/api/arcade-session?userId=${testUserId}`
-      )
+      const request = new NextRequest(`${baseUrl}/api/arcade-session?userId=${testUserId}`)
 
       const response = await GET(request)
       const data = await response.json()
@@ -113,9 +111,7 @@ describe('Arcade Session API Routes', () => {
     })
 
     it('should return 404 for non-existent session', async () => {
-      const request = new NextRequest(
-        `${baseUrl}/api/arcade-session?userId=non-existent`
-      )
+      const request = new NextRequest(`${baseUrl}/api/arcade-session?userId=non-existent`)
 
       const response = await GET(request)
 
@@ -149,10 +145,9 @@ describe('Arcade Session API Routes', () => {
       await POST(createRequest)
 
       // Now delete it
-      const request = new NextRequest(
-        `${baseUrl}/api/arcade-session?userId=${testUserId}`,
-        { method: 'DELETE' }
-      )
+      const request = new NextRequest(`${baseUrl}/api/arcade-session?userId=${testUserId}`, {
+        method: 'DELETE',
+      })
 
       const response = await DELETE(request)
       const data = await response.json()
@@ -161,9 +156,7 @@ describe('Arcade Session API Routes', () => {
       expect(data.success).toBe(true)
 
       // Verify it's deleted
-      const getRequest = new NextRequest(
-        `${baseUrl}/api/arcade-session?userId=${testUserId}`
-      )
+      const getRequest = new NextRequest(`${baseUrl}/api/arcade-session?userId=${testUserId}`)
       const getResponse = await GET(getRequest)
       expect(getResponse.status).toBe(404)
     })

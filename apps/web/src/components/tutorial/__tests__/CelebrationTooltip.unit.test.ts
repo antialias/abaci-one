@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 /**
  * Unit tests for celebration tooltip logic
@@ -18,17 +18,17 @@ describe('Celebration Tooltip Logic', () => {
     return {
       showCelebration,
       showInstructions,
-      visible: showCelebration || showInstructions
+      visible: showCelebration || showInstructions,
     }
   }
 
   describe('Celebration visibility logic', () => {
     it('should show celebration when step is completed and at target value', () => {
       const result = shouldShowCelebrationTooltip(
-        true,  // isStepCompleted
-        5,     // currentValue
-        5,     // targetValue
-        false  // hasStepInstructions
+        true, // isStepCompleted
+        5, // currentValue
+        5, // targetValue
+        false // hasStepInstructions
       )
 
       expect(result.showCelebration).toBe(true)
@@ -38,10 +38,10 @@ describe('Celebration Tooltip Logic', () => {
 
     it('should not show celebration when step completed but not at target', () => {
       const result = shouldShowCelebrationTooltip(
-        true,  // isStepCompleted
-        6,     // currentValue (moved away from target)
-        5,     // targetValue
-        true   // hasStepInstructions
+        true, // isStepCompleted
+        6, // currentValue (moved away from target)
+        5, // targetValue
+        true // hasStepInstructions
       )
 
       expect(result.showCelebration).toBe(false)
@@ -52,9 +52,9 @@ describe('Celebration Tooltip Logic', () => {
     it('should not show celebration when not completed even if at target', () => {
       const result = shouldShowCelebrationTooltip(
         false, // isStepCompleted
-        5,     // currentValue
-        5,     // targetValue
-        true   // hasStepInstructions
+        5, // currentValue
+        5, // targetValue
+        true // hasStepInstructions
       )
 
       expect(result.showCelebration).toBe(false)
@@ -65,9 +65,9 @@ describe('Celebration Tooltip Logic', () => {
     it('should show instructions when not completed and has instructions', () => {
       const result = shouldShowCelebrationTooltip(
         false, // isStepCompleted
-        3,     // currentValue
-        5,     // targetValue
-        true   // hasStepInstructions
+        3, // currentValue
+        5, // targetValue
+        true // hasStepInstructions
       )
 
       expect(result.showCelebration).toBe(false)
@@ -78,9 +78,9 @@ describe('Celebration Tooltip Logic', () => {
     it('should not show anything when not completed and no instructions', () => {
       const result = shouldShowCelebrationTooltip(
         false, // isStepCompleted
-        3,     // currentValue
-        5,     // targetValue
-        false  // hasStepInstructions
+        3, // currentValue
+        5, // targetValue
+        false // hasStepInstructions
       )
 
       expect(result.showCelebration).toBe(false)
@@ -184,12 +184,12 @@ describe('Last Moved Bead Tracking', () => {
           placeValue: 0,
           beadType: 'heaven',
           position: 0,
-          direction: 'none'
+          direction: 'none',
         }
       }
     } else if (showInstructions && currentStepBeads?.length) {
       // For instructions, use first bead with arrows
-      return currentStepBeads.find(bead => bead.direction !== 'none') || null
+      return currentStepBeads.find((bead) => bead.direction !== 'none') || null
     }
 
     return null
@@ -201,7 +201,7 @@ describe('Last Moved Bead Tracking', () => {
         placeValue: 2,
         beadType: 'earth',
         position: 1,
-        direction: 'down'
+        direction: 'down',
       }
 
       const result = selectTooltipBead(true, false, null, lastMoved)
@@ -215,7 +215,7 @@ describe('Last Moved Bead Tracking', () => {
         placeValue: 0,
         beadType: 'heaven',
         position: 0,
-        direction: 'none'
+        direction: 'none',
       })
     })
 
@@ -225,8 +225,8 @@ describe('Last Moved Bead Tracking', () => {
           placeValue: 1,
           beadType: 'earth',
           position: 0,
-          direction: 'up'
-        }
+          direction: 'up',
+        },
       ]
 
       const result = selectTooltipBead(false, true, instructionBeads, null)
@@ -245,7 +245,7 @@ describe('Last Moved Bead Tracking', () => {
         placeValue: 3,
         beadType: 'heaven',
         position: 0,
-        direction: 'up'
+        direction: 'up',
       }
 
       const instructionBeads: StepBeadHighlight[] = [
@@ -253,8 +253,8 @@ describe('Last Moved Bead Tracking', () => {
           placeValue: 1,
           beadType: 'earth',
           position: 0,
-          direction: 'down'
-        }
+          direction: 'down',
+        },
       ]
 
       const result = selectTooltipBead(true, false, instructionBeads, lastMoved)
@@ -267,8 +267,8 @@ describe('Last Moved Bead Tracking', () => {
           placeValue: 1,
           beadType: 'earth',
           position: 0,
-          direction: 'down'
-        }
+          direction: 'down',
+        },
       ]
 
       const result = selectTooltipBead(true, false, instructionBeads, null)

@@ -10,7 +10,7 @@ export function validateAbacusNumeralMatch(
     return {
       isValid: false,
       reason: 'Numbers do not match',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
@@ -19,7 +19,7 @@ export function validateAbacusNumeralMatch(
     return {
       isValid: false,
       reason: 'Both cards are the same type',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
@@ -31,7 +31,7 @@ export function validateAbacusNumeralMatch(
     return {
       isValid: false,
       reason: 'Must match abacus with number representation',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
@@ -40,27 +40,24 @@ export function validateAbacusNumeralMatch(
     return {
       isValid: false,
       reason: 'Complement cards not valid in abacus-numeral mode',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
   return {
     isValid: true,
-    type: 'abacus-numeral'
+    type: 'abacus-numeral',
   }
 }
 
 // Validate complement match (two numbers that add up to target sum)
-export function validateComplementMatch(
-  card1: GameCard,
-  card2: GameCard
-): MatchValidationResult {
+export function validateComplementMatch(card1: GameCard, card2: GameCard): MatchValidationResult {
   // Both cards must be complement type
   if (card1.type !== 'complement' || card2.type !== 'complement') {
     return {
       isValid: false,
       reason: 'Both cards must be complement type',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
@@ -69,7 +66,7 @@ export function validateComplementMatch(
     return {
       isValid: false,
       reason: 'Cards have different target sums',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
@@ -78,7 +75,7 @@ export function validateComplementMatch(
     return {
       isValid: false,
       reason: 'Complement information missing',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
@@ -87,7 +84,7 @@ export function validateComplementMatch(
     return {
       isValid: false,
       reason: 'Numbers are not complements of each other',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
@@ -97,13 +94,13 @@ export function validateComplementMatch(
     return {
       isValid: false,
       reason: `Sum ${sum} does not equal target ${card1.targetSum}`,
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
   return {
     isValid: true,
-    type: 'complement'
+    type: 'complement',
   }
 }
 
@@ -114,7 +111,7 @@ export function validateMatch(card1: GameCard, card2: GameCard): MatchValidation
     return {
       isValid: false,
       reason: 'Cannot match card with itself',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
@@ -123,7 +120,7 @@ export function validateMatch(card1: GameCard, card2: GameCard): MatchValidation
     return {
       isValid: false,
       reason: 'Cannot match already matched cards',
-      type: 'invalid'
+      type: 'invalid',
     }
   }
 
@@ -152,7 +149,7 @@ export function canFlipCard(
   if (card.matched) return false
 
   // Cannot flip if already flipped
-  if (flippedCards.some(c => c.id === card.id)) return false
+  if (flippedCards.some((c) => c.id === card.id)) return false
 
   // Cannot flip if two cards are already flipped
   if (flippedCards.length >= 2) return false
@@ -220,6 +217,6 @@ export function analyzeGamePerformance(
     accuracy,
     efficiency,
     averageTimePerMove,
-    grade
+    grade,
   }
 }

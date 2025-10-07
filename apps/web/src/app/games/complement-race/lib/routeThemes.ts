@@ -13,7 +13,7 @@ export const ROUTE_THEMES = [
   { name: 'River Valley', emoji: '🏞️' },
   { name: 'Highland Pass', emoji: '🗻' },
   { name: 'Lakeside Journey', emoji: '🏔️' },
-  { name: 'Grand Circuit', emoji: '🎪' }
+  { name: 'Grand Circuit', emoji: '🎪' },
 ]
 
 /**

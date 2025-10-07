@@ -2,10 +2,10 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { GUEST_COOKIE_NAME, verifyGuestToken } from '../src/lib/guest-token'
 import { middleware } from '../src/middleware'
-import { verifyGuestToken, GUEST_COOKIE_NAME } from '../src/lib/guest-token'
 
 describe('Middleware E2E', () => {
   beforeEach(() => {

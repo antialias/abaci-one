@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { PageWithNav } from '@/components/PageWithNav'
+import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
 import { css } from '../../../styled-system/css'
 import { EnhancedChampionArena } from '../../components/EnhancedChampionArena'
 import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
-import { PageWithNav } from '@/components/PageWithNav'
-import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
 
 function ArcadeContent() {
   const { setFullscreenElement } = useFullscreen()
@@ -29,32 +28,37 @@ function ArcadeContent() {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        py: { base: '4', md: '6' }
-      })}>
+        py: { base: '4', md: '6' },
+      })}
+    >
       {/* Animated background elements */}
-      <div className={css({
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundImage: `
+      <div
+        className={css({
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: `
           radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
           radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
           radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%)
         `,
-        animation: 'arcadeFloat 20s ease-in-out infinite'
-      })} />
+          animation: 'arcadeFloat 20s ease-in-out infinite',
+        })}
+      />
 
       {/* Main Champion Arena - takes remaining space */}
-      <div className={css({
-        flex: 1,
-        display: 'flex',
-        px: { base: '2', md: '4' },
-        position: 'relative',
-        zIndex: 1,
-        minHeight: 0 // Important for flex children
-      })}>
+      <div
+        className={css({
+          flex: 1,
+          display: 'flex',
+          px: { base: '2', md: '4' },
+          position: 'relative',
+          zIndex: 1,
+          minHeight: 0, // Important for flex children
+        })}
+      >
         <EnhancedChampionArena
           onConfigurePlayer={() => {}}
           className={css({
@@ -65,7 +69,7 @@ function ArcadeContent() {
             border: '1px solid rgba(255, 255, 255, 0.1)',
             boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
           })}
         />
       </div>

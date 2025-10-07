@@ -1,6 +1,6 @@
-import React from 'react'
+import type { StepBeadHighlight } from '@soroban/abacus-react'
+import type React from 'react'
 import { vi } from 'vitest'
-import { StepBeadHighlight } from '@soroban/abacus-react'
 
 // Import the helper functions from the module (we'll need to extract these)
 // For now, let's define them locally for testing
@@ -36,12 +36,14 @@ function calculateBeadPosition(
 
   return {
     x: beadRect.left + beadRect.width / 2 - containerRect.left,
-    y: beadRect.top + beadRect.height / 2 - containerRect.top
+    y: beadRect.top + beadRect.height / 2 - containerRect.top,
   }
 }
 
 // Helper function to find the topmost bead with arrows
-function findTopmostBeadWithArrows(stepBeadHighlights: StepBeadHighlight[] | undefined): StepBeadHighlight | null {
+function findTopmostBeadWithArrows(
+  stepBeadHighlights: StepBeadHighlight[] | undefined
+): StepBeadHighlight | null {
   if (!stepBeadHighlights || stepBeadHighlights.length === 0) return null
 
   // Sort by place value (highest first, since place value 4 = leftmost = highest value)
@@ -108,7 +110,7 @@ describe('TutorialPlayer Helper Functions', () => {
         beadType: 'earth',
         position: 0,
         direction: 'up',
-        stepIndex: 0
+        stepIndex: 0,
       }
 
       expect(findTopmostBeadWithArrows([singleBead])).toEqual(singleBead)
@@ -118,7 +120,7 @@ describe('TutorialPlayer Helper Functions', () => {
       const beads: StepBeadHighlight[] = [
         { placeValue: 0, beadType: 'earth', position: 0, direction: 'up', stepIndex: 0 },
         { placeValue: 2, beadType: 'earth', position: 0, direction: 'up', stepIndex: 0 },
-        { placeValue: 1, beadType: 'earth', position: 0, direction: 'up', stepIndex: 0 }
+        { placeValue: 1, beadType: 'earth', position: 0, direction: 'up', stepIndex: 0 },
       ]
 
       const result = findTopmostBeadWithArrows(beads)
@@ -128,7 +130,7 @@ describe('TutorialPlayer Helper Functions', () => {
     it('should prioritize heaven beads over earth beads in same column', () => {
       const beads: StepBeadHighlight[] = [
         { placeValue: 1, beadType: 'earth', position: 0, direction: 'up', stepIndex: 0 },
-        { placeValue: 1, beadType: 'heaven', direction: 'down', stepIndex: 0 }
+        { placeValue: 1, beadType: 'heaven', direction: 'down', stepIndex: 0 },
       ]
 
       const result = findTopmostBeadWithArrows(beads)
@@ -139,7 +141,7 @@ describe('TutorialPlayer Helper Functions', () => {
       const beads: StepBeadHighlight[] = [
         { placeValue: 0, beadType: 'earth', position: 2, direction: 'up', stepIndex: 0 },
         { placeValue: 0, beadType: 'earth', position: 0, direction: 'up', stepIndex: 0 },
-        { placeValue: 0, beadType: 'earth', position: 1, direction: 'up', stepIndex: 0 }
+        { placeValue: 0, beadType: 'earth', position: 1, direction: 'up', stepIndex: 0 },
       ]
 
       const result = findTopmostBeadWithArrows(beads)
@@ -151,7 +153,7 @@ describe('TutorialPlayer Helper Functions', () => {
         { placeValue: 0, beadType: 'earth', position: 1, direction: 'up', stepIndex: 0 },
         { placeValue: 1, beadType: 'earth', position: 3, direction: 'down', stepIndex: 0 },
         { placeValue: 2, beadType: 'heaven', direction: 'down', stepIndex: 0 },
-        { placeValue: 1, beadType: 'heaven', direction: 'up', stepIndex: 0 }
+        { placeValue: 1, beadType: 'heaven', direction: 'up', stepIndex: 0 },
       ]
 
       const result = findTopmostBeadWithArrows(beads)
@@ -163,7 +165,7 @@ describe('TutorialPlayer Helper Functions', () => {
     it('should handle undefined positions correctly', () => {
       const beads: StepBeadHighlight[] = [
         { placeValue: 0, beadType: 'earth', direction: 'up', stepIndex: 0 }, // No position
-        { placeValue: 0, beadType: 'earth', position: 1, direction: 'up', stepIndex: 0 }
+        { placeValue: 0, beadType: 'earth', position: 1, direction: 'up', stepIndex: 0 },
       ]
 
       const result = findTopmostBeadWithArrows(beads)
@@ -186,8 +188,8 @@ describe('TutorialPlayer Helper Functions', () => {
           left: 100,
           top: 50,
           width: 20,
-          height: 20
-        })
+          height: 20,
+        }),
       } as unknown as SVGElement
 
       // Mock container element
@@ -196,8 +198,8 @@ describe('TutorialPlayer Helper Functions', () => {
           left: 50,
           top: 20,
           width: 400,
-          height: 300
-        })
+          height: 300,
+        }),
       } as unknown as HTMLElement
 
       // Create mock beadRefs
@@ -214,7 +216,7 @@ describe('TutorialPlayer Helper Functions', () => {
         beadType: 'earth',
         position: 0,
         direction: 'up',
-        stepIndex: 0
+        stepIndex: 0,
       }
 
       const result = calculateBeadPosition(bead, mockBeadRefs, null)
@@ -227,7 +229,7 @@ describe('TutorialPlayer Helper Functions', () => {
         beadType: 'earth',
         position: 0,
         direction: 'up',
-        stepIndex: 0
+        stepIndex: 0,
       }
 
       const result = calculateBeadPosition(bead, mockBeadRefs, mockAbacusContainer)
@@ -240,14 +242,14 @@ describe('TutorialPlayer Helper Functions', () => {
         beadType: 'earth',
         position: 0,
         direction: 'up',
-        stepIndex: 0
+        stepIndex: 0,
       }
 
       const result = calculateBeadPosition(bead, mockBeadRefs, mockAbacusContainer)
 
       expect(result).toEqual({
         x: 60, // (100 + 20/2) - 50 = 110 - 50 = 60
-        y: 40  // (50 + 20/2) - 20 = 60 - 20 = 40
+        y: 40, // (50 + 20/2) - 20 = 60 - 20 = 40
       })
     })
 
@@ -256,14 +258,14 @@ describe('TutorialPlayer Helper Functions', () => {
         placeValue: 1,
         beadType: 'heaven',
         direction: 'down',
-        stepIndex: 0
+        stepIndex: 0,
       }
 
       const result = calculateBeadPosition(bead, mockBeadRefs, mockAbacusContainer)
 
       expect(result).toEqual({
         x: 60, // Same calculation as above
-        y: 40
+        y: 40,
       })
     })
 
@@ -273,7 +275,7 @@ describe('TutorialPlayer Helper Functions', () => {
         beadType: 'earth',
         // position is undefined
         direction: 'up',
-        stepIndex: 0
+        stepIndex: 0,
       }
 
       // This should look for key '0-earth-0' which exists in our mock
@@ -281,7 +283,7 @@ describe('TutorialPlayer Helper Functions', () => {
 
       expect(result).toEqual({
         x: 60,
-        y: 40
+        y: 40,
       })
     })
 
@@ -291,7 +293,7 @@ describe('TutorialPlayer Helper Functions', () => {
         beadType: 'earth',
         position: 3,
         direction: 'up',
-        stepIndex: 0
+        stepIndex: 0,
       }
 
       // Add this specific bead to our refs
@@ -300,8 +302,8 @@ describe('TutorialPlayer Helper Functions', () => {
           left: 200,
           top: 100,
           width: 25,
-          height: 25
-        })
+          height: 25,
+        }),
       } as unknown as SVGElement
 
       mockBeadRefs.current.set('2-earth-3', mockElement)
@@ -310,7 +312,7 @@ describe('TutorialPlayer Helper Functions', () => {
 
       expect(result).toEqual({
         x: 162.5, // (200 + 25/2) - 50 = 212.5 - 50 = 162.5
-        y: 92.5   // (100 + 25/2) - 20 = 112.5 - 20 = 92.5
+        y: 92.5, // (100 + 25/2) - 20 = 112.5 - 20 = 92.5
       })
     })
   })

@@ -1,8 +1,8 @@
-import React from 'react'
-import { GitBranch, GitCommit, Clock, Package, Server } from 'lucide-react'
-import { css } from '../../styled-system/css'
-import { vstack, hstack } from '../../styled-system/patterns'
+import { Clock, GitBranch, GitCommit, Package, Server } from 'lucide-react'
+import type React from 'react'
 import buildInfo from '@/generated/build-info.json'
+import { css } from '../../styled-system/css'
+import { hstack, vstack } from '../../styled-system/patterns'
 
 function formatTimestamp(timestamp: number) {
   const date = new Date(timestamp)
@@ -13,7 +13,7 @@ function formatTimestamp(timestamp: number) {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    timeZoneName: 'short'
+    timeZoneName: 'short',
   })
 }
 
@@ -27,7 +27,7 @@ function getTimeAgo(timestamp: number) {
     day: 86400,
     hour: 3600,
     minute: 60,
-    second: 1
+    second: 1,
   }
 
   for (const [unit, secondsInUnit] of Object.entries(intervals)) {
@@ -42,11 +42,7 @@ function getTimeAgo(timestamp: number) {
 export function DeploymentInfoContent() {
   return (
     <div className={vstack({ alignItems: 'stretch', gap: '4' })}>
-      <InfoRow
-        icon={<Package size={18} />}
-        label="Version"
-        value={buildInfo.version}
-      />
+      <InfoRow icon={<Package size={18} />} label="Version" value={buildInfo.version} />
 
       <InfoRow
         icon={<Clock size={18} />}
@@ -66,18 +62,18 @@ export function DeploymentInfoContent() {
           icon={<GitBranch size={18} />}
           label="Branch"
           value={
-            <span className={css({
-              fontFamily: 'mono',
-              fontSize: 'sm',
-              backgroundColor: 'gray.100',
-              padding: '1 2',
-              borderRadius: 'sm'
-            })}>
+            <span
+              className={css({
+                fontFamily: 'mono',
+                fontSize: 'sm',
+                backgroundColor: 'gray.100',
+                padding: '1 2',
+                borderRadius: 'sm',
+              })}
+            >
               {buildInfo.git.branch}
               {buildInfo.git.isDirty && (
-                <span className={css({ color: 'orange.600', marginLeft: '2' })}>
-                  (dirty)
-                </span>
+                <span className={css({ color: 'orange.600', marginLeft: '2' })}>(dirty)</span>
               )}
             </span>
           }
@@ -90,21 +86,25 @@ export function DeploymentInfoContent() {
           label="Commit"
           value={
             <div className={vstack({ alignItems: 'flex-start', gap: '1' })}>
-              <span className={css({
-                fontFamily: 'mono',
-                fontSize: 'sm',
-                backgroundColor: 'gray.100',
-                padding: '1 2',
-                borderRadius: 'sm'
-              })}>
+              <span
+                className={css({
+                  fontFamily: 'mono',
+                  fontSize: 'sm',
+                  backgroundColor: 'gray.100',
+                  padding: '1 2',
+                  borderRadius: 'sm',
+                })}
+              >
                 {buildInfo.git.commitShort}
               </span>
               {buildInfo.git.commit && (
-                <span className={css({
-                  fontFamily: 'mono',
-                  fontSize: 'xs',
-                  color: 'gray.500'
-                })}>
+                <span
+                  className={css({
+                    fontFamily: 'mono',
+                    fontSize: 'xs',
+                    color: 'gray.500',
+                  })}
+                >
                   {buildInfo.git.commit}
                 </span>
               )}
@@ -118,14 +118,16 @@ export function DeploymentInfoContent() {
           icon={<Package size={18} />}
           label="Tag"
           value={
-            <span className={css({
-              fontFamily: 'mono',
-              fontSize: 'sm',
-              backgroundColor: 'blue.100',
-              color: 'blue.700',
-              padding: '1 2',
-              borderRadius: 'sm'
-            })}>
+            <span
+              className={css({
+                fontFamily: 'mono',
+                fontSize: 'sm',
+                backgroundColor: 'blue.100',
+                color: 'blue.700',
+                padding: '1 2',
+                borderRadius: 'sm',
+              })}
+            >
               {buildInfo.git.tag}
             </span>
           }
@@ -136,25 +138,22 @@ export function DeploymentInfoContent() {
         icon={<Server size={18} />}
         label="Environment"
         value={
-          <span className={css({
-            fontFamily: 'mono',
-            fontSize: 'sm',
-            backgroundColor: buildInfo.environment === 'production' ? 'green.100' : 'yellow.100',
-            color: buildInfo.environment === 'production' ? 'green.700' : 'yellow.700',
-            padding: '1 2',
-            borderRadius: 'sm'
-          })}>
+          <span
+            className={css({
+              fontFamily: 'mono',
+              fontSize: 'sm',
+              backgroundColor: buildInfo.environment === 'production' ? 'green.100' : 'yellow.100',
+              color: buildInfo.environment === 'production' ? 'green.700' : 'yellow.700',
+              padding: '1 2',
+              borderRadius: 'sm',
+            })}
+          >
             {buildInfo.environment}
           </span>
         }
       />
 
-      {buildInfo.buildNumber && (
-        <InfoRow
-          label="Build Number"
-          value={buildInfo.buildNumber}
-        />
-      )}
+      {buildInfo.buildNumber && <InfoRow label="Build Number" value={buildInfo.buildNumber} />}
 
       <InfoRow
         label="Node Version"
@@ -171,27 +170,27 @@ export function DeploymentInfoContent() {
 function InfoRow({
   icon,
   label,
-  value
+  value,
 }: {
   icon?: React.ReactNode
   label: string
   value: React.ReactNode
 }) {
   return (
-    <div className={hstack({
-      justifyContent: 'space-between',
-      gap: '4',
-      paddingY: '2',
-      borderBottom: '1px solid',
-      borderColor: 'gray.100'
-    })}>
+    <div
+      className={hstack({
+        justifyContent: 'space-between',
+        gap: '4',
+        paddingY: '2',
+        borderBottom: '1px solid',
+        borderColor: 'gray.100',
+      })}
+    >
       <div className={hstack({ gap: '2', color: 'gray.700' })}>
         {icon}
         <span className={css({ fontWeight: 'medium' })}>{label}</span>
       </div>
-      <div className={css({ textAlign: 'right', flex: '1' })}>
-        {value}
-      </div>
+      <div className={css({ textAlign: 'right', flex: '1' })}>{value}</div>
     </div>
   )
 }

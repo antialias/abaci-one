@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
 import { AbacusReact } from '@soroban/abacus-react'
+import { useCallback, useEffect, useState } from 'react'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
-import { PracticeStep } from '../../types/tutorial'
-import { GeneratedProblem, generateProblems } from '../../utils/problemGenerator'
+import type { PracticeStep } from '../../types/tutorial'
+import { type GeneratedProblem, generateProblems } from '../../utils/problemGenerator'
 
 interface PracticeProblemPlayerProps {
   practiceStep: PracticeStep
@@ -31,7 +31,7 @@ export function PracticeProblemPlayer({
   practiceStep,
   onComplete,
   onProblemComplete,
-  className
+  className,
 }: PracticeProblemPlayerProps) {
   const [problems, setProblems] = useState<GeneratedProblem[]>([])
   const [currentProblemIndex, setCurrentProblemIndex] = useState(0)
@@ -39,7 +39,7 @@ export function PracticeProblemPlayer({
   const [userAnswer, setUserAnswer] = useState(0)
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null)
   const [results, setResults] = useState<PracticeResults['problemResults']>([])
-  const [startTime, setStartTime] = useState<number>(Date.now())
+  const [startTime, _setStartTime] = useState<number>(Date.now())
   const [problemStartTime, setProblemStartTime] = useState<number>(Date.now())
   const [showExplanation, setShowExplanation] = useState(false)
   const [isGenerating, setIsGenerating] = useState(true)
@@ -68,54 +68,67 @@ export function PracticeProblemPlayer({
   }, [currentProblem, currentSequenceStep, calculateExpectedValue])
 
   // Check answer when user changes abacus value
-  const handleValueChange = useCallback((newValue: number) => {
-    setUserAnswer(newValue)
+  const handleValueChange = useCallback(
+    (newValue: number) => {
+      setUserAnswer(newValue)
 
-    if (currentProblem && newValue === expectedValue) {
-      setIsCorrect(true)
+      if (currentProblem && newValue === expectedValue) {
+        setIsCorrect(true)
 
-      // Check if this was the final step
-      if (currentSequenceStep === currentProblem.terms.length - 1) {
-        // Problem completed
-        const timeSpent = Date.now() - problemStartTime
+        // Check if this was the final step
+        if (currentSequenceStep === currentProblem.terms.length - 1) {
+          // Problem completed
+          const timeSpent = Date.now() - problemStartTime
 
-        const problemResult = {
-          problem: currentProblem,
-          userAnswer: newValue,
-          correct: true,
-          timeSpent
-        }
-
-        setResults(prev => [...prev, problemResult])
-        onProblemComplete?.(currentProblemIndex, true, timeSpent)
-
-        // Auto-advance to next problem after delay
-        setTimeout(() => {
-          if (currentProblemIndex < problems.length - 1) {
-            nextProblem()
-          } else {
-            completePractice()
+          const problemResult = {
+            problem: currentProblem,
+            userAnswer: newValue,
+            correct: true,
+            timeSpent,
           }
-        }, 1500)
+
+          setResults((prev) => [...prev, problemResult])
+          onProblemComplete?.(currentProblemIndex, true, timeSpent)
+
+          // Auto-advance to next problem after delay
+          setTimeout(() => {
+            if (currentProblemIndex < problems.length - 1) {
+              nextProblem()
+            } else {
+              completePractice()
+            }
+          }, 1500)
+        } else {
+          // Move to next step in sequence after short delay
+          setTimeout(() => {
+            setCurrentSequenceStep((prev) => prev + 1)
+            setIsCorrect(null)
+          }, 800)
+        }
+      } else if (currentProblem && newValue !== expectedValue && newValue !== 0) {
+        // User has entered a value but it's wrong
+        setIsCorrect(false)
       } else {
-        // Move to next step in sequence after short delay
-        setTimeout(() => {
-          setCurrentSequenceStep(prev => prev + 1)
-          setIsCorrect(null)
-        }, 800)
+        setIsCorrect(null)
       }
-    } else if (currentProblem && newValue !== expectedValue && newValue !== 0) {
-      // User has entered a value but it's wrong
-      setIsCorrect(false)
-    } else {
-      setIsCorrect(null)
-    }
-  }, [currentProblem, expectedValue, currentSequenceStep, currentProblemIndex, problems.length, problemStartTime, onProblemComplete])
+    },
+    [
+      currentProblem,
+      expectedValue,
+      currentSequenceStep,
+      currentProblemIndex,
+      problems.length,
+      problemStartTime,
+      onProblemComplete,
+      completePractice,
+      nextProblem,
+    ]
+  )
 
   // Move to next problem
   const nextProblem = useCallback(() => {
     if (currentProblemIndex < problems.length - 1) {
-      setCurrentProblemIndex(prev => prev + 1)
+      setCurrentProblemIndex((prev) => prev + 1)
       setCurrentSequenceStep(0)
       setUserAnswer(0)
       setIsCorrect(null)
@@ -132,10 +145,10 @@ export function PracticeProblemPlayer({
         problem: currentProblem,
         userAnswer: userAnswer,
         correct: false,
-        timeSpent
+        timeSpent,
       }
 
-      setResults(prev => [...prev, problemResult])
+      setResults((prev) => [...prev, problemResult])
       onProblemComplete?.(currentProblemIndex, false, timeSpent)
     }
 
@@ -144,7 +157,16 @@ export function PracticeProblemPlayer({
     } else {
       completePractice()
     }
-  }, [currentProblem, currentProblemIndex, problems.length, userAnswer, problemStartTime, onProblemComplete, nextProblem])
+  }, [
+    currentProblem,
+    currentProblemIndex,
+    problems.length,
+    userAnswer,
+    problemStartTime,
+    onProblemComplete,
+    nextProblem,
+    completePractice,
+  ])
 
   // Reset to start of current problem
   const resetProblem = useCallback(() => {
@@ -157,14 +179,14 @@ export function PracticeProblemPlayer({
   // Complete the practice session
   const completePractice = useCallback(() => {
     const totalTime = Date.now() - startTime
-    const correctAnswers = results.filter(r => r.correct).length
+    const correctAnswers = results.filter((r) => r.correct).length
 
     const practiceResults: PracticeResults = {
       totalProblems: problems.length,
       correctAnswers,
       totalTime,
       averageTime: totalTime / problems.length,
-      problemResults: results
+      problemResults: results,
     }
 
     onComplete?.(practiceResults)
@@ -172,18 +194,20 @@ export function PracticeProblemPlayer({
 
   // Toggle explanation
   const toggleExplanation = useCallback(() => {
-    setShowExplanation(prev => !prev)
+    setShowExplanation((prev) => !prev)
   }, [])
 
   if (isGenerating) {
     return (
-      <div className={css({
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '400px',
-        textAlign: 'center'
-      })}>
+      <div
+        className={css({
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '400px',
+          textAlign: 'center',
+        })}
+      >
         <div>
           <div className={css({ fontSize: 'lg', fontWeight: 'medium', mb: 2 })}>
             Generating practice problems...
@@ -198,14 +222,16 @@ export function PracticeProblemPlayer({
 
   if (problems.length === 0) {
     return (
-      <div className={css({
-        p: 6,
-        bg: 'red.50',
-        border: '1px solid',
-        borderColor: 'red.200',
-        borderRadius: 'lg',
-        textAlign: 'center'
-      })}>
+      <div
+        className={css({
+          p: 6,
+          bg: 'red.50',
+          border: '1px solid',
+          borderColor: 'red.200',
+          borderRadius: 'lg',
+          textAlign: 'center',
+        })}
+      >
         <h3 className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'red.800', mb: 2 })}>
           No Problems Generated
         </h3>
@@ -226,24 +252,26 @@ export function PracticeProblemPlayer({
   const progress = ((currentProblemIndex + 1) / problems.length) * 100
 
   return (
-    <div className={`${css({
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      minHeight: '600px'
-    })} ${className || ''}`}>
+    <div
+      className={`${css({
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: '600px',
+      })} ${className || ''}`}
+    >
       {/* Header */}
-      <div className={css({
-        borderBottom: '1px solid',
-        borderColor: 'gray.200',
-        p: 4,
-        bg: 'white'
-      })}>
+      <div
+        className={css({
+          borderBottom: '1px solid',
+          borderColor: 'gray.200',
+          p: 4,
+          bg: 'white',
+        })}
+      >
         <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
           <div>
-            <h2 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>
-              {practiceStep.title}
-            </h2>
+            <h2 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>{practiceStep.title}</h2>
             <p className={css({ fontSize: 'sm', color: 'gray.600' })}>
               Problem {currentProblemIndex + 1} of {problems.length}
             </p>
@@ -262,7 +290,7 @@ export function PracticeProblemPlayer({
                 bg: showExplanation ? 'blue.100' : 'white',
                 color: 'blue.700',
                 cursor: 'pointer',
-                _hover: { bg: 'blue.50' }
+                _hover: { bg: 'blue.50' },
               })}
             >
               Hint
@@ -280,7 +308,7 @@ export function PracticeProblemPlayer({
                 bg: 'white',
                 color: 'orange.700',
                 cursor: 'pointer',
-                _hover: { bg: 'orange.50' }
+                _hover: { bg: 'orange.50' },
               })}
             >
               Reset
@@ -297,7 +325,7 @@ export function PracticeProblemPlayer({
                 borderRadius: 'md',
                 bg: 'white',
                 cursor: 'pointer',
-                _hover: { bg: 'gray.50' }
+                _hover: { bg: 'gray.50' },
               })}
             >
               Skip
@@ -312,7 +340,7 @@ export function PracticeProblemPlayer({
               bg: 'green.500',
               h: 'full',
               borderRadius: 'full',
-              transition: 'width 0.3s ease'
+              transition: 'width 0.3s ease',
             })}
             style={{ width: `${progress}%` }}
           />
@@ -326,33 +354,40 @@ export function PracticeProblemPlayer({
           <div className={css({ textAlign: 'center', maxW: '600px' })}>
             {/* Problem display - vertical stack */}
             <div className={css({ mb: 4 })}>
-              <div className={css({
-                display: 'inline-block',
-                textAlign: 'right',
-                fontSize: '2xl',
-                fontWeight: 'bold',
-                fontFamily: 'mono',
-                bg: 'gray.50',
-                p: 4,
-                border: '1px solid',
-                borderColor: 'gray.200',
-                borderRadius: 'md'
-              })}>
+              <div
+                className={css({
+                  display: 'inline-block',
+                  textAlign: 'right',
+                  fontSize: '2xl',
+                  fontWeight: 'bold',
+                  fontFamily: 'mono',
+                  bg: 'gray.50',
+                  p: 4,
+                  border: '1px solid',
+                  borderColor: 'gray.200',
+                  borderRadius: 'md',
+                })}
+              >
                 {currentProblem.terms.map((term, index) => (
-                  <div key={index} className={css({
-                    py: 1,
-                    color: index <= currentSequenceStep ? 'blue.800' : 'gray.400'
-                  })}>
+                  <div
+                    key={index}
+                    className={css({
+                      py: 1,
+                      color: index <= currentSequenceStep ? 'blue.800' : 'gray.400',
+                    })}
+                  >
                     {term}
                   </div>
                 ))}
-                <div className={css({
-                  borderTop: '2px solid',
-                  borderColor: 'gray.800',
-                  mt: 2,
-                  pt: 2,
-                  color: 'green.800'
-                })}>
+                <div
+                  className={css({
+                    borderTop: '2px solid',
+                    borderColor: 'gray.800',
+                    mt: 2,
+                    pt: 2,
+                    color: 'green.800',
+                  })}
+                >
                   {currentProblem.answer}
                 </div>
               </div>
@@ -361,11 +396,9 @@ export function PracticeProblemPlayer({
             {/* Current step */}
             <div className={css({ mb: 3 })}>
               <h2 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 2 })}>
-                {currentSequenceStep === 0 ? (
-                  `Start with 0, then add ${currentProblem.terms[0]}`
-                ) : (
-                  `Now add ${currentProblem.terms[currentSequenceStep]}`
-                )}
+                {currentSequenceStep === 0
+                  ? `Start with 0, then add ${currentProblem.terms[0]}`
+                  : `Now add ${currentProblem.terms[currentSequenceStep]}`}
               </h2>
               <p className={css({ fontSize: 'lg', color: 'gray.700' })}>
                 Step {currentSequenceStep + 1} of {currentProblem.terms.length}
@@ -374,19 +407,41 @@ export function PracticeProblemPlayer({
 
             {/* Progress indicator */}
             <div className={css({ mb: 3 })}>
-              <div className={hstack({ gap: 2, justifyContent: 'center', mb: 2, alignItems: 'center' })}>
+              <div
+                className={hstack({
+                  gap: 2,
+                  justifyContent: 'center',
+                  mb: 2,
+                  alignItems: 'center',
+                })}
+              >
                 <span className={css({ fontSize: 'sm', color: 'gray.600' })}>Adding:</span>
                 {currentProblem.terms.map((term, index) => (
-                  <div key={index} className={css({
-                    px: 2, py: 1, rounded: 'md', fontSize: 'md', fontWeight: 'bold',
-                    fontFamily: 'mono',
-                    bg: index < currentSequenceStep ? 'green.100' :
-                        index === currentSequenceStep ? 'blue.100' : 'gray.100',
-                    color: index < currentSequenceStep ? 'green.800' :
-                           index === currentSequenceStep ? 'blue.800' : 'gray.600',
-                    border: '1px solid',
-                    borderColor: index === currentSequenceStep ? 'blue.300' : 'transparent'
-                  })}>
+                  <div
+                    key={index}
+                    className={css({
+                      px: 2,
+                      py: 1,
+                      rounded: 'md',
+                      fontSize: 'md',
+                      fontWeight: 'bold',
+                      fontFamily: 'mono',
+                      bg:
+                        index < currentSequenceStep
+                          ? 'green.100'
+                          : index === currentSequenceStep
+                            ? 'blue.100'
+                            : 'gray.100',
+                      color:
+                        index < currentSequenceStep
+                          ? 'green.800'
+                          : index === currentSequenceStep
+                            ? 'blue.800'
+                            : 'gray.600',
+                      border: '1px solid',
+                      borderColor: index === currentSequenceStep ? 'blue.300' : 'transparent',
+                    })}
+                  >
                     {term}
                   </div>
                 ))}
@@ -398,52 +453,81 @@ export function PracticeProblemPlayer({
 
             {/* Difficulty indicator */}
             <div className={css({ mt: 2 })}>
-              <span className={css({
-                px: 2, py: 1, fontSize: 'xs', fontWeight: 'medium', borderRadius: 'md',
-                bg: currentProblem.difficulty === 'easy' ? 'green.100' :
-                    currentProblem.difficulty === 'medium' ? 'yellow.100' : 'red.100',
-                color: currentProblem.difficulty === 'easy' ? 'green.800' :
-                       currentProblem.difficulty === 'medium' ? 'yellow.800' : 'red.800'
-              })}>
-                {currentProblem.difficulty.charAt(0).toUpperCase() + currentProblem.difficulty.slice(1)}
+              <span
+                className={css({
+                  px: 2,
+                  py: 1,
+                  fontSize: 'xs',
+                  fontWeight: 'medium',
+                  borderRadius: 'md',
+                  bg:
+                    currentProblem.difficulty === 'easy'
+                      ? 'green.100'
+                      : currentProblem.difficulty === 'medium'
+                        ? 'yellow.100'
+                        : 'red.100',
+                  color:
+                    currentProblem.difficulty === 'easy'
+                      ? 'green.800'
+                      : currentProblem.difficulty === 'medium'
+                        ? 'yellow.800'
+                        : 'red.800',
+                })}
+              >
+                {currentProblem.difficulty.charAt(0).toUpperCase() +
+                  currentProblem.difficulty.slice(1)}
               </span>
             </div>
           </div>
 
           {/* Feedback */}
           {isCorrect === true && (
-            <div className={css({
-              p: 4, bg: 'green.50', border: '1px solid', borderColor: 'green.200',
-              borderRadius: 'md', color: 'green.700', maxW: '600px'
-            })}>
-              {currentSequenceStep === currentProblem.terms.length - 1 ? (
-                `🎉 Problem completed! Final answer: ${currentProblem.answer}`
-              ) : (
-                `✅ Correct! Moving to next step...`
-              )}
+            <div
+              className={css({
+                p: 4,
+                bg: 'green.50',
+                border: '1px solid',
+                borderColor: 'green.200',
+                borderRadius: 'md',
+                color: 'green.700',
+                maxW: '600px',
+              })}
+            >
+              {currentSequenceStep === currentProblem.terms.length - 1
+                ? `🎉 Problem completed! Final answer: ${currentProblem.answer}`
+                : `✅ Correct! Moving to next step...`}
             </div>
           )}
 
           {isCorrect === false && (
-            <div className={css({
-              p: 4, bg: 'red.50', border: '1px solid', borderColor: 'red.200',
-              borderRadius: 'md', color: 'red.700', maxW: '600px'
-            })}>
+            <div
+              className={css({
+                p: 4,
+                bg: 'red.50',
+                border: '1px solid',
+                borderColor: 'red.200',
+                borderRadius: 'md',
+                color: 'red.700',
+                maxW: '600px',
+              })}
+            >
               Not quite right. Current value: {userAnswer}. Target: {expectedValue}. Keep trying!
             </div>
           )}
 
           {/* Explanation */}
           {showExplanation && (
-            <div className={css({
-              p: 4,
-              bg: 'blue.50',
-              border: '1px solid',
-              borderColor: 'blue.200',
-              borderRadius: 'md',
-              color: 'blue.700',
-              maxW: '600px'
-            })}>
+            <div
+              className={css({
+                p: 4,
+                bg: 'blue.50',
+                border: '1px solid',
+                borderColor: 'blue.200',
+                borderRadius: 'md',
+                color: 'blue.700',
+                maxW: '600px',
+              })}
+            >
               <h4 className={css({ fontWeight: 'bold', mb: 2 })}>Hint:</h4>
               <p>{currentProblem.explanation}</p>
               <div className={css({ mt: 2, fontSize: 'sm' })}>
@@ -453,14 +537,16 @@ export function PracticeProblemPlayer({
           )}
 
           {/* Abacus */}
-          <div className={css({
-            bg: 'white',
-            border: '2px solid',
-            borderColor: 'gray.200',
-            borderRadius: 'lg',
-            p: 6,
-            shadow: 'lg'
-          })}>
+          <div
+            className={css({
+              bg: 'white',
+              border: '2px solid',
+              borderColor: 'gray.200',
+              borderRadius: 'lg',
+              p: 6,
+              shadow: 'lg',
+            })}
+          >
             <AbacusReact
               value={userAnswer}
               columns={3}
@@ -473,10 +559,18 @@ export function PracticeProblemPlayer({
           </div>
 
           {/* Current progress info */}
-          <div className={css({
-            p: 3, bg: 'gray.50', border: '1px solid', borderColor: 'gray.200',
-            borderRadius: 'md', fontSize: 'sm', color: 'gray.600', textAlign: 'center'
-          })}>
+          <div
+            className={css({
+              p: 3,
+              bg: 'gray.50',
+              border: '1px solid',
+              borderColor: 'gray.200',
+              borderRadius: 'md',
+              fontSize: 'sm',
+              color: 'gray.600',
+              textAlign: 'center',
+            })}
+          >
             <div>Current step target: {expectedValue}</div>
             <div>Your current value: {userAnswer}</div>
             <div>Final target: {currentProblem.answer}</div>

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { generateAbacusInstructions } from '../abacusInstructionGenerator'
 
 describe('Pedagogical Decomposition', () => {
@@ -14,8 +14,8 @@ describe('Pedagogical Decomposition', () => {
       expect(instruction.actionDescription).toContain('(5 - 1)')
 
       // Verify bead movements match decomposition terms
-      const tensBeads = instruction.highlightBeads.filter(b => b.placeValue === 1)
-      const onesBeads = instruction.highlightBeads.filter(b => b.placeValue === 0)
+      const tensBeads = instruction.highlightBeads.filter((b) => b.placeValue === 1)
+      const onesBeads = instruction.highlightBeads.filter((b) => b.placeValue === 0)
 
       expect(tensBeads).toHaveLength(1) // One term "10" = 1 tens bead
       expect(onesBeads).toHaveLength(2) // Term "(5 - 1)" = heaven + 1 earth bead
@@ -32,8 +32,8 @@ describe('Pedagogical Decomposition', () => {
       // Verify bead movements: 1 tens addition + 2 ones removals
       expect(instruction.highlightBeads).toHaveLength(3)
 
-      const tensAdditions = instruction.highlightBeads.filter(b => b.placeValue === 1)
-      const onesBeads = instruction.highlightBeads.filter(b => b.placeValue === 0)
+      const tensAdditions = instruction.highlightBeads.filter((b) => b.placeValue === 1)
+      const onesBeads = instruction.highlightBeads.filter((b) => b.placeValue === 0)
 
       expect(tensAdditions).toHaveLength(1) // "+10" term
       expect(onesBeads).toHaveLength(2) // "-6" = heaven + earth removal
@@ -48,7 +48,7 @@ describe('Pedagogical Decomposition', () => {
       expect(instruction.actionDescription).toContain('2 + 3 = 2 + (5 - 2)')
 
       // Verify bead movements match
-      const onesBeads = instruction.highlightBeads.filter(b => b.placeValue === 0)
+      const onesBeads = instruction.highlightBeads.filter((b) => b.placeValue === 0)
       expect(onesBeads).toHaveLength(3) // heaven + 2 earth removals
     })
   })
@@ -62,7 +62,7 @@ describe('Pedagogical Decomposition', () => {
       expect(instruction.actionDescription).toMatch(/3 \+ 95 = 3 \+ \d+/)
 
       // Should have beads in multiple places
-      const places = new Set(instruction.highlightBeads.map(b => b.placeValue))
+      const places = new Set(instruction.highlightBeads.map((b) => b.placeValue))
       expect(places.size).toBeGreaterThan(1)
     })
 
@@ -95,7 +95,7 @@ describe('Pedagogical Decomposition', () => {
       const testCases = [
         { start: 1, target: 2, expectedBeads: 1 }, // Add 1 earth bead
         { start: 0, target: 1, expectedBeads: 1 }, // Add 1 earth bead
-        { start: 4, target: 5, expectedBeads: 5 } // Use complement operation (heaven + removals)
+        { start: 4, target: 5, expectedBeads: 5 }, // Use complement operation (heaven + removals)
       ]
 
       testCases.forEach(({ start, target, expectedBeads }) => {
@@ -110,7 +110,7 @@ describe('Pedagogical Decomposition', () => {
       const fiveComplementCases = [
         { start: 1, target: 4 }, // 1 + 3
         { start: 2, target: 6 }, // 2 + 4
-        { start: 3, target: 7 }  // 3 + 4
+        { start: 3, target: 7 }, // 3 + 4
       ]
 
       fiveComplementCases.forEach(({ start, target }) => {
@@ -128,7 +128,7 @@ describe('Pedagogical Decomposition', () => {
       const tenComplementCases = [
         { start: 6, target: 12, description: '6 + 6 crossing tens' },
         { start: 8, target: 15, description: '8 + 7 crossing tens' },
-        { start: 9, target: 18, description: '9 + 9 crossing tens' }
+        { start: 9, target: 18, description: '9 + 9 crossing tens' },
       ]
 
       tenComplementCases.forEach(({ start, target, description }) => {
@@ -138,7 +138,7 @@ describe('Pedagogical Decomposition', () => {
         expect(instruction.actionDescription).toContain(`${start} + ${target - start}`)
 
         // Should have beads in both ones and tens places
-        const places = new Set(instruction.highlightBeads.map(b => b.placeValue))
+        const places = new Set(instruction.highlightBeads.map((b) => b.placeValue))
         expect(places).toContain(0) // ones place
         expect(places).toContain(1) // tens place
       })
@@ -178,7 +178,7 @@ describe('Pedagogical Decomposition', () => {
         expect(instruction.multiStepInstructions.length).toBeGreaterThan(0)
 
         // Each step should have corresponding bead highlights
-        const stepIndices = new Set(instruction.stepBeadHighlights.map(b => b.stepIndex))
+        const stepIndices = new Set(instruction.stepBeadHighlights.map((b) => b.stepIndex))
         expect(stepIndices.size).toBe(instruction.multiStepInstructions.length)
       }
     })
@@ -191,8 +191,8 @@ describe('Pedagogical Decomposition', () => {
         expect(instruction.multiStepInstructions[0]).toMatch(/hundreds?/)
 
         // Later instructions should involve lower places
-        const hasOnesInstruction = instruction.multiStepInstructions.some(
-          inst => inst.includes('ones')
+        const hasOnesInstruction = instruction.multiStepInstructions.some((inst) =>
+          inst.includes('ones')
         )
         expect(hasOnesInstruction).toBe(true)
       }
@@ -204,7 +204,7 @@ describe('Pedagogical Decomposition', () => {
       if (instruction.multiStepInstructions) {
         // Instructions should be consolidated (not individual bead references)
         const hasConsolidatedInstruction = instruction.multiStepInstructions.some(
-          inst => inst.includes('earth beads') || inst.includes('heaven bead')
+          (inst) => inst.includes('earth beads') || inst.includes('heaven bead')
         )
         expect(hasConsolidatedInstruction).toBe(true)
 
@@ -220,7 +220,7 @@ describe('Pedagogical Decomposition', () => {
         { start: 3, target: 17 },
         { start: 7, target: 11 },
         { start: 56, target: 104 },
-        { start: 99, target: 100 }
+        { start: 99, target: 100 },
       ]
 
       testCases.forEach(({ start, target }) => {
@@ -251,7 +251,7 @@ describe('Pedagogical Decomposition', () => {
         expect(instruction.stepBeadHighlights.length).toBe(instruction.highlightBeads.length)
 
         // Each step index should be valid
-        instruction.stepBeadHighlights.forEach(bead => {
+        instruction.stepBeadHighlights.forEach((bead) => {
           expect(bead.stepIndex).toBeGreaterThanOrEqual(0)
           expect(bead.stepIndex).toBeLessThan(instruction.multiStepInstructions!.length)
         })
@@ -269,15 +269,22 @@ describe('Pedagogical Decomposition', () => {
       expect(pattern3Plus14.expectedAction).toBe(pattern13Plus14.expectedAction)
 
       if (pattern3Plus14.multiStepInstructions && pattern13Plus14.multiStepInstructions) {
-        expect(pattern3Plus14.multiStepInstructions.length)
-          .toBe(pattern13Plus14.multiStepInstructions.length)
+        expect(pattern3Plus14.multiStepInstructions.length).toBe(
+          pattern13Plus14.multiStepInstructions.length
+        )
       }
     })
 
     it('should handle all numbers 0-999 without errors', () => {
       // Spot check various ranges
       const testCases = [
-        [0, 9], [10, 19], [20, 29], [90, 99], [100, 109], [500, 509], [990, 999]
+        [0, 9],
+        [10, 19],
+        [20, 29],
+        [90, 99],
+        [100, 109],
+        [500, 509],
+        [990, 999],
       ]
 
       testCases.forEach(([start, end]) => {

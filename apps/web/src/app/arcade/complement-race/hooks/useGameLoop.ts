@@ -16,25 +16,27 @@ export function useGameLoop() {
     dispatch({ type: 'NEXT_QUESTION' })
   }, [state.isGameActive, dispatch])
 
-  const submitAnswer = useCallback((answer: number) => {
-    if (!state.currentQuestion) return
+  const submitAnswer = useCallback(
+    (answer: number) => {
+      if (!state.currentQuestion) return
 
-    const isCorrect = answer === state.currentQuestion.correctAnswer
+      const isCorrect = answer === state.currentQuestion.correctAnswer
 
-    if (isCorrect) {
-      // Update score, streak, progress
-      // TODO: Will implement full scoring in next step
-      dispatch({ type: 'SUBMIT_ANSWER', answer })
+      if (isCorrect) {
+        // Update score, streak, progress
+        // TODO: Will implement full scoring in next step
+        dispatch({ type: 'SUBMIT_ANSWER', answer })
 
-      // Move to next question
-      dispatch({ type: 'NEXT_QUESTION' })
-    } else {
-      // Reset streak
-      // TODO: Will implement incorrect answer handling
-      dispatch({ type: 'SUBMIT_ANSWER', answer })
-    }
-
-  }, [state.currentQuestion, dispatch])
+        // Move to next question
+        dispatch({ type: 'NEXT_QUESTION' })
+      } else {
+        // Reset streak
+        // TODO: Will implement incorrect answer handling
+        dispatch({ type: 'SUBMIT_ANSWER', answer })
+      }
+    },
+    [state.currentQuestion, dispatch]
+  )
 
   const startCountdown = useCallback(() => {
     // Trigger countdown phase
@@ -62,6 +64,6 @@ export function useGameLoop() {
   return {
     nextQuestion,
     submitAnswer,
-    startCountdown
+    startCountdown,
   }
 }

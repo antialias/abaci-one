@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { SorobanGenerator } from '@soroban/core'
+import { type NextRequest, NextResponse } from 'next/server'
 import path from 'path'
 
 // Global generator instance for better performance
@@ -36,14 +36,17 @@ export async function POST(request: NextRequest) {
     // Check dependencies before generating
     const deps = await gen.checkDependencies?.()
     if (deps && (!deps.python || !deps.typst)) {
-      return NextResponse.json({
-        error: 'Missing system dependencies',
-        details: {
-          python: deps.python ? '✅ Available' : '❌ Missing Python 3',
-          typst: deps.typst ? '✅ Available' : '❌ Missing Typst',
-          qpdf: deps.qpdf ? '✅ Available' : '⚠️ Missing qpdf (optional)'
-        }
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: 'Missing system dependencies',
+          details: {
+            python: deps.python ? '✅ Available' : '❌ Missing Python 3',
+            typst: deps.typst ? '✅ Available' : '❌ Missing Typst',
+            qpdf: deps.qpdf ? '✅ Available' : '⚠️ Missing qpdf (optional)',
+          },
+        },
+        { status: 500 }
+      )
     }
 
     // Generate flashcards using Python via TypeScript bindings
@@ -52,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // SorobanGenerator.generate() returns PDF data directly as Buffer
     if (!Buffer.isBuffer(result)) {
-      throw new Error('Expected PDF Buffer from generator, got: ' + typeof result)
+      throw new Error(`Expected PDF Buffer from generator, got: ${typeof result}`)
     }
     const pdfBuffer = result
     // Create filename for download
@@ -63,25 +66,27 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': pdfBuffer.length.toString()
-      }
+        'Content-Length': pdfBuffer.length.toString(),
+      },
     })
-
   } catch (error) {
     console.error('❌ Generation failed:', error)
 
-    return NextResponse.json({
-      error: 'Failed to generate flashcards',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      success: false
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Failed to generate flashcards',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        success: false,
+      },
+      { status: 500 }
+    )
   }
 }
 
 // Helper functions to calculate metadata
-function calculateCardCount(range: string, step: number): number {
+function _calculateCardCount(range: string, step: number): number {
   if (range.includes('-')) {
-    const [start, end] = range.split('-').map(n => parseInt(n) || 0)
+    const [start, end] = range.split('-').map((n) => parseInt(n, 10) || 0)
     return Math.floor((end - start + 1) / step)
   }
 
@@ -92,9 +97,9 @@ function calculateCardCount(range: string, step: number): number {
   return 1
 }
 
-function generateNumbersFromRange(range: string, step: number): number[] {
+function _generateNumbersFromRange(range: string, step: number): number[] {
   if (range.includes('-')) {
-    const [start, end] = range.split('-').map(n => parseInt(n) || 0)
+    const [start, end] = range.split('-').map((n) => parseInt(n, 10) || 0)
     const numbers: number[] = []
     for (let i = start; i <= end; i += step) {
       numbers.push(i)
@@ -104,26 +109,29 @@ function generateNumbersFromRange(range: string, step: number): number[] {
   }
 
   if (range.includes(',')) {
-    return range.split(',').map(n => parseInt(n.trim()) || 0)
+    return range.split(',').map((n) => parseInt(n.trim(), 10) || 0)
   }
 
-  return [parseInt(range) || 0]
+  return [parseInt(range, 10) || 0]
 }
 
 // Health check endpoint
 export async function GET() {
   try {
     const gen = await getGenerator()
-    const deps = await gen.checkDependencies?.() || { python: true, typst: true, qpdf: true }
+    const deps = (await gen.checkDependencies?.()) || { python: true, typst: true, qpdf: true }
 
     return NextResponse.json({
       status: 'healthy',
-      dependencies: deps
+      dependencies: deps,
     })
   } catch (error) {
-    return NextResponse.json({
-      status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        status: 'unhealthy',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

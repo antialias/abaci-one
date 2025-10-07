@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { eq } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
-import { eq } from 'drizzle-orm'
 
 /**
  * GET /api/players
@@ -23,10 +23,7 @@ export async function GET() {
     return NextResponse.json({ players })
   } catch (error) {
     console.error('Failed to fetch players:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch players' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch players' }, { status: 500 })
   }
 }
 
@@ -65,10 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ player }, { status: 201 })
   } catch (error) {
     console.error('Failed to create player:', error)
-    return NextResponse.json(
-      { error: 'Failed to create player' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to create player' }, { status: 500 })
   }
 }
 

@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { AIRacer } from '../../lib/gameTypes'
-import { SpeechBubble } from '../AISystem/SpeechBubble'
-import { useComplementRace } from '../../context/ComplementRaceContext'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useUserProfile } from '@/contexts/UserProfileContext'
+import { useComplementRace } from '../../context/ComplementRaceContext'
 import { useSoundEffects } from '../../hooks/useSoundEffects'
+import type { AIRacer } from '../../lib/gameTypes'
+import { SpeechBubble } from '../AISystem/SpeechBubble'
 
 interface CircularTrackProps {
   playerProgress: number
@@ -18,12 +18,12 @@ interface CircularTrackProps {
 export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: CircularTrackProps) {
   const { state, dispatch } = useComplementRace()
   const { players } = useGameMode()
-  const { profile } = useUserProfile()
+  const { profile: _profile } = useUserProfile()
   const { playSound } = useSoundEffects()
   const [celebrationCooldown, setCelebrationCooldown] = useState<Set<string>>(new Set())
 
   // Get the first active player's emoji
-  const activePlayers = Array.from(players.values()).filter(p => p.id)
+  const activePlayers = Array.from(players.values()).filter((p) => p.id)
   const firstActivePlayer = activePlayers[0]
   const playerEmoji = firstActivePlayer?.emoji ?? '👤'
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 })
@@ -54,8 +54,8 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
   }, [])
 
   const padding = 40
-  const trackWidth = dimensions.width - (padding * 2)
-  const trackHeight = dimensions.height - (padding * 2)
+  const trackWidth = dimensions.width - padding * 2
+  const trackHeight = dimensions.height - padding * 2
 
   // For a rounded rectangle track, we have straight sections and curved ends
   const straightLength = Math.max(trackWidth, trackHeight) - Math.min(trackWidth, trackHeight)
@@ -70,7 +70,7 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
     // Track perimeter consists of: 2 straights + 2 semicircles
     const straightPerim = straightLength
     const curvePerim = Math.PI * radius
-    const totalPerim = (2 * straightPerim) + (2 * curvePerim)
+    const totalPerim = 2 * straightPerim + 2 * curvePerim
 
     const distanceAlongTrack = normalizedProgress * totalPerim
 
@@ -84,67 +84,67 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
       const topStraightEnd = straightPerim
       const rightCurveEnd = topStraightEnd + curvePerim
       const bottomStraightEnd = rightCurveEnd + straightPerim
-      const leftCurveEnd = bottomStraightEnd + curvePerim
+      const _leftCurveEnd = bottomStraightEnd + curvePerim
 
       if (distanceAlongTrack < topStraightEnd) {
         // Top straight (moving right)
         const t = distanceAlongTrack / straightPerim
-        x = centerX - (straightLength / 2) + (t * straightLength)
+        x = centerX - straightLength / 2 + t * straightLength
         y = centerY - radius
         angle = 90
       } else if (distanceAlongTrack < rightCurveEnd) {
         // Right curve
         const curveProgress = (distanceAlongTrack - topStraightEnd) / curvePerim
-        const curveAngle = curveProgress * Math.PI - (Math.PI / 2)
-        x = centerX + (straightLength / 2) + (radius * Math.cos(curveAngle))
-        y = centerY + (radius * Math.sin(curveAngle))
-        angle = (curveProgress * 180) + 90
+        const curveAngle = curveProgress * Math.PI - Math.PI / 2
+        x = centerX + straightLength / 2 + radius * Math.cos(curveAngle)
+        y = centerY + radius * Math.sin(curveAngle)
+        angle = curveProgress * 180 + 90
       } else if (distanceAlongTrack < bottomStraightEnd) {
         // Bottom straight (moving left)
         const t = (distanceAlongTrack - rightCurveEnd) / straightPerim
-        x = centerX + (straightLength / 2) - (t * straightLength)
+        x = centerX + straightLength / 2 - t * straightLength
         y = centerY + radius
         angle = 270
       } else {
         // Left curve
         const curveProgress = (distanceAlongTrack - bottomStraightEnd) / curvePerim
-        const curveAngle = curveProgress * Math.PI + (Math.PI / 2)
-        x = centerX - (straightLength / 2) + (radius * Math.cos(curveAngle))
-        y = centerY + (radius * Math.sin(curveAngle))
-        angle = (curveProgress * 180) + 270
+        const curveAngle = curveProgress * Math.PI + Math.PI / 2
+        x = centerX - straightLength / 2 + radius * Math.cos(curveAngle)
+        y = centerY + radius * Math.sin(curveAngle)
+        angle = curveProgress * 180 + 270
       }
     } else {
       // Vertical track: straight sections on left/right, curves on top/bottom
       const leftStraightEnd = straightPerim
       const bottomCurveEnd = leftStraightEnd + curvePerim
       const rightStraightEnd = bottomCurveEnd + straightPerim
-      const topCurveEnd = rightStraightEnd + curvePerim
+      const _topCurveEnd = rightStraightEnd + curvePerim
 
       if (distanceAlongTrack < leftStraightEnd) {
         // Left straight (moving down)
         const t = distanceAlongTrack / straightPerim
         x = centerX - radius
-        y = centerY - (straightLength / 2) + (t * straightLength)
+        y = centerY - straightLength / 2 + t * straightLength
         angle = 180
       } else if (distanceAlongTrack < bottomCurveEnd) {
         // Bottom curve
         const curveProgress = (distanceAlongTrack - leftStraightEnd) / curvePerim
         const curveAngle = curveProgress * Math.PI
-        x = centerX + (radius * Math.cos(curveAngle))
-        y = centerY + (straightLength / 2) + (radius * Math.sin(curveAngle))
-        angle = (curveProgress * 180) + 180
+        x = centerX + radius * Math.cos(curveAngle)
+        y = centerY + straightLength / 2 + radius * Math.sin(curveAngle)
+        angle = curveProgress * 180 + 180
       } else if (distanceAlongTrack < rightStraightEnd) {
         // Right straight (moving up)
         const t = (distanceAlongTrack - bottomCurveEnd) / straightPerim
         x = centerX + radius
-        y = centerY + (straightLength / 2) - (t * straightLength)
+        y = centerY + straightLength / 2 - t * straightLength
         angle = 0
       } else {
         // Top curve
         const curveProgress = (distanceAlongTrack - rightStraightEnd) / curvePerim
         const curveAngle = curveProgress * Math.PI + Math.PI
-        x = centerX + (radius * Math.cos(curveAngle))
-        y = centerY - (straightLength / 2) + (radius * Math.sin(curveAngle))
+        x = centerX + radius * Math.cos(curveAngle)
+        y = centerY - straightLength / 2 + radius * Math.sin(curveAngle)
         angle = curveProgress * 180
       }
     }
@@ -160,9 +160,9 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
       dispatch({ type: 'COMPLETE_LAP', racerId: 'player' })
       // Play celebration sound (line 12801)
       playSound('lap_celebration', 0.6)
-      setCelebrationCooldown(prev => new Set(prev).add('player'))
+      setCelebrationCooldown((prev) => new Set(prev).add('player'))
       setTimeout(() => {
-        setCelebrationCooldown(prev => {
+        setCelebrationCooldown((prev) => {
           const next = new Set(prev)
           next.delete('player')
           return next
@@ -171,14 +171,14 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
     }
 
     // Check AI laps
-    aiRacers.forEach(racer => {
+    aiRacers.forEach((racer) => {
       const aiCurrentLap = Math.floor(racer.position / 50)
       const aiPreviousLap = aiLaps.get(racer.id) || 0
       if (aiCurrentLap > aiPreviousLap && !celebrationCooldown.has(racer.id)) {
         dispatch({ type: 'COMPLETE_LAP', racerId: racer.id })
-        setCelebrationCooldown(prev => new Set(prev).add(racer.id))
+        setCelebrationCooldown((prev) => new Set(prev).add(racer.id))
         setTimeout(() => {
-          setCelebrationCooldown(prev => {
+          setCelebrationCooldown((prev) => {
             const next = new Set(prev)
             next.delete(racer.id)
             return next
@@ -186,7 +186,15 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
         }, 2000)
       }
     })
-  }, [playerProgress, playerLap, aiRacers, aiLaps, celebrationCooldown, dispatch])
+  }, [
+    playerProgress,
+    playerLap,
+    aiRacers,
+    aiLaps,
+    celebrationCooldown,
+    dispatch, // Play celebration sound (line 12801)
+    playSound,
+  ])
 
   const playerPos = getCircularPosition(playerProgress)
 
@@ -201,8 +209,8 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
 
     if (isHorizontal) {
       // Horizontal track - curved ends on left/right
-      const leftCenterX = centerX - (straightLength / 2)
-      const rightCenterX = centerX + (straightLength / 2)
+      const leftCenterX = centerX - straightLength / 2
+      const rightCenterX = centerX + straightLength / 2
       const curveTopY = centerY - r
       const curveBottomY = centerY + r
 
@@ -216,8 +224,8 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
       `
     } else {
       // Vertical track - curved ends on top/bottom
-      const topCenterY = centerY - (straightLength / 2)
-      const bottomCenterY = centerY + (straightLength / 2)
+      const topCenterY = centerY - straightLength / 2
+      const bottomCenterY = centerY + straightLength / 2
       const curveLeftX = centerX - r
       const curveRightX = centerX + r
 
@@ -233,12 +241,15 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
   }
 
   return (
-    <div data-component="circular-track" style={{
-      position: 'relative',
-      width: `${dimensions.width}px`,
-      height: `${dimensions.height}px`,
-      margin: '0 auto'
-    }}>
+    <div
+      data-component="circular-track"
+      style={{
+        position: 'relative',
+        width: `${dimensions.width}px`,
+        height: `${dimensions.height}px`,
+        margin: '0 auto',
+      }}
+    >
       {/* SVG Track */}
       <svg
         data-component="track-svg"
@@ -247,38 +258,20 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
         style={{
           position: 'absolute',
           top: 0,
-          left: 0
+          left: 0,
         }}
       >
         {/* Infield grass */}
-        <path
-          d={createRoundedRectPath(15, false)}
-          fill="#7cb342"
-          stroke="none"
-        />
+        <path d={createRoundedRectPath(15, false)} fill="#7cb342" stroke="none" />
 
         {/* Track background - reddish clay color */}
-        <path
-          d={createRoundedRectPath(-10, true)}
-          fill="#d97757"
-          stroke="none"
-        />
+        <path d={createRoundedRectPath(-10, true)} fill="#d97757" stroke="none" />
 
         {/* Track outer edge - white boundary */}
-        <path
-          d={createRoundedRectPath(-15, true)}
-          fill="none"
-          stroke="white"
-          strokeWidth="3"
-        />
+        <path d={createRoundedRectPath(-15, true)} fill="none" stroke="white" strokeWidth="3" />
 
         {/* Track inner edge - white boundary */}
-        <path
-          d={createRoundedRectPath(15, false)}
-          fill="none"
-          stroke="white"
-          strokeWidth="3"
-        />
+        <path d={createRoundedRectPath(15, false)} fill="none" stroke="white" strokeWidth="3" />
 
         {/* Lane markers - dashed white lines */}
         {[-5, 0, 5].map((offset) => (
@@ -308,11 +301,11 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
             return (
               <g>
                 {/* Checkered pattern - vertical line */}
-                {[0, 1, 2, 3, 4, 5].map(i => (
+                {[0, 1, 2, 3, 4, 5].map((i) => (
                   <rect
                     key={i}
                     x={x - lineWidth / 2}
-                    y={yStart + (squareSize * i)}
+                    y={yStart + squareSize * i}
                     width={lineWidth}
                     height={squareSize}
                     fill={i % 2 === 0 ? 'black' : 'white'}
@@ -329,10 +322,10 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
             return (
               <g>
                 {/* Checkered pattern - horizontal line */}
-                {[0, 1, 2, 3, 4, 5].map(i => (
+                {[0, 1, 2, 3, 4, 5].map((i) => (
                   <rect
                     key={i}
-                    x={xStart + (squareSize * i)}
+                    x={xStart + squareSize * i}
                     y={y - lineWidth / 2}
                     width={squareSize}
                     height={lineWidth}
@@ -345,14 +338,14 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
         })()}
 
         {/* Distance markers (quarter points) */}
-        {[0.25, 0.5, 0.75].map(fraction => {
+        {[0.25, 0.5, 0.75].map((fraction) => {
           const pos = getCircularPosition(fraction * 50)
           const markerLength = 12
           const perpAngle = (pos.angle + 90) * (Math.PI / 180)
-          const x1 = pos.x - (markerLength * Math.cos(perpAngle))
-          const y1 = pos.y - (markerLength * Math.sin(perpAngle))
-          const x2 = pos.x + (markerLength * Math.cos(perpAngle))
-          const y2 = pos.y + (markerLength * Math.sin(perpAngle))
+          const x1 = pos.x - markerLength * Math.cos(perpAngle)
+          const y1 = pos.y - markerLength * Math.sin(perpAngle)
+          const x2 = pos.x + markerLength * Math.cos(perpAngle)
+          const y2 = pos.y + markerLength * Math.sin(perpAngle)
           return (
             <line
               key={fraction}
@@ -369,21 +362,23 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
       </svg>
 
       {/* Player racer */}
-      <div style={{
-        position: 'absolute',
-        left: `${playerPos.x}px`,
-        top: `${playerPos.y}px`,
-        transform: `translate(-50%, -50%) rotate(${playerPos.angle}deg)`,
-        fontSize: '32px',
-        filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
-        zIndex: 10,
-        transition: 'left 0.3s ease-out, top 0.3s ease-out'
-      }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: `${playerPos.x}px`,
+          top: `${playerPos.y}px`,
+          transform: `translate(-50%, -50%) rotate(${playerPos.angle}deg)`,
+          fontSize: '32px',
+          filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
+          zIndex: 10,
+          transition: 'left 0.3s ease-out, top 0.3s ease-out',
+        }}
+      >
         {playerEmoji}
       </div>
 
       {/* AI racers */}
-      {aiRacers.map((racer, index) => {
+      {aiRacers.map((racer, _index) => {
         const aiPos = getCircularPosition(racer.position)
         const activeBubble = state.activeSpeechBubbles.get(racer.id)
 
@@ -398,14 +393,16 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
               fontSize: '28px',
               filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
               zIndex: 5,
-              transition: 'left 0.2s linear, top 0.2s linear'
+              transition: 'left 0.2s linear, top 0.2s linear',
             }}
           >
             {racer.icon}
             {activeBubble && (
-              <div style={{
-                transform: `rotate(${-aiPos.angle}deg)` // Counter-rotate bubble
-              }}>
+              <div
+                style={{
+                  transform: `rotate(${-aiPos.angle}deg)`, // Counter-rotate bubble
+                }}
+              >
                 <SpeechBubble
                   message={activeBubble}
                   onHide={() => dispatch({ type: 'CLEAR_AI_COMMENT', racerId: racer.id })}
@@ -417,63 +414,73 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
       })}
 
       {/* Lap counter */}
-      <div style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        background: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: '50%',
-        width: '120px',
-        height: '120px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        border: '3px solid #3b82f6'
-      }}>
-        <div style={{
-          fontSize: '14px',
-          color: '#6b7280',
-          marginBottom: '4px',
-          fontWeight: 'bold'
-        }}>
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '50%',
+          width: '120px',
+          height: '120px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+          border: '3px solid #3b82f6',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '14px',
+            color: '#6b7280',
+            marginBottom: '4px',
+            fontWeight: 'bold',
+          }}
+        >
           Lap
         </div>
-        <div style={{
-          fontSize: '36px',
-          fontWeight: 'bold',
-          color: '#3b82f6'
-        }}>
+        <div
+          style={{
+            fontSize: '36px',
+            fontWeight: 'bold',
+            color: '#3b82f6',
+          }}
+        >
           {playerLap + 1}
         </div>
-        <div style={{
-          fontSize: '12px',
-          color: '#9ca3af',
-          marginTop: '4px'
-        }}>
-          {Math.floor((playerProgress % 50) / 50 * 100)}%
+        <div
+          style={{
+            fontSize: '12px',
+            color: '#9ca3af',
+            marginTop: '4px',
+          }}
+        >
+          {Math.floor(((playerProgress % 50) / 50) * 100)}%
         </div>
       </div>
 
       {/* Lap celebration */}
       {celebrationCooldown.has('player') && (
-        <div style={{
-          position: 'absolute',
-          top: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-          color: 'white',
-          padding: '12px 24px',
-          borderRadius: '12px',
-          fontSize: '18px',
-          fontWeight: 'bold',
-          boxShadow: '0 4px 20px rgba(251, 191, 36, 0.4)',
-          animation: 'bounce 0.5s ease',
-          zIndex: 100
-        }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: '12px',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 20px rgba(251, 191, 36, 0.4)',
+            animation: 'bounce 0.5s ease',
+            zIndex: 100,
+          }}
+        >
           🎉 Lap {playerLap + 1} Complete! 🎉
         </div>
       )}

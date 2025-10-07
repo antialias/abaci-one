@@ -1,14 +1,14 @@
 'use client'
 
-import { FormApi } from '@tanstack/react-form'
 import * as Label from '@radix-ui/react-label'
 import * as RadioGroup from '@radix-ui/react-radio-group'
 import * as Switch from '@radix-ui/react-switch'
-import { css } from '../../styled-system/css'
-import { stack, hstack, grid } from '../../styled-system/patterns'
-import { FlashcardFormState } from '@/app/create/page'
 import { useAbacusDisplay } from '@soroban/abacus-react'
+import type { FormApi } from '@tanstack/react-form'
 import { useEffect } from 'react'
+import type { FlashcardFormState } from '@/app/create/page'
+import { css } from '../../styled-system/css'
+import { grid, hstack, stack } from '../../styled-system/patterns'
 
 interface StyleControlsProps {
   form: FormApi<FlashcardFormState>
@@ -26,10 +26,7 @@ export function StyleControls({ form }: StyleControlsProps) {
   }, [config, form])
   return (
     <div className={stack({ gap: '4' })}>
-      <FormField
-        label="Color Scheme"
-        description="Choose how colors are applied to beads"
-      >
+      <FormField label="Color Scheme" description="Choose how colors are applied to beads">
         <form.Field name="colorScheme">
           {(field) => (
             <RadioGroupField
@@ -41,18 +38,19 @@ export function StyleControls({ form }: StyleControlsProps) {
               options={[
                 { value: 'monochrome', label: 'Monochrome', desc: 'Classic black and white' },
                 { value: 'place-value', label: 'Place Value', desc: 'Colors by digit position' },
-                { value: 'heaven-earth', label: 'Heaven-Earth', desc: 'Different colors for 5s and 1s' },
-                { value: 'alternating', label: 'Alternating', desc: 'Alternating column colors' }
+                {
+                  value: 'heaven-earth',
+                  label: 'Heaven-Earth',
+                  desc: 'Different colors for 5s and 1s',
+                },
+                { value: 'alternating', label: 'Alternating', desc: 'Alternating column colors' },
               ]}
             />
           )}
         </form.Field>
       </FormField>
 
-      <FormField
-        label="Bead Shape"
-        description="Choose the visual style of the beads"
-      >
+      <FormField label="Bead Shape" description="Choose the visual style of the beads">
         <form.Field name="beadShape">
           {(field) => (
             <RadioGroupField
@@ -64,7 +62,7 @@ export function StyleControls({ form }: StyleControlsProps) {
               options={[
                 { value: 'diamond', label: '💎 Diamond', desc: 'Realistic 3D appearance' },
                 { value: 'circle', label: '⭕ Circle', desc: 'Traditional round beads' },
-                { value: 'square', label: '⬜ Square', desc: 'Modern geometric style' }
+                { value: 'square', label: '⬜ Square', desc: 'Modern geometric style' },
               ]}
             />
           )}
@@ -72,10 +70,7 @@ export function StyleControls({ form }: StyleControlsProps) {
       </FormField>
 
       <div className={grid({ columns: 1, gap: '4' })}>
-        <FormField
-          label="Colored Numerals"
-          description="Match numeral colors to bead colors"
-        >
+        <FormField label="Colored Numerals" description="Match numeral colors to bead colors">
           <form.Field name="coloredNumerals">
             {(field) => (
               <SwitchField
@@ -89,10 +84,7 @@ export function StyleControls({ form }: StyleControlsProps) {
           </form.Field>
         </FormField>
 
-        <FormField
-          label="Hide Inactive Beads"
-          description="Show only active beads for clarity"
-        >
+        <FormField label="Hide Inactive Beads" description="Show only active beads for clarity">
           <form.Field name="hideInactiveBeads">
             {(field) => (
               <SwitchField
@@ -114,7 +106,7 @@ export function StyleControls({ form }: StyleControlsProps) {
 function FormField({
   label,
   description,
-  children
+  children,
 }: {
   label: string
   description?: string
@@ -122,18 +114,22 @@ function FormField({
 }) {
   return (
     <div className={stack({ gap: '2' })}>
-      <Label.Root className={css({
-        fontSize: 'sm',
-        fontWeight: 'semibold',
-        color: 'gray.900'
-      })}>
+      <Label.Root
+        className={css({
+          fontSize: 'sm',
+          fontWeight: 'semibold',
+          color: 'gray.900',
+        })}
+      >
         {label}
       </Label.Root>
       {description && (
-        <p className={css({
-          fontSize: 'xs',
-          color: 'gray.600'
-        })}>
+        <p
+          className={css({
+            fontSize: 'xs',
+            color: 'gray.600',
+          })}
+        >
           {description}
         </p>
       )}
@@ -144,7 +140,7 @@ function FormField({
 
 function SwitchField({
   checked,
-  onCheckedChange
+  onCheckedChange,
 }: {
   checked: boolean
   onCheckedChange: (checked: boolean) => void
@@ -161,7 +157,7 @@ function SwitchField({
         position: 'relative',
         transition: 'all',
         cursor: 'pointer',
-        _hover: { bg: checked ? 'brand.700' : 'gray.400' }
+        _hover: { bg: checked ? 'brand.700' : 'gray.400' },
       })}
     >
       <Switch.Thumb
@@ -174,7 +170,7 @@ function SwitchField({
           shadow: 'card',
           transition: 'transform 0.2s',
           transform: checked ? 'translateX(20px)' : 'translateX(0px)',
-          willChange: 'transform'
+          willChange: 'transform',
         })}
       />
     </Switch.Root>
@@ -184,18 +180,14 @@ function SwitchField({
 function RadioGroupField({
   value,
   onValueChange,
-  options
+  options,
 }: {
   value: string
   onValueChange: (value: string) => void
   options: Array<{ value: string; label: string; desc?: string }>
 }) {
   return (
-    <RadioGroup.Root
-      value={value}
-      onValueChange={onValueChange}
-      className={stack({ gap: '3' })}
-    >
+    <RadioGroup.Root value={value} onValueChange={onValueChange} className={stack({ gap: '3' })}>
       {options.map((option) => (
         <div key={option.value} className={hstack({ gap: '3', alignItems: 'start' })}>
           <RadioGroup.Item
@@ -211,7 +203,7 @@ function RadioGroupField({
               transition: 'all',
               _hover: { borderColor: 'brand.400' },
               '&[data-state=checked]': { borderColor: 'brand.600' },
-              mt: '0.5'
+              mt: '0.5',
             })}
           >
             <RadioGroup.Indicator
@@ -228,26 +220,30 @@ function RadioGroupField({
                   w: '2',
                   h: '2',
                   rounded: 'full',
-                  bg: 'brand.600'
-                }
+                  bg: 'brand.600',
+                },
               })}
             />
           </RadioGroup.Item>
           <div className={stack({ gap: '0.5', flex: 1 })}>
-            <label className={css({
-              fontSize: 'sm',
-              fontWeight: 'medium',
-              color: 'gray.900',
-              cursor: 'pointer'
-            })}>
+            <label
+              className={css({
+                fontSize: 'sm',
+                fontWeight: 'medium',
+                color: 'gray.900',
+                cursor: 'pointer',
+              })}
+            >
               {option.label}
             </label>
             {option.desc && (
-              <p className={css({
-                fontSize: 'xs',
-                color: 'gray.600',
-                lineHeight: 'tight'
-              })}>
+              <p
+                className={css({
+                  fontSize: 'xs',
+                  color: 'gray.600',
+                  lineHeight: 'tight',
+                })}
+              >
                 {option.desc}
               </p>
             )}

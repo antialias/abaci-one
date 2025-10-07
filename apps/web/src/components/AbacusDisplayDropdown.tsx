@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Label from '@radix-ui/react-label'
 import * as RadioGroup from '@radix-ui/react-radio-group'
 import * as Switch from '@radix-ui/react-switch'
+import { type BeadShape, type ColorScheme, useAbacusDisplay } from '@soroban/abacus-react'
+import { useState } from 'react'
 import { css } from '../../styled-system/css'
-import { stack, hstack } from '../../styled-system/patterns'
-import { useAbacusDisplay, ColorScheme, BeadShape } from '@soroban/abacus-react'
+import { hstack, stack } from '../../styled-system/patterns'
 
 interface AbacusDisplayDropdownProps {
   isFullscreen?: boolean
@@ -45,14 +45,14 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
             cursor: 'pointer',
             _hover: {
               bg: isFullscreen ? 'rgba(0, 0, 0, 0.9)' : 'gray.50',
-              borderColor: isFullscreen ? 'rgba(255, 255, 255, 0.2)' : 'gray.300'
+              borderColor: isFullscreen ? 'rgba(255, 255, 255, 0.2)' : 'gray.300',
             },
             _focus: {
               outline: 'none',
               ring: '2px',
               ringColor: isFullscreen ? 'blue.400' : 'brand.500',
-              ringOffset: '1px'
-            }
+              ringOffset: '1px',
+            },
           })}
         >
           <span className={css({ fontSize: 'lg' })}>🧮</span>
@@ -62,7 +62,7 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
               w: '4',
               h: '4',
               transition: 'transform',
-              transform: open ? 'rotate(180deg)' : 'rotate(0deg)'
+              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
             })}
             fill="none"
             stroke="currentColor"
@@ -88,7 +88,7 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
             maxH: '80vh',
             overflowY: 'auto',
             position: 'relative',
-            zIndex: 50
+            zIndex: 50,
           })}
           sideOffset={8}
           align="end"
@@ -97,11 +97,13 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
             {/* Header */}
             <div className={stack({ gap: '1' })}>
               <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
-                <h3 className={css({
-                  fontSize: 'lg',
-                  fontWeight: 'semibold',
-                  color: isFullscreen ? 'white' : 'gray.900'
-                })}>
+                <h3
+                  className={css({
+                    fontSize: 'lg',
+                    fontWeight: 'semibold',
+                    color: isFullscreen ? 'white' : 'gray.900',
+                  })}
+                >
                   🎨 Abacus Style
                 </h3>
                 <button
@@ -109,16 +111,18 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
                   className={css({
                     fontSize: 'xs',
                     color: isFullscreen ? 'gray.300' : 'gray.500',
-                    _hover: { color: isFullscreen ? 'white' : 'gray.700' }
+                    _hover: { color: isFullscreen ? 'white' : 'gray.700' },
                   })}
                 >
                   Reset
                 </button>
               </div>
-              <p className={css({
-                fontSize: 'sm',
-                color: isFullscreen ? 'gray.300' : 'gray.600'
-              })}>
+              <p
+                className={css({
+                  fontSize: 'sm',
+                  color: isFullscreen ? 'gray.300' : 'gray.600',
+                })}
+              >
                 Configure display across the entire app
               </p>
             </div>
@@ -132,7 +136,7 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
                   { value: 'monochrome', label: 'Monochrome' },
                   { value: 'place-value', label: 'Place Value' },
                   { value: 'heaven-earth', label: 'Heaven-Earth' },
-                  { value: 'alternating', label: 'Alternating' }
+                  { value: 'alternating', label: 'Alternating' },
                 ]}
                 isFullscreen={isFullscreen}
               />
@@ -146,7 +150,7 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
                 options={[
                   { value: 'diamond', label: '💎 Diamond' },
                   { value: 'circle', label: '⭕ Circle' },
-                  { value: 'square', label: '⬜ Square' }
+                  { value: 'square', label: '⬜ Square' },
                 ]}
                 isFullscreen={isFullscreen}
               />
@@ -179,7 +183,10 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
               </FormField>
 
               {config.soundEnabled && (
-                <FormField label={`Volume: ${Math.round(config.soundVolume * 100)}%`} isFullscreen={isFullscreen}>
+                <FormField
+                  label={`Volume: ${Math.round(config.soundVolume * 100)}%`}
+                  isFullscreen={isFullscreen}
+                >
                   <input
                     type="range"
                     min="0"
@@ -197,7 +204,7 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
                       _focusVisible: {
                         outline: 'none',
                         ring: '2px',
-                        ringColor: isFullscreen ? 'blue.400' : 'brand.500'
+                        ringColor: isFullscreen ? 'blue.400' : 'brand.500',
                       },
                       '&::-webkit-slider-thumb': {
                         appearance: 'none',
@@ -209,8 +216,8 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
                         transition: 'all',
                         _hover: {
                           bg: isFullscreen ? 'blue.500' : 'brand.700',
-                          transform: 'scale(1.1)'
-                        }
+                          transform: 'scale(1.1)',
+                        },
                       },
                       '&::-moz-range-thumb': {
                         w: '4',
@@ -218,8 +225,8 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
                         bg: isFullscreen ? 'blue.400' : 'brand.600',
                         rounded: 'full',
                         border: 'none',
-                        cursor: 'pointer'
-                      }
+                        cursor: 'pointer',
+                      },
                     })}
                     onClick={(e) => e.stopPropagation()} // Prevent dropdown close
                   />
@@ -237,7 +244,7 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
 function FormField({
   label,
   children,
-  isFullscreen = false
+  isFullscreen = false,
 }: {
   label: string
   children: React.ReactNode
@@ -245,11 +252,13 @@ function FormField({
 }) {
   return (
     <div className={stack({ gap: '2' })}>
-      <Label.Root className={css({
-        fontSize: 'sm',
-        fontWeight: 'medium',
-        color: isFullscreen ? 'white' : 'gray.900'
-      })}>
+      <Label.Root
+        className={css({
+          fontSize: 'sm',
+          fontWeight: 'medium',
+          color: isFullscreen ? 'white' : 'gray.900',
+        })}
+      >
         {label}
       </Label.Root>
       {children}
@@ -260,7 +269,7 @@ function FormField({
 function SwitchField({
   checked,
   onCheckedChange,
-  isFullscreen = false
+  isFullscreen = false,
 }: {
   checked: boolean
   onCheckedChange: (checked: boolean) => void
@@ -274,17 +283,25 @@ function SwitchField({
         w: '11',
         h: '6',
         bg: checked
-          ? (isFullscreen ? 'blue.500' : 'brand.600')
-          : (isFullscreen ? 'rgba(255, 255, 255, 0.2)' : 'gray.300'),
+          ? isFullscreen
+            ? 'blue.500'
+            : 'brand.600'
+          : isFullscreen
+            ? 'rgba(255, 255, 255, 0.2)'
+            : 'gray.300',
         rounded: 'full',
         position: 'relative',
         transition: 'all',
         cursor: 'pointer',
         _hover: {
           bg: checked
-            ? (isFullscreen ? 'blue.600' : 'brand.700')
-            : (isFullscreen ? 'rgba(255, 255, 255, 0.3)' : 'gray.400')
-        }
+            ? isFullscreen
+              ? 'blue.600'
+              : 'brand.700'
+            : isFullscreen
+              ? 'rgba(255, 255, 255, 0.3)'
+              : 'gray.400',
+        },
       })}
       onClick={(e) => e.stopPropagation()} // Prevent dropdown close only on the switch itself
     >
@@ -298,7 +315,7 @@ function SwitchField({
           shadow: 'sm',
           transition: 'transform 0.2s',
           transform: checked ? 'translateX(20px)' : 'translateX(0px)',
-          willChange: 'transform'
+          willChange: 'transform',
         })}
       />
     </Switch.Root>
@@ -309,7 +326,7 @@ function RadioGroupField({
   value,
   onValueChange,
   options,
-  isFullscreen = false
+  isFullscreen = false,
 }: {
   value: string
   onValueChange: (value: string) => void
@@ -317,11 +334,7 @@ function RadioGroupField({
   isFullscreen?: boolean
 }) {
   return (
-    <RadioGroup.Root
-      value={value}
-      onValueChange={onValueChange}
-      className={stack({ gap: '2' })}
-    >
+    <RadioGroup.Root value={value} onValueChange={onValueChange} className={stack({ gap: '2' })}>
       {options.map((option) => (
         <div key={option.value} className={hstack({ gap: '3', alignItems: 'center' })}>
           <RadioGroup.Item
@@ -336,7 +349,7 @@ function RadioGroupField({
               cursor: 'pointer',
               transition: 'all',
               _hover: { borderColor: isFullscreen ? 'blue.400' : 'brand.400' },
-              '&[data-state=checked]': { borderColor: isFullscreen ? 'blue.500' : 'brand.600' }
+              '&[data-state=checked]': { borderColor: isFullscreen ? 'blue.500' : 'brand.600' },
             })}
             onClick={(e) => e.stopPropagation()} // Prevent dropdown close only on radio button
           >
@@ -354,8 +367,8 @@ function RadioGroupField({
                   w: '1.5',
                   h: '1.5',
                   rounded: 'full',
-                  bg: isFullscreen ? 'blue.400' : 'brand.600'
-                }
+                  bg: isFullscreen ? 'blue.400' : 'brand.600',
+                },
               })}
             />
           </RadioGroup.Item>
@@ -364,7 +377,7 @@ function RadioGroupField({
               fontSize: 'sm',
               color: isFullscreen ? 'white' : 'gray.900',
               cursor: 'pointer',
-              flex: 1
+              flex: 1,
             })}
             onClick={(e) => e.stopPropagation()} // Prevent dropdown close on label click too
           >

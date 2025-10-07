@@ -1,4 +1,4 @@
-import type { MemoryPairsState, GameStatistics, Player } from '../context/types'
+import type { GameStatistics, MemoryPairsState, Player } from '../context/types'
 
 // Calculate final game score based on multiple factors
 export function calculateFinalScore(
@@ -46,7 +46,7 @@ export function calculateStarRating(
   const timeScore = Math.max(0, Math.min(100, (expectedTime / gameTime) * 100))
 
   // Weighted average of different factors
-  const overallScore = (accuracy * 0.4) + (efficiency * 0.4) + (timeScore * 0.2)
+  const overallScore = accuracy * 0.4 + efficiency * 0.4 + timeScore * 0.2
 
   // Convert to stars
   if (overallScore >= 90) return 5
@@ -65,7 +65,10 @@ export interface Achievement {
   earned: boolean
 }
 
-export function getAchievements(state: MemoryPairsState, gameMode: 'single' | 'multiplayer'): Achievement[] {
+export function getAchievements(
+  state: MemoryPairsState,
+  gameMode: 'single' | 'multiplayer'
+): Achievement[] {
   const { matchedPairs, totalPairs, moves, scores, gameStartTime, gameEndTime } = state
   const accuracy = moves > 0 ? (matchedPairs / moves) * 100 : 0
   const gameTime = gameStartTime && gameEndTime ? gameEndTime - gameStartTime : 0
@@ -77,74 +80,80 @@ export function getAchievements(state: MemoryPairsState, gameMode: 'single' | 'm
       name: 'Perfect Memory',
       description: 'Complete a game with 100% accuracy',
       icon: '🧠',
-      earned: matchedPairs === totalPairs && moves === totalPairs * 2
+      earned: matchedPairs === totalPairs && moves === totalPairs * 2,
     },
     {
       id: 'speed_demon',
       name: 'Speed Demon',
       description: 'Complete a game in under 2 minutes',
       icon: '⚡',
-      earned: gameTimeInSeconds > 0 && gameTimeInSeconds < 120 && matchedPairs === totalPairs
+      earned: gameTimeInSeconds > 0 && gameTimeInSeconds < 120 && matchedPairs === totalPairs,
     },
     {
       id: 'accuracy_ace',
       name: 'Accuracy Ace',
       description: 'Achieve 90% accuracy or higher',
       icon: '🎯',
-      earned: accuracy >= 90 && matchedPairs === totalPairs
+      earned: accuracy >= 90 && matchedPairs === totalPairs,
     },
     {
       id: 'marathon_master',
       name: 'Marathon Master',
       description: 'Complete the hardest difficulty (15 pairs)',
       icon: '🏃',
-      earned: totalPairs === 15 && matchedPairs === totalPairs
+      earned: totalPairs === 15 && matchedPairs === totalPairs,
     },
     {
       id: 'complement_champion',
       name: 'Complement Champion',
       description: 'Master complement pairs mode',
       icon: '🤝',
-      earned: state.gameType === 'complement-pairs' && matchedPairs === totalPairs && accuracy >= 85
+      earned:
+        state.gameType === 'complement-pairs' && matchedPairs === totalPairs && accuracy >= 85,
     },
     {
       id: 'two_player_triumph',
       name: 'Two-Player Triumph',
       description: 'Win a two-player game',
       icon: '👥',
-      earned: gameMode === 'multiplayer' && matchedPairs === totalPairs &&
-        Object.keys(scores).length > 1 && Math.max(...Object.values(scores)) > 0
+      earned:
+        gameMode === 'multiplayer' &&
+        matchedPairs === totalPairs &&
+        Object.keys(scores).length > 1 &&
+        Math.max(...Object.values(scores)) > 0,
     },
     {
       id: 'shutout_victory',
       name: 'Shutout Victory',
       description: 'Win a two-player game without opponent scoring',
       icon: '🛡️',
-      earned: gameMode === 'multiplayer' && matchedPairs === totalPairs &&
-        Object.values(scores).some(score => score === totalPairs) &&
-        Object.values(scores).some(score => score === 0)
+      earned:
+        gameMode === 'multiplayer' &&
+        matchedPairs === totalPairs &&
+        Object.values(scores).some((score) => score === totalPairs) &&
+        Object.values(scores).some((score) => score === 0),
     },
     {
       id: 'comeback_kid',
       name: 'Comeback Kid',
       description: 'Win after being behind by 3+ points',
       icon: '🔄',
-      earned: false // This would need more complex tracking during the game
+      earned: false, // This would need more complex tracking during the game
     },
     {
       id: 'first_timer',
       name: 'First Timer',
       description: 'Complete your first game',
       icon: '🌟',
-      earned: matchedPairs === totalPairs
+      earned: matchedPairs === totalPairs,
     },
     {
       id: 'consistency_king',
       name: 'Consistency King',
       description: 'Achieve 80%+ accuracy in 5 consecutive games',
       icon: '👑',
-      earned: false // This would need persistent game history
-    }
+      earned: false, // This would need persistent game history
+    },
   ]
 
   return achievements
@@ -170,7 +179,7 @@ export function getPerformanceAnalysis(state: MemoryPairsState): {
     totalPairs,
     gameTime,
     accuracy,
-    averageTimePerMove
+    averageTimePerMove,
   }
 
   // Calculate efficiency (ideal vs actual moves)
@@ -234,7 +243,7 @@ export function getPerformanceAnalysis(state: MemoryPairsState): {
     grade,
     strengths,
     improvements,
-    starRating
+    starRating,
   }
 }
 
@@ -252,7 +261,10 @@ export function formatGameTime(milliseconds: number): string {
 
 // Get two-player game winner
 // @deprecated Use getMultiplayerWinner instead which supports N players
-export function getTwoPlayerWinner(state: MemoryPairsState, activePlayers: Player[]): {
+export function getTwoPlayerWinner(
+  state: MemoryPairsState,
+  activePlayers: Player[]
+): {
   winner: Player | 'tie'
   winnerScore: number
   loserScore: number
@@ -273,27 +285,30 @@ export function getTwoPlayerWinner(state: MemoryPairsState, activePlayers: Playe
       winner: player1,
       winnerScore: score1,
       loserScore: score2,
-      margin: score1 - score2
+      margin: score1 - score2,
     }
   } else if (score2 > score1) {
     return {
       winner: player2,
       winnerScore: score2,
       loserScore: score1,
-      margin: score2 - score1
+      margin: score2 - score1,
     }
   } else {
     return {
       winner: 'tie',
       winnerScore: score1,
       loserScore: score2,
-      margin: 0
+      margin: 0,
     }
   }
 }
 
 // Get multiplayer game winner (supports N players)
-export function getMultiplayerWinner(state: MemoryPairsState, activePlayers: Player[]): {
+export function getMultiplayerWinner(
+  state: MemoryPairsState,
+  activePlayers: Player[]
+): {
   winners: Player[]
   winnerScore: number
   scores: { [playerId: string]: number }
@@ -302,15 +317,15 @@ export function getMultiplayerWinner(state: MemoryPairsState, activePlayers: Pla
   const { scores } = state
 
   // Find the highest score
-  const maxScore = Math.max(...activePlayers.map(playerId => scores[playerId] || 0))
+  const maxScore = Math.max(...activePlayers.map((playerId) => scores[playerId] || 0))
 
   // Find all players with the highest score
-  const winners = activePlayers.filter(playerId => (scores[playerId] || 0) === maxScore)
+  const winners = activePlayers.filter((playerId) => (scores[playerId] || 0) === maxScore)
 
   return {
     winners,
     winnerScore: maxScore,
     scores,
-    isTie: winners.length > 1
+    isTie: winners.length > 1,
   }
 }

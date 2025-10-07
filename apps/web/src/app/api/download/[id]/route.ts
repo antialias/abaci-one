@@ -1,10 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { assetStore } from '@/lib/asset-store'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params
 
@@ -15,9 +12,12 @@ export async function GET(
     const asset = await assetStore.get(id)
     if (!asset) {
       console.log('❌ Asset not found in store')
-      return NextResponse.json({
-        error: 'Asset not found or expired'
-      }, { status: 404 })
+      return NextResponse.json(
+        {
+          error: 'Asset not found or expired',
+        },
+        { status: 404 }
+      )
     }
 
     console.log('✅ Asset found, serving download')
@@ -30,15 +30,17 @@ export async function GET(
         'Content-Disposition': `attachment; filename="${asset.filename}"`,
         'Content-Length': asset.data.length.toString(),
         'Cache-Control': 'private, no-cache, no-store, must-revalidate',
-        'Expires': '0',
-        'Pragma': 'no-cache'
-      }
+        Expires: '0',
+        Pragma: 'no-cache',
+      },
     })
-
   } catch (error) {
     console.error('❌ Download failed:', error)
-    return NextResponse.json({
-      error: 'Failed to download file'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Failed to download file',
+      },
+      { status: 500 }
+    )
   }
 }

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import {
   createArcadeSession,
-  getArcadeSession,
   deleteArcadeSession,
+  getArcadeSession,
 } from '@/lib/arcade/session-manager'
 import type { GameName } from '@/lib/arcade/validation'
 
@@ -50,10 +50,7 @@ export async function POST(request: NextRequest) {
     const { userId, gameName, gameUrl, initialState, activePlayers } = body
 
     if (!userId || !gameName || !gameUrl || !initialState || !activePlayers) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     const session = await createArcadeSession({

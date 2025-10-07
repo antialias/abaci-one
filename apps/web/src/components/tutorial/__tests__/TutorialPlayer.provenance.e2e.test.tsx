@@ -1,8 +1,7 @@
-import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, beforeEach } from 'vitest'
-import { TutorialPlayer } from '../TutorialPlayer'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
 import type { Tutorial } from '../../../types/tutorial'
+import { TutorialPlayer } from '../TutorialPlayer'
 
 // Mock the AbacusDisplayContext
 const mockAbacusDisplay = {
@@ -12,14 +11,14 @@ const mockAbacusDisplay = {
     showBeadHighlights: true,
     showBeadLabels: false,
     showPlaceValues: true,
-    animationSpeed: 1000
+    animationSpeed: 1000,
   },
-  updateConfig: () => {}
+  updateConfig: () => {},
 }
 
 // Mock the context
 vi.mock('@/contexts/AbacusDisplayContext', () => ({
-  useAbacusDisplay: () => mockAbacusDisplay
+  useAbacusDisplay: () => mockAbacusDisplay,
 }))
 
 describe('TutorialPlayer Provenance E2E Test', () => {
@@ -39,19 +38,16 @@ describe('TutorialPlayer Provenance E2E Test', () => {
         actionDescription: 'Follow the decomposition steps',
         tooltip: {
           content: 'Adding 25 to 3475',
-          explanation: 'This will show the provenance information'
+          explanation: 'This will show the provenance information',
         },
-        multiStepInstructions: [
-          'Add 2 tens (20)',
-          'Add 5 ones using ten-complement'
-        ]
-      }
+        multiStepInstructions: ['Add 2 tens (20)', 'Add 5 ones using ten-complement'],
+      },
     ],
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
   }
 
-  let container: HTMLElement
+  let _container: HTMLElement
 
   beforeEach(() => {
     const renderResult = render(
@@ -63,21 +59,29 @@ describe('TutorialPlayer Provenance E2E Test', () => {
         onTutorialComplete={() => {}}
       />
     )
-    container = renderResult.container
+    _container = renderResult.container
   })
 
   it('should show provenance information in tooltip for the "20" term', async () => {
     // Wait for the tutorial to load and show the decomposition
-    await waitFor(() => {
-      expect(screen.getByText('3475 + 25')).toBeInTheDocument()
-    }, { timeout: 5000 })
+    await waitFor(
+      () => {
+        expect(screen.getByText('3475 + 25')).toBeInTheDocument()
+      },
+      { timeout: 5000 }
+    )
 
     // Look for the full decomposition string
-    await waitFor(() => {
-      // The decomposition should be: 3475 + 25 = 3475 + 20 + (100 - 90 - 5) = 3500
-      const decompositionElement = screen.getByText(/3475 \+ 25 = 3475 \+ 20 \+ \(100 - 90 - 5\) = 3500/)
-      expect(decompositionElement).toBeInTheDocument()
-    }, { timeout: 5000 })
+    await waitFor(
+      () => {
+        // The decomposition should be: 3475 + 25 = 3475 + 20 + (100 - 90 - 5) = 3500
+        const decompositionElement = screen.getByText(
+          /3475 \+ 25 = 3475 \+ 20 \+ \(100 - 90 - 5\) = 3500/
+        )
+        expect(decompositionElement).toBeInTheDocument()
+      },
+      { timeout: 5000 }
+    )
 
     // Find the "20" term in the decomposition
     const twentyTerm = screen.getByText('20')
@@ -87,11 +91,14 @@ describe('TutorialPlayer Provenance E2E Test', () => {
     fireEvent.mouseEnter(twentyTerm)
 
     // Wait for the tooltip to appear
-    await waitFor(() => {
-      // Look for the enhanced provenance-based title
-      const provenanceTitle = screen.getByText('Add the tens digit — 2 tens (20)')
-      expect(provenanceTitle).toBeInTheDocument()
-    }, { timeout: 3000 })
+    await waitFor(
+      () => {
+        // Look for the enhanced provenance-based title
+        const provenanceTitle = screen.getByText('Add the tens digit — 2 tens (20)')
+        expect(provenanceTitle).toBeInTheDocument()
+      },
+      { timeout: 3000 }
+    )
 
     // Check for the enhanced subtitle
     await waitFor(() => {
@@ -220,7 +227,7 @@ describe('TutorialPlayer Provenance E2E Test', () => {
           rhsDigit: 2,
           rhsPlace: 1,
           rhsPlaceName: 'tens',
-          rhsValue: 20
+          rhsValue: 20,
         })
       )
     })

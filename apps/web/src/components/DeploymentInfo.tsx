@@ -1,5 +1,5 @@
-import { DeploymentInfoModal } from './DeploymentInfoModal'
 import { DeploymentInfoContent } from './DeploymentInfoContent'
+import { DeploymentInfoModal } from './DeploymentInfoModal'
 
 export function DeploymentInfo() {
   return (

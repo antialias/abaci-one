@@ -1,12 +1,12 @@
 'use client'
 
-import React from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import type React from 'react'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
-import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 import { useFullscreen } from '../contexts/FullscreenContext'
+import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 
 interface AppNavBarProps {
   variant?: 'full' | 'minimal'
@@ -20,23 +20,23 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const isArcadePage = pathname?.startsWith('/arcade')
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
 
-
-
   // Auto-detect variant based on context
   const actualVariant = variant === 'full' && (isGamePage || isArcadePage) ? 'minimal' : variant
 
   // Mini nav for games/arcade (both fullscreen and non-fullscreen)
   if (actualVariant === 'minimal') {
     return (
-      <header className={css({
-        position: 'fixed',
-        top: isFullscreen ? '4' : '4',
-        right: '4',
-        zIndex: 100,
-        opacity: '0.95',
-        _hover: { opacity: '1' },
-        transition: 'all 0.3s ease'
-      })}>
+      <header
+        className={css({
+          position: 'fixed',
+          top: isFullscreen ? '4' : '4',
+          right: '4',
+          zIndex: 100,
+          opacity: '0.95',
+          _hover: { opacity: '1' },
+          transition: 'all 0.3s ease',
+        })}
+      >
         <div className={hstack({ gap: '2' })}>
           {/* Game branding from slot */}
           {navSlot && (
@@ -50,21 +50,23 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                 border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
                 borderRadius: '8px',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                backdropFilter: isFullscreen ? 'blur(15px)' : 'none'
+                backdropFilter: isFullscreen ? 'blur(15px)' : 'none',
               }}
             >
               {navSlot}
               {isFullscreen && (
-                <div className={css({
-                  px: '2',
-                  py: '1',
-                  background: 'rgba(34, 197, 94, 0.2)',
-                  border: '1px solid rgba(34, 197, 94, 0.3)',
-                  rounded: 'full',
-                  fontSize: 'xs',
-                  color: 'green.300',
-                  fontWeight: 'semibold'
-                })}>
+                <div
+                  className={css({
+                    px: '2',
+                    py: '1',
+                    background: 'rgba(34, 197, 94, 0.2)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    rounded: 'full',
+                    fontSize: 'xs',
+                    color: 'green.300',
+                    fontWeight: 'semibold',
+                  })}
+                >
                   ✨ FULLSCREEN
                 </div>
               )}
@@ -82,7 +84,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
               border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
               borderRadius: '8px',
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-              backdropFilter: isFullscreen ? 'blur(15px)' : 'none'
+              backdropFilter: isFullscreen ? 'blur(15px)' : 'none',
             }}
           >
             <Link
@@ -96,26 +98,43 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                 opacity: isFullscreen ? '0.8' : '1',
                 _hover: {
                   transform: 'scale(1.1)',
-                  opacity: '1'
+                  opacity: '1',
                 },
-                transition: 'all'
+                transition: 'all',
               })}
               title="Home"
             >
               🧮
             </Link>
-            <div className={css({
-              w: '1px',
-              h: '4',
-              bg: isFullscreen ? 'rgba(255, 255, 255, 0.2)' : 'gray.300'
-            })} />
-            <CompactNavLink href="/create" currentPath={pathname} title="Create" isFullscreen={isFullscreen}>
+            <div
+              className={css({
+                w: '1px',
+                h: '4',
+                bg: isFullscreen ? 'rgba(255, 255, 255, 0.2)' : 'gray.300',
+              })}
+            />
+            <CompactNavLink
+              href="/create"
+              currentPath={pathname}
+              title="Create"
+              isFullscreen={isFullscreen}
+            >
               ✏️
             </CompactNavLink>
-            <CompactNavLink href="/guide" currentPath={pathname} title="Guide" isFullscreen={isFullscreen}>
+            <CompactNavLink
+              href="/guide"
+              currentPath={pathname}
+              title="Guide"
+              isFullscreen={isFullscreen}
+            >
               📖
             </CompactNavLink>
-            <CompactNavLink href="/games" currentPath={pathname} title="Games" isFullscreen={isFullscreen}>
+            <CompactNavLink
+              href="/games"
+              currentPath={pathname}
+              title="Games"
+              isFullscreen={isFullscreen}
+            >
               🎮
             </CompactNavLink>
           </div>
@@ -131,7 +150,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
               border: isFullscreen ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #e5e7eb',
               borderRadius: '8px',
               boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-              backdropFilter: isFullscreen ? 'blur(15px)' : 'none'
+              backdropFilter: isFullscreen ? 'blur(15px)' : 'none',
             }}
           >
             <button
@@ -151,8 +170,8 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                 transition: 'all 0.3s ease',
                 _hover: {
                   bg: isFullscreen ? 'rgba(59, 130, 246, 0.3)' : 'blue.100',
-                  transform: 'scale(1.1)'
-                }
+                  transform: 'scale(1.1)',
+                },
               })}
             >
               {isFullscreen ? '🪟' : '⛶'}
@@ -161,7 +180,9 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
             {isArcadePage && (
               <button
                 onClick={() => {
-                  console.log('🔄 AppNavBar: Navigating to games with Next.js router (no page reload)')
+                  console.log(
+                    '🔄 AppNavBar: Navigating to games with Next.js router (no page reload)'
+                  )
                   router.push('/games')
                 }}
                 title="Exit Arcade"
@@ -179,8 +200,8 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                   transition: 'all 0.3s ease',
                   _hover: {
                     bg: isFullscreen ? 'rgba(239, 68, 68, 0.3)' : 'red.100',
-                    transform: 'scale(1.1)'
-                  }
+                    transform: 'scale(1.1)',
+                  },
                 })}
               >
                 🚪
@@ -196,15 +217,17 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   }
 
   return (
-    <header className={css({
-      bg: 'white',
-      shadow: 'sm',
-      borderBottom: '1px solid',
-      borderColor: 'gray.200',
-      position: 'sticky',
-      top: 0,
-      zIndex: 30
-    })}>
+    <header
+      className={css({
+        bg: 'white',
+        shadow: 'sm',
+        borderBottom: '1px solid',
+        borderColor: 'gray.200',
+        position: 'sticky',
+        top: 0,
+        zIndex: 30,
+      })}
+    >
       <div className={container({ maxW: '7xl', px: '4', py: '3' })}>
         <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
           {/* Logo */}
@@ -215,7 +238,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
               fontWeight: 'bold',
               color: 'brand.800',
               textDecoration: 'none',
-              _hover: { color: 'brand.900' }
+              _hover: { color: 'brand.900' },
             })}
           >
             🧮 Soroban Generator
@@ -247,7 +270,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
 function NavLink({
   href,
   currentPath,
-  children
+  children,
 }: {
   href: string
   currentPath: string | null
@@ -275,8 +298,8 @@ function NavLink({
         justifyContent: 'center',
         _hover: {
           color: isActive ? 'brand.800' : 'gray.900',
-          bg: isActive ? 'brand.100' : 'gray.50'
-        }
+          bg: isActive ? 'brand.100' : 'gray.50',
+        },
       })}
     >
       {children}
@@ -289,7 +312,7 @@ function CompactNavLink({
   currentPath,
   title,
   children,
-  isFullscreen = false
+  isFullscreen = false,
 }: {
   href: string
   currentPath: string | null
@@ -309,17 +332,19 @@ function CompactNavLink({
         p: '1',
         fontSize: 'md',
         color: isFullscreen
-          ? (isActive ? 'white' : 'rgba(255, 255, 255, 0.8)')
-          : (isActive ? 'brand.600' : 'gray.500'),
+          ? isActive
+            ? 'white'
+            : 'rgba(255, 255, 255, 0.8)'
+          : isActive
+            ? 'brand.600'
+            : 'gray.500',
         rounded: 'md',
         transition: 'all',
         textDecoration: 'none',
         _hover: {
-          color: isFullscreen
-            ? 'white'
-            : (isActive ? 'brand.700' : 'gray.700'),
-          transform: 'scale(1.1)'
-        }
+          color: isFullscreen ? 'white' : isActive ? 'brand.700' : 'gray.700',
+          transform: 'scale(1.1)',
+        },
       })}
     >
       {children}

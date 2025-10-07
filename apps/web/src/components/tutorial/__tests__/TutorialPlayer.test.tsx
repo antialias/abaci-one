@@ -1,8 +1,8 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { TutorialPlayer } from '../TutorialPlayer'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DevAccessProvider } from '../../../hooks/useAccessControl'
-import type { Tutorial, TutorialEvent } from '../../../types/tutorial'
+import type { Tutorial } from '../../../types/tutorial'
+import { TutorialPlayer } from '../TutorialPlayer'
 
 // Mock the AbacusReact component
 vi.mock('@soroban/abacus-react', () => ({
@@ -17,14 +17,14 @@ vi.mock('@soroban/abacus-react', () => ({
             columnIndex: 4,
             beadType: 'earth',
             position: 0,
-            active: false
+            active: false,
           })
         }}
       >
         Mock Bead
       </button>
     </div>
-  )
+  ),
 }))
 
 const mockTutorial: Tutorial = {
@@ -47,13 +47,13 @@ const mockTutorial: Tutorial = {
       actionDescription: 'Click the first bead',
       tooltip: {
         content: 'Test tooltip',
-        explanation: 'Test explanation'
+        explanation: 'Test explanation',
       },
       errorMessages: {
         wrongBead: 'Wrong bead clicked',
         wrongAction: 'Wrong action',
-        hint: 'Test hint'
-      }
+        hint: 'Test hint',
+      },
     },
     {
       id: 'step-2',
@@ -66,21 +66,21 @@ const mockTutorial: Tutorial = {
       actionDescription: 'Click the second bead',
       tooltip: {
         content: 'Second tooltip',
-        explanation: 'Second explanation'
+        explanation: 'Second explanation',
       },
       errorMessages: {
         wrongBead: 'Wrong bead for step 2',
         wrongAction: 'Wrong action for step 2',
-        hint: 'Step 2 hint'
-      }
-    }
+        hint: 'Step 2 hint',
+      },
+    },
   ],
   tags: ['test'],
   author: 'Test Author',
   version: '1.0.0',
   createdAt: new Date(),
   updatedAt: new Date(),
-  isPublished: true
+  isPublished: true,
 }
 
 const renderTutorialPlayer = (props: Partial<React.ComponentProps<typeof TutorialPlayer>> = {}) => {
@@ -88,7 +88,7 @@ const renderTutorialPlayer = (props: Partial<React.ComponentProps<typeof Tutoria
     tutorial: mockTutorial,
     initialStepIndex: 0,
     isDebugMode: false,
-    showDebugPanel: false
+    showDebugPanel: false,
   }
 
   return render(
@@ -130,8 +130,9 @@ describe('TutorialPlayer', () => {
     it('shows progress bar', () => {
       renderTutorialPlayer()
 
-      const progressBar = screen.getByRole('progressbar', { hidden: true }) ||
-                         document.querySelector('[style*="width"]')
+      const progressBar =
+        screen.getByRole('progressbar', { hidden: true }) ||
+        document.querySelector('[style*="width"]')
       expect(progressBar).toBeInTheDocument()
     })
   })
@@ -199,7 +200,7 @@ describe('TutorialPlayer', () => {
       const onTutorialComplete = vi.fn()
       renderTutorialPlayer({
         initialStepIndex: 1, // Start on last step
-        onTutorialComplete
+        onTutorialComplete,
       })
 
       // Complete the last step
@@ -268,7 +269,7 @@ describe('TutorialPlayer', () => {
       expect(onEvent).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'BEAD_CLICKED',
-          timestamp: expect.any(Date)
+          timestamp: expect.any(Date),
         })
       )
     })
@@ -281,7 +282,7 @@ describe('TutorialPlayer', () => {
         expect.objectContaining({
           type: 'STEP_STARTED',
           stepId: 'step-1',
-          timestamp: expect.any(Date)
+          timestamp: expect.any(Date),
         })
       )
     })
@@ -298,7 +299,7 @@ describe('TutorialPlayer', () => {
           type: 'VALUE_CHANGED',
           oldValue: 0,
           newValue: 1,
-          timestamp: expect.any(Date)
+          timestamp: expect.any(Date),
         })
       )
     })
@@ -310,15 +311,15 @@ describe('TutorialPlayer', () => {
 
       // Mock a wrong bead click by directly calling the callback
       // In real usage, this would come from the AbacusReact component
-      const wrongBeadClick = {
+      const _wrongBeadClick = {
         columnIndex: 1, // Wrong column
         beadType: 'earth' as const,
         position: 0,
-        active: false
+        active: false,
       }
 
       // Simulate wrong bead click through the mock
-      const mockAbacus = screen.getByTestId('mock-abacus')
+      const _mockAbacus = screen.getByTestId('mock-abacus')
       // We need to trigger this through the component's callback system
       // For now, we'll test the error display indirectly
     })
@@ -373,7 +374,7 @@ describe('TutorialPlayer', () => {
     it('handles tutorial with single step', () => {
       const singleStepTutorial = {
         ...mockTutorial,
-        steps: [mockTutorial.steps[0]]
+        steps: [mockTutorial.steps[0]],
       }
 
       renderTutorialPlayer({ tutorial: singleStepTutorial })

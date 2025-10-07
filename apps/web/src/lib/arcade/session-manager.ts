@@ -3,9 +3,9 @@
  * Handles database operations and validation for arcade sessions
  */
 
-import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
-import { getValidator, type GameMove, type GameName } from './validation'
+import { db, schema } from '@/db'
+import { type GameMove, type GameName, getValidator } from './validation'
 
 export interface CreateSessionOptions {
   userId: string
@@ -31,7 +31,7 @@ const TTL_HOURS = 24
 async function getUserIdFromGuestId(guestId: string): Promise<string | undefined> {
   const user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, guestId),
-    columns: { id: true }
+    columns: { id: true },
   })
   return user?.id
 }
@@ -39,13 +39,15 @@ async function getUserIdFromGuestId(guestId: string): Promise<string | undefined
 /**
  * Create a new arcade session
  */
-export async function createArcadeSession(options: CreateSessionOptions): Promise<schema.ArcadeSession> {
+export async function createArcadeSession(
+  options: CreateSessionOptions
+): Promise<schema.ArcadeSession> {
   const now = new Date()
   const expiresAt = new Date(now.getTime() + TTL_HOURS * 60 * 60 * 1000)
 
   // Find or create user by guest ID
   let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, options.userId)
+    where: eq(schema.users.guestId, options.userId),
   })
 
   if (!user) {
@@ -106,10 +108,7 @@ export async function getArcadeSession(guestId: string): Promise<schema.ArcadeSe
 /**
  * Apply a game move to the session (with validation)
  */
-export async function applyGameMove(
-  userId: string,
-  move: GameMove
-): Promise<SessionUpdateResult> {
+export async function applyGameMove(userId: string, move: GameMove): Promise<SessionUpdateResult> {
   const session = await getArcadeSession(userId)
 
   if (!session) {
@@ -134,7 +133,7 @@ export async function applyGameMove(
     playerId: move.playerId,
     gameStateCurrentPlayer: (session.gameState as any)?.currentPlayer,
     gameStateActivePlayers: (session.gameState as any)?.activePlayers,
-    gameStatePhase: (session.gameState as any)?.gamePhase
+    gameStatePhase: (session.gameState as any)?.gamePhase,
   })
 
   // Validate the move
@@ -142,7 +141,7 @@ export async function applyGameMove(
 
   console.log('[SessionManager] Validation result:', {
     valid: validationResult.valid,
-    error: validationResult.error
+    error: validationResult.error,
   })
 
   if (!validationResult.valid) {
@@ -201,9 +200,7 @@ export async function deleteArcadeSession(guestId: string): Promise<void> {
   const userId = await getUserIdFromGuestId(guestId)
   if (!userId) return
 
-  await db
-    .delete(schema.arcadeSessions)
-    .where(eq(schema.arcadeSessions.userId, userId))
+  await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.userId, userId))
 }
 
 /**

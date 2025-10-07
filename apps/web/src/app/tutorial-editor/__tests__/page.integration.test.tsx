@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TutorialEditorPage from '../page'
 
 // Mock Next.js router
@@ -28,14 +28,14 @@ vi.mock('@soroban/abacus-react', () => ({
             columnIndex: 4,
             beadType: 'earth',
             position: 0,
-            active: false
+            active: false,
           })
         }}
       >
         Mock Bead
       </button>
     </div>
-  )
+  ),
 }))
 
 describe('Tutorial Editor Page Integration Tests', () => {
@@ -149,9 +149,12 @@ describe('Tutorial Editor Page Integration Tests', () => {
       })
 
       // Should show saved status
-      await waitFor(() => {
-        expect(screen.getByText('Saved!')).toBeInTheDocument()
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('Saved!')).toBeInTheDocument()
+        },
+        { timeout: 2000 }
+      )
     })
 
     it('handles validation errors and displays them appropriately', async () => {
@@ -359,7 +362,7 @@ describe('Tutorial Editor Page Integration Tests', () => {
           return {
             href: '',
             download: '',
-            click: mockClick
+            click: mockClick,
           } as any
         }
         return originalCreateElement.call(document, tagName)

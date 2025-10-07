@@ -1,6 +1,6 @@
 import { ArcadeGuardedPage } from '@/components/ArcadeGuardedPage'
-import { ArcadeMemoryPairsProvider } from './context/ArcadeMemoryPairsContext'
 import { MemoryPairsGame } from './components/MemoryPairsGame'
+import { ArcadeMemoryPairsProvider } from './context/ArcadeMemoryPairsContext'
 
 export default function MatchingPage() {
   return (

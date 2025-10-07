@@ -3,8 +3,8 @@
  * Handles database operations for room members
  */
 
+import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { eq, and } from 'drizzle-orm'
 
 export interface AddMemberOptions {
   roomId: string
@@ -57,10 +57,7 @@ export async function getRoomMember(
   userId: string
 ): Promise<schema.RoomMember | undefined> {
   return await db.query.roomMembers.findFirst({
-    where: and(
-      eq(schema.roomMembers.roomId, roomId),
-      eq(schema.roomMembers.userId, userId)
-    )
+    where: and(eq(schema.roomMembers.roomId, roomId), eq(schema.roomMembers.userId, userId)),
   })
 }
 
@@ -70,7 +67,7 @@ export async function getRoomMember(
 export async function getRoomMembers(roomId: string): Promise<schema.RoomMember[]> {
   return await db.query.roomMembers.findMany({
     where: eq(schema.roomMembers.roomId, roomId),
-    orderBy: schema.roomMembers.joinedAt
+    orderBy: schema.roomMembers.joinedAt,
   })
 }
 
@@ -79,11 +76,8 @@ export async function getRoomMembers(roomId: string): Promise<schema.RoomMember[
  */
 export async function getOnlineRoomMembers(roomId: string): Promise<schema.RoomMember[]> {
   return await db.query.roomMembers.findMany({
-    where: and(
-      eq(schema.roomMembers.roomId, roomId),
-      eq(schema.roomMembers.isOnline, true)
-    ),
-    orderBy: schema.roomMembers.joinedAt
+    where: and(eq(schema.roomMembers.roomId, roomId), eq(schema.roomMembers.isOnline, true)),
+    orderBy: schema.roomMembers.joinedAt,
   })
 }
 
@@ -101,12 +95,7 @@ export async function setMemberOnline(
       isOnline,
       lastSeen: new Date(),
     })
-    .where(
-      and(
-        eq(schema.roomMembers.roomId, roomId),
-        eq(schema.roomMembers.userId, userId)
-      )
-    )
+    .where(and(eq(schema.roomMembers.roomId, roomId), eq(schema.roomMembers.userId, userId)))
 }
 
 /**
@@ -116,12 +105,7 @@ export async function touchMember(roomId: string, userId: string): Promise<void>
   await db
     .update(schema.roomMembers)
     .set({ lastSeen: new Date() })
-    .where(
-      and(
-        eq(schema.roomMembers.roomId, roomId),
-        eq(schema.roomMembers.userId, userId)
-      )
-    )
+    .where(and(eq(schema.roomMembers.roomId, roomId), eq(schema.roomMembers.userId, userId)))
 }
 
 /**
@@ -130,12 +114,7 @@ export async function touchMember(roomId: string, userId: string): Promise<void>
 export async function removeMember(roomId: string, userId: string): Promise<void> {
   await db
     .delete(schema.roomMembers)
-    .where(
-      and(
-        eq(schema.roomMembers.roomId, roomId),
-        eq(schema.roomMembers.userId, userId)
-      )
-    )
+    .where(and(eq(schema.roomMembers.roomId, roomId), eq(schema.roomMembers.userId, userId)))
   console.log('[Room Membership] Removed member:', userId, 'from room:', roomId)
 }
 
@@ -169,7 +148,7 @@ export async function isMember(roomId: string, userId: string): Promise<boolean>
 export async function getUserRooms(userId: string): Promise<string[]> {
   const memberships = await db.query.roomMembers.findMany({
     where: eq(schema.roomMembers.userId, userId),
-    columns: { roomId: true }
+    columns: { roomId: true },
   })
-  return memberships.map(m => m.roomId)
+  return memberships.map((m) => m.roomId)
 }

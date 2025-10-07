@@ -24,7 +24,7 @@ export function generateRoomCode(): string {
  */
 export function isValidRoomCode(code: string): boolean {
   if (code.length !== CODE_LENGTH) return false
-  return code.split('').every(char => CHARS.includes(char))
+  return code.split('').every((char) => CHARS.includes(char))
 }
 
 /**

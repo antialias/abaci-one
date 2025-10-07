@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import type { RailroadTrackGenerator } from '../lib/RailroadTrackGenerator'
-import type { Station, Passenger } from '../lib/gameTypes'
+import type { Passenger, Station } from '../lib/gameTypes'
 import { generateLandmarks, type Landmark } from '../lib/landmarks'
+import type { RailroadTrackGenerator } from '../lib/RailroadTrackGenerator'
 
 interface UseTrackManagementParams {
   currentRoute: number
@@ -21,10 +21,12 @@ export function useTrackManagement({
   pathRef,
   stations,
   passengers,
-  maxCars,
-  carSpacing
+  maxCars: _maxCars,
+  carSpacing: _carSpacing,
 }: UseTrackManagementParams) {
-  const [trackData, setTrackData] = useState<ReturnType<typeof trackGenerator.generateTrack> | null>(null)
+  const [trackData, setTrackData] = useState<ReturnType<
+    typeof trackGenerator.generateTrack
+  > | null>(null)
   const [tiesAndRails, setTiesAndRails] = useState<{
     ties: Array<{ x1: number; y1: number; x2: number; y2: number }>
     leftRailPath: string
@@ -37,7 +39,9 @@ export function useTrackManagement({
 
   // Track previous route data to maintain visuals during transition
   const previousRouteRef = useRef(currentRoute)
-  const [pendingTrackData, setPendingTrackData] = useState<ReturnType<typeof trackGenerator.generateTrack> | null>(null)
+  const [pendingTrackData, setPendingTrackData] = useState<ReturnType<
+    typeof trackGenerator.generateTrack
+  > | null>(null)
   const displayRouteRef = useRef(currentRoute) // Track which route's passengers are being displayed
 
   // Generate landmarks when route changes
@@ -101,7 +105,7 @@ export function useTrackManagement({
   // Calculate station positions when path is ready
   useEffect(() => {
     if (pathRef.current) {
-      const positions = stations.map(station => {
+      const positions = stations.map((station) => {
         const pathLength = pathRef.current!.getTotalLength()
         const distance = (station.position / 100) * pathLength
         const point = pathRef.current!.getPointAtLength(distance)
@@ -109,23 +113,23 @@ export function useTrackManagement({
       })
       setStationPositions(positions)
     }
-  }, [trackData, stations, pathRef])
+  }, [stations, pathRef])
 
   // Calculate landmark positions when path is ready
   useEffect(() => {
     if (pathRef.current && landmarks.length > 0) {
-      const positions = landmarks.map(landmark => {
+      const positions = landmarks.map((landmark) => {
         const pathLength = pathRef.current!.getTotalLength()
         const distance = (landmark.position / 100) * pathLength
         const point = pathRef.current!.getPointAtLength(distance)
         return {
           x: point.x + landmark.offset.x,
-          y: point.y + landmark.offset.y
+          y: point.y + landmark.offset.y,
         }
       })
       setLandmarkPositions(positions)
     }
-  }, [trackData, landmarks, pathRef])
+  }, [landmarks, pathRef])
 
   return {
     trackData,
@@ -133,6 +137,6 @@ export function useTrackManagement({
     stationPositions,
     landmarks,
     landmarkPositions,
-    displayPassengers
+    displayPassengers,
   }
 }

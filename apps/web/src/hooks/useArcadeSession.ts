@@ -1,7 +1,10 @@
 import { useCallback, useEffect } from 'react'
-import { useArcadeSocket } from './useArcadeSocket'
-import { useOptimisticGameState, type UseOptimisticGameStateOptions } from './useOptimisticGameState'
 import type { GameMove } from '@/lib/arcade/validation'
+import { useArcadeSocket } from './useArcadeSocket'
+import {
+  type UseOptimisticGameStateOptions,
+  useOptimisticGameState,
+} from './useOptimisticGameState'
 
 export interface UseArcadeSessionOptions<TState> extends UseOptimisticGameStateOptions<TState> {
   /**
@@ -73,17 +76,19 @@ export interface UseArcadeSessionReturn<TState> {
 export function useArcadeSession<TState>(
   options: UseArcadeSessionOptions<TState>
 ): UseArcadeSessionReturn<TState> {
-  const {
-    userId,
-    autoJoin = true,
-    ...optimisticOptions
-  } = options
+  const { userId, autoJoin = true, ...optimisticOptions } = options
 
   // Optimistic state management
   const optimistic = useOptimisticGameState<TState>(optimisticOptions)
 
   // WebSocket connection
-  const { socket, connected, joinSession, sendMove: socketSendMove, exitSession: socketExitSession } = useArcadeSocket({
+  const {
+    socket,
+    connected,
+    joinSession,
+    sendMove: socketSendMove,
+    exitSession: socketExitSession,
+  } = useArcadeSocket({
     onSessionState: (data) => {
       console.log('[ArcadeSession] Syncing with server state')
       optimistic.syncWithServer(data.gameState as TState, data.version)
@@ -91,11 +96,7 @@ export function useArcadeSession<TState>(
 
     onMoveAccepted: (data) => {
       console.log('[ArcadeSession] Move accepted by server')
-      optimistic.handleMoveAccepted(
-        data.gameState as TState,
-        data.version,
-        data.move
-      )
+      optimistic.handleMoveAccepted(data.gameState as TState, data.version, data.move)
     },
 
     onMoveRejected: (data) => {
@@ -126,24 +127,27 @@ export function useArcadeSession<TState>(
   }, [connected, autoJoin, userId, joinSession])
 
   // Send move with optimistic update
-  const sendMove = useCallback((move: Omit<GameMove, 'timestamp'>) => {
-    // IMPORTANT: playerId must always be explicitly provided by caller
-    // playerId is the database player ID (avatar), never the userId/viewerId
-    if (!('playerId' in move) || !move.playerId) {
-      throw new Error('playerId is required in all moves and must be a valid player ID')
-    }
+  const sendMove = useCallback(
+    (move: Omit<GameMove, 'timestamp'>) => {
+      // IMPORTANT: playerId must always be explicitly provided by caller
+      // playerId is the database player ID (avatar), never the userId/viewerId
+      if (!('playerId' in move) || !move.playerId) {
+        throw new Error('playerId is required in all moves and must be a valid player ID')
+      }
 
-    const fullMove: GameMove = {
-      ...move,
-      timestamp: Date.now(),
-    } as GameMove
+      const fullMove: GameMove = {
+        ...move,
+        timestamp: Date.now(),
+      } as GameMove
 
-    // Apply optimistically
-    optimistic.applyOptimisticMove(fullMove)
+      // Apply optimistically
+      optimistic.applyOptimisticMove(fullMove)
 
-    // Send to server
-    socketSendMove(userId, fullMove)
-  }, [userId, optimistic, socketSendMove])
+      // Send to server
+      socketSendMove(userId, fullMove)
+    },
+    [userId, optimistic, socketSendMove]
+  )
 
   const exitSession = useCallback(() => {
     socketExitSession(userId)

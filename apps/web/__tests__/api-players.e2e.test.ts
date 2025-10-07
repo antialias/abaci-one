@@ -2,9 +2,9 @@
  * @vitest-environment node
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { db, schema } from '../src/db'
 import { eq } from 'drizzle-orm'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { db, schema } from '../src/db'
 
 /**
  * API Players E2E Tests
@@ -20,10 +20,7 @@ describe('Players API', () => {
   beforeEach(async () => {
     // Create a test user with unique guest ID
     testGuestId = `test-guest-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const [user] = await db
-      .insert(schema.users)
-      .values({ guestId: testGuestId })
-      .returning()
+    const [user] = await db.insert(schema.users).values({ guestId: testGuestId }).returning()
     testUserId = user.id
   })
 
@@ -406,7 +403,7 @@ describe('Players API', () => {
       }).rejects.toThrow(/FOREIGN KEY constraint failed/)
     })
 
-    it('prevents modifying another user\'s player via userId injection (DB layer alone is insufficient)', async () => {
+    it("prevents modifying another user's player via userId injection (DB layer alone is insufficient)", async () => {
       // Create victim user and their player
       const victimGuestId = `victim-${Date.now()}-${Math.random().toString(36).slice(2)}`
       const [victimUser] = await db
@@ -426,7 +423,7 @@ describe('Players API', () => {
           })
           .returning()
 
-        const [victimPlayer] = await db
+        const [_victimPlayer] = await db
           .insert(schema.players)
           .values({
             userId: victimUser.id,
@@ -464,10 +461,7 @@ describe('Players API', () => {
     it('ensures players are isolated per user', async () => {
       // Create another user
       const user2GuestId = `user2-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const [user2] = await db
-        .insert(schema.users)
-        .values({ guestId: user2GuestId })
-        .returning()
+      const [user2] = await db.insert(schema.users).values({ guestId: user2GuestId }).returning()
 
       try {
         // Create players for both users

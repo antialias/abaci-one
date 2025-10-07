@@ -1,6 +1,15 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react'
+import type React from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 
 interface FullscreenContextType {
   isFullscreen: boolean
@@ -45,7 +54,10 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
       // Use the registered fullscreen element, fallback to document.documentElement
       const element = fullscreenElementRef.current || document.documentElement
       console.log('🚀 FullscreenContext: Entering fullscreen with element:', element)
-      console.log('🚀 FullscreenContext: Current fullscreen element ref:', fullscreenElementRef.current)
+      console.log(
+        '🚀 FullscreenContext: Current fullscreen element ref:',
+        fullscreenElementRef.current
+      )
 
       if (element.requestFullscreen) {
         await element.requestFullscreen()
@@ -91,14 +103,16 @@ export function FullscreenProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <FullscreenContext.Provider value={{
-      isFullscreen,
-      enterFullscreen,
-      exitFullscreen,
-      toggleFullscreen,
-      setFullscreenElement,
-      fullscreenElementRef
-    }}>
+    <FullscreenContext.Provider
+      value={{
+        isFullscreen,
+        enterFullscreen,
+        exitFullscreen,
+        toggleFullscreen,
+        setFullscreenElement,
+        fullscreenElementRef,
+      }}
+    >
       {children}
     </FullscreenContext.Provider>
   )

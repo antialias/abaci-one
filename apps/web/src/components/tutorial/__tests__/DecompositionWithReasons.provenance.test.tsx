@@ -1,15 +1,18 @@
-import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
-import * as Tooltip from '@radix-ui/react-tooltip'
-import { DecompositionWithReasons } from '../DecompositionWithReasons'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type React from 'react'
+import { describe, expect, it, vi } from 'vitest'
 import { generateUnifiedInstructionSequence } from '../../../utils/unifiedStepGenerator'
+import { DecompositionWithReasons } from '../DecompositionWithReasons'
 
 // Mock Radix Tooltip so it renders content immediately
 vi.mock('@radix-ui/react-tooltip', () => ({
-  Provider: ({ children }: { children: React.ReactNode }) => <div data-testid="tooltip-provider">{children}</div>,
-  Root: ({ children, open = true }: { children: React.ReactNode, open?: boolean }) => (
-    <div data-testid="tooltip-root" data-open={open}>{children}</div>
+  Provider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tooltip-provider">{children}</div>
+  ),
+  Root: ({ children, open = true }: { children: React.ReactNode; open?: boolean }) => (
+    <div data-testid="tooltip-root" data-open={open}>
+      {children}
+    </div>
   ),
   Trigger: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="tooltip-trigger">{children}</div>
@@ -17,10 +20,12 @@ vi.mock('@radix-ui/react-tooltip', () => ({
   Portal: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="tooltip-portal">{children}</div>
   ),
-  Content: ({ children, ...props }: { children: React.ReactNode, [key: string]: any }) => (
-    <div data-testid="tooltip-content" {...props}>{children}</div>
+  Content: ({ children, ...props }: { children: React.ReactNode; [key: string]: any }) => (
+    <div data-testid="tooltip-content" {...props}>
+      {children}
+    </div>
   ),
-  Arrow: (props: any) => <div data-testid="tooltip-arrow" {...props} />
+  Arrow: (props: any) => <div data-testid="tooltip-arrow" {...props} />,
 }))
 
 // Mock the tutorial context
@@ -33,7 +38,7 @@ const mockTutorialContext = {
 }
 
 vi.mock('../TutorialContext', () => ({
-  useTutorialContext: () => mockTutorialContext
+  useTutorialContext: () => mockTutorialContext,
 }))
 
 describe('DecompositionWithReasons Provenance Test', () => {
@@ -44,26 +49,31 @@ describe('DecompositionWithReasons Provenance Test', () => {
     console.log('Generated result:', {
       fullDecomposition: result.fullDecomposition,
       stepsCount: result.steps.length,
-      segmentsCount: result.segments.length
+      segmentsCount: result.segments.length,
     })
 
     console.log('Steps with provenance:')
     result.steps.forEach((step, i) => {
-      console.log(`Step ${i}: ${step.mathematicalTerm}`, step.provenance ? 'HAS PROVENANCE' : 'NO PROVENANCE')
+      console.log(
+        `Step ${i}: ${step.mathematicalTerm}`,
+        step.provenance ? 'HAS PROVENANCE' : 'NO PROVENANCE'
+      )
     })
 
     // Render the DecompositionWithReasons component
     render(
       <DecompositionWithReasons
         fullDecomposition={result.fullDecomposition}
-        termPositions={result.steps.map(step => step.termPosition)}
+        termPositions={result.steps.map((step) => step.termPosition)}
         segments={result.segments}
         steps={result.steps}
       />
     )
 
     // The decomposition should be rendered
-    expect(screen.getByText(/3475 \+ 25 = 3475 \+ 20 \+ \(100 - 90 - 5\) = 3500/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/3475 \+ 25 = 3475 \+ 20 \+ \(100 - 90 - 5\) = 3500/)
+    ).toBeInTheDocument()
 
     // Find the "20" term
     const twentyElement = screen.getByText('20')
@@ -114,7 +124,7 @@ describe('DecompositionWithReasons Provenance Test', () => {
   it('should pass provenance data from steps to ReasonTooltip', () => {
     // Generate test data
     const result = generateUnifiedInstructionSequence(3475, 3500)
-    const twentyStep = result.steps.find(step => step.mathematicalTerm === '20')
+    const twentyStep = result.steps.find((step) => step.mathematicalTerm === '20')
 
     // Verify the step has provenance
     expect(twentyStep).toBeDefined()
@@ -135,7 +145,7 @@ describe('DecompositionWithReasons Provenance Test', () => {
     }
 
     // Find the corresponding segment
-    const tensSegment = result.segments.find(seg =>
+    const tensSegment = result.segments.find((seg) =>
       seg.stepIndices.includes(twentyStep!.stepIndex)
     )
     expect(tensSegment).toBeDefined()
@@ -144,7 +154,7 @@ describe('DecompositionWithReasons Provenance Test', () => {
       console.log('✅ Found corresponding segment:', {
         id: tensSegment.id,
         rule: tensSegment.plan[0]?.rule,
-        stepIndices: tensSegment.stepIndices
+        stepIndices: tensSegment.stepIndices,
       })
     }
   })
@@ -157,23 +167,32 @@ describe('DecompositionWithReasons Provenance Test', () => {
 
     console.log('\nSteps:')
     result.steps.forEach((step, i) => {
-      console.log(`  ${i}: ${step.mathematicalTerm} - segmentId: ${step.segmentId} - provenance:`, !!step.provenance)
+      console.log(
+        `  ${i}: ${step.mathematicalTerm} - segmentId: ${step.segmentId} - provenance:`,
+        !!step.provenance
+      )
       if (step.provenance) {
-        console.log(`    -> rhs: ${step.provenance.rhs}, digit: ${step.provenance.rhsDigit}, place: ${step.provenance.rhsPlaceName}`)
+        console.log(
+          `    -> rhs: ${step.provenance.rhs}, digit: ${step.provenance.rhsDigit}, place: ${step.provenance.rhsPlaceName}`
+        )
       }
     })
 
     console.log('\nSegments:')
     result.segments.forEach((segment, i) => {
-      console.log(`  ${i}: ${segment.id} - place: ${segment.place}, digit: ${segment.digit}, rule: ${segment.plan[0]?.rule}`)
+      console.log(
+        `  ${i}: ${segment.id} - place: ${segment.place}, digit: ${segment.digit}, rule: ${segment.plan[0]?.rule}`
+      )
       console.log(`    -> stepIndices: [${segment.stepIndices.join(', ')}]`)
       console.log(`    -> readable title: "${segment.readable?.title}"`)
     })
 
     // The key insight: when DecompositionWithReasons renders a SegmentGroup,
     // it should pass the provenance from the first step in that segment to ReasonTooltip
-    const twentyStep = result.steps.find(step => step.mathematicalTerm === '20')
-    const tensSegment = result.segments.find(seg => seg.stepIndices.includes(twentyStep!.stepIndex))
+    const twentyStep = result.steps.find((step) => step.mathematicalTerm === '20')
+    const tensSegment = result.segments.find((seg) =>
+      seg.stepIndices.includes(twentyStep!.stepIndex)
+    )
 
     if (twentyStep && tensSegment) {
       console.log('\n=== TOOLTIP DATA FLOW ===')

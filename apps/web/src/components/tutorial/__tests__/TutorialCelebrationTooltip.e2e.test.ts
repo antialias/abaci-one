@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 test.describe('Tutorial Celebration Tooltip E2E', () => {
   test.beforeEach(async ({ page }) => {
@@ -21,9 +21,9 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
             problem: '3 + 2',
             description: 'Add 2 to the starting value of 3',
             startValue: 3,
-            targetValue: 5
-          }
-        ]
+            targetValue: 5,
+          },
+        ],
       }
 
       // Store in localStorage for the tutorial player
@@ -80,11 +80,11 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
     // First, reach the target value (5)
     const earthBeads = page.locator('svg circle[data-bead-type="earth"]')
 
-    if (await earthBeads.count() > 0) {
+    if ((await earthBeads.count()) > 0) {
       await earthBeads.first().click()
       await page.waitForTimeout(300)
 
-      if (await earthBeads.count() > 1) {
+      if ((await earthBeads.count()) > 1) {
         await earthBeads.nth(1).click()
         await page.waitForTimeout(300)
       }
@@ -116,11 +116,11 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
     // Reach target value first
     const earthBeads = page.locator('svg circle[data-bead-type="earth"]')
 
-    if (await earthBeads.count() > 0) {
+    if ((await earthBeads.count()) > 0) {
       await earthBeads.first().click()
       await page.waitForTimeout(300)
 
-      if (await earthBeads.count() > 1) {
+      if ((await earthBeads.count()) > 1) {
         await earthBeads.nth(1).click()
         await page.waitForTimeout(300)
       }
@@ -131,7 +131,7 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
 
     // Move away from target (subtract by clicking active earth bead)
     const activeEarthBeads = page.locator('svg circle[data-bead-type="earth"][data-active="true"]')
-    if (await activeEarthBeads.count() > 0) {
+    if ((await activeEarthBeads.count()) > 0) {
       await activeEarthBeads.first().click()
       await page.waitForTimeout(500)
     }
@@ -140,10 +140,12 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
     await expect(page.locator('text=🎉')).not.toBeVisible({ timeout: 2000 })
 
     // Should show instruction tooltip (look for lightbulb or guidance text)
-    const instructionTooltip = page.locator('text=💡').or(page.locator('[data-radix-popper-content-wrapper]'))
+    const instructionTooltip = page
+      .locator('text=💡')
+      .or(page.locator('[data-radix-popper-content-wrapper]'))
 
     // There might be instruction tooltips visible
-    if (await instructionTooltip.count() > 0) {
+    if ((await instructionTooltip.count()) > 0) {
       await expect(instructionTooltip.first()).toBeVisible()
     }
   })
@@ -160,7 +162,7 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
 
     if (await targetEarthBead.isVisible()) {
       // Get the position of the bead we're clicking
-      const beadBox = await targetEarthBead.boundingBox()
+      const _beadBox = await targetEarthBead.boundingBox()
 
       // Click the bead to move toward target
       await targetEarthBead.click()
@@ -206,7 +208,7 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
             problem: '2 + 3',
             description: 'Add 3 to 2',
             startValue: 2,
-            targetValue: 5
+            targetValue: 5,
           },
           {
             id: 'step-2',
@@ -214,9 +216,9 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
             problem: '1 + 4',
             description: 'Add 4 to 1',
             startValue: 1,
-            targetValue: 5
-          }
-        ]
+            targetValue: 5,
+          },
+        ],
       }
       localStorage.setItem('current-tutorial', JSON.stringify(tutorial))
     })
@@ -227,12 +229,12 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
     // Complete first step
     await expect(page.locator('text=2 + 3')).toBeVisible({ timeout: 10000 })
 
-    const abacus = page.locator('svg').first()
+    const _abacus = page.locator('svg').first()
     const earthBeads = page.locator('svg circle[data-bead-type="earth"]')
 
     // Reach target for first step (from 2 to 5, need to add 3)
-    if (await earthBeads.count() > 0) {
-      for (let i = 0; i < 3 && i < await earthBeads.count(); i++) {
+    if ((await earthBeads.count()) > 0) {
+      for (let i = 0; i < 3 && i < (await earthBeads.count()); i++) {
         await earthBeads.nth(i).click()
         await page.waitForTimeout(200)
       }
@@ -253,8 +255,8 @@ test.describe('Tutorial Celebration Tooltip E2E', () => {
     // Complete second step (from 1 to 5, need to add 4)
     const newEarthBeads = page.locator('svg circle[data-bead-type="earth"]')
 
-    if (await newEarthBeads.count() > 0) {
-      for (let i = 0; i < 4 && i < await newEarthBeads.count(); i++) {
+    if ((await newEarthBeads.count()) > 0) {
+      for (let i = 0; i < 4 && i < (await newEarthBeads.count()); i++) {
         await newEarthBeads.nth(i).click()
         await page.waitForTimeout(200)
       }

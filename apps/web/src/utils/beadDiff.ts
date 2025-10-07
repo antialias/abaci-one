@@ -1,8 +1,13 @@
 // Dynamic bead diff algorithm for calculating transitions between abacus states
 // Provides arrows, highlights, and movement directions for tutorial UI
 
-import { ValidPlaceValues } from '@soroban/abacus-react'
-import { AbacusState, BeadHighlight, numberToAbacusState, calculateBeadChanges } from './abacusInstructionGenerator'
+import type { ValidPlaceValues } from '@soroban/abacus-react'
+import {
+  type AbacusState,
+  type BeadHighlight,
+  calculateBeadChanges,
+  numberToAbacusState,
+} from './abacusInstructionGenerator'
 
 export interface BeadDiffResult {
   placeValue: ValidPlaceValues
@@ -27,10 +32,7 @@ export interface BeadDiffOutput {
  *
  * This is the core "diff" function that keeps tutorial highlights in sync.
  */
-export function calculateBeadDiff(
-  fromState: AbacusState,
-  toState: AbacusState
-): BeadDiffOutput {
+export function calculateBeadDiff(fromState: AbacusState, toState: AbacusState): BeadDiffOutput {
   const { additions, removals } = calculateBeadChanges(fromState, toState)
 
   const changes: BeadDiffResult[] = []
@@ -38,36 +40,36 @@ export function calculateBeadDiff(
   let order = 0
 
   // Process removals first (pedagogical order: clear before adding)
-  removals.forEach(removal => {
+  removals.forEach((removal) => {
     changes.push({
       placeValue: removal.placeValue,
       beadType: removal.beadType,
       position: removal.position,
       direction: 'deactivate',
-      order: order++
+      order: order++,
     })
 
     highlights.push({
       placeValue: removal.placeValue,
       beadType: removal.beadType,
-      position: removal.position
+      position: removal.position,
     })
   })
 
   // Process additions second (pedagogical order: add after clearing)
-  additions.forEach(addition => {
+  additions.forEach((addition) => {
     changes.push({
       placeValue: addition.placeValue,
       beadType: addition.beadType,
       position: addition.position,
       direction: 'activate',
-      order: order++
+      order: order++,
     })
 
     highlights.push({
       placeValue: addition.placeValue,
       beadType: addition.beadType,
-      position: addition.position
+      position: addition.position,
     })
   })
 
@@ -78,7 +80,7 @@ export function calculateBeadDiff(
     changes,
     highlights,
     hasChanges: changes.length > 0,
-    summary
+    summary,
   }
 }
 
@@ -122,7 +124,7 @@ export function calculateMultiStepBeadDiffs(
       instruction: step.instruction,
       diff,
       fromValue: currentValue,
-      toValue: step.expectedValue
+      toValue: step.expectedValue,
     })
 
     currentValue = step.expectedValue
@@ -143,8 +145,8 @@ function generateDiffSummary(changes: BeadDiffResult[]): string {
   // Sort by order to respect pedagogical sequence
   const sortedChanges = [...changes].sort((a, b) => a.order - b.order)
 
-  const deactivations = sortedChanges.filter(c => c.direction === 'deactivate')
-  const activations = sortedChanges.filter(c => c.direction === 'activate')
+  const deactivations = sortedChanges.filter((c) => c.direction === 'deactivate')
+  const activations = sortedChanges.filter((c) => c.direction === 'activate')
 
   const parts: string[] = []
 
@@ -152,9 +154,9 @@ function generateDiffSummary(changes: BeadDiffResult[]): string {
   if (deactivations.length > 0) {
     const deactivationsByPlace = groupByPlace(deactivations)
     Object.entries(deactivationsByPlace).forEach(([place, beads]) => {
-      const placeName = getPlaceName(parseInt(place))
-      const heavenBeads = beads.filter(b => b.beadType === 'heaven')
-      const earthBeads = beads.filter(b => b.beadType === 'earth')
+      const placeName = getPlaceName(parseInt(place, 10))
+      const heavenBeads = beads.filter((b) => b.beadType === 'heaven')
+      const earthBeads = beads.filter((b) => b.beadType === 'earth')
 
       if (heavenBeads.length > 0) {
         parts.push(`remove heaven bead in ${placeName}`)
@@ -170,9 +172,9 @@ function generateDiffSummary(changes: BeadDiffResult[]): string {
   if (activations.length > 0) {
     const activationsByPlace = groupByPlace(activations)
     Object.entries(activationsByPlace).forEach(([place, beads]) => {
-      const placeName = getPlaceName(parseInt(place))
-      const heavenBeads = beads.filter(b => b.beadType === 'heaven')
-      const earthBeads = beads.filter(b => b.beadType === 'earth')
+      const placeName = getPlaceName(parseInt(place, 10))
+      const heavenBeads = beads.filter((b) => b.beadType === 'heaven')
+      const earthBeads = beads.filter((b) => b.beadType === 'earth')
 
       if (heavenBeads.length > 0) {
         parts.push(`add heaven bead in ${placeName}`)
@@ -191,14 +193,17 @@ function generateDiffSummary(changes: BeadDiffResult[]): string {
  * Group bead changes by place value
  */
 function groupByPlace(changes: BeadDiffResult[]): { [place: string]: BeadDiffResult[] } {
-  return changes.reduce((groups, change) => {
-    const place = change.placeValue.toString()
-    if (!groups[place]) {
-      groups[place] = []
-    }
-    groups[place].push(change)
-    return groups
-  }, {} as { [place: string]: BeadDiffResult[] })
+  return changes.reduce(
+    (groups, change) => {
+      const place = change.placeValue.toString()
+      if (!groups[place]) {
+        groups[place] = []
+      }
+      groups[place].push(change)
+      return groups
+    },
+    {} as { [place: string]: BeadDiffResult[] }
+  )
 }
 
 /**
@@ -206,11 +211,16 @@ function groupByPlace(changes: BeadDiffResult[]): { [place: string]: BeadDiffRes
  */
 function getPlaceName(place: number): string {
   switch (place) {
-    case 0: return 'ones column'
-    case 1: return 'tens column'
-    case 2: return 'hundreds column'
-    case 3: return 'thousands column'
-    default: return `place ${place} column`
+    case 0:
+      return 'ones column'
+    case 1:
+      return 'tens column'
+    case 2:
+      return 'hundreds column'
+    case 3:
+      return 'thousands column'
+    default:
+      return `place ${place} column`
   }
 }
 
@@ -218,8 +228,12 @@ function getPlaceName(place: number): string {
  * Check if two abacus states are equal
  */
 export function areStatesEqual(state1: AbacusState, state2: AbacusState): boolean {
-  const places1 = Object.keys(state1).map(k => parseInt(k)).sort()
-  const places2 = Object.keys(state2).map(k => parseInt(k)).sort()
+  const places1 = Object.keys(state1)
+    .map((k) => parseInt(k, 10))
+    .sort()
+  const places2 = Object.keys(state2)
+    .map((k) => parseInt(k, 10))
+    .sort()
 
   if (places1.length !== places2.length) return false
 
@@ -245,12 +259,12 @@ export function validateBeadDiff(diff: BeadDiffOutput): {
   const errors: string[] = []
 
   // Check for impossible earth bead counts
-  const earthChanges = diff.changes.filter(c => c.beadType === 'earth')
+  const earthChanges = diff.changes.filter((c) => c.beadType === 'earth')
   const earthByPlace = groupByPlace(earthChanges)
 
   Object.entries(earthByPlace).forEach(([place, changes]) => {
-    const activations = changes.filter(c => c.direction === 'activate').length
-    const deactivations = changes.filter(c => c.direction === 'deactivate').length
+    const activations = changes.filter((c) => c.direction === 'activate').length
+    const deactivations = changes.filter((c) => c.direction === 'deactivate').length
     const netChange = activations - deactivations
 
     if (netChange > 4) {
@@ -263,6 +277,6 @@ export function validateBeadDiff(diff: BeadDiffOutput): {
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   }
 }

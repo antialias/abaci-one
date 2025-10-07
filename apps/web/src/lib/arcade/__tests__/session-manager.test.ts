@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { db, schema } from '@/db'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { db } from '@/db'
 import {
-  createArcadeSession,
-  getArcadeSession,
   applyGameMove,
+  createArcadeSession,
   deleteArcadeSession,
+  getArcadeSession,
   updateSessionActivity,
 } from '../session-manager'
 import type { GameMove } from '../validation'
@@ -53,7 +53,7 @@ vi.mock('../validation', async () => {
   return {
     ...actual,
     getValidator: vi.fn(() => ({
-      validateMove: vi.fn((state, move) => ({
+      validateMove: vi.fn((state, _move) => ({
         valid: true,
         newState: { ...state, validated: true },
       })),

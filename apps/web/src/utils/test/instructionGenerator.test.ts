@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
+  detectComplementOperation,
   generateAbacusInstructions,
   numberToAbacusState,
-  detectComplementOperation,
-  validateInstruction
+  validateInstruction,
 } from '../abacusInstructionGenerator'
 
 describe('Automatic Abacus Instruction Generator', () => {
@@ -14,7 +14,7 @@ describe('Automatic Abacus Instruction Generator', () => {
         1: { heavenActive: false, earthActive: 0 },
         2: { heavenActive: false, earthActive: 0 },
         3: { heavenActive: false, earthActive: 0 },
-        4: { heavenActive: false, earthActive: 0 }
+        4: { heavenActive: false, earthActive: 0 },
       })
 
       expect(numberToAbacusState(5)).toEqual({
@@ -22,7 +22,7 @@ describe('Automatic Abacus Instruction Generator', () => {
         1: { heavenActive: false, earthActive: 0 },
         2: { heavenActive: false, earthActive: 0 },
         3: { heavenActive: false, earthActive: 0 },
-        4: { heavenActive: false, earthActive: 0 }
+        4: { heavenActive: false, earthActive: 0 },
       })
 
       expect(numberToAbacusState(7)).toEqual({
@@ -30,7 +30,7 @@ describe('Automatic Abacus Instruction Generator', () => {
         1: { heavenActive: false, earthActive: 0 },
         2: { heavenActive: false, earthActive: 0 },
         3: { heavenActive: false, earthActive: 0 },
-        4: { heavenActive: false, earthActive: 0 }
+        4: { heavenActive: false, earthActive: 0 },
       })
 
       expect(numberToAbacusState(23)).toEqual({
@@ -38,7 +38,7 @@ describe('Automatic Abacus Instruction Generator', () => {
         1: { heavenActive: false, earthActive: 2 },
         2: { heavenActive: false, earthActive: 0 },
         3: { heavenActive: false, earthActive: 0 },
-        4: { heavenActive: false, earthActive: 0 }
+        4: { heavenActive: false, earthActive: 0 },
       })
     })
   })
@@ -76,7 +76,7 @@ describe('Automatic Abacus Instruction Generator', () => {
       expect(instruction.highlightBeads[0]).toEqual({
         placeValue: 0,
         beadType: 'earth',
-        position: 0
+        position: 0,
       })
       expect(instruction.expectedAction).toBe('add')
       expect(instruction.actionDescription).toContain('earth bead')
@@ -88,7 +88,7 @@ describe('Automatic Abacus Instruction Generator', () => {
       expect(instruction.highlightBeads).toHaveLength(1)
       expect(instruction.highlightBeads[0]).toEqual({
         placeValue: 0,
-        beadType: 'heaven'
+        beadType: 'heaven',
       })
       expect(instruction.expectedAction).toBe('add')
       expect(instruction.actionDescription).toContain('heaven bead')
@@ -104,11 +104,11 @@ describe('Automatic Abacus Instruction Generator', () => {
       expect(instruction.multiStepInstructions).toHaveLength(2)
 
       // Should highlight heaven bead to add
-      const heavenBead = instruction.highlightBeads.find(b => b.beadType === 'heaven')
+      const heavenBead = instruction.highlightBeads.find((b) => b.beadType === 'heaven')
       expect(heavenBead).toBeDefined()
 
       // Should highlight earth bead to remove (the last one in the sequence)
-      const earthBead = instruction.highlightBeads.find(b => b.beadType === 'earth')
+      const earthBead = instruction.highlightBeads.find((b) => b.beadType === 'earth')
       expect(earthBead).toBeDefined()
       expect(earthBead?.position).toBe(2) // Position 2 (third earth bead) needs to be removed
     })
@@ -121,11 +121,13 @@ describe('Automatic Abacus Instruction Generator', () => {
       expect(instruction.actionDescription).toContain('7 + 4 = 7 + (5 - 1)')
 
       // Should highlight tens place earth bead (to add 1 in tens place)
-      const tensEarth = instruction.highlightBeads.find(b => b.placeValue === 1 && b.beadType === 'earth')
+      const tensEarth = instruction.highlightBeads.find(
+        (b) => b.placeValue === 1 && b.beadType === 'earth'
+      )
       expect(tensEarth).toBeDefined()
 
       // Should highlight ones place beads to change
-      const onesBeads = instruction.highlightBeads.filter(b => b.placeValue === 0)
+      const onesBeads = instruction.highlightBeads.filter((b) => b.placeValue === 0)
       expect(onesBeads).toHaveLength(2) // ones heaven + 1 ones earth to remove
     })
 
@@ -136,7 +138,7 @@ describe('Automatic Abacus Instruction Generator', () => {
       expect(instruction.expectedAction).toBe('multi-step')
 
       // Should highlight earth beads at positions 1 and 2
-      instruction.highlightBeads.forEach(bead => {
+      instruction.highlightBeads.forEach((bead) => {
         expect(bead.beadType).toBe('earth')
         expect(bead.placeValue).toBe(0)
         expect([1, 2]).toContain(bead.position)
@@ -147,8 +149,8 @@ describe('Automatic Abacus Instruction Generator', () => {
       const instruction = generateAbacusInstructions(15, 23) // 15 + 8
 
       // Should involve both ones and tens places
-      const onesBeads = instruction.highlightBeads.filter(b => b.placeValue === 0)
-      const tensBeads = instruction.highlightBeads.filter(b => b.placeValue === 1)
+      const onesBeads = instruction.highlightBeads.filter((b) => b.placeValue === 0)
+      const tensBeads = instruction.highlightBeads.filter((b) => b.placeValue === 1)
 
       expect(onesBeads.length + tensBeads.length).toBe(instruction.highlightBeads.length)
       expect(instruction.expectedAction).toBe('multi-step')
@@ -187,16 +189,16 @@ describe('Automatic Abacus Instruction Generator', () => {
 
   describe('Real-world tutorial examples', () => {
     const examples = [
-      { start: 0, target: 1, name: "Basic: 0 + 1" },
-      { start: 1, target: 2, name: "Basic: 1 + 1" },
-      { start: 2, target: 3, name: "Basic: 2 + 1" },
-      { start: 3, target: 4, name: "Basic: 3 + 1" },
-      { start: 0, target: 5, name: "Heaven: 0 + 5" },
-      { start: 5, target: 6, name: "Heaven + Earth: 5 + 1" },
-      { start: 3, target: 7, name: "Five complement: 3 + 4" },
-      { start: 2, target: 5, name: "Five complement: 2 + 3" },
-      { start: 6, target: 8, name: "Direct: 6 + 2" },
-      { start: 7, target: 11, name: "Ten complement: 7 + 4" }
+      { start: 0, target: 1, name: 'Basic: 0 + 1' },
+      { start: 1, target: 2, name: 'Basic: 1 + 1' },
+      { start: 2, target: 3, name: 'Basic: 2 + 1' },
+      { start: 3, target: 4, name: 'Basic: 3 + 1' },
+      { start: 0, target: 5, name: 'Heaven: 0 + 5' },
+      { start: 5, target: 6, name: 'Heaven + Earth: 5 + 1' },
+      { start: 3, target: 7, name: 'Five complement: 3 + 4' },
+      { start: 2, target: 5, name: 'Five complement: 2 + 3' },
+      { start: 6, target: 8, name: 'Direct: 6 + 2' },
+      { start: 7, target: 11, name: 'Ten complement: 7 + 4' },
     ]
 
     examples.forEach(({ start, target, name }) => {
@@ -246,8 +248,8 @@ describe('Automatic Abacus Instruction Generator', () => {
       expect(instruction.highlightBeads.length).toBeGreaterThan(0)
 
       // Should involve both ones and tens places
-      const onesBeads = instruction.highlightBeads.filter(b => b.placeValue === 0)
-      const tensBeads = instruction.highlightBeads.filter(b => b.placeValue === 1)
+      const onesBeads = instruction.highlightBeads.filter((b) => b.placeValue === 0)
+      const tensBeads = instruction.highlightBeads.filter((b) => b.placeValue === 1)
       expect(onesBeads.length + tensBeads.length).toBe(instruction.highlightBeads.length)
 
       const validation = validateInstruction(instruction, 0, 99)
@@ -277,7 +279,7 @@ describe('Automatic Abacus Instruction Generator', () => {
         { start: 1, target: 5 }, // 1 + 4 = 5 (complement needed)
         { start: 2, target: 5 }, // 2 + 3 = 5 (complement needed)
         { start: 3, target: 7 }, // 3 + 4 = 7 (complement needed)
-        { start: 4, target: 8 }  // 4 + 4 = 8 (complement needed)
+        { start: 4, target: 8 }, // 4 + 4 = 8 (complement needed)
       ]
 
       fiveComplementCases.forEach(({ start, target }) => {
@@ -294,7 +296,7 @@ describe('Automatic Abacus Instruction Generator', () => {
         { start: 8, target: 12 }, // 8 + 4 = 12
         { start: 9, target: 13 }, // 9 + 4 = 13
         { start: 19, target: 23 }, // 19 + 4 = 23 (tens place)
-        { start: 29, target: 33 }  // 29 + 4 = 33 (tens place)
+        { start: 29, target: 33 }, // 29 + 4 = 33 (tens place)
       ]
 
       tenComplementCases.forEach(({ start, target }) => {
@@ -307,7 +309,7 @@ describe('Automatic Abacus Instruction Generator', () => {
 
   describe('Stress testing with random operations', () => {
     it('should handle 100 random addition operations', () => {
-      const failedCases: Array<{start: number, target: number, error: string}> = []
+      const failedCases: Array<{ start: number; target: number; error: string }> = []
 
       for (let i = 0; i < 100; i++) {
         const start = Math.floor(Math.random() * 90) // 0-89
@@ -325,14 +327,14 @@ describe('Automatic Abacus Instruction Generator', () => {
             failedCases.push({
               start,
               target,
-              error: `Validation failed: ${validation.issues.join(', ')}`
+              error: `Validation failed: ${validation.issues.join(', ')}`,
             })
           }
         } catch (error) {
           failedCases.push({
             start,
             target,
-            error: `Exception: ${error instanceof Error ? error.message : String(error)}`
+            error: `Exception: ${error instanceof Error ? error.message : String(error)}`,
           })
         }
       }
@@ -345,7 +347,7 @@ describe('Automatic Abacus Instruction Generator', () => {
     })
 
     it('should handle 50 random subtraction operations', () => {
-      const failedCases: Array<{start: number, target: number, error: string}> = []
+      const failedCases: Array<{ start: number; target: number; error: string }> = []
 
       for (let i = 0; i < 50; i++) {
         const start = Math.floor(Math.random() * 89) + 10 // 10-98
@@ -360,14 +362,14 @@ describe('Automatic Abacus Instruction Generator', () => {
             failedCases.push({
               start,
               target,
-              error: `Validation failed: ${validation.issues.join(', ')}`
+              error: `Validation failed: ${validation.issues.join(', ')}`,
             })
           }
         } catch (error) {
           failedCases.push({
             start,
             target,
-            error: `Exception: ${error instanceof Error ? error.message : String(error)}`
+            error: `Exception: ${error instanceof Error ? error.message : String(error)}`,
           })
         }
       }
@@ -380,7 +382,7 @@ describe('Automatic Abacus Instruction Generator', () => {
     })
 
     it('should handle all systematic single-digit operations', () => {
-      const failedCases: Array<{start: number, target: number, error: string}> = []
+      const failedCases: Array<{ start: number; target: number; error: string }> = []
 
       // Test every possible single-digit to single-digit operation
       for (let start = 0; start <= 9; start++) {
@@ -395,14 +397,14 @@ describe('Automatic Abacus Instruction Generator', () => {
               failedCases.push({
                 start,
                 target,
-                error: `Validation failed: ${validation.issues.join(', ')}`
+                error: `Validation failed: ${validation.issues.join(', ')}`,
               })
             }
           } catch (error) {
             failedCases.push({
               start,
               target,
-              error: `Exception: ${error instanceof Error ? error.message : String(error)}`
+              error: `Exception: ${error instanceof Error ? error.message : String(error)}`,
             })
           }
         }
@@ -468,12 +470,12 @@ describe('Automatic Abacus Instruction Generator', () => {
     it('should show correct operation in hint message when old operation is passed', () => {
       // Bug: when start=4, target=12, and old operation="0 + 1" is passed,
       // the hint message shows "0 + 1 = 12" instead of "4 + 8 = 12"
-      const instruction = generateAbacusInstructions(4, 12, "0 + 1")
+      const instruction = generateAbacusInstructions(4, 12, '0 + 1')
 
       // The hint message should show the correct operation based on start/target values
       // not the passed operation string
-      expect(instruction.errorMessages.hint).toContain("4 + 8 = 12")
-      expect(instruction.errorMessages.hint).not.toContain("0 + 1 = 12")
+      expect(instruction.errorMessages.hint).toContain('4 + 8 = 12')
+      expect(instruction.errorMessages.hint).not.toContain('0 + 1 = 12')
     })
   })
 
@@ -499,7 +501,9 @@ describe('Automatic Abacus Instruction Generator', () => {
       console.log('  Action:', instruction.actionDescription)
       console.log('  Highlighted beads:', instruction.highlightBeads.length)
       instruction.highlightBeads.forEach((bead, i) => {
-        console.log(`    ${i + 1}. Place ${bead.placeValue} ${bead.beadType} ${bead.position !== undefined ? `position ${bead.position}` : ''}`)
+        console.log(
+          `    ${i + 1}. Place ${bead.placeValue} ${bead.beadType} ${bead.position !== undefined ? `position ${bead.position}` : ''}`
+        )
       })
       if (instruction.multiStepInstructions) {
         console.log('  Multi-step instructions:')
@@ -532,12 +536,19 @@ describe('Automatic Abacus Instruction Generator', () => {
 
       // Multi-step instructions should explain the simple movements
       expect(instruction.multiStepInstructions).toBeDefined()
-      expect(instruction.multiStepInstructions!.some(step =>
-        step.includes('add 100') || step.includes('Add 1 to hundreds') || step.includes('earth bead 1 in the hundreds column to add')
-      )).toBe(true)
-      expect(instruction.multiStepInstructions!.some(step =>
-        step.includes('subtract 2') || step.includes('Remove 2 from ones')
-      )).toBe(true)
+      expect(
+        instruction.multiStepInstructions!.some(
+          (step) =>
+            step.includes('add 100') ||
+            step.includes('Add 1 to hundreds') ||
+            step.includes('earth bead 1 in the hundreds column to add')
+        )
+      ).toBe(true)
+      expect(
+        instruction.multiStepInstructions!.some(
+          (step) => step.includes('subtract 2') || step.includes('Remove 2 from ones')
+        )
+      ).toBe(true)
     })
 
     it('should handle five complement with proper breakdown', () => {
@@ -562,8 +573,16 @@ describe('Automatic Abacus Instruction Generator', () => {
         { start: 1, target: 7, description: '1 + 6 where 6 requires five complement' },
         { start: 0, target: 6, description: '0 + 6 where 6 requires five complement' },
         { start: 4, target: 8, description: '4 + 4 where 4 requires five complement' },
-        { start: 13, target: 17, description: '13 + 4 where 4 requires five complement in ones place' },
-        { start: 23, target: 27, description: '23 + 4 where 4 requires five complement in ones place' }
+        {
+          start: 13,
+          target: 17,
+          description: '13 + 4 where 4 requires five complement in ones place',
+        },
+        {
+          start: 23,
+          target: 27,
+          description: '23 + 4 where 4 requires five complement in ones place',
+        },
       ]
 
       actualFiveComplementCases.forEach(({ start, target, description }) => {
@@ -586,12 +605,16 @@ describe('Automatic Abacus Instruction Generator', () => {
     describe('Known ten complement situations that require complements', () => {
       // Test cases where we know ten complement is actually needed
       const actualTenComplementCases = [
-        { start: 7, target: 11, description: '7 + 4 where 4 requires five complement which triggers ten complement' },
+        {
+          start: 7,
+          target: 11,
+          description: '7 + 4 where 4 requires five complement which triggers ten complement',
+        },
         { start: 6, target: 13, description: '6 + 7 where 7 requires complement' },
         { start: 8, target: 15, description: '8 + 7 where 7 requires complement' },
         { start: 9, target: 16, description: '9 + 7 where 7 requires complement' },
         { start: 17, target: 24, description: '17 + 7 where 7 requires complement in ones place' },
-        { start: 25, target: 32, description: '25 + 7 where 7 requires complement in ones place' }
+        { start: 25, target: 32, description: '25 + 7 where 7 requires complement in ones place' },
       ]
 
       actualTenComplementCases.forEach(({ start, target, description }) => {
@@ -618,7 +641,7 @@ describe('Automatic Abacus Instruction Generator', () => {
         { start: 5, target: 103, description: '5 + 98 where 98 requires hundred complement' },
         { start: 10, target: 108, description: '10 + 98 where 98 requires hundred complement' },
         { start: 15, target: 113, description: '15 + 98 where 98 requires hundred complement' },
-        { start: 20, target: 118, description: '20 + 98 where 98 requires hundred complement' }
+        { start: 20, target: 118, description: '20 + 98 where 98 requires hundred complement' },
       ]
 
       actualHundredComplementCases.forEach(({ start, target, description }) => {
@@ -639,7 +662,7 @@ describe('Automatic Abacus Instruction Generator', () => {
         { start: 0, target: 5, description: '0 + 5 direct heaven bead' },
         { start: 1, target: 2, description: '1 + 1 direct earth bead' },
         { start: 5, target: 9, description: '5 + 4 direct earth beads' },
-        { start: 1, target: 3, description: '1 + 2 direct earth beads' }
+        { start: 1, target: 3, description: '1 + 2 direct earth beads' },
       ]
 
       directOperationCases.forEach(({ start, target, description }) => {
@@ -678,34 +701,41 @@ describe('Automatic Abacus Instruction Generator', () => {
         const instruction = generateAbacusInstructions(3, 7)
         expect(instruction.multiStepInstructions).toBeDefined()
         expect(instruction.multiStepInstructions!.length).toBeGreaterThan(1)
-        expect(instruction.multiStepInstructions!.some(step =>
-          step.includes('Add') || step.includes('Remove')
-        )).toBe(true)
+        expect(
+          instruction.multiStepInstructions!.some(
+            (step) => step.includes('Add') || step.includes('Remove')
+          )
+        ).toBe(true)
       })
 
       it('should provide clear step explanations for hundred complement', () => {
         const instruction = generateAbacusInstructions(3, 101)
         expect(instruction.multiStepInstructions).toBeDefined()
         expect(instruction.multiStepInstructions!.length).toBeGreaterThan(1)
-        expect(instruction.multiStepInstructions!.some(step =>
-          (step.includes('Add') && step.includes('hundreds')) ||
-          (step.includes('Click') && step.includes('hundreds') && step.includes('add'))
-        )).toBe(true)
-        expect(instruction.multiStepInstructions!.some(step =>
-          step.includes('Remove') && step.includes('ones')
-        )).toBe(true)
+        expect(
+          instruction.multiStepInstructions!.some(
+            (step) =>
+              (step.includes('Add') && step.includes('hundreds')) ||
+              (step.includes('Click') && step.includes('hundreds') && step.includes('add'))
+          )
+        ).toBe(true)
+        expect(
+          instruction.multiStepInstructions!.some(
+            (step) => step.includes('Remove') && step.includes('ones')
+          )
+        ).toBe(true)
       })
     })
 
     describe('Validation and error handling', () => {
       it('should validate all generated instructions correctly', () => {
         const testCases = [
-          { start: 3, target: 7 },   // Five complement
-          { start: 7, target: 11 },  // Ten complement (via five)
+          { start: 3, target: 7 }, // Five complement
+          { start: 7, target: 11 }, // Ten complement (via five)
           { start: 3, target: 101 }, // Hundred complement
-          { start: 0, target: 1 },   // Direct
-          { start: 0, target: 10 },  // Direct tens
-          { start: 0, target: 5 },   // Direct heaven
+          { start: 0, target: 1 }, // Direct
+          { start: 0, target: 10 }, // Direct tens
+          { start: 0, target: 5 }, // Direct heaven
         ]
 
         testCases.forEach(({ start, target }) => {
@@ -734,9 +764,9 @@ describe('Automatic Abacus Instruction Generator', () => {
     describe('Complement format consistency', () => {
       it('should consistently use compact math format for complements', () => {
         const complementCases = [
-          { start: 3, target: 7 },   // 3 + 4 = 3 + (5 - 1)
+          { start: 3, target: 7 }, // 3 + 4 = 3 + (5 - 1)
           { start: 3, target: 101 }, // 3 + 98 = 3 + (100 - 2)
-          { start: 7, target: 11 },  // 7 + 4 = 7 + (5 - 1)
+          { start: 7, target: 11 }, // 7 + 4 = 7 + (5 - 1)
         ]
 
         complementCases.forEach(({ start, target }) => {
@@ -759,7 +789,9 @@ describe('Automatic Abacus Instruction Generator', () => {
         console.log('  Action:', instruction.actionDescription)
         console.log('  Hint:', instruction.errorMessages.hint)
         console.log('  Multi-step instructions:')
-        instruction.multiStepInstructions?.forEach((step, i) => console.log(`    ${i+1}. ${step}`))
+        instruction.multiStepInstructions?.forEach((step, i) =>
+          console.log(`    ${i + 1}. ${step}`)
+        )
 
         // Both action description and hint should be consistent
         // And should break down into actual performable operations
@@ -784,7 +816,6 @@ describe('Automatic Abacus Instruction Generator', () => {
     })
   })
 
-
   describe('Progressive Step-Bead Mapping', () => {
     it('should generate correct step-bead mapping for 99 + 1 = 100 recursive case', () => {
       const instruction = generateAbacusInstructions(99, 100)
@@ -795,7 +826,7 @@ describe('Automatic Abacus Instruction Generator', () => {
       const stepBeads = instruction.stepBeadHighlights!
 
       // Step 0: Add 1 to hundreds column (highest place value first)
-      const step0Beads = stepBeads.filter(b => b.stepIndex === 0)
+      const step0Beads = stepBeads.filter((b) => b.stepIndex === 0)
       expect(step0Beads).toHaveLength(1)
       expect(step0Beads[0]).toEqual({
         placeValue: 2, // hundreds place
@@ -803,30 +834,30 @@ describe('Automatic Abacus Instruction Generator', () => {
         position: 0,
         stepIndex: 0,
         direction: 'activate',
-        order: 0
+        order: 0,
       })
 
       // Step 1: Remove 90 from tens column (1 heaven + 4 earth beads)
-      const step1Beads = stepBeads.filter(b => b.stepIndex === 1)
+      const step1Beads = stepBeads.filter((b) => b.stepIndex === 1)
       expect(step1Beads).toHaveLength(5)
       // Should have 1 heaven bead and 4 earth beads, all with 'deactivate' direction
-      const step1Heaven = step1Beads.filter(b => b.beadType === 'heaven')
-      const step1Earth = step1Beads.filter(b => b.beadType === 'earth')
+      const step1Heaven = step1Beads.filter((b) => b.beadType === 'heaven')
+      const step1Earth = step1Beads.filter((b) => b.beadType === 'earth')
       expect(step1Heaven).toHaveLength(1)
       expect(step1Earth).toHaveLength(4)
-      expect(step1Beads.every(b => b.direction === 'deactivate')).toBe(true)
-      expect(step1Beads.every(b => b.placeValue === 1)).toBe(true) // tens column
+      expect(step1Beads.every((b) => b.direction === 'deactivate')).toBe(true)
+      expect(step1Beads.every((b) => b.placeValue === 1)).toBe(true) // tens column
 
       // Step 2: Remove 9 from ones column (1 heaven + 4 earth beads)
-      const step2Beads = stepBeads.filter(b => b.stepIndex === 2)
+      const step2Beads = stepBeads.filter((b) => b.stepIndex === 2)
       expect(step2Beads).toHaveLength(5)
       // Should have 1 heaven bead and 4 earth beads, all with 'deactivate' direction
-      const step2Heaven = step2Beads.filter(b => b.beadType === 'heaven')
-      const step2Earth = step2Beads.filter(b => b.beadType === 'earth')
+      const step2Heaven = step2Beads.filter((b) => b.beadType === 'heaven')
+      const step2Earth = step2Beads.filter((b) => b.beadType === 'earth')
       expect(step2Heaven).toHaveLength(1)
       expect(step2Earth).toHaveLength(4)
-      expect(step2Beads.every(b => b.direction === 'deactivate')).toBe(true)
-      expect(step2Beads.every(b => b.placeValue === 0)).toBe(true) // ones column
+      expect(step2Beads.every((b) => b.direction === 'deactivate')).toBe(true)
+      expect(step2Beads.every((b) => b.placeValue === 0)).toBe(true) // ones column
 
       // Verify pedagogical ordering: highest place value first, then next highest
       expect(instruction.multiStepInstructions).toBeDefined()
@@ -842,7 +873,7 @@ describe('Automatic Abacus Instruction Generator', () => {
       const stepBeads = instruction.stepBeadHighlights!
 
       // Step 0: Add 1 to hundreds column
-      const step0Beads = stepBeads.filter(b => b.stepIndex === 0)
+      const step0Beads = stepBeads.filter((b) => b.stepIndex === 0)
       expect(step0Beads).toHaveLength(1)
       expect(step0Beads[0]).toEqual({
         placeValue: 2,
@@ -850,15 +881,15 @@ describe('Automatic Abacus Instruction Generator', () => {
         position: 0,
         stepIndex: 0,
         direction: 'activate',
-        order: 0
+        order: 0,
       })
 
       // Step 1: Remove 2 from ones column (2 earth beads)
-      const step1Beads = stepBeads.filter(b => b.stepIndex === 1)
+      const step1Beads = stepBeads.filter((b) => b.stepIndex === 1)
       expect(step1Beads).toHaveLength(2)
-      expect(step1Beads.every(b => b.beadType === 'earth')).toBe(true)
-      expect(step1Beads.every(b => b.direction === 'deactivate')).toBe(true)
-      expect(step1Beads.every(b => b.placeValue === 0)).toBe(true) // ones column
+      expect(step1Beads.every((b) => b.beadType === 'earth')).toBe(true)
+      expect(step1Beads.every((b) => b.direction === 'deactivate')).toBe(true)
+      expect(step1Beads.every((b) => b.placeValue === 0)).toBe(true) // ones column
     })
 
     it('should handle single-step operations gracefully', () => {
@@ -867,7 +898,7 @@ describe('Automatic Abacus Instruction Generator', () => {
       // Single step operations might not have stepBeadHighlights or have them all in step 0
       if (instruction.stepBeadHighlights) {
         const stepBeads = instruction.stepBeadHighlights
-        expect(stepBeads.every(b => b.stepIndex === 0)).toBe(true)
+        expect(stepBeads.every((b) => b.stepIndex === 0)).toBe(true)
       }
     })
 
@@ -881,7 +912,7 @@ describe('Automatic Abacus Instruction Generator', () => {
       const stepBeads = instruction.stepBeadHighlights!
 
       // Step 0: Add 1 earth bead to tens place (highest place value first)
-      const step0Beads = stepBeads.filter(b => b.stepIndex === 0)
+      const step0Beads = stepBeads.filter((b) => b.stepIndex === 0)
       expect(step0Beads).toHaveLength(1)
       expect(step0Beads[0]).toEqual({
         placeValue: 1, // tens place
@@ -889,22 +920,22 @@ describe('Automatic Abacus Instruction Generator', () => {
         position: 0,
         stepIndex: 0,
         direction: 'activate',
-        order: 0
+        order: 0,
       })
 
       // Step 1: Add heaven bead to ones place (addition for ones place)
-      const step1Beads = stepBeads.filter(b => b.stepIndex === 1)
+      const step1Beads = stepBeads.filter((b) => b.stepIndex === 1)
       expect(step1Beads).toHaveLength(1)
       expect(step1Beads[0]).toEqual({
         placeValue: 0, // ones place
         beadType: 'heaven',
         stepIndex: 1,
         direction: 'activate',
-        order: 1
+        order: 1,
       })
 
       // Step 2: Remove 1 earth bead from ones place (subtraction for ones place)
-      const step2Beads = stepBeads.filter(b => b.stepIndex === 2)
+      const step2Beads = stepBeads.filter((b) => b.stepIndex === 2)
       expect(step2Beads).toHaveLength(1)
       expect(step2Beads[0]).toEqual({
         placeValue: 0, // ones place
@@ -912,7 +943,7 @@ describe('Automatic Abacus Instruction Generator', () => {
         position: 2, // position 2 (3rd earth bead)
         stepIndex: 2,
         direction: 'deactivate',
-        order: 2
+        order: 2,
       })
 
       // Verify pedagogical ordering: highest place value additions first, then subtractions
@@ -925,7 +956,9 @@ describe('Automatic Abacus Instruction Generator', () => {
       expect(instruction.multiStepInstructions![0]).toContain('earth bead 1 in the tens column')
       expect(instruction.multiStepInstructions![1]).toContain('heaven bead in the ones column')
       // FIXED: Now consolidated - shows "earth bead 1" instead of individual bead references
-      expect(instruction.multiStepInstructions![2]).toContain('earth bead 1 in the ones column to remove')
+      expect(instruction.multiStepInstructions![2]).toContain(
+        'earth bead 1 in the ones column to remove'
+      )
     })
 
     // Test pedagogical ordering algorithm with various complex cases
@@ -938,13 +971,13 @@ describe('Automatic Abacus Instruction Generator', () => {
 
         // Verify steps are ordered from highest to lowest place value
         const stepBeads = instruction.stepBeadHighlights!
-        const additionSteps = stepBeads.filter(b => b.direction === 'activate')
-        const subtractionSteps = stepBeads.filter(b => b.direction === 'deactivate')
+        const additionSteps = stepBeads.filter((b) => b.direction === 'activate')
+        const subtractionSteps = stepBeads.filter((b) => b.direction === 'deactivate')
 
         // All additions should come before subtractions within the same place value
         if (additionSteps.length > 0 && subtractionSteps.length > 0) {
-          const lastAdditionStep = Math.max(...additionSteps.map(b => b.stepIndex))
-          const firstSubtractionStep = Math.min(...subtractionSteps.map(b => b.stepIndex))
+          const lastAdditionStep = Math.max(...additionSteps.map((b) => b.stepIndex))
+          const firstSubtractionStep = Math.min(...subtractionSteps.map((b) => b.stepIndex))
           expect(lastAdditionStep).toBeLessThanOrEqual(firstSubtractionStep)
         }
       })
@@ -958,17 +991,19 @@ describe('Automatic Abacus Instruction Generator', () => {
         const stepBeads = instruction.stepBeadHighlights!
 
         // Should have steps for hundreds, tens, and ones places
-        const hundredsBeads = stepBeads.filter(b => b.placeValue === 2)
-        const tensBeads = stepBeads.filter(b => b.placeValue === 1)
-        const onesBeads = stepBeads.filter(b => b.placeValue === 0)
+        const hundredsBeads = stepBeads.filter((b) => b.placeValue === 2)
+        const tensBeads = stepBeads.filter((b) => b.placeValue === 1)
+        const onesBeads = stepBeads.filter((b) => b.placeValue === 0)
 
         expect(hundredsBeads.length).toBeGreaterThan(0)
         expect(tensBeads.length + onesBeads.length).toBeGreaterThan(0)
 
         // Hundreds place operations should come first
         if (hundredsBeads.length > 0 && (tensBeads.length > 0 || onesBeads.length > 0)) {
-          const maxHundredsStep = Math.max(...hundredsBeads.map(b => b.stepIndex))
-          const minLowerPlaceStep = Math.min(...[...tensBeads, ...onesBeads].map(b => b.stepIndex))
+          const maxHundredsStep = Math.max(...hundredsBeads.map((b) => b.stepIndex))
+          const minLowerPlaceStep = Math.min(
+            ...[...tensBeads, ...onesBeads].map((b) => b.stepIndex)
+          )
           expect(maxHundredsStep).toBeLessThan(minLowerPlaceStep)
         }
       })
@@ -1012,7 +1047,7 @@ describe('Automatic Abacus Instruction Generator', () => {
 
       // Test systematic variations to ensure generic algorithm
       it('should handle all "X + 14" patterns systematically', () => {
-        const failedCases: Array<{start: number, target: number, error: string}> = []
+        const failedCases: Array<{ start: number; target: number; error: string }> = []
 
         for (let start = 0; start <= 9; start++) {
           const target = start + 14
@@ -1026,17 +1061,19 @@ describe('Automatic Abacus Instruction Generator', () => {
             // Verify pedagogical ordering if multi-step
             if (instruction.totalSteps && instruction.totalSteps > 1) {
               const stepBeads = instruction.stepBeadHighlights!
-              const placeValues = [...new Set(stepBeads.map(b => b.placeValue))].sort((a, b) => b - a)
+              const placeValues = [...new Set(stepBeads.map((b) => b.placeValue))].sort(
+                (a, b) => b - a
+              )
 
               // For each place value, additions should come before subtractions
-              placeValues.forEach(place => {
-                const placeBeads = stepBeads.filter(b => b.placeValue === place)
-                const additions = placeBeads.filter(b => b.direction === 'activate')
-                const subtractions = placeBeads.filter(b => b.direction === 'deactivate')
+              placeValues.forEach((place) => {
+                const placeBeads = stepBeads.filter((b) => b.placeValue === place)
+                const additions = placeBeads.filter((b) => b.direction === 'activate')
+                const subtractions = placeBeads.filter((b) => b.direction === 'deactivate')
 
                 if (additions.length > 0 && subtractions.length > 0) {
-                  const lastAddition = Math.max(...additions.map(b => b.stepIndex))
-                  const firstSubtraction = Math.min(...subtractions.map(b => b.stepIndex))
+                  const lastAddition = Math.max(...additions.map((b) => b.stepIndex))
+                  const firstSubtraction = Math.min(...subtractions.map((b) => b.stepIndex))
                   expect(lastAddition).toBeLessThanOrEqual(firstSubtraction)
                 }
               })
@@ -1045,7 +1082,7 @@ describe('Automatic Abacus Instruction Generator', () => {
             failedCases.push({
               start,
               target,
-              error: `Exception: ${error instanceof Error ? error.message : String(error)}`
+              error: `Exception: ${error instanceof Error ? error.message : String(error)}`,
             })
           }
         }
@@ -1057,7 +1094,7 @@ describe('Automatic Abacus Instruction Generator', () => {
       })
 
       it('should handle all "3 + Y" patterns systematically', () => {
-        const failedCases: Array<{start: number, target: number, error: string}> = []
+        const failedCases: Array<{ start: number; target: number; error: string }> = []
 
         for (let addAmount = 1; addAmount <= 20; addAmount++) {
           const start = 3
@@ -1072,7 +1109,7 @@ describe('Automatic Abacus Instruction Generator', () => {
             failedCases.push({
               start,
               target,
-              error: `Exception: ${error instanceof Error ? error.message : String(error)}`
+              error: `Exception: ${error instanceof Error ? error.message : String(error)}`,
             })
           }
         }
@@ -1095,7 +1132,7 @@ describe('Automatic Abacus Instruction Generator', () => {
           { start: 4, target: 18 },
           { start: 2, target: 16 },
           { start: 5, target: 19 },
-          { start: 13, target: 17 }
+          { start: 13, target: 17 },
         ]
 
         testCases.forEach(({ start, target }) => {
@@ -1112,9 +1149,18 @@ describe('Automatic Abacus Instruction Generator', () => {
       it('should generate identical results for equivalent problems', () => {
         // Problems with the same structure should have same step count
         const equivalentPairs = [
-          [{ start: 3, target: 17 }, { start: 13, target: 27 }], // Both "3 + 14" in different decades
-          [{ start: 2, target: 16 }, { start: 12, target: 26 }], // Both "2 + 14" in different decades
-          [{ start: 4, target: 18 }, { start: 14, target: 28 }], // Both "4 + 14" in different decades
+          [
+            { start: 3, target: 17 },
+            { start: 13, target: 27 },
+          ], // Both "3 + 14" in different decades
+          [
+            { start: 2, target: 16 },
+            { start: 12, target: 26 },
+          ], // Both "2 + 14" in different decades
+          [
+            { start: 4, target: 18 },
+            { start: 14, target: 28 },
+          ], // Both "4 + 14" in different decades
         ]
 
         equivalentPairs.forEach(([case1, case2]) => {
@@ -1125,7 +1171,9 @@ describe('Automatic Abacus Instruction Generator', () => {
           expect(instruction1.totalSteps).toBe(instruction2.totalSteps)
 
           // Should have same number of step bead highlights
-          expect(instruction1.stepBeadHighlights?.length).toBe(instruction2.stepBeadHighlights?.length)
+          expect(instruction1.stepBeadHighlights?.length).toBe(
+            instruction2.stepBeadHighlights?.length
+          )
         })
       })
     })
@@ -1138,17 +1186,22 @@ describe('Automatic Abacus Instruction Generator', () => {
       // Calculate expected states using the same logic as tutorial editor
       const expectedStates: number[] = []
       if (instruction.stepBeadHighlights && instruction.multiStepInstructions) {
-        const stepIndices = [...new Set(instruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
+        const stepIndices = [
+          ...new Set(instruction.stepBeadHighlights.map((bead) => bead.stepIndex)),
+        ].sort()
         let currentValue = 3
 
-        stepIndices.forEach((stepIndex, i) => {
-          const stepBeads = instruction.stepBeadHighlights!.filter(bead => bead.stepIndex === stepIndex)
+        stepIndices.forEach((stepIndex, _i) => {
+          const stepBeads = instruction.stepBeadHighlights!.filter(
+            (bead) => bead.stepIndex === stepIndex
+          )
           let valueChange = 0
 
-          stepBeads.forEach(bead => {
-            const placeMultiplier = Math.pow(10, bead.placeValue)
+          stepBeads.forEach((bead) => {
+            const placeMultiplier = 10 ** bead.placeValue
             if (bead.beadType === 'heaven') {
-              valueChange += bead.direction === 'activate' ? (5 * placeMultiplier) : -(5 * placeMultiplier)
+              valueChange +=
+                bead.direction === 'activate' ? 5 * placeMultiplier : -(5 * placeMultiplier)
             } else {
               valueChange += bead.direction === 'activate' ? placeMultiplier : -placeMultiplier
             }
@@ -1180,17 +1233,22 @@ describe('Automatic Abacus Instruction Generator', () => {
       // Calculate expected states
       const expectedStates: number[] = []
       if (instruction.stepBeadHighlights && instruction.multiStepInstructions) {
-        const stepIndices = [...new Set(instruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
+        const stepIndices = [
+          ...new Set(instruction.stepBeadHighlights.map((bead) => bead.stepIndex)),
+        ].sort()
         let currentValue = 99
 
-        stepIndices.forEach((stepIndex, i) => {
-          const stepBeads = instruction.stepBeadHighlights!.filter(bead => bead.stepIndex === stepIndex)
+        stepIndices.forEach((stepIndex, _i) => {
+          const stepBeads = instruction.stepBeadHighlights!.filter(
+            (bead) => bead.stepIndex === stepIndex
+          )
           let valueChange = 0
 
-          stepBeads.forEach(bead => {
-            const placeMultiplier = Math.pow(10, bead.placeValue)
+          stepBeads.forEach((bead) => {
+            const placeMultiplier = 10 ** bead.placeValue
             if (bead.beadType === 'heaven') {
-              valueChange += bead.direction === 'activate' ? (5 * placeMultiplier) : -(5 * placeMultiplier)
+              valueChange +=
+                bead.direction === 'activate' ? 5 * placeMultiplier : -(5 * placeMultiplier)
             } else {
               valueChange += bead.direction === 'activate' ? placeMultiplier : -placeMultiplier
             }
@@ -1222,17 +1280,22 @@ describe('Automatic Abacus Instruction Generator', () => {
 
       const expectedStates: number[] = []
       if (instruction.stepBeadHighlights && instruction.multiStepInstructions) {
-        const stepIndices = [...new Set(instruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
+        const stepIndices = [
+          ...new Set(instruction.stepBeadHighlights.map((bead) => bead.stepIndex)),
+        ].sort()
         let currentValue = 27
 
-        stepIndices.forEach((stepIndex, i) => {
-          const stepBeads = instruction.stepBeadHighlights!.filter(bead => bead.stepIndex === stepIndex)
+        stepIndices.forEach((stepIndex, _i) => {
+          const stepBeads = instruction.stepBeadHighlights!.filter(
+            (bead) => bead.stepIndex === stepIndex
+          )
           let valueChange = 0
 
-          stepBeads.forEach(bead => {
-            const placeMultiplier = Math.pow(10, bead.placeValue)
+          stepBeads.forEach((bead) => {
+            const placeMultiplier = 10 ** bead.placeValue
             if (bead.beadType === 'heaven') {
-              valueChange += bead.direction === 'activate' ? (5 * placeMultiplier) : -(5 * placeMultiplier)
+              valueChange +=
+                bead.direction === 'activate' ? 5 * placeMultiplier : -(5 * placeMultiplier)
             } else {
               valueChange += bead.direction === 'activate' ? placeMultiplier : -placeMultiplier
             }
@@ -1264,20 +1327,26 @@ describe('Automatic Abacus Instruction Generator', () => {
 
       // Verify instruction consolidation
       expect(instruction.multiStepInstructions).toBeDefined()
-      expect(instruction.multiStepInstructions![1]).toContain('Add 3 to ones column (3 earth beads)')
+      expect(instruction.multiStepInstructions![1]).toContain(
+        'Add 3 to ones column (3 earth beads)'
+      )
 
       // Calculate expected states step by step like tutorial editor does
       const expectedStates: number[] = []
       if (instruction.stepBeadHighlights && instruction.multiStepInstructions) {
-        const stepIndices = [...new Set(instruction.stepBeadHighlights.map(bead => bead.stepIndex))].sort()
+        const stepIndices = [
+          ...new Set(instruction.stepBeadHighlights.map((bead) => bead.stepIndex)),
+        ].sort()
         let currentValue = 56
 
-        stepIndices.forEach((stepIndex, i) => {
-          const stepBeads = instruction.stepBeadHighlights!.filter(bead => bead.stepIndex === stepIndex)
+        stepIndices.forEach((stepIndex, _i) => {
+          const stepBeads = instruction.stepBeadHighlights!.filter(
+            (bead) => bead.stepIndex === stepIndex
+          )
           let valueChange = 0
 
-          stepBeads.forEach(bead => {
-            const multiplier = Math.pow(10, bead.placeValue)
+          stepBeads.forEach((bead) => {
+            const multiplier = 10 ** bead.placeValue
             const value = bead.beadType === 'heaven' ? 5 * multiplier : multiplier
             const change = bead.direction === 'activate' ? value : -value
             valueChange += change

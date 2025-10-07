@@ -3,10 +3,10 @@
  * Handles database operations for arcade rooms
  */
 
+import { and, desc, eq, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { eq, and, or, lt, desc } from 'drizzle-orm'
-import { type GameName } from './validation'
 import { generateRoomCode } from './room-code'
+import type { GameName } from './validation'
 
 export interface CreateRoomOptions {
   name: string
@@ -74,7 +74,7 @@ export async function createRoom(options: CreateRoomOptions): Promise<schema.Arc
  */
 export async function getRoomById(roomId: string): Promise<schema.ArcadeRoom | undefined> {
   return await db.query.arcadeRooms.findFirst({
-    where: eq(schema.arcadeRooms.id, roomId)
+    where: eq(schema.arcadeRooms.id, roomId),
   })
 }
 
@@ -83,7 +83,7 @@ export async function getRoomById(roomId: string): Promise<schema.ArcadeRoom | u
  */
 export async function getRoomByCode(code: string): Promise<schema.ArcadeRoom | undefined> {
   return await db.query.arcadeRooms.findFirst({
-    where: eq(schema.arcadeRooms.code, code.toUpperCase())
+    where: eq(schema.arcadeRooms.code, code.toUpperCase()),
   })
 }
 
@@ -146,10 +146,7 @@ export async function listActiveRooms(gameName?: GameName): Promise<schema.Arcad
   // Only return non-locked rooms in lobby or playing status
   whereConditions.push(
     eq(schema.arcadeRooms.isLocked, false),
-    or(
-      eq(schema.arcadeRooms.status, 'lobby'),
-      eq(schema.arcadeRooms.status, 'playing')
-    )
+    or(eq(schema.arcadeRooms.status, 'lobby'), eq(schema.arcadeRooms.status, 'playing'))
   )
 
   return await db.query.arcadeRooms.findMany({
@@ -168,19 +165,17 @@ export async function cleanupExpiredRooms(): Promise<number> {
 
   // Find rooms where lastActivity + ttlMinutes < now
   const expiredRooms = await db.query.arcadeRooms.findMany({
-    columns: { id: true, ttlMinutes: true, lastActivity: true }
+    columns: { id: true, ttlMinutes: true, lastActivity: true },
   })
 
-  const toDelete = expiredRooms.filter(room => {
+  const toDelete = expiredRooms.filter((room) => {
     const expiresAt = new Date(room.lastActivity.getTime() + room.ttlMinutes * 60 * 1000)
     return expiresAt < now
   })
 
   if (toDelete.length > 0) {
-    const ids = toDelete.map(r => r.id)
-    await db.delete(schema.arcadeRooms).where(
-      or(...ids.map(id => eq(schema.arcadeRooms.id, id)))
-    )
+    const ids = toDelete.map((r) => r.id)
+    await db.delete(schema.arcadeRooms).where(or(...ids.map((id) => eq(schema.arcadeRooms.id, id))))
     console.log(`[Room Manager] Cleaned up ${toDelete.length} expired rooms`)
   }
 

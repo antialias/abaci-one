@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { generateUnifiedInstructionSequence } from '../unifiedStepGenerator'
 
 /**
@@ -14,13 +14,13 @@ function createStableSnapshot(result: ReturnType<typeof generateUnifiedInstructi
     fullDecomposition: result.fullDecomposition,
     totalSteps: result.totalSteps,
     isMeaningfulDecomposition: result.isMeaningfulDecomposition,
-    steps: result.steps.map(s => ({
+    steps: result.steps.map((s) => ({
       term: s.mathematicalTerm,
       english: s.englishInstruction,
       termPosition: s.termPosition,
       expectedValue: s.expectedValue,
-      isValid: s.isValid
-    }))
+      isValid: s.isValid,
+    })),
   }
 }
 
@@ -32,7 +32,10 @@ function assertTermMapping(seq: ReturnType<typeof generateUnifiedInstructionSequ
     const normalized = step.mathematicalTerm.startsWith('-')
       ? step.mathematicalTerm.slice(1)
       : step.mathematicalTerm
-    expect(slice, `Step ${i} term "${step.mathematicalTerm}" should map to "${normalized}" but got "${slice}"`).toBe(normalized)
+    expect(
+      slice,
+      `Step ${i} term "${step.mathematicalTerm}" should map to "${normalized}" but got "${slice}"`
+    ).toBe(normalized)
   })
 }
 
@@ -43,7 +46,10 @@ function assertArithmeticInvariant(seq: ReturnType<typeof generateUnifiedInstruc
     const term = step.mathematicalTerm
     const delta = term.startsWith('-') ? -parseInt(term.slice(1), 10) : parseInt(term, 10)
     currentValue += delta
-    expect(currentValue, `Step ${i}: ${seq.startValue} + terms should equal ${step.expectedValue}`).toBe(step.expectedValue)
+    expect(
+      currentValue,
+      `Step ${i}: ${seq.startValue} + terms should equal ${step.expectedValue}`
+    ).toBe(step.expectedValue)
   })
   expect(currentValue).toBe(seq.targetValue)
 }
@@ -55,20 +61,26 @@ function assertComplementShape(seq: ReturnType<typeof generateUnifiedInstruction
 
   // Should contain proper parenthesized complements
   const complementMatches = middlePart?.match(/\((\d+) - (\d+(?:\s-\s\d+)*)\)/g) || []
-  complementMatches.forEach(match => {
+  complementMatches.forEach((match) => {
     // Each complement should start with a power of 10
     const [, positive] = match.match(/\((\d+)/) || []
     const num = parseInt(positive, 10)
-    expect(num, `Complement positive part "${positive}" should be power of 10`).toSatisfy((n: number) => {
-      if (n < 10) return n === 5 // Five-complements use 5
-      return /^10+$/.test(n.toString()) // Ten-complements use 10, 100, 1000, etc.
-    })
+    expect(num, `Complement positive part "${positive}" should be power of 10`).toSatisfy(
+      (n: number) => {
+        if (n < 10) return n === 5 // Five-complements use 5
+        return /^10+$/.test(n.toString()) // Ten-complements use 10, 100, 1000, etc.
+      }
+    )
   })
 }
 
 // Helper to validate meaningfulness
-function assertMeaningfulness(seq: ReturnType<typeof generateUnifiedInstructionSequence>, expectedMeaningful: boolean) {
-  expect(seq.isMeaningfulDecomposition,
+function assertMeaningfulness(
+  seq: ReturnType<typeof generateUnifiedInstructionSequence>,
+  expectedMeaningful: boolean
+) {
+  expect(
+    seq.isMeaningfulDecomposition,
     `${seq.startValue}→${seq.targetValue}: "${seq.fullDecomposition}" meaningfulness`
   ).toBe(expectedMeaningful)
 
@@ -78,14 +90,13 @@ function assertMeaningfulness(seq: ReturnType<typeof generateUnifiedInstructionS
 }
 
 describe('Pedagogical Algorithm - Core Validation', () => {
-
   describe('Term-Position Mapping Invariants', () => {
     const criticalCases = [
       [3456, 3500], // Complex complement: "3456 + 44 = 3456 + 40 + (100 - 90 - 6) = 3500"
-      [3, 17],      // Mixed segments: "3 + 14 = 3 + 10 + (5 - 1) = 17"
+      [3, 17], // Mixed segments: "3 + 14 = 3 + 10 + (5 - 1) = 17"
       [9999, 10007], // Multi-cascade: "9999 + 8 = 9999 + (10000 - 1000 - 100 - 10 - 1) = 10007"
-      [4, 7],       // Simple five-complement: "4 + 3 = 4 + (5 - 2) = 7"
-      [7, 15],      // Simple ten-complement: "7 + 8 = 7 + (10 - 2) = 15"
+      [4, 7], // Simple five-complement: "4 + 3 = 4 + (5 - 2) = 7"
+      [7, 15], // Simple ten-complement: "7 + 8 = 7 + (10 - 2) = 15"
     ]
 
     criticalCases.forEach(([start, target]) => {
@@ -101,8 +112,8 @@ describe('Pedagogical Algorithm - Core Validation', () => {
   describe('Meaningfulness Detection', () => {
     it('detects non-meaningful decompositions', () => {
       const nonMeaningful = [
-        [0, 0],   // Zero case
-        [5, 5],   // No change
+        [0, 0], // Zero case
+        [5, 5], // No change
         [123, 123], // No change multi-digit
       ]
 
@@ -115,17 +126,20 @@ describe('Pedagogical Algorithm - Core Validation', () => {
 
     it('detects meaningful decompositions with explicit parentheses check', () => {
       const meaningful = [
-        [4, 7],       // Five-complement: (5 - 2)
-        [7, 15],      // Ten-complement: (10 - 2)
-        [99, 107],    // Cascading: (100 - 90 - 2)
-        [3, 6],       // Five-complement: (5 - 2)
-        [8, 15],      // Ten-complement: (10 - 3)
+        [4, 7], // Five-complement: (5 - 2)
+        [7, 15], // Ten-complement: (10 - 2)
+        [99, 107], // Cascading: (100 - 90 - 2)
+        [3, 6], // Five-complement: (5 - 2)
+        [8, 15], // Ten-complement: (10 - 3)
       ]
 
       meaningful.forEach(([start, target]) => {
         const result = generateUnifiedInstructionSequence(start, target)
         assertMeaningfulness(result, true)
-        expect(result.fullDecomposition, `${start}→${target} should have parentheses for complement`).toMatch(/\(/)
+        expect(
+          result.fullDecomposition,
+          `${start}→${target} should have parentheses for complement`
+        ).toMatch(/\(/)
         expect(result.isMeaningfulDecomposition).toBe(true)
       })
     })
@@ -179,9 +193,9 @@ describe('Pedagogical Algorithm - Core Validation', () => {
 
   describe('Edge Cases & Boundary Conditions', () => {
     const edgeCases = [
-      [0, 0],     // Zero operation
-      [9, 10],    // Place boundary
-      [99, 100],  // Double place boundary
+      [0, 0], // Zero operation
+      [9, 10], // Place boundary
+      [99, 100], // Double place boundary
       [999, 1000], // Triple place boundary
     ]
 
@@ -208,8 +222,8 @@ describe('Pedagogical Algorithm - Core Validation', () => {
     it('validates term substring mapping precision', () => {
       const cases = [
         [3456, 3500], // Complex complement: "3456 + 44 = 3456 + 40 + (100 - 90 - 6) = 3500"
-        [3, 17],      // Mixed: "3 + 14 = 3 + 10 + (5 - 1) = 17"
-        [9999, 10007] // Multi-cascade: "9999 + 8 = 9999 + (10000 - 9000 - 900 - 90 - 2) = 10007"
+        [3, 17], // Mixed: "3 + 14 = 3 + 10 + (5 - 1) = 17"
+        [9999, 10007], // Multi-cascade: "9999 + 8 = 9999 + (10000 - 9000 - 900 - 90 - 2) = 10007"
       ]
 
       cases.forEach(([start, target]) => {
@@ -227,7 +241,9 @@ describe('Pedagogical Algorithm - Core Validation', () => {
         const delta = term.startsWith('-') ? -parseInt(term.slice(1), 10) : parseInt(term, 10)
         runningValue += delta
 
-        expect(runningValue, `Step ${i + 1}: After applying "${term}" to running total`).toBe(step.expectedValue)
+        expect(runningValue, `Step ${i + 1}: After applying "${term}" to running total`).toBe(
+          step.expectedValue
+        )
       })
 
       expect(runningValue).toBe(result.targetValue)
@@ -235,10 +251,10 @@ describe('Pedagogical Algorithm - Core Validation', () => {
 
     it('validates complement shape contracts', () => {
       const complementCases = [
-        [4, 7],   // (5 - 2)
-        [7, 15],  // (10 - 2)
+        [4, 7], // (5 - 2)
+        [7, 15], // (10 - 2)
         [99, 107], // (100 - 90 - 2)
-        [9999, 10007] // (10000 - 9000 - 900 - 90 - 2)
+        [9999, 10007], // (10000 - 9000 - 900 - 90 - 2)
       ]
 
       complementCases.forEach(([start, target]) => {
@@ -248,16 +264,21 @@ describe('Pedagogical Algorithm - Core Validation', () => {
         // Extract all complement patterns
         const complementMatches = decomp.match(/\((\d+) - ([\d\s-]+)\)/g) || []
 
-        complementMatches.forEach(match => {
+        complementMatches.forEach((match) => {
           // Each complement should start with power of 10 or 5
           const [, positive] = match.match(/\((\d+)/) || []
           const num = parseInt(positive, 10)
 
           const isValidStart = num === 5 || (num >= 10 && /^10+$/.test(num.toString()))
-          expect(isValidStart, `Complement "${match}" should start with 5 or power of 10, got ${num}`).toBe(true)
+          expect(
+            isValidStart,
+            `Complement "${match}" should start with 5 or power of 10, got ${num}`
+          ).toBe(true)
 
           // All subsequent parts should be subtraction
-          expect(match, 'Complement should contain only subtraction after first term').toMatch(/\(\d+ - [\d\s-]+\)/)
+          expect(match, 'Complement should contain only subtraction after first term').toMatch(
+            /\(\d+ - [\d\s-]+\)/
+          )
         })
       })
     })
@@ -283,9 +304,20 @@ describe('Pedagogical Algorithm - Core Validation', () => {
     // Fast invariant-only validation for broad coverage
     const stressCases = [
       // Various differences from different starting points
-      [0, 1], [5, 6], [9, 10], [15, 16], [99, 100],
-      [0, 5], [1, 9], [12, 34], [23, 47], [34, 78],
-      [89, 97], [189, 197], [1234, 1279], [9999, 10017],
+      [0, 1],
+      [5, 6],
+      [9, 10],
+      [15, 16],
+      [99, 100],
+      [0, 5],
+      [1, 9],
+      [12, 34],
+      [23, 47],
+      [34, 78],
+      [89, 97],
+      [189, 197],
+      [1234, 1279],
+      [9999, 10017],
     ]
 
     stressCases.forEach(([start, target]) => {
@@ -302,8 +334,10 @@ describe('Pedagogical Algorithm - Core Validation', () => {
         }
 
         // All steps should be valid
-        result.steps.forEach(step => {
-          expect(step.isValid, `Step with term "${step.mathematicalTerm}" should be valid`).toBe(true)
+        result.steps.forEach((step) => {
+          expect(step.isValid, `Step with term "${step.mathematicalTerm}" should be valid`).toBe(
+            true
+          )
         })
       })
     })
@@ -311,10 +345,10 @@ describe('Pedagogical Algorithm - Core Validation', () => {
 
   describe('Pedagogical Segments - Basic Validation', () => {
     const segmentTestCases = [
-      [4, 7],   // Five-complement
-      [7, 15],  // Ten-complement
-      [0, 3],   // Direct entry
-      [99, 107] // Cascading
+      [4, 7], // Five-complement
+      [7, 15], // Ten-complement
+      [0, 3], // Direct entry
+      [99, 107], // Cascading
     ]
 
     segmentTestCases.forEach(([start, target]) => {
@@ -341,8 +375,10 @@ describe('Pedagogical Algorithm - Core Validation', () => {
         })
 
         // Segments should cover all operations
-        const allStepIndices = result.segments.flatMap(s => s.stepIndices)
-        expect(allStepIndices.length, 'Segments should cover all steps').toEqual(result.steps.length)
+        const allStepIndices = result.segments.flatMap((s) => s.stepIndices)
+        expect(allStepIndices.length, 'Segments should cover all steps').toEqual(
+          result.steps.length
+        )
       })
     })
 
@@ -364,13 +400,23 @@ describe('Pedagogical Algorithm - Core Validation', () => {
 
       result.segments.forEach((segment, i) => {
         const { termRange } = segment
-        expect(termRange.startIndex, `Segment ${i} should have valid start index`).toBeGreaterThanOrEqual(0)
-        expect(termRange.endIndex, `Segment ${i} should have valid end index`).toBeGreaterThan(termRange.startIndex)
-        expect(termRange.endIndex, `Segment ${i} end should not exceed decomposition length`).toBeLessThanOrEqual(result.fullDecomposition.length)
+        expect(
+          termRange.startIndex,
+          `Segment ${i} should have valid start index`
+        ).toBeGreaterThanOrEqual(0)
+        expect(termRange.endIndex, `Segment ${i} should have valid end index`).toBeGreaterThan(
+          termRange.startIndex
+        )
+        expect(
+          termRange.endIndex,
+          `Segment ${i} end should not exceed decomposition length`
+        ).toBeLessThanOrEqual(result.fullDecomposition.length)
 
         // The substring should not be empty
         const substring = result.fullDecomposition.slice(termRange.startIndex, termRange.endIndex)
-        expect(substring.length, `Segment ${i} should map to non-empty substring`).toBeGreaterThan(0)
+        expect(substring.length, `Segment ${i} should map to non-empty substring`).toBeGreaterThan(
+          0
+        )
       })
     })
   })
@@ -378,8 +424,8 @@ describe('Pedagogical Algorithm - Core Validation', () => {
   describe('Pedagogical Segments - Production Pedagogy & Range Tests', () => {
     it('five-complement at ones (3 + 2 = 5)', () => {
       const seq = generateUnifiedInstructionSequence(3, 5)
-      const seg = seq.segments.find(s => s.place === 0)!
-      expect(seg.plan.some(p => p.rule === 'FiveComplement')).toBe(true)
+      const seg = seq.segments.find((s) => s.place === 0)!
+      expect(seg.plan.some((p) => p.rule === 'FiveComplement')).toBe(true)
 
       const txt = seq.fullDecomposition.slice(seg.termRange.startIndex, seg.termRange.endIndex)
       expect(txt.startsWith('(') && txt.endsWith(')')).toBe(true)
@@ -387,39 +433,45 @@ describe('Pedagogical Algorithm - Core Validation', () => {
 
     it('ten-complement without cascade (19 + 1 = 20)', () => {
       const seq = generateUnifiedInstructionSequence(19, 20)
-      const seg = seq.segments.find(s => s.place === 0)!
-      expect(seg.plan.some(p => p.rule === 'TenComplement')).toBe(true)
-      expect(seg.plan.some(p => p.rule === 'Cascade')).toBe(false)
+      const seg = seq.segments.find((s) => s.place === 0)!
+      expect(seg.plan.some((p) => p.rule === 'TenComplement')).toBe(true)
+      expect(seg.plan.some((p) => p.rule === 'Cascade')).toBe(false)
     })
 
     it('ten-complement with cascade (199 + 1 = 200)', () => {
       const seq = generateUnifiedInstructionSequence(199, 200)
-      const seg = seq.segments.find(s => s.place === 0)!
-      expect(seg.plan.some(p => p.rule === 'Cascade')).toBe(true)
+      const seg = seq.segments.find((s) => s.place === 0)!
+      expect(seg.plan.some((p) => p.rule === 'Cascade')).toBe(true)
     })
 
     it('segment range covers only its group; steps lie inside range', () => {
       const seq = generateUnifiedInstructionSequence(3478, 3500) // +22
-      const tensSeg = seq.segments.find(s => s.place === 1)!
-      const segText = seq.fullDecomposition.slice(tensSeg.termRange.startIndex, tensSeg.termRange.endIndex)
+      const tensSeg = seq.segments.find((s) => s.place === 1)!
+      const segText = seq.fullDecomposition.slice(
+        tensSeg.termRange.startIndex,
+        tensSeg.termRange.endIndex
+      )
       expect(segText.includes('20')).toBe(true)
 
-      tensSeg.stepIndices.forEach(i => {
+      tensSeg.stepIndices.forEach((i) => {
         const { startIndex, endIndex } = seq.steps[i].termPosition
         expect(startIndex >= tensSeg.termRange.startIndex).toBe(true)
-        expect(endIndex   <= tensSeg.termRange.endIndex).toBe(true)
+        expect(endIndex <= tensSeg.termRange.endIndex).toBe(true)
       })
     })
 
     it('invariant: all steps with segmentId are included in their segments', () => {
       const seq = generateUnifiedInstructionSequence(9999, 10007)
-      const segMap = new Map(seq.segments.map(s => [s.id, s]))
+      const segMap = new Map(seq.segments.map((s) => [s.id, s]))
 
       seq.steps.forEach((step, i) => {
         if (step.segmentId) {
           const segment = segMap.get(step.segmentId)
           expect(segment, `Step ${i} references unknown segment ${step.segmentId}`).toBeDefined()
-          expect(segment!.stepIndices.includes(i), `Step ${i} not included in segment ${step.segmentId}`).toBe(true)
+          expect(
+            segment!.stepIndices.includes(i),
+            `Step ${i} not included in segment ${step.segmentId}`
+          ).toBe(true)
         }
       })
     })
@@ -427,11 +479,20 @@ describe('Pedagogical Algorithm - Core Validation', () => {
     it('invariant: segment ranges are non-empty and well-formed', () => {
       const seq = generateUnifiedInstructionSequence(123, 456)
 
-      seq.segments.forEach(seg => {
+      seq.segments.forEach((seg) => {
         expect(seg.stepIndices.length, `Segment ${seg.id} should have steps`).toBeGreaterThan(0)
-        expect(seg.termRange.endIndex, `Segment ${seg.id} should have non-empty range`).toBeGreaterThan(seg.termRange.startIndex)
-        expect(seg.termRange.startIndex, `Segment ${seg.id} range should be valid`).toBeGreaterThanOrEqual(0)
-        expect(seg.termRange.endIndex, `Segment ${seg.id} range should not exceed decomposition`).toBeLessThanOrEqual(seq.fullDecomposition.length)
+        expect(
+          seg.termRange.endIndex,
+          `Segment ${seg.id} should have non-empty range`
+        ).toBeGreaterThan(seg.termRange.startIndex)
+        expect(
+          seg.termRange.startIndex,
+          `Segment ${seg.id} range should be valid`
+        ).toBeGreaterThanOrEqual(0)
+        expect(
+          seg.termRange.endIndex,
+          `Segment ${seg.id} range should not exceed decomposition`
+        ).toBeLessThanOrEqual(seq.fullDecomposition.length)
       })
     })
   })

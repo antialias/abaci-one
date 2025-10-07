@@ -3,8 +3,8 @@
  * Maps game names to their validators
  */
 
-import type { GameName, GameValidator } from './types'
 import { matchingGameValidator } from './MatchingGameValidator'
+import type { GameName, GameValidator } from './types'
 
 const validators = new Map<GameName, GameValidator>([
   ['matching', matchingGameValidator],
@@ -19,5 +19,5 @@ export function getValidator(gameName: GameName): GameValidator {
   return validator
 }
 
-export * from './types'
 export { matchingGameValidator } from './MatchingGameValidator'
+export * from './types'

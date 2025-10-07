@@ -1,7 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, test, expect, beforeEach, vi } from 'vitest'
-import { EmojiPicker } from '../EmojiPicker'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { PLAYER_EMOJIS } from '../../../../../constants/playerEmojis'
+import { EmojiPicker } from '../EmojiPicker'
 
 // Mock the emoji keywords function for testing
 vi.mock('emojibase-data/en/data.json', () => ({
@@ -10,27 +10,27 @@ vi.mock('emojibase-data/en/data.json', () => ({
       emoji: '🐱',
       label: 'cat face',
       tags: ['cat', 'animal', 'pet', 'cute'],
-      emoticon: ':)'
+      emoticon: ':)',
     },
     {
       emoji: '🐯',
       label: 'tiger face',
       tags: ['tiger', 'animal', 'big cat', 'wild'],
-      emoticon: null
+      emoticon: null,
     },
     {
       emoji: '🤩',
       label: 'star-struck',
       tags: ['face', 'happy', 'excited', 'star'],
-      emoticon: null
+      emoticon: null,
     },
     {
       emoji: '🎭',
       label: 'performing arts',
       tags: ['theater', 'performance', 'drama', 'arts'],
-      emoticon: null
-    }
-  ]
+      emoticon: null,
+    },
+  ],
 }))
 
 describe('EmojiPicker Search Functionality', () => {
@@ -38,7 +38,7 @@ describe('EmojiPicker Search Functionality', () => {
     currentEmoji: '😀',
     onEmojiSelect: vi.fn(),
     onClose: vi.fn(),
-    playerNumber: 1 as const
+    playerNumber: 1 as const,
   }
 
   beforeEach(() => {
@@ -52,12 +52,20 @@ describe('EmojiPicker Search Functionality', () => {
     expect(screen.getByText('📝 All Available Characters')).toBeInTheDocument()
 
     // Should show emoji count
-    expect(screen.getByText(new RegExp(`${PLAYER_EMOJIS.length} characters available`))).toBeInTheDocument()
+    expect(
+      screen.getByText(new RegExp(`${PLAYER_EMOJIS.length} characters available`))
+    ).toBeInTheDocument()
 
     // Should show emoji grid
-    const emojiButtons = screen.getAllByRole('button').filter(button =>
-      button.textContent && /[\u{1F000}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(button.textContent)
-    )
+    const emojiButtons = screen
+      .getAllByRole('button')
+      .filter(
+        (button) =>
+          button.textContent &&
+          /[\u{1F000}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(
+            button.textContent
+          )
+      )
     expect(emojiButtons.length).toBe(PLAYER_EMOJIS.length)
   })
 
@@ -74,12 +82,18 @@ describe('EmojiPicker Search Functionality', () => {
     expect(screen.getByText(/✓ \d+ found/)).toBeInTheDocument()
 
     // Should only show cat-related emojis (🐱, 🐯)
-    const emojiButtons = screen.getAllByRole('button').filter(button =>
-      button.textContent && /[\u{1F000}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(button.textContent)
-    )
+    const emojiButtons = screen
+      .getAllByRole('button')
+      .filter(
+        (button) =>
+          button.textContent &&
+          /[\u{1F000}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(
+            button.textContent
+          )
+      )
 
     // Verify only cat emojis are shown
-    const displayedEmojis = emojiButtons.map(btn => btn.textContent)
+    const displayedEmojis = emojiButtons.map((btn) => btn.textContent)
     expect(displayedEmojis).toContain('🐱')
     expect(displayedEmojis).toContain('🐯')
     expect(displayedEmojis).not.toContain('🤩')
@@ -99,9 +113,15 @@ describe('EmojiPicker Search Functionality', () => {
     expect(screen.getByText(/No emojis found for "nonexistentterm"/)).toBeInTheDocument()
 
     // Should NOT show any emoji buttons
-    const emojiButtons = screen.queryAllByRole('button').filter(button =>
-      button.textContent && /[\u{1F000}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(button.textContent)
-    )
+    const emojiButtons = screen
+      .queryAllByRole('button')
+      .filter(
+        (button) =>
+          button.textContent &&
+          /[\u{1F000}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(
+            button.textContent
+          )
+      )
     expect(emojiButtons).toHaveLength(0)
   })
 
@@ -119,12 +139,20 @@ describe('EmojiPicker Search Functionality', () => {
 
     // Should return to default view
     expect(screen.getByText('📝 All Available Characters')).toBeInTheDocument()
-    expect(screen.getByText(new RegExp(`${PLAYER_EMOJIS.length} characters available`))).toBeInTheDocument()
+    expect(
+      screen.getByText(new RegExp(`${PLAYER_EMOJIS.length} characters available`))
+    ).toBeInTheDocument()
 
     // Should show all emojis again
-    const emojiButtons = screen.getAllByRole('button').filter(button =>
-      button.textContent && /[\u{1F000}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(button.textContent)
-    )
+    const emojiButtons = screen
+      .getAllByRole('button')
+      .filter(
+        (button) =>
+          button.textContent &&
+          /[\u{1F000}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(
+            button.textContent
+          )
+      )
     expect(emojiButtons.length).toBe(PLAYER_EMOJIS.length)
   })
 

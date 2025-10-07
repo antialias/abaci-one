@@ -1,7 +1,8 @@
 'use client'
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react'
-import type { GameState, GameAction, AIRacer, DifficultyTracker, Station, Passenger } from '../lib/gameTypes'
+import type React from 'react'
+import { createContext, type ReactNode, useContext, useReducer } from 'react'
+import type { AIRacer, DifficultyTracker, GameAction, GameState, Station } from '../lib/gameTypes'
 
 const initialDifficultyTracker: DifficultyTracker = {
   pairPerformance: new Map(),
@@ -11,32 +12,32 @@ const initialDifficultyTracker: DifficultyTracker = {
   consecutiveCorrect: 0,
   consecutiveIncorrect: 0,
   learningMode: true,
-  adaptationRate: 0.1
+  adaptationRate: 0.1,
 }
 
 const initialAIRacers: AIRacer[] = [
   {
     id: 'ai-racer-1',
     position: 0,
-    speed: 0.32,  // Balanced speed for good challenge
+    speed: 0.32, // Balanced speed for good challenge
     name: 'Swift AI',
     personality: 'competitive',
     icon: '🏃‍♂️',
     lastComment: 0,
     commentCooldown: 0,
-    previousPosition: 0
+    previousPosition: 0,
   },
   {
     id: 'ai-racer-2',
     position: 0,
-    speed: 0.20,  // Balanced speed for good challenge
+    speed: 0.2, // Balanced speed for good challenge
     name: 'Math Bot',
     personality: 'analytical',
     icon: '🏃',
     lastComment: 0,
     commentCooldown: 0,
-    previousPosition: 0
-  }
+    previousPosition: 0,
+  },
 ]
 
 const initialStations: Station[] = [
@@ -45,7 +46,7 @@ const initialStations: Station[] = [
   { id: 'station-2', name: 'Hillside', position: 40, icon: '⛰️' },
   { id: 'station-3', name: 'Canyon View', position: 60, icon: '🏜️' },
   { id: 'station-4', name: 'Meadows', position: 80, icon: '🌾' },
-  { id: 'station-5', name: 'Grand Central', position: 100, icon: '🏛️' }
+  { id: 'station-5', name: 'Grand Central', position: 100, icon: '🏛️' },
 ]
 
 const initialState: GameState = {
@@ -108,7 +109,7 @@ const initialState: GameState = {
   // UI state
   showScoreModal: false,
   activeSpeechBubbles: new Map(),
-  adaptiveFeedback: null
+  adaptiveFeedback: null,
 }
 
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -131,7 +132,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'START_COUNTDOWN':
       return { ...state, gamePhase: 'countdown' }
 
-    case 'BEGIN_GAME':
+    case 'BEGIN_GAME': {
       // Generate first question when game starts
       const generateFirstQuestion = () => {
         let targetSum: number
@@ -143,19 +144,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           targetSum = Math.random() > 0.5 ? 5 : 10
         }
 
-        const newNumber = targetSum === 5
-          ? Math.floor(Math.random() * 5)
-          : Math.floor(Math.random() * 10)
+        const newNumber =
+          targetSum === 5 ? Math.floor(Math.random() * 5) : Math.floor(Math.random() * 10)
 
         // Decide once whether to show as abacus
-        const showAsAbacus = state.complementDisplay === 'abacus' ||
+        const showAsAbacus =
+          state.complementDisplay === 'abacus' ||
           (state.complementDisplay === 'random' && Math.random() < 0.5)
 
         return {
           number: newNumber,
           targetSum,
           correctAnswer: targetSum - newNumber,
-          showAsAbacus
+          showAsAbacus,
         }
       }
 
@@ -165,10 +166,11 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         isGameActive: true,
         gameStartTime: Date.now(),
         questionStartTime: Date.now(),
-        currentQuestion: generateFirstQuestion()
+        currentQuestion: generateFirstQuestion(),
       }
+    }
 
-    case 'NEXT_QUESTION':
+    case 'NEXT_QUESTION': {
       // Generate new question based on mode
       const generateQuestion = () => {
         let targetSum: number
@@ -198,14 +200,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         )
 
         // Decide once whether to show as abacus
-        const showAsAbacus = state.complementDisplay === 'abacus' ||
+        const showAsAbacus =
+          state.complementDisplay === 'abacus' ||
           (state.complementDisplay === 'random' && Math.random() < 0.5)
 
         return {
           number: newNumber,
           targetSum,
           correctAnswer: targetSum - newNumber,
-          showAsAbacus
+          showAsAbacus,
         }
       }
 
@@ -214,13 +217,14 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         previousQuestion: state.currentQuestion,
         currentQuestion: generateQuestion(),
         questionStartTime: Date.now(),
-        currentInput: ''
+        currentInput: '',
       }
+    }
 
     case 'UPDATE_INPUT':
       return { ...state, currentInput: action.input }
 
-    case 'SUBMIT_ANSWER':
+    case 'SUBMIT_ANSWER': {
       if (!state.currentQuestion) return state
 
       const isCorrect = action.answer === state.currentQuestion.correctAnswer
@@ -228,12 +232,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
       if (isCorrect) {
         // Calculate speed bonus: max(0, 300 - (avgTime * 10))
-        const speedBonus = Math.max(0, 300 - (responseTime / 100))
+        const speedBonus = Math.max(0, 300 - responseTime / 100)
 
         // Update score: correctAnswers * 100 + streak * 50 + speedBonus
         const newStreak = state.streak + 1
         const newCorrectAnswers = state.correctAnswers + 1
-        const newScore = state.score + 100 + (newStreak * 50) + speedBonus
+        const newScore = state.score + 100 + newStreak * 50 + speedBonus
 
         return {
           ...state,
@@ -241,26 +245,27 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           streak: newStreak,
           bestStreak: Math.max(state.bestStreak, newStreak),
           score: Math.round(newScore),
-          totalQuestions: state.totalQuestions + 1
+          totalQuestions: state.totalQuestions + 1,
         }
       } else {
         // Incorrect answer - reset streak but keep score
         return {
           ...state,
           streak: 0,
-          totalQuestions: state.totalQuestions + 1
+          totalQuestions: state.totalQuestions + 1,
         }
       }
+    }
 
     case 'UPDATE_AI_POSITIONS':
       return {
         ...state,
-        aiRacers: state.aiRacers.map(racer => {
-          const update = action.positions.find(p => p.id === racer.id)
+        aiRacers: state.aiRacers.map((racer) => {
+          const update = action.positions.find((p) => p.id === racer.id)
           return update
             ? { ...racer, previousPosition: racer.position, position: update.position }
             : racer
-        })
+        }),
       }
 
     case 'UPDATE_MOMENTUM':
@@ -275,7 +280,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         momentum: action.momentum,
         trainPosition: action.trainPosition,
         pressure: action.pressure,
-        elapsedTime: action.elapsedTime
+        elapsedTime: action.elapsedTime,
       }
 
     case 'COMPLETE_LAP':
@@ -307,81 +312,83 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         style: state.style,
         timeoutSetting: state.timeoutSetting,
         complementDisplay: state.complementDisplay,
-        gamePhase: 'controls'
+        gamePhase: 'controls',
       }
 
-    case 'TRIGGER_AI_COMMENTARY':
+    case 'TRIGGER_AI_COMMENTARY': {
       const newBubbles = new Map(state.activeSpeechBubbles)
       newBubbles.set(action.racerId, action.message)
       return {
         ...state,
         activeSpeechBubbles: newBubbles,
         // Update racer's lastComment time and cooldown
-        aiRacers: state.aiRacers.map(racer =>
+        aiRacers: state.aiRacers.map((racer) =>
           racer.id === action.racerId
             ? {
                 ...racer,
                 lastComment: Date.now(),
-                commentCooldown: Math.random() * 4000 + 2000  // 2-6 seconds
+                commentCooldown: Math.random() * 4000 + 2000, // 2-6 seconds
               }
             : racer
-        )
+        ),
       }
+    }
 
-    case 'CLEAR_AI_COMMENT':
+    case 'CLEAR_AI_COMMENT': {
       const clearedBubbles = new Map(state.activeSpeechBubbles)
       clearedBubbles.delete(action.racerId)
       return {
         ...state,
-        activeSpeechBubbles: clearedBubbles
+        activeSpeechBubbles: clearedBubbles,
       }
+    }
 
     case 'UPDATE_DIFFICULTY_TRACKER':
       return {
         ...state,
-        difficultyTracker: action.tracker
+        difficultyTracker: action.tracker,
       }
 
     case 'UPDATE_AI_SPEEDS':
       return {
         ...state,
-        aiRacers: action.racers
+        aiRacers: action.racers,
       }
 
     case 'SHOW_ADAPTIVE_FEEDBACK':
       return {
         ...state,
-        adaptiveFeedback: action.feedback
+        adaptiveFeedback: action.feedback,
       }
 
     case 'CLEAR_ADAPTIVE_FEEDBACK':
       return {
         ...state,
-        adaptiveFeedback: null
+        adaptiveFeedback: null,
       }
 
     case 'GENERATE_PASSENGERS':
       return {
         ...state,
-        passengers: action.passengers
+        passengers: action.passengers,
       }
 
     case 'BOARD_PASSENGER':
       return {
         ...state,
-        passengers: state.passengers.map(p =>
+        passengers: state.passengers.map((p) =>
           p.id === action.passengerId ? { ...p, isBoarded: true } : p
-        )
+        ),
       }
 
     case 'DELIVER_PASSENGER':
       return {
         ...state,
-        passengers: state.passengers.map(p =>
+        passengers: state.passengers.map((p) =>
           p.id === action.passengerId ? { ...p, isDelivered: true } : p
         ),
         deliveredPassengers: state.deliveredPassengers + 1,
-        score: state.score + action.points
+        score: state.score + action.points,
       }
 
     case 'START_NEW_ROUTE':
@@ -393,20 +400,20 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         deliveredPassengers: 0,
         showRouteCelebration: false,
         momentum: 50, // Give some starting momentum for the new route
-        pressure: 50
+        pressure: 50,
       }
 
     case 'COMPLETE_ROUTE':
       return {
         ...state,
         cumulativeDistance: state.cumulativeDistance + 100,
-        showRouteCelebration: true
+        showRouteCelebration: true,
       }
 
     case 'HIDE_ROUTE_CELEBRATION':
       return {
         ...state,
-        showRouteCelebration: false
+        showRouteCelebration: false,
       }
 
     default:
@@ -429,7 +436,7 @@ interface ComplementRaceProviderProps {
 export function ComplementRaceProvider({ children, initialStyle }: ComplementRaceProviderProps) {
   const [state, dispatch] = useReducer(gameReducer, {
     ...initialState,
-    style: initialStyle || initialState.style
+    style: initialStyle || initialState.style,
   })
 
   return (

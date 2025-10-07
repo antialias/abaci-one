@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { useComplementRace } from '../context/ComplementRaceContext'
 import type { PairPerformance } from '../lib/gameTypes'
 
@@ -12,11 +11,11 @@ export function useAdaptiveDifficulty() {
     const pairKey = `${state.currentQuestion.number}_${state.currentQuestion.correctAnswer}_${state.currentQuestion.targetSum}`
 
     // Get or create performance data for this pair
-    let pairData: PairPerformance = state.difficultyTracker.pairPerformance.get(pairKey) || {
+    const pairData: PairPerformance = state.difficultyTracker.pairPerformance.get(pairKey) || {
       attempts: 0,
       correct: 0,
       avgTime: 0,
-      difficulty: 1
+      difficulty: 1,
     }
 
     // Update performance data
@@ -26,7 +25,7 @@ export function useAdaptiveDifficulty() {
     }
 
     // Update average time (rolling average)
-    const totalTime = (pairData.avgTime * (pairData.attempts - 1)) + responseTime
+    const totalTime = pairData.avgTime * (pairData.attempts - 1) + responseTime
     pairData.avgTime = totalTime / pairData.attempts
 
     // Calculate pair-specific difficulty (lines 14555-14576)
@@ -59,31 +58,38 @@ export function useAdaptiveDifficulty() {
       ...state.difficultyTracker,
       pairPerformance: newPairPerformance,
       consecutiveCorrect: isCorrect ? state.difficultyTracker.consecutiveCorrect + 1 : 0,
-      consecutiveIncorrect: !isCorrect ? state.difficultyTracker.consecutiveIncorrect + 1 : 0
+      consecutiveIncorrect: !isCorrect ? state.difficultyTracker.consecutiveIncorrect + 1 : 0,
     }
 
     // Adapt global difficulty (lines 14578-14605)
     if (newTracker.consecutiveCorrect >= 3) {
       // Reduce time limit (increase difficulty)
-      newTracker.currentTimeLimit = Math.max(1000,
-        newTracker.currentTimeLimit - (newTracker.currentTimeLimit * newTracker.adaptationRate))
+      newTracker.currentTimeLimit = Math.max(
+        1000,
+        newTracker.currentTimeLimit - newTracker.currentTimeLimit * newTracker.adaptationRate
+      )
     } else if (newTracker.consecutiveIncorrect >= 2) {
       // Increase time limit (decrease difficulty)
-      newTracker.currentTimeLimit = Math.min(5000,
-        newTracker.currentTimeLimit + (newTracker.baseTimeLimit * newTracker.adaptationRate))
+      newTracker.currentTimeLimit = Math.min(
+        5000,
+        newTracker.currentTimeLimit + newTracker.baseTimeLimit * newTracker.adaptationRate
+      )
     }
 
     // Update overall difficulty level
-    const avgDifficulty = Array.from(newTracker.pairPerformance.values())
-      .reduce((sum, data) => sum + data.difficulty, 0) /
-      Math.max(1, newTracker.pairPerformance.size)
+    const avgDifficulty =
+      Array.from(newTracker.pairPerformance.values()).reduce(
+        (sum, data) => sum + data.difficulty,
+        0
+      ) / Math.max(1, newTracker.pairPerformance.size)
 
     newTracker.difficultyLevel = Math.round(avgDifficulty)
 
     // Exit learning mode after sufficient data (lines 14548-14552)
-    if (newTracker.pairPerformance.size >= 5 &&
-        Array.from(newTracker.pairPerformance.values())
-          .some(data => data.attempts >= 3)) {
+    if (
+      newTracker.pairPerformance.size >= 5 &&
+      Array.from(newTracker.pairPerformance.values()).some((data) => data.attempts >= 3)
+    ) {
       newTracker.learningMode = false
     }
 
@@ -100,14 +106,17 @@ export function useAdaptiveDifficulty() {
     if (recentQuestions === 0) return 0.5 // Default for first question
 
     // Use global tracking for recent performance
-    const recentCorrect = Math.max(0, state.correctAnswers - Math.max(0, state.totalQuestions - recentQuestions))
+    const recentCorrect = Math.max(
+      0,
+      state.correctAnswers - Math.max(0, state.totalQuestions - recentQuestions)
+    )
     return recentCorrect / recentQuestions
   }
 
   // Calculate average response time (lines 14695-14705)
   const calculateAverageResponseTime = (): number => {
     const recentPairs = Array.from(state.difficultyTracker.pairPerformance.values())
-      .filter(data => data.attempts >= 1)
+      .filter((data) => data.attempts >= 1)
       .slice(-5) // Last 5 different pairs encountered
 
     if (recentPairs.length === 0) return 3000 // Default for learning mode
@@ -127,10 +136,17 @@ export function useAdaptiveDifficulty() {
     // Base speed multipliers for each race mode
     let baseSpeedMultiplier: number
     switch (state.style) {
-      case 'practice': baseSpeedMultiplier = 0.7; break
-      case 'sprint': baseSpeedMultiplier = 0.9; break
-      case 'survival': baseSpeedMultiplier = state.speedMultiplier * state.survivalMultiplier; break
-      default: baseSpeedMultiplier = 0.7
+      case 'practice':
+        baseSpeedMultiplier = 0.7
+        break
+      case 'sprint':
+        baseSpeedMultiplier = 0.9
+        break
+      case 'survival':
+        baseSpeedMultiplier = state.speedMultiplier * state.survivalMultiplier
+        break
+      default:
+        baseSpeedMultiplier = 0.7
     }
 
     // Calculate adaptive multiplier based on player performance
@@ -141,7 +157,7 @@ export function useAdaptiveDifficulty() {
       adaptiveMultiplier *= 1.6 // Player doing great - speed up AI significantly
     } else if (playerSuccessRate > 0.75) {
       adaptiveMultiplier *= 1.3 // Player doing well - speed up AI moderately
-    } else if (playerSuccessRate > 0.60) {
+    } else if (playerSuccessRate > 0.6) {
       adaptiveMultiplier *= 1.0 // Player doing okay - keep AI at base speed
     } else if (playerSuccessRate > 0.45) {
       adaptiveMultiplier *= 0.75 // Player struggling - slow down AI
@@ -178,7 +194,7 @@ export function useAdaptiveDifficulty() {
         return { ...racer, speed: 0.32 * finalSpeedMultiplier }
       } else {
         // Math Bot (more consistent)
-        return { ...racer, speed: 0.20 * finalSpeedMultiplier }
+        return { ...racer, speed: 0.2 * finalSpeedMultiplier }
       }
     })
 
@@ -187,12 +203,12 @@ export function useAdaptiveDifficulty() {
     // Debug logging for AI adaptation (every 5 questions)
     if (state.totalQuestions % 5 === 0) {
       console.log('🤖 AI Speed Adaptation:', {
-        playerSuccessRate: Math.round(playerSuccessRate * 100) + '%',
-        avgResponseTime: Math.round(avgResponseTime) + 'ms',
+        playerSuccessRate: `${Math.round(playerSuccessRate * 100)}%`,
+        avgResponseTime: `${Math.round(avgResponseTime)}ms`,
         streak: state.streak,
         adaptiveMultiplier: Math.round(adaptiveMultiplier * 100) / 100,
         swiftAISpeed: updatedRacers[0] ? Math.round(updatedRacers[0].speed * 1000) / 1000 : 0,
-        mathBotSpeed: updatedRacers[1] ? Math.round(updatedRacers[1].speed * 1000) / 1000 : 0
+        mathBotSpeed: updatedRacers[1] ? Math.round(updatedRacers[1].speed * 1000) / 1000 : 0,
       })
     }
   }
@@ -249,23 +265,23 @@ export function useAdaptiveDifficulty() {
   // Get adaptive feedback message (lines 11655-11721)
   const getAdaptiveFeedbackMessage = (
     pairKey: string,
-    isCorrect: boolean,
-    responseTime: number
+    _isCorrect: boolean,
+    _responseTime: number
   ): { message: string; type: 'learning' | 'struggling' | 'mastered' | 'adapted' } | null => {
     const pairData = state.difficultyTracker.pairPerformance.get(pairKey)
-    const [num1, num2, sum] = pairKey.split('_').map(Number)
+    const [num1, num2, _sum] = pairKey.split('_').map(Number)
 
     // Learning mode messages
     if (state.difficultyTracker.learningMode) {
       const encouragements = [
         "🧠 I'm learning your style! Keep going!",
-        "📊 Building your skill profile...",
-        "🎯 Every answer helps me understand you better!",
-        "🚀 Analyzing your complement superpowers!"
+        '📊 Building your skill profile...',
+        '🎯 Every answer helps me understand you better!',
+        '🚀 Analyzing your complement superpowers!',
       ]
       return {
         message: encouragements[Math.floor(Math.random() * encouragements.length)],
-        type: 'learning'
+        type: 'learning',
       }
     }
 
@@ -280,11 +296,11 @@ export function useAdaptiveDifficulty() {
           `💪 ${num1}+${num2} needs practice - I'm giving you extra time!`,
           `🎯 Working on ${num1}+${num2} - you've got this!`,
           `⏰ Taking it slower with ${num1}+${num2} - no rush!`,
-          `🧩 ${num1}+${num2} is getting special attention from me!`
+          `🧩 ${num1}+${num2} is getting special attention from me!`,
         ]
         return {
           message: strugglingMessages[Math.floor(Math.random() * strugglingMessages.length)],
-          type: 'struggling'
+          type: 'struggling',
         }
       }
 
@@ -294,11 +310,11 @@ export function useAdaptiveDifficulty() {
           `⚡ ${num1}+${num2} = MASTERED! Lightning mode activated!`,
           `🔥 You've conquered ${num1}+${num2} - speeding it up!`,
           `🏆 ${num1}+${num2} expert detected! Challenge mode ON!`,
-          `⭐ ${num1}+${num2} is your superpower! Going faster!`
+          `⭐ ${num1}+${num2} is your superpower! Going faster!`,
         ]
         return {
           message: masteredMessages[Math.floor(Math.random() * masteredMessages.length)],
-          type: 'mastered'
+          type: 'mastered',
         }
       }
     }
@@ -307,12 +323,12 @@ export function useAdaptiveDifficulty() {
     if (state.difficultyTracker.consecutiveCorrect >= 3) {
       return {
         message: "🚀 You're on fire! Increasing the challenge!",
-        type: 'adapted'
+        type: 'adapted',
       }
     } else if (state.difficultyTracker.consecutiveIncorrect >= 2) {
       return {
         message: "🤗 Let's slow down a bit - I'm here to help!",
-        type: 'adapted'
+        type: 'adapted',
       }
     }
 
@@ -324,6 +340,6 @@ export function useAdaptiveDifficulty() {
     getAdaptiveTimeLimit,
     calculateRecentSuccessRate,
     calculateAverageResponseTime,
-    getAdaptiveFeedbackMessage
+    getAdaptiveFeedbackMessage,
   }
 }

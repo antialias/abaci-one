@@ -1,27 +1,31 @@
 'use client'
 
-import { useRef, useState, useMemo, memo } from 'react'
-import { useSpring, animated } from '@react-spring/web'
-import { useSteamJourney } from '../../hooks/useSteamJourney'
-import { usePassengerAnimations, type BoardingAnimation, type DisembarkingAnimation } from '../../hooks/usePassengerAnimations'
-import { useTrainTransforms } from '../../hooks/useTrainTransforms'
-import { useTrackManagement } from '../../hooks/useTrackManagement'
-import { useComplementRace } from '../../context/ComplementRaceContext'
-import { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
-import { getRouteTheme } from '../../lib/routeThemes'
-import { calculateMaxConcurrentPassengers } from '../../lib/passengerGenerator'
+import { animated, useSpring } from '@react-spring/web'
+import { memo, useMemo, useRef, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useUserProfile } from '@/contexts/UserProfileContext'
-import { TrainTerrainBackground } from './TrainTerrainBackground'
+import { useComplementRace } from '../../context/ComplementRaceContext'
+import {
+  type BoardingAnimation,
+  type DisembarkingAnimation,
+  usePassengerAnimations,
+} from '../../hooks/usePassengerAnimations'
+import { useSteamJourney } from '../../hooks/useSteamJourney'
+import { useTrackManagement } from '../../hooks/useTrackManagement'
+import { useTrainTransforms } from '../../hooks/useTrainTransforms'
+import { calculateMaxConcurrentPassengers } from '../../lib/passengerGenerator'
+import { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
+import { getRouteTheme } from '../../lib/routeThemes'
+import { GameHUD } from './GameHUD'
 import { RailroadTrackPath } from './RailroadTrackPath'
 import { TrainAndCars } from './TrainAndCars'
-import { GameHUD } from './GameHUD'
+import { TrainTerrainBackground } from './TrainTerrainBackground'
 
 const BoardingPassengerAnimation = memo(({ animation }: { animation: BoardingAnimation }) => {
   const spring = useSpring({
     from: { x: animation.fromX, y: animation.fromY, opacity: 1 },
     to: { x: animation.toX, y: animation.toY, opacity: 1 },
-    config: { tension: 120, friction: 14 }
+    config: { tension: 120, friction: 14 },
   })
 
   return (
@@ -35,7 +39,7 @@ const BoardingPassengerAnimation = memo(({ animation }: { animation: BoardingAni
         pointerEvents: 'none',
         filter: animation.passenger.isUrgent
           ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.8))'
-          : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))'
+          : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
       }}
     >
       {animation.passenger.avatar}
@@ -44,29 +48,31 @@ const BoardingPassengerAnimation = memo(({ animation }: { animation: BoardingAni
 })
 BoardingPassengerAnimation.displayName = 'BoardingPassengerAnimation'
 
-const DisembarkingPassengerAnimation = memo(({ animation }: { animation: DisembarkingAnimation }) => {
-  const spring = useSpring({
-    from: { x: animation.fromX, y: animation.fromY, opacity: 1 },
-    to: { x: animation.toX, y: animation.toY, opacity: 1 },
-    config: { tension: 120, friction: 14 }
-  })
+const DisembarkingPassengerAnimation = memo(
+  ({ animation }: { animation: DisembarkingAnimation }) => {
+    const spring = useSpring({
+      from: { x: animation.fromX, y: animation.fromY, opacity: 1 },
+      to: { x: animation.toX, y: animation.toY, opacity: 1 },
+      config: { tension: 120, friction: 14 },
+    })
 
-  return (
-    <animated.text
-      x={spring.x}
-      y={spring.y}
-      textAnchor="middle"
-      opacity={spring.opacity}
-      style={{
-        fontSize: '55px',
-        pointerEvents: 'none',
-        filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.8))'
-      }}
-    >
-      {animation.passenger.avatar}
-    </animated.text>
-  )
-})
+    return (
+      <animated.text
+        x={spring.x}
+        y={spring.y}
+        textAnchor="middle"
+        opacity={spring.opacity}
+        style={{
+          fontSize: '55px',
+          pointerEvents: 'none',
+          filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.8))',
+        }}
+      >
+        {animation.passenger.avatar}
+      </animated.text>
+    )
+  }
+)
 DisembarkingPassengerAnimation.displayName = 'DisembarkingPassengerAnimation'
 
 interface SteamTrainJourneyProps {
@@ -78,16 +84,23 @@ interface SteamTrainJourneyProps {
   currentInput: string
 }
 
-export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTime, currentQuestion, currentInput }: SteamTrainJourneyProps) {
+export function SteamTrainJourney({
+  momentum,
+  trainPosition,
+  pressure,
+  elapsedTime,
+  currentQuestion,
+  currentInput,
+}: SteamTrainJourneyProps) {
   const { state } = useComplementRace()
   const { getSkyGradient, getTimeOfDayPeriod } = useSteamJourney()
-  const skyGradient = getSkyGradient()
+  const _skyGradient = getSkyGradient()
   const period = getTimeOfDayPeriod()
   const { players } = useGameMode()
-  const { profile } = useUserProfile()
+  const { profile: _profile } = useUserProfile()
 
   // Get the first active player's emoji
-  const activePlayers = Array.from(players.values()).filter(p => p.id)
+  const activePlayers = Array.from(players.values()).filter((p) => p.id)
   const firstActivePlayer = activePlayers[0]
   const playerEmoji = firstActivePlayer?.emoji ?? '👤'
 
@@ -110,11 +123,18 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
     trackGenerator,
     pathRef,
     maxCars,
-    carSpacing
+    carSpacing,
   })
 
   // Track management (extracted to hook)
-  const { trackData, tiesAndRails, stationPositions, landmarks, landmarkPositions, displayPassengers } = useTrackManagement({
+  const {
+    trackData,
+    tiesAndRails,
+    stationPositions,
+    landmarks,
+    landmarkPositions,
+    displayPassengers,
+  } = useTrackManagement({
     currentRoute: state.currentRoute,
     trainPosition,
     trackGenerator,
@@ -122,7 +142,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
     stations: state.stations,
     passengers: state.passengers,
     maxCars,
-    carSpacing
+    carSpacing,
   })
 
   // Passenger animations (extracted to hook)
@@ -132,7 +152,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
     stationPositions,
     trainPosition,
     trackGenerator,
-    pathRef
+    pathRef,
   })
 
   // Time remaining (60 seconds total)
@@ -144,42 +164,45 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
   // Get current route theme
   const routeTheme = getRouteTheme(state.currentRoute)
 
-
   // Memoize filtered passenger lists to avoid recalculating on every render
-  const boardedPassengers = useMemo(() =>
-    displayPassengers.filter(p => p.isBoarded && !p.isDelivered),
+  const boardedPassengers = useMemo(
+    () => displayPassengers.filter((p) => p.isBoarded && !p.isDelivered),
     [displayPassengers]
   )
 
-  const nonDeliveredPassengers = useMemo(() =>
-    displayPassengers.filter(p => !p.isDelivered),
+  const nonDeliveredPassengers = useMemo(
+    () => displayPassengers.filter((p) => !p.isDelivered),
     [displayPassengers]
   )
 
   // Memoize ground texture circles to avoid recreating on every render
-  const groundTextureCircles = useMemo(() =>
-    Array.from({ length: 30 }).map((_, i) => ({
-      key: `ground-texture-${i}`,
-      cx: -30 + (i * 28) + (i % 3) * 10,
-      cy: 140 + (i % 5) * 60,
-      r: 2 + (i % 3)
-    })),
+  const groundTextureCircles = useMemo(
+    () =>
+      Array.from({ length: 30 }).map((_, i) => ({
+        key: `ground-texture-${i}`,
+        cx: -30 + i * 28 + (i % 3) * 10,
+        cy: 140 + (i % 5) * 60,
+        r: 2 + (i % 3),
+      })),
     []
   )
 
   if (!trackData) return null
 
   return (
-    <div data-component="steam-train-journey" style={{
-      position: 'relative',
-      width: '100%',
-      height: '100%',
-      background: 'transparent',
-      overflow: 'visible',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'stretch'
-    }}>
+    <div
+      data-component="steam-train-journey"
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        background: 'transparent',
+        overflow: 'visible',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'stretch',
+      }}
+    >
       {/* Game HUD - overlays and UI elements */}
       <GameHUD
         routeTheme={routeTheme}
@@ -202,7 +225,7 @@ export function SteamTrainJourney({ momentum, trainPosition, pressure, elapsedTi
           width: '100%',
           height: 'auto',
           aspectRatio: '800 / 600',
-          overflow: 'visible'
+          overflow: 'visible',
         }}
       >
         {/* Terrain background - ground, mountains, and tunnels */}

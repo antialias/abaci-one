@@ -1,17 +1,15 @@
 'use client'
 
-import { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react'
+import { createContext, type ReactNode, useContext, useEffect, useReducer } from 'react'
 import { useGameMode } from '../../../../contexts/GameModeContext'
-import { validateMatch } from '../utils/matchValidation'
 import { generateGameCards } from '../utils/cardGeneration'
+import { validateMatch } from '../utils/matchValidation'
 import type {
-  MemoryPairsState,
+  GameStatistics,
   MemoryPairsAction,
   MemoryPairsContextValue,
-  GameCard,
-  GameStatistics,
-  CelebrationAnimation,
-  PlayerScore
+  MemoryPairsState,
+  PlayerScore,
 } from './types'
 
 // Initial state (gameMode removed - now derived from global context)
@@ -46,7 +44,7 @@ const initialState: MemoryPairsState = {
   celebrationAnimations: [],
   isProcessingMove: false,
   showMismatchFeedback: false,
-  lastMatchedPair: null
+  lastMatchedPair: null,
 }
 
 // Reducer function
@@ -57,27 +55,27 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
     case 'SET_GAME_TYPE':
       return {
         ...state,
-        gameType: action.gameType
+        gameType: action.gameType,
       }
 
     case 'SET_DIFFICULTY':
       return {
         ...state,
         difficulty: action.difficulty,
-        totalPairs: action.difficulty
+        totalPairs: action.difficulty,
       }
 
     case 'SET_TURN_TIMER':
       return {
         ...state,
-        turnTimer: action.timer
+        turnTimer: action.timer,
       }
 
-    case 'START_GAME':
+    case 'START_GAME': {
       // Initialize scores and consecutive matches for all active players
       const scores: PlayerScore = {}
       const consecutiveMatches: { [playerId: string]: number } = {}
-      action.activePlayers.forEach(playerId => {
+      action.activePlayers.forEach((playerId) => {
         scores[playerId] = 0
         consecutiveMatches[playerId] = 0
       })
@@ -100,34 +98,41 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         celebrationAnimations: [],
         isProcessingMove: false,
         showMismatchFeedback: false,
-        lastMatchedPair: null
+        lastMatchedPair: null,
       }
+    }
 
     case 'FLIP_CARD': {
-      const cardToFlip = state.gameCards.find(card => card.id === action.cardId)
-      if (!cardToFlip || cardToFlip.matched || state.flippedCards.length >= 2 || state.isProcessingMove) {
+      const cardToFlip = state.gameCards.find((card) => card.id === action.cardId)
+      if (
+        !cardToFlip ||
+        cardToFlip.matched ||
+        state.flippedCards.length >= 2 ||
+        state.isProcessingMove
+      ) {
         return state
       }
 
       const newFlippedCards = [...state.flippedCards, cardToFlip]
-      const newMoveStartTime = state.flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime
+      const newMoveStartTime =
+        state.flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime
 
       return {
         ...state,
         flippedCards: newFlippedCards,
         currentMoveStartTime: newMoveStartTime,
-        showMismatchFeedback: false
+        showMismatchFeedback: false,
       }
     }
 
     case 'MATCH_FOUND': {
       const [card1Id, card2Id] = action.cardIds
-      const updatedCards = state.gameCards.map(card => {
+      const updatedCards = state.gameCards.map((card) => {
         if (card.id === card1Id || card.id === card2Id) {
           return {
             ...card,
             matched: true,
-            matchedBy: state.currentPlayer
+            matchedBy: state.currentPlayer,
           }
         }
         return card
@@ -136,12 +141,12 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
       const newMatchedPairs = state.matchedPairs + 1
       const newScores = {
         ...state.scores,
-        [state.currentPlayer]: (state.scores[state.currentPlayer] || 0) + 1
+        [state.currentPlayer]: (state.scores[state.currentPlayer] || 0) + 1,
       }
 
       const newConsecutiveMatches = {
         ...state.consecutiveMatches,
-        [state.currentPlayer]: (state.consecutiveMatches[state.currentPlayer] || 0) + 1
+        [state.currentPlayer]: (state.consecutiveMatches[state.currentPlayer] || 0) + 1,
       }
 
       // Check if game is complete
@@ -158,7 +163,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         lastMatchedPair: action.cardIds,
         gamePhase: isGameComplete ? 'results' : 'playing',
         gameEndTime: isGameComplete ? Date.now() : null,
-        isProcessingMove: false
+        isProcessingMove: false,
         // Note: Player keeps turn after successful match in multiplayer mode
       }
     }
@@ -183,40 +188,40 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
       // Reset consecutive matches for the player who failed
       const newConsecutiveMatches = {
         ...state.consecutiveMatches,
-        [state.currentPlayer]: 0
+        [state.currentPlayer]: 0,
       }
 
       return {
         ...state,
         currentPlayer: state.activePlayers[nextIndex] || state.activePlayers[0],
-        consecutiveMatches: newConsecutiveMatches
+        consecutiveMatches: newConsecutiveMatches,
       }
     }
 
     case 'ADD_CELEBRATION':
       return {
         ...state,
-        celebrationAnimations: [...state.celebrationAnimations, action.animation]
+        celebrationAnimations: [...state.celebrationAnimations, action.animation],
       }
 
     case 'REMOVE_CELEBRATION':
       return {
         ...state,
         celebrationAnimations: state.celebrationAnimations.filter(
-          anim => anim.id !== action.animationId
-        )
+          (anim) => anim.id !== action.animationId
+        ),
       }
 
     case 'SET_PROCESSING':
       return {
         ...state,
-        isProcessingMove: action.processing
+        isProcessingMove: action.processing,
       }
 
     case 'SET_MISMATCH_FEEDBACK':
       return {
         ...state,
-        showMismatchFeedback: action.show
+        showMismatchFeedback: action.show,
       }
 
     case 'SHOW_RESULTS':
@@ -224,7 +229,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         ...state,
         gamePhase: 'results',
         gameEndTime: Date.now(),
-        flippedCards: []
+        flippedCards: [],
       }
 
     case 'RESET_GAME':
@@ -233,7 +238,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
         gameType: state.gameType,
         difficulty: state.difficulty,
         turnTimer: state.turnTimer,
-        totalPairs: state.difficulty
+        totalPairs: state.difficulty,
       }
 
     case 'UPDATE_TIMER':
@@ -299,11 +304,11 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
   const canFlipCard = (cardId: string): boolean => {
     if (!isGameActive || state.isProcessingMove) return false
 
-    const card = state.gameCards.find(c => c.id === cardId)
+    const card = state.gameCards.find((c) => c.id === cardId)
     if (!card || card.matched) return false
 
     // Can't flip if already flipped
-    if (state.flippedCards.some(c => c.id === cardId)) return false
+    if (state.flippedCards.some((c) => c.id === cardId)) return false
 
     // Can't flip more than 2 cards
     if (state.flippedCards.length >= 2) return false
@@ -315,11 +320,12 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
     totalMoves: state.moves,
     matchedPairs: state.matchedPairs,
     totalPairs: state.totalPairs,
-    gameTime: state.gameStartTime ?
-      (state.gameEndTime || Date.now()) - state.gameStartTime : 0,
+    gameTime: state.gameStartTime ? (state.gameEndTime || Date.now()) - state.gameStartTime : 0,
     accuracy: state.moves > 0 ? (state.matchedPairs / state.moves) * 100 : 0,
-    averageTimePerMove: state.moves > 0 && state.gameStartTime ?
-      ((state.gameEndTime || Date.now()) - state.gameStartTime) / state.moves : 0
+    averageTimePerMove:
+      state.moves > 0 && state.gameStartTime
+        ? ((state.gameEndTime || Date.now()) - state.gameStartTime) / state.moves
+        : 0,
   }
 
   // Action creators
@@ -360,14 +366,10 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
     setDifficulty,
     exitSession: () => {}, // No-op for non-arcade mode
     gameMode, // Expose derived gameMode
-    activePlayers // Expose active players
+    activePlayers, // Expose active players
   }
 
-  return (
-    <MemoryPairsContext.Provider value={contextValue}>
-      {children}
-    </MemoryPairsContext.Provider>
-  )
+  return <MemoryPairsContext.Provider value={contextValue}>{children}</MemoryPairsContext.Provider>
 }
 
 // Hook to use the context

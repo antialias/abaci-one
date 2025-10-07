@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
+import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { users } from './users'
 
 /**
@@ -35,38 +35,28 @@ export const abacusSettings = sqliteTable('abacus_settings', {
     .default('default'),
 
   /** Hide inactive beads */
-  hideInactiveBeads: integer('hide_inactive_beads', { mode: 'boolean' })
-    .notNull()
-    .default(false),
+  hideInactiveBeads: integer('hide_inactive_beads', { mode: 'boolean' }).notNull().default(false),
 
   /** Color numerals based on place value */
-  coloredNumerals: integer('colored_numerals', { mode: 'boolean' })
-    .notNull()
-    .default(false),
+  coloredNumerals: integer('colored_numerals', { mode: 'boolean' }).notNull().default(false),
 
   /** Scale factor for abacus size */
   scaleFactor: real('scale_factor').notNull().default(1.0),
 
   /** Show numbers below abacus */
-  showNumbers: integer('show_numbers', { mode: 'boolean' })
-    .notNull()
-    .default(true),
+  showNumbers: integer('show_numbers', { mode: 'boolean' }).notNull().default(true),
 
   /** Enable animations */
   animated: integer('animated', { mode: 'boolean' }).notNull().default(true),
 
   /** Enable interaction */
-  interactive: integer('interactive', { mode: 'boolean' })
-    .notNull()
-    .default(false),
+  interactive: integer('interactive', { mode: 'boolean' }).notNull().default(false),
 
   /** Enable gesture controls */
   gestures: integer('gestures', { mode: 'boolean' }).notNull().default(false),
 
   /** Enable sound effects */
-  soundEnabled: integer('sound_enabled', { mode: 'boolean' })
-    .notNull()
-    .default(true),
+  soundEnabled: integer('sound_enabled', { mode: 'boolean' }).notNull().default(true),
 
   /** Sound volume (0.0 - 1.0) */
   soundVolume: real('sound_volume').notNull().default(0.8),

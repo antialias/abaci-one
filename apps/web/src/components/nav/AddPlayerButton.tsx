@@ -12,7 +12,11 @@ interface AddPlayerButtonProps {
   onAddPlayer: (playerId: string) => void
 }
 
-export function AddPlayerButton({ inactivePlayers, shouldEmphasize, onAddPlayer }: AddPlayerButtonProps) {
+export function AddPlayerButton({
+  inactivePlayers,
+  shouldEmphasize,
+  onAddPlayer,
+}: AddPlayerButtonProps) {
   const [showPopover, setShowPopover] = React.useState(false)
   const popoverRef = React.useRef<HTMLDivElement>(null)
 
@@ -59,7 +63,7 @@ export function AddPlayerButton({ inactivePlayers, shouldEmphasize, onAddPlayer 
           padding: 0,
           lineHeight: 1,
           fontWeight: 'bold',
-          boxShadow: showPopover ? '0 4px 12px rgba(16, 185, 129, 0.4)' : 'none'
+          boxShadow: showPopover ? '0 4px 12px rgba(16, 185, 129, 0.4)' : 'none',
         }}
         onMouseEnter={(e) => {
           if (!showPopover) {
@@ -94,25 +98,29 @@ export function AddPlayerButton({ inactivePlayers, shouldEmphasize, onAddPlayer 
             padding: '12px',
             minWidth: '200px',
             zIndex: 1000,
-            animation: 'fadeIn 0.2s ease'
+            animation: 'fadeIn 0.2s ease',
           }}
         >
-          <div style={{
-            fontSize: '14px',
-            fontWeight: 'bold',
-            color: '#374151',
-            marginBottom: '8px',
-            paddingBottom: '8px',
-            borderBottom: '1px solid #e5e7eb'
-          }}>
+          <div
+            style={{
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#374151',
+              marginBottom: '8px',
+              paddingBottom: '8px',
+              borderBottom: '1px solid #e5e7eb',
+            }}
+          >
             Add Player
           </div>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px'
-          }}>
-            {inactivePlayers.map(player => (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}
+          >
+            {inactivePlayers.map((player) => (
               <button
                 key={player.id}
                 onClick={() => handleAddPlayerClick(player.id)}
@@ -126,7 +134,7 @@ export function AddPlayerButton({ inactivePlayers, shouldEmphasize, onAddPlayer 
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  textAlign: 'left'
+                  textAlign: 'left',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = '#f3f4f6'
@@ -135,14 +143,14 @@ export function AddPlayerButton({ inactivePlayers, shouldEmphasize, onAddPlayer 
                   e.currentTarget.style.background = 'transparent'
                 }}
               >
-                <span style={{ fontSize: '24px', lineHeight: 1 }}>
-                  {player.emoji}
-                </span>
-                <span style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#1f2937'
-                }}>
+                <span style={{ fontSize: '24px', lineHeight: 1 }}>{player.emoji}</span>
+                <span
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#1f2937',
+                  }}
+                >
                   {player.name}
                 </span>
               </button>

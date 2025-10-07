@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 import { createId } from '@paralleldrive/cuid2'
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const arcadeRooms = sqliteTable('arcade_rooms', {
   id: text('id')
@@ -13,10 +13,14 @@ export const arcadeRooms = sqliteTable('arcade_rooms', {
   // Creator info
   createdBy: text('created_by').notNull(), // User/guest ID
   creatorName: text('creator_name', { length: 50 }).notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
 
   // Lifecycle
-  lastActivity: integer('last_activity', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  lastActivity: integer('last_activity', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
   ttlMinutes: integer('ttl_minutes').notNull().default(60), // Time to live
   isLocked: integer('is_locked', { mode: 'boolean' }).notNull().default(false),
 
@@ -29,7 +33,9 @@ export const arcadeRooms = sqliteTable('arcade_rooms', {
   // Current state
   status: text('status', {
     enum: ['lobby', 'playing', 'finished'],
-  }).notNull().default('lobby'),
+  })
+    .notNull()
+    .default('lobby'),
   currentSessionId: text('current_session_id'), // FK to arcade_sessions (nullable)
 
   // Metadata

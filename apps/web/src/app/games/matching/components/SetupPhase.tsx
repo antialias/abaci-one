@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemoryPairs } from '../context/MemoryPairsContext'
-import { useGameMode } from '../../../../contexts/GameModeContext'
-import { generateGameCards } from '../utils/cardGeneration'
 import { css } from '../../../../../styled-system/css'
+import { useGameMode } from '../../../../contexts/GameModeContext'
+import { useMemoryPairs } from '../context/MemoryPairsContext'
+import { generateGameCards } from '../utils/cardGeneration'
 
 // Add bounce animation for the start button
 const bounceAnimation = `
@@ -29,13 +29,7 @@ if (typeof document !== 'undefined' && !document.getElementById('setup-animation
 }
 
 export function SetupPhase() {
-  const {
-    state,
-    setGameType,
-    setDifficulty,
-    dispatch,
-    activePlayers
-  } = useMemoryPairs()
+  const { state, setGameType, setDifficulty, dispatch, activePlayers } = useMemoryPairs()
 
   const { activePlayerCount, gameMode: globalGameMode } = useGameMode()
 
@@ -44,7 +38,10 @@ export function SetupPhase() {
     dispatch({ type: 'START_GAME', cards, activePlayers })
   }
 
-  const getButtonStyles = (isSelected: boolean, variant: 'primary' | 'secondary' | 'difficulty' = 'primary') => {
+  const getButtonStyles = (
+    isSelected: boolean,
+    variant: 'primary' | 'secondary' | 'difficulty' = 'primary'
+  ) => {
     const baseStyles = {
       border: 'none',
       borderRadius: { base: '12px', md: '16px' },
@@ -79,7 +76,7 @@ export function SetupPhase() {
         },
         _active: {
           transform: 'translateY(-1px) scale(1.01)',
-        }
+        },
       })
     }
 
@@ -101,7 +98,7 @@ export function SetupPhase() {
         },
         _active: {
           transform: 'translateY(-1px) scale(1.01)',
-        }
+        },
       })
     }
 
@@ -123,40 +120,51 @@ export function SetupPhase() {
       },
       _active: {
         transform: 'translateY(-1px) scale(1.01)',
-      }
+      },
     })
   }
 
   return (
-    <div className={css({
-      textAlign: 'center',
-      padding: { base: '12px 16px', sm: '16px 20px', md: '20px' },
-      maxWidth: '800px',
-      margin: '0 auto',
-      display: 'flex',
-      flexDirection: 'column',
-      minHeight: 0, // Allow shrinking
-      overflow: 'auto' // Enable scrolling if needed
-    })}>
-      <div className={css({
-        display: 'grid',
-        gap: { base: '8px', sm: '12px', md: '16px' },
+    <div
+      className={css({
+        textAlign: 'center',
+        padding: { base: '12px 16px', sm: '16px 20px', md: '20px' },
+        maxWidth: '800px',
         margin: '0 auto',
-        flex: 1,
-        minHeight: 0 // Allow shrinking
-      })}>
-
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0, // Allow shrinking
+        overflow: 'auto', // Enable scrolling if needed
+      })}
+    >
+      <div
+        className={css({
+          display: 'grid',
+          gap: { base: '8px', sm: '12px', md: '16px' },
+          margin: '0 auto',
+          flex: 1,
+          minHeight: 0, // Allow shrinking
+        })}
+      >
         {/* Warning if no players */}
         {activePlayerCount === 0 && (
-          <div className={css({
-            p: '4',
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '2px solid',
-            borderColor: 'red.300',
-            rounded: 'xl',
-            textAlign: 'center'
-          })}>
-            <p className={css({ color: 'red.700', fontSize: { base: '14px', md: '16px' }, fontWeight: 'bold' })}>
+          <div
+            className={css({
+              p: '4',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '2px solid',
+              borderColor: 'red.300',
+              rounded: 'xl',
+              textAlign: 'center',
+            })}
+          >
+            <p
+              className={css({
+                color: 'red.700',
+                fontSize: { base: '14px', md: '16px' },
+                fontWeight: 'bold',
+              })}
+            >
               ⚠️ Go back to the arcade to select players before starting the game
             </p>
           </div>
@@ -164,37 +172,71 @@ export function SetupPhase() {
 
         {/* Game Type Selection */}
         <div>
-          <label className={css({
-            display: 'block',
-            fontSize: { base: '16px', sm: '18px', md: '20px' },
-            fontWeight: 'bold',
-            marginBottom: { base: '12px', md: '16px' },
-            color: 'gray.700'
-          })}>
+          <label
+            className={css({
+              display: 'block',
+              fontSize: { base: '16px', sm: '18px', md: '20px' },
+              fontWeight: 'bold',
+              marginBottom: { base: '12px', md: '16px' },
+              color: 'gray.700',
+            })}
+          >
             Game Type
           </label>
-          <div className={css({
-            display: 'grid',
-            gridTemplateColumns: {
-              base: '1fr',
-              sm: 'repeat(2, 1fr)'
-            },
-            gap: { base: '8px', sm: '10px', md: '12px' },
-            justifyItems: 'stretch'
-          })}>
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: {
+                base: '1fr',
+                sm: 'repeat(2, 1fr)',
+              },
+              gap: { base: '8px', sm: '10px', md: '12px' },
+              justifyItems: 'stretch',
+            })}
+          >
             <button
               className={getButtonStyles(state.gameType === 'abacus-numeral', 'secondary')}
               onClick={() => setGameType('abacus-numeral')}
             >
-              <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: { base: '4px', md: '6px' } })}>
-                <div className={css({ fontSize: { base: '20px', sm: '24px', md: '28px' }, display: 'flex', alignItems: 'center', gap: { base: '4px', md: '8px' } })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: { base: '4px', md: '6px' },
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: { base: '20px', sm: '24px', md: '28px' },
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: { base: '4px', md: '8px' },
+                  })}
+                >
                   <span>🧮</span>
                   <span className={css({ fontSize: { base: '16px', md: '20px' } })}>↔️</span>
                   <span>🔢</span>
                 </div>
-                <div className={css({ fontWeight: 'bold', fontSize: { base: '12px', sm: '13px', md: '14px' } })}>Abacus-Numeral</div>
-                <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, opacity: 0.8, textAlign: 'center', display: { base: 'none', sm: 'block' } })}>
-                  Match visual patterns<br/>with numbers
+                <div
+                  className={css({
+                    fontWeight: 'bold',
+                    fontSize: { base: '12px', sm: '13px', md: '14px' },
+                  })}
+                >
+                  Abacus-Numeral
+                </div>
+                <div
+                  className={css({
+                    fontSize: { base: '10px', sm: '11px', md: '12px' },
+                    opacity: 0.8,
+                    textAlign: 'center',
+                    display: { base: 'none', sm: 'block' },
+                  })}
+                >
+                  Match visual patterns
+                  <br />
+                  with numbers
                 </div>
               </div>
             </button>
@@ -202,59 +244,94 @@ export function SetupPhase() {
               className={getButtonStyles(state.gameType === 'complement-pairs', 'secondary')}
               onClick={() => setGameType('complement-pairs')}
             >
-              <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: { base: '4px', md: '6px' } })}>
-                <div className={css({ fontSize: { base: '20px', sm: '24px', md: '28px' }, display: 'flex', alignItems: 'center', gap: { base: '4px', md: '8px' } })}>
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: { base: '4px', md: '6px' },
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: { base: '20px', sm: '24px', md: '28px' },
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: { base: '4px', md: '8px' },
+                  })}
+                >
                   <span>🤝</span>
                   <span className={css({ fontSize: { base: '16px', md: '20px' } })}>➕</span>
                   <span>🔟</span>
                 </div>
-                <div className={css({ fontWeight: 'bold', fontSize: { base: '12px', sm: '13px', md: '14px' } })}>Complement Pairs</div>
-                <div className={css({ fontSize: { base: '10px', sm: '11px', md: '12px' }, opacity: 0.8, textAlign: 'center', display: { base: 'none', sm: 'block' } })}>
-                  Find number friends<br/>that add to 5 or 10
+                <div
+                  className={css({
+                    fontWeight: 'bold',
+                    fontSize: { base: '12px', sm: '13px', md: '14px' },
+                  })}
+                >
+                  Complement Pairs
+                </div>
+                <div
+                  className={css({
+                    fontSize: { base: '10px', sm: '11px', md: '12px' },
+                    opacity: 0.8,
+                    textAlign: 'center',
+                    display: { base: 'none', sm: 'block' },
+                  })}
+                >
+                  Find number friends
+                  <br />
+                  that add to 5 or 10
                 </div>
               </div>
             </button>
           </div>
-          <p className={css({
-            fontSize: { base: '12px', md: '14px' },
-            color: 'gray.500',
-            marginTop: { base: '6px', md: '8px' },
-            textAlign: 'center',
-            display: { base: 'none', sm: 'block' }
-          })}>
+          <p
+            className={css({
+              fontSize: { base: '12px', md: '14px' },
+              color: 'gray.500',
+              marginTop: { base: '6px', md: '8px' },
+              textAlign: 'center',
+              display: { base: 'none', sm: 'block' },
+            })}
+          >
             {state.gameType === 'abacus-numeral'
               ? 'Match abacus representations with their numerical values'
-              : 'Find pairs of numbers that add up to 5 or 10'
-            }
+              : 'Find pairs of numbers that add up to 5 or 10'}
           </p>
         </div>
 
         {/* Difficulty Selection */}
         <div>
-          <label className={css({
-            display: 'block',
-            fontSize: { base: '16px', sm: '18px', md: '20px' },
-            fontWeight: 'bold',
-            marginBottom: { base: '12px', md: '16px' },
-            color: 'gray.700'
-          })}>
+          <label
+            className={css({
+              display: 'block',
+              fontSize: { base: '16px', sm: '18px', md: '20px' },
+              fontWeight: 'bold',
+              marginBottom: { base: '12px', md: '16px' },
+              color: 'gray.700',
+            })}
+          >
             Difficulty ({state.difficulty} pairs)
           </label>
-          <div className={css({
-            display: 'grid',
-            gridTemplateColumns: {
-              base: 'repeat(2, 1fr)',
-              sm: 'repeat(4, 1fr)'
-            },
-            gap: { base: '8px', sm: '10px', md: '12px' },
-            justifyItems: 'stretch'
-          })}>
-            {([6, 8, 12, 15] as const).map(difficulty => {
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: {
+                base: 'repeat(2, 1fr)',
+                sm: 'repeat(4, 1fr)',
+              },
+              gap: { base: '8px', sm: '10px', md: '12px' },
+              justifyItems: 'stretch',
+            })}
+          >
+            {([6, 8, 12, 15] as const).map((difficulty) => {
               const difficultyInfo = {
                 6: { icon: '🌱', label: 'Beginner', description: 'Perfect to start!' },
                 8: { icon: '⚡', label: 'Medium', description: 'Getting spicy!' },
                 12: { icon: '🔥', label: 'Hard', description: 'Serious challenge!' },
-                15: { icon: '💀', label: 'Expert', description: 'Memory master!' }
+                15: { icon: '💀', label: 'Expert', description: 'Memory master!' },
               }
 
               return (
@@ -263,11 +340,20 @@ export function SetupPhase() {
                   className={getButtonStyles(state.difficulty === difficulty, 'difficulty')}
                   onClick={() => setDifficulty(difficulty)}
                 >
-                  <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' })}>
+                  <div
+                    className={css({
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                    })}
+                  >
                     <div className={css({ fontSize: '32px' })}>
                       {difficultyInfo[difficulty].icon}
                     </div>
-                    <div className={css({ fontSize: '18px', fontWeight: 'bold' })}>{difficulty} pairs</div>
+                    <div className={css({ fontSize: '18px', fontWeight: 'bold' })}>
+                      {difficulty} pairs
+                    </div>
                     <div className={css({ fontSize: '14px', fontWeight: 'bold' })}>
                       {difficultyInfo[difficulty].label}
                     </div>
@@ -279,11 +365,13 @@ export function SetupPhase() {
               )
             })}
           </div>
-          <p className={css({
-            fontSize: '14px',
-            color: 'gray.500',
-            marginTop: '8px'
-          })}>
+          <p
+            className={css({
+              fontSize: '14px',
+              color: 'gray.500',
+              marginTop: '8px',
+            })}
+          >
             {state.difficulty} pairs = {state.difficulty * 2} cards total
           </p>
         </div>
@@ -291,27 +379,31 @@ export function SetupPhase() {
         {/* Multi-Player Timer Setting */}
         {activePlayerCount > 1 && (
           <div>
-            <label className={css({
-              display: 'block',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              marginBottom: '16px',
-              color: 'gray.700'
-            })}>
+            <label
+              className={css({
+                display: 'block',
+                fontSize: '20px',
+                fontWeight: 'bold',
+                marginBottom: '16px',
+                color: 'gray.700',
+              })}
+            >
               Turn Timer
             </label>
-            <div className={css({
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'center',
-              flexWrap: 'wrap'
-            })}>
-              {([15, 30, 45, 60] as const).map(timer => {
+            <div
+              className={css({
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+              })}
+            >
+              {([15, 30, 45, 60] as const).map((timer) => {
                 const timerInfo: Record<15 | 30 | 45 | 60, { icon: string; label: string }> = {
                   15: { icon: '💨', label: 'Lightning' },
                   30: { icon: '⚡', label: 'Quick' },
                   45: { icon: '🏃', label: 'Standard' },
-                  60: { icon: '🧘', label: 'Relaxed' }
+                  60: { icon: '🧘', label: 'Relaxed' },
                 }
 
                 return (
@@ -320,37 +412,52 @@ export function SetupPhase() {
                     className={getButtonStyles(state.turnTimer === timer, 'secondary')}
                     onClick={() => dispatch({ type: 'SET_TURN_TIMER', timer })}
                   >
-                    <div className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' })}>
+                    <div
+                      className={css({
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '4px',
+                      })}
+                    >
                       <span className={css({ fontSize: '24px' })}>{timerInfo[timer].icon}</span>
-                      <span className={css({ fontSize: '18px', fontWeight: 'bold' })}>{timer}s</span>
-                      <span className={css({ fontSize: '12px', opacity: 0.8 })}>{timerInfo[timer].label}</span>
+                      <span className={css({ fontSize: '18px', fontWeight: 'bold' })}>
+                        {timer}s
+                      </span>
+                      <span className={css({ fontSize: '12px', opacity: 0.8 })}>
+                        {timerInfo[timer].label}
+                      </span>
                     </div>
                   </button>
                 )
               })}
             </div>
-            <p className={css({
-              fontSize: '14px',
-              color: 'gray.500',
-              marginTop: '8px'
-            })}>
+            <p
+              className={css({
+                fontSize: '14px',
+                color: 'gray.500',
+                marginTop: '8px',
+              })}
+            >
               Time limit for each player's turn
             </p>
           </div>
         )}
 
         {/* Start Game Button - Sticky at bottom */}
-        <div className={css({
-          marginTop: 'auto', // Push to bottom
-          paddingTop: { base: '12px', md: '16px' },
-          position: 'sticky',
-          bottom: 0,
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(10px)',
-          borderTop: '1px solid rgba(0,0,0,0.1)',
-          margin: '0 -16px -12px -16px', // Extend to edges
-          padding: { base: '12px 16px', md: '16px' }
-        })}>
+        <div
+          className={css({
+            marginTop: 'auto', // Push to bottom
+            paddingTop: { base: '12px', md: '16px' },
+            position: 'sticky',
+            bottom: 0,
+            background: 'rgba(255,255,255,0.95)',
+            backdropFilter: 'blur(10px)',
+            borderTop: '1px solid rgba(0,0,0,0.1)',
+            margin: '0 -16px -12px -16px', // Extend to edges
+            padding: { base: '12px 16px', md: '16px' },
+          })}
+        >
           <button
             className={css({
               background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 50%, #ff9ff3 100%)',
@@ -374,39 +481,51 @@ export function SetupPhase() {
                 left: '-100%',
                 width: '100%',
                 height: '100%',
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                background:
+                  'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
                 transition: 'left 0.6s ease',
               },
               _hover: {
                 transform: { base: 'translateY(-2px)', md: 'translateY(-3px) scale(1.02)' },
-                boxShadow: '0 12px 30px rgba(255, 107, 107, 0.6), inset 0 2px 0 rgba(255,255,255,0.3)',
+                boxShadow:
+                  '0 12px 30px rgba(255, 107, 107, 0.6), inset 0 2px 0 rgba(255,255,255,0.3)',
                 background: 'linear-gradient(135deg, #ff5252 0%, #dd2c00 50%, #e91e63 100%)',
                 _before: {
-                  left: '100%'
-                }
+                  left: '100%',
+                },
               },
               _active: {
                 transform: 'translateY(-1px) scale(1.01)',
-              }
+              },
             })}
             onClick={handleStartGame}
           >
-            <div className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: { base: '6px', md: '8px' },
-              justifyContent: 'center'
-            })}>
-              <span className={css({
-                fontSize: { base: '18px', sm: '20px', md: '24px' },
-                animation: 'bounce 2s infinite'
-              })}>🚀</span>
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: { base: '6px', md: '8px' },
+                justifyContent: 'center',
+              })}
+            >
+              <span
+                className={css({
+                  fontSize: { base: '18px', sm: '20px', md: '24px' },
+                  animation: 'bounce 2s infinite',
+                })}
+              >
+                🚀
+              </span>
               <span>START GAME</span>
-              <span className={css({
-                fontSize: { base: '18px', sm: '20px', md: '24px' },
-                animation: 'bounce 2s infinite',
-                animationDelay: '0.5s'
-              })}>🎮</span>
+              <span
+                className={css({
+                  fontSize: { base: '18px', sm: '20px', md: '24px' },
+                  animation: 'bounce 2s infinite',
+                  animationDelay: '0.5s',
+                })}
+              >
+                🎮
+              </span>
             </div>
           </button>
         </div>

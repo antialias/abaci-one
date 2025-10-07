@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { io, Socket } from 'socket.io-client'
+import { io, type Socket } from 'socket.io-client'
 
 export default function TestArcadePage() {
   const [socket, setSocket] = useState<Socket | null>(null)
@@ -10,7 +10,7 @@ export default function TestArcadePage() {
   const [logs, setLogs] = useState<string[]>([])
 
   const addLog = (message: string) => {
-    setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`])
+    setLogs((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${message}`])
   }
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function TestArcadePage() {
     return () => {
       socketInstance.disconnect()
     }
-  }, [])
+  }, [addLog])
 
   const joinSession = () => {
     if (!socket) return
@@ -165,7 +165,14 @@ export default function TestArcadePage() {
     <div style={{ padding: '20px', fontFamily: 'monospace' }}>
       <h1>Arcade Session Test</h1>
 
-      <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#fff3cd', borderRadius: '4px' }}>
+      <div
+        style={{
+          marginBottom: '20px',
+          padding: '10px',
+          backgroundColor: '#fff3cd',
+          borderRadius: '4px',
+        }}
+      >
         <strong>Test Cross-Tab Sync:</strong>
         <ol style={{ marginLeft: '20px', marginTop: '10px' }}>
           <li>Open this page in TWO browser tabs</li>

@@ -1,4 +1,4 @@
-import { SkillSet } from '../types/tutorial'
+import type { SkillSet } from '../types/tutorial'
 
 export type SkillMode = 'off' | 'allowed' | 'target' | 'forbidden'
 
@@ -9,21 +9,21 @@ export interface SkillConfiguration {
     simpleCombinations: SkillMode
   }
   fiveComplements: {
-    "4=5-1": SkillMode
-    "3=5-2": SkillMode
-    "2=5-3": SkillMode
-    "1=5-4": SkillMode
+    '4=5-1': SkillMode
+    '3=5-2': SkillMode
+    '2=5-3': SkillMode
+    '1=5-4': SkillMode
   }
   tenComplements: {
-    "9=10-1": SkillMode
-    "8=10-2": SkillMode
-    "7=10-3": SkillMode
-    "6=10-4": SkillMode
-    "5=10-5": SkillMode
-    "4=10-6": SkillMode
-    "3=10-7": SkillMode
-    "2=10-8": SkillMode
-    "1=10-9": SkillMode
+    '9=10-1': SkillMode
+    '8=10-2': SkillMode
+    '7=10-3': SkillMode
+    '6=10-4': SkillMode
+    '5=10-5': SkillMode
+    '4=10-6': SkillMode
+    '3=10-7': SkillMode
+    '2=10-8': SkillMode
+    '1=10-9': SkillMode
   }
 }
 
@@ -33,25 +33,25 @@ export function createDefaultSkillConfiguration(): SkillConfiguration {
     basic: {
       directAddition: 'allowed',
       heavenBead: 'off',
-      simpleCombinations: 'off'
+      simpleCombinations: 'off',
     },
     fiveComplements: {
-      "4=5-1": 'off',
-      "3=5-2": 'off',
-      "2=5-3": 'off',
-      "1=5-4": 'off'
+      '4=5-1': 'off',
+      '3=5-2': 'off',
+      '2=5-3': 'off',
+      '1=5-4': 'off',
     },
     tenComplements: {
-      "9=10-1": 'off',
-      "8=10-2": 'off',
-      "7=10-3": 'off',
-      "6=10-4": 'off',
-      "5=10-5": 'off',
-      "4=10-6": 'off',
-      "3=10-7": 'off',
-      "2=10-8": 'off',
-      "1=10-9": 'off'
-    }
+      '9=10-1': 'off',
+      '8=10-2': 'off',
+      '7=10-3': 'off',
+      '6=10-4': 'off',
+      '5=10-5': 'off',
+      '4=10-6': 'off',
+      '3=10-7': 'off',
+      '2=10-8': 'off',
+      '1=10-9': 'off',
+    },
   }
 }
 
@@ -60,25 +60,25 @@ export function createBasicAllowedConfiguration(): SkillConfiguration {
     basic: {
       directAddition: 'allowed',
       heavenBead: 'allowed',
-      simpleCombinations: 'off'
+      simpleCombinations: 'off',
     },
     fiveComplements: {
-      "4=5-1": 'off',
-      "3=5-2": 'off',
-      "2=5-3": 'off',
-      "1=5-4": 'off'
+      '4=5-1': 'off',
+      '3=5-2': 'off',
+      '2=5-3': 'off',
+      '1=5-4': 'off',
     },
     tenComplements: {
-      "9=10-1": 'off',
-      "8=10-2": 'off',
-      "7=10-3": 'off',
-      "6=10-4": 'off',
-      "5=10-5": 'off',
-      "4=10-6": 'off',
-      "3=10-7": 'off',
-      "2=10-8": 'off',
-      "1=10-9": 'off'
-    }
+      '9=10-1': 'off',
+      '8=10-2': 'off',
+      '7=10-3': 'off',
+      '6=10-4': 'off',
+      '5=10-5': 'off',
+      '4=10-6': 'off',
+      '3=10-7': 'off',
+      '2=10-8': 'off',
+      '1=10-9': 'off',
+    },
   }
 }
 
@@ -92,25 +92,25 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
     basic: {
       directAddition: false,
       heavenBead: false,
-      simpleCombinations: false
+      simpleCombinations: false,
     },
     fiveComplements: {
-      "4=5-1": false,
-      "3=5-2": false,
-      "2=5-3": false,
-      "1=5-4": false
+      '4=5-1': false,
+      '3=5-2': false,
+      '2=5-3': false,
+      '1=5-4': false,
     },
     tenComplements: {
-      "9=10-1": false,
-      "8=10-2": false,
-      "7=10-3": false,
-      "6=10-4": false,
-      "5=10-5": false,
-      "4=10-6": false,
-      "3=10-7": false,
-      "2=10-8": false,
-      "1=10-9": false
-    }
+      '9=10-1': false,
+      '8=10-2': false,
+      '7=10-3': false,
+      '6=10-4': false,
+      '5=10-5': false,
+      '4=10-6': false,
+      '3=10-7': false,
+      '2=10-8': false,
+      '1=10-9': false,
+    },
   }
 
   const target: Partial<SkillSet> = {}

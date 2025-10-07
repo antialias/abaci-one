@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useMemo, useState, createContext, useContext, useEffect } from 'react'
+import type React from 'react'
+import { createContext, useContext, useEffect, useMemo } from 'react'
 import { ReasonTooltip } from './ReasonTooltip'
-import type { UnifiedStepData } from '../../utils/unifiedStepGenerator'
 import { useTutorialContext } from './TutorialContext'
 import { useTutorialUI } from './TutorialUIContext'
 import './decomposition-reasoning.css'
@@ -49,7 +49,7 @@ const DecompositionContext = createContext<DecompositionContextType>({
   activeTerms: new Set(),
   activeSegmentId: null,
   addActiveTerm: () => {},
-  removeActiveTerm: () => {}
+  removeActiveTerm: () => {},
 })
 
 interface DecompositionWithReasonsProps {
@@ -68,13 +68,7 @@ interface TermSpanProps {
   isCurrentStep?: boolean
 }
 
-function TermSpan({
-  termIndex,
-  text,
-  segment,
-  reason,
-  isCurrentStep = false
-}: TermSpanProps) {
+function TermSpan({ termIndex, text, segment, reason, isCurrentStep = false }: TermSpanProps) {
   const { activeSegmentId, addActiveTerm, removeActiveTerm } = useContext(DecompositionContext)
   const rule = reason?.rule ?? segment?.plan[0]?.rule
 
@@ -86,8 +80,10 @@ function TermSpan({
   // Determine CSS classes based on current step only
   const cssClasses = [
     'term',
-    isCurrentStep && 'term--current' // New class for current step highlighting
-  ].filter(Boolean).join(' ')
+    isCurrentStep && 'term--current', // New class for current step highlighting
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   // Individual term hover handlers for two-level highlighting
   const handleTermHover = (isHovering: boolean) => {
@@ -127,7 +123,7 @@ function SegmentGroup({ segment, fullDecomposition, children }: SegmentGroupProp
 
   // Calculate the original term that was expanded
   // digit * 10^place gives us the original value (e.g., digit=5, place=1 -> 50)
-  const originalValue = (segment.digit * Math.pow(10, segment.place)).toString()
+  const originalValue = (segment.digit * 10 ** segment.place).toString()
 
   // Get provenance from the first step in this segment
   const firstStepIndex = segment.termIndices[0]
@@ -137,9 +133,9 @@ function SegmentGroup({ segment, fullDecomposition, children }: SegmentGroupProp
   const handleHighlightChange = (active: boolean) => {
     // Only handle highlighting, let HoverCard manage its own open/close timing
     if (active) {
-      segment.termIndices.forEach(termIndex => addActiveTerm(termIndex, segment.id))
+      segment.termIndices.forEach((termIndex) => addActiveTerm(termIndex, segment.id))
     } else {
-      segment.termIndices.forEach(termIndex => removeActiveTerm(termIndex, segment.id))
+      segment.termIndices.forEach((termIndex) => removeActiveTerm(termIndex, segment.id))
     }
   }
 
@@ -166,7 +162,7 @@ export function DecompositionWithReasons({
   fullDecomposition,
   termPositions,
   segments,
-  termReasons
+  termReasons,
 }: DecompositionWithReasonsProps) {
   // Get context state including term highlighting
   const {
@@ -176,25 +172,29 @@ export function DecompositionWithReasons({
     activeIndividualTermIndex,
     setActiveIndividualTermIndex,
     getGroupTermIndicesFromTermIndex,
-    unifiedSteps
+    unifiedSteps,
   } = useTutorialContext()
   const currentStepIndex = state.currentMultiStep
   const ui = useTutorialUI()
 
   // Build segment boundaries and ranges
-  const segmentRanges = useMemo(() => {
+  const _segmentRanges = useMemo(() => {
     if (!segments) return []
-    return segments.map(seg => ({
-      segment: seg,
-      startIndex: Math.min(...seg.termIndices.map(i => termPositions[i]?.startIndex ?? Infinity)),
-      endIndex: Math.max(...seg.termIndices.map(i => termPositions[i]?.endIndex ?? 0))
-    })).sort((a, b) => a.startIndex - b.startIndex)
+    return segments
+      .map((seg) => ({
+        segment: seg,
+        startIndex: Math.min(
+          ...seg.termIndices.map((i) => termPositions[i]?.startIndex ?? Infinity)
+        ),
+        endIndex: Math.max(...seg.termIndices.map((i) => termPositions[i]?.endIndex ?? 0)),
+      }))
+      .sort((a, b) => a.startIndex - b.startIndex)
   }, [segments, termPositions])
 
   // Build a quick lookup: termIndex -> segment
   const termIndexToSegment = useMemo(() => {
     const map = new Map<number, PedagogicalSegment>()
-    segments?.forEach(seg => seg.termIndices.forEach(i => map.set(i, seg)))
+    segments?.forEach((seg) => seg.termIndices.forEach((i) => map.set(i, seg)))
     return map
   }, [segments])
 
@@ -218,7 +218,7 @@ export function DecompositionWithReasons({
     return null
   }, [activeTermIndices, termIndexToSegment])
 
-  const addActiveTerm = (termIndex: number, segmentId?: string) => {
+  const addActiveTerm = (termIndex: number, _segmentId?: string) => {
     console.log('🎯 TERM HOVER START - termIndex:', termIndex)
 
     // Debug: Get the unified steps to see provenance data
@@ -231,7 +231,7 @@ export function DecompositionWithReasons({
       hasGroupId: !!hoveredStep?.provenance?.groupId,
       groupId: hoveredStep?.provenance?.groupId,
       rhsPlace: hoveredStep?.provenance?.rhsPlace,
-      rhsValue: hoveredStep?.provenance?.rhsValue
+      rhsValue: hoveredStep?.provenance?.rhsValue,
     })
 
     // Set individual term highlight (orange glow)
@@ -245,15 +245,20 @@ export function DecompositionWithReasons({
     if (groupTermIndices.length > 0) {
       // Debug: Log all terms in the group
       console.log('📝 All terms in group:')
-      groupTermIndices.forEach(idx => {
+      groupTermIndices.forEach((idx) => {
         const step = unifiedSteps[idx]
-        console.log(`  - Term ${idx}: "${step?.mathematicalTerm}" (termPlace: ${step?.provenance?.termPlace}, rhsPlace: ${step?.provenance?.rhsPlace}, groupId: ${step?.provenance?.groupId})`)
+        console.log(
+          `  - Term ${idx}: "${step?.mathematicalTerm}" (termPlace: ${step?.provenance?.termPlace}, rhsPlace: ${step?.provenance?.rhsPlace}, groupId: ${step?.provenance?.groupId})`
+        )
       })
 
       // For complement groups, highlight only the target column (rhsPlace, not individual termPlaces)
       // Use any term from the group since they all share the same rhsPlace (target column)
       setActiveTermIndices(new Set([termIndex]))
-      console.log('🎯 Set group highlight for target column (rhsPlace) using term index:', termIndex)
+      console.log(
+        '🎯 Set group highlight for target column (rhsPlace) using term index:',
+        termIndex
+      )
     } else {
       // This is a standalone term, just highlight it
       setActiveTermIndices(new Set([termIndex]))
@@ -263,7 +268,7 @@ export function DecompositionWithReasons({
     console.log('✅ TERM HOVER COMPLETE')
   }
 
-  const removeActiveTerm = (termIndex: number, segmentId?: string) => {
+  const removeActiveTerm = (termIndex: number, _segmentId?: string) => {
     console.log('🚫 TERM HOVER END - termIndex:', termIndex)
 
     // Clear individual term highlight
@@ -276,26 +281,24 @@ export function DecompositionWithReasons({
   }
 
   // Slice the decomposition string using termPositions
-  const pieces: React.ReactNode[] = []
-  let cursor = 0
+  const _pieces: React.ReactNode[] = []
+  const _cursor = 0
 
   // Render elements with segment groupings
   const renderElements = () => {
     const elements: React.ReactNode[] = []
     let cursor = 0
-    let currentSegmentIndex = 0
+    const _currentSegmentIndex = 0
 
     for (let termIndex = 0; termIndex < termPositions.length; termIndex++) {
       const { startIndex, endIndex } = termPositions[termIndex]
       const segment = termIndexToSegment.get(termIndex)
-      const reason = termReasons?.find(r => r.termIndex === termIndex)
+      const reason = termReasons?.find((r) => r.termIndex === termIndex)
 
       // Add connector text before this term
       if (cursor < startIndex) {
         elements.push(
-          <span key={`connector-${cursor}`}>
-            {fullDecomposition.slice(cursor, startIndex)}
-          </span>
+          <span key={`connector-${cursor}`}>{fullDecomposition.slice(cursor, startIndex)}</span>
         )
       }
 
@@ -319,7 +322,7 @@ export function DecompositionWithReasons({
           }
 
           const segText = fullDecomposition.slice(segPos.startIndex, segPos.endIndex)
-          const segReason = termReasons?.find(r => r.termIndex === segTermIndex)
+          const segReason = termReasons?.find((r) => r.termIndex === segTermIndex)
 
           segmentElements.push(
             <TermSpan
@@ -352,7 +355,6 @@ export function DecompositionWithReasons({
         const lastSegPos = termPositions[lastSegTermIndex]
         cursor = lastSegPos?.endIndex ?? endIndex
         termIndex = lastSegTermIndex // Will be incremented by for loop
-
       } else if (!segment) {
         // Regular term not in a segment
         const termText = fullDecomposition.slice(startIndex, endIndex)
@@ -373,21 +375,17 @@ export function DecompositionWithReasons({
 
     // Add trailing text
     if (cursor < fullDecomposition.length) {
-      elements.push(
-        <span key="trailing">
-          {fullDecomposition.slice(cursor)}
-        </span>
-      )
+      elements.push(<span key="trailing">{fullDecomposition.slice(cursor)}</span>)
     }
 
     return elements
   }
 
   return (
-    <DecompositionContext.Provider value={{ activeTerms: activeTermIndices, activeSegmentId, addActiveTerm, removeActiveTerm }}>
-      <div className="decomposition">
-        {renderElements()}
-      </div>
+    <DecompositionContext.Provider
+      value={{ activeTerms: activeTermIndices, activeSegmentId, addActiveTerm, removeActiveTerm }}
+    >
+      <div className="decomposition">{renderElements()}</div>
     </DecompositionContext.Provider>
   )
 }

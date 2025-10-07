@@ -1,6 +1,6 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
-import { users } from './users'
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { arcadeRooms } from './arcade-rooms'
+import { users } from './users'
 
 export const arcadeSessions = sqliteTable('arcade_sessions', {
   userId: text('user_id')

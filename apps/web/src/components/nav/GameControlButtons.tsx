@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 
 interface GameControlButtonsProps {
   onSetup?: () => void
@@ -20,7 +20,7 @@ export function GameControlButtons({ onSetup, onNewGame, onQuit }: GameControlBu
     alignItems: 'center',
     gap: '4px',
     transition: 'all 0.2s ease',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
   }
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {

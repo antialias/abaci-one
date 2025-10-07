@@ -15,7 +15,7 @@ export function pluralizeWord(count: number, singular: string, pluralForm?: stri
   if (category === 'one') {
     return singular
   }
-  return pluralForm || (singular + 's')
+  return pluralForm || `${singular}s`
 }
 
 /**

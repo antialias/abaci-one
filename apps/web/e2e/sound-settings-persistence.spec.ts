@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 test.describe('Sound Settings Persistence', () => {
   test.beforeEach(async ({ page }) => {
@@ -14,13 +14,13 @@ test.describe('Sound Settings Persistence', () => {
     await page.getByRole('button', { name: /style/i }).click()
 
     // Find and toggle the sound switch (should be off by default)
-    const soundSwitch = page.locator('[role="switch"]').filter({ hasText: /sound/i }).or(
-      page.locator('input[type="checkbox"]').filter({ hasText: /sound/i })
-    ).or(
-      page.getByLabel(/sound/i)
-    ).or(
-      page.locator('button').filter({ hasText: /sound/i })
-    ).first()
+    const soundSwitch = page
+      .locator('[role="switch"]')
+      .filter({ hasText: /sound/i })
+      .or(page.locator('input[type="checkbox"]').filter({ hasText: /sound/i }))
+      .or(page.getByLabel(/sound/i))
+      .or(page.locator('button').filter({ hasText: /sound/i }))
+      .first()
 
     await soundSwitch.click()
 
@@ -37,13 +37,13 @@ test.describe('Sound Settings Persistence', () => {
     await page.reload()
     await page.getByRole('button', { name: /style/i }).click()
 
-    const soundSwitchAfterReload = page.locator('[role="switch"]').filter({ hasText: /sound/i }).or(
-      page.locator('input[type="checkbox"]').filter({ hasText: /sound/i })
-    ).or(
-      page.getByLabel(/sound/i)
-    ).or(
-      page.locator('button').filter({ hasText: /sound/i })
-    ).first()
+    const soundSwitchAfterReload = page
+      .locator('[role="switch"]')
+      .filter({ hasText: /sound/i })
+      .or(page.locator('input[type="checkbox"]').filter({ hasText: /sound/i }))
+      .or(page.getByLabel(/sound/i))
+      .or(page.locator('button').filter({ hasText: /sound/i }))
+      .first()
 
     await expect(soundSwitchAfterReload).toBeChecked()
   })
@@ -55,9 +55,10 @@ test.describe('Sound Settings Persistence', () => {
     await page.getByRole('button', { name: /style/i }).click()
 
     // Find volume slider
-    const volumeSlider = page.locator('input[type="range"]').or(
-      page.locator('[role="slider"]')
-    ).first()
+    const volumeSlider = page
+      .locator('input[type="range"]')
+      .or(page.locator('[role="slider"]'))
+      .first()
 
     // Set volume to a specific value (e.g., 0.6)
     await volumeSlider.fill('60') // Assuming 0-100 range
@@ -75,9 +76,10 @@ test.describe('Sound Settings Persistence', () => {
     await page.reload()
     await page.getByRole('button', { name: /style/i }).click()
 
-    const volumeSliderAfterReload = page.locator('input[type="range"]').or(
-      page.locator('[role="slider"]')
-    ).first()
+    const volumeSliderAfterReload = page
+      .locator('input[type="range"]')
+      .or(page.locator('[role="slider"]'))
+      .first()
 
     const volumeValue = await volumeSliderAfterReload.inputValue()
     expect(parseFloat(volumeValue)).toBeCloseTo(60, 0) // Allow for some variance

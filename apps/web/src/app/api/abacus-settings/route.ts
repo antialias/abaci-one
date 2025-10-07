@@ -1,7 +1,7 @@
-import { NextResponse, NextRequest } from 'next/server'
+import { eq } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
-import { eq } from 'drizzle-orm'
 import { getViewerId } from '@/lib/viewer'
 
 /**
@@ -30,10 +30,7 @@ export async function GET() {
     return NextResponse.json({ settings })
   } catch (error) {
     console.error('Failed to fetch abacus settings:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch abacus settings' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch abacus settings' }, { status: 500 })
   }
 }
 
@@ -75,10 +72,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ settings: updatedSettings })
   } catch (error) {
     console.error('Failed to update abacus settings:', error)
-    return NextResponse.json(
-      { error: 'Failed to update abacus settings' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to update abacus settings' }, { status: 500 })
   }
 }
 

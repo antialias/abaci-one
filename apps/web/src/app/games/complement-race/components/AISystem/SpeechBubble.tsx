@@ -21,38 +21,42 @@ export function SpeechBubble({ message, onHide }: SpeechBubbleProps) {
   }, [onHide])
 
   return (
-    <div style={{
-      position: 'absolute',
-      bottom: 'calc(100% + 10px)',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      background: 'white',
-      borderRadius: '15px',
-      padding: '10px 15px',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-      fontSize: '14px',
-      whiteSpace: 'nowrap',
-      opacity: isVisible ? 1 : 0,
-      transition: 'opacity 0.3s ease',
-      zIndex: 10,
-      pointerEvents: 'none',
-      maxWidth: '250px',
-      textAlign: 'center'
-    }}>
-      {message}
-      {/* Tail pointing down */}
-      <div style={{
+    <div
+      style={{
         position: 'absolute',
-        bottom: '-8px',
+        bottom: 'calc(100% + 10px)',
         left: '50%',
         transform: 'translateX(-50%)',
-        width: 0,
-        height: 0,
-        borderLeft: '8px solid transparent',
-        borderRight: '8px solid transparent',
-        borderTop: '8px solid white',
-        filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.1))'
-      }} />
+        background: 'white',
+        borderRadius: '15px',
+        padding: '10px 15px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+        fontSize: '14px',
+        whiteSpace: 'nowrap',
+        opacity: isVisible ? 1 : 0,
+        transition: 'opacity 0.3s ease',
+        zIndex: 10,
+        pointerEvents: 'none',
+        maxWidth: '250px',
+        textAlign: 'center',
+      }}
+    >
+      {message}
+      {/* Tail pointing down */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '-8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 0,
+          height: 0,
+          borderLeft: '8px solid transparent',
+          borderRight: '8px solid transparent',
+          borderTop: '8px solid white',
+          filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.1))',
+        }}
+      />
     </div>
   )
 }

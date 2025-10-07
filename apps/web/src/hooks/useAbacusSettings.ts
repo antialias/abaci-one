@@ -1,8 +1,8 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/queryClient'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AbacusSettings } from '@/db/schema/abacus-settings'
+import { api } from '@/lib/queryClient'
 
 /**
  * Query key factory for abacus settings
@@ -61,17 +61,12 @@ export function useUpdateAbacusSettings() {
       await queryClient.cancelQueries({ queryKey: abacusSettingsKeys.detail() })
 
       // Snapshot previous value
-      const previousSettings = queryClient.getQueryData<AbacusSettings>(
-        abacusSettingsKeys.detail()
-      )
+      const previousSettings = queryClient.getQueryData<AbacusSettings>(abacusSettingsKeys.detail())
 
       // Optimistically update
       if (previousSettings) {
         const optimisticSettings = { ...previousSettings, ...updates }
-        queryClient.setQueryData<AbacusSettings>(
-          abacusSettingsKeys.detail(),
-          optimisticSettings
-        )
+        queryClient.setQueryData<AbacusSettings>(abacusSettingsKeys.detail(), optimisticSettings)
       }
 
       return { previousSettings }

@@ -36,7 +36,7 @@ function analyzeOperation(startValue: number, targetValue: number, operation: st
     startState,
     targetState,
     difference,
-    needsComplement: false // Will be determined by specific analysis
+    needsComplement: false, // Will be determined by specific analysis
   }
 }
 
@@ -57,13 +57,13 @@ export function auditTutorialSteps(): AuditIssue[] {
         severity: 'critical',
         description: 'Mathematical inconsistency in step values',
         currentState: `${step.startValue} + ? = ${step.targetValue}`,
-        expectedState: `Should be mathematically consistent`
+        expectedState: `Should be mathematically consistent`,
       })
     }
 
     // 2. Analyze the operation
-    const analysis = analyzeOperation(step.startValue, step.targetValue, step.problem)
-    const difference = step.targetValue - step.startValue
+    const _analysis = analyzeOperation(step.startValue, step.targetValue, step.problem)
+    const _difference = step.targetValue - step.startValue
 
     // 3. Check specific operations
     switch (step.id) {
@@ -76,7 +76,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight exactly 1 earth bead',
             currentState: `Highlights ${step.highlightBeads?.length || 0} beads`,
-            expectedState: 'Should highlight 1 earth bead at position 0'
+            expectedState: 'Should highlight 1 earth bead at position 0',
           })
         }
         break
@@ -90,7 +90,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight second earth bead (position 1)',
             currentState: `Highlights position ${step.highlightBeads?.[0]?.position}`,
-            expectedState: 'Should highlight earth bead at position 1'
+            expectedState: 'Should highlight earth bead at position 1',
           })
         }
         break
@@ -104,7 +104,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight third earth bead (position 2)',
             currentState: `Highlights position ${step.highlightBeads?.[0]?.position}`,
-            expectedState: 'Should highlight earth bead at position 2'
+            expectedState: 'Should highlight earth bead at position 2',
           })
         }
         break
@@ -118,7 +118,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight fourth earth bead (position 3)',
             currentState: `Highlights position ${step.highlightBeads?.[0]?.position}`,
-            expectedState: 'Should highlight earth bead at position 3'
+            expectedState: 'Should highlight earth bead at position 3',
           })
         }
         break
@@ -132,13 +132,17 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight heaven bead for adding 5',
             currentState: `Highlights ${step.highlightBeads?.[0]?.beadType}`,
-            expectedState: 'Should highlight heaven bead'
+            expectedState: 'Should highlight heaven bead',
           })
         }
         break
 
       case 'heaven-plus-earth': // 5 + 1
-        if (!step.highlightBeads || step.highlightBeads[0]?.beadType !== 'earth' || step.highlightBeads[0]?.position !== 0) {
+        if (
+          !step.highlightBeads ||
+          step.highlightBeads[0]?.beadType !== 'earth' ||
+          step.highlightBeads[0]?.position !== 0
+        ) {
           issues.push({
             stepId: step.id,
             stepTitle: step.title,
@@ -146,7 +150,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight first earth bead to add to existing heaven',
             currentState: `Highlights ${step.highlightBeads?.[0]?.beadType} at position ${step.highlightBeads?.[0]?.position}`,
-            expectedState: 'Should highlight earth bead at position 0'
+            expectedState: 'Should highlight earth bead at position 0',
           })
         }
         break
@@ -165,7 +169,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight heaven bead and first earth bead for 5-1 complement',
             currentState: `Highlights ${step.highlightBeads?.length || 0} beads`,
-            expectedState: 'Should highlight heaven bead + earth position 0'
+            expectedState: 'Should highlight heaven bead + earth position 0',
           })
         }
         break
@@ -184,7 +188,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight heaven bead and 2 earth beads for 5-2 complement',
             currentState: `Highlights ${step.highlightBeads?.length || 0} beads`,
-            expectedState: 'Should highlight heaven bead + earth positions 0,1'
+            expectedState: 'Should highlight heaven bead + earth positions 0,1',
           })
         }
         break
@@ -202,16 +206,19 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight 2 earth beads to add directly',
             currentState: `Highlights ${step.highlightBeads?.length || 0} beads`,
-            expectedState: 'Should highlight earth positions 1,2'
+            expectedState: 'Should highlight earth positions 1,2',
           })
         }
         break
 
-      case 'complex-2': // 7 + 4 = 11 (ten complement)
+      case 'complex-2': {
+        // 7 + 4 = 11 (ten complement)
         console.log('🔍 Analyzing complex-2: 7 + 4')
         console.log('Start: heaven + 2 earth (7)')
         console.log('Need to add 4, requires carrying to tens place')
-        console.log('Method: Add 10 (tens heaven), subtract 6 (clear ones: 5+2=7, need to subtract 6)')
+        console.log(
+          'Method: Add 10 (tens heaven), subtract 6 (clear ones: 5+2=7, need to subtract 6)'
+        )
 
         if (!step.highlightBeads || step.highlightBeads.length !== 4) {
           issues.push({
@@ -221,14 +228,20 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Should highlight tens heaven + all ones place beads to clear',
             currentState: `Highlights ${step.highlightBeads?.length || 0} beads`,
-            expectedState: 'Should highlight tens heaven + ones heaven + 2 ones earth'
+            expectedState: 'Should highlight tens heaven + ones heaven + 2 ones earth',
           })
         }
 
         // Check if it highlights the correct beads
-        const hasOnesHeaven = step.highlightBeads?.some(h => h.placeValue === 0 && h.beadType === 'heaven')
-        const hasTensHeaven = step.highlightBeads?.some(h => h.placeValue === 1 && h.beadType === 'heaven')
-        const onesEarthCount = step.highlightBeads?.filter(h => h.placeValue === 0 && h.beadType === 'earth').length || 0
+        const hasOnesHeaven = step.highlightBeads?.some(
+          (h) => h.placeValue === 0 && h.beadType === 'heaven'
+        )
+        const hasTensHeaven = step.highlightBeads?.some(
+          (h) => h.placeValue === 1 && h.beadType === 'heaven'
+        )
+        const onesEarthCount =
+          step.highlightBeads?.filter((h) => h.placeValue === 0 && h.beadType === 'earth').length ||
+          0
 
         if (!hasOnesHeaven) {
           issues.push({
@@ -238,7 +251,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'critical',
             description: 'Missing ones place heaven bead in highlighting',
             currentState: 'Ones heaven not highlighted',
-            expectedState: 'Should highlight ones heaven bead for removal'
+            expectedState: 'Should highlight ones heaven bead for removal',
           })
         }
 
@@ -250,7 +263,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'critical',
             description: 'Missing tens place heaven bead in highlighting',
             currentState: 'Tens heaven not highlighted',
-            expectedState: 'Should highlight tens heaven bead for addition'
+            expectedState: 'Should highlight tens heaven bead for addition',
           })
         }
 
@@ -262,15 +275,16 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Wrong number of ones earth beads highlighted',
             currentState: `${onesEarthCount} ones earth beads highlighted`,
-            expectedState: 'Should highlight 2 ones earth beads for removal'
+            expectedState: 'Should highlight 2 ones earth beads for removal',
           })
         }
         break
+      }
     }
 
     // 4. Check for place value consistency
     if (step.highlightBeads) {
-      step.highlightBeads.forEach(bead => {
+      step.highlightBeads.forEach((bead) => {
         if (bead.placeValue !== 0 && bead.placeValue !== 1) {
           issues.push({
             stepId: step.id,
@@ -279,7 +293,7 @@ export function auditTutorialSteps(): AuditIssue[] {
             severity: 'major',
             description: 'Invalid place value in highlighting',
             currentState: `placeValue: ${bead.placeValue}`,
-            expectedState: 'Should use placeValue 0 (ones) or 1 (tens) for basic tutorial'
+            expectedState: 'Should use placeValue 0 (ones) or 1 (tens) for basic tutorial',
           })
         }
       })
@@ -303,13 +317,13 @@ export function runTutorialAudit(): void {
   console.log(`\n🚨 Found ${issues.length} issues:\n`)
 
   // Group by severity
-  const critical = issues.filter(i => i.severity === 'critical')
-  const major = issues.filter(i => i.severity === 'major')
-  const minor = issues.filter(i => i.severity === 'minor')
+  const critical = issues.filter((i) => i.severity === 'critical')
+  const major = issues.filter((i) => i.severity === 'major')
+  const minor = issues.filter((i) => i.severity === 'minor')
 
   if (critical.length > 0) {
     console.log('🔴 CRITICAL ISSUES:')
-    critical.forEach(issue => {
+    critical.forEach((issue) => {
       console.log(`  • ${issue.stepTitle}: ${issue.description}`)
       console.log(`    Current: ${issue.currentState}`)
       console.log(`    Expected: ${issue.expectedState}\n`)
@@ -318,7 +332,7 @@ export function runTutorialAudit(): void {
 
   if (major.length > 0) {
     console.log('🟠 MAJOR ISSUES:')
-    major.forEach(issue => {
+    major.forEach((issue) => {
       console.log(`  • ${issue.stepTitle}: ${issue.description}`)
       console.log(`    Current: ${issue.currentState}`)
       console.log(`    Expected: ${issue.expectedState}\n`)
@@ -327,12 +341,14 @@ export function runTutorialAudit(): void {
 
   if (minor.length > 0) {
     console.log('🟡 MINOR ISSUES:')
-    minor.forEach(issue => {
+    minor.forEach((issue) => {
       console.log(`  • ${issue.stepTitle}: ${issue.description}`)
       console.log(`    Current: ${issue.currentState}`)
       console.log(`    Expected: ${issue.expectedState}\n`)
     })
   }
 
-  console.log(`\n📊 Summary: ${critical.length} critical, ${major.length} major, ${minor.length} minor issues`)
+  console.log(
+    `\n📊 Summary: ${critical.length} critical, ${major.length} major, ${minor.length} minor issues`
+  )
 }

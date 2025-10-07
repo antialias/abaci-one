@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
-import { useGameMode } from '../../contexts/GameModeContext'
+import { useState } from 'react'
 import { EmojiPicker } from '../../app/games/matching/components/EmojiPicker'
+import { useGameMode } from '../../contexts/GameModeContext'
 
 interface PlayerConfigDialogProps {
   playerId: string
@@ -8,16 +8,16 @@ interface PlayerConfigDialogProps {
 }
 
 export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProps) {
-  const { getPlayer, updatePlayer } = useGameMode()
+  // All hooks must be called before early return
+  const { getPlayer, updatePlayer, players } = useGameMode()
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
   const player = getPlayer(playerId)
+  const [tempName, setTempName] = useState(player?.name || '')
 
   if (!player) {
     return null
   }
-
-  const [tempName, setTempName] = useState(player.name)
 
   const handleSave = () => {
     updatePlayer(playerId, { name: tempName })
@@ -30,8 +30,8 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
   }
 
   // Get player number for UI theming (first 4 players get special colors)
-  const allPlayers = Array.from(useGameMode().players.values()).sort((a, b) => a.createdAt - b.createdAt)
-  const playerIndex = allPlayers.findIndex(p => p.id === playerId)
+  const allPlayers = Array.from(players.values()).sort((a, b) => a.createdAt - b.createdAt)
+  const playerIndex = allPlayers.findIndex((p) => p.id === playerId)
   const displayNumber = playerIndex + 1
 
   // Color based on player's actual color
@@ -49,44 +49,52 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
   }
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0, 0, 0, 0.7)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px',
-      animation: 'fadeIn 0.2s ease'
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '20px',
-        padding: '32px',
-        maxWidth: '400px',
-        width: '100%',
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
-        position: 'relative'
-      }}>
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px',
+        animation: 'fadeIn 0.2s ease',
+      }}
+    >
+      <div
+        style={{
+          background: 'white',
+          borderRadius: '20px',
+          padding: '32px',
+          maxWidth: '400px',
+          width: '100%',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+          position: 'relative',
+        }}
+      >
         {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px'
-        }}>
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
-            backgroundClip: 'text',
-            color: 'transparent',
-            margin: 0
-          }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '24px',
+          }}
+        >
+          <h2
+            style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
+              backgroundClip: 'text',
+              color: 'transparent',
+              margin: 0,
+            }}
+          >
             Configure Player
           </h2>
           <button
@@ -98,10 +106,10 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               cursor: 'pointer',
               color: '#6b7280',
               padding: '4px',
-              lineHeight: 1
+              lineHeight: 1,
             }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#1f2937'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#1f2937')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#6b7280')}
           >
             ✕
           </button>
@@ -109,13 +117,15 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
 
         {/* Emoji Selection */}
         <div style={{ marginBottom: '24px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '8px',
+            }}
+          >
             Character
           </label>
           <button
@@ -130,7 +140,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               transition: 'all 0.2s ease',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px'
+              gap: '12px',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = gradientColor
@@ -143,35 +153,45 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               e.currentTarget.style.boxShadow = 'none'
             }}
           >
-            <div style={{
-              fontSize: '48px',
-              lineHeight: 1
-            }}>
+            <div
+              style={{
+                fontSize: '48px',
+                lineHeight: 1,
+              }}
+            >
               {player.emoji}
             </div>
-            <div style={{
-              flex: 1,
-              textAlign: 'left'
-            }}>
-              <div style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#1f2937',
-                marginBottom: '4px'
-              }}>
+            <div
+              style={{
+                flex: 1,
+                textAlign: 'left',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '4px',
+                }}
+              >
                 Click to change character
               </div>
-              <div style={{
-                fontSize: '12px',
-                color: '#6b7280'
-              }}>
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: '#6b7280',
+                }}
+              >
                 Choose from hundreds of emojis
               </div>
             </div>
-            <div style={{
-              fontSize: '20px',
-              color: '#9ca3af'
-            }}>
+            <div
+              style={{
+                fontSize: '20px',
+                color: '#9ca3af',
+              }}
+            >
               →
             </div>
           </button>
@@ -179,13 +199,15 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
 
         {/* Name Input */}
         <div style={{ marginBottom: '24px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '8px',
+            }}
+          >
             Name
           </label>
           <input
@@ -202,7 +224,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               borderRadius: '12px',
               outline: 'none',
               transition: 'all 0.2s ease',
-              fontWeight: '500'
+              fontWeight: '500',
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = gradientColor
@@ -213,21 +235,25 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               e.currentTarget.style.boxShadow = 'none'
             }}
           />
-          <div style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            marginTop: '4px',
-            textAlign: 'right'
-          }}>
+          <div
+            style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              marginTop: '4px',
+              textAlign: 'right',
+            }}
+          >
             {tempName.length}/20 characters
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div style={{
-          display: 'flex',
-          gap: '12px'
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '12px',
+          }}
+        >
           <button
             onClick={onClose}
             style={{
@@ -240,7 +266,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               fontWeight: '600',
               color: '#6b7280',
               cursor: 'pointer',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = '#f9fafb'
@@ -266,7 +292,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               color: 'white',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)'

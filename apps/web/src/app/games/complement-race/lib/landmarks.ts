@@ -93,9 +93,9 @@ export function generateLandmarks(routeNumber: number): Landmark[] {
       position,
       offset: {
         x: offsetSide * offsetDistance,
-        y: random(i + 5) * 20 - 10
+        y: random(i + 5) * 20 - 10,
       },
-      size
+      size,
     })
   }
 

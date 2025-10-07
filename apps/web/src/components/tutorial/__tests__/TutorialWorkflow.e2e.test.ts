@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 // Helper functions for tutorial testing
 const waitForTutorialLoad = async (page: Page) => {
@@ -23,7 +23,7 @@ const clickBeadToIncrement = async (page: Page) => {
   await page.click('[data-testid="bead-place-0-earth-pos-0"]')
 }
 
-const navigateToStep = async (page: Page, stepIndex: number) => {
+const _navigateToStep = async (page: Page, stepIndex: number) => {
   // Open step list if not already open
   const stepListButton = page.locator('button:has-text("Steps")')
   if (await stepListButton.isVisible()) {
@@ -123,12 +123,16 @@ test.describe('Tutorial Workflow E2E', () => {
       await page.waitForTimeout(500)
 
       // Should show different instruction
-      const instruction1 = await page.locator('[data-testid="multi-step-instruction"]').textContent()
+      const instruction1 = await page
+        .locator('[data-testid="multi-step-instruction"]')
+        .textContent()
 
       await page.click('button:has-text("Next ⏩")')
       await page.waitForTimeout(500)
 
-      const instruction2 = await page.locator('[data-testid="multi-step-instruction"]').textContent()
+      const instruction2 = await page
+        .locator('[data-testid="multi-step-instruction"]')
+        .textContent()
       expect(instruction2).not.toBe(instruction1)
     }
   })
@@ -143,7 +147,9 @@ test.describe('Tutorial Workflow E2E', () => {
       test.skip()
     }
 
-    const initialInstruction = await page.locator('[data-testid="multi-step-instruction"]').textContent()
+    const _initialInstruction = await page
+      .locator('[data-testid="multi-step-instruction"]')
+      .textContent()
 
     // Interact with abacus to potentially reach an intermediate target
     await clickBeadToIncrement(page)
@@ -153,7 +159,9 @@ test.describe('Tutorial Workflow E2E', () => {
     // Wait for potential auto-advancement (with timeout)
     await page.waitForTimeout(2000)
 
-    const newInstruction = await page.locator('[data-testid="multi-step-instruction"]').textContent()
+    const _newInstruction = await page
+      .locator('[data-testid="multi-step-instruction"]')
+      .textContent()
 
     // If auto-advancement happened, instruction should change
     // If not, that's also okay - depends on the specific tutorial values
@@ -193,7 +201,9 @@ test.describe('Tutorial Workflow E2E', () => {
 
       if (tooltipBox && abacusBox) {
         // Tooltip should not completely overlap the abacus
-        expect(tooltipBox.x + tooltipBox.width).toBeLessThanOrEqual(abacusBox.x + abacusBox.width + 50)
+        expect(tooltipBox.x + tooltipBox.width).toBeLessThanOrEqual(
+          abacusBox.x + abacusBox.width + 50
+        )
       }
     }
   })
@@ -207,7 +217,9 @@ test.describe('Tutorial Workflow E2E', () => {
     await page.waitForTimeout(200)
 
     // Should move focus to next column
-    const focusedElement = await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))
+    const focusedElement = await page.evaluate(() =>
+      document.activeElement?.getAttribute('data-testid')
+    )
     expect(focusedElement).toMatch(/bead-place-/)
 
     // Test shift+tab navigation
@@ -215,7 +227,9 @@ test.describe('Tutorial Workflow E2E', () => {
     await page.waitForTimeout(200)
 
     // Should move focus in opposite direction
-    const newFocusedElement = await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))
+    const newFocusedElement = await page.evaluate(() =>
+      document.activeElement?.getAttribute('data-testid')
+    )
     expect(newFocusedElement).not.toBe(focusedElement)
   })
 

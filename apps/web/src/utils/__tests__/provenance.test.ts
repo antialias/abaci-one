@@ -40,7 +40,7 @@ describe('Provenance System', () => {
     })
 
     it('should have provenance for the "20" term (tens digit)', () => {
-      const twentyStep = result.steps.find(step => step.mathematicalTerm === '20')
+      const twentyStep = result.steps.find((step) => step.mathematicalTerm === '20')
       expect(twentyStep).toBeDefined()
       expect(twentyStep?.provenance).toBeDefined()
 
@@ -55,7 +55,7 @@ describe('Provenance System', () => {
     })
 
     it('should have provenance for the "5" term (ones digit)', () => {
-      const fiveStep = result.steps.find(step => step.mathematicalTerm === '5')
+      const fiveStep = result.steps.find((step) => step.mathematicalTerm === '5')
       expect(fiveStep).toBeDefined()
       expect(fiveStep?.provenance).toBeDefined()
 
@@ -78,14 +78,14 @@ describe('Provenance System', () => {
       expect(result.equationAnchors?.rhsDigitPositions[0]).toEqual({
         digitIndex: 0,
         startIndex: expect.any(Number),
-        endIndex: expect.any(Number)
+        endIndex: expect.any(Number),
       })
 
       // Second digit (5)
       expect(result.equationAnchors?.rhsDigitPositions[1]).toEqual({
         digitIndex: 1,
         startIndex: expect.any(Number),
-        endIndex: expect.any(Number)
+        endIndex: expect.any(Number),
       })
     })
 
@@ -93,19 +93,19 @@ describe('Provenance System', () => {
       expect(result.segments.length).toBeGreaterThan(0)
 
       // Find segment for tens place (digit 2)
-      const tensSegment = result.segments.find(seg => seg.place === 1 && seg.digit === 2)
+      const tensSegment = result.segments.find((seg) => seg.place === 1 && seg.digit === 2)
       expect(tensSegment).toBeDefined()
       expect(tensSegment?.stepIndices.length).toBeGreaterThan(0)
 
       // Find segment for ones place (digit 5)
-      const onesSegment = result.segments.find(seg => seg.place === 0 && seg.digit === 5)
+      const onesSegment = result.segments.find((seg) => seg.place === 0 && seg.digit === 5)
       expect(onesSegment).toBeDefined()
       expect(onesSegment?.stepIndices.length).toBeGreaterThan(0)
     })
 
     it('should maintain consistency between steps and segments', () => {
-      result.segments.forEach(segment => {
-        segment.stepIndices.forEach(stepIndex => {
+      result.segments.forEach((segment) => {
+        segment.stepIndices.forEach((stepIndex) => {
           const step = result.steps[stepIndex]
           expect(step).toBeDefined()
           expect(step.segmentId).toBe(segment.id)
@@ -123,10 +123,10 @@ describe('Provenance System', () => {
   describe('Edge cases', () => {
     it('should handle single digit addition', () => {
       const result = generateUnifiedInstructionSequence(10, 13)
-      const steps = result.steps.filter(step => step.provenance)
+      const steps = result.steps.filter((step) => step.provenance)
       expect(steps.length).toBeGreaterThan(0)
 
-      steps.forEach(step => {
+      steps.forEach((step) => {
         expect(step.provenance?.rhs).toBe(3)
         expect(step.provenance?.rhsDigit).toBe(3)
         expect(step.provenance?.rhsPlace).toBe(0)
@@ -137,12 +137,13 @@ describe('Provenance System', () => {
     it('should handle complement operations with group IDs', () => {
       // This might trigger a complement operation
       const result = generateUnifiedInstructionSequence(0, 7)
-      const complementSteps = result.steps.filter(step =>
-        step.provenance?.groupId && step.provenance.groupId.includes('comp'))
+      const complementSteps = result.steps.filter((step) =>
+        step.provenance?.groupId?.includes('comp')
+      )
 
       if (complementSteps.length > 0) {
         const firstGroupId = complementSteps[0].provenance?.groupId
-        complementSteps.forEach(step => {
+        complementSteps.forEach((step) => {
           expect(step.provenance?.groupId).toBe(firstGroupId)
         })
       }

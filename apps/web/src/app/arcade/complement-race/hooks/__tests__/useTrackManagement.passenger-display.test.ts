@@ -1,8 +1,8 @@
 import { renderHook } from '@testing-library/react'
-import { describe, test, expect, beforeEach, vi } from 'vitest'
-import { useTrackManagement } from '../useTrackManagement'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
+import type { Passenger, Station } from '../../lib/gameTypes'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
-import type { Station, Passenger } from '../../lib/gameTypes'
+import { useTrackManagement } from '../useTrackManagement'
 
 describe('useTrackManagement - Passenger Display', () => {
   let mockPathRef: React.RefObject<SVGPathElement>
@@ -27,13 +27,13 @@ describe('useTrackManagement - Passenger Display', () => {
         referencePath: 'M 0 0',
         ties: [],
         leftRailPath: 'M 0 0',
-        rightRailPath: 'M 0 0'
+        rightRailPath: 'M 0 0',
       })),
       generateTiesAndRails: vi.fn(() => ({
         ties: [],
         leftRailPath: 'M 0 0',
-        rightRailPath: 'M 0 0'
-      }))
+        rightRailPath: 'M 0 0',
+      })),
     } as unknown as RailroadTrackGenerator
 
     // Mock stations
@@ -53,7 +53,7 @@ describe('useTrackManagement - Passenger Display', () => {
         destinationStationId: 'station2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
+        isUrgent: false,
       },
       {
         id: 'p2',
@@ -63,8 +63,8 @@ describe('useTrackManagement - Passenger Display', () => {
         destinationStationId: 'station3',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     vi.clearAllMocks()
@@ -80,7 +80,7 @@ describe('useTrackManagement - Passenger Display', () => {
         stations: mockStations,
         passengers: mockPassengers,
         maxCars: 3,
-        carSpacing: 7
+        carSpacing: 7,
       })
     )
 
@@ -100,7 +100,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { passengers: mockPassengers, position: 25 } }
     )
@@ -110,7 +110,7 @@ describe('useTrackManagement - Passenger Display', () => {
     expect(result.current.displayPassengers[0].isBoarded).toBe(false)
 
     // Board first passenger
-    const boardedPassengers = mockPassengers.map(p =>
+    const boardedPassengers = mockPassengers.map((p) =>
       p.id === 'p1' ? { ...p, isBoarded: true } : p
     )
 
@@ -132,7 +132,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { route: 1, passengers: mockPassengers, position: 50 } }
     )
@@ -151,8 +151,8 @@ describe('useTrackManagement - Passenger Display', () => {
         destinationStationId: 'station3',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // Change route but train still moving
@@ -175,7 +175,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { route: 1, passengers: mockPassengers, position: 50 } }
     )
@@ -194,8 +194,8 @@ describe('useTrackManagement - Passenger Display', () => {
         destinationStationId: 'station3',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // Change route and train resets
@@ -218,7 +218,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { route: 1, passengers: mockPassengers, position: 95 } }
     )
@@ -237,8 +237,8 @@ describe('useTrackManagement - Passenger Display', () => {
         destinationStationId: 'station3',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // Train exits (105%) but route hasn't changed yet
@@ -274,7 +274,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { passengers: mockPassengers, position: 50 } }
     )
@@ -284,7 +284,7 @@ describe('useTrackManagement - Passenger Display', () => {
     expect(result.current.displayPassengers[0].id).toBe('p1')
 
     // Create new array with same content (different reference)
-    const samePassengersNewRef = mockPassengers.map(p => ({ ...p }))
+    const samePassengersNewRef = mockPassengers.map((p) => ({ ...p }))
 
     // Update with new reference but same content
     rerender({ passengers: samePassengersNewRef, position: 50 })
@@ -305,7 +305,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { passengers: mockPassengers, position: 25 } }
     )
@@ -315,7 +315,7 @@ describe('useTrackManagement - Passenger Display', () => {
     expect(result.current.displayPassengers[0].isDelivered).toBe(false)
 
     // Deliver first passenger
-    const deliveredPassengers = mockPassengers.map(p =>
+    const deliveredPassengers = mockPassengers.map((p) =>
       p.id === 'p1' ? { ...p, isBoarded: true, isDelivered: true } : p
     )
 
@@ -337,7 +337,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { passengers: mockPassengers, position: 25 } }
     )
@@ -346,23 +346,17 @@ describe('useTrackManagement - Passenger Display', () => {
     expect(result.current.displayPassengers).toHaveLength(2)
 
     // Board p1
-    let updated = mockPassengers.map(p =>
-      p.id === 'p1' ? { ...p, isBoarded: true } : p
-    )
+    let updated = mockPassengers.map((p) => (p.id === 'p1' ? { ...p, isBoarded: true } : p))
     rerender({ passengers: updated, position: 26 })
     expect(result.current.displayPassengers[0].isBoarded).toBe(true)
 
     // Board p2
-    updated = updated.map(p =>
-      p.id === 'p2' ? { ...p, isBoarded: true } : p
-    )
+    updated = updated.map((p) => (p.id === 'p2' ? { ...p, isBoarded: true } : p))
     rerender({ passengers: updated, position: 52 })
     expect(result.current.displayPassengers[1].isBoarded).toBe(true)
 
     // Deliver p1
-    updated = updated.map(p =>
-      p.id === 'p1' ? { ...p, isDelivered: true } : p
-    )
+    updated = updated.map((p) => (p.id === 'p1' ? { ...p, isDelivered: true } : p))
     rerender({ passengers: updated, position: 53 })
     expect(result.current.displayPassengers[0].isDelivered).toBe(true)
 
@@ -384,7 +378,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { route: 1, passengers: mockPassengers, position: 95 } }
     )
@@ -406,8 +400,8 @@ describe('useTrackManagement - Passenger Display', () => {
         destinationStationId: 'station3',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // CRITICAL: New passengers, old route, position = 0
@@ -431,7 +425,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { route: 1, passengers: mockPassengers, position: 95 } }
     )
@@ -449,8 +443,8 @@ describe('useTrackManagement - Passenger Display', () => {
         destinationStationId: 'station3',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // CRITICAL: New passengers array, same route, position within 0-100
@@ -471,7 +465,7 @@ describe('useTrackManagement - Passenger Display', () => {
           stations: mockStations,
           passengers,
           maxCars: 3,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       { initialProps: { route: 1, passengers: mockPassengers, position: 50 } }
     )
@@ -487,8 +481,8 @@ describe('useTrackManagement - Passenger Display', () => {
         destinationStationId: 'station3',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // Route changes, position goes positive briefly before negative

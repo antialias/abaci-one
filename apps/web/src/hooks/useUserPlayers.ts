@@ -1,8 +1,8 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/queryClient'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Player } from '@/db/schema/players'
+import { api } from '@/lib/queryClient'
 
 /**
  * Query key factory for players
@@ -60,7 +60,7 @@ async function updatePlayer({
     try {
       const errorData = await res.json()
       throw new Error(errorData.error || 'Failed to update player')
-    } catch (jsonError) {
+    } catch (_jsonError) {
       throw new Error('Failed to update player')
     }
   }
@@ -111,7 +111,10 @@ export function useCreatePlayer() {
           createdAt: new Date(),
           isActive: newPlayer.isActive ?? false,
         }
-        queryClient.setQueryData<Player[]>(playerKeys.list(), [...previousPlayers, optimisticPlayer])
+        queryClient.setQueryData<Player[]>(playerKeys.list(), [
+          ...previousPlayers,
+          optimisticPlayer,
+        ])
       }
 
       return { previousPlayers }
@@ -146,7 +149,7 @@ export function useUpdatePlayer() {
 
       // Optimistically update
       if (previousPlayers) {
-        const optimisticPlayers = previousPlayers.map(player =>
+        const optimisticPlayers = previousPlayers.map((player) =>
           player.id === id ? { ...player, ...updates } : player
         )
         queryClient.setQueryData<Player[]>(playerKeys.list(), optimisticPlayers)
@@ -190,7 +193,7 @@ export function useDeletePlayer() {
 
       // Optimistically remove from list
       if (previousPlayers) {
-        const optimisticPlayers = previousPlayers.filter(player => player.id !== id)
+        const optimisticPlayers = previousPlayers.filter((player) => player.id !== id)
         queryClient.setQueryData<Player[]>(playerKeys.list(), optimisticPlayers)
       }
 

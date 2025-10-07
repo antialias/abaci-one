@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { generateUnifiedInstructionSequence } from '../unifiedStepGenerator'
 
 describe('Unified Step Generator', () => {
@@ -47,13 +47,13 @@ describe('Unified Step Generator', () => {
     expect(sequence.fullDecomposition).toContain('= 11')
 
     // Should have steps involving both tens and ones places
-    const allMovements = sequence.steps.flatMap(step => step.beadMovements)
-    const places = new Set(allMovements.map(movement => movement.placeValue))
+    const allMovements = sequence.steps.flatMap((step) => step.beadMovements)
+    const places = new Set(allMovements.map((movement) => movement.placeValue))
     expect(places).toContain(0) // ones place
     expect(places).toContain(1) // tens place
 
     // Each step should be valid and consistent
-    sequence.steps.forEach(step => {
+    sequence.steps.forEach((step) => {
       expect(step.isValid).toBe(true)
       expect(step.validationIssues).toEqual([])
     })
@@ -65,7 +65,9 @@ describe('Unified Step Generator', () => {
       console.log(`  Math term: ${step.mathematicalTerm}`)
       console.log(`  Instruction: ${step.englishInstruction}`)
       console.log(`  Expected value: ${step.expectedValue}`)
-      console.log(`  Movements: ${step.beadMovements.map(m => `${m.placeValue}:${m.beadType}:${m.direction}`).join(', ')}`)
+      console.log(
+        `  Movements: ${step.beadMovements.map((m) => `${m.placeValue}:${m.beadType}:${m.direction}`).join(', ')}`
+      )
     })
   })
 
@@ -74,7 +76,7 @@ describe('Unified Step Generator', () => {
       { start: 3, target: 17 },
       { start: 7, target: 11 },
       { start: 2, target: 5 },
-      { start: 56, target: 104 }
+      { start: 56, target: 104 },
     ]
 
     testCases.forEach(({ start, target }) => {
@@ -85,7 +87,10 @@ describe('Unified Step Generator', () => {
         expect(step.isValid).toBe(true)
 
         if (!step.isValid) {
-          console.error(`Step ${index} validation failed for ${start} + ${target - start}:`, step.validationIssues)
+          console.error(
+            `Step ${index} validation failed for ${start} + ${target - start}:`,
+            step.validationIssues
+          )
         }
       })
 
@@ -94,7 +99,7 @@ describe('Unified Step Generator', () => {
       expect(lastStep.expectedValue).toBe(target)
 
       // No step should have impossible expected values
-      sequence.steps.forEach(step => {
+      sequence.steps.forEach((step) => {
         expect(step.expectedValue).toBeGreaterThanOrEqual(0)
         expect(step.expectedValue).toBeLessThan(10000) // reasonable bounds
       })
@@ -106,7 +111,7 @@ describe('Unified Step Generator', () => {
 
     // Should process highest place values first
     const firstStepMovements = sequence.steps[0].beadMovements
-    const firstStepPlaces = firstStepMovements.map(m => m.placeValue)
+    const firstStepPlaces = firstStepMovements.map((m) => m.placeValue)
 
     // First step should involve hundreds place for 99 + 1
     expect(firstStepPlaces).toContain(2) // hundreds place
@@ -126,14 +131,14 @@ describe('Unified Step Generator', () => {
       { start: 0, target: 1 },
       { start: 4, target: 5 },
       { start: 9, target: 10 },
-      { start: 99, target: 100 }
+      { start: 99, target: 100 },
     ]
 
     edgeCases.forEach(({ start, target }) => {
       expect(() => {
         const sequence = generateUnifiedInstructionSequence(start, target)
         expect(sequence.steps.length).toBeGreaterThan(0)
-        expect(sequence.steps.every(step => step.isValid)).toBe(true)
+        expect(sequence.steps.every((step) => step.isValid)).toBe(true)
       }).not.toThrow()
     })
   })
@@ -155,7 +160,9 @@ describe('Unified Step Generator', () => {
       const extractedTerm = sequence.fullDecomposition.substring(startIndex, endIndex)
       expect(extractedTerm).toBe(step.mathematicalTerm)
 
-      console.log(`Step ${index + 1}: "${step.mathematicalTerm}" at position ${startIndex}-${endIndex} = "${extractedTerm}"`)
+      console.log(
+        `Step ${index + 1}: "${step.mathematicalTerm}" at position ${startIndex}-${endIndex} = "${extractedTerm}"`
+      )
     })
 
     // Verify specific positions for known case "3 + 14 = 3 + 10 + (5 - 1) = 17"
@@ -164,11 +171,21 @@ describe('Unified Step Generator', () => {
     // First step should be "10" at position around 13-15
     const firstStep = sequence.steps[0]
     expect(firstStep.mathematicalTerm).toBe('10')
-    expect(sequence.fullDecomposition.substring(firstStep.termPosition.startIndex, firstStep.termPosition.endIndex)).toBe('10')
+    expect(
+      sequence.fullDecomposition.substring(
+        firstStep.termPosition.startIndex,
+        firstStep.termPosition.endIndex
+      )
+    ).toBe('10')
 
     // Second step should be "(5 - 1)" at position around 18-25
     const secondStep = sequence.steps[1]
     expect(secondStep.mathematicalTerm).toBe('(5 - 1)')
-    expect(sequence.fullDecomposition.substring(secondStep.termPosition.startIndex, secondStep.termPosition.endIndex)).toBe('(5 - 1)')
+    expect(
+      sequence.fullDecomposition.substring(
+        secondStep.termPosition.startIndex,
+        secondStep.termPosition.endIndex
+      )
+    ).toBe('(5 - 1)')
   })
 })

@@ -2,44 +2,143 @@ import type { Passenger, Station } from './gameTypes'
 
 // Names and avatars organized by gender presentation
 const MASCULINE_NAMES = [
-  'Ahmed', 'Bob', 'Carlos', 'Elias', 'Ethan', 'George', 'Ian', 'Kevin',
-  'Marcus', 'Oliver', 'Victor', 'Xavier', 'Raj', 'David', 'Miguel', 'Jin'
+  'Ahmed',
+  'Bob',
+  'Carlos',
+  'Elias',
+  'Ethan',
+  'George',
+  'Ian',
+  'Kevin',
+  'Marcus',
+  'Oliver',
+  'Victor',
+  'Xavier',
+  'Raj',
+  'David',
+  'Miguel',
+  'Jin',
 ]
 
 const FEMININE_NAMES = [
-  'Alice', 'Bella', 'Diana', 'Devi', 'Fatima', 'Fiona', 'Hannah', 'Julia',
-  'Laura', 'Nina', 'Petra', 'Rosa', 'Tessa', 'Uma', 'Wendy', 'Zara', 'Yuki'
+  'Alice',
+  'Bella',
+  'Diana',
+  'Devi',
+  'Fatima',
+  'Fiona',
+  'Hannah',
+  'Julia',
+  'Laura',
+  'Nina',
+  'Petra',
+  'Rosa',
+  'Tessa',
+  'Uma',
+  'Wendy',
+  'Zara',
+  'Yuki',
 ]
 
 const GENDER_NEUTRAL_NAMES = [
-  'Alex', 'Charlie', 'Jordan', 'Morgan', 'Quinn', 'Riley', 'Sam', 'Taylor'
+  'Alex',
+  'Charlie',
+  'Jordan',
+  'Morgan',
+  'Quinn',
+  'Riley',
+  'Sam',
+  'Taylor',
 ]
 
 // Masculine-presenting avatars
 const MASCULINE_AVATARS = [
-  '👨', '👨🏻', '👨🏼', '👨🏽', '👨🏾', '👨🏿',
-  '👴', '👴🏻', '👴🏼', '👴🏽', '👴🏾', '👴🏿',
-  '👦', '👦🏻', '👦🏼', '👦🏽', '👦🏾', '👦🏿',
-  '🧔', '🧔🏻', '🧔🏼', '🧔🏽', '🧔🏾', '🧔🏿',
-  '👨‍🦱', '👨🏻‍🦱', '👨🏼‍🦱', '👨🏽‍🦱', '👨🏾‍🦱', '👨🏿‍🦱',
-  '👨‍🦰', '👨🏻‍🦰', '👨🏼‍🦰', '👨🏽‍🦰', '👨🏾‍🦰', '👨🏿‍🦰',
-  '👱', '👱🏻', '👱🏼', '👱🏽', '👱🏾', '👱🏿'
+  '👨',
+  '👨🏻',
+  '👨🏼',
+  '👨🏽',
+  '👨🏾',
+  '👨🏿',
+  '👴',
+  '👴🏻',
+  '👴🏼',
+  '👴🏽',
+  '👴🏾',
+  '👴🏿',
+  '👦',
+  '👦🏻',
+  '👦🏼',
+  '👦🏽',
+  '👦🏾',
+  '👦🏿',
+  '🧔',
+  '🧔🏻',
+  '🧔🏼',
+  '🧔🏽',
+  '🧔🏾',
+  '🧔🏿',
+  '👨‍🦱',
+  '👨🏻‍🦱',
+  '👨🏼‍🦱',
+  '👨🏽‍🦱',
+  '👨🏾‍🦱',
+  '👨🏿‍🦱',
+  '👨‍🦰',
+  '👨🏻‍🦰',
+  '👨🏼‍🦰',
+  '👨🏽‍🦰',
+  '👨🏾‍🦰',
+  '👨🏿‍🦰',
+  '👱',
+  '👱🏻',
+  '👱🏼',
+  '👱🏽',
+  '👱🏾',
+  '👱🏿',
 ]
 
 // Feminine-presenting avatars
 const FEMININE_AVATARS = [
-  '👩', '👩🏻', '👩🏼', '👩🏽', '👩🏾', '👩🏿',
-  '👵', '👵🏻', '👵🏼', '👵🏽', '👵🏾', '👵🏿',
-  '👧', '👧🏻', '👧🏼', '👧🏽', '👧🏾', '👧🏿',
-  '👩‍🦱', '👩🏻‍🦱', '👩🏼‍🦱', '👩🏽‍🦱', '👩🏾‍🦱', '👩🏿‍🦱',
-  '👩‍🦰', '👩🏻‍🦰', '👩🏼‍🦰', '👩🏽‍🦰', '👩🏾‍🦰', '👩🏿‍🦰',
-  '👱‍♀️', '👱🏻‍♀️', '👱🏼‍♀️', '👱🏽‍♀️', '👱🏾‍♀️', '👱🏿‍♀️'
+  '👩',
+  '👩🏻',
+  '👩🏼',
+  '👩🏽',
+  '👩🏾',
+  '👩🏿',
+  '👵',
+  '👵🏻',
+  '👵🏼',
+  '👵🏽',
+  '👵🏾',
+  '👵🏿',
+  '👧',
+  '👧🏻',
+  '👧🏼',
+  '👧🏽',
+  '👧🏾',
+  '👧🏿',
+  '👩‍🦱',
+  '👩🏻‍🦱',
+  '👩🏼‍🦱',
+  '👩🏽‍🦱',
+  '👩🏾‍🦱',
+  '👩🏿‍🦱',
+  '👩‍🦰',
+  '👩🏻‍🦰',
+  '👩🏼‍🦰',
+  '👩🏽‍🦰',
+  '👩🏾‍🦰',
+  '👩🏿‍🦰',
+  '👱‍♀️',
+  '👱🏻‍♀️',
+  '👱🏼‍♀️',
+  '👱🏽‍♀️',
+  '👱🏾‍♀️',
+  '👱🏿‍♀️',
 ]
 
 // Gender-neutral avatars
-const NEUTRAL_AVATARS = [
-  '🧑', '🧑🏻', '🧑🏼', '🧑🏽', '🧑🏾', '🧑🏿'
-]
+const NEUTRAL_AVATARS = ['🧑', '🧑🏻', '🧑🏼', '🧑🏽', '🧑🏾', '🧑🏿']
 
 /**
  * Generate 3-5 passengers with random names and destinations
@@ -102,7 +201,7 @@ export function generatePassengers(stations: Station[]): Passenger[] {
       originStation = nonDepotStations[Math.floor(Math.random() * nonDepotStations.length)]
 
       // Pick a station ahead of origin (higher position)
-      const stationsAhead = stations.filter(s => s.position > originStation.position)
+      const stationsAhead = stations.filter((s) => s.position > originStation.position)
       destination = stationsAhead[Math.floor(Math.random() * stationsAhead.length)]
     }
 
@@ -117,7 +216,7 @@ export function generatePassengers(stations: Station[]): Passenger[] {
       destinationStationId: destination.id,
       isUrgent,
       isBoarded: false,
-      isDelivered: false
+      isDelivered: false,
     })
   }
 
@@ -145,7 +244,7 @@ export function findBoardablePassengers(
     // Skip if already boarded or delivered
     if (passenger.isBoarded || passenger.isDelivered) continue
 
-    const station = stations.find(s => s.id === passenger.originStationId)
+    const station = stations.find((s) => s.id === passenger.originStationId)
     if (!station) continue
 
     if (isTrainAtStation(trainPosition, station.position)) {
@@ -170,7 +269,7 @@ export function findDeliverablePassengers(
     // Only check boarded passengers
     if (!passenger.isBoarded || passenger.isDelivered) continue
 
-    const station = stations.find(s => s.id === passenger.destinationStationId)
+    const station = stations.find((s) => s.id === passenger.destinationStationId)
     if (!station) continue
 
     if (isTrainAtStation(trainPosition, station.position)) {
@@ -199,8 +298,8 @@ export function calculateMaxConcurrentPassengers(
   const events: StationEvent[] = []
 
   for (const passenger of passengers) {
-    const originStation = stations.find(s => s.id === passenger.originStationId)
-    const destStation = stations.find(s => s.id === passenger.destinationStationId)
+    const originStation = stations.find((s) => s.id === passenger.originStationId)
+    const destStation = stations.find((s) => s.id === passenger.destinationStationId)
 
     if (originStation && destStation) {
       events.push({ position: originStation.position, isBoarding: true })

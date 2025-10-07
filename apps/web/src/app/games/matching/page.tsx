@@ -1,5 +1,5 @@
-import { MemoryPairsProvider } from './context/MemoryPairsContext'
 import { MemoryPairsGame } from './components/MemoryPairsGame'
+import { MemoryPairsProvider } from './context/MemoryPairsContext'
 
 export default function MatchingPage() {
   return (

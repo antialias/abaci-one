@@ -25,10 +25,10 @@ export default function TestGuardPage() {
             gameCards: [],
             flippedCards: [],
             matchedPairs: 0,
-            totalPairs: 6
+            totalPairs: 6,
           },
-          activePlayers: [1]
-        })
+          activePlayers: [1],
+        }),
       })
 
       if (!response.ok) {
@@ -47,7 +47,7 @@ export default function TestGuardPage() {
 
     try {
       const response = await fetch(`/api/arcade-session?userId=${viewerId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
 
       if (!response.ok) {
@@ -69,47 +69,57 @@ export default function TestGuardPage() {
     <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', fontFamily: 'system-ui' }}>
       <h1 style={{ fontSize: '24px', marginBottom: '20px' }}>🧪 Arcade Guard Test Page</h1>
 
-      <div style={{
-        background: '#f3f4f6',
-        padding: '16px',
-        borderRadius: '8px',
-        marginBottom: '20px',
-        border: '1px solid #e5e7eb'
-      }}>
-        <p style={{ margin: '0 0 8px 0' }}><strong>Your Viewer ID:</strong></p>
-        <code style={{
-          background: '#1f2937',
-          color: '#10b981',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          fontSize: '12px'
-        }}>
+      <div
+        style={{
+          background: '#f3f4f6',
+          padding: '16px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '1px solid #e5e7eb',
+        }}
+      >
+        <p style={{ margin: '0 0 8px 0' }}>
+          <strong>Your Viewer ID:</strong>
+        </p>
+        <code
+          style={{
+            background: '#1f2937',
+            color: '#10b981',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+          }}
+        >
           {viewerId}
         </code>
       </div>
 
       {error && (
-        <div style={{
-          background: '#fee2e2',
-          color: '#dc2626',
-          padding: '12px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          border: '1px solid #fecaca'
-        }}>
+        <div
+          style={{
+            background: '#fee2e2',
+            color: '#dc2626',
+            padding: '12px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '1px solid #fecaca',
+          }}
+        >
           ❌ {error}
         </div>
       )}
 
       {sessionCreated && (
-        <div style={{
-          background: '#d1fae5',
-          color: '#065f46',
-          padding: '12px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          border: '1px solid #a7f3d0'
-        }}>
+        <div
+          style={{
+            background: '#d1fae5',
+            color: '#065f46',
+            padding: '12px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '1px solid #a7f3d0',
+          }}
+        >
           ✅ Session created for matching game!
         </div>
       )}
@@ -127,7 +137,7 @@ export default function TestGuardPage() {
             borderRadius: '8px',
             fontSize: '16px',
             cursor: sessionCreated ? 'not-allowed' : 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
           }}
         >
           {sessionCreated ? '✓ Session Created' : 'Create Matching Session'}
@@ -136,13 +146,15 @@ export default function TestGuardPage() {
 
       {sessionCreated && (
         <>
-          <div style={{
-            background: '#dbeafe',
-            padding: '20px',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            border: '1px solid #93c5fd'
-          }}>
+          <div
+            style={{
+              background: '#dbeafe',
+              padding: '20px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              border: '1px solid #93c5fd',
+            }}
+          >
             <h2 style={{ fontSize: '18px', marginBottom: '12px' }}>Step 2: Test the Guard</h2>
             <ol style={{ marginLeft: '20px', lineHeight: '1.8' }}>
               <li>
@@ -150,27 +162,33 @@ export default function TestGuardPage() {
                   href="/arcade/matching"
                   target="_blank"
                   style={{ color: '#2563eb', textDecoration: 'underline' }}
+                  rel="noopener"
                 >
                   Open /arcade/matching
-                </a> (should load normally)
+                </a>{' '}
+                (should load normally)
               </li>
               <li>
                 <a
                   href="/arcade/memory-quiz"
                   target="_blank"
                   style={{ color: '#2563eb', textDecoration: 'underline' }}
+                  rel="noopener"
                 >
                   Open /arcade/memory-quiz
-                </a> (should redirect to /arcade/matching)
+                </a>{' '}
+                (should redirect to /arcade/matching)
               </li>
               <li>
                 <a
                   href="/arcade/complement-race"
                   target="_blank"
                   style={{ color: '#2563eb', textDecoration: 'underline' }}
+                  rel="noopener"
                 >
                   Open /arcade/complement-race
-                </a> (should redirect to /arcade/matching)
+                </a>{' '}
+                (should redirect to /arcade/matching)
               </li>
             </ol>
           </div>
@@ -187,7 +205,7 @@ export default function TestGuardPage() {
                 borderRadius: '8px',
                 fontSize: '16px',
                 cursor: 'pointer',
-                fontWeight: 'bold'
+                fontWeight: 'bold',
               }}
             >
               Delete Session
@@ -196,18 +214,20 @@ export default function TestGuardPage() {
         </>
       )}
 
-      <div style={{
-        background: '#fef3c7',
-        padding: '16px',
-        borderRadius: '8px',
-        border: '1px solid #fde68a',
-        marginTop: '30px'
-      }}>
+      <div
+        style={{
+          background: '#fef3c7',
+          padding: '16px',
+          borderRadius: '8px',
+          border: '1px solid #fde68a',
+          marginTop: '30px',
+        }}
+      >
         <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>⚠️ Why This Works</h3>
         <p style={{ margin: 0, lineHeight: '1.6', fontSize: '14px' }}>
-          This test page creates a session using <strong>your browser's viewer ID</strong>,
-          so the guard can find it. The curl test didn't work because curl and your browser
-          have different viewer IDs.
+          This test page creates a session using <strong>your browser's viewer ID</strong>, so the
+          guard can find it. The curl test didn't work because curl and your browser have different
+          viewer IDs.
         </p>
       </div>
     </div>

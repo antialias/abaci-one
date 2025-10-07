@@ -19,9 +19,6 @@ export interface TrackElements {
 }
 
 export class RailroadTrackGenerator {
-  private viewWidth: number
-  private viewHeight: number
-
   constructor(viewWidth = 800, viewHeight = 600) {
     this.viewWidth = viewWidth
     this.viewHeight = viewHeight
@@ -39,7 +36,7 @@ export class RailroadTrackGenerator {
       referencePath: pathData,
       ties: [],
       leftRailPoints: [],
-      rightRailPoints: []
+      rightRailPoints: [],
     }
   }
 
@@ -59,13 +56,13 @@ export class RailroadTrackGenerator {
     // Base waypoints - tracks span from left tunnel (x=20) to right tunnel (x=780)
     // viewBox is "-50 -50 900 700", so x ranges from -50 to 850
     const baseWaypoints: Waypoint[] = [
-      { x: 20, y: 300 },   // Start at left tunnel center
-      { x: 120, y: 260 },  // Emerging from left tunnel
-      { x: 240, y: 200 },  // Climb into hills
-      { x: 380, y: 170 },  // Mountain pass
-      { x: 520, y: 220 },  // Descent to valley
-      { x: 660, y: 160 },  // Bridge over canyon
-      { x: 780, y: 300 }   // Enter right tunnel center
+      { x: 20, y: 300 }, // Start at left tunnel center
+      { x: 120, y: 260 }, // Emerging from left tunnel
+      { x: 240, y: 200 }, // Climb into hills
+      { x: 380, y: 170 }, // Mountain pass
+      { x: 520, y: 220 }, // Descent to valley
+      { x: 660, y: 160 }, // Bridge over canyon
+      { x: 780, y: 300 }, // Enter right tunnel center
     ]
 
     // Add deterministic randomness based on route number (but keep start/end fixed)
@@ -82,7 +79,7 @@ export class RailroadTrackGenerator {
 
       return {
         x: point.x + randomX,
-        y: point.y + randomY
+        y: point.y + randomY,
       }
     })
   }
@@ -240,7 +237,7 @@ export class RailroadTrackGenerator {
     return {
       x: point.x,
       y: point.y,
-      rotation: angleDegrees
+      rotation: angleDegrees,
     }
   }
 }

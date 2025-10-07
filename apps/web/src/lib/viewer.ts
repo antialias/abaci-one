@@ -1,6 +1,6 @@
-import { auth } from '@/auth'
 import { cookies, headers } from 'next/headers'
-import { verifyGuestToken, GUEST_COOKIE_NAME } from './guest-token'
+import { auth } from '@/auth'
+import { GUEST_COOKIE_NAME, verifyGuestToken } from './guest-token'
 
 /**
  * Unified viewer utility for server components

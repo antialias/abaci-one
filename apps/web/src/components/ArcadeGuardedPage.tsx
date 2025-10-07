@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useArcadeGuard } from '@/hooks/useArcadeGuard'
 
 export interface ArcadeGuardedPageProps {
@@ -32,10 +32,7 @@ export interface ArcadeGuardedPageProps {
  * }
  * ```
  */
-export function ArcadeGuardedPage({
-  children,
-  loadingComponent,
-}: ArcadeGuardedPageProps) {
+export function ArcadeGuardedPage({ children, loadingComponent }: ArcadeGuardedPageProps) {
   const { loading } = useArcadeGuard()
 
   if (loading && loadingComponent) {

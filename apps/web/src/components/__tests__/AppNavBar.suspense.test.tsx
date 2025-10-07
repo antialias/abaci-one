@@ -1,5 +1,5 @@
-import React, { Suspense } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import React from 'react'
 import { vi } from 'vitest'
 import { AppNavBar } from '../AppNavBar'
 
@@ -29,14 +29,16 @@ describe('AppNavBar Suspense Fix', () => {
   it('renders nav slot content with Suspense boundary (FIXED)', async () => {
     // Simulate the exact structure that Next.js App Router provides
     const MatchingNavContent = () => (
-      <h1 style={{
-        fontSize: '18px',
-        fontWeight: 'bold',
-        background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
-        backgroundClip: 'text',
-        color: 'transparent',
-        margin: 0
-      }}>
+      <h1
+        style={{
+          fontSize: '18px',
+          fontWeight: 'bold',
+          background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
+          backgroundClip: 'text',
+          color: 'transparent',
+          margin: 0,
+        }}
+      >
         🧩 Memory Pairs
       </h1>
     )

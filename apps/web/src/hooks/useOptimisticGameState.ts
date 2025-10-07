@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GameMove } from '@/lib/arcade/validation'
 
 export interface PendingMove<TState> {
@@ -102,60 +102,60 @@ export function useOptimisticGameState<TState>(
 
   // Current state = server state + all pending moves applied
   const currentState = pendingMoves.reduce(
-    (state, pending) => pending.optimisticState,
+    (_state, pending) => pending.optimisticState,
     serverState
   )
 
-  const applyOptimisticMove = useCallback((move: GameMove) => {
-    setPendingMoves(prev => {
-      const baseState = prev.length > 0 ? prev[prev.length - 1].optimisticState : serverState
-      const optimisticState = applyMove(baseState, move)
+  const applyOptimisticMove = useCallback(
+    (move: GameMove) => {
+      setPendingMoves((prev) => {
+        const baseState = prev.length > 0 ? prev[prev.length - 1].optimisticState : serverState
+        const optimisticState = applyMove(baseState, move)
 
-      return [
-        ...prev,
-        {
-          move,
-          optimisticState,
-          timestamp: Date.now(),
-        },
-      ]
-    })
-  }, [serverState, applyMove])
+        return [
+          ...prev,
+          {
+            move,
+            optimisticState,
+            timestamp: Date.now(),
+          },
+        ]
+      })
+    },
+    [serverState, applyMove]
+  )
 
-  const handleMoveAccepted = useCallback((
-    newServerState: TState,
-    newServerVersion: number,
-    acceptedMove: GameMove
-  ) => {
-    // Update server state
-    setServerState(newServerState)
-    setServerVersion(newServerVersion)
+  const handleMoveAccepted = useCallback(
+    (newServerState: TState, newServerVersion: number, acceptedMove: GameMove) => {
+      // Update server state
+      setServerState(newServerState)
+      setServerVersion(newServerVersion)
 
-    // Remove the accepted move from pending queue
-    setPendingMoves(prev => {
-      const index = prev.findIndex(p =>
-        p.move.type === acceptedMove.type &&
-        p.move.timestamp === acceptedMove.timestamp
-      )
+      // Remove the accepted move from pending queue
+      setPendingMoves((prev) => {
+        const index = prev.findIndex(
+          (p) => p.move.type === acceptedMove.type && p.move.timestamp === acceptedMove.timestamp
+        )
 
-      if (index !== -1) {
-        return prev.slice(index + 1)
-      }
+        if (index !== -1) {
+          return prev.slice(index + 1)
+        }
 
-      // Move not found in pending queue - might be from another tab
-      // Clear all pending moves since server state is now authoritative
-      return []
-    })
+        // Move not found in pending queue - might be from another tab
+        // Clear all pending moves since server state is now authoritative
+        return []
+      })
 
-    callbacksRef.current.onMoveAccepted?.(newServerState, acceptedMove)
-  }, [])
+      callbacksRef.current.onMoveAccepted?.(newServerState, acceptedMove)
+    },
+    []
+  )
 
   const handleMoveRejected = useCallback((error: string, rejectedMove: GameMove) => {
     // Remove the rejected move and all subsequent moves from pending queue
-    setPendingMoves(prev => {
-      const index = prev.findIndex(p =>
-        p.move.type === rejectedMove.type &&
-        p.move.timestamp === rejectedMove.timestamp
+    setPendingMoves((prev) => {
+      const index = prev.findIndex(
+        (p) => p.move.type === rejectedMove.type && p.move.timestamp === rejectedMove.timestamp
       )
 
       if (index !== -1) {

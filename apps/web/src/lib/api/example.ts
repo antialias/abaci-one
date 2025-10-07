@@ -5,7 +5,7 @@
  * QueryClient and apiUrl helper for making API requests.
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/queryClient'
 
 // Example type for an API resource

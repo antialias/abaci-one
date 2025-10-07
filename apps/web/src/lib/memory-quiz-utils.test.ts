@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
-  isPrefix,
   couldBePrefix,
   isCompleteWrongNumber,
+  isCorrectAndAvailable,
+  isPrefix,
   shouldTriggerIncorrectGuess,
-  isCorrectAndAvailable
 } from './memory-quiz-utils'
 
 describe('Memory Quiz Utils', () => {

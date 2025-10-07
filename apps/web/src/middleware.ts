@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createGuestToken, GUEST_COOKIE_NAME } from './lib/guest-token'
 
 /**

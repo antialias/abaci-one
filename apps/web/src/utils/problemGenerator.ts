@@ -1,4 +1,4 @@
-import { SkillSet, PracticeStep } from '../types/tutorial'
+import type { PracticeStep, SkillSet } from '../types/tutorial'
 
 export interface GeneratedProblem {
   id: string
@@ -21,7 +21,7 @@ export interface ProblemConstraints {
  * Analyzes which skills are required during the sequential addition process
  * This simulates adding each term one by one to the abacus
  */
-export function analyzeRequiredSkills(terms: number[], finalSum: number): string[] {
+export function analyzeRequiredSkills(terms: number[], _finalSum: number): string[] {
   const skills: string[] = []
   let currentValue = 0
 
@@ -67,7 +67,12 @@ function analyzeStepSkills(currentValue: number, term: number, newValue: number)
 /**
  * Analyzes skills needed for addition in a single column
  */
-function analyzeColumnAddition(currentDigit: number, termDigit: number, resultDigit: number, column: number): string[] {
+function analyzeColumnAddition(
+  currentDigit: number,
+  termDigit: number,
+  _resultDigit: number,
+  _column: number
+): string[] {
   const skills: string[] = []
 
   // Direct addition (1-4)
@@ -80,12 +85,12 @@ function analyzeColumnAddition(currentDigit: number, termDigit: number, resultDi
         skills.push('basic.heavenBead') // Direct 5
       } else {
         // Five complement: need to use 5 - complement
-        skills.push(`fiveComplements.${termDigit}=5-${5-termDigit}`)
+        skills.push(`fiveComplements.${termDigit}=5-${5 - termDigit}`)
         skills.push('basic.heavenBead')
       }
     } else if (currentDigit + termDigit > 5 && currentDigit + termDigit <= 9) {
       // Results in 6-9: use five complement + simple combination
-      skills.push(`fiveComplements.${termDigit}=5-${5-termDigit}`)
+      skills.push(`fiveComplements.${termDigit}=5-${5 - termDigit}`)
       skills.push('basic.heavenBead')
       skills.push('basic.simpleCombinations')
     } else if (currentDigit + termDigit >= 10) {
@@ -150,7 +155,7 @@ export function problemMatchesSkills(
   forbiddenSkills?: Partial<SkillSet>
 ): boolean {
   // Check required skills - problem must use at least one enabled required skill
-  const hasRequiredSkill = problem.requiredSkills.some(skillPath => {
+  const hasRequiredSkill = problem.requiredSkills.some((skillPath) => {
     const [category, skill] = skillPath.split('.')
     if (category === 'basic') {
       return requiredSkills.basic[skill as keyof typeof requiredSkills.basic]
@@ -166,12 +171,14 @@ export function problemMatchesSkills(
 
   // Check forbidden skills - problem must not use any forbidden skills
   if (forbiddenSkills) {
-    const usesForbiddenSkill = problem.requiredSkills.some(skillPath => {
+    const usesForbiddenSkill = problem.requiredSkills.some((skillPath) => {
       const [category, skill] = skillPath.split('.')
       if (category === 'basic' && forbiddenSkills.basic) {
         return forbiddenSkills.basic[skill as keyof typeof forbiddenSkills.basic]
       } else if (category === 'fiveComplements' && forbiddenSkills.fiveComplements) {
-        return forbiddenSkills.fiveComplements[skill as keyof typeof forbiddenSkills.fiveComplements]
+        return forbiddenSkills.fiveComplements[
+          skill as keyof typeof forbiddenSkills.fiveComplements
+        ]
       } else if (category === 'tenComplements' && forbiddenSkills.tenComplements) {
         return forbiddenSkills.tenComplements[skill as keyof typeof forbiddenSkills.tenComplements]
       }
@@ -183,7 +190,7 @@ export function problemMatchesSkills(
 
   // Check target skills - if specified, problem should use at least one target skill
   if (targetSkills) {
-    const hasTargetSkill = problem.requiredSkills.some(skillPath => {
+    const hasTargetSkill = problem.requiredSkills.some((skillPath) => {
       const [category, skill] = skillPath.split('.')
       if (category === 'basic' && targetSkills.basic) {
         return targetSkills.basic[skill as keyof typeof targetSkills.basic]
@@ -196,9 +203,10 @@ export function problemMatchesSkills(
     })
 
     // If target skills are specified but none match, reject
-    const hasAnyTargetSkill = Object.values(targetSkills.basic || {}).some(Boolean) ||
-                              Object.values(targetSkills.fiveComplements || {}).some(Boolean) ||
-                              Object.values(targetSkills.tenComplements || {}).some(Boolean)
+    const hasAnyTargetSkill =
+      Object.values(targetSkills.basic || {}).some(Boolean) ||
+      Object.values(targetSkills.fiveComplements || {}).some(Boolean) ||
+      Object.values(targetSkills.tenComplements || {}).some(Boolean)
 
     if (hasAnyTargetSkill && !hasTargetSkill) return false
   }
@@ -221,7 +229,13 @@ export function generateSingleProblem(
     const termCount = Math.floor(Math.random() * 3) + 3 // 3-5 terms
 
     // Generate the sequence of numbers to add
-    const terms = generateSequence(constraints, termCount, requiredSkills, targetSkills, forbiddenSkills)
+    const terms = generateSequence(
+      constraints,
+      termCount,
+      requiredSkills,
+      targetSkills,
+      forbiddenSkills
+    )
 
     if (!terms) continue // Failed to generate valid sequence
 
@@ -236,9 +250,9 @@ export function generateSingleProblem(
 
     // Determine difficulty based on skills required
     let difficulty: 'easy' | 'medium' | 'hard' = 'easy'
-    if (problemSkills.some(skill => skill.startsWith('tenComplements'))) {
+    if (problemSkills.some((skill) => skill.startsWith('tenComplements'))) {
       difficulty = 'hard'
-    } else if (problemSkills.some(skill => skill.startsWith('fiveComplements'))) {
+    } else if (problemSkills.some((skill) => skill.startsWith('fiveComplements'))) {
       difficulty = 'medium'
     }
 
@@ -248,7 +262,7 @@ export function generateSingleProblem(
       answer: sum,
       requiredSkills: problemSkills,
       difficulty,
-      explanation: generateSequentialExplanation(terms, sum, problemSkills)
+      explanation: generateSequentialExplanation(terms, sum, problemSkills),
     }
 
     // Check if problem matches skill requirements
@@ -315,7 +329,7 @@ function findValidNextTerm(
     const stepSkills = analyzeStepSkills(currentValue, term, newValue)
 
     // Check if the step uses only allowed skills
-    const usesValidSkills = stepSkills.every(skillPath => {
+    const usesValidSkills = stepSkills.every((skillPath) => {
       const [category, skill] = skillPath.split('.')
 
       // Must use only required skills
@@ -323,9 +337,11 @@ function findValidNextTerm(
       if (category === 'basic') {
         hasSkill = requiredSkills.basic[skill as keyof typeof requiredSkills.basic]
       } else if (category === 'fiveComplements') {
-        hasSkill = requiredSkills.fiveComplements[skill as keyof typeof requiredSkills.fiveComplements]
+        hasSkill =
+          requiredSkills.fiveComplements[skill as keyof typeof requiredSkills.fiveComplements]
       } else if (category === 'tenComplements') {
-        hasSkill = requiredSkills.tenComplements[skill as keyof typeof requiredSkills.tenComplements]
+        hasSkill =
+          requiredSkills.tenComplements[skill as keyof typeof requiredSkills.tenComplements]
       }
 
       if (!hasSkill) return false
@@ -336,9 +352,14 @@ function findValidNextTerm(
         if (category === 'basic' && forbiddenSkills.basic) {
           isForbidden = forbiddenSkills.basic[skill as keyof typeof forbiddenSkills.basic] || false
         } else if (category === 'fiveComplements' && forbiddenSkills.fiveComplements) {
-          isForbidden = forbiddenSkills.fiveComplements[skill as keyof typeof forbiddenSkills.fiveComplements] || false
+          isForbidden =
+            forbiddenSkills.fiveComplements[
+              skill as keyof typeof forbiddenSkills.fiveComplements
+            ] || false
         } else if (category === 'tenComplements' && forbiddenSkills.tenComplements) {
-          isForbidden = forbiddenSkills.tenComplements[skill as keyof typeof forbiddenSkills.tenComplements] || false
+          isForbidden =
+            forbiddenSkills.tenComplements[skill as keyof typeof forbiddenSkills.tenComplements] ||
+            false
         }
         if (isForbidden) return false
       }
@@ -355,11 +376,11 @@ function findValidNextTerm(
 
   // If we have target skills and this is not the last term, try to pick a term that uses target skills
   if (targetSkills && !isLastTerm) {
-    const targetCandidates = candidates.filter(term => {
+    const targetCandidates = candidates.filter((term) => {
       const newValue = currentValue + term
       const stepSkills = analyzeStepSkills(currentValue, term, newValue)
 
-      return stepSkills.some(skillPath => {
+      return stepSkills.some((skillPath) => {
         const [category, skill] = skillPath.split('.')
         if (category === 'basic' && targetSkills.basic) {
           return targetSkills.basic[skill as keyof typeof targetSkills.basic]
@@ -388,7 +409,7 @@ function generateSequentialExplanation(terms: number[], sum: number, skills: str
   const explanations: string[] = []
 
   // Create vertical display format for explanation
-  const verticalDisplay = terms.map(term => `  ${term}`).join('\n') + `\n---\n  ${sum}`
+  const verticalDisplay = `${terms.map((term) => `  ${term}`).join('\n')}\n---\n  ${sum}`
 
   explanations.push(`Calculate this problem by adding each number in sequence:\n${verticalDisplay}`)
 
@@ -405,14 +426,18 @@ function generateSequentialExplanation(terms: number[], sum: number, skills: str
     explanations.push('Use combinations of heaven and earth beads for 6-9.')
   }
 
-  if (skills.some(skill => skill.startsWith('fiveComplements'))) {
-    const complements = skills.filter(skill => skill.startsWith('fiveComplements'))
-    explanations.push(`Apply five complements: ${complements.map(s => s.split('.')[1]).join(', ')}.`)
+  if (skills.some((skill) => skill.startsWith('fiveComplements'))) {
+    const complements = skills.filter((skill) => skill.startsWith('fiveComplements'))
+    explanations.push(
+      `Apply five complements: ${complements.map((s) => s.split('.')[1]).join(', ')}.`
+    )
   }
 
-  if (skills.some(skill => skill.startsWith('tenComplements'))) {
-    const complements = skills.filter(skill => skill.startsWith('tenComplements'))
-    explanations.push(`Apply ten complements: ${complements.map(s => s.split('.')[1]).join(', ')}.`)
+  if (skills.some((skill) => skill.startsWith('tenComplements'))) {
+    const complements = skills.filter((skill) => skill.startsWith('tenComplements'))
+    explanations.push(
+      `Apply ten complements: ${complements.map((s) => s.split('.')[1]).join(', ')}.`
+    )
   }
 
   return explanations.join(' ')
@@ -428,9 +453,12 @@ function getProblemSignature(terms: number[]): string {
 /**
  * Checks if a problem is a duplicate of any existing problems
  */
-function isDuplicateProblem(problem: GeneratedProblem, existingProblems: GeneratedProblem[]): boolean {
+function isDuplicateProblem(
+  problem: GeneratedProblem,
+  existingProblems: GeneratedProblem[]
+): boolean {
   const signature = getProblemSignature(problem.terms)
-  return existingProblems.some(existing => getProblemSignature(existing.terms) === signature)
+  return existingProblems.some((existing) => getProblemSignature(existing.terms) === signature)
 }
 
 /**
@@ -442,7 +470,7 @@ export function generateProblems(practiceStep: PracticeStep): GeneratedProblem[]
     maxSum: practiceStep.sumConstraints?.maxSum,
     minSum: practiceStep.sumConstraints?.minSum,
     maxTerms: practiceStep.maxTerms,
-    problemCount: practiceStep.problemCount
+    problemCount: practiceStep.problemCount,
   }
 
   const problems: GeneratedProblem[] = []
@@ -494,10 +522,7 @@ export function generateProblems(practiceStep: PracticeStep): GeneratedProblem[]
     do {
       fallbackProblem = generateFallbackProblem(constraints, fallbackIndex++)
       fallbackAttempts++
-    } while (
-      fallbackAttempts < 20 &&
-      isDuplicateProblem(fallbackProblem, problems)
-    )
+    } while (fallbackAttempts < 20 && isDuplicateProblem(fallbackProblem, problems))
 
     // Only add if it's unique or we've exhausted attempts
     if (!isDuplicateProblem(fallbackProblem, problems)) {
@@ -541,7 +566,7 @@ function generateFallbackProblem(constraints: ProblemConstraints, index: number)
     answer: sum,
     requiredSkills: ['basic.directAddition'],
     difficulty: 'easy',
-    explanation: generateSequentialExplanation(terms, sum, ['basic.directAddition'])
+    explanation: generateSequentialExplanation(terms, sum, ['basic.directAddition']),
   }
 }
 
@@ -560,7 +585,7 @@ function createModifiedUniqueProblem(
     for (const direction of [1, -1]) {
       const newTerms = [...baseProblem.terms]
       const lastIndex = newTerms.length - 1
-      const newLastTerm = newTerms[lastIndex] + (modifier * direction)
+      const newLastTerm = newTerms[lastIndex] + modifier * direction
 
       // Check if the new term is within constraints
       if (newLastTerm >= min && newLastTerm <= max) {
@@ -568,16 +593,21 @@ function createModifiedUniqueProblem(
         const newSum = newTerms.reduce((acc, term) => acc + term, 0)
 
         // Check sum constraints
-        if ((!constraints.maxSum || newSum <= constraints.maxSum) &&
-            (!constraints.minSum || newSum >= constraints.minSum)) {
-
+        if (
+          (!constraints.maxSum || newSum <= constraints.maxSum) &&
+          (!constraints.minSum || newSum >= constraints.minSum)
+        ) {
           const modifiedProblem: GeneratedProblem = {
             id: `modified_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
             terms: newTerms,
             answer: newSum,
             requiredSkills: baseProblem.requiredSkills,
             difficulty: baseProblem.difficulty,
-            explanation: generateSequentialExplanation(newTerms, newSum, baseProblem.requiredSkills)
+            explanation: generateSequentialExplanation(
+              newTerms,
+              newSum,
+              baseProblem.requiredSkills
+            ),
           }
 
           // Check if this modification creates a unique problem
@@ -604,9 +634,10 @@ export function validatePracticeStepConfiguration(practiceStep: PracticeStep): {
   const suggestions: string[] = []
 
   // Check if any required skills are enabled
-  const hasAnyRequiredSkill = Object.values(practiceStep.requiredSkills.basic).some(Boolean) ||
-                              Object.values(practiceStep.requiredSkills.fiveComplements).some(Boolean) ||
-                              Object.values(practiceStep.requiredSkills.tenComplements).some(Boolean)
+  const hasAnyRequiredSkill =
+    Object.values(practiceStep.requiredSkills.basic).some(Boolean) ||
+    Object.values(practiceStep.requiredSkills.fiveComplements).some(Boolean) ||
+    Object.values(practiceStep.requiredSkills.tenComplements).some(Boolean)
 
   if (!hasAnyRequiredSkill) {
     warnings.push('No required skills are enabled. Problems may be very basic.')
@@ -614,9 +645,9 @@ export function validatePracticeStepConfiguration(practiceStep: PracticeStep): {
   }
 
   // Check number range vs sum constraints
-  const maxPossibleSum = practiceStep.numberRange?.max ?
-    practiceStep.numberRange.max * practiceStep.maxTerms :
-    9 * practiceStep.maxTerms
+  const maxPossibleSum = practiceStep.numberRange?.max
+    ? practiceStep.numberRange.max * practiceStep.maxTerms
+    : 9 * practiceStep.maxTerms
 
   if (practiceStep.sumConstraints?.maxSum && practiceStep.sumConstraints.maxSum > maxPossibleSum) {
     warnings.push('Maximum sum constraint is higher than what the number range allows.')
@@ -638,6 +669,6 @@ export function validatePracticeStepConfiguration(practiceStep: PracticeStep): {
   return {
     isValid: warnings.length === 0,
     warnings,
-    suggestions
+    suggestions,
   }
 }

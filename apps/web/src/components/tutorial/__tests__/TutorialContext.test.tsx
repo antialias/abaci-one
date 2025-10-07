@@ -1,8 +1,8 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { vi } from 'vitest'
+import type { Tutorial } from '../../../types/tutorial'
 import { TutorialProvider, useTutorialContext } from '../TutorialContext'
-import { Tutorial, TutorialStep } from '../../../types/tutorial'
 
 // Mock tutorial data
 const mockTutorial: Tutorial = {
@@ -16,7 +16,7 @@ const mockTutorial: Tutorial = {
       problem: '5 + 3',
       description: 'Add 3 to 5',
       startValue: 5,
-      targetValue: 8
+      targetValue: 8,
     },
     {
       id: 'step-2',
@@ -24,7 +24,7 @@ const mockTutorial: Tutorial = {
       problem: '10 - 2',
       description: 'Subtract 2 from 10',
       startValue: 10,
-      targetValue: 8
+      targetValue: 8,
     },
     {
       id: 'step-3',
@@ -32,9 +32,9 @@ const mockTutorial: Tutorial = {
       problem: '15 + 7',
       description: 'Add 7 to 15',
       startValue: 15,
-      targetValue: 22
-    }
-  ]
+      targetValue: 22,
+    },
+  ],
 }
 
 // Test component that uses the context
@@ -48,7 +48,7 @@ const TestComponent = () => {
     handleValueChange,
     advanceMultiStep,
     previousMultiStep,
-    resetMultiStep
+    resetMultiStep,
   } = useTutorialContext()
 
   return (
@@ -61,13 +61,27 @@ const TestComponent = () => {
       <div data-testid="start-value">{currentStep?.startValue}</div>
       <div data-testid="target-value">{currentStep?.targetValue}</div>
 
-      <button data-testid="go-to-step-2" onClick={() => goToStep(1)}>Go to Step 2</button>
-      <button data-testid="go-next" onClick={goToNextStep}>Next</button>
-      <button data-testid="go-prev" onClick={goToPreviousStep}>Previous</button>
-      <button data-testid="change-value" onClick={() => handleValueChange(42)}>Change Value</button>
-      <button data-testid="advance-multi" onClick={advanceMultiStep}>Advance Multi-Step</button>
-      <button data-testid="prev-multi" onClick={previousMultiStep}>Previous Multi-Step</button>
-      <button data-testid="reset-multi" onClick={resetMultiStep}>Reset Multi-Step</button>
+      <button data-testid="go-to-step-2" onClick={() => goToStep(1)}>
+        Go to Step 2
+      </button>
+      <button data-testid="go-next" onClick={goToNextStep}>
+        Next
+      </button>
+      <button data-testid="go-prev" onClick={goToPreviousStep}>
+        Previous
+      </button>
+      <button data-testid="change-value" onClick={() => handleValueChange(42)}>
+        Change Value
+      </button>
+      <button data-testid="advance-multi" onClick={advanceMultiStep}>
+        Advance Multi-Step
+      </button>
+      <button data-testid="prev-multi" onClick={previousMultiStep}>
+        Previous Multi-Step
+      </button>
+      <button data-testid="reset-multi" onClick={resetMultiStep}>
+        Reset Multi-Step
+      </button>
     </div>
   )
 }
@@ -217,10 +231,7 @@ describe('TutorialContext', () => {
         return (
           <div>
             <TestComponent />
-            <button
-              data-testid="change-value-directly"
-              onClick={() => handleValueChange(42)}
-            >
+            <button data-testid="change-value-directly" onClick={() => handleValueChange(42)}>
               Change Value Directly
             </button>
           </div>
@@ -263,9 +274,12 @@ describe('TutorialContext', () => {
         </TutorialProvider>
       )
 
-      await waitFor(() => {
-        expect(screen.getByTestId('is-completed')).toHaveTextContent('true')
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('is-completed')).toHaveTextContent('true')
+        },
+        { timeout: 2000 }
+      )
     })
 
     it('should call onStepComplete when step is completed', async () => {
@@ -288,9 +302,12 @@ describe('TutorialContext', () => {
         </TutorialProvider>
       )
 
-      await waitFor(() => {
-        expect(onStepComplete).toHaveBeenCalledWith(0, mockTutorial.steps[0], true)
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(onStepComplete).toHaveBeenCalledWith(0, mockTutorial.steps[0], true)
+        },
+        { timeout: 2000 }
+      )
     })
   })
 
@@ -380,7 +397,9 @@ describe('TutorialContext', () => {
         return (
           <div>
             <TestComponent />
-            <button data-testid="invalid-step" onClick={() => goToStep(999)}>Invalid Step</button>
+            <button data-testid="invalid-step" onClick={() => goToStep(999)}>
+              Invalid Step
+            </button>
           </div>
         )
       }
@@ -408,7 +427,7 @@ describe('TutorialContext', () => {
         id: 'empty',
         title: 'Empty Tutorial',
         description: 'No steps',
-        steps: []
+        steps: [],
       }
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})

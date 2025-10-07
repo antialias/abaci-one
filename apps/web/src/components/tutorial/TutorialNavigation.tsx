@@ -20,15 +20,17 @@ export function TutorialNavigation({
   navigationState,
   isStepCompleted,
   onPrevious,
-  onNext
+  onNext,
 }: TutorialNavigationProps) {
   return (
-    <div className={css({
-      borderTop: '1px solid',
-      borderColor: 'gray.200',
-      p: 4,
-      bg: 'gray.50'
-    })}>
+    <div
+      className={css({
+        borderTop: '1px solid',
+        borderColor: 'gray.200',
+        p: 4,
+        bg: 'gray.50',
+      })}
+    >
       <div className={hstack({ justifyContent: 'space-between' })}>
         <button
           onClick={onPrevious}
@@ -42,7 +44,7 @@ export function TutorialNavigation({
             bg: 'white',
             cursor: navigationState.canGoPrevious ? 'pointer' : 'not-allowed',
             opacity: navigationState.canGoPrevious ? 1 : 0.5,
-            _hover: navigationState.canGoPrevious ? { bg: 'gray.50' } : {}
+            _hover: navigationState.canGoPrevious ? { bg: 'gray.50' } : {},
           })}
         >
           ← Previous
@@ -64,7 +66,7 @@ export function TutorialNavigation({
             bg: navigationState.canGoNext || isStepCompleted ? 'blue.500' : 'gray.200',
             color: navigationState.canGoNext || isStepCompleted ? 'white' : 'gray.500',
             cursor: navigationState.canGoNext || isStepCompleted ? 'pointer' : 'not-allowed',
-            _hover: navigationState.canGoNext || isStepCompleted ? { bg: 'blue.600' } : {}
+            _hover: navigationState.canGoNext || isStepCompleted ? { bg: 'blue.600' } : {},
           })}
         >
           {navigationState.canGoNext ? 'Next →' : 'Complete Tutorial'}

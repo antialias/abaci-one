@@ -1,10 +1,9 @@
 'use client'
 
-import { AbacusReact } from '@soroban/abacus-react'
-import { useAbacusConfig } from '@soroban/abacus-react'
+import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+import { css } from '../../../../../styled-system/css'
 import { useGameMode } from '../../../../contexts/GameModeContext'
 import type { GameCardProps } from '../context/types'
-import { css } from '../../../../../styled-system/css'
 
 export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false }: GameCardProps) {
   const appConfig = useAbacusConfig()
@@ -12,7 +11,7 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
 
   // Get active players array for mapping numeric IDs to actual players
   const activePlayers = Array.from(activePlayerIds)
-    .map(id => playerMap.get(id))
+    .map((id) => playerMap.get(id))
     .filter((p): p is NonNullable<typeof p> => p !== undefined)
 
   const cardBackStyles = css({
@@ -30,7 +29,7 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
     textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
     cursor: disabled ? 'default' : 'pointer',
     userSelect: 'none',
-    transition: 'all 0.2s ease'
+    transition: 'all 0.2s ease',
   })
 
   const cardFrontStyles = css({
@@ -47,14 +46,16 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
     justifyContent: 'center',
     padding: '8px',
     overflow: 'hidden',
-    transition: 'all 0.2s ease'
+    transition: 'all 0.2s ease',
   })
 
   // Dynamic styling based on card type and state
   const getCardBackGradient = () => {
     if (isMatched) {
       // Player-specific colors for matched cards - use array index lookup
-      const playerIndex = card.matchedBy ? activePlayers.findIndex(p => p.id === card.matchedBy) : -1
+      const playerIndex = card.matchedBy
+        ? activePlayers.findIndex((p) => p.id === card.matchedBy)
+        : -1
       if (playerIndex === 0) {
         return 'linear-gradient(135deg, #74b9ff, #0984e3)' // Blue for first player
       } else if (playerIndex === 1) {
@@ -79,7 +80,7 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
     if (isMatched) {
       // Show player emoji for matched cards in multiplayer mode
       if (card.matchedBy) {
-        const player = activePlayers.find(p => p.id === card.matchedBy)
+        const player = activePlayers.find((p) => p.id === card.matchedBy)
         return player?.emoji || '✓'
       }
       return '✓' // Default checkmark for single player
@@ -100,7 +101,9 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
   const getBorderColor = () => {
     if (isMatched) {
       // Player-specific border colors for matched cards - use array index lookup
-      const playerIndex = card.matchedBy ? activePlayers.findIndex(p => p.id === card.matchedBy) : -1
+      const playerIndex = card.matchedBy
+        ? activePlayers.findIndex((p) => p.id === card.matchedBy)
+        : -1
       if (playerIndex === 0) {
         return '#74b9ff' // Blue for first player
       } else if (playerIndex === 1) {
@@ -120,9 +123,12 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
         height: '100%',
         cursor: disabled || isMatched ? 'default' : 'pointer',
         transition: 'transform 0.2s ease',
-        _hover: disabled || isMatched ? {} : {
-          transform: 'translateY(-2px)'
-        }
+        _hover:
+          disabled || isMatched
+            ? {}
+            : {
+                transform: 'translateY(-2px)',
+              },
       })}
       onClick={disabled || isMatched ? undefined : onClick}
     >
@@ -134,25 +140,25 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
           textAlign: 'center',
           transition: 'transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1)',
           transformStyle: 'preserve-3d',
-          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
         })}
       >
         {/* Card Back (hidden/face-down state) */}
         <div
           className={cardBackStyles}
           style={{
-            background: getCardBackGradient()
+            background: getCardBackGradient(),
           }}
         >
-          <div className={css({
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px'
-          })}>
-            <div className={css({ fontSize: '32px' })}>
-              {getCardBackIcon()}
-            </div>
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+            })}
+          >
+            <div className={css({ fontSize: '32px' })}>{getCardBackIcon()}</div>
             {isMatched && (
               <div className={css({ fontSize: '14px', opacity: 0.9 })}>
                 {card.matchedBy ? 'Claimed!' : 'Matched!'}
@@ -168,7 +174,9 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
             borderColor: getBorderColor(),
             boxShadow: isMatched
               ? (() => {
-                  const playerIndex = card.matchedBy ? activePlayers.findIndex(p => p.id === card.matchedBy) : -1
+                  const playerIndex = card.matchedBy
+                    ? activePlayers.findIndex((p) => p.id === card.matchedBy)
+                    : -1
                   if (playerIndex === 0) {
                     return '0 0 20px rgba(116, 185, 255, 0.4)' // Blue glow for first player
                   } else if (playerIndex === 1) {
@@ -177,79 +185,85 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                   return '0 0 20px rgba(72, 187, 120, 0.4)' // Default green glow
                 })()
               : isFlipped
-              ? '0 0 15px rgba(102, 126, 234, 0.3)'
-              : 'none'
+                ? '0 0 15px rgba(102, 126, 234, 0.3)'
+                : 'none',
           }}
         >
           {/* Player Badge for matched cards */}
           {isMatched && card.matchedBy && (
             <>
               {/* Explosion Ring */}
-              <div className={css({
-                position: 'absolute',
-                top: '6px',
-                right: '6px',
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                border: '3px solid',
-                borderColor: (() => {
-                  const playerIndex = activePlayers.findIndex(p => p.id === card.matchedBy)
-                  return playerIndex === 0 ? '#74b9ff' : '#fd79a8'
-                })(),
-                animation: 'explosionRing 0.6s ease-out',
-                zIndex: 9
-              })} />
+              <div
+                className={css({
+                  position: 'absolute',
+                  top: '6px',
+                  right: '6px',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  border: '3px solid',
+                  borderColor: (() => {
+                    const playerIndex = activePlayers.findIndex((p) => p.id === card.matchedBy)
+                    return playerIndex === 0 ? '#74b9ff' : '#fd79a8'
+                  })(),
+                  animation: 'explosionRing 0.6s ease-out',
+                  zIndex: 9,
+                })}
+              />
 
               {/* Main Badge */}
-              <div className={css({
-                position: 'absolute',
-                top: '6px',
-                right: '6px',
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: (() => {
-                  const playerIndex = activePlayers.findIndex(p => p.id === card.matchedBy)
-                  return playerIndex === 0
-                    ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
-                    : 'linear-gradient(135deg, #fd79a8, #e84393)'
-                })(),
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                boxShadow: (() => {
-                  const playerIndex = activePlayers.findIndex(p => p.id === card.matchedBy)
-                  return playerIndex === 0
-                    ? '0 0 20px rgba(116, 185, 255, 0.6), 0 0 40px rgba(116, 185, 255, 0.4)'
-                    : '0 0 20px rgba(253, 121, 168, 0.6), 0 0 40px rgba(253, 121, 168, 0.4)'
-                })(),
-                animation: 'epicClaim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                zIndex: 10,
-                '&::before': {
-                  content: '""',
+              <div
+                className={css({
                   position: 'absolute',
-                  top: '-2px',
-                  left: '-2px',
-                  right: '-2px',
-                  bottom: '-2px',
+                  top: '6px',
+                  right: '6px',
+                  width: '32px',
+                  height: '32px',
                   borderRadius: '50%',
                   background: (() => {
-                    const playerIndex = activePlayers.findIndex(p => p.id === card.matchedBy)
+                    const playerIndex = activePlayers.findIndex((p) => p.id === card.matchedBy)
                     return playerIndex === 0
-                      ? 'linear-gradient(45deg, #74b9ff, #a29bfe, #6c5ce7, #74b9ff)'
-                      : 'linear-gradient(45deg, #fd79a8, #fdcb6e, #e17055, #fd79a8)'
+                      ? 'linear-gradient(135deg, #74b9ff, #0984e3)'
+                      : 'linear-gradient(135deg, #fd79a8, #e84393)'
                   })(),
-                  animation: 'spinningHalo 2s linear infinite',
-                  zIndex: -1
-                }
-              })}>
-                <span className={css({
-                  animation: 'emojiBlast 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.4s both',
-                  filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8))'
-                })}>
-                  {activePlayers.find(p => p.id === card.matchedBy)?.emoji || '✓'}
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  boxShadow: (() => {
+                    const playerIndex = activePlayers.findIndex((p) => p.id === card.matchedBy)
+                    return playerIndex === 0
+                      ? '0 0 20px rgba(116, 185, 255, 0.6), 0 0 40px rgba(116, 185, 255, 0.4)'
+                      : '0 0 20px rgba(253, 121, 168, 0.6), 0 0 40px rgba(253, 121, 168, 0.4)'
+                  })(),
+                  animation: 'epicClaim 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                  zIndex: 10,
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: '-2px',
+                    left: '-2px',
+                    right: '-2px',
+                    bottom: '-2px',
+                    borderRadius: '50%',
+                    background: (() => {
+                      const playerIndex = activePlayers.findIndex((p) => p.id === card.matchedBy)
+                      return playerIndex === 0
+                        ? 'linear-gradient(45deg, #74b9ff, #a29bfe, #6c5ce7, #74b9ff)'
+                        : 'linear-gradient(45deg, #fd79a8, #fdcb6e, #e17055, #fd79a8)'
+                    })(),
+                    animation: 'spinningHalo 2s linear infinite',
+                    zIndex: -1,
+                  },
+                })}
+              >
+                <span
+                  className={css({
+                    animation: 'emojiBlast 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.4s both',
+                    filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8))',
+                  })}
+                >
+                  {activePlayers.find((p) => p.id === card.matchedBy)?.emoji || '✓'}
                 </span>
               </div>
 
@@ -266,24 +280,26 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
                     background: '#ffeaa7',
                     borderRadius: '50%',
                     animation: `sparkle${i + 1} 1.5s ease-out`,
-                    zIndex: 8
+                    zIndex: 8,
                   })}
                 />
               ))}
             </>
           )}
           {card.type === 'abacus' ? (
-            <div className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              height: '100%',
-              '& svg': {
-                maxWidth: '100%',
-                maxHeight: '100%'
-              }
-            })}>
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                '& svg': {
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                },
+              })}
+            >
               <AbacusReact
                 value={card.number}
                 columns="auto"
@@ -297,56 +313,68 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
               />
             </div>
           ) : card.type === 'number' ? (
-            <div className={css({
-              fontSize: '32px',
-              fontWeight: 'bold',
-              color: 'gray.800',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            })}>
+            <div
+              className={css({
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: 'gray.800',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              })}
+            >
               {card.number}
             </div>
           ) : card.type === 'complement' ? (
-            <div className={css({
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px'
-            })}>
-              <div className={css({
-                fontSize: '28px',
-                fontWeight: 'bold',
-                color: 'gray.800'
-              })}>
+            <div
+              className={css({
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+              })}
+            >
+              <div
+                className={css({
+                  fontSize: '28px',
+                  fontWeight: 'bold',
+                  color: 'gray.800',
+                })}
+              >
                 {card.number}
               </div>
-              <div className={css({
-                fontSize: '16px',
-                color: 'gray.600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              })}>
+              <div
+                className={css({
+                  fontSize: '16px',
+                  color: 'gray.600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                })}
+              >
                 <span>{card.targetSum === 5 ? '✋' : '🔟'}</span>
                 <span>Friends</span>
               </div>
               {card.complement !== undefined && (
-                <div className={css({
-                  fontSize: '12px',
-                  color: 'gray.500'
-                })}>
+                <div
+                  className={css({
+                    fontSize: '12px',
+                    color: 'gray.500',
+                  })}
+                >
                   + {card.complement} = {card.targetSum}
                 </div>
               )}
             </div>
           ) : (
-            <div className={css({
-              fontSize: '24px',
-              color: 'gray.500'
-            })}>
+            <div
+              className={css({
+                fontSize: '24px',
+                color: 'gray.500',
+              })}
+            >
               ?
             </div>
           )}
@@ -355,18 +383,20 @@ export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false
 
       {/* Match animation overlay */}
       {isMatched && (
-        <div className={css({
-          position: 'absolute',
-          top: '-5px',
-          left: '-5px',
-          right: '-5px',
-          bottom: '-5px',
-          borderRadius: '16px',
-          background: 'linear-gradient(45deg, transparent, rgba(72, 187, 120, 0.3), transparent)',
-          animation: 'pulse 2s infinite',
-          pointerEvents: 'none',
-          zIndex: 1
-        })} />
+        <div
+          className={css({
+            position: 'absolute',
+            top: '-5px',
+            left: '-5px',
+            right: '-5px',
+            bottom: '-5px',
+            borderRadius: '16px',
+            background: 'linear-gradient(45deg, transparent, rgba(72, 187, 120, 0.3), transparent)',
+            animation: 'pulse 2s infinite',
+            pointerEvents: 'none',
+            zIndex: 1,
+          })}
+        />
       )}
     </div>
   )

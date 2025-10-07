@@ -4,13 +4,15 @@
  */
 
 import type {
-  GameValidator,
-  ValidationResult,
-  MatchingGameMove,
-} from './types'
-import type { MemoryPairsState, GameCard, Difficulty, GameType, Player } from '@/app/games/matching/context/types'
-import { validateMatch, canFlipCard } from '@/app/games/matching/utils/matchValidation'
+  Difficulty,
+  GameCard,
+  GameType,
+  MemoryPairsState,
+  Player,
+} from '@/app/games/matching/context/types'
 import { generateGameCards } from '@/app/games/matching/utils/cardGeneration'
+import { canFlipCard, validateMatch } from '@/app/games/matching/utils/matchValidation'
+import type { GameValidator, MatchingGameMove, ValidationResult } from './types'
 
 export class MatchingGameValidator implements GameValidator<MemoryPairsState, MatchingGameMove> {
   validateMove(state: MemoryPairsState, move: MatchingGameMove): ValidationResult {
@@ -53,7 +55,7 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
         currentPlayerType: typeof state.currentPlayer,
         playerId,
         playerIdType: typeof playerId,
-        matches: state.currentPlayer === playerId
+        matches: state.currentPlayer === playerId,
       })
       return {
         valid: false,
@@ -62,7 +64,7 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
     }
 
     // Find the card
-    const card = state.gameCards.find(c => c.id === cardId)
+    const card = state.gameCards.find((c) => c.id === cardId)
     if (!card) {
       return {
         valid: false,
@@ -97,7 +99,7 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
         // Match found - update cards
         newState = {
           ...newState,
-          gameCards: newState.gameCards.map(c =>
+          gameCards: newState.gameCards.map((c) =>
             c.id === card1.id || c.id === card2.id
               ? { ...c, matched: true, matchedBy: state.currentPlayer }
               : c
@@ -131,7 +133,9 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
         const nextPlayerIndex = shouldSwitchPlayer
           ? (state.activePlayers.indexOf(state.currentPlayer) + 1) % state.activePlayers.length
           : 0
-        const nextPlayer = shouldSwitchPlayer ? state.activePlayers[nextPlayerIndex] : state.currentPlayer
+        const nextPlayer = shouldSwitchPlayer
+          ? state.activePlayers[nextPlayerIndex]
+          : state.currentPlayer
 
         newState = {
           ...newState,

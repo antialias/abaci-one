@@ -1,16 +1,12 @@
 'use client'
 
-import { createContext, useContext, useCallback, useMemo, useEffect, type ReactNode } from 'react'
-import { useGameMode } from '../../../../contexts/GameModeContext'
-import { useViewerId } from '@/hooks/useViewerId'
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { generateGameCards } from '../utils/cardGeneration'
-import type {
-  MemoryPairsState,
-  MemoryPairsContextValue,
-  GameStatistics,
-} from './types'
+import { useViewerId } from '@/hooks/useViewerId'
 import type { GameMove } from '@/lib/arcade/validation'
+import { useGameMode } from '../../../../contexts/GameModeContext'
+import { generateGameCards } from '../utils/cardGeneration'
+import type { GameStatistics, MemoryPairsContextValue, MemoryPairsState } from './types'
 
 // Initial state
 const initialState: MemoryPairsState = {
@@ -35,7 +31,7 @@ const initialState: MemoryPairsState = {
   celebrationAnimations: [],
   isProcessingMove: false,
   showMismatchFeedback: false,
-  lastMatchedPair: null
+  lastMatchedPair: null,
 }
 
 /**
@@ -55,7 +51,10 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
         matchedPairs: 0,
         moves: 0,
         scores: move.data.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
-        consecutiveMatches: move.data.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
+        consecutiveMatches: move.data.activePlayers.reduce(
+          (acc: any, p: string) => ({ ...acc, [p]: 0 }),
+          {}
+        ),
         activePlayers: move.data.activePlayers,
         currentPlayer: move.data.activePlayers[0] || '',
         gameStartTime: Date.now(),
@@ -64,12 +63,12 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
         celebrationAnimations: [],
         isProcessingMove: false,
         showMismatchFeedback: false,
-        lastMatchedPair: null
+        lastMatchedPair: null,
       }
 
     case 'FLIP_CARD': {
       // Optimistically flip the card
-      const card = state.gameCards.find(c => c.id === move.data.cardId)
+      const card = state.gameCards.find((c) => c.id === move.data.cardId)
       if (!card) return state
 
       const newFlippedCards = [...state.flippedCards, card]
@@ -77,9 +76,10 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
       return {
         ...state,
         flippedCards: newFlippedCards,
-        currentMoveStartTime: state.flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime,
+        currentMoveStartTime:
+          state.flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime,
         isProcessingMove: newFlippedCards.length === 2, // Processing if 2 cards flipped
-        showMismatchFeedback: false
+        showMismatchFeedback: false,
       }
     }
 
@@ -89,7 +89,7 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
         ...state,
         flippedCards: [],
         showMismatchFeedback: false,
-        isProcessingMove: false
+        isProcessingMove: false,
       }
     }
 
@@ -113,7 +113,12 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
   const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'
 
   // Arcade session integration
-  const { state, sendMove, connected, exitSession } = useArcadeSession<MemoryPairsState>({
+  const {
+    state,
+    sendMove,
+    connected: _connected,
+    exitSession,
+  } = useArcadeSession<MemoryPairsState>({
     userId: viewerId || '',
     initialState,
     applyMove: applyMoveOptimistically,
@@ -127,7 +132,7 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
         sendMove({
           type: 'CLEAR_MISMATCH',
           playerId: state.currentPlayer, // Use current player ID for CLEAR_MISMATCH
-          data: {}
+          data: {},
         })
       }, 1500)
 
@@ -138,31 +143,38 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
   // Computed values
   const isGameActive = state.gamePhase === 'playing'
 
-  const canFlipCard = useCallback((cardId: string): boolean => {
-    if (!isGameActive || state.isProcessingMove) return false
+  const canFlipCard = useCallback(
+    (cardId: string): boolean => {
+      if (!isGameActive || state.isProcessingMove) return false
 
-    const card = state.gameCards.find(c => c.id === cardId)
-    if (!card || card.matched) return false
+      const card = state.gameCards.find((c) => c.id === cardId)
+      if (!card || card.matched) return false
 
-    // Can't flip if already flipped
-    if (state.flippedCards.some(c => c.id === cardId)) return false
+      // Can't flip if already flipped
+      if (state.flippedCards.some((c) => c.id === cardId)) return false
 
-    // Can't flip more than 2 cards
-    if (state.flippedCards.length >= 2) return false
+      // Can't flip more than 2 cards
+      if (state.flippedCards.length >= 2) return false
 
-    return true
-  }, [isGameActive, state.isProcessingMove, state.gameCards, state.flippedCards])
+      return true
+    },
+    [isGameActive, state.isProcessingMove, state.gameCards, state.flippedCards]
+  )
 
-  const currentGameStatistics: GameStatistics = useMemo(() => ({
-    totalMoves: state.moves,
-    matchedPairs: state.matchedPairs,
-    totalPairs: state.totalPairs,
-    gameTime: state.gameStartTime ?
-      (state.gameEndTime || Date.now()) - state.gameStartTime : 0,
-    accuracy: state.moves > 0 ? (state.matchedPairs / state.moves) * 100 : 0,
-    averageTimePerMove: state.moves > 0 && state.gameStartTime ?
-      ((state.gameEndTime || Date.now()) - state.gameStartTime) / state.moves : 0
-  }), [state.moves, state.matchedPairs, state.totalPairs, state.gameStartTime, state.gameEndTime])
+  const currentGameStatistics: GameStatistics = useMemo(
+    () => ({
+      totalMoves: state.moves,
+      matchedPairs: state.matchedPairs,
+      totalPairs: state.totalPairs,
+      gameTime: state.gameStartTime ? (state.gameEndTime || Date.now()) - state.gameStartTime : 0,
+      accuracy: state.moves > 0 ? (state.matchedPairs / state.moves) * 100 : 0,
+      averageTimePerMove:
+        state.moves > 0 && state.gameStartTime
+          ? ((state.gameEndTime || Date.now()) - state.gameStartTime) / state.moves
+          : 0,
+    }),
+    [state.moves, state.matchedPairs, state.totalPairs, state.gameStartTime, state.gameEndTime]
+  )
 
   // Action creators - send moves to arcade session
   const startGame = useCallback(() => {
@@ -180,34 +192,37 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
       playerId: firstPlayer,
       data: {
         cards,
-        activePlayers
-      }
+        activePlayers,
+      },
     })
   }, [state.gameType, state.difficulty, activePlayers, sendMove])
 
-  const flipCard = useCallback((cardId: string) => {
-    console.log('[Client] flipCard called:', {
-      cardId,
-      viewerId,
-      currentPlayer: state.currentPlayer,
-      activePlayers: state.activePlayers,
-      gamePhase: state.gamePhase,
-      canFlip: canFlipCard(cardId)
-    })
+  const flipCard = useCallback(
+    (cardId: string) => {
+      console.log('[Client] flipCard called:', {
+        cardId,
+        viewerId,
+        currentPlayer: state.currentPlayer,
+        activePlayers: state.activePlayers,
+        gamePhase: state.gamePhase,
+        canFlip: canFlipCard(cardId),
+      })
 
-    if (!canFlipCard(cardId)) {
-      console.log('[Client] Cannot flip card - canFlipCard returned false')
-      return
-    }
+      if (!canFlipCard(cardId)) {
+        console.log('[Client] Cannot flip card - canFlipCard returned false')
+        return
+      }
 
-    const move = {
-      type: 'FLIP_CARD' as const,
-      playerId: state.currentPlayer, // Use the current player ID from game state (database player ID)
-      data: { cardId }
-    }
-    console.log('[Client] Sending FLIP_CARD move via sendMove:', move)
-    sendMove(move)
-  }, [canFlipCard, sendMove, viewerId, state.currentPlayer, state.activePlayers, state.gamePhase])
+      const move = {
+        type: 'FLIP_CARD' as const,
+        playerId: state.currentPlayer, // Use the current player ID from game state (database player ID)
+        data: { cardId },
+      }
+      console.log('[Client] Sending FLIP_CARD move via sendMove:', move)
+      sendMove(move)
+    },
+    [canFlipCard, sendMove, viewerId, state.currentPlayer, state.activePlayers, state.gamePhase]
+  )
 
   const resetGame = useCallback(() => {
     // Must have at least one active player
@@ -225,17 +240,17 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
       playerId: firstPlayer,
       data: {
         cards,
-        activePlayers
-      }
+        activePlayers,
+      },
     })
   }, [state.gameType, state.difficulty, activePlayers, sendMove])
 
-  const setGameType = useCallback((gameType: typeof state.gameType) => {
+  const setGameType = useCallback((_gameType: typeof state.gameType) => {
     // TODO: Implement via arcade session if needed
     console.warn('setGameType not yet implemented for arcade mode')
   }, [])
 
-  const setDifficulty = useCallback((difficulty: typeof state.difficulty) => {
+  const setDifficulty = useCallback((_difficulty: typeof state.difficulty) => {
     // TODO: Implement via arcade session if needed
     console.warn('setDifficulty not yet implemented for arcade mode')
   }, [])
@@ -256,7 +271,7 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
     setDifficulty,
     exitSession,
     gameMode,
-    activePlayers
+    activePlayers,
   }
 
   return (

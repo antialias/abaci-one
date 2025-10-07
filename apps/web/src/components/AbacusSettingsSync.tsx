@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
 import { useAbacusDisplay } from '@soroban/abacus-react'
+import { useEffect, useRef } from 'react'
 import { useAbacusSettings, useUpdateAbacusSettings } from '@/hooks/useAbacusSettings'
 
 /**

@@ -1,7 +1,9 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 test.describe('Mini Navigation Game Name Persistence', () => {
-  test('should not show game name when navigating back to games page from a specific game', async ({ page }) => {
+  test('should not show game name when navigating back to games page from a specific game', async ({
+    page,
+  }) => {
     // Override baseURL for this test to match running dev server
     const baseURL = 'http://localhost:3000'
 
@@ -73,7 +75,9 @@ test.describe('Mini Navigation Game Name Persistence', () => {
     await expect(page.locator('text=🧠 Memory Lightning')).not.toBeVisible()
   })
 
-  test('should not persist game name when navigating through intermediate pages', async ({ page }) => {
+  test('should not persist game name when navigating through intermediate pages', async ({
+    page,
+  }) => {
     // Override baseURL for this test to match running dev server
     const baseURL = 'http://localhost:3000'
 

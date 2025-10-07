@@ -1,16 +1,15 @@
-import React from 'react'
-import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import { render } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import type { Tutorial } from '../../../types/tutorial'
 import { TutorialPlayer } from '../TutorialPlayer'
-import { Tutorial } from '../../../types/tutorial'
 
 // Mock AbacusReact to capture the customStyles prop
 vi.mock('@soroban/abacus-react', () => ({
   AbacusReact: vi.fn(({ customStyles }) => {
     // Store the customStyles for testing
-    (global as any).lastCustomStyles = customStyles
+    ;(global as any).lastCustomStyles = customStyles
     return <div data-testid="mock-abacus" />
-  })
+  }),
 }))
 
 describe('TutorialPlayer Highlighting', () => {
@@ -34,13 +33,13 @@ describe('TutorialPlayer Highlighting', () => {
         actionDescription: 'Click the first earth bead',
         tooltip: {
           content: 'Adding earth beads',
-          explanation: 'Earth beads are worth 1 each'
+          explanation: 'Earth beads are worth 1 each',
         },
         errorMessages: {
           wrongBead: 'Click the highlighted earth bead',
           wrongAction: 'Move the bead UP',
-          hint: 'Earth beads move up when adding'
-        }
+          hint: 'Earth beads move up when adding',
+        },
       },
       {
         id: 'step-2',
@@ -51,27 +50,27 @@ describe('TutorialPlayer Highlighting', () => {
         targetValue: 7,
         highlightBeads: [
           { placeValue: 0, beadType: 'heaven' },
-          { placeValue: 0, beadType: 'earth', position: 0 }
+          { placeValue: 0, beadType: 'earth', position: 0 },
         ],
         expectedAction: 'multi-step',
         actionDescription: 'Add heaven bead, then remove earth bead',
         tooltip: {
           content: 'Five Complement',
-          explanation: '4 = 5 - 1'
+          explanation: '4 = 5 - 1',
         },
         errorMessages: {
           wrongBead: 'Follow the two-step process',
           wrongAction: 'Add heaven, then remove earth',
-          hint: 'Complement thinking: 4 = 5 - 1'
-        }
-      }
+          hint: 'Complement thinking: 4 = 5 - 1',
+        },
+      },
     ],
     tags: ['test'],
     author: 'Test Author',
     version: '1.0.0',
     createdAt: new Date(),
     updatedAt: new Date(),
-    isPublished: true
+    isPublished: true,
   }
 
   it('should highlight single bead in correct column (ones place)', () => {
@@ -87,7 +86,7 @@ describe('TutorialPlayer Highlighting', () => {
     expect(customStyles.beads[4].earth[0]).toEqual({
       fill: '#fbbf24',
       stroke: '#f59e0b',
-      strokeWidth: 3
+      strokeWidth: 3,
     })
   })
 
@@ -106,7 +105,7 @@ describe('TutorialPlayer Highlighting', () => {
     expect(customStyles.beads[4].heaven).toEqual({
       fill: '#fbbf24',
       stroke: '#f59e0b',
-      strokeWidth: 3
+      strokeWidth: 3,
     })
 
     // Earth bead position 0 should be highlighted
@@ -114,7 +113,7 @@ describe('TutorialPlayer Highlighting', () => {
     expect(customStyles.beads[4].earth[0]).toEqual({
       fill: '#fbbf24',
       stroke: '#f59e0b',
-      strokeWidth: 3
+      strokeWidth: 3,
     })
   })
 
@@ -139,16 +138,18 @@ describe('TutorialPlayer Highlighting', () => {
       { placeValue: 1, expectedColumnIndex: 3 }, // tens place
       { placeValue: 2, expectedColumnIndex: 2 }, // hundreds place
       { placeValue: 3, expectedColumnIndex: 1 }, // thousands place
-      { placeValue: 4, expectedColumnIndex: 0 }  // ten-thousands place
+      { placeValue: 4, expectedColumnIndex: 0 }, // ten-thousands place
     ]
 
     testCases.forEach(({ placeValue, expectedColumnIndex }) => {
       const testTutorial = {
         ...mockTutorial,
-        steps: [{
-          ...mockTutorial.steps[0],
-          highlightBeads: [{ placeValue, beadType: 'earth' as const, position: 0 }]
-        }]
+        steps: [
+          {
+            ...mockTutorial.steps[0],
+            highlightBeads: [{ placeValue, beadType: 'earth' as const, position: 0 }],
+          },
+        ],
       }
 
       render(<TutorialPlayer tutorial={testTutorial} />)

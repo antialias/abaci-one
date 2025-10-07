@@ -13,12 +13,17 @@ interface ActivePlayersListProps {
   onConfigurePlayer: (playerId: string) => void
 }
 
-export function ActivePlayersList({ activePlayers, shouldEmphasize, onRemovePlayer, onConfigurePlayer }: ActivePlayersListProps) {
+export function ActivePlayersList({
+  activePlayers,
+  shouldEmphasize,
+  onRemovePlayer,
+  onConfigurePlayer,
+}: ActivePlayersListProps) {
   const [hoveredPlayerId, setHoveredPlayerId] = React.useState<string | null>(null)
 
   return (
     <>
-      {activePlayers.map(player => (
+      {activePlayers.map((player) => (
         <div
           key={player.id}
           style={{
@@ -27,7 +32,7 @@ export function ActivePlayersList({ activePlayers, shouldEmphasize, onRemovePlay
             lineHeight: 1,
             transition: 'font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s ease',
             filter: shouldEmphasize ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.25))' : 'none',
-            cursor: shouldEmphasize ? 'pointer' : 'default'
+            cursor: shouldEmphasize ? 'pointer' : 'default',
           }}
           title={player.name}
           onClick={() => shouldEmphasize && onConfigurePlayer(player.id)}
@@ -61,7 +66,7 @@ export function ActivePlayersList({ activePlayers, shouldEmphasize, onRemovePlay
                   boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                   transition: 'all 0.2s ease',
                   padding: 0,
-                  lineHeight: 1
+                  lineHeight: 1,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = '#3b82f6'
@@ -101,7 +106,7 @@ export function ActivePlayersList({ activePlayers, shouldEmphasize, onRemovePlay
                   boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                   transition: 'all 0.2s ease',
                   padding: 0,
-                  lineHeight: 1
+                  lineHeight: 1,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = '#dc2626'

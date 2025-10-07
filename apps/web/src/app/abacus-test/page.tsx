@@ -1,8 +1,8 @@
 'use client'
 
 import { AbacusReact } from '@soroban/abacus-react'
-import { css } from '../../../styled-system/css'
 import { useState } from 'react'
+import { css } from '../../../styled-system/css'
 
 export default function AbacusTestPage() {
   const [value, setValue] = useState(0)
@@ -15,32 +15,36 @@ export default function AbacusTestPage() {
   }
 
   return (
-    <div className={css({
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      bg: 'gray.50',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '4'
-    })}>
+    <div
+      className={css({
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        bg: 'gray.50',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '4',
+      })}
+    >
       {/* Debug info */}
-      <div className={css({
-        position: 'absolute',
-        top: '4',
-        left: '4',
-        bg: 'white',
-        p: '3',
-        rounded: 'md',
-        border: '1px solid',
-        borderColor: 'gray.300',
-        fontSize: 'sm',
-        fontFamily: 'mono'
-      })}>
+      <div
+        className={css({
+          position: 'absolute',
+          top: '4',
+          left: '4',
+          bg: 'white',
+          p: '3',
+          rounded: 'md',
+          border: '1px solid',
+          borderColor: 'gray.300',
+          fontSize: 'sm',
+          fontFamily: 'mono',
+        })}
+      >
         <div>Current Value: {value}</div>
         <div>{debugInfo}</div>
         <button
@@ -53,7 +57,7 @@ export default function AbacusTestPage() {
             color: 'white',
             rounded: 'sm',
             fontSize: 'xs',
-            cursor: 'pointer'
+            cursor: 'pointer',
           })}
         >
           Reset to 0
@@ -68,20 +72,22 @@ export default function AbacusTestPage() {
             color: 'white',
             rounded: 'sm',
             fontSize: 'xs',
-            cursor: 'pointer'
+            cursor: 'pointer',
           })}
         >
           Set to 12345
         </button>
       </div>
 
-      <div style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <AbacusReact
           value={value}
           columns={5}

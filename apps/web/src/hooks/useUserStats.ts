@@ -1,8 +1,8 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/queryClient'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UserStats } from '@/db/schema/user-stats'
+import { api } from '@/lib/queryClient'
 
 /**
  * Query key factory for user stats
@@ -25,9 +25,7 @@ async function fetchUserStats(): Promise<UserStats> {
 /**
  * Update user statistics
  */
-async function updateUserStats(
-  updates: Partial<Omit<UserStats, 'userId'>>
-): Promise<UserStats> {
+async function updateUserStats(updates: Partial<Omit<UserStats, 'userId'>>): Promise<UserStats> {
   const res = await api('user-stats', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

@@ -1,5 +1,5 @@
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
 import { useArcadeSocket } from './useArcadeSocket'
 import { useViewerId } from './useViewerId'
 
@@ -49,18 +49,16 @@ export interface UseArcadeRedirectReturn {
  * const { canModifyPlayers } = useArcadeRedirect({ currentGame: 'matching' })
  * ```
  */
-export function useArcadeRedirect(
-  options: UseArcadeRedirectOptions = {}
-): UseArcadeRedirectReturn {
+export function useArcadeRedirect(options: UseArcadeRedirectOptions = {}): UseArcadeRedirectReturn {
   const { currentGame } = options
   const router = useRouter()
-  const pathname = usePathname()
+  const _pathname = usePathname()
   const { data: viewerId } = useViewerId()
 
   const [isChecking, setIsChecking] = useState(true)
   const [hasActiveSession, setHasActiveSession] = useState(false)
   const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null)
-  const [activeGameName, setActiveGameName] = useState<string | null>(null)
+  const [_activeGameName, setActiveGameName] = useState<string | null>(null)
 
   const { connected, joinSession } = useArcadeSocket({
     onSessionState: (data) => {

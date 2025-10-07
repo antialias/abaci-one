@@ -1,10 +1,10 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DevAccessProvider } from '../../../hooks/useAccessControl'
+import type { Tutorial, TutorialValidation } from '../../../types/tutorial'
+import { getTutorialForEditor } from '../../../utils/tutorialConverter'
 import { TutorialEditor } from '../TutorialEditor'
 import { TutorialPlayer } from '../TutorialPlayer'
-import { DevAccessProvider } from '../../../hooks/useAccessControl'
-import { getTutorialForEditor } from '../../../utils/tutorialConverter'
-import type { Tutorial, TutorialValidation } from '../../../types/tutorial'
 
 // Mock the AbacusReact component for integration tests
 vi.mock('@soroban/abacus-react', () => ({
@@ -19,14 +19,14 @@ vi.mock('@soroban/abacus-react', () => ({
             columnIndex: 4,
             beadType: 'earth',
             position: 0,
-            active: false
+            active: false,
           })
         }}
       >
         Mock Bead
       </button>
     </div>
-  )
+  ),
 }))
 
 describe('Tutorial Editor Integration Tests', () => {
@@ -42,7 +42,7 @@ describe('Tutorial Editor Integration Tests', () => {
     mockOnValidate = vi.fn().mockResolvedValue({
       isValid: true,
       errors: [],
-      warnings: []
+      warnings: [],
     } as TutorialValidation)
     mockOnPreview = vi.fn()
   })
@@ -80,7 +80,9 @@ describe('Tutorial Editor Integration Tests', () => {
       expect(titleInput).toHaveValue('Advanced Addition Tutorial')
 
       const descriptionInput = screen.getByDisplayValue(/Learn basic addition/)
-      fireEvent.change(descriptionInput, { target: { value: 'Master advanced addition techniques' } })
+      fireEvent.change(descriptionInput, {
+        target: { value: 'Master advanced addition techniques' },
+      })
       expect(descriptionInput).toHaveValue('Master advanced addition techniques')
 
       // 4. Expand and edit a step
@@ -89,9 +91,10 @@ describe('Tutorial Editor Integration Tests', () => {
 
       // Find step editing form
       const stepTitleInputs = screen.getAllByDisplayValue(/.*/)
-      const stepTitleInput = stepTitleInputs.find(input =>
-        (input as HTMLInputElement).value.includes('Basic') ||
-        (input as HTMLInputElement).value.includes('Introduction')
+      const stepTitleInput = stepTitleInputs.find(
+        (input) =>
+          (input as HTMLInputElement).value.includes('Basic') ||
+          (input as HTMLInputElement).value.includes('Introduction')
       )
 
       if (stepTitleInput) {
@@ -121,10 +124,12 @@ describe('Tutorial Editor Integration Tests', () => {
 
       await waitFor(() => {
         expect(mockOnValidate).toHaveBeenCalled()
-        expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
-          title: 'Advanced Addition Tutorial',
-          description: 'Master advanced addition techniques'
-        }))
+        expect(mockOnSave).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'Advanced Addition Tutorial',
+            description: 'Master advanced addition techniques',
+          })
+        )
       })
     })
 
@@ -174,10 +179,10 @@ describe('Tutorial Editor Integration Tests', () => {
             stepId: '',
             field: 'title',
             message: 'Title cannot be empty',
-            severity: 'error' as const
-          }
+            severity: 'error' as const,
+          },
         ],
-        warnings: []
+        warnings: [],
       })
 
       renderTutorialEditor()
@@ -208,9 +213,9 @@ describe('Tutorial Editor Integration Tests', () => {
             stepId: '',
             field: 'description',
             message: 'Description could be more detailed',
-            severity: 'warning' as const
-          }
-        ]
+            severity: 'warning' as const,
+          },
+        ],
       })
 
       renderTutorialEditor()
@@ -446,10 +451,12 @@ describe('Tutorial Editor Integration Tests', () => {
       fireEvent.click(screen.getByText('Save Changes'))
 
       await waitFor(() => {
-        expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
-          title: 'Updated Tutorial',
-          steps: expect.arrayContaining([expect.any(Object)])
-        }))
+        expect(mockOnSave).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'Updated Tutorial',
+            steps: expect.arrayContaining([expect.any(Object)]),
+          })
+        )
       })
     })
   })

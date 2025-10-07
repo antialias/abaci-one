@@ -44,7 +44,7 @@ function getDb() {
 export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
   get(_target, prop) {
     return getDb()[prop as keyof ReturnType<typeof drizzle<typeof schema>>]
-  }
+  },
 })
 
 export { schema }

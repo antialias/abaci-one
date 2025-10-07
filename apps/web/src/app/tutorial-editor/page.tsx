@@ -1,14 +1,19 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
+import Resizable from 'react-resizable-layout'
 import { TutorialEditor } from '@/components/tutorial/TutorialEditor'
 import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
 import { DevAccessProvider, EditorProtected } from '@/hooks/useAccessControl'
+import type {
+  StepValidationError,
+  Tutorial,
+  TutorialEvent,
+  TutorialValidation,
+} from '@/types/tutorial'
 import { getTutorialForEditor, validateTutorialConversion } from '@/utils/tutorialConverter'
-import { Tutorial, TutorialValidation, StepValidationError, TutorialEvent } from '@/types/tutorial'
 import { css } from '../../../styled-system/css'
 import { hstack, vstack } from '../../../styled-system/patterns'
-import Resizable from 'react-resizable-layout'
 
 interface EditorMode {
   mode: 'editor' | 'player' | 'split'
@@ -23,20 +28,20 @@ export default function TutorialEditorPage() {
     mode: 'editor',
     showDebugInfo: true,
     autoSave: false,
-    editingTitle: false
+    editingTitle: false,
   })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [validationResult, setValidationResult] = useState<TutorialValidation>(() => {
     const result = validateTutorialConversion()
     return {
       isValid: result.isValid,
-      errors: result.errors.map(error => ({
+      errors: result.errors.map((error) => ({
         stepId: '',
         field: 'general',
         message: error,
-        severity: 'error' as const
+        severity: 'error' as const,
       })),
-      warnings: []
+      warnings: [],
     }
   })
   const [debugEvents, setDebugEvents] = useState<TutorialEvent[]>([])
@@ -46,7 +51,7 @@ export default function TutorialEditorPage() {
     setSaveStatus('saving')
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       // In real implementation, this would save to backend
       console.log('Saving tutorial:', updatedTutorial)
@@ -63,176 +68,179 @@ export default function TutorialEditorPage() {
   }, [])
 
   // Validate tutorial (enhanced validation)
-  const handleValidate = useCallback(async (tutorialToValidate: Tutorial): Promise<TutorialValidation> => {
-    const errors: StepValidationError[] = []
-    const warnings: StepValidationError[] = []
+  const handleValidate = useCallback(
+    async (tutorialToValidate: Tutorial): Promise<TutorialValidation> => {
+      const errors: StepValidationError[] = []
+      const warnings: StepValidationError[] = []
 
-    // Validate tutorial metadata
-    if (!tutorialToValidate.title.trim()) {
-      errors.push({
-        stepId: '',
-        field: 'title',
-        message: 'Tutorial title is required',
-        severity: 'error'
-      })
-    }
-
-    if (!tutorialToValidate.description.trim()) {
-      warnings.push({
-        stepId: '',
-        field: 'description',
-        message: 'Tutorial description is recommended',
-        severity: 'warning'
-      })
-    }
-
-    if (tutorialToValidate.steps.length === 0) {
-      errors.push({
-        stepId: '',
-        field: 'steps',
-        message: 'Tutorial must have at least one step',
-        severity: 'error'
-      })
-    }
-
-    // Validate each step
-    tutorialToValidate.steps.forEach((step, index) => {
-      // Required fields
-      if (!step.title.trim()) {
+      // Validate tutorial metadata
+      if (!tutorialToValidate.title.trim()) {
         errors.push({
-          stepId: step.id,
+          stepId: '',
           field: 'title',
-          message: `Step ${index + 1}: Title is required`,
-          severity: 'error'
+          message: 'Tutorial title is required',
+          severity: 'error',
         })
       }
 
-      if (!step.problem.trim()) {
-        errors.push({
-          stepId: step.id,
-          field: 'problem',
-          message: `Step ${index + 1}: Problem is required`,
-          severity: 'error'
-        })
-      }
-
-      if (!step.description.trim()) {
+      if (!tutorialToValidate.description.trim()) {
         warnings.push({
-          stepId: step.id,
+          stepId: '',
           field: 'description',
-          message: `Step ${index + 1}: Description is recommended`,
-          severity: 'warning'
+          message: 'Tutorial description is recommended',
+          severity: 'warning',
         })
       }
 
-      // Value validation
-      if (step.startValue < 0 || step.targetValue < 0) {
+      if (tutorialToValidate.steps.length === 0) {
         errors.push({
-          stepId: step.id,
-          field: 'values',
-          message: `Step ${index + 1}: Values cannot be negative`,
-          severity: 'error'
+          stepId: '',
+          field: 'steps',
+          message: 'Tutorial must have at least one step',
+          severity: 'error',
         })
       }
 
-      if (step.startValue === step.targetValue) {
-        warnings.push({
-          stepId: step.id,
-          field: 'values',
-          message: `Step ${index + 1}: Start and target values are the same`,
-          severity: 'warning'
-        })
-      }
+      // Validate each step
+      tutorialToValidate.steps.forEach((step, index) => {
+        // Required fields
+        if (!step.title.trim()) {
+          errors.push({
+            stepId: step.id,
+            field: 'title',
+            message: `Step ${index + 1}: Title is required`,
+            severity: 'error',
+          })
+        }
 
-      // Highlight beads validation
-      if (step.highlightBeads) {
-        step.highlightBeads.forEach((highlight, bIndex) => {
-          if (highlight.placeValue < 0 || highlight.placeValue > 4) {
-            errors.push({
-              stepId: step.id,
-              field: 'highlightBeads',
-              message: `Step ${index + 1}: Highlight bead ${bIndex + 1} has invalid place value`,
-              severity: 'error'
-            })
-          }
+        if (!step.problem.trim()) {
+          errors.push({
+            stepId: step.id,
+            field: 'problem',
+            message: `Step ${index + 1}: Problem is required`,
+            severity: 'error',
+          })
+        }
 
-          if (highlight.beadType === 'earth' && highlight.position !== undefined) {
-            if (highlight.position < 0 || highlight.position > 3) {
+        if (!step.description.trim()) {
+          warnings.push({
+            stepId: step.id,
+            field: 'description',
+            message: `Step ${index + 1}: Description is recommended`,
+            severity: 'warning',
+          })
+        }
+
+        // Value validation
+        if (step.startValue < 0 || step.targetValue < 0) {
+          errors.push({
+            stepId: step.id,
+            field: 'values',
+            message: `Step ${index + 1}: Values cannot be negative`,
+            severity: 'error',
+          })
+        }
+
+        if (step.startValue === step.targetValue) {
+          warnings.push({
+            stepId: step.id,
+            field: 'values',
+            message: `Step ${index + 1}: Start and target values are the same`,
+            severity: 'warning',
+          })
+        }
+
+        // Highlight beads validation
+        if (step.highlightBeads) {
+          step.highlightBeads.forEach((highlight, bIndex) => {
+            if (highlight.placeValue < 0 || highlight.placeValue > 4) {
               errors.push({
                 stepId: step.id,
                 field: 'highlightBeads',
-                message: `Step ${index + 1}: Earth bead position must be 0-3`,
-                severity: 'error'
+                message: `Step ${index + 1}: Highlight bead ${bIndex + 1} has invalid place value`,
+                severity: 'error',
               })
             }
-          }
-        })
-      }
 
-      // Multi-step validation
-      if (step.expectedAction === 'multi-step') {
-        if (!step.multiStepInstructions || step.multiStepInstructions.length === 0) {
-          errors.push({
-            stepId: step.id,
-            field: 'multiStepInstructions',
-            message: `Step ${index + 1}: Multi-step actions require instructions`,
-            severity: 'error'
+            if (highlight.beadType === 'earth' && highlight.position !== undefined) {
+              if (highlight.position < 0 || highlight.position > 3) {
+                errors.push({
+                  stepId: step.id,
+                  field: 'highlightBeads',
+                  message: `Step ${index + 1}: Earth bead position must be 0-3`,
+                  severity: 'error',
+                })
+              }
+            }
           })
         }
+
+        // Multi-step validation
+        if (step.expectedAction === 'multi-step') {
+          if (!step.multiStepInstructions || step.multiStepInstructions.length === 0) {
+            errors.push({
+              stepId: step.id,
+              field: 'multiStepInstructions',
+              message: `Step ${index + 1}: Multi-step actions require instructions`,
+              severity: 'error',
+            })
+          }
+        }
+
+        // Tooltip validation
+        if (!step.tooltip.content.trim() || !step.tooltip.explanation.trim()) {
+          warnings.push({
+            stepId: step.id,
+            field: 'tooltip',
+            message: `Step ${index + 1}: Tooltip content should be complete`,
+            severity: 'warning',
+          })
+        }
+
+        // Error messages validation removed - errorMessages property no longer exists
+        // Bead diff tooltip provides better guidance instead
+      })
+
+      const validation: TutorialValidation = {
+        isValid: errors.length === 0,
+        errors,
+        warnings,
       }
 
-      // Tooltip validation
-      if (!step.tooltip.content.trim() || !step.tooltip.explanation.trim()) {
-        warnings.push({
-          stepId: step.id,
-          field: 'tooltip',
-          message: `Step ${index + 1}: Tooltip content should be complete`,
-          severity: 'warning'
-        })
-      }
-
-      // Error messages validation removed - errorMessages property no longer exists
-      // Bead diff tooltip provides better guidance instead
-    })
-
-    const validation: TutorialValidation = {
-      isValid: errors.length === 0,
-      errors,
-      warnings
-    }
-
-    setValidationResult(validation)
-    return validation
-  }, [])
+      setValidationResult(validation)
+      return validation
+    },
+    []
+  )
 
   // Preview step in player mode
-  const handlePreview = useCallback((tutorialToPreview: Tutorial, stepIndex: number) => {
+  const handlePreview = useCallback((tutorialToPreview: Tutorial, _stepIndex: number) => {
     setTutorial(tutorialToPreview)
-    setEditorMode(prev => ({ ...prev, mode: 'player' }))
+    setEditorMode((prev) => ({ ...prev, mode: 'player' }))
     // The TutorialPlayer will handle jumping to the specific step
   }, [])
 
   // Handle debug events from player
   const handleDebugEvent = useCallback((event: TutorialEvent) => {
-    setDebugEvents(prev => [...prev.slice(-50), event]) // Keep last 50 events
+    setDebugEvents((prev) => [...prev.slice(-50), event]) // Keep last 50 events
   }, [])
 
   // Mode switching
   const switchMode = useCallback((mode: EditorMode['mode']) => {
-    setEditorMode(prev => ({ ...prev, mode }))
+    setEditorMode((prev) => ({ ...prev, mode }))
   }, [])
 
   const toggleDebugInfo = useCallback(() => {
-    setEditorMode(prev => ({ ...prev, showDebugInfo: !prev.showDebugInfo }))
+    setEditorMode((prev) => ({ ...prev, showDebugInfo: !prev.showDebugInfo }))
   }, [])
 
   const toggleAutoSave = useCallback(() => {
-    setEditorMode(prev => ({ ...prev, autoSave: !prev.autoSave }))
+    setEditorMode((prev) => ({ ...prev, autoSave: !prev.autoSave }))
   }, [])
 
   // Tutorial metadata update
   const updateTutorialTitle = useCallback((title: string) => {
-    setTutorial(prev => ({ ...prev, title, updatedAt: new Date() }))
+    setTutorial((prev) => ({ ...prev, title, updatedAt: new Date() }))
   }, [])
 
   // Export tutorial data for debugging
@@ -241,7 +249,7 @@ export default function TutorialEditorPage() {
       tutorial,
       validation: validationResult,
       debugEvents: debugEvents.slice(-20),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -255,37 +263,41 @@ export default function TutorialEditorPage() {
 
   return (
     <DevAccessProvider>
-      <EditorProtected fallback={
-        <div className={css({
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          textAlign: 'center'
-        })}>
-          <div>
-            <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 4 })}>
-              Access Restricted
-            </h1>
-            <p className={css({ color: 'gray.600', mb: 4 })}>
-              Tutorial editor requires administrative privileges.
-            </p>
-            <p className={css({ fontSize: 'sm', color: 'gray.500' })}>
-              In development mode, this would check your actual permissions.
-            </p>
-          </div>
-        </div>
-      }>
-        <div className={css({ height: 'calc(100vh - 80px)', width: '100vw', overflow: 'hidden' })}>
-          <Resizable
-            axis="y"
-            initial={120}
-            min={80}
-            max={200}
-            step={1}
+      <EditorProtected
+        fallback={
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: '100vh',
+              textAlign: 'center',
+            })}
           >
+            <div>
+              <h1 className={css({ fontSize: '2xl', fontWeight: 'bold', mb: 4 })}>
+                Access Restricted
+              </h1>
+              <p className={css({ color: 'gray.600', mb: 4 })}>
+                Tutorial editor requires administrative privileges.
+              </p>
+              <p className={css({ fontSize: 'sm', color: 'gray.500' })}>
+                In development mode, this would check your actual permissions.
+              </p>
+            </div>
+          </div>
+        }
+      >
+        <div className={css({ height: 'calc(100vh - 80px)', width: '100vw', overflow: 'hidden' })}>
+          <Resizable axis="y" initial={120} min={80} max={200} step={1}>
             {({ position: headerHeight, separatorProps: headerSeparatorProps }) => (
-              <div className={css({ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' })}>
+              <div
+                className={css({
+                  height: 'calc(100vh - 80px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                })}
+              >
                 {/* Header controls - Fixed height */}
                 <div
                   className={css({
@@ -295,10 +307,12 @@ export default function TutorialEditorPage() {
                     borderColor: 'gray.200',
                     p: 4,
                     overflowY: 'auto',
-                    flexShrink: 0
+                    flexShrink: 0,
                   })}
                 >
-                  <div className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}>
+                  <div
+                    className={hstack({ justifyContent: 'space-between', alignItems: 'center' })}
+                  >
                     <div>
                       <h1 className={css({ fontSize: 'xl', fontWeight: 'bold', mb: 1 })}>
                         Tutorial Editor & Debugger
@@ -309,13 +323,14 @@ export default function TutorialEditorPage() {
                             type="text"
                             value={tutorial.title}
                             onChange={(e) => updateTutorialTitle(e.target.value)}
-                            onBlur={() => setEditorMode(prev => ({ ...prev, editingTitle: false }))}
+                            onBlur={() =>
+                              setEditorMode((prev) => ({ ...prev, editingTitle: false }))
+                            }
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === 'Escape') {
-                                setEditorMode(prev => ({ ...prev, editingTitle: false }))
+                                setEditorMode((prev) => ({ ...prev, editingTitle: false }))
                               }
                             }}
-                            autoFocus
                             className={css({
                               fontSize: 'lg',
                               fontWeight: 'medium',
@@ -324,19 +339,21 @@ export default function TutorialEditorPage() {
                               borderColor: 'blue.300',
                               borderRadius: 'sm',
                               bg: 'white',
-                              minWidth: '300px'
+                              minWidth: '300px',
                             })}
                           />
                         ) : (
                           <span
-                            onClick={() => setEditorMode(prev => ({ ...prev, editingTitle: true }))}
+                            onClick={() =>
+                              setEditorMode((prev) => ({ ...prev, editingTitle: true }))
+                            }
                             className={css({
                               fontSize: 'lg',
                               fontWeight: 'medium',
                               cursor: 'pointer',
                               p: 1,
                               borderRadius: 'sm',
-                              _hover: { bg: 'gray.50' }
+                              _hover: { bg: 'gray.50' },
                             })}
                           >
                             {tutorial.title}
@@ -366,7 +383,7 @@ export default function TutorialEditorPage() {
                               color: editorMode.mode === mode ? 'white' : 'gray.700',
                               cursor: 'pointer',
                               textTransform: 'capitalize',
-                              _hover: { bg: editorMode.mode === mode ? 'blue.600' : 'gray.50' }
+                              _hover: { bg: editorMode.mode === mode ? 'blue.600' : 'gray.50' },
                             })}
                           >
                             {mode}
@@ -408,25 +425,38 @@ export default function TutorialEditorPage() {
                             borderRadius: 'md',
                             bg: 'white',
                             cursor: 'pointer',
-                            _hover: { bg: 'gray.50' }
+                            _hover: { bg: 'gray.50' },
                           })}
                         >
                           Export Debug
                         </button>
 
                         {saveStatus !== 'idle' && (
-                          <div className={css({
-                            px: 3,
-                            py: 1,
-                            fontSize: 'sm',
-                            borderRadius: 'md',
-                            bg: saveStatus === 'saving' ? 'blue.100' :
-                                saveStatus === 'saved' ? 'green.100' : 'red.100',
-                            color: saveStatus === 'saving' ? 'blue.700' :
-                                   saveStatus === 'saved' ? 'green.700' : 'red.700'
-                          })}>
-                            {saveStatus === 'saving' ? 'Saving...' :
-                             saveStatus === 'saved' ? 'Saved!' : 'Error!'}
+                          <div
+                            className={css({
+                              px: 3,
+                              py: 1,
+                              fontSize: 'sm',
+                              borderRadius: 'md',
+                              bg:
+                                saveStatus === 'saving'
+                                  ? 'blue.100'
+                                  : saveStatus === 'saved'
+                                    ? 'green.100'
+                                    : 'red.100',
+                              color:
+                                saveStatus === 'saving'
+                                  ? 'blue.700'
+                                  : saveStatus === 'saved'
+                                    ? 'green.700'
+                                    : 'red.700',
+                            })}
+                          >
+                            {saveStatus === 'saving'
+                              ? 'Saving...'
+                              : saveStatus === 'saved'
+                                ? 'Saved!'
+                                : 'Error!'}
                           </div>
                         )}
                       </div>
@@ -437,14 +467,16 @@ export default function TutorialEditorPage() {
                   {editorMode.showDebugInfo && validationResult && (
                     <div className={css({ mt: 3 })}>
                       {!validationResult.isValid ? (
-                        <div className={css({
-                          p: 2,
-                          bg: 'red.50',
-                          border: '1px solid',
-                          borderColor: 'red.200',
-                          borderRadius: 'md',
-                          fontSize: 'sm'
-                        })}>
+                        <div
+                          className={css({
+                            p: 2,
+                            bg: 'red.50',
+                            border: '1px solid',
+                            borderColor: 'red.200',
+                            borderRadius: 'md',
+                            fontSize: 'sm',
+                          })}
+                        >
                           <strong className={css({ color: 'red.800' })}>
                             {validationResult.errors?.length || 0} validation error(s)
                           </strong>
@@ -455,27 +487,31 @@ export default function TutorialEditorPage() {
                           )}
                         </div>
                       ) : validationResult.warnings && validationResult.warnings.length > 0 ? (
-                        <div className={css({
-                          p: 2,
-                          bg: 'yellow.50',
-                          border: '1px solid',
-                          borderColor: 'yellow.200',
-                          borderRadius: 'md',
-                          fontSize: 'sm',
-                          color: 'yellow.700'
-                        })}>
+                        <div
+                          className={css({
+                            p: 2,
+                            bg: 'yellow.50',
+                            border: '1px solid',
+                            borderColor: 'yellow.200',
+                            borderRadius: 'md',
+                            fontSize: 'sm',
+                            color: 'yellow.700',
+                          })}
+                        >
                           Tutorial is valid with {validationResult.warnings?.length || 0} warning(s)
                         </div>
                       ) : (
-                        <div className={css({
-                          p: 2,
-                          bg: 'green.50',
-                          border: '1px solid',
-                          borderColor: 'green.200',
-                          borderRadius: 'md',
-                          fontSize: 'sm',
-                          color: 'green.700'
-                        })}>
+                        <div
+                          className={css({
+                            p: 2,
+                            bg: 'green.50',
+                            border: '1px solid',
+                            borderColor: 'green.200',
+                            borderRadius: 'md',
+                            fontSize: 'sm',
+                            color: 'green.700',
+                          })}
+                        >
                           Tutorial validation passed ✓
                         </div>
                       )}
@@ -494,7 +530,7 @@ export default function TutorialEditorPage() {
                     cursor: 'ns-resize',
                     _hover: { bg: 'blue.400' },
                     transition: 'background-color 0.2s',
-                    flexShrink: 0
+                    flexShrink: 0,
                   })}
                 />
 
@@ -503,7 +539,7 @@ export default function TutorialEditorPage() {
                   className={css({
                     height: `calc(100vh - 80px - ${headerHeight}px - 4px)`,
                     display: 'flex',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
                   })}
                 >
                   {editorMode.mode === 'editor' && (
@@ -528,13 +564,7 @@ export default function TutorialEditorPage() {
                   )}
 
                   {editorMode.mode === 'split' && (
-                    <Resizable
-                      axis="x"
-                      initial={800}
-                      min={400}
-                      max={1200}
-                      step={1}
-                    >
+                    <Resizable axis="x" initial={800} min={400} max={1200} step={1}>
                       {({ position: splitPosition, separatorProps: splitSeparatorProps }) => (
                         <div className={css({ display: 'flex', width: '100%', height: '100%' })}>
                           <div
@@ -543,7 +573,7 @@ export default function TutorialEditorPage() {
                               height: '100%',
                               borderRight: '1px solid',
                               borderColor: 'gray.200',
-                              flexShrink: 0
+                              flexShrink: 0,
                             })}
                           >
                             <TutorialEditor
@@ -565,14 +595,14 @@ export default function TutorialEditorPage() {
                               cursor: 'ew-resize',
                               _hover: { bg: 'blue.400' },
                               transition: 'background-color 0.2s',
-                              flexShrink: 0
+                              flexShrink: 0,
                             })}
                           />
 
                           <div
                             className={css({
                               width: `calc(100% - ${splitPosition}px - 4px)`,
-                              height: '100%'
+                              height: '100%',
                             })}
                           >
                             <TutorialPlayer
@@ -593,47 +623,50 @@ export default function TutorialEditorPage() {
 
           {/* Debug panel - Fixed at bottom if needed */}
           {editorMode.showDebugInfo && debugEvents.length > 0 && (
-            <div className={css({
-              position: 'fixed',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              maxHeight: '200px',
-              bg: 'gray.900',
-              color: 'white',
-              p: 4,
-              overflowY: 'auto',
-              fontFamily: 'mono',
-              fontSize: 'xs',
-              zIndex: 1000
-            })}>
+            <div
+              className={css({
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                maxHeight: '200px',
+                bg: 'gray.900',
+                color: 'white',
+                p: 4,
+                overflowY: 'auto',
+                fontFamily: 'mono',
+                fontSize: 'xs',
+                zIndex: 1000,
+              })}
+            >
               <h4 className={css({ fontWeight: 'bold', mb: 2 })}>
                 Debug Events ({debugEvents.length})
               </h4>
               <div className={vstack({ gap: 1, alignItems: 'flex-start' })}>
-                {debugEvents.slice(-10).reverse().map((event, index) => (
-                  <div key={index} className={css({ opacity: 1 - (index * 0.1) })}>
-                    <span className={css({ color: 'blue.300' })}>
-                      {event.timestamp.toLocaleTimeString()}
-                    </span>
-                    {' '}
-                    <span className={css({ color: 'green.300' })}>
-                      {event.type}
-                    </span>
-                    {' '}
-                    {event.type === 'VALUE_CHANGED' && (
-                      <span>{event.oldValue} → {event.newValue}</span>
-                    )}
-                    {event.type === 'STEP_COMPLETED' && (
-                      <span className={css({ color: event.success ? 'green.400' : 'red.400' })}>
-                        {event.success ? 'SUCCESS' : 'FAILED'}
-                      </span>
-                    )}
-                    {event.type === 'ERROR_OCCURRED' && (
-                      <span className={css({ color: 'red.400' })}>{event.error}</span>
-                    )}
-                  </div>
-                ))}
+                {debugEvents
+                  .slice(-10)
+                  .reverse()
+                  .map((event, index) => (
+                    <div key={index} className={css({ opacity: 1 - index * 0.1 })}>
+                      <span className={css({ color: 'blue.300' })}>
+                        {event.timestamp.toLocaleTimeString()}
+                      </span>{' '}
+                      <span className={css({ color: 'green.300' })}>{event.type}</span>{' '}
+                      {event.type === 'VALUE_CHANGED' && (
+                        <span>
+                          {event.oldValue} → {event.newValue}
+                        </span>
+                      )}
+                      {event.type === 'STEP_COMPLETED' && (
+                        <span className={css({ color: event.success ? 'green.400' : 'red.400' })}>
+                          {event.success ? 'SUCCESS' : 'FAILED'}
+                        </span>
+                      )}
+                      {event.type === 'ERROR_OCCURRED' && (
+                        <span className={css({ color: 'red.400' })}>{event.error}</span>
+                      )}
+                    </div>
+                  ))}
               </div>
             </div>
           )}

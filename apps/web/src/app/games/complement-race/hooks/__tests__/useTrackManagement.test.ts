@@ -1,15 +1,15 @@
-import { renderHook, act } from '@testing-library/react'
-import { describe, test, expect, beforeEach, vi } from 'vitest'
-import { useTrackManagement } from '../useTrackManagement'
+import { renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
+import type { Passenger, Station } from '../../lib/gameTypes'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
-import type { Station, Passenger } from '../../lib/gameTypes'
+import { useTrackManagement } from '../useTrackManagement'
 
 // Mock the landmarks module
 vi.mock('../../lib/landmarks', () => ({
-  generateLandmarks: vi.fn((route: number) => [
+  generateLandmarks: vi.fn((_route: number) => [
     { emoji: '🌲', position: 30, offset: { x: 0, y: -50 }, size: 24 },
-    { emoji: '🏔️', position: 70, offset: { x: 0, y: -80 }, size: 32 }
-  ])
+    { emoji: '🏔️', position: 70, offset: { x: 0, y: -80 }, size: 32 },
+  ]),
 }))
 
 describe('useTrackManagement', () => {
@@ -24,7 +24,7 @@ describe('useTrackManagement', () => {
     mockPath.getTotalLength = vi.fn(() => 1000)
     mockPath.getPointAtLength = vi.fn((distance: number) => ({
       x: distance,
-      y: 300
+      y: 300,
     }))
     mockPathRef = { current: mockPath }
 
@@ -32,21 +32,21 @@ describe('useTrackManagement', () => {
     mockTrackGenerator = {
       generateTrack: vi.fn((route: number) => ({
         referencePath: `M 0 300 L ${route * 100} 300`,
-        ballastPath: `M 0 300 L ${route * 100} 300`
+        ballastPath: `M 0 300 L ${route * 100} 300`,
       })),
       generateTiesAndRails: vi.fn(() => ({
         ties: [
           { x1: 0, y1: 300, x2: 10, y2: 300 },
-          { x1: 20, y1: 300, x2: 30, y2: 300 }
+          { x1: 20, y1: 300, x2: 30, y2: 300 },
         ],
         leftRailPoints: ['0,295', '100,295'],
-        rightRailPoints: ['0,305', '100,305']
-      }))
+        rightRailPoints: ['0,305', '100,305'],
+      })),
     } as unknown as RailroadTrackGenerator
 
     mockStations = [
       { id: 'station-1', name: 'Station 1', position: 20, icon: '🏭' },
-      { id: 'station-2', name: 'Station 2', position: 60, icon: '🏛️' }
+      { id: 'station-2', name: 'Station 2', position: 60, icon: '🏛️' },
     ]
 
     mockPassengers = [
@@ -57,8 +57,8 @@ describe('useTrackManagement', () => {
         destinationStationId: 'station-2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     vi.clearAllMocks()
@@ -72,7 +72,7 @@ describe('useTrackManagement', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         stations: mockStations,
-        passengers: mockPassengers
+        passengers: mockPassengers,
       })
     )
 
@@ -89,7 +89,7 @@ describe('useTrackManagement', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         stations: mockStations,
-        passengers: mockPassengers
+        passengers: mockPassengers,
       })
     )
 
@@ -106,7 +106,7 @@ describe('useTrackManagement', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         stations: mockStations,
-        passengers: mockPassengers
+        passengers: mockPassengers,
       })
     )
 
@@ -122,7 +122,7 @@ describe('useTrackManagement', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         stations: mockStations,
-        passengers: mockPassengers
+        passengers: mockPassengers,
       })
     )
 
@@ -141,7 +141,7 @@ describe('useTrackManagement', () => {
         trackGenerator: mockTrackGenerator,
         pathRef: mockPathRef,
         stations: mockStations,
-        passengers: mockPassengers
+        passengers: mockPassengers,
       })
     )
 
@@ -160,10 +160,10 @@ describe('useTrackManagement', () => {
           trackGenerator: mockTrackGenerator,
           pathRef: mockPathRef,
           stations: mockStations,
-          passengers: mockPassengers
+          passengers: mockPassengers,
         }),
       {
-        initialProps: { route: 1, position: 0 }
+        initialProps: { route: 1, position: 0 },
       }
     )
 
@@ -186,10 +186,10 @@ describe('useTrackManagement', () => {
           trackGenerator: mockTrackGenerator,
           pathRef: mockPathRef,
           stations: mockStations,
-          passengers: mockPassengers
+          passengers: mockPassengers,
         }),
       {
-        initialProps: { route: 1, position: 0 }
+        initialProps: { route: 1, position: 0 },
       }
     )
 
@@ -213,10 +213,10 @@ describe('useTrackManagement', () => {
           trackGenerator: mockTrackGenerator,
           pathRef: mockPathRef,
           stations: mockStations,
-          passengers: mockPassengers
+          passengers: mockPassengers,
         }),
       {
-        initialProps: { route: 1, position: -5 }
+        initialProps: { route: 1, position: -5 },
       }
     )
 
@@ -238,8 +238,8 @@ describe('useTrackManagement', () => {
         destinationStationId: 'station-2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     const { result, rerender } = renderHook(
@@ -252,10 +252,10 @@ describe('useTrackManagement', () => {
           stations: mockStations,
           passengers,
           maxCars: 5,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       {
-        initialProps: { passengers: mockPassengers, position: 50 }
+        initialProps: { passengers: mockPassengers, position: 50 },
       }
     )
 
@@ -278,8 +278,8 @@ describe('useTrackManagement', () => {
         destinationStationId: 'station-2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     const { result, rerender } = renderHook(
@@ -292,10 +292,10 @@ describe('useTrackManagement', () => {
           stations: mockStations,
           passengers,
           maxCars: 5,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       {
-        initialProps: { passengers: mockPassengers, position: 50 }
+        initialProps: { passengers: mockPassengers, position: 50 },
       }
     )
 
@@ -314,9 +314,7 @@ describe('useTrackManagement', () => {
   })
 
   test('updates passengers immediately during same route', () => {
-    const updatedPassengers: Passenger[] = [
-      { ...mockPassengers[0], isBoarded: true }
-    ]
+    const updatedPassengers: Passenger[] = [{ ...mockPassengers[0], isBoarded: true }]
 
     const { result, rerender } = renderHook(
       ({ passengers, position }) =>
@@ -328,10 +326,10 @@ describe('useTrackManagement', () => {
           stations: mockStations,
           passengers,
           maxCars: 5,
-          carSpacing: 7
+          carSpacing: 7,
         }),
       {
-        initialProps: { passengers: mockPassengers, position: 50 }
+        initialProps: { passengers: mockPassengers, position: 50 },
       }
     )
 
@@ -345,7 +343,7 @@ describe('useTrackManagement', () => {
   test('returns null when no track data', () => {
     // Create a hook where trackGenerator returns null
     const nullTrackGenerator = {
-      generateTrack: vi.fn(() => null)
+      generateTrack: vi.fn(() => null),
     } as unknown as RailroadTrackGenerator
 
     const { result } = renderHook(() =>
@@ -355,7 +353,7 @@ describe('useTrackManagement', () => {
         trackGenerator: nullTrackGenerator,
         pathRef: mockPathRef,
         stations: mockStations,
-        passengers: mockPassengers
+        passengers: mockPassengers,
       })
     )
 

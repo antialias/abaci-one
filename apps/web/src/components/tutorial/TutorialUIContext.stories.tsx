@@ -1,13 +1,14 @@
-import type { Meta, StoryObj } from '@storybook/react'
-import React, { useState } from 'react'
-import { TutorialUIProvider, useTutorialUI } from './TutorialUIContext'
 import * as HoverCard from '@radix-ui/react-hover-card'
+import type { Meta, StoryObj } from '@storybook/react'
+import type React from 'react'
+import { useState } from 'react'
+import { TutorialUIProvider, useTutorialUI } from './TutorialUIContext'
 
 // Demo tooltip component that uses the focus gate
 function DemoTooltip({
   children,
   content,
-  hintType
+  hintType,
 }: {
   children: React.ReactNode
   content: string
@@ -33,12 +34,7 @@ function DemoTooltip({
   const activeBg = hintType === 'term' ? '#1d4ed8' : '#047857'
 
   return (
-    <HoverCard.Root
-      open={isOpen}
-      onOpenChange={handleOpenChange}
-      openDelay={100}
-      closeDelay={200}
-    >
+    <HoverCard.Root open={isOpen} onOpenChange={handleOpenChange} openDelay={100} closeDelay={200}>
       <HoverCard.Trigger asChild>
         <button
           style={{
@@ -51,7 +47,7 @@ function DemoTooltip({
             cursor: 'pointer',
             fontWeight: isActive ? 'bold' : 'normal',
             opacity: ui.hintFocus === 'none' || ui.hintFocus === hintType ? 1 : 0.5,
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
           }}
         >
           {children}
@@ -67,15 +63,13 @@ function DemoTooltip({
             padding: '12px',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
             maxWidth: '300px',
-            zIndex: 50
+            zIndex: 50,
           }}
           sideOffset={8}
         >
           <div>
             <strong>{hintType === 'term' ? '📝 Term Tooltip' : '🟢 Bead Tooltip'}</strong>
-            <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#6b7280' }}>
-              {content}
-            </p>
+            <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#6b7280' }}>{content}</p>
             <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#9ca3af' }}>
               Focus owner: <code>{ui.hintFocus}</code>
             </p>
@@ -91,19 +85,19 @@ function FocusStatus() {
   const ui = useTutorialUI()
 
   return (
-    <div style={{
-      padding: '12px',
-      backgroundColor: '#f3f4f6',
-      borderRadius: '6px',
-      marginBottom: '20px',
-      fontFamily: 'monospace',
-      fontSize: '14px'
-    }}>
+    <div
+      style={{
+        padding: '12px',
+        backgroundColor: '#f3f4f6',
+        borderRadius: '6px',
+        marginBottom: '20px',
+        fontFamily: 'monospace',
+        fontSize: '14px',
+      }}
+    >
       <strong>Focus Status:</strong> <code>{ui.hintFocus}</code>
       <br />
-      <small style={{ color: '#6b7280' }}>
-        Only one tooltip type can have focus at a time
-      </small>
+      <small style={{ color: '#6b7280' }}>Only one tooltip type can have focus at a time</small>
     </div>
   )
 }
@@ -142,17 +136,22 @@ function TooltipGateDemo() {
         </DemoTooltip>
       </div>
 
-      <div style={{
-        marginTop: '30px',
-        padding: '16px',
-        backgroundColor: '#fff3cd',
-        borderRadius: '6px',
-        border: '1px solid #ffeaa7'
-      }}>
+      <div
+        style={{
+          marginTop: '30px',
+          padding: '16px',
+          backgroundColor: '#fff3cd',
+          borderRadius: '6px',
+          border: '1px solid #ffeaa7',
+        }}
+      >
         <h4>🧪 Test the Gate:</h4>
         <ol>
           <li>Hover over a blue "Term" button → tooltip opens</li>
-          <li>While keeping mouse on blue button, try hovering green "Bead" button → green tooltip blocked</li>
+          <li>
+            While keeping mouse on blue button, try hovering green "Bead" button → green tooltip
+            blocked
+          </li>
           <li>Move mouse away from blue button → blue tooltip closes</li>
           <li>Now hover green "Bead" button → green tooltip opens</li>
           <li>Try hovering another green button → focus transfers between green tooltips</li>
@@ -183,10 +182,10 @@ The TutorialUIContext provides a single-owner tooltip gate system for tutorial i
 - \`'none'\`: No tooltips have focus (initial state)
 - \`'term'\`: Term tooltips own focus (bead tooltips blocked)
 - \`'bead'\`: Bead tooltips own focus (term tooltips blocked)
-        `
-      }
-    }
-  }
+        `,
+      },
+    },
+  },
 }
 
 export default meta
@@ -197,7 +196,7 @@ export const TooltipGate: Story = {
     <TutorialUIProvider>
       <TooltipGateDemo />
     </TutorialUIProvider>
-  )
+  ),
 }
 
 export const MultipleProviders: Story = {
@@ -233,10 +232,11 @@ export const MultipleProviders: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Each TutorialUIProvider creates an independent tooltip gate. Tooltips in different tutorials can be open simultaneously.'
-      }
-    }
-  }
+        story:
+          'Each TutorialUIProvider creates an independent tooltip gate. Tooltips in different tutorials can be open simultaneously.',
+      },
+    },
+  },
 }
 
 export const FocusDebugger: Story = {
@@ -249,13 +249,16 @@ export const FocusDebugger: Story = {
       const testRequest = (type: 'term' | 'bead') => {
         const granted = ui.requestFocus(type)
         const timestamp = new Date().toLocaleTimeString()
-        setLogs(prev => [...prev.slice(-10), `${timestamp}: Request ${type} → ${granted ? 'GRANTED' : 'DENIED'}`])
+        setLogs((prev) => [
+          ...prev.slice(-10),
+          `${timestamp}: Request ${type} → ${granted ? 'GRANTED' : 'DENIED'}`,
+        ])
       }
 
       const testRelease = (type: 'term' | 'bead') => {
         ui.releaseFocus(type)
         const timestamp = new Date().toLocaleTimeString()
-        setLogs(prev => [...prev.slice(-10), `${timestamp}: Released ${type}`])
+        setLogs((prev) => [...prev.slice(-10), `${timestamp}: Released ${type}`])
       }
 
       return (
@@ -269,25 +272,49 @@ export const FocusDebugger: Story = {
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 onClick={() => testRequest('term')}
-                style={{ padding: '6px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px' }}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                }}
               >
                 Request Term Focus
               </button>
               <button
                 onClick={() => testRequest('bead')}
-                style={{ padding: '6px 12px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '4px' }}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                }}
               >
                 Request Bead Focus
               </button>
               <button
                 onClick={() => testRelease('term')}
-                style={{ padding: '6px 12px', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '4px' }}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                }}
               >
                 Release Term
               </button>
               <button
                 onClick={() => testRelease('bead')}
-                style={{ padding: '6px 12px', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '4px' }}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                }}
               >
                 Release Bead
               </button>
@@ -306,22 +333,22 @@ export const FocusDebugger: Story = {
 
           <div>
             <h4>Focus Event Log</h4>
-            <div style={{
-              backgroundColor: '#1f2937',
-              color: '#f9fafb',
-              padding: '12px',
-              borderRadius: '6px',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              height: '150px',
-              overflowY: 'auto'
-            }}>
+            <div
+              style={{
+                backgroundColor: '#1f2937',
+                color: '#f9fafb',
+                padding: '12px',
+                borderRadius: '6px',
+                fontFamily: 'monospace',
+                fontSize: '12px',
+                height: '150px',
+                overflowY: 'auto',
+              }}
+            >
               {logs.length === 0 ? (
                 <em style={{ color: '#9ca3af' }}>No events yet...</em>
               ) : (
-                logs.map((log, i) => (
-                  <div key={i}>{log}</div>
-                ))
+                logs.map((log, i) => <div key={i}>{log}</div>)
               )}
             </div>
           </div>
@@ -338,8 +365,9 @@ export const FocusDebugger: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Debug panel for testing focus management programmatically. Use the buttons to manually request/release focus and observe the behavior.'
-      }
-    }
-  }
+        story:
+          'Debug panel for testing focus management programmatically. Use the buttons to manually request/release focus and observe the behavior.',
+      },
+    },
+  },
 }

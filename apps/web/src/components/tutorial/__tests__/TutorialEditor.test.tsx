@@ -1,8 +1,8 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { TutorialEditor } from '../TutorialEditor'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DevAccessProvider } from '../../../hooks/useAccessControl'
 import type { Tutorial, TutorialValidation } from '../../../types/tutorial'
+import { TutorialEditor } from '../TutorialEditor'
 
 const mockTutorial: Tutorial = {
   id: 'test-tutorial',
@@ -24,13 +24,13 @@ const mockTutorial: Tutorial = {
       actionDescription: 'Click the first bead',
       tooltip: {
         content: 'Test tooltip',
-        explanation: 'Test explanation'
+        explanation: 'Test explanation',
       },
       errorMessages: {
         wrongBead: 'Wrong bead clicked',
         wrongAction: 'Wrong action',
-        hint: 'Test hint'
-      }
+        hint: 'Test hint',
+      },
     },
     {
       id: 'step-2',
@@ -43,27 +43,27 @@ const mockTutorial: Tutorial = {
       actionDescription: 'Click the second bead',
       tooltip: {
         content: 'Second tooltip',
-        explanation: 'Second explanation'
+        explanation: 'Second explanation',
       },
       errorMessages: {
         wrongBead: 'Wrong bead for step 2',
         wrongAction: 'Wrong action for step 2',
-        hint: 'Step 2 hint'
-      }
-    }
+        hint: 'Step 2 hint',
+      },
+    },
   ],
   tags: ['test'],
   author: 'Test Author',
   version: '1.0.0',
   createdAt: new Date(),
   updatedAt: new Date(),
-  isPublished: false
+  isPublished: false,
 }
 
 const mockValidationResult: TutorialValidation = {
   isValid: true,
   errors: [],
-  warnings: []
+  warnings: [],
 }
 
 const renderTutorialEditor = (props: Partial<React.ComponentProps<typeof TutorialEditor>> = {}) => {
@@ -71,7 +71,7 @@ const renderTutorialEditor = (props: Partial<React.ComponentProps<typeof Tutoria
     tutorial: mockTutorial,
     onSave: vi.fn(),
     onValidate: vi.fn().mockResolvedValue(mockValidationResult),
-    onPreview: vi.fn()
+    onPreview: vi.fn(),
   }
 
   return render(
@@ -348,9 +348,11 @@ describe('TutorialEditor', () => {
       fireEvent.click(screen.getByText('Save Changes'))
 
       await waitFor(() => {
-        expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-          title: 'Updated Title'
-        }))
+        expect(onSave).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'Updated Title',
+          })
+        )
       })
     })
 
@@ -371,7 +373,7 @@ describe('TutorialEditor', () => {
       const onValidate = vi.fn().mockResolvedValue({
         isValid: false,
         errors: [{ stepId: '', field: 'title', message: 'Title required', severity: 'error' }],
-        warnings: []
+        warnings: [],
       })
       const onSave = vi.fn()
       renderTutorialEditor({ onSave, onValidate })
@@ -391,7 +393,7 @@ describe('TutorialEditor', () => {
       const onValidate = vi.fn().mockResolvedValue({
         isValid: false,
         errors: [{ stepId: '', field: 'title', message: 'Title is required', severity: 'error' }],
-        warnings: []
+        warnings: [],
       })
       renderTutorialEditor({ onValidate })
 
@@ -407,7 +409,14 @@ describe('TutorialEditor', () => {
       const onValidate = vi.fn().mockResolvedValue({
         isValid: true,
         errors: [],
-        warnings: [{ stepId: '', field: 'description', message: 'Description could be longer', severity: 'warning' }]
+        warnings: [
+          {
+            stepId: '',
+            field: 'description',
+            message: 'Description could be longer',
+            severity: 'warning',
+          },
+        ],
       })
       renderTutorialEditor({ onValidate })
 
@@ -422,8 +431,10 @@ describe('TutorialEditor', () => {
     it('displays step-specific validation errors', async () => {
       const onValidate = vi.fn().mockResolvedValue({
         isValid: false,
-        errors: [{ stepId: 'step-1', field: 'problem', message: 'Problem is required', severity: 'error' }],
-        warnings: []
+        errors: [
+          { stepId: 'step-1', field: 'problem', message: 'Problem is required', severity: 'error' },
+        ],
+        warnings: [],
       })
       renderTutorialEditor({ onValidate })
 
@@ -464,9 +475,9 @@ describe('TutorialEditor', () => {
             expectedAction: 'add',
             actionDescription: 'Click the third bead',
             tooltip: { content: 'Third tooltip', explanation: 'Third explanation' },
-            errorMessages: { wrongBead: 'Wrong bead', wrongAction: 'Wrong action', hint: 'Hint' }
-          }
-        ]
+            errorMessages: { wrongBead: 'Wrong bead', wrongAction: 'Wrong action', hint: 'Hint' },
+          },
+        ],
       }
 
       renderTutorialEditor({ tutorial: tutorialWithMoreSteps })
@@ -526,11 +537,13 @@ describe('TutorialEditor', () => {
     it('handles invalid step data gracefully', () => {
       const invalidStepTutorial = {
         ...mockTutorial,
-        steps: [{
-          ...mockTutorial.steps[0],
-          startValue: -1,
-          targetValue: -1
-        }]
+        steps: [
+          {
+            ...mockTutorial.steps[0],
+            startValue: -1,
+            targetValue: -1,
+          },
+        ],
       }
 
       expect(() => {

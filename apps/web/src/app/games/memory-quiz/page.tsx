@@ -1,13 +1,12 @@
 'use client'
 
+import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import Link from 'next/link'
-import React, { useEffect, useReducer, useRef, useCallback, useMemo, useState } from 'react'
-import { css } from '../../../../styled-system/css'
-import { AbacusReact } from '@soroban/abacus-react'
-import { useAbacusConfig } from '@soroban/abacus-react'
-import { isPrefix } from '../../../lib/memory-quiz-utils'
+import type React from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
-
+import { css } from '../../../../styled-system/css'
+import { isPrefix } from '../../../lib/memory-quiz-utils'
 
 interface QuizCard {
   number: number
@@ -88,7 +87,7 @@ const initialState: SorobanQuizState = {
   // Keyboard state (persistent across re-renders)
   hasPhysicalKeyboard: null,
   testingMode: false,
-  showOnScreenKeyboard: false
+  showOnScreenKeyboard: false,
 }
 
 function quizReducer(state: SorobanQuizState, action: QuizAction): SorobanQuizState {
@@ -105,11 +104,11 @@ function quizReducer(state: SorobanQuizState, action: QuizAction): SorobanQuizSt
       return {
         ...state,
         quizCards: action.quizCards,
-        correctAnswers: action.quizCards.map(card => card.number),
+        correctAnswers: action.quizCards.map((card) => card.number),
         currentCardIndex: 0,
         foundNumbers: [],
         guessesRemaining: action.quizCards.length + Math.floor(action.quizCards.length / 2),
-        gamePhase: 'display'
+        gamePhase: 'display',
       }
     case 'NEXT_CARD':
       return { ...state, currentCardIndex: state.currentCardIndex + 1 }
@@ -119,14 +118,14 @@ function quizReducer(state: SorobanQuizState, action: QuizAction): SorobanQuizSt
       return {
         ...state,
         foundNumbers: [...state.foundNumbers, action.number],
-        currentInput: ''
+        currentInput: '',
       }
     case 'REJECT_NUMBER':
       return {
         ...state,
         guessesRemaining: state.guessesRemaining - 1,
         incorrectGuesses: state.incorrectGuesses + 1,
-        currentInput: ''
+        currentInput: '',
       }
     case 'SET_INPUT':
       return { ...state, currentInput: action.input }
@@ -140,14 +139,14 @@ function quizReducer(state: SorobanQuizState, action: QuizAction): SorobanQuizSt
           {
             number: action.number,
             id: `wrong-${action.number}-${Date.now()}`,
-            timestamp: Date.now()
-          }
-        ]
+            timestamp: Date.now(),
+          },
+        ],
       }
     case 'CLEAR_WRONG_GUESS_ANIMATIONS':
       return {
         ...state,
-        wrongGuessAnimations: []
+        wrongGuessAnimations: [],
       }
     case 'SHOW_RESULTS':
       return { ...state, gamePhase: 'results' }
@@ -161,7 +160,7 @@ function quizReducer(state: SorobanQuizState, action: QuizAction): SorobanQuizSt
         // Preserve keyboard state across resets
         hasPhysicalKeyboard: state.hasPhysicalKeyboard,
         testingMode: state.testingMode,
-        showOnScreenKeyboard: state.showOnScreenKeyboard
+        showOnScreenKeyboard: state.showOnScreenKeyboard,
       }
     case 'SET_PHYSICAL_KEYBOARD':
       return { ...state, hasPhysicalKeyboard: action.hasKeyboard }
@@ -180,13 +179,17 @@ const DIFFICULTY_LEVELS = {
   easy: { name: 'Easy', range: { min: 10, max: 99 }, description: 'Two digits (10-99)' },
   medium: { name: 'Medium', range: { min: 100, max: 499 }, description: 'Three digits (100-499)' },
   hard: { name: 'Hard', range: { min: 500, max: 999 }, description: 'Large numbers (500-999)' },
-  expert: { name: 'Expert', range: { min: 1, max: 999 }, description: 'Mixed range (1-999)' }
+  expert: { name: 'Expert', range: { min: 1, max: 999 }, description: 'Mixed range (1-999)' },
 } as const
 
 type DifficultyLevel = keyof typeof DIFFICULTY_LEVELS
 
 // Generate quiz cards with difficulty-based number ranges
-const generateQuizCards = (count: number, difficulty: DifficultyLevel, appConfig: any): QuizCard[] => {
+const generateQuizCards = (
+  count: number,
+  difficulty: DifficultyLevel,
+  appConfig: any
+): QuizCard[] => {
   const { min, max } = DIFFICULTY_LEVELS[difficulty].range
 
   // Generate unique numbers - no duplicates allowed
@@ -211,27 +214,35 @@ const generateQuizCards = (count: number, difficulty: DifficultyLevel, appConfig
     }
   }
 
-  return numbers.map(number => ({
+  return numbers.map((number) => ({
     number,
-    svgComponent: <AbacusReact
-      value={number}
-      columns="auto"
-      beadShape={appConfig.beadShape}
-      colorScheme={appConfig.colorScheme}
-      hideInactiveBeads={appConfig.hideInactiveBeads}
-      scaleFactor={1.0}
-      interactive={false}
-      showNumbers={false}
-      animated={false}
-      soundEnabled={appConfig.soundEnabled}
-      soundVolume={appConfig.soundVolume}
-    />,
-    element: null
+    svgComponent: (
+      <AbacusReact
+        value={number}
+        columns="auto"
+        beadShape={appConfig.beadShape}
+        colorScheme={appConfig.colorScheme}
+        hideInactiveBeads={appConfig.hideInactiveBeads}
+        scaleFactor={1.0}
+        interactive={false}
+        showNumbers={false}
+        animated={false}
+        soundEnabled={appConfig.soundEnabled}
+        soundVolume={appConfig.soundVolume}
+      />
+    ),
+    element: null,
   }))
 }
 
 // React component for the setup phase
-function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: React.Dispatch<QuizAction> }) {
+function SetupPhase({
+  state,
+  dispatch,
+}: {
+  state: SorobanQuizState
+  dispatch: React.Dispatch<QuizAction>
+}) {
   const appConfig = useAbacusConfig()
 
   const handleCountSelect = (count: number) => {
@@ -261,7 +272,7 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden'
+        overflow: 'hidden',
       }}
     >
       <div
@@ -272,17 +283,27 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
           display: 'flex',
           flexDirection: 'column',
           gap: '16px',
-          overflow: 'auto'
+          overflow: 'auto',
         }}
       >
         <div style={{ margin: '12px 0' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>Difficulty Level:</label>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 'bold',
+              marginBottom: '8px',
+              color: '#6b7280',
+              fontSize: '14px',
+            }}
+          >
+            Difficulty Level:
+          </label>
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, 1fr)',
               gap: '8px',
-              justifyContent: 'center'
+              justifyContent: 'center',
             }}
           >
             {Object.entries(DIFFICULTY_LEVELS).map(([key, level]) => (
@@ -301,7 +322,7 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '2px',
-                  fontSize: '12px'
+                  fontSize: '12px',
                 }}
                 onClick={() => handleDifficultySelect(key as DifficultyLevel)}
                 title={level.description}
@@ -314,16 +335,26 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         </div>
 
         <div style={{ margin: '12px 0' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>Cards to Quiz:</label>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 'bold',
+              marginBottom: '8px',
+              color: '#6b7280',
+              fontSize: '14px',
+            }}
+          >
+            Cards to Quiz:
+          </label>
           <div
             style={{
               display: 'flex',
               gap: '6px',
               justifyContent: 'center',
-              flexWrap: 'wrap'
+              flexWrap: 'wrap',
             }}
           >
-            {[2, 5, 8, 12, 15].map(count => (
+            {[2, 5, 8, 12, 15].map((count) => (
               <button
                 key={count}
                 type="button"
@@ -336,7 +367,7 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                   padding: '8px 16px',
                   cursor: 'pointer',
                   fontSize: '14px',
-                  minWidth: '50px'
+                  minWidth: '50px',
                 }}
                 onClick={() => handleCountSelect(count)}
               >
@@ -347,13 +378,23 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
         </div>
 
         <div style={{ margin: '12px 0' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#6b7280', fontSize: '14px' }}>Display Time per Card:</label>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 'bold',
+              marginBottom: '8px',
+              color: '#6b7280',
+              fontSize: '14px',
+            }}
+          >
+            Display Time per Card:
+          </label>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '10px'
+              gap: '10px',
             }}
           >
             <input
@@ -365,7 +406,7 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               onChange={(e) => handleTimeChange(parseFloat(e.target.value))}
               style={{
                 flex: 1,
-                maxWidth: '200px'
+                maxWidth: '200px',
               }}
             />
             <span
@@ -373,7 +414,7 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                 fontWeight: 'bold',
                 color: '#3b82f6',
                 minWidth: '40px',
-                fontSize: '14px'
+                fontSize: '14px',
               }}
             >
               {state.displayTime.toFixed(1)}s
@@ -393,7 +434,7 @@ function SetupPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
             cursor: 'pointer',
             marginTop: '16px',
             width: '100%',
-            maxWidth: '200px'
+            maxWidth: '200px',
           }}
           onClick={handleStartQuiz}
         >
@@ -413,7 +454,13 @@ function calculateMaxColumns(numbers: number[]): number {
 }
 
 // React component for the display phase
-function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: React.Dispatch<QuizAction> }) {
+function DisplayPhase({
+  state,
+  dispatch,
+}: {
+  state: SorobanQuizState
+  dispatch: React.Dispatch<QuizAction>
+}) {
   const [currentCard, setCurrentCard] = useState<QuizCard | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const isDisplayPhaseActive = state.currentCardIndex < state.quizCards.length
@@ -422,7 +469,7 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
 
   // Calculate maximum columns needed for this quiz set
   const maxColumns = useMemo(() => {
-    const allNumbers = state.quizCards.map(card => card.number)
+    const allNumbers = state.quizCards.map((card) => card.number)
     return calculateMaxColumns(allNumbers)
   }, [state.quizCards])
 
@@ -448,7 +495,9 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
     const showNextCard = async () => {
       isProcessingRef.current = true
       const card = state.quizCards[state.currentCardIndex]
-      console.log(`DisplayPhase: Showing card ${state.currentCardIndex + 1}/${state.quizCards.length}, number: ${card.number}`)
+      console.log(
+        `DisplayPhase: Showing card ${state.currentCardIndex + 1}/${state.quizCards.length}, number: ${card.number}`
+      )
 
       // Calculate adaptive timing based on display speed
       const displayTimeMs = state.displayTime * 1000
@@ -462,21 +511,29 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
       // Reset transition effect with adaptive duration
       setTimeout(() => setIsTransitioning(false), flashDuration)
 
-      console.log(`DisplayPhase: Card ${state.currentCardIndex + 1} now visible (flash: ${flashDuration}ms, pause: ${transitionPause}ms)`)
+      console.log(
+        `DisplayPhase: Card ${state.currentCardIndex + 1} now visible (flash: ${flashDuration}ms, pause: ${transitionPause}ms)`
+      )
 
       // Display card for specified time with adaptive transition pause
-      await new Promise(resolve => setTimeout(resolve, displayTimeMs - transitionPause))
+      await new Promise((resolve) => setTimeout(resolve, displayTimeMs - transitionPause))
 
       // Don't hide the abacus - just advance to next card for smooth transition
       console.log(`DisplayPhase: Card ${state.currentCardIndex + 1} transitioning to next`)
-      await new Promise(resolve => setTimeout(resolve, transitionPause)) // Adaptive pause for visual transition
+      await new Promise((resolve) => setTimeout(resolve, transitionPause)) // Adaptive pause for visual transition
 
       isProcessingRef.current = false
       dispatch({ type: 'NEXT_CARD' })
     }
 
     showNextCard()
-  }, [state.currentCardIndex, state.displayTime, state.quizCards.length, dispatch])
+  }, [
+    state.currentCardIndex,
+    state.displayTime,
+    state.quizCards.length,
+    dispatch,
+    state.quizCards[state.currentCardIndex],
+  ])
 
   return (
     <div
@@ -488,42 +545,48 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
         alignItems: 'center',
         boxSizing: 'border-box',
         height: '100%',
-        animation: isTransitioning ? `subtlePageFlash ${flashDuration}s ease-out` : undefined
+        animation: isTransitioning ? `subtlePageFlash ${flashDuration}s ease-out` : undefined,
       }}
     >
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        maxWidth: '800px',
-        marginBottom: '12px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
-      }}>
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: '800px',
+          marginBottom: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}
+      >
         <div>
-          <div style={{
-            width: '100%',
-            height: '8px',
-            background: '#e5e7eb',
-            borderRadius: '4px',
-            overflow: 'hidden',
-            marginBottom: '8px'
-          }}>
+          <div
+            style={{
+              width: '100%',
+              height: '8px',
+              background: '#e5e7eb',
+              borderRadius: '4px',
+              overflow: 'hidden',
+              marginBottom: '8px',
+            }}
+          >
             <div
               style={{
                 height: '100%',
                 background: 'linear-gradient(90deg, #28a745, #20c997)',
                 borderRadius: '4px',
                 width: `${progressPercentage}%`,
-                transition: 'width 0.5s ease'
+                transition: 'width 0.5s ease',
               }}
             />
           </div>
-          <span style={{
-            fontSize: '14px',
-            fontWeight: 'bold',
-            color: '#374151'
-          }}>
+          <span
+            style={{
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#374151',
+            }}
+          >
             Card {state.currentCardIndex + 1} of {state.quizCards.length}
           </span>
         </div>
@@ -537,7 +600,7 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
               padding: '6px 12px',
               fontSize: '12px',
               cursor: 'pointer',
-              transition: 'background 0.2s ease'
+              transition: 'background 0.2s ease',
             }}
             onClick={() => dispatch({ type: 'RESET_QUIZ' })}
           >
@@ -546,29 +609,31 @@ function DisplayPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
         </div>
       </div>
 
-
       {/* Persistent abacus container - stays mounted during entire memorize phase */}
-      <div style={{
-        width: 'min(90vw, 800px)',
-        height: 'min(70vh, 500px)',
-        display: isDisplayPhaseActive ? 'flex' : 'none',
-        alignItems: 'center',
-        justifyContent: 'center',
-        margin: '0 auto',
-        transition: 'opacity 0.3s ease',
-        overflow: 'visible',
-        padding: '20px 12px'
-      }}>
-        <div style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
+      <div
+        style={{
+          width: 'min(90vw, 800px)',
+          height: 'min(70vh, 500px)',
+          display: isDisplayPhaseActive ? 'flex' : 'none',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '20px'
-        }}>
-
+          margin: '0 auto',
+          transition: 'opacity 0.3s ease',
+          overflow: 'visible',
+          padding: '20px 12px',
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '20px',
+          }}
+        >
           {/* Persistent abacus with smooth bead animations and dynamically calculated columns */}
           <AbacusReact
             value={currentCard?.number || 0}
@@ -617,22 +682,28 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
   const cardSize = getCardSize(cardCount)
 
   return (
-    <div style={{
-      marginTop: '12px',
-      padding: '12px',
-      background: '#f9fafb',
-      borderRadius: '8px',
-      border: '1px solid #e5e7eb',
-      maxHeight: '50vh',
-      overflowY: 'auto'
-    }}>
-      <h4 style={{
-        textAlign: 'center',
-        color: '#374151',
-        marginBottom: '12px',
-        fontSize: '14px',
-        fontWeight: '600'
-      }}>Cards you saw ({cardCount}):</h4>
+    <div
+      style={{
+        marginTop: '12px',
+        padding: '12px',
+        background: '#f9fafb',
+        borderRadius: '8px',
+        border: '1px solid #e5e7eb',
+        maxHeight: '50vh',
+        overflowY: 'auto',
+      }}
+    >
+      <h4
+        style={{
+          textAlign: 'center',
+          color: '#374151',
+          marginBottom: '12px',
+          fontSize: '14px',
+          fontWeight: '600',
+        }}
+      >
+        Cards you saw ({cardCount}):
+      </h4>
 
       <div
         style={{
@@ -641,7 +712,7 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
           maxWidth: '100%',
           margin: '0 auto',
           width: 'fit-content',
-          gridTemplateColumns: gridClass
+          gridTemplateColumns: gridClass,
         }}
       >
         {state.quizCards.map((card, index) => {
@@ -653,70 +724,80 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
                 perspective: '1000px',
                 maxWidth: '200px',
                 height: cardSize.cardHeight,
-                minWidth: cardSize.minSize
+                minWidth: cardSize.minSize,
               }}
             >
-              <div style={{
-                position: 'relative',
-                width: '100%',
-                height: '100%',
-                textAlign: 'center',
-                transition: 'transform 0.8s',
-                transformStyle: 'preserve-3d',
-                transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)'
-              }}>
-                {/* Card back (hidden state) */}
-                <div style={{
-                  position: 'absolute',
+              <div
+                style={{
+                  position: 'relative',
                   width: '100%',
                   height: '100%',
-                  backfaceVisibility: 'hidden',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                  background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
-                  color: 'white',
-                  fontSize: '32px',
-                  fontWeight: 'bold',
-                  textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
-                  border: '2px solid #5f3dc4'
-                }}>
+                  textAlign: 'center',
+                  transition: 'transform 0.8s',
+                  transformStyle: 'preserve-3d',
+                  transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                }}
+              >
+                {/* Card back (hidden state) */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    backfaceVisibility: 'hidden',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                    background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
+                    color: 'white',
+                    fontSize: '32px',
+                    fontWeight: 'bold',
+                    textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
+                    border: '2px solid #5f3dc4',
+                  }}
+                >
                   <div style={{ opacity: 0.8 }}>?</div>
                 </div>
 
                 {/* Card front (revealed state) */}
-                <div style={{
-                  position: 'absolute',
-                  width: '100%',
-                  height: '100%',
-                  backfaceVisibility: 'hidden',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                  background: 'white',
-                  border: '2px solid #28a745',
-                  transform: 'rotateY(180deg)'
-                }}>
-                  <div style={{
+                <div
+                  style={{
+                    position: 'absolute',
                     width: '100%',
                     height: '100%',
+                    backfaceVisibility: 'hidden',
+                    borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    overflow: 'hidden',
-                    padding: '4px'
-                  }}>
-                    <div style={{
+                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                    background: 'white',
+                    border: '2px solid #28a745',
+                    transform: 'rotateY(180deg)',
+                  }}
+                >
+                  <div
+                    style={{
                       width: '100%',
                       height: '100%',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      padding: '4px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
                       <AbacusReact
                         value={card.number}
                         columns="auto"
@@ -739,16 +820,18 @@ function CardGrid({ state }: { state: SorobanQuizState }) {
 
       {/* Summary row for large numbers of cards */}
       {cardCount > 8 && (
-        <div style={{
-          marginTop: '8px',
-          padding: '6px 8px',
-          background: '#eff6ff',
-          borderRadius: '6px',
-          border: '1px solid #bfdbfe',
-          textAlign: 'center',
-          fontSize: '12px',
-          color: '#1d4ed8'
-        }}>
+        <div
+          style={{
+            marginTop: '8px',
+            padding: '6px 8px',
+            background: '#eff6ff',
+            borderRadius: '6px',
+            border: '1px solid #bfdbfe',
+            textAlign: 'center',
+            fontSize: '12px',
+            color: '#1d4ed8',
+          }}
+        >
           <strong>{state.foundNumbers.length}</strong> of <strong>{cardCount}</strong> cards found
           {state.foundNumbers.length > 0 && (
             <span style={{ marginLeft: '6px', fontWeight: 'normal' }}>
@@ -766,9 +849,9 @@ function ResultsCardGrid({ state }: { state: SorobanQuizState }) {
   if (state.quizCards.length === 0) return null
 
   // Create a modified state where all cards are revealed for results display
-  const resultsState = {
+  const _resultsState = {
     ...state,
-    revealedCards: state.quizCards.map(card => card.number) // Reveal all cards
+    revealedCards: state.quizCards.map((card) => card.number), // Reveal all cards
   }
 
   // Calculate optimal grid layout based on number of cards (same as CardGrid)
@@ -806,7 +889,7 @@ function ResultsCardGrid({ state }: { state: SorobanQuizState }) {
           justifyContent: 'center',
           maxWidth: '100%',
           margin: '0 auto',
-          gridTemplateColumns: gridClass
+          gridTemplateColumns: gridClass,
         }}
       >
         {state.quizCards.map((card, index) => {
@@ -821,71 +904,81 @@ function ResultsCardGrid({ state }: { state: SorobanQuizState }) {
                 position: 'relative',
                 aspectRatio: '3/4',
                 height: cardSize.cardHeight,
-                minWidth: cardSize.minSize
+                minWidth: cardSize.minSize,
               }}
             >
-              <div style={{
-                position: 'relative',
-                width: '100%',
-                height: '100%',
-                textAlign: 'center',
-                transition: 'transform 0.8s',
-                transformStyle: 'preserve-3d',
-                transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)'
-              }}>
-                {/* Card back (hidden state) - not visible in results */}
-                <div style={{
-                  position: 'absolute',
+              <div
+                style={{
+                  position: 'relative',
                   width: '100%',
                   height: '100%',
-                  backfaceVisibility: 'hidden',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                  background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
-                  color: 'white',
-                  fontSize: '24px',
-                  fontWeight: 'bold',
-                  textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)',
-                  border: '2px solid #5f3dc4'
-                }}>
+                  textAlign: 'center',
+                  transition: 'transform 0.8s',
+                  transformStyle: 'preserve-3d',
+                  transform: isRevealed ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                }}
+              >
+                {/* Card back (hidden state) - not visible in results */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    backfaceVisibility: 'hidden',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
+                    color: 'white',
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)',
+                    border: '2px solid #5f3dc4',
+                  }}
+                >
                   <div style={{ opacity: 0.8 }}>?</div>
                 </div>
 
                 {/* Card front (revealed state) with success/failure indicators */}
-                <div style={{
-                  position: 'absolute',
-                  width: '100%',
-                  height: '100%',
-                  backfaceVisibility: 'hidden',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                  background: 'white',
-                  border: '2px solid',
-                  borderColor: wasFound ? '#10b981' : '#ef4444',
-                  transform: 'rotateY(180deg)'
-                }}>
-                  <div style={{
+                <div
+                  style={{
+                    position: 'absolute',
                     width: '100%',
                     height: '100%',
+                    backfaceVisibility: 'hidden',
+                    borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    overflow: 'hidden',
-                    padding: '4px'
-                  }}>
-                    <div style={{
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    background: 'white',
+                    border: '2px solid',
+                    borderColor: wasFound ? '#10b981' : '#ef4444',
+                    transform: 'rotateY(180deg)',
+                  }}
+                >
+                  <div
+                    style={{
                       width: '100%',
                       height: '100%',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      padding: '4px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
                       <AbacusReact
                         value={card.number}
                         columns="auto"
@@ -901,37 +994,41 @@ function ResultsCardGrid({ state }: { state: SorobanQuizState }) {
                   </div>
 
                   {/* Right/Wrong indicator overlay */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '4px',
-                    right: '4px',
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: '50%',
-                    background: wasFound ? '#10b981' : '#ef4444',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
-                  }}>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '4px',
+                      right: '4px',
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      background: wasFound ? '#10b981' : '#ef4444',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+                    }}
+                  >
                     {wasFound ? '✓' : '✗'}
                   </div>
 
                   {/* Number label overlay */}
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '4px',
-                    left: '4px',
-                    padding: '2px 4px',
-                    borderRadius: '3px',
-                    background: 'rgba(0, 0, 0, 0.7)',
-                    color: 'white',
-                    fontSize: '10px',
-                    fontWeight: 'bold'
-                  }}>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '4px',
+                      left: '4px',
+                      padding: '2px 4px',
+                      borderRadius: '3px',
+                      background: 'rgba(0, 0, 0, 0.7)',
+                      color: 'white',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                    }}
+                  >
                     {card.number}
                   </div>
                 </div>
@@ -943,16 +1040,18 @@ function ResultsCardGrid({ state }: { state: SorobanQuizState }) {
 
       {/* Summary row for large numbers of cards (same as CardGrid) */}
       {cardCount > 8 && (
-        <div style={{
-          marginTop: '8px',
-          padding: '6px 8px',
-          background: '#eff6ff',
-          borderRadius: '6px',
-          border: '1px solid #bfdbfe',
-          textAlign: 'center',
-          fontSize: '12px',
-          color: '#1d4ed8'
-        }}>
+        <div
+          style={{
+            marginTop: '8px',
+            padding: '6px 8px',
+            background: '#eff6ff',
+            borderRadius: '6px',
+            border: '1px solid #bfdbfe',
+            textAlign: 'center',
+            fontSize: '12px',
+            color: '#1d4ed8',
+          }}
+        >
           <strong>{state.foundNumbers.length}</strong> of <strong>{cardCount}</strong> cards found
           {state.foundNumbers.length > 0 && (
             <span style={{ marginLeft: '6px', fontWeight: 'normal' }}>
@@ -966,16 +1065,28 @@ function ResultsCardGrid({ state }: { state: SorobanQuizState }) {
 }
 
 // React component for the input phase
-function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: React.Dispatch<QuizAction> }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [displayFeedback, setDisplayFeedback] = useState<'neutral' | 'correct' | 'incorrect'>('neutral')
+function InputPhase({
+  state,
+  dispatch,
+}: {
+  state: SorobanQuizState
+  dispatch: React.Dispatch<QuizAction>
+}) {
+  const _containerRef = useRef<HTMLDivElement>(null)
+  const [displayFeedback, setDisplayFeedback] = useState<'neutral' | 'correct' | 'incorrect'>(
+    'neutral'
+  )
 
   // Use keyboard state from parent state instead of local state
   const { hasPhysicalKeyboard, testingMode, showOnScreenKeyboard } = state
 
   // Debug: Log state changes and detect what's causing re-renders
   useEffect(() => {
-    console.log('🔍 Keyboard state changed:', { hasPhysicalKeyboard, testingMode, showOnScreenKeyboard })
+    console.log('🔍 Keyboard state changed:', {
+      hasPhysicalKeyboard,
+      testingMode,
+      showOnScreenKeyboard,
+    })
     console.trace('🔍 State change trace:')
   }, [hasPhysicalKeyboard, testingMode, showOnScreenKeyboard])
 
@@ -1003,13 +1114,14 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
 
     const detectKeyboard = () => {
       // Method 1: Check if device supports keyboard via media queries
-      const hasKeyboardSupport = window.matchMedia('(pointer: fine)').matches &&
-                                 window.matchMedia('(hover: hover)').matches
+      const hasKeyboardSupport =
+        window.matchMedia('(pointer: fine)').matches && window.matchMedia('(hover: hover)').matches
 
       // Method 2: Check if device is likely touch-only
-      const isTouchDevice = 'ontouchstart' in window ||
-                           navigator.maxTouchPoints > 0 ||
-                           /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      const isTouchDevice =
+        'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
       // Method 3: Check viewport characteristics for mobile devices
       const isMobileViewport = window.innerWidth <= 768 && window.innerHeight <= 1024
@@ -1054,24 +1166,27 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       if (detectionTimer) clearTimeout(detectionTimer)
       clearTimeout(initialDetection)
     }
-  }, [testingMode])
+  }, [testingMode, dispatch])
 
-  const acceptCorrectNumber = useCallback((number: number) => {
-    dispatch({ type: 'ACCEPT_NUMBER', number })
-    dispatch({ type: 'SET_INPUT', input: '' })
-    setDisplayFeedback('correct')
+  const acceptCorrectNumber = useCallback(
+    (number: number) => {
+      dispatch({ type: 'ACCEPT_NUMBER', number })
+      dispatch({ type: 'SET_INPUT', input: '' })
+      setDisplayFeedback('correct')
 
-    setTimeout(() => setDisplayFeedback('neutral'), 500)
+      setTimeout(() => setDisplayFeedback('neutral'), 500)
 
-    // Auto-finish if all found
-    if (state.foundNumbers.length + 1 === state.correctAnswers.length) {
-      setTimeout(() => dispatch({ type: 'SHOW_RESULTS' }), 1000)
-    }
-  }, [dispatch, state.foundNumbers.length, state.correctAnswers.length])
+      // Auto-finish if all found
+      if (state.foundNumbers.length + 1 === state.correctAnswers.length) {
+        setTimeout(() => dispatch({ type: 'SHOW_RESULTS' }), 1000)
+      }
+    },
+    [dispatch, state.foundNumbers.length, state.correctAnswers.length]
+  )
 
   const handleIncorrectGuess = useCallback(() => {
-    const wrongNumber = parseInt(state.currentInput)
-    if (!isNaN(wrongNumber)) {
+    const wrongNumber = parseInt(state.currentInput, 10)
+    if (!Number.isNaN(wrongNumber)) {
       dispatch({ type: 'ADD_WRONG_GUESS_ANIMATION', number: wrongNumber })
       // Clear wrong guess animations after explosion
       setTimeout(() => {
@@ -1092,50 +1207,62 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
   }, [dispatch, state.guessesRemaining, state.currentInput])
 
   // Simple keyboard event handlers that will be defined after callbacks
-  const handleKeyboardInput = useCallback((key: string) => {
-    // Handle number input
-    if (/^[0-9]$/.test(key)) {
-      // Only handle if input phase is active and guesses remain
-      if (state.guessesRemaining === 0) return
+  const handleKeyboardInput = useCallback(
+    (key: string) => {
+      // Handle number input
+      if (/^[0-9]$/.test(key)) {
+        // Only handle if input phase is active and guesses remain
+        if (state.guessesRemaining === 0) return
 
-      const newInput = state.currentInput + key
-      dispatch({ type: 'SET_INPUT', input: newInput })
+        const newInput = state.currentInput + key
+        dispatch({ type: 'SET_INPUT', input: newInput })
 
-      // Clear any existing timeout
-      if (state.prefixAcceptanceTimeout) {
-        clearTimeout(state.prefixAcceptanceTimeout)
-        dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout: null })
-      }
+        // Clear any existing timeout
+        if (state.prefixAcceptanceTimeout) {
+          clearTimeout(state.prefixAcceptanceTimeout)
+          dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout: null })
+        }
 
-      setDisplayFeedback('neutral')
+        setDisplayFeedback('neutral')
 
-      const number = parseInt(newInput)
-      if (isNaN(number)) return
+        const number = parseInt(newInput, 10)
+        if (Number.isNaN(number)) return
 
-      // Check if correct and not already found
-      if (state.correctAnswers.includes(number) && !state.foundNumbers.includes(number)) {
-        if (!isPrefix(newInput, state.correctAnswers, state.foundNumbers)) {
-          acceptCorrectNumber(number)
-        } else {
-          const timeout = setTimeout(() => {
+        // Check if correct and not already found
+        if (state.correctAnswers.includes(number) && !state.foundNumbers.includes(number)) {
+          if (!isPrefix(newInput, state.correctAnswers, state.foundNumbers)) {
             acceptCorrectNumber(number)
-          }, 500)
-          dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout })
-        }
-      } else {
-        // Check if this input could be a valid prefix or complete number
-        const couldBePrefix = state.correctAnswers.some(n => n.toString().startsWith(newInput))
-        const isCompleteWrongNumber = !state.correctAnswers.includes(number) && !couldBePrefix
+          } else {
+            const timeout = setTimeout(() => {
+              acceptCorrectNumber(number)
+            }, 500)
+            dispatch({ type: 'SET_PREFIX_TIMEOUT', timeout })
+          }
+        } else {
+          // Check if this input could be a valid prefix or complete number
+          const couldBePrefix = state.correctAnswers.some((n) => n.toString().startsWith(newInput))
+          const isCompleteWrongNumber = !state.correctAnswers.includes(number) && !couldBePrefix
 
-        // Trigger explosion if:
-        // 1. It's a complete wrong number (length >= 2 or can't be a prefix)
-        // 2. It's a single digit that can't possibly be a prefix of any target
-        if ((newInput.length >= 2 || isCompleteWrongNumber) && state.guessesRemaining > 0) {
-          handleIncorrectGuess()
+          // Trigger explosion if:
+          // 1. It's a complete wrong number (length >= 2 or can't be a prefix)
+          // 2. It's a single digit that can't possibly be a prefix of any target
+          if ((newInput.length >= 2 || isCompleteWrongNumber) && state.guessesRemaining > 0) {
+            handleIncorrectGuess()
+          }
         }
       }
-    }
-  }, [state.currentInput, state.prefixAcceptanceTimeout, state.correctAnswers, state.foundNumbers, state.guessesRemaining, isPrefix, dispatch, acceptCorrectNumber, handleIncorrectGuess])
+    },
+    [
+      state.currentInput,
+      state.prefixAcceptanceTimeout,
+      state.correctAnswers,
+      state.foundNumbers,
+      state.guessesRemaining,
+      dispatch,
+      acceptCorrectNumber,
+      handleIncorrectGuess,
+    ]
+  )
 
   const handleKeyboardBackspace = useCallback(() => {
     if (state.currentInput.length > 0) {
@@ -1178,112 +1305,157 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
     }
   }, [handleKeyboardInput, handleKeyboardBackspace])
 
-
   const hasFoundSome = state.foundNumbers.length > 0
   const hasFoundAll = state.foundNumbers.length === state.correctAnswers.length
   const outOfGuesses = state.guessesRemaining === 0
   const showFinishButtons = hasFoundAll || outOfGuesses || hasFoundSome
 
   return (
-    <div style={{
-      textAlign: 'center',
-      padding: '12px',
-      paddingBottom: (hasPhysicalKeyboard === false || testingMode) && state.guessesRemaining > 0 ? '100px' : '12px', // Add space for keyboard
-      maxWidth: '800px',
-      margin: '0 auto',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'flex-start'
-    }}>
-      <h3 style={{ marginBottom: '16px', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>Enter the Numbers You Remember</h3>
-      <div style={{
+    <div
+      style={{
+        textAlign: 'center',
+        padding: '12px',
+        paddingBottom:
+          (hasPhysicalKeyboard === false || testingMode) && state.guessesRemaining > 0
+            ? '100px'
+            : '12px', // Add space for keyboard
+        maxWidth: '800px',
+        margin: '0 auto',
+        height: '100%',
         display: 'flex',
-        justifyContent: 'center',
-        gap: '16px',
-        marginBottom: '20px',
-        padding: '16px',
-        background: '#f9fafb',
-        borderRadius: '8px',
-        flexWrap: 'wrap'
-      }}>
-        <div style={{
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+      }}
+    >
+      <h3 style={{ marginBottom: '16px', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>
+        Enter the Numbers You Remember
+      </h3>
+      <div
+        style={{
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          minWidth: '80px'
-        }}>
-          <span style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            fontWeight: '500'
-          }}>Cards shown:</span>
-          <span style={{
-            fontSize: '20px',
-            fontWeight: 'bold',
-            color: '#1f2937'
-          }}>{state.quizCards.length}</span>
+          justifyContent: 'center',
+          gap: '16px',
+          marginBottom: '20px',
+          padding: '16px',
+          background: '#f9fafb',
+          borderRadius: '8px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            minWidth: '80px',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              fontWeight: '500',
+            }}
+          >
+            Cards shown:
+          </span>
+          <span
+            style={{
+              fontSize: '20px',
+              fontWeight: 'bold',
+              color: '#1f2937',
+            }}
+          >
+            {state.quizCards.length}
+          </span>
         </div>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          minWidth: '80px'
-        }}>
-          <span style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            fontWeight: '500'
-          }}>Guesses left:</span>
-          <span style={{
-            fontSize: '20px',
-            fontWeight: 'bold',
-            color: '#1f2937'
-          }}>{state.guessesRemaining}</span>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            minWidth: '80px',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              fontWeight: '500',
+            }}
+          >
+            Guesses left:
+          </span>
+          <span
+            style={{
+              fontSize: '20px',
+              fontWeight: 'bold',
+              color: '#1f2937',
+            }}
+          >
+            {state.guessesRemaining}
+          </span>
         </div>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          minWidth: '80px'
-        }}>
-          <span style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            fontWeight: '500'
-          }}>Found:</span>
-          <span style={{
-            fontSize: '20px',
-            fontWeight: 'bold',
-            color: '#1f2937'
-          }}>{state.foundNumbers.length}</span>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            minWidth: '80px',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              fontWeight: '500',
+            }}
+          >
+            Found:
+          </span>
+          <span
+            style={{
+              fontSize: '20px',
+              fontWeight: 'bold',
+              color: '#1f2937',
+            }}
+          >
+            {state.foundNumbers.length}
+          </span>
         </div>
       </div>
 
-      <div style={{
-        position: 'relative',
-        margin: '16px 0',
-        textAlign: 'center'
-      }}>
-        <div style={{
-          fontSize: '12px',
-          color: '#6b7280',
-          marginBottom: '8px',
-          fontWeight: '500'
-        }}>
+      <div
+        style={{
+          position: 'relative',
+          margin: '16px 0',
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '12px',
+            color: '#6b7280',
+            marginBottom: '8px',
+            fontWeight: '500',
+          }}
+        >
           {state.guessesRemaining === 0
             ? '🚫 No more guesses available'
-            : '⌨️ Type the numbers you remember'
-          }
+            : '⌨️ Type the numbers you remember'}
         </div>
 
         {/* Testing control - remove in production */}
-        <div style={{
-          fontSize: '10px',
-          color: '#9ca3af',
-          marginBottom: '4px'
-        }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+        <div
+          style={{
+            fontSize: '10px',
+            color: '#9ca3af',
+            marginBottom: '4px',
+          }}
+        >
+          <label
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}
+          >
             <input
               type="checkbox"
               checked={testingMode}
@@ -1292,7 +1464,8 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
             Test on-screen keyboard (for demo)
           </label>
           <div style={{ fontSize: '9px', opacity: 0.7 }}>
-            Keyboard detected: {hasPhysicalKeyboard === null ? 'detecting...' : hasPhysicalKeyboard ? 'yes' : 'no'}
+            Keyboard detected:{' '}
+            {hasPhysicalKeyboard === null ? 'detecting...' : hasPhysicalKeyboard ? 'yes' : 'no'}
           </div>
         </div>
         <div
@@ -1309,82 +1482,91 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
             alignItems: 'center',
             justifyContent: 'center',
             transition: 'all 0.3s ease',
-            background: displayFeedback === 'correct'
-              ? 'linear-gradient(45deg, #d4edda, #c3e6cb)'
-              : displayFeedback === 'incorrect'
-              ? 'linear-gradient(45deg, #f8d7da, #f1b0b7)'
-              : state.guessesRemaining === 0
-              ? '#e5e7eb'
-              : 'linear-gradient(135deg, #f0f8ff, #e6f3ff)',
+            background:
+              displayFeedback === 'correct'
+                ? 'linear-gradient(45deg, #d4edda, #c3e6cb)'
+                : displayFeedback === 'incorrect'
+                  ? 'linear-gradient(45deg, #f8d7da, #f1b0b7)'
+                  : state.guessesRemaining === 0
+                    ? '#e5e7eb'
+                    : 'linear-gradient(135deg, #f0f8ff, #e6f3ff)',
             borderRadius: '12px',
             position: 'relative',
             border: '2px solid',
-            borderColor: displayFeedback === 'correct'
-              ? '#28a745'
-              : displayFeedback === 'incorrect'
-              ? '#dc3545'
-              : state.guessesRemaining === 0
-              ? '#9ca3af'
-              : '#3b82f6',
-            boxShadow: displayFeedback === 'correct'
-              ? '0 4px 12px rgba(40, 167, 69, 0.2)'
-              : displayFeedback === 'incorrect'
-              ? '0 4px 12px rgba(220, 53, 69, 0.2)'
-              : '0 4px 12px rgba(59, 130, 246, 0.15)',
-            cursor: state.guessesRemaining === 0 ? 'not-allowed' : 'pointer'
+            borderColor:
+              displayFeedback === 'correct'
+                ? '#28a745'
+                : displayFeedback === 'incorrect'
+                  ? '#dc3545'
+                  : state.guessesRemaining === 0
+                    ? '#9ca3af'
+                    : '#3b82f6',
+            boxShadow:
+              displayFeedback === 'correct'
+                ? '0 4px 12px rgba(40, 167, 69, 0.2)'
+                : displayFeedback === 'incorrect'
+                  ? '0 4px 12px rgba(220, 53, 69, 0.2)'
+                  : '0 4px 12px rgba(59, 130, 246, 0.15)',
+            cursor: state.guessesRemaining === 0 ? 'not-allowed' : 'pointer',
           }}
         >
           <span style={{ opacity: 1, position: 'relative' }}>
             {state.guessesRemaining === 0
               ? '🔒 Game Over'
               : state.currentInput || (
-                  <span style={{
-                    color: '#74c0fc',
-                    opacity: 0.8,
-                    fontStyle: 'normal',
-                    fontSize: '20px'
-                  }}>
+                  <span
+                    style={{
+                      color: '#74c0fc',
+                      opacity: 0.8,
+                      fontStyle: 'normal',
+                      fontSize: '20px',
+                    }}
+                  >
                     💭 Think & Type
                   </span>
-                )
-            }
+                )}
             {state.currentInput && (
-              <span style={{
-                position: 'absolute',
-                right: '-8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '2px',
-                height: '20px',
-                background: '#3b82f6',
-                animation: 'blink 1s infinite'
-              }} />
+              <span
+                style={{
+                  position: 'absolute',
+                  right: '-8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '2px',
+                  height: '20px',
+                  background: '#3b82f6',
+                  animation: 'blink 1s infinite',
+                }}
+              />
             )}
           </span>
         </div>
       </div>
 
-
       {/* Visual card grid showing cards the user was shown */}
-      <div style={{
-        marginTop: '12px',
-        flex: 1,
-        overflow: 'auto',
-        minHeight: '0'
-      }}>
+      <div
+        style={{
+          marginTop: '12px',
+          flex: 1,
+          overflow: 'auto',
+          minHeight: '0',
+        }}
+      >
         <CardGrid state={state} />
       </div>
 
       {/* Wrong guess explosion animations */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        pointerEvents: 'none',
-        zIndex: 1000
-      }}>
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          pointerEvents: 'none',
+          zIndex: 1000,
+        }}
+      >
         {state.wrongGuessAnimations.map((animation) => (
           <div
             key={animation.id}
@@ -1397,7 +1579,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               fontWeight: 'bold',
               color: '#ef4444',
               textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
-              animation: 'explode 1.5s ease-out forwards'
+              animation: 'explode 1.5s ease-out forwards',
             }}
           >
             {animation.number}
@@ -1407,22 +1589,24 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
 
       {/* Simple fixed keyboard bar - appears when needed, no hiding of game elements */}
       {(hasPhysicalKeyboard === false || testingMode) && state.guessesRemaining > 0 && (
-        <div style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-          borderTop: '2px solid #3b82f6',
-          padding: '12px',
-          zIndex: 1000,
-          display: 'flex',
-          gap: '8px',
-          justifyContent: 'center',
-          flexWrap: 'wrap',
-          boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)'
-        }}>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(digit => (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+            borderTop: '2px solid #3b82f6',
+            padding: '12px',
+            zIndex: 1000,
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((digit) => (
             <button
               key={digit}
               style={{
@@ -1441,7 +1625,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                 justifyContent: 'center',
                 userSelect: 'none',
                 boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
               }}
               onMouseDown={(e) => {
                 e.currentTarget.style.transform = 'scale(0.95)'
@@ -1479,7 +1663,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               alignItems: 'center',
               justifyContent: 'center',
               userSelect: 'none',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
             }}
             disabled={state.currentInput.length === 0}
             onClick={handleKeyboardBackspace}
@@ -1490,15 +1674,17 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
       )}
 
       {showFinishButtons && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '8px',
-          marginTop: '12px',
-          paddingTop: '12px',
-          borderTop: '1px solid #e5e7eb',
-          flexWrap: 'wrap'
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '8px',
+            marginTop: '12px',
+            paddingTop: '12px',
+            borderTop: '1px solid #e5e7eb',
+            flexWrap: 'wrap',
+          }}
+        >
           <button
             style={{
               padding: '10px 20px',
@@ -1510,7 +1696,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
               transition: 'all 0.2s ease',
               background: '#3b82f6',
               color: 'white',
-              minWidth: '120px'
+              minWidth: '120px',
             }}
             onClick={() => dispatch({ type: 'SHOW_RESULTS' })}
           >
@@ -1528,7 +1714,7 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
                 transition: 'all 0.2s ease',
                 background: '#6b7280',
                 color: 'white',
-                minWidth: '120px'
+                minWidth: '120px',
               }}
               onClick={() => dispatch({ type: 'SHOW_RESULTS' })}
             >
@@ -1542,69 +1728,89 @@ function InputPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: Re
 }
 
 // React component for the results phase
-function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: React.Dispatch<QuizAction> }) {
+function ResultsPhase({
+  state,
+  dispatch,
+}: {
+  state: SorobanQuizState
+  dispatch: React.Dispatch<QuizAction>
+}) {
   const appConfig = useAbacusConfig()
   const correct = state.foundNumbers.length
   const total = state.correctAnswers.length
   const percentage = Math.round((correct / total) * 100)
 
   return (
-    <div style={{
-      textAlign: 'center',
-      padding: '12px',
-      maxWidth: '800px',
-      margin: '0 auto',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'flex-start'
-    }}>
-      <h3 style={{ marginBottom: '20px', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>Quiz Results</h3>
-      <div style={{
+    <div
+      style={{
+        textAlign: 'center',
+        padding: '12px',
+        maxWidth: '800px',
+        margin: '0 auto',
+        height: '100%',
         display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: '16px',
-        marginBottom: '20px',
-        padding: '16px',
-        background: '#f9fafb',
-        borderRadius: '8px',
-        flexWrap: 'wrap'
-      }}>
-        <div style={{
-          width: '80px',
-          height: '80px',
-          borderRadius: '50%',
-          background: 'linear-gradient(45deg, #3b82f6, #2563eb)',
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+      }}
+    >
+      <h3 style={{ marginBottom: '20px', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>
+        Quiz Results
+      </h3>
+      <div
+        style={{
           display: 'flex',
-          alignItems: 'center',
           justifyContent: 'center',
-          color: 'white',
-          fontSize: '18px',
-          fontWeight: 'bold'
-        }}>
+          alignItems: 'center',
+          gap: '16px',
+          marginBottom: '20px',
+          padding: '16px',
+          background: '#f9fafb',
+          borderRadius: '8px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div
+          style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'linear-gradient(45deg, #3b82f6, #2563eb)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '18px',
+            fontWeight: 'bold',
+          }}
+        >
           <span>{percentage}%</span>
         </div>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
-        }}>
-          <div style={{
+        <div
+          style={{
             display: 'flex',
-            justifyContent: 'space-between',
-            gap: '12px',
-            fontSize: '16px'
-          }}>
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '12px',
+              fontSize: '16px',
+            }}
+          >
             <span style={{ fontWeight: '500', color: '#6b7280' }}>Correct:</span>
             <span style={{ fontWeight: 'bold' }}>{correct}</span>
           </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: '12px',
-            fontSize: '16px'
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '12px',
+              fontSize: '16px',
+            }}
+          >
             <span style={{ fontWeight: '500', color: '#6b7280' }}>Total:</span>
             <span style={{ fontWeight: 'bold' }}>{total}</span>
           </div>
@@ -1616,13 +1822,15 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
         <ResultsCardGrid state={state} />
       </div>
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '8px',
-        marginTop: '16px',
-        flexWrap: 'wrap'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '8px',
+          marginTop: '16px',
+          flexWrap: 'wrap',
+        }}
+      >
         <button
           style={{
             padding: '10px 20px',
@@ -1634,11 +1842,15 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
             transition: 'all 0.2s ease',
             background: '#10b981',
             color: 'white',
-            minWidth: '120px'
+            minWidth: '120px',
           }}
           onClick={() => {
             dispatch({ type: 'RESET_QUIZ' })
-            const quizCards = generateQuizCards(state.selectedCount, state.selectedDifficulty, appConfig)
+            const quizCards = generateQuizCards(
+              state.selectedCount,
+              state.selectedDifficulty,
+              appConfig
+            )
             dispatch({ type: 'START_QUIZ', quizCards })
           }}
         >
@@ -1655,7 +1867,7 @@ function ResultsPhase({ state, dispatch }: { state: SorobanQuizState; dispatch: 
             transition: 'all 0.2s ease',
             background: '#6b7280',
             color: 'white',
-            minWidth: '120px'
+            minWidth: '120px',
           }}
           onClick={() => dispatch({ type: 'RESET_QUIZ' })}
         >
@@ -1741,7 +1953,7 @@ export default function MemoryQuizPage() {
           overflow: 'auto',
           padding: '20px 8px',
           minHeight: '100vh',
-          background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)'
+          background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
         }}
       >
         <div
@@ -1750,14 +1962,16 @@ export default function MemoryQuizPage() {
             margin: '0 auto',
             flex: 1,
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
           }}
         >
-          <div className={css({
-            textAlign: 'center',
-            mb: '4',
-            flexShrink: 0
-          })}>
+          <div
+            className={css({
+              textAlign: 'center',
+              mb: '4',
+              flexShrink: 0,
+            })}
+          >
             <Link
               href="/games"
               className={css({
@@ -1766,34 +1980,40 @@ export default function MemoryQuizPage() {
                 color: 'gray.600',
                 textDecoration: 'none',
                 mb: '4',
-                _hover: { color: 'gray.800' }
+                _hover: { color: 'gray.800' },
               })}
             >
               ← Back to Games
             </Link>
           </div>
 
-          <div className={css({
-            bg: 'white',
-            rounded: 'xl',
-            shadow: 'xl',
-            overflow: 'hidden',
-            border: '1px solid',
-            borderColor: 'gray.200',
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            maxHeight: '100%'
-          })}>
-            <div className={css({
+          <div
+            className={css({
+              bg: 'white',
+              rounded: 'xl',
+              shadow: 'xl',
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: 'gray.200',
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              overflow: 'auto'
-            })}>
+              maxHeight: '100%',
+            })}
+          >
+            <div
+              className={css({
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'auto',
+              })}
+            >
               {state.gamePhase === 'setup' && <SetupPhase state={state} dispatch={dispatch} />}
               {state.gamePhase === 'display' && <DisplayPhase state={state} dispatch={dispatch} />}
-              {state.gamePhase === 'input' && <InputPhase key="input-phase" state={state} dispatch={dispatch} />}
+              {state.gamePhase === 'input' && (
+                <InputPhase key="input-phase" state={state} dispatch={dispatch} />
+              )}
               {state.gamePhase === 'results' && <ResultsPhase state={state} dispatch={dispatch} />}
             </div>
           </div>

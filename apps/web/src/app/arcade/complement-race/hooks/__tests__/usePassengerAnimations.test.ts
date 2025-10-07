@@ -1,8 +1,8 @@
 import { renderHook } from '@testing-library/react'
-import { describe, test, expect, beforeEach, vi } from 'vitest'
-import { usePassengerAnimations } from '../usePassengerAnimations'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Passenger, Station } from '../../lib/gameTypes'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
+import { usePassengerAnimations } from '../usePassengerAnimations'
 
 describe('usePassengerAnimations', () => {
   let mockPathRef: React.RefObject<SVGPathElement>
@@ -19,11 +19,11 @@ describe('usePassengerAnimations', () => {
 
     // Mock track generator
     mockTrackGenerator = {
-      getTrainTransform: vi.fn((path: SVGPathElement, position: number) => ({
+      getTrainTransform: vi.fn((_path: SVGPathElement, position: number) => ({
         x: position * 10,
         y: 300,
-        rotation: 0
-      }))
+        rotation: 0,
+      })),
     } as unknown as RailroadTrackGenerator
 
     // Create mock stations
@@ -31,14 +31,14 @@ describe('usePassengerAnimations', () => {
       id: 'station-1',
       name: 'Station 1',
       position: 20,
-      icon: '🏭'
+      icon: '🏭',
     }
 
     mockStation2 = {
       id: 'station-2',
       name: 'Station 2',
       position: 60,
-      icon: '🏛️'
+      icon: '🏛️',
     }
 
     // Create mock passengers
@@ -49,7 +49,7 @@ describe('usePassengerAnimations', () => {
       destinationStationId: 'station-2',
       isBoarded: false,
       isDelivered: false,
-      isUrgent: false
+      isUrgent: false,
     }
 
     mockPassenger2 = {
@@ -59,7 +59,7 @@ describe('usePassengerAnimations', () => {
       destinationStationId: 'station-2',
       isBoarded: false,
       isDelivered: false,
-      isUrgent: true
+      isUrgent: true,
     }
 
     vi.clearAllMocks()
@@ -72,11 +72,11 @@ describe('usePassengerAnimations', () => {
         stations: [mockStation1, mockStation2],
         stationPositions: [
           { x: 100, y: 300 },
-          { x: 500, y: 300 }
+          { x: 500, y: 300 },
         ],
         trainPosition: 0,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
       })
     )
 
@@ -92,16 +92,16 @@ describe('usePassengerAnimations', () => {
           stations: [mockStation1, mockStation2],
           stationPositions: [
             { x: 100, y: 300 },
-            { x: 500, y: 300 }
+            { x: 500, y: 300 },
           ],
           trainPosition: 20,
           trackGenerator: mockTrackGenerator,
-          pathRef: mockPathRef
+          pathRef: mockPathRef,
         }),
       {
         initialProps: {
-          passengers: [mockPassenger1]
-        }
+          passengers: [mockPassenger1],
+        },
       }
     )
 
@@ -134,16 +134,16 @@ describe('usePassengerAnimations', () => {
           stations: [mockStation1, mockStation2],
           stationPositions: [
             { x: 100, y: 300 },
-            { x: 500, y: 300 }
+            { x: 500, y: 300 },
           ],
           trainPosition: 60,
           trackGenerator: mockTrackGenerator,
-          pathRef: mockPathRef
+          pathRef: mockPathRef,
         }),
       {
         initialProps: {
-          passengers: [boardedPassenger]
-        }
+          passengers: [boardedPassenger],
+        },
       }
     )
 
@@ -173,23 +173,23 @@ describe('usePassengerAnimations', () => {
           stations: [mockStation1, mockStation2],
           stationPositions: [
             { x: 100, y: 300 },
-            { x: 500, y: 300 }
+            { x: 500, y: 300 },
           ],
           trainPosition: 20,
           trackGenerator: mockTrackGenerator,
-          pathRef: mockPathRef
+          pathRef: mockPathRef,
         }),
       {
         initialProps: {
-          passengers: [mockPassenger1, mockPassenger2]
-        }
+          passengers: [mockPassenger1, mockPassenger2],
+        },
       }
     )
 
     // Both passengers board
     const boardedPassengers = [
       { ...mockPassenger1, isBoarded: true },
-      { ...mockPassenger2, isBoarded: true }
+      { ...mockPassenger2, isBoarded: true },
     ]
     rerender({ passengers: boardedPassengers })
 
@@ -208,11 +208,11 @@ describe('usePassengerAnimations', () => {
         stations: [mockStation1, mockStation2],
         stationPositions: [
           { x: 100, y: 300 },
-          { x: 500, y: 300 }
+          { x: 500, y: 300 },
         ],
         trainPosition: 20,
         trackGenerator: mockTrackGenerator,
-        pathRef: mockPathRef
+        pathRef: mockPathRef,
       })
     )
 
@@ -230,16 +230,16 @@ describe('usePassengerAnimations', () => {
           stations: [mockStation1, mockStation2],
           stationPositions: [
             { x: 100, y: 300 },
-            { x: 500, y: 300 }
+            { x: 500, y: 300 },
           ],
           trainPosition: 20,
           trackGenerator: mockTrackGenerator,
-          pathRef: nullPathRef
+          pathRef: nullPathRef,
         }),
       {
         initialProps: {
-          passengers: [mockPassenger1]
-        }
+          passengers: [mockPassenger1],
+        },
       }
     )
 
@@ -260,12 +260,12 @@ describe('usePassengerAnimations', () => {
           stationPositions: [],
           trainPosition: 20,
           trackGenerator: mockTrackGenerator,
-          pathRef: mockPathRef
+          pathRef: mockPathRef,
         }),
       {
         initialProps: {
-          passengers: [mockPassenger1]
-        }
+          passengers: [mockPassenger1],
+        },
       }
     )
 

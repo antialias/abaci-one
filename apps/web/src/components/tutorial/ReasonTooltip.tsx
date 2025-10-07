@@ -1,23 +1,32 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
 import * as HoverCard from '@radix-ui/react-hover-card'
+import type React from 'react'
+import { useMemo, useState } from 'react'
+import type { TermProvenance, UnifiedStepData } from '../../utils/unifiedStepGenerator'
 import type { PedagogicalRule, PedagogicalSegment, TermReason } from './DecompositionWithReasons'
-import type { UnifiedStepData, TermProvenance } from '../../utils/unifiedStepGenerator'
 import './reason-tooltip.css'
 
 // Helper hook to safely access TutorialUI context
+// Check if TutorialUI module is available at module load time
+let useTutorialUIImport: (() => any) | null = null
+try {
+  const module = require('./TutorialUIContext')
+  useTutorialUIImport = module.useTutorialUI
+} catch {
+  // TutorialUI context not available
+}
+
 function useTutorialUIGate() {
-  try {
-    const { useTutorialUI } = require('./TutorialUIContext')
-    return useTutorialUI()
-  } catch {
-    // Return a fallback that allows all focus requests (non-tutorial context)
-    return {
-      requestFocus: () => true,
-      releaseFocus: () => {},
-      hintFocus: 'none' as const
-    }
+  if (useTutorialUIImport) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useTutorialUIImport()
+  }
+  // Return a fallback that allows all focus requests (non-tutorial context)
+  return {
+    requestFocus: () => true,
+    releaseFocus: () => {},
+    hintFocus: 'none' as const,
   }
 }
 
@@ -28,11 +37,11 @@ interface ReasonTooltipProps {
   reason?: TermReason
   originalValue?: string
   steps?: UnifiedStepData[]
-  provenance?: TermProvenance  // NEW: Provenance data for enhanced tooltips
+  provenance?: TermProvenance // NEW: Provenance data for enhanced tooltips
 }
 
 // Fallback utility for legacy support
-function getPlaceName(place: number): string {
+function _getPlaceName(place: number): string {
   const names = ['ones', 'tens', 'hundreds', 'thousands', 'ten-thousands']
   return names[place] || `10^${place}`
 }
@@ -44,18 +53,15 @@ export function ReasonTooltip({
   reason,
   originalValue,
   steps,
-  provenance
+  provenance,
 }: ReasonTooltipProps) {
+  // All hooks must be called before early return
   const [showBeadDetails, setShowBeadDetails] = useState(false)
   const [showMath, setShowMath] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const ui = useTutorialUIGate()
   const rule = reason?.rule ?? segment?.plan[0]?.rule
-
-  if (!rule) {
-    return <>{children}</>
-  }
 
   // Use readable format from segment, enhanced with provenance
   const readable = segment?.readable
@@ -70,14 +76,18 @@ export function ReasonTooltip({
       const subtitle = `From addend ${provenance.rhs}`
 
       const enhancedChips = [
-        { label: 'Digit we\'re using', value: `${provenance.rhsDigit} (${provenance.rhsPlaceName})` },
+        {
+          label: "Digit we're using",
+          value: `${provenance.rhsDigit} (${provenance.rhsPlaceName})`,
+        },
         ...(() => {
-          const rodChip = readable?.chips.find(
-            c => /^(this )?rod shows$/i.test(c.label)
-          )
+          const rodChip = readable?.chips.find((c) => /^(this )?rod shows$/i.test(c.label))
           return rodChip ? [{ label: 'Rod shows', value: rodChip.value }] : []
         })(),
-        { label: 'So we add here', value: `+${provenance.rhsDigit} ${provenance.rhsPlaceName} → ${provenance.rhsValue}` }
+        {
+          label: 'So we add here',
+          value: `+${provenance.rhsDigit} ${provenance.rhsPlaceName} → ${provenance.rhsValue}`,
+        },
       ]
 
       return { title, subtitle, chips: enhancedChips }
@@ -87,12 +97,16 @@ export function ReasonTooltip({
     if (readable) {
       // Keep the readable title but add provenance context to subtitle
       const title = readable.title
-      const subtitle = `${readable.subtitle || ''} • From ${provenance.rhsPlaceName} digit ${provenance.rhsDigit} of ${provenance.rhs}`.trim()
+      const subtitle =
+        `${readable.subtitle || ''} • From ${provenance.rhsPlaceName} digit ${provenance.rhsDigit} of ${provenance.rhs}`.trim()
 
       // Enhance the chips by adding provenance context at the beginning
       const enhancedChips = [
-        { label: 'Source digit', value: `${provenance.rhsDigit} from ${provenance.rhs} (${provenance.rhsPlaceName} place)` },
-        ...readable.chips
+        {
+          label: 'Source digit',
+          value: `${provenance.rhsDigit} from ${provenance.rhs} (${provenance.rhsPlaceName} place)`,
+        },
+        ...readable.chips,
       ]
 
       return { title, subtitle, chips: enhancedChips }
@@ -101,51 +115,65 @@ export function ReasonTooltip({
     return null
   }
 
-  const enhancedContent = useMemo(getEnhancedTooltipContent, [
-    provenance, rule, readable?.title, readable?.subtitle, readable?.chips
-  ])
+  const enhancedContent = useMemo(getEnhancedTooltipContent, [])
 
-  const getRuleInfo = (rule: PedagogicalRule) => {
-    switch (rule) {
+  const getRuleInfo = (ruleName: PedagogicalRule) => {
+    switch (ruleName) {
       case 'Direct':
         return {
           emoji: '✨',
           name: 'Direct Move',
           description: 'Simple bead movement',
-          color: 'green'
+          color: 'green',
         }
       case 'FiveComplement':
         return {
           emoji: '🤝',
           name: 'Five Friend',
           description: 'Using pairs that make 5',
-          color: 'blue'
+          color: 'blue',
         }
       case 'TenComplement':
         return {
           emoji: '🔟',
           name: 'Ten Friend',
           description: 'Using pairs that make 10',
-          color: 'purple'
+          color: 'purple',
         }
       case 'Cascade':
         return {
           emoji: '🌊',
           name: 'Chain Reaction',
           description: 'One move triggers another',
-          color: 'orange'
+          color: 'orange',
         }
       default:
         return {
           emoji: '💭',
           name: 'Strategy',
           description: 'Abacus technique',
-          color: 'gray'
+          color: 'gray',
         }
     }
   }
 
-  const ruleInfo = useMemo(() => getRuleInfo(rule), [rule])
+  const ruleInfo = useMemo(
+    () =>
+      rule
+        ? getRuleInfo(rule)
+        : {
+            emoji: '💭',
+            name: 'Strategy',
+            description: 'Abacus technique',
+            color: 'gray',
+          },
+    [rule, getRuleInfo]
+  )
+
+  if (!rule) {
+    return <>{children}</>
+  }
+
   const contentClasses = `reason-tooltip reason-tooltip--${ruleInfo.color}`
 
   const tooltipId = `tooltip-${termIndex}`
@@ -163,19 +191,9 @@ export function ReasonTooltip({
   }
 
   return (
-    <HoverCard.Root
-      open={isOpen}
-      onOpenChange={handleOpenChange}
-      openDelay={150}
-      closeDelay={400}
-    >
+    <HoverCard.Root open={isOpen} onOpenChange={handleOpenChange} openDelay={150} closeDelay={400}>
       <HoverCard.Trigger asChild>
-        <span
-          tabIndex={0}
-          aria-describedby={`${tooltipId}-description`}
-        >
-          {children}
-        </span>
+        <span aria-describedby={`${tooltipId}-description`}>{children}</span>
       </HoverCard.Trigger>
 
       <HoverCard.Portal>
@@ -202,21 +220,21 @@ export function ReasonTooltip({
             {/* Primary, concise explanation */}
             {segment?.readable?.summary && (
               <div className="reason-tooltip__summary">
-                <p className="reason-tooltip__explanation-text">
-                  {segment.readable.summary}
-                </p>
+                <p className="reason-tooltip__explanation-text">{segment.readable.summary}</p>
               </div>
             )}
-
 
             {/* Optional provenance nudge (avoid duplicating subtitle) */}
-            {provenance && !(enhancedContent?.subtitle || readable?.subtitle || '').includes('From ') && (
-              <div className="reason-tooltip__reasoning">
-                <p className="reason-tooltip__explanation-text">
-                  From <strong>{provenance.rhs}</strong>: use the <strong>{provenance.rhsPlaceName}</strong> digit (<strong>{provenance.rhsDigit}</strong>).
-                </p>
-              </div>
-            )}
+            {provenance &&
+              !(enhancedContent?.subtitle || readable?.subtitle || '').includes('From ') && (
+                <div className="reason-tooltip__reasoning">
+                  <p className="reason-tooltip__explanation-text">
+                    From <strong>{provenance.rhs}</strong>: use the{' '}
+                    <strong>{provenance.rhsPlaceName}</strong> digit (
+                    <strong>{provenance.rhsDigit}</strong>).
+                  </p>
+                </div>
+              )}
 
             {/* More details disclosure for optional content */}
             {((enhancedContent?.chips || readable?.chips)?.length ||
@@ -233,7 +251,10 @@ export function ReasonTooltip({
                 >
                   <span className="reason-tooltip__details-label">
                     More details
-                    <span className="reason-tooltip__chevron" style={{ transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    <span
+                      className="reason-tooltip__chevron"
+                      style={{ transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                    >
                       ▼
                     </span>
                   </span>
@@ -256,7 +277,7 @@ export function ReasonTooltip({
                     ) : null}
 
                     {/* Carry path only when it's interesting (cascades) */}
-                    {segment?.plan?.some(p => p.rule === 'Cascade') && readable?.carryPath && (
+                    {segment?.plan?.some((p) => p.rule === 'Cascade') && readable?.carryPath && (
                       <div className="reason-tooltip__carry-path">
                         <p className="reason-tooltip__carry-description">
                           <strong>Carry path:</strong> {readable.carryPath}
@@ -275,7 +296,10 @@ export function ReasonTooltip({
                         >
                           <span className="reason-tooltip__math-label">
                             Show the math
-                            <span className="reason-tooltip__chevron" style={{ transform: showMath ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                            <span
+                              className="reason-tooltip__chevron"
+                              style={{ transform: showMath ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                            >
                               ▼
                             </span>
                           </span>
@@ -311,7 +335,12 @@ export function ReasonTooltip({
                         >
                           <span className="reason-tooltip__section-title">
                             Step-by-step breakdown
-                            <span className="reason-tooltip__chevron" style={{ transform: showBeadDetails ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                            <span
+                              className="reason-tooltip__chevron"
+                              style={{
+                                transform: showBeadDetails ? 'rotate(180deg)' : 'rotate(0deg)',
+                              }}
+                            >
                               ▼
                             </span>
                           </span>
@@ -321,7 +350,9 @@ export function ReasonTooltip({
                           <ol id={`${tooltipId}-steps`} className="reason-tooltip__step-list">
                             {readable.stepsFriendly.map((stepInstruction, idx) => (
                               <li key={idx} className="reason-tooltip__step">
-                                <span className="reason-tooltip__step-instruction">{stepInstruction}</span>
+                                <span className="reason-tooltip__step-instruction">
+                                  {stepInstruction}
+                                </span>
                               </li>
                             ))}
                           </ol>
@@ -334,11 +365,13 @@ export function ReasonTooltip({
             )}
 
             {/* Dev-only validation hint */}
-            {process.env.NODE_ENV !== 'production' && segment?.readable?.validation && !segment.readable.validation.ok && (
-              <div className="reason-tooltip__dev-warn">
-                ⚠ Summary/guard mismatch: {segment.readable.validation.issues.join('; ')}
-              </div>
-            )}
+            {process.env.NODE_ENV !== 'production' &&
+              segment?.readable?.validation &&
+              !segment.readable.validation.ok && (
+                <div className="reason-tooltip__dev-warn">
+                  ⚠ Summary/guard mismatch: {segment.readable.validation.issues.join('; ')}
+                </div>
+              )}
 
             {/* Original transformation shown at bottom */}
             {originalValue && segment?.expression && (

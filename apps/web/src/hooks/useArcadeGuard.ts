@@ -1,8 +1,8 @@
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import type { ArcadeSessionResponse } from '@/app/api/arcade-session/types'
 import { useArcadeSocket } from './useArcadeSocket'
 import { useViewerId } from './useViewerId'
-import type { ArcadeSessionResponse } from '@/app/api/arcade-session/types'
 
 export interface UseArcadeGuardOptions {
   /**
@@ -51,9 +51,7 @@ export interface UseArcadeGuardReturn {
  * if (loading) return <LoadingSpinner />
  * ```
  */
-export function useArcadeGuard(
-  options: UseArcadeGuardOptions = {}
-): UseArcadeGuardReturn {
+export function useArcadeGuard(options: UseArcadeGuardOptions = {}): UseArcadeGuardReturn {
   const { enabled = true, onRedirect } = options
   const router = useRouter()
   const pathname = usePathname()

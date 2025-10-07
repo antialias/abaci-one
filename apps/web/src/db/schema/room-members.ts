@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 import { createId } from '@paralleldrive/cuid2'
+import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { arcadeRooms } from './arcade-rooms'
 
 export const roomMembers = sqliteTable('room_members', {
@@ -16,8 +16,12 @@ export const roomMembers = sqliteTable('room_members', {
 
   isCreator: integer('is_creator', { mode: 'boolean' }).notNull().default(false),
 
-  joinedAt: integer('joined_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  lastSeen: integer('last_seen', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  joinedAt: integer('joined_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  lastSeen: integer('last_seen', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
   isOnline: integer('is_online', { mode: 'boolean' }).notNull().default(true),
 })
 

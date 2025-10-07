@@ -36,17 +36,23 @@ export default defineConfig({
             wood: { value: '#8B4513' },
             bead: { value: '#2C1810' },
             inactive: { value: '#D3D3D3' },
-            bar: { value: '#654321' }
-          }
+            bar: { value: '#654321' },
+          },
         },
         fonts: {
-          body: { value: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
-          heading: { value: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' },
-          mono: { value: 'Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace' }
+          body: {
+            value: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          },
+          heading: {
+            value: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          },
+          mono: {
+            value: 'Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace',
+          },
         },
         shadows: {
           card: { value: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' },
-          modal: { value: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }
+          modal: { value: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' },
         },
         animations: {
           // Shake animation for errors (web_generator.py line 3419)
@@ -60,49 +66,51 @@ export default defineConfig({
           bounce: { value: 'bounce 1s infinite alternate' },
           bounceIn: { value: 'bounceIn 1s ease-out' },
           // Glow animation (line 6260)
-          glow: { value: 'glow 1s ease-in-out infinite alternate' }
-        }
+          glow: { value: 'glow 1s ease-in-out infinite alternate' },
+        },
       },
       keyframes: {
         // Shake - horizontal oscillation for errors (line 3419)
         shake: {
           '0%, 100%': { transform: 'translateX(0)' },
           '25%': { transform: 'translateX(-5px)' },
-          '75%': { transform: 'translateX(5px)' }
+          '75%': { transform: 'translateX(5px)' },
         },
         // Success pulse - gentle scale for correct answers (line 2004)
         successPulse: {
           '0%, 100%': { transform: 'scale(1)' },
-          '50%': { transform: 'scale(1.05)' }
+          '50%': { transform: 'scale(1.05)' },
         },
         // Pulse - continuous breathing effect (line 6255)
         pulse: {
           '0%, 100%': { transform: 'scale(1)' },
-          '50%': { transform: 'scale(1.05)' }
+          '50%': { transform: 'scale(1.05)' },
         },
         // Error shake - stronger horizontal oscillation (line 2009)
         errorShake: {
           '0%, 100%': { transform: 'translateX(0)' },
           '25%': { transform: 'translateX(-10px)' },
-          '75%': { transform: 'translateX(10px)' }
+          '75%': { transform: 'translateX(10px)' },
         },
         // Bounce - vertical oscillation (line 6271)
         bounce: {
           '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' }
+          '50%': { transform: 'translateY(-10px)' },
         },
         // Bounce in - entry animation with scale and rotate (line 6265)
         bounceIn: {
           '0%': { transform: 'scale(0.3) rotate(-10deg)', opacity: '0' },
           '50%': { transform: 'scale(1.1) rotate(5deg)' },
-          '100%': { transform: 'scale(1) rotate(0deg)', opacity: '1' }
+          '100%': { transform: 'scale(1) rotate(0deg)', opacity: '1' },
         },
         // Glow - expanding box shadow (line 6260)
         glow: {
           '0%': { boxShadow: '0 0 5px rgba(255, 255, 255, 0.5)' },
-          '100%': { boxShadow: '0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.6)' }
-        }
-      }
-    }
-  }
+          '100%': {
+            boxShadow: '0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(255, 255, 255, 0.6)',
+          },
+        },
+      },
+    },
+  },
 })

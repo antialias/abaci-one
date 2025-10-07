@@ -18,14 +18,19 @@ interface FormatSelectFieldProps {
 }
 
 const formatOptions: FormatOption[] = [
-  { value: 'pdf', label: 'PDF', icon: '📄', description: 'Print-ready vector document with layout options' },
+  {
+    value: 'pdf',
+    label: 'PDF',
+    icon: '📄',
+    description: 'Print-ready vector document with layout options',
+  },
   { value: 'html', label: 'HTML', icon: '🌐', description: 'Interactive web flashcards' },
   { value: 'svg', label: 'SVG', icon: '🖼️', description: 'Scalable vector images' },
-  { value: 'png', label: 'PNG', icon: '📷', description: 'High-resolution images' }
+  { value: 'png', label: 'PNG', icon: '📷', description: 'High-resolution images' },
 ]
 
 export function FormatSelectField({ value, onValueChange }: FormatSelectFieldProps) {
-  const selectedOption = formatOptions.find(option => option.value === value) || formatOptions[0]
+  const selectedOption = formatOptions.find((option) => option.value === value) || formatOptions[0]
 
   return (
     <Select.Root value={value} onValueChange={onValueChange}>
@@ -47,16 +52,16 @@ export function FormatSelectField({ value, onValueChange }: FormatSelectFieldPro
           _focus: {
             outline: 'none',
             borderColor: 'brand.500',
-            boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)'
+            boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
           },
           '&[data-state=open]': {
             borderColor: 'brand.500',
-            boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)'
+            boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
           },
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          minH: '12'
+          minH: '12',
         })}
       >
         <Select.Value asChild>
@@ -89,7 +94,7 @@ export function FormatSelectField({ value, onValueChange }: FormatSelectFieldPro
             zIndex: 999,
             minW: '320px',
             maxH: '300px',
-            overflow: 'hidden'
+            overflow: 'hidden',
           })}
           position="popper"
           sideOffset={4}
@@ -109,24 +114,28 @@ export function FormatSelectField({ value, onValueChange }: FormatSelectFieldPro
                   _hover: { bg: 'brand.50' },
                   '&[data-state=checked]': {
                     bg: 'brand.100',
-                    color: 'brand.800'
-                  }
+                    color: 'brand.800',
+                  },
                 })}
               >
                 <div className={hstack({ gap: '3', alignItems: 'center' })}>
                   <span className={css({ fontSize: 'xl' })}>{option.icon}</span>
                   <div className={stack({ gap: '1', alignItems: 'start', flex: 1 })}>
-                    <Select.ItemText className={css({
-                      fontWeight: 'medium',
-                      fontSize: 'sm'
-                    })}>
+                    <Select.ItemText
+                      className={css({
+                        fontWeight: 'medium',
+                        fontSize: 'sm',
+                      })}
+                    >
                       {option.label}
                     </Select.ItemText>
-                    <div className={css({
-                      fontSize: 'xs',
-                      color: 'gray.600',
-                      lineHeight: 'relaxed'
-                    })}>
+                    <div
+                      className={css({
+                        fontSize: 'xs',
+                        color: 'gray.600',
+                        lineHeight: 'relaxed',
+                      })}
+                    >
                       {option.description}
                     </div>
                   </div>

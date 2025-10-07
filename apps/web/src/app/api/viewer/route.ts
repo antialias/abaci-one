@@ -10,10 +10,7 @@ export async function GET() {
   try {
     const viewerId = await getViewerId()
     return NextResponse.json({ viewerId })
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'No valid viewer session found' },
-      { status: 401 }
-    )
+  } catch (_error) {
+    return NextResponse.json({ error: 'No valid viewer session found' }, { status: 401 })
   }
 }

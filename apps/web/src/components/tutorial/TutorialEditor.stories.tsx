@@ -1,10 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/react'
 import { action } from '@storybook/addon-actions'
-import { TutorialEditor } from './TutorialEditor'
+import type { Meta, StoryObj } from '@storybook/react'
 import { DevAccessProvider } from '../../hooks/useAccessControl'
+import { createBasicSkillSet, type TutorialValidation } from '../../types/tutorial'
 import { getTutorialForEditor } from '../../utils/tutorialConverter'
-import { createBasicSkillSet } from '../../types/tutorial'
-import { TutorialValidation } from '../../types/tutorial'
+import { TutorialEditor } from './TutorialEditor'
 
 const meta: Meta<typeof TutorialEditor> = {
   title: 'Tutorial/TutorialEditor',
@@ -33,9 +32,9 @@ It includes both the editor interface and an integrated preview player for testi
 - Edit tooltips, error messages, and multi-step instructions
 - Validate tutorial structure and content
 - Preview changes in real-time
-        `
-      }
-    }
+        `,
+      },
+    },
   },
   decorators: [
     (Story) => (
@@ -44,9 +43,9 @@ It includes both the editor interface and an integrated preview player for testi
           <Story />
         </div>
       </DevAccessProvider>
-    )
+    ),
   ],
-  tags: ['autodocs']
+  tags: ['autodocs'],
 }
 
 export default meta
@@ -65,7 +64,7 @@ const mockValidate = async (tutorial: any): Promise<TutorialValidation> => {
       stepId: '',
       field: 'title',
       message: 'Tutorial title is required',
-      severity: 'error' as const
+      severity: 'error' as const,
     })
   }
 
@@ -74,7 +73,7 @@ const mockValidate = async (tutorial: any): Promise<TutorialValidation> => {
       stepId: '',
       field: 'steps',
       message: 'Tutorial must have at least one step',
-      severity: 'error' as const
+      severity: 'error' as const,
     })
   }
 
@@ -84,7 +83,7 @@ const mockValidate = async (tutorial: any): Promise<TutorialValidation> => {
       stepId: '',
       field: 'description',
       message: 'Tutorial description could be more detailed',
-      severity: 'warning' as const
+      severity: 'warning' as const,
     })
   }
 
@@ -94,7 +93,7 @@ const mockValidate = async (tutorial: any): Promise<TutorialValidation> => {
         stepId: step.id,
         field: 'values',
         message: `Step ${index + 1}: Start and target values are the same`,
-        severity: 'warning' as const
+        severity: 'warning' as const,
       })
     }
   })
@@ -102,7 +101,7 @@ const mockValidate = async (tutorial: any): Promise<TutorialValidation> => {
   return {
     isValid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
 
@@ -111,20 +110,20 @@ export const Default: Story = {
     tutorial: mockTutorial,
     onSave: action('save-tutorial'),
     onValidate: mockValidate,
-    onPreview: action('preview-step')
+    onPreview: action('preview-step'),
   },
   parameters: {
     docs: {
       description: {
-        story: 'Default tutorial editor with the guided addition tutorial loaded for editing.'
-      }
-    }
-  }
+        story: 'Default tutorial editor with the guided addition tutorial loaded for editing.',
+      },
+    },
+  },
 }
 
 export const EditingMode: Story = {
   args: {
-    ...Default.args
+    ...Default.args,
   },
   parameters: {
     docs: {
@@ -147,9 +146,9 @@ Tutorial editor in editing mode. This story demonstrates:
 4. Change step values and see validation updates
 5. Add a new step using the "+ Add Step" button
 6. Preview specific steps using the "Preview" buttons
-        `
-      }
-    }
+        `,
+      },
+    },
   },
 }
 
@@ -159,41 +158,43 @@ export const WithValidationErrors: Story = {
       ...mockTutorial,
       title: '', // This will trigger a validation error
       description: 'Short desc', // This will trigger a warning
-      steps: mockTutorial.steps.map(step => ({
+      steps: mockTutorial.steps.map((step) => ({
         ...step,
-        startValue: step.targetValue // This will trigger warnings
-      }))
+        startValue: step.targetValue, // This will trigger warnings
+      })),
     },
     onSave: action('save-tutorial'),
     onValidate: mockValidate,
-    onPreview: action('preview-step')
+    onPreview: action('preview-step'),
   },
   parameters: {
     docs: {
       description: {
-        story: 'Tutorial editor with validation errors and warnings to demonstrate the validation system.'
-      }
-    }
-  }
+        story:
+          'Tutorial editor with validation errors and warnings to demonstrate the validation system.',
+      },
+    },
+  },
 }
 
 export const MinimalTutorial: Story = {
   args: {
     tutorial: {
       ...mockTutorial,
-      steps: mockTutorial.steps.slice(0, 2) // Only 2 steps for easier editing demo
+      steps: mockTutorial.steps.slice(0, 2), // Only 2 steps for easier editing demo
     },
     onSave: action('save-tutorial'),
     onValidate: mockValidate,
-    onPreview: action('preview-step')
+    onPreview: action('preview-step'),
   },
   parameters: {
     docs: {
       description: {
-        story: 'Tutorial editor with a minimal tutorial (2 steps) for easier demonstration of editing features.'
-      }
-    }
-  }
+        story:
+          'Tutorial editor with a minimal tutorial (2 steps) for easier demonstration of editing features.',
+      },
+    },
+  },
 }
 
 export const ReadOnlyPreview: Story = {
@@ -201,15 +202,16 @@ export const ReadOnlyPreview: Story = {
     tutorial: mockTutorial,
     onSave: undefined, // No save function = read-only mode
     onValidate: mockValidate,
-    onPreview: action('preview-step')
+    onPreview: action('preview-step'),
   },
   parameters: {
     docs: {
       description: {
-        story: 'Tutorial editor in read-only mode (no save function provided) showing the preview functionality.'
-      }
-    }
-  }
+        story:
+          'Tutorial editor in read-only mode (no save function provided) showing the preview functionality.',
+      },
+    },
+  },
 }
 
 export const WithPracticeSteps: Story = {
@@ -225,7 +227,7 @@ export const WithPracticeSteps: Story = {
           maxTerms: 3,
           requiredSkills: createBasicSkillSet(),
           numberRange: { min: 1, max: 4 },
-          sumConstraints: { maxSum: 9 }
+          sumConstraints: { maxSum: 9 },
         },
         {
           id: 'practice-five-complements',
@@ -237,48 +239,49 @@ export const WithPracticeSteps: Story = {
             basic: {
               directAddition: true,
               heavenBead: true,
-              simpleCombinations: true
+              simpleCombinations: true,
             },
             fiveComplements: {
-              "4=5-1": true,
-              "3=5-2": true,
-              "2=5-3": false,
-              "1=5-4": false
+              '4=5-1': true,
+              '3=5-2': true,
+              '2=5-3': false,
+              '1=5-4': false,
             },
             tenComplements: {
-              "9=10-1": false,
-              "8=10-2": false,
-              "7=10-3": false,
-              "6=10-4": false,
-              "5=10-5": false,
-              "4=10-6": false,
-              "3=10-7": false,
-              "2=10-8": false,
-              "1=10-9": false
-            }
+              '9=10-1': false,
+              '8=10-2': false,
+              '7=10-3': false,
+              '6=10-4': false,
+              '5=10-5': false,
+              '4=10-6': false,
+              '3=10-7': false,
+              '2=10-8': false,
+              '1=10-9': false,
+            },
           },
           targetSkills: {
             fiveComplements: {
-              "4=5-1": true,
-              "3=5-2": true
-            }
+              '4=5-1': true,
+              '3=5-2': true,
+            },
           },
           numberRange: { min: 1, max: 9 },
-          sumConstraints: { maxSum: 9 }
-        }
-      ]
+          sumConstraints: { maxSum: 9 },
+        },
+      ],
     },
     onSave: action('save-tutorial'),
     onValidate: mockValidate,
-    onPreview: action('preview-step')
+    onPreview: action('preview-step'),
   },
   parameters: {
     docs: {
       description: {
-        story: 'Tutorial editor with practice steps demonstrating the skill-based problem generation system.'
-      }
-    }
-  }
+        story:
+          'Tutorial editor with practice steps demonstrating the skill-based problem generation system.',
+      },
+    },
+  },
 }
 
 export const CustomTutorial: Story = {
@@ -286,7 +289,8 @@ export const CustomTutorial: Story = {
     tutorial: {
       id: 'custom-tutorial',
       title: 'Custom Math Tutorial',
-      description: 'A custom tutorial for demonstrating the editor capabilities with different content.',
+      description:
+        'A custom tutorial for demonstrating the editor capabilities with different content.',
       category: 'Advanced Operations',
       difficulty: 'intermediate' as const,
       estimatedDuration: 15,
@@ -303,13 +307,13 @@ export const CustomTutorial: Story = {
           actionDescription: 'Click the heaven bead',
           tooltip: {
             content: 'Using heaven bead for 10',
-            explanation: 'When adding 5 to 5, use the tens place heaven bead'
+            explanation: 'When adding 5 to 5, use the tens place heaven bead',
           },
           errorMessages: {
             wrongBead: 'Click the tens place heaven bead',
             wrongAction: 'Move the bead down to activate',
-            hint: 'Think about place value'
-          }
+            hint: 'Think about place value',
+          },
         },
         {
           id: 'custom-2',
@@ -320,41 +324,42 @@ export const CustomTutorial: Story = {
           targetValue: 15,
           highlightBeads: [
             { columnIndex: 1, beadType: 'heaven' as const },
-            { columnIndex: 4, beadType: 'heaven' as const }
+            { columnIndex: 4, beadType: 'heaven' as const },
           ],
           expectedAction: 'multi-step' as const,
           actionDescription: 'Activate both heaven beads for 15',
           multiStepInstructions: [
             'Click the tens place heaven bead',
-            'Click the ones place heaven bead'
+            'Click the ones place heaven bead',
           ],
           tooltip: {
             content: 'Complex addition',
-            explanation: '7 + 8 = 15, which needs both tens and ones heaven beads'
+            explanation: '7 + 8 = 15, which needs both tens and ones heaven beads',
           },
           errorMessages: {
             wrongBead: 'Follow the two-step process',
             wrongAction: 'Activate both heaven beads',
-            hint: '15 = 10 + 5'
-          }
-        }
+            hint: '15 = 10 + 5',
+          },
+        },
       ],
       tags: ['custom', 'demo', 'advanced'],
       author: 'Demo Author',
       version: '1.0.0',
       createdAt: new Date(),
       updatedAt: new Date(),
-      isPublished: false
+      isPublished: false,
     },
     onSave: action('save-tutorial'),
     onValidate: mockValidate,
-    onPreview: action('preview-step')
+    onPreview: action('preview-step'),
   },
   parameters: {
     docs: {
       description: {
-        story: 'Tutorial editor with custom tutorial content to demonstrate editing different types of mathematical operations.'
-      }
-    }
-  }
+        story:
+          'Tutorial editor with custom tutorial content to demonstrate editing different types of mathematical operations.',
+      },
+    },
+  },
 }

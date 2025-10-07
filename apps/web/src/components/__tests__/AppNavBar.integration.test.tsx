@@ -1,5 +1,5 @@
-import React, { Suspense } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import React, { Suspense } from 'react'
 import { vi } from 'vitest'
 import { AppNavBar } from '../AppNavBar'
 
@@ -29,14 +29,16 @@ describe('AppNavBar Nav Slot Integration', () => {
   it('renders actual nav slot content from lazy component', async () => {
     // Create a lazy component that simulates the @nav slot behavior
     const MatchingNavContent = () => (
-      <h1 style={{
-        fontSize: '18px',
-        fontWeight: 'bold',
-        background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
-        backgroundClip: 'text',
-        color: 'transparent',
-        margin: 0
-      }}>
+      <h1
+        style={{
+          fontSize: '18px',
+          fontWeight: 'bold',
+          background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
+          backgroundClip: 'text',
+          color: 'transparent',
+          margin: 0,
+        }}
+      >
         🧩 Memory Pairs
       </h1>
     )
@@ -65,9 +67,7 @@ describe('AppNavBar Nav Slot Integration', () => {
 
   it('reproduces the issue: lazy component without Suspense boundary fails to render', async () => {
     // This test reproduces the actual issue - lazy components need Suspense
-    const MatchingNavContent = () => (
-      <h1>🧩 Memory Pairs</h1>
-    )
+    const MatchingNavContent = () => <h1>🧩 Memory Pairs</h1>
 
     const LazyMatchingNav = React.lazy(() => Promise.resolve({ default: MatchingNavContent }))
 
@@ -97,7 +97,7 @@ describe('AppNavBar Nav Slot Integration', () => {
       type: {
         $$typeof: Symbol.for('react.lazy'),
         _payload: Promise.resolve({
-          default: () => <h1>🧩 Memory Pairs</h1>
+          default: () => <h1>🧩 Memory Pairs</h1>,
         }),
         _init: (payload: any) => payload.then((module: any) => module.default),
       },
@@ -107,7 +107,7 @@ describe('AppNavBar Nav Slot Integration', () => {
         parallelRouterKey: 'nav',
         segmentPath: ['nav'],
         template: {},
-        notFoundStyles: []
+        notFoundStyles: [],
       },
     }
 

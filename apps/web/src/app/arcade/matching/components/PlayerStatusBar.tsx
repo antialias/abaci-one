@@ -2,9 +2,8 @@
 
 import { css } from '../../../../../styled-system/css'
 import { useGameMode } from '../../../../contexts/GameModeContext'
-import { useUserProfile } from '../../../../contexts/UserProfileContext'
-import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
 import { gamePlurals } from '../../../../utils/pluralization'
+import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
 
 interface PlayerStatusBarProps {
   className?: string
@@ -16,7 +15,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
 
   // Get active players array
   const activePlayersData = Array.from(activePlayerIds)
-    .map(id => playerMap.get(id))
+    .map((id) => playerMap.get(id))
     .filter((p): p is NonNullable<typeof p> => p !== undefined)
 
   // Map active players to display data with scores
@@ -26,7 +25,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
     displayName: player.name,
     displayEmoji: player.emoji,
     score: state.scores[player.id] || 0,
-    consecutiveMatches: state.consecutiveMatches?.[player.id] || 0
+    consecutiveMatches: state.consecutiveMatches?.[player.id] || 0,
   }))
 
   // Get celebration level based on consecutive matches
@@ -40,41 +39,52 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
   if (activePlayers.length <= 1) {
     // Simple single player indicator
     return (
-      <div className={`${css({
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: 'white',
-        rounded: 'lg',
-        p: { base: '2', md: '3' },
-        border: '2px solid',
-        borderColor: 'blue.200',
-        mb: { base: '2', md: '3' },
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      })} ${className || ''}`}>
-        <div className={css({
+      <div
+        className={`${css({
           display: 'flex',
+          justifyContent: 'center',
           alignItems: 'center',
-          gap: { base: '2', md: '3' }
-        })}>
-          <div className={css({
-            fontSize: { base: 'xl', md: '2xl' }
-          })}>
+          background: 'white',
+          rounded: 'lg',
+          p: { base: '2', md: '3' },
+          border: '2px solid',
+          borderColor: 'blue.200',
+          mb: { base: '2', md: '3' },
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        })} ${className || ''}`}
+      >
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: { base: '2', md: '3' },
+          })}
+        >
+          <div
+            className={css({
+              fontSize: { base: 'xl', md: '2xl' },
+            })}
+          >
             {activePlayers[0]?.displayEmoji || '🚀'}
           </div>
-          <div className={css({
-            fontSize: { base: 'sm', md: 'md' },
-            fontWeight: 'bold',
-            color: 'gray.700'
-          })}>
+          <div
+            className={css({
+              fontSize: { base: 'sm', md: 'md' },
+              fontWeight: 'bold',
+              color: 'gray.700',
+            })}
+          >
             {activePlayers[0]?.displayName || 'Player 1'}
           </div>
-          <div className={css({
-            fontSize: { base: 'xs', md: 'sm' },
-            color: 'blue.600',
-            fontWeight: 'medium'
-          })}>
-            {gamePlurals.pair(state.matchedPairs)} of {state.totalPairs} • {gamePlurals.move(state.moves)}
+          <div
+            className={css({
+              fontSize: { base: 'xs', md: 'sm' },
+              color: 'blue.600',
+              fontWeight: 'medium',
+            })}
+          >
+            {gamePlurals.pair(state.matchedPairs)} of {state.totalPairs} •{' '}
+            {gamePlurals.move(state.moves)}
           </div>
         </div>
       </div>
@@ -83,27 +93,33 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
 
   // For multiplayer, show competitive status bar
   return (
-    <div className={`${css({
-      background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
-      rounded: 'xl',
-      p: { base: '2', md: '3' },
-      border: '2px solid',
-      borderColor: 'gray.200',
-      mb: { base: '3', md: '4' }
-    })} ${className || ''}`}>
-      <div className={css({
-        display: 'grid',
-        gridTemplateColumns: activePlayers.length <= 2
-          ? 'repeat(2, 1fr)'
-          : activePlayers.length === 3
-          ? 'repeat(3, 1fr)'
-          : 'repeat(2, 1fr) repeat(2, 1fr)',
-        gap: { base: '2', md: '3' },
-        alignItems: 'center'
-      })}>
+    <div
+      className={`${css({
+        background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+        rounded: 'xl',
+        p: { base: '2', md: '3' },
+        border: '2px solid',
+        borderColor: 'gray.200',
+        mb: { base: '3', md: '4' },
+      })} ${className || ''}`}
+    >
+      <div
+        className={css({
+          display: 'grid',
+          gridTemplateColumns:
+            activePlayers.length <= 2
+              ? 'repeat(2, 1fr)'
+              : activePlayers.length === 3
+                ? 'repeat(3, 1fr)'
+                : 'repeat(2, 1fr) repeat(2, 1fr)',
+          gap: { base: '2', md: '3' },
+          alignItems: 'center',
+        })}
+      >
         {activePlayers.map((player) => {
           const isCurrentPlayer = player.id === state.currentPlayer
-          const isLeading = player.score === Math.max(...activePlayers.map(p => p.score)) && player.score > 0
+          const isLeading =
+            player.score === Math.max(...activePlayers.map((p) => p.score)) && player.score > 0
           const celebrationLevel = getCelebrationLevel(player.consecutiveMatches)
 
           return (
@@ -119,123 +135,150 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
                   ? `linear-gradient(135deg, ${player.color || '#3b82f6'}15, ${player.color || '#3b82f6'}25, ${player.color || '#3b82f6'}15)`
                   : 'white',
                 border: isCurrentPlayer ? '4px solid' : '2px solid',
-                borderColor: isCurrentPlayer
-                  ? (player.color || '#3b82f6')
-                  : 'gray.200',
+                borderColor: isCurrentPlayer ? player.color || '#3b82f6' : 'gray.200',
                 boxShadow: isCurrentPlayer
-                  ? '0 0 0 2px white, 0 0 0 6px ' + (player.color || '#3b82f6') + '40, 0 12px 32px rgba(0,0,0,0.2)'
+                  ? '0 0 0 2px white, 0 0 0 6px ' +
+                    (player.color || '#3b82f6') +
+                    '40, 0 12px 32px rgba(0,0,0,0.2)'
                   : '0 2px 4px rgba(0,0,0,0.1)',
                 transition: 'all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 position: 'relative',
                 transform: isCurrentPlayer ? 'scale(1.08) translateY(-4px)' : 'scale(1)',
                 zIndex: isCurrentPlayer ? 10 : 1,
                 animation: isCurrentPlayer
-                  ? (celebrationLevel === 'legendary' ? 'legendary-celebration 0.8s ease-out, turn-entrance 0.6s ease-out'
-                     : celebrationLevel === 'epic' ? 'epic-celebration 0.7s ease-out, turn-entrance 0.6s ease-out'
-                     : celebrationLevel === 'great' ? 'great-celebration 0.6s ease-out, turn-entrance 0.6s ease-out'
-                     : 'turn-entrance 0.6s ease-out')
-                  : 'none'
+                  ? celebrationLevel === 'legendary'
+                    ? 'legendary-celebration 0.8s ease-out, turn-entrance 0.6s ease-out'
+                    : celebrationLevel === 'epic'
+                      ? 'epic-celebration 0.7s ease-out, turn-entrance 0.6s ease-out'
+                      : celebrationLevel === 'great'
+                        ? 'great-celebration 0.6s ease-out, turn-entrance 0.6s ease-out'
+                        : 'turn-entrance 0.6s ease-out'
+                  : 'none',
               })}
             >
-
               {/* Leading crown with sparkle */}
               {isLeading && (
-                <div className={css({
-                  position: 'absolute',
-                  top: isCurrentPlayer ? '-3' : '-1',
-                  right: isCurrentPlayer ? '-3' : '-1',
-                  background: 'linear-gradient(135deg, #ffd700, #ffaa00)',
-                  rounded: 'full',
-                  w: isCurrentPlayer ? '10' : '6',
-                  h: isCurrentPlayer ? '10' : '6',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: isCurrentPlayer ? 'lg' : 'xs',
-                  zIndex: 10,
-                  animation: 'none',
-                  boxShadow: '0 0 20px rgba(255, 215, 0, 0.6)'
-                })}>
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: isCurrentPlayer ? '-3' : '-1',
+                    right: isCurrentPlayer ? '-3' : '-1',
+                    background: 'linear-gradient(135deg, #ffd700, #ffaa00)',
+                    rounded: 'full',
+                    w: isCurrentPlayer ? '10' : '6',
+                    h: isCurrentPlayer ? '10' : '6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: isCurrentPlayer ? 'lg' : 'xs',
+                    zIndex: 10,
+                    animation: 'none',
+                    boxShadow: '0 0 20px rgba(255, 215, 0, 0.6)',
+                  })}
+                >
                   👑
                 </div>
               )}
 
               {/* Subtle turn indicator */}
               {isCurrentPlayer && (
-                <div className={css({
-                  position: 'absolute',
-                  top: '-2',
-                  left: '-2',
-                  background: player.color || '#3b82f6',
-                  rounded: 'full',
-                  w: '4',
-                  h: '4',
-                  animation: 'gentle-sway 2s ease-in-out infinite',
-                  zIndex: 5
-                })} />
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: '-2',
+                    left: '-2',
+                    background: player.color || '#3b82f6',
+                    rounded: 'full',
+                    w: '4',
+                    h: '4',
+                    animation: 'gentle-sway 2s ease-in-out infinite',
+                    zIndex: 5,
+                  })}
+                />
               )}
 
               {/* Living, breathing player emoji */}
-              <div className={css({
-                fontSize: isCurrentPlayer ? { base: '2xl', md: '3xl' } : { base: 'lg', md: 'xl' },
-                flexShrink: 0,
-                animation: isCurrentPlayer
-                  ? 'float 3s ease-in-out infinite'
-                  : 'breathe 5s ease-in-out infinite',
-                transform: isCurrentPlayer ? 'scale(1.2)' : 'scale(1)',
-                transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                textShadow: isCurrentPlayer ? '0 0 20px currentColor' : 'none',
-                cursor: 'pointer',
-                '&:hover': {
-                  transform: isCurrentPlayer ? 'scale(1.3)' : 'scale(1.1)',
-                  animation: 'gentle-sway 1s ease-in-out infinite'
-                }
-              })}>
+              <div
+                className={css({
+                  fontSize: isCurrentPlayer ? { base: '2xl', md: '3xl' } : { base: 'lg', md: 'xl' },
+                  flexShrink: 0,
+                  animation: isCurrentPlayer
+                    ? 'float 3s ease-in-out infinite'
+                    : 'breathe 5s ease-in-out infinite',
+                  transform: isCurrentPlayer ? 'scale(1.2)' : 'scale(1)',
+                  transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                  textShadow: isCurrentPlayer ? '0 0 20px currentColor' : 'none',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    transform: isCurrentPlayer ? 'scale(1.3)' : 'scale(1.1)',
+                    animation: 'gentle-sway 1s ease-in-out infinite',
+                  },
+                })}
+              >
                 {player.displayEmoji}
               </div>
 
               {/* Enhanced player info */}
-              <div className={css({
-                flex: 1,
-                minWidth: 0
-              })}>
-                <div className={css({
-                  fontSize: isCurrentPlayer ? { base: 'md', md: 'lg' } : { base: 'xs', md: 'sm' },
-                  fontWeight: 'black',
-                  color: isCurrentPlayer ? 'gray.900' : 'gray.700',
-                  animation: 'none',
-                  textShadow: isCurrentPlayer ? '0 0 10px currentColor' : 'none'
-                })}>
+              <div
+                className={css({
+                  flex: 1,
+                  minWidth: 0,
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: isCurrentPlayer ? { base: 'md', md: 'lg' } : { base: 'xs', md: 'sm' },
+                    fontWeight: 'black',
+                    color: isCurrentPlayer ? 'gray.900' : 'gray.700',
+                    animation: 'none',
+                    textShadow: isCurrentPlayer ? '0 0 10px currentColor' : 'none',
+                  })}
+                >
                   {player.displayName}
                 </div>
-                <div className={css({
-                  fontSize: isCurrentPlayer ? { base: 'sm', md: 'md' } : { base: '2xs', md: 'xs' },
-                  color: isCurrentPlayer ? (player.color || '#3b82f6') : 'gray.500',
-                  fontWeight: isCurrentPlayer ? 'black' : 'semibold',
-                  animation: 'none'
-                })}>
+                <div
+                  className={css({
+                    fontSize: isCurrentPlayer
+                      ? { base: 'sm', md: 'md' }
+                      : { base: '2xs', md: 'xs' },
+                    color: isCurrentPlayer ? player.color || '#3b82f6' : 'gray.500',
+                    fontWeight: isCurrentPlayer ? 'black' : 'semibold',
+                    animation: 'none',
+                  })}
+                >
                   {gamePlurals.pair(player.score)}
                   {isCurrentPlayer && (
-                    <span className={css({
-                      color: 'red.600',
-                      fontWeight: 'black',
-                      fontSize: isCurrentPlayer ? { base: 'sm', md: 'lg' } : 'inherit',
-                      animation: 'none',
-                      textShadow: '0 0 15px currentColor'
-                    })}>
+                    <span
+                      className={css({
+                        color: 'red.600',
+                        fontWeight: 'black',
+                        fontSize: isCurrentPlayer ? { base: 'sm', md: 'lg' } : 'inherit',
+                        animation: 'none',
+                        textShadow: '0 0 15px currentColor',
+                      })}
+                    >
                       {' • Your turn'}
                     </span>
                   )}
                   {player.consecutiveMatches > 1 && (
-                    <div className={css({
-                      fontSize: { base: '2xs', md: 'xs' },
-                      color: celebrationLevel === 'legendary' ? 'purple.600' :
-                             celebrationLevel === 'epic' ? 'orange.600' :
-                             celebrationLevel === 'great' ? 'green.600' : 'gray.500',
-                      fontWeight: 'black',
-                      animation: isCurrentPlayer ? 'streak-pulse 1s ease-in-out infinite' : 'none',
-                      textShadow: isCurrentPlayer ? '0 0 10px currentColor' : 'none'
-                    })}>
+                    <div
+                      className={css({
+                        fontSize: { base: '2xs', md: 'xs' },
+                        color:
+                          celebrationLevel === 'legendary'
+                            ? 'purple.600'
+                            : celebrationLevel === 'epic'
+                              ? 'orange.600'
+                              : celebrationLevel === 'great'
+                                ? 'green.600'
+                                : 'gray.500',
+                        fontWeight: 'black',
+                        animation: isCurrentPlayer
+                          ? 'streak-pulse 1s ease-in-out infinite'
+                          : 'none',
+                        textShadow: isCurrentPlayer ? '0 0 10px currentColor' : 'none',
+                      })}
+                    >
                       🔥 {player.consecutiveMatches} streak!
                     </div>
                   )}
@@ -244,15 +287,17 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
 
               {/* Simple score display for current player */}
               {isCurrentPlayer && (
-                <div className={css({
-                  background: 'blue.500',
-                  color: 'white',
-                  px: { base: '2', md: '3' },
-                  py: { base: '1', md: '2' },
-                  rounded: 'md',
-                  fontSize: { base: 'sm', md: 'md' },
-                  fontWeight: 'bold'
-                })}>
+                <div
+                  className={css({
+                    background: 'blue.500',
+                    color: 'white',
+                    px: { base: '2', md: '3' },
+                    py: { base: '1', md: '2' },
+                    rounded: 'md',
+                    fontSize: { base: 'sm', md: 'md' },
+                    fontWeight: 'bold',
+                  })}
+                >
                   {player.score}
                 </div>
               )}

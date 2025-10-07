@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 /**
  * Arcade Modal Session E2E Tests
@@ -77,7 +77,12 @@ test.describe('Arcade Modal Session - Redirects', () => {
 
     // Activate a player
     const addPlayerButton = page.locator('button:has-text("Add Player"), button:has-text("+")')
-    if (await addPlayerButton.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (
+      await addPlayerButton
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false)
+    ) {
       await addPlayerButton.first().click()
       await page.waitForTimeout(500)
     }
@@ -226,7 +231,9 @@ test.describe('Arcade Modal Session - Return to Arcade Button', () => {
     await page.waitForLoadState('networkidle')
   })
 
-  test('should end session and return to arcade when clicking "Return to Arcade"', async ({ page }) => {
+  test('should end session and return to arcade when clicking "Return to Arcade"', async ({
+    page,
+  }) => {
     // Start a game
     await page.goto('/arcade/matching')
     await page.waitForLoadState('networkidle')
@@ -253,7 +260,12 @@ test.describe('Arcade Modal Session - Return to Arcade Button', () => {
 
       // Now should be able to modify players again
       const addPlayerButton = page.locator('button:has-text("Add Player"), button:has-text("+")')
-      if (await addPlayerButton.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+      if (
+        await addPlayerButton
+          .first()
+          .isVisible({ timeout: 2000 })
+          .catch(() => false)
+      ) {
         await expect(addPlayerButton.first()).toBeEnabled()
       }
     }
@@ -265,8 +277,15 @@ test.describe('Arcade Modal Session - Return to Arcade Button', () => {
     await page.waitForLoadState('networkidle')
 
     // Return to arcade
-    const returnButton = page.locator('button:has-text("Return to Arcade"), button:has-text("Setup")')
-    if (await returnButton.first().isVisible({ timeout: 2000 }).catch(() => false)) {
+    const returnButton = page.locator(
+      'button:has-text("Return to Arcade"), button:has-text("Setup")'
+    )
+    if (
+      await returnButton
+        .first()
+        .isVisible({ timeout: 2000 })
+        .catch(() => false)
+    ) {
       await returnButton.first().click()
       await page.waitForTimeout(1000)
     }

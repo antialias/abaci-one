@@ -1,10 +1,10 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
-import { generateUnifiedInstructionSequence } from '../../../utils/unifiedStepGenerator'
-import { TutorialProvider } from '../TutorialContext'
-import { DecompositionWithReasons } from '../DecompositionWithReasons'
+import type React from 'react'
+import { describe, expect, it, vi } from 'vitest'
 import type { Tutorial } from '../../../types/tutorial'
+import { generateUnifiedInstructionSequence } from '../../../utils/unifiedStepGenerator'
+import { DecompositionWithReasons } from '../DecompositionWithReasons'
+import { TutorialProvider } from '../TutorialContext'
 
 // Mock Radix Tooltip for testing
 vi.mock('@radix-ui/react-tooltip', () => ({
@@ -17,7 +17,7 @@ vi.mock('@radix-ui/react-tooltip', () => ({
       {children}
     </div>
   ),
-  Arrow: (props: any) => <div data-testid="tooltip-arrow" {...props} />
+  Arrow: (props: any) => <div data-testid="tooltip-arrow" {...props} />,
 }))
 
 describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
@@ -35,11 +35,11 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
         targetValue,
         expectedAction: 'multi-step' as const,
         actionDescription: 'Follow the steps',
-        tooltip: { content: 'Test', explanation: 'Test explanation' }
-      }
+        tooltip: { content: 'Test', explanation: 'Test explanation' },
+      },
     ],
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
   })
 
   function renderWithTutorialContext(tutorial: Tutorial, component: React.ReactElement) {
@@ -64,7 +64,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
         tutorial,
         <DecompositionWithReasons
           fullDecomposition={result.fullDecomposition}
-          termPositions={result.steps.map(step => step.termPosition)}
+          termPositions={result.steps.map((step) => step.termPosition)}
           segments={result.segments}
         />
       )
@@ -73,7 +73,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
       const tooltipContent = screen.getAllByTestId('tooltip-content')
       let foundCombinedContent = false
 
-      tooltipContent.forEach(tooltip => {
+      tooltipContent.forEach((tooltip) => {
         const text = tooltip.textContent || ''
         if (text.includes('Make 5 — ones')) {
           foundCombinedContent = true
@@ -98,7 +98,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
         tutorial,
         <DecompositionWithReasons
           fullDecomposition={result.fullDecomposition}
-          termPositions={result.steps.map(step => step.termPosition)}
+          termPositions={result.steps.map((step) => step.termPosition)}
           segments={result.segments}
         />
       )
@@ -106,7 +106,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
       const tooltipContent = screen.getAllByTestId('tooltip-content')
       let foundFiveComplement = false
 
-      tooltipContent.forEach(tooltip => {
+      tooltipContent.forEach((tooltip) => {
         const text = tooltip.textContent || ''
         if (text.includes('Make 5') && !text.includes('Direct')) {
           foundFiveComplement = true
@@ -130,7 +130,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
         tutorial,
         <DecompositionWithReasons
           fullDecomposition={result.fullDecomposition}
-          termPositions={result.steps.map(step => step.termPosition)}
+          termPositions={result.steps.map((step) => step.termPosition)}
           segments={result.segments}
         />
       )
@@ -138,7 +138,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
       const tooltipContent = screen.getAllByTestId('tooltip-content')
       let foundDirectContent = false
 
-      tooltipContent.forEach(tooltip => {
+      tooltipContent.forEach((tooltip) => {
         const text = tooltip.textContent || ''
         // Look for direct operation tooltip (should have enhanced provenance format)
         if (text.includes('Add the tens digit — 2 tens (20)')) {
@@ -148,7 +148,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
           expect(text).toContain('From addend 25')
 
           // Should have enhanced chips
-          expect(text).toContain('Digit we\'re using: 2 (tens)')
+          expect(text).toContain("Digit we're using: 2 (tens)")
           expect(text).toContain('So we add here: +2 tens → 20')
 
           // Should have provenance explanation (new format)
@@ -170,7 +170,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
         tutorial,
         <DecompositionWithReasons
           fullDecomposition={result.fullDecomposition}
-          termPositions={result.steps.map(step => step.termPosition)}
+          termPositions={result.steps.map((step) => step.termPosition)}
           segments={result.segments}
         />
       )
@@ -178,7 +178,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
       const tooltipContent = screen.getAllByTestId('tooltip-content')
       let foundTenComplement = false
 
-      tooltipContent.forEach(tooltip => {
+      tooltipContent.forEach((tooltip) => {
         const text = tooltip.textContent || ''
         if (text.includes('Make 10') && !text.includes('Direct')) {
           foundTenComplement = true
@@ -212,7 +212,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
         tutorial,
         <DecompositionWithReasons
           fullDecomposition={result.fullDecomposition}
-          termPositions={result.steps.map(step => step.termPosition)}
+          termPositions={result.steps.map((step) => step.termPosition)}
           segments={result.segments}
         />
       )
@@ -240,7 +240,7 @@ describe('Combined Tooltip Content - Provenance + Why Explanations', () => {
         tutorial,
         <DecompositionWithReasons
           fullDecomposition={result.fullDecomposition}
-          termPositions={result.steps.map(step => step.termPosition)}
+          termPositions={result.steps.map((step) => step.termPosition)}
           segments={result.segments}
         />
       )

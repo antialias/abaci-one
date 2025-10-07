@@ -1,6 +1,6 @@
 'use client'
 
-import { useSpring, animated } from '@react-spring/web'
+import { animated, useSpring } from '@react-spring/web'
 import { AbacusReact } from '@soroban/abacus-react'
 
 interface PressureGaugeProps {
@@ -16,38 +16,42 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
     config: {
       tension: 120,
       friction: 14,
-      clamp: false
-    }
+      clamp: false,
+    },
   })
 
   // Calculate needle angle - sweeps 180° from left to right
   // 0 PSI = 180° (pointing left), 150 PSI = 0° (pointing right)
-  const angle = spring.pressure.to(p => 180 - (p / maxPressure) * 180)
+  const angle = spring.pressure.to((p) => 180 - (p / maxPressure) * 180)
 
   // Get pressure color (animated)
-  const color = spring.pressure.to(p => {
+  const color = spring.pressure.to((p) => {
     if (p < 50) return '#ef4444' // Red (low)
     if (p < 100) return '#f59e0b' // Orange (medium)
     return '#10b981' // Green (high)
   })
 
   return (
-    <div style={{
-      position: 'relative',
-      background: 'rgba(255, 255, 255, 0.95)',
-      padding: '16px',
-      borderRadius: '12px',
-      minWidth: '220px',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
-    }}>
+    <div
+      style={{
+        position: 'relative',
+        background: 'rgba(255, 255, 255, 0.95)',
+        padding: '16px',
+        borderRadius: '12px',
+        minWidth: '220px',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+      }}
+    >
       {/* Title */}
-      <div style={{
-        fontSize: '12px',
-        color: '#6b7280',
-        marginBottom: '8px',
-        fontWeight: 'bold',
-        textAlign: 'center'
-      }}>
+      <div
+        style={{
+          fontSize: '12px',
+          color: '#6b7280',
+          marginBottom: '8px',
+          fontWeight: 'bold',
+          textAlign: 'center',
+        }}
+      >
         PRESSURE
       </div>
 
@@ -57,7 +61,7 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
         style={{
           width: '100%',
           height: 'auto',
-          marginBottom: '8px'
+          marginBottom: '8px',
         }}
       >
         {/* Background arc - semicircle from left to right (bottom half) */}
@@ -75,9 +79,9 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
           const tickAngle = 180 - (psi / maxPressure) * 180
           const tickRad = (tickAngle * Math.PI) / 180
           const x1 = 100 + Math.cos(tickRad) * 70
-          const y1 = 100 - Math.sin(tickRad) * 70  // Subtract for SVG coords
+          const y1 = 100 - Math.sin(tickRad) * 70 // Subtract for SVG coords
           const x2 = 100 + Math.cos(tickRad) * 80
-          const y2 = 100 - Math.sin(tickRad) * 80  // Subtract for SVG coords
+          const y2 = 100 - Math.sin(tickRad) * 80 // Subtract for SVG coords
 
           // Position for abacus label
           const labelX = 100 + Math.cos(tickRad) * 112
@@ -94,18 +98,15 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
                 strokeWidth="2"
                 strokeLinecap="round"
               />
-              <foreignObject
-                x={labelX - 30}
-                y={labelY - 25}
-                width="60"
-                height="100"
-              >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  lineHeight: 0
-                }}>
+              <foreignObject x={labelX - 30} y={labelY - 25} width="60" height="100">
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    lineHeight: 0,
+                  }}
+                >
                   <AbacusReact
                     value={psi}
                     columns={3}
@@ -114,7 +115,7 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
                     hideInactiveBeads={false}
                     scaleFactor={0.6}
                     customStyles={{
-                      columnPosts: { opacity: 0 }
+                      columnPosts: { opacity: 0 },
                     }}
                   />
                 </div>
@@ -130,32 +131,36 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
         <animated.line
           x1="100"
           y1="100"
-          x2={angle.to(a => 100 + Math.cos((a * Math.PI) / 180) * 70)}
-          y2={angle.to(a => 100 - Math.sin((a * Math.PI) / 180) * 70)}
+          x2={angle.to((a) => 100 + Math.cos((a * Math.PI) / 180) * 70)}
+          y2={angle.to((a) => 100 - Math.sin((a * Math.PI) / 180) * 70)}
           stroke={color}
           strokeWidth="3"
           strokeLinecap="round"
           style={{
-            filter: color.to(c => `drop-shadow(0 2px 3px ${c})`)
+            filter: color.to((c) => `drop-shadow(0 2px 3px ${c})`),
           }}
         />
       </svg>
 
       {/* Abacus readout */}
-      <div style={{
-        textAlign: 'center',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '8px',
-        minHeight: '32px'
-      }}>
-        <div style={{
-          display: 'inline-flex',
+      <div
+        style={{
+          textAlign: 'center',
+          display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          lineHeight: 0
-        }}>
+          gap: '8px',
+          minHeight: '32px',
+        }}
+      >
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 0,
+          }}
+        >
           <AbacusReact
             value={Math.round(pressure)}
             columns={3}
@@ -164,7 +169,7 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
             hideInactiveBeads={true}
             scaleFactor={0.35}
             customStyles={{
-              columnPosts: { opacity: 0 }
+              columnPosts: { opacity: 0 },
             }}
           />
         </div>

@@ -1,10 +1,10 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Mock sound effects
 vi.mock('../useSoundEffects', () => ({
   useSoundEffects: () => ({
-    playSound: vi.fn()
-  })
+    playSound: vi.fn(),
+  }),
 }))
 
 /**
@@ -61,7 +61,7 @@ describe('useSteamJourney - Boarding Logic', () => {
     maxCars: number
   ): Passenger[] {
     const updatedPassengers = [...passengers]
-    const currentBoardedPassengers = updatedPassengers.filter(p => p.isBoarded && !p.isDelivered)
+    const currentBoardedPassengers = updatedPassengers.filter((p) => p.isBoarded && !p.isDelivered)
 
     // Track which cars are assigned in THIS frame to prevent double-boarding
     const carsAssignedThisFrame = new Set<number>()
@@ -70,7 +70,7 @@ describe('useSteamJourney - Boarding Logic', () => {
     updatedPassengers.forEach((passenger, passengerIndex) => {
       if (passenger.isBoarded || passenger.isDelivered) return
 
-      const station = stations.find(s => s.id === passenger.originStationId)
+      const station = stations.find((s) => s.id === passenger.originStationId)
       if (!station) return
 
       // Check if any empty car is at this station
@@ -104,12 +104,12 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // Train at position 27%, first car at position 20% (station 1)
-    let result = simulateBoardingAtPosition(27, passengers, stations, 1)
+    const result = simulateBoardingAtPosition(27, passengers, stations, 1)
 
     expect(result[0].isBoarded).toBe(true)
   })
@@ -124,7 +124,7 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
+        isUrgent: false,
       },
       {
         id: 'p2',
@@ -134,7 +134,7 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
+        isUrgent: false,
       },
       {
         id: 'p3',
@@ -144,8 +144,8 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // Train at position 34%, cars at: 27%, 20%, 13%
@@ -187,7 +187,7 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
+        isUrgent: false,
       },
       {
         id: 'p2',
@@ -197,8 +197,8 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // Simulate train speeding through station
@@ -220,7 +220,7 @@ describe('useSteamJourney - Boarding Logic', () => {
     // Car 1 at 38%, car 2 at 31% - both way past 20%
 
     // All passengers should have boarded
-    expect(result.every(p => p.isBoarded)).toBe(true)
+    expect(result.every((p) => p.isBoarded)).toBe(true)
   })
 
   test('EDGE CASE: passenger left behind when boarding window is missed', () => {
@@ -233,7 +233,7 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
+        isUrgent: false,
       },
       {
         id: 'p2',
@@ -243,8 +243,8 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // Only 1 car, 2 passengers
@@ -271,7 +271,7 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
+        isUrgent: false,
       },
       {
         id: 'p2',
@@ -281,8 +281,8 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // Only 1 car, both passengers at same station
@@ -305,7 +305,7 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
+        isUrgent: false,
       },
       {
         id: 'p2',
@@ -315,7 +315,7 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
+        isUrgent: false,
       },
       {
         id: 'p3',
@@ -325,8 +325,8 @@ describe('useSteamJourney - Boarding Logic', () => {
         destinationStationId: 's2',
         isBoarded: false,
         isDelivered: false,
-        isUrgent: false
-      }
+        isUrgent: false,
+      },
     ]
 
     // 3 passengers, 3 cars
@@ -339,12 +339,15 @@ describe('useSteamJourney - Boarding Logic', () => {
     }
 
     // All passengers should have boarded by the time last car passes
-    const allBoarded = result.every(p => p.isBoarded)
-    const leftBehind = result.filter(p => !p.isBoarded)
+    const allBoarded = result.every((p) => p.isBoarded)
+    const leftBehind = result.filter((p) => !p.isBoarded)
 
     expect(allBoarded).toBe(true)
     if (!allBoarded) {
-      console.log('Passengers left behind:', leftBehind.map(p => p.name))
+      console.log(
+        'Passengers left behind:',
+        leftBehind.map((p) => p.name)
+      )
     }
   })
 })

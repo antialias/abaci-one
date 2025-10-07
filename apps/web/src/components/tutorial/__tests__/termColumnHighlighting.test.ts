@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { generateUnifiedInstructionSequence } from '../../../utils/unifiedStepGenerator'
 
 describe('Term-to-Column Highlighting Integration', () => {
@@ -6,7 +6,7 @@ describe('Term-to-Column Highlighting Integration', () => {
     const result = generateUnifiedInstructionSequence(3475, 3500) // 3475 + 25
 
     // Find a step with provenance data
-    const stepWithProvenance = result.steps.find(step => step.provenance)
+    const stepWithProvenance = result.steps.find((step) => step.provenance)
     expect(stepWithProvenance).toBeDefined()
 
     if (stepWithProvenance?.provenance) {
@@ -29,16 +29,16 @@ describe('Term-to-Column Highlighting Integration', () => {
     const result = generateUnifiedInstructionSequence(3475, 3500) // 3475 + 25
 
     // Should have steps with provenance for both tens and ones digits
-    const stepsWithProvenance = result.steps.filter(step => step.provenance)
+    const stepsWithProvenance = result.steps.filter((step) => step.provenance)
     expect(stepsWithProvenance.length).toBeGreaterThan(0)
 
     // Verify we have both tens and ones place operations
-    const places = stepsWithProvenance.map(step => step.provenance!.rhsPlace)
+    const places = stepsWithProvenance.map((step) => step.provenance!.rhsPlace)
     expect(places).toContain(0) // ones place
     expect(places).toContain(1) // tens place
 
     // Verify provenance data structure
-    stepsWithProvenance.forEach(step => {
+    stepsWithProvenance.forEach((step) => {
       const prov = step.provenance!
       expect(typeof prov.rhs).toBe('number')
       expect(typeof prov.rhsDigit).toBe('number')
@@ -100,7 +100,7 @@ describe('Term-to-Column Highlighting Integration', () => {
     expect(getColumnFromTermIndex(999)).toBe(null)
 
     // Should handle steps without provenance
-    const stepWithoutProvenance = result.steps.find(step => !step.provenance)
+    const stepWithoutProvenance = result.steps.find((step) => !step.provenance)
     if (stepWithoutProvenance) {
       const index = result.steps.indexOf(stepWithoutProvenance)
       expect(getColumnFromTermIndex(index)).toBe(null)
@@ -113,8 +113,8 @@ describe('Term-to-Column Highlighting Integration', () => {
       columnPost: {
         stroke: '#3b82f6',
         strokeWidth: 4,
-        opacity: 1
-      }
+        opacity: 1,
+      },
     }
 
     // Verify blue color scheme for column highlighting

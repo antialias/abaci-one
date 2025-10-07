@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
+import { type CommentaryContext, getAICommentary } from '../components/AISystem/aiCommentary'
 import { useComplementRace } from '../context/ComplementRaceContext'
-import { getAICommentary, type CommentaryContext } from '../components/AISystem/aiCommentary'
 import { useSoundEffects } from './useSoundEffects'
 
 export function useAIRacers() {
@@ -12,7 +12,7 @@ export function useAIRacers() {
 
     // Update AI positions every 200ms (line 11690)
     const aiUpdateInterval = setInterval(() => {
-      const newPositions = state.aiRacers.map(racer => {
+      const newPositions = state.aiRacers.map((racer) => {
         // Base speed with random variance (0.6-1.4 range via Math.random() * 0.8 + 0.6)
         const variance = Math.random() * 0.8 + 0.6
         let speed = racer.speed * variance * state.speedMultiplier
@@ -28,7 +28,7 @@ export function useAIRacers() {
 
         return {
           id: racer.id,
-          position: newPosition
+          position: newPosition,
         }
       })
 
@@ -55,14 +55,17 @@ export function useAIRacers() {
       }
 
       // Check for commentary triggers after position updates
-      state.aiRacers.forEach(racer => {
-        const updatedPosition = newPositions.find(p => p.id === racer.id)?.position || racer.position
+      state.aiRacers.forEach((racer) => {
+        const updatedPosition =
+          newPositions.find((p) => p.id === racer.id)?.position || racer.position
         const distanceBehind = state.correctAnswers - updatedPosition
         const distanceAhead = updatedPosition - state.correctAnswers
 
         // Detect passing events
-        const playerJustPassed = racer.previousPosition > state.correctAnswers && updatedPosition < state.correctAnswers
-        const aiJustPassed = racer.previousPosition < state.correctAnswers && updatedPosition > state.correctAnswers
+        const playerJustPassed =
+          racer.previousPosition > state.correctAnswers && updatedPosition < state.correctAnswers
+        const aiJustPassed =
+          racer.previousPosition < state.correctAnswers && updatedPosition > state.correctAnswers
 
         // Determine commentary context
         let context: CommentaryContext | null = null
@@ -93,7 +96,7 @@ export function useAIRacers() {
               type: 'TRIGGER_AI_COMMENTARY',
               racerId: racer.id,
               message,
-              context
+              context,
             })
 
             // Play special turbo sound when AI goes desperate (line 11941)
@@ -106,9 +109,18 @@ export function useAIRacers() {
     }, 200)
 
     return () => clearInterval(aiUpdateInterval)
-  }, [state.isGameActive, state.aiRacers, state.correctAnswers, state.speedMultiplier, dispatch])
+  }, [
+    state.isGameActive,
+    state.aiRacers,
+    state.correctAnswers,
+    state.speedMultiplier,
+    dispatch, // Play game over sound (line 14193)
+    playSound,
+    state.raceGoal,
+    state.style,
+  ])
 
   return {
-    aiRacers: state.aiRacers
+    aiRacers: state.aiRacers,
   }
 }

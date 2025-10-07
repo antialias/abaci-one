@@ -1,14 +1,14 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react'
-import { Player as DBPlayer } from '@/db/schema/players'
-import { getNextPlayerColor } from '../types/player'
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
+import type { Player as DBPlayer } from '@/db/schema/players'
 import {
-  useUserPlayers,
   useCreatePlayer,
-  useUpdatePlayer,
   useDeletePlayer,
+  useUpdatePlayer,
+  useUserPlayers,
 } from '@/hooks/useUserPlayers'
+import { getNextPlayerColor } from '../types/player'
 
 // Client-side Player type (compatible with old type)
 export interface Player {
@@ -72,7 +72,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   // Convert DB players to Map
   const players = useMemo(() => {
     const map = new Map<string, Player>()
-    dbPlayers.forEach(dbPlayer => {
+    dbPlayers.forEach((dbPlayer) => {
       map.set(dbPlayer.id, toClientPlayer(dbPlayer))
     })
     return map
@@ -81,7 +81,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   // Track active players from DB isActive status
   const activePlayers = useMemo(() => {
     const set = new Set<string>()
-    dbPlayers.forEach(player => {
+    dbPlayers.forEach((player) => {
       if (player.isActive) {
         set.add(player.id)
       }
@@ -104,7 +104,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       } else {
         console.log('✅ Loaded players from API', {
           playerCount: dbPlayers.length,
-          activeCount: dbPlayers.filter(p => p.isActive).length,
+          activeCount: dbPlayers.filter((p) => p.isActive).length,
         })
       }
       setIsInitialized(true)
@@ -138,7 +138,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
 
   const getActivePlayers = (): Player[] => {
     return Array.from(activePlayers)
-      .map(id => players.get(id))
+      .map((id) => players.get(id))
       .filter((p): p is Player => p !== undefined)
   }
 
@@ -152,7 +152,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
 
   const resetPlayers = () => {
     // Delete all existing players
-    dbPlayers.forEach(player => {
+    dbPlayers.forEach((player) => {
       deletePlayer(player.id)
     })
 
@@ -168,9 +168,14 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const activePlayerCount = activePlayers.size
 
   // Compute game mode from active player count
-  const gameMode: GameMode = activePlayerCount === 1 ? 'single' :
-                             activePlayerCount === 2 ? 'battle' :
-                             activePlayerCount >= 3 ? 'tournament' : 'single'
+  const gameMode: GameMode =
+    activePlayerCount === 1
+      ? 'single'
+      : activePlayerCount === 2
+        ? 'battle'
+        : activePlayerCount >= 3
+          ? 'tournament'
+          : 'single'
 
   const contextValue: GameModeContextType = {
     gameMode,
@@ -188,11 +193,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     isLoading,
   }
 
-  return (
-    <GameModeContext.Provider value={contextValue}>
-      {children}
-    </GameModeContext.Provider>
-  )
+  return <GameModeContext.Provider value={contextValue}>{children}</GameModeContext.Provider>
 }
 
 export function useGameMode(): GameModeContextType {

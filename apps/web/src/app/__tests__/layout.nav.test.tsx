@@ -34,11 +34,7 @@ describe('RootLayout with nav slot', () => {
     const navContent = <div>Memory Lightning</div>
     const pageContent = <div>Page content</div>
 
-    render(
-      <RootLayout nav={navContent}>
-        {pageContent}
-      </RootLayout>
-    )
+    render(<RootLayout nav={navContent}>{pageContent}</RootLayout>)
 
     expect(screen.getByTestId('app-nav-bar')).toBeInTheDocument()
     expect(screen.getByTestId('nav-slot-content')).toBeInTheDocument()
@@ -49,11 +45,7 @@ describe('RootLayout with nav slot', () => {
   it('works without nav slot', () => {
     const pageContent = <div>Page content</div>
 
-    render(
-      <RootLayout nav={null}>
-        {pageContent}
-      </RootLayout>
-    )
+    render(<RootLayout nav={null}>{pageContent}</RootLayout>)
 
     expect(screen.getByTestId('app-nav-bar')).toBeInTheDocument()
     expect(screen.queryByTestId('nav-slot-content')).not.toBeInTheDocument()
