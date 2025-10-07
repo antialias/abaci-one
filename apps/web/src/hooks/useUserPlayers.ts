@@ -110,6 +110,7 @@ export function useCreatePlayer() {
           ...newPlayer,
           createdAt: new Date(),
           isActive: newPlayer.isActive ?? false,
+          userId: 'temp-user', // Temporary userId, will be replaced by server response
         }
         queryClient.setQueryData<Player[]>(playerKeys.list(), [
           ...previousPlayers,
