@@ -123,11 +123,11 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
     }
     if (mode === 'target') {
       if (!target.basic) target.basic = {} as any
-      target.basic[skill as keyof typeof required.basic] = true
+      target.basic![skill as keyof typeof required.basic] = true
     }
     if (mode === 'forbidden') {
       if (!forbidden.basic) forbidden.basic = {} as any
-      forbidden.basic[skill as keyof typeof required.basic] = true
+      forbidden.basic![skill as keyof typeof required.basic] = true
     }
   })
 
@@ -138,11 +138,11 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
     }
     if (mode === 'target') {
       if (!target.fiveComplements) target.fiveComplements = {} as any
-      target.fiveComplements[skill as keyof typeof required.fiveComplements] = true
+      target.fiveComplements![skill as keyof typeof required.fiveComplements] = true
     }
     if (mode === 'forbidden') {
       if (!forbidden.fiveComplements) forbidden.fiveComplements = {} as any
-      forbidden.fiveComplements[skill as keyof typeof required.fiveComplements] = true
+      forbidden.fiveComplements![skill as keyof typeof required.fiveComplements] = true
     }
   })
 
@@ -153,11 +153,11 @@ export function skillConfigurationToSkillSets(config: SkillConfiguration): {
     }
     if (mode === 'target') {
       if (!target.tenComplements) target.tenComplements = {} as any
-      target.tenComplements[skill as keyof typeof required.tenComplements] = true
+      target.tenComplements![skill as keyof typeof required.tenComplements] = true
     }
     if (mode === 'forbidden') {
       if (!forbidden.tenComplements) forbidden.tenComplements = {} as any
-      forbidden.tenComplements[skill as keyof typeof required.tenComplements] = true
+      forbidden.tenComplements![skill as keyof typeof required.tenComplements] = true
     }
   })
 
