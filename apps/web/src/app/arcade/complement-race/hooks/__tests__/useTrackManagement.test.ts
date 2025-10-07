@@ -25,7 +25,11 @@ describe('useTrackManagement', () => {
     mockPath.getPointAtLength = vi.fn((distance: number) => ({
       x: distance,
       y: 300,
-    }))
+      w: 1,
+      z: 0,
+      matrixTransform: () => new DOMPoint(),
+      toJSON: () => ({ x: distance, y: 300, w: 1, z: 0 }),
+    })) as any
     mockPathRef = { current: mockPath }
 
     // Mock track generator
@@ -52,6 +56,7 @@ describe('useTrackManagement', () => {
     mockPassengers = [
       {
         id: 'passenger-1',
+        name: 'Passenger 1',
         avatar: '👨',
         originStationId: 'station-1',
         destinationStationId: 'station-2',
@@ -73,6 +78,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -90,6 +97,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -107,6 +116,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -123,6 +134,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -233,6 +246,7 @@ describe('useTrackManagement', () => {
     const newPassengers: Passenger[] = [
       {
         id: 'passenger-2',
+        name: 'Passenger 2',
         avatar: '👩',
         originStationId: 'station-1',
         destinationStationId: 'station-2',
