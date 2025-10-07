@@ -46,7 +46,7 @@ jobs:
     
     - name: Upload example images if changed
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: updated-examples
         path: docs/images/
