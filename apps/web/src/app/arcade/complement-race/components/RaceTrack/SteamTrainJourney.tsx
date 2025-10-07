@@ -10,6 +10,7 @@ import {
   type DisembarkingAnimation,
   usePassengerAnimations,
 } from '../../hooks/usePassengerAnimations'
+import type { ComplementQuestion } from '../../lib/gameTypes'
 import { useSteamJourney } from '../../hooks/useSteamJourney'
 import { useTrackManagement } from '../../hooks/useTrackManagement'
 import { useTrainTransforms } from '../../hooks/useTrainTransforms'
@@ -80,7 +81,7 @@ interface SteamTrainJourneyProps {
   trainPosition: number
   pressure: number
   elapsedTime: number
-  currentQuestion: { number: number; targetSum: number; correctAnswer: number } | null
+  currentQuestion: ComplementQuestion | null
   currentInput: string
 }
 

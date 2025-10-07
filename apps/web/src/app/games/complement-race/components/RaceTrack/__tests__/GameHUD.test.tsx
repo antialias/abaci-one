@@ -49,6 +49,7 @@ describe('GameHUD', () => {
       number: 3,
       targetSum: 10,
       correctAnswer: 7,
+      showAsAbacus: false,
     },
     currentInput: '7',
   }
