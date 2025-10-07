@@ -1,6 +1,7 @@
 # Ignore development files
-node_modules
-**/node_modules
+# NOTE: With hoisted mode, we need the workspace node_modules symlinks
+# Only ignore root node_modules
+/node_modules
 .next
 .git
 .github
