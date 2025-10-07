@@ -45,12 +45,12 @@ describe('Arcade Session Integration', () => {
       difficulty: 6,
       turnTimer: 30,
       gamePhase: 'setup',
-      currentPlayer: 1,
+      currentPlayer: "1",
       matchedPairs: 0,
       totalPairs: 6,
       moves: 0,
       scores: {},
-      activePlayers: [1],
+      activePlayers: ["1"],
       consecutiveMatches: {},
       gameStartTime: null,
       gameEndTime: null,
@@ -67,7 +67,7 @@ describe('Arcade Session Integration', () => {
       gameName: 'matching',
       gameUrl: '/arcade/matching',
       initialState,
-      activePlayers: [1],
+      activePlayers: ["1"],
     })
 
     expect(session).toBeDefined()
@@ -86,7 +86,7 @@ describe('Arcade Session Integration', () => {
       playerId: testUserId,
       timestamp: Date.now(),
       data: {
-        activePlayers: [1],
+        activePlayers: ["1"],
       },
     }
 
@@ -147,12 +147,12 @@ describe('Arcade Session Integration', () => {
       difficulty: 6,
       turnTimer: 30,
       gamePhase: 'playing',
-      currentPlayer: 1,
+      currentPlayer: "1",
       matchedPairs: 0,
       totalPairs: 6,
       moves: 0,
       scores: { 1: 0 },
-      activePlayers: [1],
+      activePlayers: ["1"],
       consecutiveMatches: { 1: 0 },
       gameStartTime: Date.now(),
       gameEndTime: null,
@@ -169,7 +169,7 @@ describe('Arcade Session Integration', () => {
       gameName: 'matching',
       gameUrl: '/arcade/matching',
       initialState: playingState,
-      activePlayers: [1],
+      activePlayers: ["1"],
     })
 
     // First move: flip card 1
