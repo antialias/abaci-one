@@ -123,38 +123,38 @@ def generate_cards_direct(numbers, config, output_dir, format='png', dpi=300, se
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Get project root
-    project_root = Path(__file__).parent.parent
-    
+    # Get project root (monorepo root is 2 levels up from packages/core/src)
+    project_root = Path(__file__).parent.parent.parent.parent
+
     # Apply shuffle if configured
     if config.get('shuffle', False):
         if 'seed' in config:
             random.seed(config['seed'])
         random.shuffle(numbers)
-    
+
     if format == 'png':
         print(f"Generating {len(numbers)} cards directly to PNG at {dpi} DPI...")
     else:
         print(f"Generating {len(numbers)} cards directly to SVG...")
-    
+
     # Create subdirectories if separating
     if separate_fronts_backs:
         fronts_dir = output_dir / 'fronts'
         backs_dir = output_dir / 'backs'
         fronts_dir.mkdir(exist_ok=True)
         backs_dir.mkdir(exist_ok=True)
-    
+
     generated_files = []
-    
+
     # Use temp directory for Typst files
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir_path = Path(tmpdir)
-        
+
         # Copy template files to temp directory so imports work
-        templates_dir = project_root / 'templates'
+        templates_dir = project_root / 'packages' / 'templates'
         shutil.copy2(templates_dir / 'single-card.typ', tmpdir_path)
         shutil.copy2(templates_dir / 'flashcards.typ', tmpdir_path)
-        
+
         # Copy fonts directory if it exists
         fonts_dir = project_root / 'fonts'
         if fonts_dir.exists():
@@ -342,7 +342,8 @@ def main():
     # Generate based on format
     if args.format == 'pdf':
         # Generate PDF (original functionality)
-        project_root = Path(__file__).parent.parent
+        # Get monorepo root (2 levels up from packages/core/src)
+        project_root = Path(__file__).parent.parent.parent.parent
 
         # Set up font path if provided
         font_args = []
@@ -383,7 +384,7 @@ def main():
         input_args.extend(['--input', f'scale_factor={final_config.get("scale_factor", 0.9)}'])
 
         # Path to the input-based template
-        template_path = project_root.parent / 'templates' / 'flashcards-input.typ'
+        template_path = project_root / 'packages' / 'templates' / 'flashcards-input.typ'
 
         # Compile with Typst using input parameters
         print(f"Generating PDF flashcards for {len(numbers)} numbers...")
