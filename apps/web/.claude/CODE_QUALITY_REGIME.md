@@ -42,7 +42,18 @@ npm run lint && npm run type-check
 npm run pre-commit
 ```
 
-This runs all checks in the correct order and fails if any step fails.
+**What it does:**
+```json
+"pre-commit": "npm run type-check && npm run format && npm run lint:fix && npm run lint"
+```
+
+This single command runs:
+1. `npm run type-check` → `tsc --noEmit` (TypeScript errors)
+2. `npm run format` → `npx @biomejs/biome format . --write` (auto-format)
+3. `npm run lint:fix` → `npx @biomejs/biome lint . --write && npx eslint . --fix` (auto-fix)
+4. `npm run lint` → `npx @biomejs/biome lint . && npx eslint .` (verify clean)
+
+Fails fast if any step fails.
 
 ## The Regime Rules
 
@@ -87,18 +98,28 @@ When asked to commit:
 3. Fix all issues before proceeding with the commit
 4. Only create commits when all checks pass
 
-## Scripts Reference
+## Complete Scripts Reference
+
+From `apps/web/package.json`:
 
 ```json
 {
-  "type-check": "tsc --noEmit",
-  "format": "npx @biomejs/biome format . --write",
-  "lint": "npx @biomejs/biome lint . && npx eslint .",
-  "lint:fix": "npx @biomejs/biome lint . --write && npx eslint . --fix",
-  "check": "npx @biomejs/biome check .",
-  "pre-commit": "npm run type-check && npm run format && npm run lint:fix && npm run lint"
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "format": "npx @biomejs/biome format . --write",
+    "format:check": "npx @biomejs/biome format .",
+    "lint": "npx @biomejs/biome lint . && npx eslint .",
+    "lint:fix": "npx @biomejs/biome lint . --write && npx eslint . --fix",
+    "check": "npx @biomejs/biome check .",
+    "pre-commit": "npm run type-check && npm run format && npm run lint:fix && npm run lint"
+  }
 }
 ```
+
+**Tools used:**
+- TypeScript: `tsc --noEmit` (type checking only, no output)
+- Biome: Fast formatter + linter (Rust-based, 10-100x faster than Prettier)
+- ESLint: React Hooks rules only (`rules-of-hooks` validation)
 
 ## Emergency Override
 
