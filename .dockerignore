@@ -1,5 +1,6 @@
 # Ignore development files
 node_modules
+**/node_modules
 .next
 .git
 .github
