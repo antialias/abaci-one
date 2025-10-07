@@ -15,9 +15,9 @@ import type { Passenger, Station } from '../../lib/gameTypes'
 import { useSteamJourney } from '../useSteamJourney'
 
 // Mock sound effects
-jest.mock('../useSoundEffects', () => ({
+vi.mock('../useSoundEffects', () => ({
   useSoundEffects: () => ({
-    playSound: jest.fn(),
+    playSound: vi.fn(),
   }),
 }))
 
@@ -53,12 +53,12 @@ const _testStations: Station[] = [
 
 describe('useSteamJourney - Passenger Boarding', () => {
   beforeEach(() => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
-    jest.runOnlyPendingTimers()
-    jest.useRealTimers()
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
   })
 
   test('passenger boards when train reaches their origin station', () => {
@@ -106,7 +106,7 @@ describe('useSteamJourney - Passenger Boarding', () => {
 
     // Advance timers to trigger the interval
     act(() => {
-      jest.advanceTimersByTime(100)
+      vi.advanceTimersByTime(100)
     })
 
     // Verify passenger boarded
@@ -150,7 +150,7 @@ describe('useSteamJourney - Passenger Boarding', () => {
 
     // Advance timers
     act(() => {
-      jest.advanceTimersByTime(100)
+      vi.advanceTimersByTime(100)
     })
 
     // All three passengers should board (one per car)
@@ -190,7 +190,7 @@ describe('useSteamJourney - Passenger Boarding', () => {
           pressure: 120,
           elapsedTime: 1000 + pos * 50,
         })
-        jest.advanceTimersByTime(50)
+        vi.advanceTimersByTime(50)
       })
 
       // Check if passenger boarded
@@ -239,7 +239,7 @@ describe('useSteamJourney - Passenger Boarding', () => {
     })
 
     act(() => {
-      jest.advanceTimersByTime(100)
+      vi.advanceTimersByTime(100)
     })
 
     // p2 should board (on car 1 since car 0 is occupied)
@@ -282,7 +282,7 @@ describe('useSteamJourney - Passenger Boarding', () => {
     })
 
     act(() => {
-      jest.advanceTimersByTime(100)
+      vi.advanceTimersByTime(100)
     })
 
     // Passenger should be delivered
