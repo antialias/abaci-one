@@ -59,18 +59,6 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
-      '@myriaddreamin/typst-all-in-one.ts':
-        specifier: 0.6.1-rc3
-        version: 0.6.1-rc3
-      '@myriaddreamin/typst-ts-renderer':
-        specifier: 0.6.1-rc3
-        version: 0.6.1-rc3
-      '@myriaddreamin/typst-ts-web-compiler':
-        specifier: 0.6.1-rc3
-        version: 0.6.1-rc3
-      '@myriaddreamin/typst.ts':
-        specifier: 0.6.1-rc3
-        version: 0.6.1-rc3(@myriaddreamin/typst-ts-renderer@0.6.1-rc3)(@myriaddreamin/typst-ts-web-compiler@0.6.1-rc3)
       '@number-flow/react':
         specifier: ^0.5.10
         version: 0.5.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1945,31 +1933,11 @@ packages:
       '@types/react': '>=16'
       react: '>=16'
 
-  '@myriaddreamin/typst-all-in-one.ts@0.6.1-rc3':
-    resolution: {integrity: sha512-IFkPEDTfE8/IYEpJxeNMRCOqeQ0NP9+30VHk1EmLIGHMiDcqkMJ04MEF1eHdPX5L8XjAuyKI4jPZQvHSXaQRnA==}
-
   '@myriaddreamin/typst-ts-renderer@0.6.0':
     resolution: {integrity: sha512-56Mids4E5Ob6LeEeXDedvmsVnEWnLmc1qeUOeUSruL/zI3S9QXleF/c3Os1FXwJmLuCFbWTEIq8Quh2cXlnxKw==}
 
-  '@myriaddreamin/typst-ts-renderer@0.6.1-rc3':
-    resolution: {integrity: sha512-m4OHUXYvxDcE6yEvTIl+s7Y721RMWpVTUDXRN2o08P2ckkgxmtloVwHkdCAbrV5w19b5f/fcSaCW2xbxaw+XnA==}
-
   '@myriaddreamin/typst-ts-web-compiler@0.6.0':
     resolution: {integrity: sha512-P/eIJ5RnfElj0NYzn5PI296t/IwWtgqUyyTMi5Jm5X3V5kZfskkH+LI7mSQe8tEyxwgCvxbxvFe5adinA3K8Gg==}
-
-  '@myriaddreamin/typst-ts-web-compiler@0.6.1-rc3':
-    resolution: {integrity: sha512-6KD2QKUI1KVcBpKxh/LQX02224NnjMWlRQy/IqtROekDKUdoCoSlf5PV7aETYyI4bA1mtNrzMkBGdCeum/4frA==}
-
-  '@myriaddreamin/typst.ts@0.6.1-rc3':
-    resolution: {integrity: sha512-pGzaJ5SV0JjrNWn14Bicy0nPTtfD5+4kHwGUDYSebSMbfAtNHfi+Et7k4PiXqunwRm7Obkk5iZufiRM2jOlfbg==}
-    peerDependencies:
-      '@myriaddreamin/typst-ts-renderer': ^0.6.1-rc3
-      '@myriaddreamin/typst-ts-web-compiler': ^0.6.1-rc3
-    peerDependenciesMeta:
-      '@myriaddreamin/typst-ts-renderer':
-        optional: true
-      '@myriaddreamin/typst-ts-web-compiler':
-        optional: true
 
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
@@ -6120,9 +6088,6 @@ packages:
     engines: {node: ^10 || ^12 || >= 14}
     peerDependencies:
       postcss: ^8.1.0
-
-  idb@7.1.1:
-    resolution: {integrity: sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==}
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
@@ -10792,22 +10757,9 @@ snapshots:
       '@types/react': 18.3.26
       react: 18.3.1
 
-  '@myriaddreamin/typst-all-in-one.ts@0.6.1-rc3': {}
-
   '@myriaddreamin/typst-ts-renderer@0.6.0': {}
 
-  '@myriaddreamin/typst-ts-renderer@0.6.1-rc3': {}
-
   '@myriaddreamin/typst-ts-web-compiler@0.6.0': {}
-
-  '@myriaddreamin/typst-ts-web-compiler@0.6.1-rc3': {}
-
-  '@myriaddreamin/typst.ts@0.6.1-rc3(@myriaddreamin/typst-ts-renderer@0.6.1-rc3)(@myriaddreamin/typst-ts-web-compiler@0.6.1-rc3)':
-    dependencies:
-      idb: 7.1.1
-    optionalDependencies:
-      '@myriaddreamin/typst-ts-renderer': 0.6.1-rc3
-      '@myriaddreamin/typst-ts-web-compiler': 0.6.1-rc3
 
   '@napi-rs/wasm-runtime@0.2.12':
     dependencies:
@@ -16046,8 +15998,6 @@ snapshots:
   icss-utils@5.1.0(postcss@8.5.6):
     dependencies:
       postcss: 8.5.6
-
-  idb@7.1.1: {}
 
   ieee754@1.2.1: {}
 
