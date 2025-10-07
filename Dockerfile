@@ -10,18 +10,14 @@ RUN npm install -g pnpm@9.15.4 turbo@1.10.0
 WORKDIR /app
 
 # Copy package files for dependency resolution
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/core/client/node/package.json ./packages/core/client/node/
 COPY packages/core/client/typescript/package.json ./packages/core/client/typescript/
 COPY packages/abacus-react/package.json ./packages/abacus-react/
 COPY packages/templates/package.json ./packages/templates/
 
-# Remove .npmrc if it exists (Docker should use default pnpm mode, not hoisted)
-COPY .npmrc* ./
-RUN rm -f .npmrc
-
-# Install dependencies
+# Install dependencies (will use .npmrc with hoisted mode)
 RUN pnpm install --frozen-lockfile
 
 # Builder stage
