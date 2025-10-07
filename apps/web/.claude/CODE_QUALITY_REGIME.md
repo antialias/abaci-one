@@ -1,8 +1,24 @@
 # Code Quality Regime
 
-**MANDATORY**: Before ANY commit, Claude MUST run these checks and fix all issues.
+**MANDATORY**: Before declaring ANY work complete, fixed, or working, Claude MUST run these checks and fix all issues.
 
-## Pre-Commit Checklist (Always Required)
+## Definition of "Done"
+
+Work is NOT complete until:
+- ✅ All TypeScript errors are fixed (0 errors)
+- ✅ All code is formatted with Biome
+- ✅ All linting passes (0 errors, 0 warnings)
+- ✅ `npm run pre-commit` exits successfully
+
+**Until these checks pass, the work is considered incomplete.**
+
+## Quality Check Checklist (Always Required)
+
+Run these before:
+- Committing code
+- Saying work is "done" or "complete"
+- Marking tasks as finished
+- Telling the user something is "working" or "fixed"
 
 Run these commands in order. All must pass with 0 errors and 0 warnings:
 

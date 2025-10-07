@@ -1,8 +1,15 @@
 # Claude Code Instructions for apps/web
 
-## MANDATORY: Pre-Commit Quality Checks
+## MANDATORY: Quality Checks for ALL Work
 
-**BEFORE EVERY COMMIT**, you MUST run and pass these checks:
+**BEFORE declaring ANY work complete, fixed, or working**, you MUST run and pass these checks:
+
+### When This Applies
+- Before every commit
+- Before saying "it's done" or "it's fixed"
+- Before marking a task as complete
+- Before telling the user something is working
+- After any code changes, no matter how small
 
 ```bash
 npm run pre-commit
@@ -18,13 +25,19 @@ This command runs:
 
 ## Workflow
 
-When asked to make changes and commit:
+When asked to make ANY changes:
 
 1. Make your code changes
 2. Run `npm run pre-commit`
 3. If it fails, fix the issues and run again
-4. Only create commits after all checks pass
+4. Only after all checks pass can you:
+   - Say the work is "done" or "complete"
+   - Mark tasks as finished
+   - Create commits
+   - Tell the user it's working
 5. Push immediately after committing
+
+**Nothing is complete until `npm run pre-commit` passes.**
 
 ## Details
 
