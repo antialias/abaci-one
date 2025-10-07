@@ -44,6 +44,7 @@ describe('usePassengerAnimations', () => {
     // Create mock passengers
     mockPassenger1 = {
       id: 'passenger-1',
+      name: 'Passenger 1',
       avatar: '👨',
       originStationId: 'station-1',
       destinationStationId: 'station-2',
@@ -54,6 +55,7 @@ describe('usePassengerAnimations', () => {
 
     mockPassenger2 = {
       id: 'passenger-2',
+      name: 'Passenger 2',
       avatar: '👩',
       originStationId: 'station-1',
       destinationStationId: 'station-2',

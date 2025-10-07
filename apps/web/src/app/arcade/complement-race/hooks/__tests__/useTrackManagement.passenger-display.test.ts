@@ -17,7 +17,11 @@ describe('useTrackManagement - Passenger Display', () => {
     mockPath.getPointAtLength = vi.fn((distance: number) => ({
       x: distance,
       y: 300,
-    }))
+      w: 1,
+      z: 0,
+      matrixTransform: () => new DOMPoint(),
+      toJSON: () => ({ x: distance, y: 300, w: 1, z: 0 }),
+    })) as any
     mockPathRef = { current: mockPath }
 
     // Mock track generator
