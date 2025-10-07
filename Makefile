@@ -19,7 +19,7 @@ install:
 # Generate default flashcards
 out/flashcards.pdf: check-deps
 	@mkdir -p out
-	python3 src/generate.py --config config/default.yaml --output out/flashcards.pdf
+	python3 packages/core/src/generate.py --config config/default.yaml --output out/flashcards.pdf
 
 # Generate linearized version
 out/flashcards_linear.pdf: out/flashcards.pdf
@@ -29,23 +29,23 @@ out/flashcards_linear.pdf: out/flashcards.pdf
 samples: check-deps
 	@echo "Generating sample outputs..."
 	@mkdir -p out/samples
-	python3 src/generate.py --config config/default.yaml --output out/samples/default.pdf
-	python3 src/generate.py --config config/0-99.yaml --output out/samples/0-99.pdf
-	python3 src/generate.py --config config/3-column-fixed.yaml --output out/samples/3-column-fixed.pdf
-	python3 src/generate.py --range "1,2,5,10,20,50,100" --cards-per-page 8 --output out/samples/custom-list.pdf
+	python3 packages/core/src/generate.py --config config/default.yaml --output out/samples/default.pdf
+	python3 packages/core/src/generate.py --config config/0-99.yaml --output out/samples/0-99.pdf
+	python3 packages/core/src/generate.py --config config/3-column-fixed.yaml --output out/samples/3-column-fixed.pdf
+	python3 packages/core/src/generate.py --range "1,2,5,10,20,50,100" --cards-per-page 8 --output out/samples/custom-list.pdf
 	@echo "Sample PDFs generated in out/samples/"
 
 # Quick test with small range
 test: check-deps
 	@echo "Running quick test..."
-	python3 src/generate.py --range "0-9" --output out/test.pdf
+	python3 packages/core/src/generate.py --range "0-9" --output out/test.pdf
 	@command -v qpdf >/dev/null 2>&1 && qpdf --check out/test.pdf || echo "PDF generated (validation skipped)"
 	@echo "Test completed successfully"
 
 # Generate README example images
 examples: check-deps
 	@echo "Generating example images for README..."
-	@python3 src/generate_examples.py
+	@python3 packages/core/src/generate_examples.py
 	@echo "✓ Example images generated in docs/images/"
 
 # Verify examples are up to date (for CI)
