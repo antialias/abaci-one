@@ -8,7 +8,13 @@ import {
   updateSessionActivity,
 } from './src/lib/arcade/session-manager'
 import { createRoom, getRoomById } from './src/lib/arcade/room-manager'
-import { getUserRooms } from './src/lib/arcade/room-membership'
+import {
+  getOnlineRoomMembers,
+  getRoomMembers,
+  getUserRooms,
+  setMemberOnline,
+} from './src/lib/arcade/room-membership'
+import { getRoomActivePlayers } from './src/lib/arcade/player-manager'
 import type { GameMove, GameName } from './src/lib/arcade/validation'
 import { matchingGameValidator } from './src/lib/arcade/validation/MatchingGameValidator'
 
@@ -198,6 +204,113 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         socket.emit('pong-session')
       } catch (error) {
         console.error('Error updating activity:', error)
+      }
+    })
+
+    // Room: Join
+    socket.on('join-room', async ({ roomId, userId }: { roomId: string; userId: string }) => {
+      console.log(`🏠 User ${userId} joining room ${roomId}`)
+
+      try {
+        // Join the socket room
+        socket.join(`room:${roomId}`)
+
+        // Mark member as online
+        await setMemberOnline(roomId, userId, true)
+
+        // Get room data
+        const members = await getRoomMembers(roomId)
+        const onlineMembers = await getOnlineRoomMembers(roomId)
+        const memberPlayers = await getRoomActivePlayers(roomId)
+
+        // Convert memberPlayers Map to object for JSON serialization
+        const memberPlayersObj: Record<string, any[]> = {}
+        for (const [uid, players] of memberPlayers.entries()) {
+          memberPlayersObj[uid] = players
+        }
+
+        // Send current room state to the joining user
+        socket.emit('room-joined', {
+          roomId,
+          members,
+          onlineMembers,
+          memberPlayers: memberPlayersObj,
+        })
+
+        // Notify all other members in the room
+        socket.to(`room:${roomId}`).emit('member-joined', {
+          roomId,
+          userId,
+          onlineMembers,
+          memberPlayers: memberPlayersObj,
+        })
+
+        console.log(`✅ User ${userId} joined room ${roomId}`)
+      } catch (error) {
+        console.error('Error joining room:', error)
+        socket.emit('room-error', { error: 'Failed to join room' })
+      }
+    })
+
+    // Room: Leave
+    socket.on('leave-room', async ({ roomId, userId }: { roomId: string; userId: string }) => {
+      console.log(`🚪 User ${userId} leaving room ${roomId}`)
+
+      try {
+        // Leave the socket room
+        socket.leave(`room:${roomId}`)
+
+        // Mark member as offline
+        await setMemberOnline(roomId, userId, false)
+
+        // Get updated online members
+        const onlineMembers = await getOnlineRoomMembers(roomId)
+        const memberPlayers = await getRoomActivePlayers(roomId)
+
+        // Convert memberPlayers Map to object
+        const memberPlayersObj: Record<string, any[]> = {}
+        for (const [uid, players] of memberPlayers.entries()) {
+          memberPlayersObj[uid] = players
+        }
+
+        // Notify remaining members
+        io.to(`room:${roomId}`).emit('member-left', {
+          roomId,
+          userId,
+          onlineMembers,
+          memberPlayers: memberPlayersObj,
+        })
+
+        console.log(`✅ User ${userId} left room ${roomId}`)
+      } catch (error) {
+        console.error('Error leaving room:', error)
+      }
+    })
+
+    // Room: Players updated
+    socket.on('players-updated', async ({ roomId, userId }: { roomId: string; userId: string }) => {
+      console.log(`🎯 Players updated for user ${userId} in room ${roomId}`)
+
+      try {
+        // Get updated player data
+        const memberPlayers = await getRoomActivePlayers(roomId)
+
+        // Convert memberPlayers Map to object
+        const memberPlayersObj: Record<string, any[]> = {}
+        for (const [uid, players] of memberPlayers.entries()) {
+          memberPlayersObj[uid] = players
+        }
+
+        // Broadcast to all members in the room (including sender)
+        io.to(`room:${roomId}`).emit('room-players-updated', {
+          roomId,
+          memberPlayers: memberPlayersObj,
+        })
+
+        console.log(`✅ Broadcasted player updates for room ${roomId}`)
+      } catch (error) {
+        console.error('Error updating room players:', error)
+        socket.emit('room-error', { error: 'Failed to update players' })
       }
     })
 
