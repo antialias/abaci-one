@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { useGameMode } from '../contexts/GameModeContext'
+import { useArcadeGuard } from '../hooks/useArcadeGuard'
 import { AppNavBar } from './AppNavBar'
 import { GameContextNav } from './nav/GameContextNav'
 import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
@@ -28,6 +29,7 @@ export function PageWithNav({
   children,
 }: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
+  const { hasActiveSession, activeSession } = useArcadeGuard({ enabled: false }) // Don't redirect, just get info
   const [mounted, setMounted] = React.useState(false)
   const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
 
@@ -76,6 +78,19 @@ export function PageWithNav({
   const shouldEmphasize = emphasizeGameContext && mounted
   const showFullscreenSelection = shouldEmphasize && activePlayerCount === 0
 
+  // Compute arcade session info for display
+  const roomInfo = hasActiveSession && activeSession
+    ? {
+        gameName: activeSession.currentGame,
+        playerCount: activePlayerCount, // TODO: Get actual player count from session when available
+      }
+    : undefined
+
+  // Compute network players (other players in the arcade session)
+  // For now, we don't have this info in activeSession, so return empty array
+  // TODO: When arcade room system is implemented, fetch other players from session
+  const networkPlayers: Array<{ id: string; emoji?: string; name?: string }> = []
+
   // Create nav content if title is provided
   const navContent = navTitle ? (
     <GameContextNav
@@ -93,6 +108,8 @@ export function PageWithNav({
       onSetup={onSetup}
       onNewGame={onNewGame}
       canModifyPlayers={canModifyPlayers}
+      roomInfo={roomInfo}
+      networkPlayers={networkPlayers}
     />
   ) : null
 

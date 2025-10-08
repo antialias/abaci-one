@@ -4,6 +4,8 @@ import { AddPlayerButton } from './AddPlayerButton'
 import { FullscreenPlayerSelection } from './FullscreenPlayerSelection'
 import { GameControlButtons } from './GameControlButtons'
 import { GameModeIndicator } from './GameModeIndicator'
+import { NetworkPlayerIndicator } from './NetworkPlayerIndicator'
+import { RoomInfo } from './RoomInfo'
 
 type GameMode = 'none' | 'single' | 'battle' | 'tournament'
 
@@ -11,6 +13,17 @@ interface Player {
   id: string
   name: string
   emoji: string
+}
+
+interface NetworkPlayer {
+  id: string
+  emoji?: string
+  name?: string
+}
+
+interface ArcadeRoomInfo {
+  gameName: string
+  playerCount: number
 }
 
 interface GameContextNavProps {
@@ -28,6 +41,9 @@ interface GameContextNavProps {
   onSetup?: () => void
   onNewGame?: () => void
   canModifyPlayers?: boolean
+  // Arcade session info
+  networkPlayers?: NetworkPlayer[]
+  roomInfo?: ArcadeRoomInfo
 }
 
 export function GameContextNav({
@@ -45,6 +61,8 @@ export function GameContextNav({
   onSetup,
   onNewGame,
   canModifyPlayers = true,
+  networkPlayers = [],
+  roomInfo,
 }: GameContextNavProps) {
   const [_isTransitioning, setIsTransitioning] = React.useState(false)
   const [layoutMode, setLayoutMode] = React.useState<'column' | 'row'>(
@@ -112,6 +130,34 @@ export function GameContextNav({
           shouldEmphasize={shouldEmphasize}
           showFullscreenSelection={showFullscreenSelection}
         />
+
+        {/* Room Info - show when in arcade session */}
+        {roomInfo && !showFullscreenSelection && (
+          <RoomInfo
+            gameName={roomInfo.gameName}
+            playerCount={roomInfo.playerCount}
+            shouldEmphasize={shouldEmphasize}
+          />
+        )}
+
+        {/* Network Players - show other players in the room */}
+        {networkPlayers.length > 0 && !showFullscreenSelection && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: shouldEmphasize ? '12px' : '6px',
+            }}
+          >
+            {networkPlayers.map((player) => (
+              <NetworkPlayerIndicator
+                key={player.id}
+                player={player}
+                shouldEmphasize={shouldEmphasize}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Game Control Buttons - only show during active game */}
         {!showFullscreenSelection && !canModifyPlayers && (
