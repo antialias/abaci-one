@@ -65,9 +65,11 @@ describe('useArcadeGuard', () => {
 
   it('should fetch active session on mount', async () => {
     const mockSession = {
-      gameUrl: '/arcade/matching',
-      currentGame: 'matching',
-      gameState: {},
+      session: {
+        gameUrl: '/arcade/matching',
+        currentGame: 'matching',
+        gameState: {},
+      },
     }
 
     ;(global.fetch as any).mockResolvedValue({
@@ -91,9 +93,11 @@ describe('useArcadeGuard', () => {
 
   it('should redirect to active session if on different page', async () => {
     const mockSession = {
-      gameUrl: '/arcade/memory-quiz',
-      currentGame: 'memory-quiz',
-      gameState: {},
+      session: {
+        gameUrl: '/arcade/memory-quiz',
+        currentGame: 'memory-quiz',
+        gameState: {},
+      },
     }
 
     ;(global.fetch as any).mockResolvedValue({
@@ -112,9 +116,11 @@ describe('useArcadeGuard', () => {
 
   it('should NOT redirect if already on active session page', async () => {
     const mockSession = {
-      gameUrl: '/arcade/matching',
-      currentGame: 'matching',
-      gameState: {},
+      session: {
+        gameUrl: '/arcade/matching',
+        currentGame: 'matching',
+        gameState: {},
+      },
     }
 
     ;(global.fetch as any).mockResolvedValue({
@@ -152,9 +158,11 @@ describe('useArcadeGuard', () => {
   it('should call onRedirect callback when redirecting', async () => {
     const onRedirect = vi.fn()
     const mockSession = {
-      gameUrl: '/arcade/memory-quiz',
-      currentGame: 'memory-quiz',
-      gameState: {},
+      session: {
+        gameUrl: '/arcade/memory-quiz',
+        currentGame: 'memory-quiz',
+        gameState: {},
+      },
     }
 
     ;(global.fetch as any).mockResolvedValue({
@@ -248,9 +256,11 @@ describe('useArcadeGuard', () => {
     })
 
     const mockSession = {
-      gameUrl: '/arcade/matching',
-      currentGame: 'matching',
-      gameState: {},
+      session: {
+        gameUrl: '/arcade/matching',
+        currentGame: 'matching',
+        gameState: {},
+      },
     }
 
     ;(global.fetch as any).mockResolvedValue({
@@ -284,5 +294,137 @@ describe('useArcadeGuard', () => {
 
     // Should not crash, just set loading to false
     expect(result.current.hasActiveSession).toBe(false)
+  })
+
+  describe('enabled flag behavior', () => {
+    it('should NOT redirect from HTTP check when enabled=false', async () => {
+      const mockSession = {
+        session: {
+          gameUrl: '/arcade/memory-quiz',
+          currentGame: 'memory-quiz',
+          gameState: {},
+        },
+      }
+
+      ;(global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => mockSession,
+      })
+
+      vi.spyOn(nextNavigation, 'usePathname').mockReturnValue('/arcade-rooms')
+
+      renderHook(() => useArcadeGuard({ enabled: false }))
+
+      await waitFor(() => {
+        expect(global.fetch).not.toHaveBeenCalled()
+      })
+
+      // Should NOT redirect
+      expect(mockRouter.push).not.toHaveBeenCalled()
+    })
+
+    it('should NOT redirect from WebSocket when enabled=false', async () => {
+      let onSessionStateCallback: ((data: any) => void) | null = null
+
+      vi.spyOn(arcadeSocket, 'useArcadeSocket').mockImplementation((events) => {
+        onSessionStateCallback = events?.onSessionState || null
+        return mockUseArcadeSocket
+      })
+
+      ;(global.fetch as any).mockResolvedValue({
+        ok: false,
+        status: 404,
+      })
+
+      vi.spyOn(nextNavigation, 'usePathname').mockReturnValue('/arcade-rooms')
+
+      const { result } = renderHook(() => useArcadeGuard({ enabled: false }))
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false)
+      })
+
+      // Simulate session-state event from WebSocket
+      onSessionStateCallback?.({
+        gameUrl: '/arcade/room',
+        currentGame: 'matching',
+        gameState: {},
+        activePlayers: [1],
+        version: 1,
+      })
+
+      await waitFor(() => {
+        // Should track the session
+        expect(result.current.hasActiveSession).toBe(true)
+        expect(result.current.activeSession).toEqual({
+          gameUrl: '/arcade/room',
+          currentGame: 'matching',
+        })
+      })
+
+      // But should NOT redirect since enabled=false
+      expect(mockRouter.push).not.toHaveBeenCalled()
+    })
+
+    it('should STILL redirect from WebSocket when enabled=true', async () => {
+      let onSessionStateCallback: ((data: any) => void) | null = null
+
+      vi.spyOn(arcadeSocket, 'useArcadeSocket').mockImplementation((events) => {
+        onSessionStateCallback = events?.onSessionState || null
+        return mockUseArcadeSocket
+      })
+
+      ;(global.fetch as any).mockResolvedValue({
+        ok: false,
+        status: 404,
+      })
+
+      vi.spyOn(nextNavigation, 'usePathname').mockReturnValue('/arcade-rooms')
+
+      renderHook(() => useArcadeGuard({ enabled: true }))
+
+      await waitFor(() => {
+        expect(mockUseArcadeSocket.joinSession).toHaveBeenCalled()
+      })
+
+      // Simulate session-state event from WebSocket
+      onSessionStateCallback?.({
+        gameUrl: '/arcade/room',
+        currentGame: 'matching',
+        gameState: {},
+        activePlayers: [1],
+        version: 1,
+      })
+
+      // Should redirect when enabled=true
+      await waitFor(() => {
+        expect(mockRouter.push).toHaveBeenCalledWith('/arcade/room')
+      })
+    })
+
+    it('should track session state even when enabled=false', async () => {
+      const mockSession = {
+        session: {
+          gameUrl: '/arcade/room',
+          currentGame: 'matching',
+          gameState: {},
+        },
+      }
+
+      ;(global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => mockSession,
+      })
+
+      const { result } = renderHook(() => useArcadeGuard({ enabled: false }))
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false)
+      })
+
+      // Should still provide session info even without redirects
+      expect(result.current.hasActiveSession).toBe(false) // No fetch happened
+      expect(result.current.activeSession).toBe(null)
+    })
   })
 })
