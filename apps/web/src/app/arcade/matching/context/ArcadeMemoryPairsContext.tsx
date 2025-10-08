@@ -2,6 +2,7 @@
 
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
+import { useRoomData } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
 import type { GameMove } from '@/lib/arcade/validation'
 import { useGameMode } from '../../../../contexts/GameModeContext'
@@ -104,6 +105,7 @@ const ArcadeMemoryPairsContext = createContext<MemoryPairsContextValue | null>(n
 // Provider component
 export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useViewerId()
+  const { roomData } = useRoomData()
   const { activePlayerCount, activePlayers: activePlayerIds } = useGameMode()
 
   // Get active player IDs directly as strings (UUIDs)
@@ -112,7 +114,7 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
   // Derive game mode from active player count
   const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'
 
-  // Arcade session integration
+  // Arcade session integration with room-wide sync
   const {
     state,
     sendMove,
@@ -120,6 +122,7 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
     exitSession,
   } = useArcadeSession<MemoryPairsState>({
     userId: viewerId || '',
+    roomId: roomData?.id, // Enable multi-user sync for room-based games
     initialState,
     applyMove: applyMoveOptimistically,
   })

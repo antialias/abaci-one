@@ -20,7 +20,7 @@ export interface ArcadeSocketEvents {
 export interface UseArcadeSocketReturn {
   socket: Socket | null
   connected: boolean
-  joinSession: (userId: string) => void
+  joinSession: (userId: string, roomId?: string) => void
   sendMove: (userId: string, move: GameMove) => void
   exitSession: (userId: string) => void
   pingSession: (userId: string) => void
@@ -103,13 +103,17 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
   }, [])
 
   const joinSession = useCallback(
-    (userId: string) => {
+    (userId: string, roomId?: string) => {
       if (!socket) {
         console.warn('[ArcadeSocket] Cannot join session - socket not connected')
         return
       }
-      console.log('[ArcadeSocket] Joining session for user:', userId)
-      socket.emit('join-arcade-session', { userId })
+      console.log(
+        '[ArcadeSocket] Joining session for user:',
+        userId,
+        roomId ? `in room ${roomId}` : '(solo)'
+      )
+      socket.emit('join-arcade-session', { userId, roomId })
     },
     [socket]
   )

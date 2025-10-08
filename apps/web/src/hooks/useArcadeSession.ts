@@ -13,6 +13,12 @@ export interface UseArcadeSessionOptions<TState> extends UseOptimisticGameStateO
   userId: string
 
   /**
+   * Room ID for multi-user sync (optional)
+   * If provided, game state will sync across all users in the room
+   */
+  roomId?: string
+
+  /**
    * Auto-join session on mount
    * @default true
    */
@@ -76,7 +82,7 @@ export interface UseArcadeSessionReturn<TState> {
 export function useArcadeSession<TState>(
   options: UseArcadeSessionOptions<TState>
 ): UseArcadeSessionReturn<TState> {
-  const { userId, autoJoin = true, ...optimisticOptions } = options
+  const { userId, roomId, autoJoin = true, ...optimisticOptions } = options
 
   // Optimistic state management
   const optimistic = useOptimisticGameState<TState>(optimisticOptions)
@@ -122,9 +128,9 @@ export function useArcadeSession<TState>(
   // Auto-join session when connected
   useEffect(() => {
     if (connected && autoJoin && userId) {
-      joinSession(userId)
+      joinSession(userId, roomId)
     }
-  }, [connected, autoJoin, userId, joinSession])
+  }, [connected, autoJoin, userId, roomId, joinSession])
 
   // Send move with optimistic update
   const sendMove = useCallback(
@@ -156,9 +162,9 @@ export function useArcadeSession<TState>(
 
   const refresh = useCallback(() => {
     if (connected && userId) {
-      joinSession(userId)
+      joinSession(userId, roomId)
     }
-  }, [connected, userId, joinSession])
+  }, [connected, userId, roomId, joinSession])
 
   return {
     state: optimistic.state,

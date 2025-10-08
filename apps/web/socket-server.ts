@@ -42,30 +42,39 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     let currentUserId: string | null = null
 
     // Join arcade session room
-    socket.on('join-arcade-session', async ({ userId }: { userId: string }) => {
-      currentUserId = userId
-      socket.join(`arcade:${userId}`)
-      console.log(`👤 User ${userId} joined arcade room`)
+    socket.on(
+      'join-arcade-session',
+      async ({ userId, roomId }: { userId: string; roomId?: string }) => {
+        currentUserId = userId
+        socket.join(`arcade:${userId}`)
+        console.log(`👤 User ${userId} joined arcade room`)
 
-      // Send current session state if exists
-      try {
-        const session = await getArcadeSession(userId)
-        if (session) {
-          socket.emit('session-state', {
-            gameState: session.gameState,
-            currentGame: session.currentGame,
-            gameUrl: session.gameUrl,
-            activePlayers: session.activePlayers,
-            version: session.version,
-          })
-        } else {
-          socket.emit('no-active-session')
+        // If this session is part of a room, also join the game room for multi-user sync
+        if (roomId) {
+          socket.join(`game:${roomId}`)
+          console.log(`🎮 User ${userId} joined game room ${roomId}`)
         }
-      } catch (error) {
-        console.error('Error fetching session:', error)
-        socket.emit('session-error', { error: 'Failed to fetch session' })
+
+        // Send current session state if exists
+        try {
+          const session = await getArcadeSession(userId)
+          if (session) {
+            socket.emit('session-state', {
+              gameState: session.gameState,
+              currentGame: session.currentGame,
+              gameUrl: session.gameUrl,
+              activePlayers: session.activePlayers,
+              version: session.version,
+            })
+          } else {
+            socket.emit('no-active-session')
+          }
+        } catch (error) {
+          console.error('Error fetching session:', error)
+          socket.emit('session-error', { error: 'Failed to fetch session' })
+        }
       }
-    })
+    )
 
     // Handle game moves
     socket.on('game-move', async (data: { userId: string; move: GameMove }) => {
@@ -168,12 +177,20 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         const result = await applyGameMove(data.userId, data.move)
 
         if (result.success && result.session) {
-          // Broadcast the updated state to all devices for this user
-          io!.to(`arcade:${data.userId}`).emit('move-accepted', {
+          const moveAcceptedData = {
             gameState: result.session.gameState,
             version: result.session.version,
             move: data.move,
-          })
+          }
+
+          // Broadcast the updated state to all devices for this user
+          io!.to(`arcade:${data.userId}`).emit('move-accepted', moveAcceptedData)
+
+          // If this is a room-based session, ALSO broadcast to all users in the room
+          if (result.session.roomId) {
+            io!.to(`game:${result.session.roomId}`).emit('move-accepted', moveAcceptedData)
+            console.log(`📢 Broadcasted move to game room ${result.session.roomId}`)
+          }
 
           // Update activity timestamp
           await updateSessionActivity(data.userId)
