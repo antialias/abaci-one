@@ -1,5 +1,6 @@
 import type { Server as HTTPServer } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
+import type { Server as SocketIOServerType } from 'socket.io'
 import {
   applyGameMove,
   createArcadeSession,
@@ -18,8 +19,19 @@ import { getRoomActivePlayers } from './src/lib/arcade/player-manager'
 import type { GameMove, GameName } from './src/lib/arcade/validation'
 import { matchingGameValidator } from './src/lib/arcade/validation/MatchingGameValidator'
 
+// Global socket.io server instance
+let io: SocketIOServerType | null = null
+
+/**
+ * Get the socket.io server instance
+ * Returns null if not initialized
+ */
+export function getSocketIO(): SocketIOServerType | null {
+  return io
+}
+
 export function initializeSocketServer(httpServer: HTTPServer) {
-  const io = new SocketIOServer(httpServer, {
+  io = new SocketIOServer(httpServer, {
     path: '/api/socket',
     cors: {
       origin: process.env.NEXT_PUBLIC_URL || 'http://localhost:3000',

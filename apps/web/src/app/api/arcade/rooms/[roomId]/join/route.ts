@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getRoomById, touchRoom } from '@/lib/arcade/room-manager'
-import { addRoomMember } from '@/lib/arcade/room-membership'
-import { getActivePlayers } from '@/lib/arcade/player-manager'
+import { addRoomMember, getOnlineRoomMembers } from '@/lib/arcade/room-membership'
+import { getActivePlayers, getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
+import { getSocketIO } from '../../../../../../socket-server'
 
 type RouteContext = {
   params: Promise<{ roomId: string }>
@@ -55,6 +56,34 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     // Update room activity to refresh TTL
     await touchRoom(roomId)
+
+    // Broadcast to all users in the room via socket
+    const io = getSocketIO()
+    if (io) {
+      try {
+        const onlineMembers = await getOnlineRoomMembers(roomId)
+        const memberPlayers = await getRoomActivePlayers(roomId)
+
+        // Convert memberPlayers Map to object for JSON serialization
+        const memberPlayersObj: Record<string, any[]> = {}
+        for (const [uid, players] of memberPlayers.entries()) {
+          memberPlayersObj[uid] = players
+        }
+
+        // Broadcast to all users in this room
+        io.to(`room:${roomId}`).emit('member-joined', {
+          roomId,
+          userId: viewerId,
+          onlineMembers,
+          memberPlayers: memberPlayersObj,
+        })
+
+        console.log(`[Join API] Broadcasted member-joined for user ${viewerId} in room ${roomId}`)
+      } catch (socketError) {
+        // Log but don't fail the request if socket broadcast fails
+        console.error('[Join API] Failed to broadcast member-joined:', socketError)
+      }
+    }
 
     // Build response with auto-leave info if applicable
     return NextResponse.json(

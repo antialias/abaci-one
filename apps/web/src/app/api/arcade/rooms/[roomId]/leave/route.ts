@@ -1,7 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getRoomById } from '@/lib/arcade/room-manager'
-import { isMember, removeMember } from '@/lib/arcade/room-membership'
+import { getOnlineRoomMembers, isMember, removeMember } from '@/lib/arcade/room-membership'
+import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
+import { getSocketIO } from '../../../../../../socket-server'
 
 type RouteContext = {
   params: Promise<{ roomId: string }>
@@ -30,6 +32,34 @@ export async function POST(_req: NextRequest, context: RouteContext) {
 
     // Remove member
     await removeMember(roomId, viewerId)
+
+    // Broadcast to all remaining users in the room via socket
+    const io = getSocketIO()
+    if (io) {
+      try {
+        const onlineMembers = await getOnlineRoomMembers(roomId)
+        const memberPlayers = await getRoomActivePlayers(roomId)
+
+        // Convert memberPlayers Map to object for JSON serialization
+        const memberPlayersObj: Record<string, any[]> = {}
+        for (const [uid, players] of memberPlayers.entries()) {
+          memberPlayersObj[uid] = players
+        }
+
+        // Broadcast to all users in this room
+        io.to(`room:${roomId}`).emit('member-left', {
+          roomId,
+          userId: viewerId,
+          onlineMembers,
+          memberPlayers: memberPlayersObj,
+        })
+
+        console.log(`[Leave API] Broadcasted member-left for user ${viewerId} in room ${roomId}`)
+      } catch (socketError) {
+        // Log but don't fail the request if socket broadcast fails
+        console.error('[Leave API] Failed to broadcast member-left:', socketError)
+      }
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
