@@ -73,8 +73,8 @@ export function useArcadeGuard(options: UseArcadeGuardOptions = {}): UseArcadeGu
         currentGame: data.currentGame,
       })
 
-      // Redirect if we're not already on the active game page
-      if (pathname !== data.gameUrl) {
+      // Redirect if we're not already on the active game page (only if enabled)
+      if (enabled && pathname !== data.gameUrl) {
         console.log('[ArcadeGuard] Redirecting to active session:', data.gameUrl)
         onRedirect?.(data.gameUrl)
         router.push(data.gameUrl)
@@ -126,8 +126,8 @@ export function useArcadeGuard(options: UseArcadeGuardOptions = {}): UseArcadeGu
             currentGame: session.currentGame,
           })
 
-          // Redirect if we're not already on the active game page
-          if (pathname !== session.gameUrl) {
+          // Redirect if we're not already on the active game page (only if enabled)
+          if (enabled && pathname !== session.gameUrl) {
             console.log('[ArcadeGuard] Redirecting to active session:', session.gameUrl)
             onRedirect?.(session.gameUrl)
             router.push(session.gameUrl)
