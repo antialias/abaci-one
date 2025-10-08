@@ -35,17 +35,20 @@ export function useRoomData() {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [roomData, setRoomData] = useState<RoomData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false)
 
   // Fetch the user's current room
   useEffect(() => {
     if (!userId) {
       console.log('[useRoomData] No userId, clearing room data')
       setRoomData(null)
+      setHasAttemptedFetch(false)
       return
     }
 
     console.log('[useRoomData] Fetching current room for user:', userId)
     setIsLoading(true)
+    setHasAttemptedFetch(false)
 
     // Fetch current room data
     fetch('/api/arcade/rooms/current')
@@ -72,11 +75,13 @@ export function useRoomData() {
           setRoomData(null)
         }
         setIsLoading(false)
+        setHasAttemptedFetch(true)
       })
       .catch((error) => {
         console.error('[useRoomData] Failed to fetch room data:', error)
         setRoomData(null)
         setIsLoading(false)
+        setHasAttemptedFetch(true)
       })
   }, [userId])
 
@@ -204,7 +209,8 @@ export function useRoomData() {
 
   return {
     roomData,
-    isLoading: isLoading || isUserIdPending, // Wait for both userId and room data
+    // Loading if: userId is pending, currently fetching, or have userId but haven't tried fetching yet
+    isLoading: isUserIdPending || isLoading || (!!userId && !hasAttemptedFetch),
     isInRoom: !!roomData,
   }
 }
