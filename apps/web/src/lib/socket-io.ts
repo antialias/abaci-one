@@ -6,34 +6,35 @@
 
 import type { Server as SocketIOServerType } from 'socket.io'
 
-// Import the socket server module (this is safe because it's only used in Node.js context)
-let socketServer: { getSocketIO: () => SocketIOServerType | null } | null = null
-
-// Lazy-load the socket server module (only works on server-side)
-async function loadSocketServer() {
-  if (typeof window !== 'undefined') {
-    // Client-side: return null
-    return null
-  }
-
-  if (!socketServer) {
-    try {
-      // Dynamic import to avoid bundling issues
-      socketServer = await import('../../socket-server')
-    } catch (error) {
-      console.error('[Socket IO] Failed to load socket server:', error)
-      return null
-    }
-  }
-
-  return socketServer
-}
+// Cache for the socket server module
+let socketServerModule: any = null
 
 /**
  * Get the socket.io server instance
  * Returns null if not initialized or if called on client-side
  */
 export async function getSocketIO(): Promise<SocketIOServerType | null> {
-  const server = await loadSocketServer()
-  return server ? server.getSocketIO() : null
+  // Client-side: return null
+  if (typeof window !== 'undefined') {
+    return null
+  }
+
+  // Lazy-load the socket server module on first call
+  if (!socketServerModule) {
+    try {
+      // Dynamic import to avoid bundling issues
+      socketServerModule = await import('../../socket-server')
+    } catch (error) {
+      console.error('[Socket IO] Failed to load socket server:', error)
+      return null
+    }
+  }
+
+  // Call the exported getSocketIO function from the module
+  if (socketServerModule && typeof socketServerModule.getSocketIO === 'function') {
+    return socketServerModule.getSocketIO()
+  }
+
+  console.warn('[Socket IO] getSocketIO function not found in socket-server module')
+  return null
 }
