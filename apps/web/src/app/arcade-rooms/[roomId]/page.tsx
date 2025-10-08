@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { io, type Socket } from 'socket.io-client'
-import { css } from '../../../../../styled-system/css'
+import { css } from '../../../../styled-system/css'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useViewerId } from '@/hooks/useViewerId'
 
@@ -154,8 +154,8 @@ export default function RoomDetailPage() {
 
   const startGame = () => {
     if (!room) return
-    // Navigate to the game with the room ID
-    router.push(`/arcade/rooms/${roomId}/${room.gameName}`)
+    // Navigate to the room game page
+    router.push('/arcade/room')
   }
 
   const joinRoom = async () => {
@@ -264,7 +264,7 @@ export default function RoomDetailPage() {
               {error || 'Room not found'}
             </p>
             <button
-              onClick={() => router.push('/arcade/rooms')}
+              onClick={() => router.push('/arcade-rooms')}
               className={css({
                 px: '6',
                 py: '3',
@@ -325,7 +325,7 @@ export default function RoomDetailPage() {
           >
             <div className={css({ mb: '4' })}>
               <button
-                onClick={() => router.push('/arcade/rooms')}
+                onClick={() => router.push('/arcade-rooms')}
                 className={css({
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -621,7 +621,7 @@ export default function RoomDetailPage() {
             ) : (
               <>
                 <button
-                  onClick={() => router.push('/arcade/rooms')}
+                  onClick={() => router.push('/arcade-rooms')}
                   className={css({
                     flex: 1,
                     px: '6',

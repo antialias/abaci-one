@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { css } from '../../../../styled-system/css'
+import { css } from '../../../styled-system/css'
 import { PageWithNav } from '@/components/PageWithNav'
 
 interface Room {
@@ -66,7 +66,7 @@ export default function RoomBrowserPage() {
       }
 
       const data = await response.json()
-      router.push(`/arcade/rooms/${data.room.id}`)
+      router.push(`/arcade-rooms/${data.room.id}`)
     } catch (err) {
       console.error('Failed to create room:', err)
       alert('Failed to create room')
@@ -103,7 +103,7 @@ export default function RoomBrowserPage() {
         // Could show a toast notification here in the future
       }
 
-      router.push(`/arcade/rooms/${roomId}`)
+      router.push(`/arcade-rooms/${roomId}`)
     } catch (err) {
       console.error('Failed to join room:', err)
       alert('Failed to join room')
@@ -219,7 +219,7 @@ export default function RoomBrowserPage() {
                     })}
                   >
                     <div
-                      onClick={() => router.push(`/arcade/rooms/${room.id}`)}
+                      onClick={() => router.push(`/arcade-rooms/${room.id}`)}
                       className={css({ flex: 1, cursor: 'pointer' })}
                     >
                       <div
