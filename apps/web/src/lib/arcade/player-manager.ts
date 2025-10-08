@@ -51,8 +51,8 @@ export async function getActivePlayers(viewerId: string): Promise<Player[]> {
 }
 
 /**
- * Get all players for all members in a room
- * In room mode, ALL players from room members participate (isActive is ignored)
+ * Get active players for all members in a room
+ * Returns only players marked isActive=true from each room member
  * Returns a map of userId -> Player[]
  */
 export async function getRoomActivePlayers(roomId: string): Promise<Map<string, Player[]>> {
@@ -61,11 +61,10 @@ export async function getRoomActivePlayers(roomId: string): Promise<Map<string, 
     where: eq(schema.roomMembers.roomId, roomId),
   })
 
-  // Fetch ALL players for each member (not just isActive ones)
-  // In room mode, the concept is "all players from all members participate"
+  // Fetch active players for each member (respects isActive flag)
   const playerMap = new Map<string, Player[]>()
   for (const member of members) {
-    const players = await getAllPlayers(member.userId)
+    const players = await getActivePlayers(member.userId)
     playerMap.set(member.userId, players)
   }
 
