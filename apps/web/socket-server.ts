@@ -14,19 +14,22 @@ import { getRoomActivePlayers } from './src/lib/arcade/player-manager'
 import type { GameMove, GameName } from './src/lib/arcade/validation'
 import { matchingGameValidator } from './src/lib/arcade/validation/MatchingGameValidator'
 
-// Global socket.io server instance
-let io: SocketIOServerType | null = null
+// Use globalThis to store socket.io instance to avoid module isolation issues
+// This ensures the same instance is accessible across dynamic imports
+declare global {
+  var __socketIO: SocketIOServerType | undefined
+}
 
 /**
  * Get the socket.io server instance
  * Returns null if not initialized
  */
 export function getSocketIO(): SocketIOServerType | null {
-  return io
+  return globalThis.__socketIO || null
 }
 
 export function initializeSocketServer(httpServer: HTTPServer) {
-  io = new SocketIOServer(httpServer, {
+  const io = new SocketIOServer(httpServer, {
     path: '/api/socket',
     cors: {
       origin: process.env.NEXT_PUBLIC_URL || 'http://localhost:3000',
@@ -150,7 +153,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             // Notify all connected clients about the new session
             const newSession = await getArcadeSession(data.userId)
             if (newSession) {
-              io.to(`arcade:${data.userId}`).emit('session-state', {
+              io!.to(`arcade:${data.userId}`).emit('session-state', {
                 gameState: newSession.gameState,
                 currentGame: newSession.currentGame,
                 gameUrl: newSession.gameUrl,
@@ -166,7 +169,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
         if (result.success && result.session) {
           // Broadcast the updated state to all devices for this user
-          io.to(`arcade:${data.userId}`).emit('move-accepted', {
+          io!.to(`arcade:${data.userId}`).emit('move-accepted', {
             gameState: result.session.gameState,
             version: result.session.version,
             move: data.move,
@@ -197,7 +200,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
       try {
         await deleteArcadeSession(userId)
-        io.to(`arcade:${userId}`).emit('session-ended')
+        io!.to(`arcade:${userId}`).emit('session-ended')
       } catch (error) {
         console.error('Error ending session:', error)
         socket.emit('session-error', { error: 'Failed to end session' })
@@ -279,7 +282,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         }
 
         // Notify remaining members
-        io.to(`room:${roomId}`).emit('member-left', {
+        io!.to(`room:${roomId}`).emit('member-left', {
           roomId,
           userId,
           members,
@@ -307,7 +310,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         }
 
         // Broadcast to all members in the room (including sender)
-        io.to(`room:${roomId}`).emit('room-players-updated', {
+        io!.to(`room:${roomId}`).emit('room-players-updated', {
           roomId,
           memberPlayers: memberPlayersObj,
         })
@@ -328,6 +331,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
   })
 
+  // Store in globalThis to make accessible across module boundaries
+  globalThis.__socketIO = io
   console.log('✅ Socket.IO initialized on /api/socket')
   return io
 }
