@@ -3,7 +3,7 @@ import { getRoomById } from '@/lib/arcade/room-manager'
 import { getOnlineRoomMembers, isMember, removeMember } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
-import { getSocketIO } from '../../../../../../socket-server'
+import { getSocketIO } from '@/lib/socket-io'
 
 type RouteContext = {
   params: Promise<{ roomId: string }>
@@ -34,7 +34,7 @@ export async function POST(_req: NextRequest, context: RouteContext) {
     await removeMember(roomId, viewerId)
 
     // Broadcast to all remaining users in the room via socket
-    const io = getSocketIO()
+    const io = await getSocketIO()
     if (io) {
       try {
         const onlineMembers = await getOnlineRoomMembers(roomId)
