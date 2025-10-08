@@ -181,13 +181,6 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
 
   // Action creators - send moves to arcade session
   const startGame = useCallback(() => {
-    console.log('[ArcadeMemoryPairs] startGame called', {
-      activePlayerCount: activePlayers.length,
-      activePlayers,
-      roomDataId: roomData?.id,
-      roomMemberPlayers: roomData?.memberPlayers,
-    })
-
     // Must have at least one active player
     if (activePlayers.length === 0) {
       console.error('[ArcadeMemoryPairs] Cannot start game without active players')
@@ -197,7 +190,6 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
     const cards = generateGameCards(state.gameType, state.difficulty)
     // Use first active player as playerId for START_GAME move
     const firstPlayer = activePlayers[0]
-    console.log('[ArcadeMemoryPairs] Sending START_GAME with players:', activePlayers)
     sendMove({
       type: 'START_GAME',
       playerId: firstPlayer,

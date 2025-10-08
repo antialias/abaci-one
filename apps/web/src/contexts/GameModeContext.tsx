@@ -118,18 +118,11 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
 
     if (roomData) {
       // In room mode: all players from all members are active
-      console.log('[GameModeContext] Computing activePlayers from room data:', {
-        roomId: roomData.id,
-        memberPlayers: roomData.memberPlayers,
-        memberCount: Object.keys(roomData.memberPlayers).length,
-      })
       Object.values(roomData.memberPlayers).forEach((memberPlayers) => {
         memberPlayers.forEach((player) => {
           set.add(player.id)
-          console.log('[GameModeContext] Adding player to active set:', player.id, player.name)
         })
       })
-      console.log('[GameModeContext] Final active players:', Array.from(set))
     } else {
       // Solo mode: only local active players
       dbPlayers.forEach((player) => {
