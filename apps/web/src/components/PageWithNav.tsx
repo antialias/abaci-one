@@ -79,12 +79,13 @@ export function PageWithNav({
   const showFullscreenSelection = shouldEmphasize && activePlayerCount === 0
 
   // Compute arcade session info for display
-  const roomInfo = hasActiveSession && activeSession
-    ? {
-        gameName: activeSession.currentGame,
-        playerCount: activePlayerCount, // TODO: Get actual player count from session when available
-      }
-    : undefined
+  const roomInfo =
+    hasActiveSession && activeSession
+      ? {
+          gameName: activeSession.currentGame,
+          playerCount: activePlayerCount, // TODO: Get actual player count from session when available
+        }
+      : undefined
 
   // Compute network players (other players in the arcade session)
   // For now, we don't have this info in activeSession, so return empty array

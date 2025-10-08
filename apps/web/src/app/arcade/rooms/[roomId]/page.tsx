@@ -167,10 +167,28 @@ export default function RoomDetailPage() {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        const errorData = await response.json()
+
+        // Handle specific room membership conflict
+        if (errorData.code === 'ROOM_MEMBERSHIP_CONFLICT') {
+          alert(errorData.userMessage || errorData.message)
+          // Refresh the page to update room state
+          await fetchRoom()
+          return
+        }
+
+        throw new Error(errorData.error || `HTTP ${response.status}`)
       }
 
-      // Refresh room data
+      const data = await response.json()
+
+      // Show notification if user was auto-removed from other rooms
+      if (data.autoLeave) {
+        console.log(`[Room Join] ${data.autoLeave.message}`)
+        // Could show a toast notification here in the future
+      }
+
+      // Refresh room data to update membership UI
       await fetchRoom()
     } catch (err) {
       console.error('Failed to join room:', err)

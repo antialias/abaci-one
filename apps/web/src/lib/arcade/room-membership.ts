@@ -13,16 +13,25 @@ export interface AddMemberOptions {
   isCreator?: boolean
 }
 
+export interface AutoLeaveResult {
+  leftRooms: string[] // Room IDs user was removed from
+  previousRoomMembers: Array<{ roomId: string; member: schema.RoomMember }>
+}
+
 /**
  * Add a member to a room
+ * Automatically removes user from any other rooms they're in (modal room enforcement)
+ * Returns the new membership and info about rooms that were auto-left
  */
-export async function addRoomMember(options: AddMemberOptions): Promise<schema.RoomMember> {
+export async function addRoomMember(
+  options: AddMemberOptions
+): Promise<{ member: schema.RoomMember; autoLeaveResult?: AutoLeaveResult }> {
   const now = new Date()
 
-  // Check if member already exists
+  // Check if member already exists in THIS room
   const existing = await getRoomMember(options.roomId, options.userId)
   if (existing) {
-    // Update lastSeen and isOnline
+    // Already in this room - just update status (no auto-leave needed)
     const [updated] = await db
       .update(schema.roomMembers)
       .set({
@@ -31,9 +40,35 @@ export async function addRoomMember(options: AddMemberOptions): Promise<schema.R
       })
       .where(eq(schema.roomMembers.id, existing.id))
       .returning()
-    return updated
+    return { member: updated }
   }
 
+  // AUTO-LEAVE LOGIC: Remove from all other rooms before joining this one
+  const currentRooms = await getUserRooms(options.userId)
+  const autoLeaveResult: AutoLeaveResult = {
+    leftRooms: [],
+    previousRoomMembers: [],
+  }
+
+  for (const roomId of currentRooms) {
+    if (roomId !== options.roomId) {
+      // Get member info before removing (for socket events)
+      const memberToRemove = await getRoomMember(roomId, options.userId)
+      if (memberToRemove) {
+        autoLeaveResult.previousRoomMembers.push({
+          roomId,
+          member: memberToRemove,
+        })
+      }
+
+      // Remove from room
+      await removeMember(roomId, options.userId)
+      autoLeaveResult.leftRooms.push(roomId)
+      console.log(`[Room Membership] Auto-left room ${roomId} for user ${options.userId}`)
+    }
+  }
+
+  // Now add to new room
   const newMember: schema.NewRoomMember = {
     roomId: options.roomId,
     userId: options.userId,
@@ -44,9 +79,29 @@ export async function addRoomMember(options: AddMemberOptions): Promise<schema.R
     isOnline: true,
   }
 
-  const [member] = await db.insert(schema.roomMembers).values(newMember).returning()
-  console.log('[Room Membership] Added member:', member.userId, 'to room:', member.roomId)
-  return member
+  try {
+    const [member] = await db.insert(schema.roomMembers).values(newMember).returning()
+    console.log('[Room Membership] Added member:', member.userId, 'to room:', member.roomId)
+
+    return {
+      member,
+      autoLeaveResult: autoLeaveResult.leftRooms.length > 0 ? autoLeaveResult : undefined,
+    }
+  } catch (error: any) {
+    // Handle unique constraint violation
+    // This should rarely happen due to auto-leave logic above, but catch it for safety
+    if (
+      error.code === 'SQLITE_CONSTRAINT' ||
+      error.message?.includes('UNIQUE') ||
+      error.message?.includes('unique')
+    ) {
+      console.error('[Room Membership] Unique constraint violation:', error.message)
+      throw new Error(
+        'ROOM_MEMBERSHIP_CONFLICT: User is already in another room. This should have been handled by auto-leave logic.'
+      )
+    }
+    throw error
+  }
 }
 
 /**

@@ -82,7 +82,25 @@ export default function RoomBrowserPage() {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        const errorData = await response.json()
+
+        // Handle specific room membership conflict
+        if (errorData.code === 'ROOM_MEMBERSHIP_CONFLICT') {
+          alert(errorData.userMessage || errorData.message)
+          // Refresh the page to update room list state
+          await fetchRooms()
+          return
+        }
+
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Show notification if user was auto-removed from other rooms
+      if (data.autoLeave) {
+        console.log(`[Room Join] ${data.autoLeave.message}`)
+        // Could show a toast notification here in the future
       }
 
       router.push(`/arcade/rooms/${roomId}`)
