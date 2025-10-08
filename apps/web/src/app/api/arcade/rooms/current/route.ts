@@ -12,11 +12,14 @@ import { getViewerId } from '@/lib/viewer'
 export async function GET() {
   try {
     const userId = await getViewerId()
+    console.log('[Current Room API] Fetching for user:', userId)
 
     // Get all rooms user is in (should be at most 1 due to modal room enforcement)
     const roomIds = await getUserRooms(userId)
+    console.log('[Current Room API] User rooms:', roomIds)
 
     if (roomIds.length === 0) {
+      console.log('[Current Room API] User is not in any room')
       return NextResponse.json({ room: null }, { status: 200 })
     }
 
@@ -25,6 +28,7 @@ export async function GET() {
     // Get room data
     const room = await getRoomById(roomId)
     if (!room) {
+      console.log('[Current Room API] Room not found:', roomId)
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
@@ -39,6 +43,12 @@ export async function GET() {
     for (const [uid, players] of memberPlayers.entries()) {
       memberPlayersObj[uid] = players
     }
+
+    console.log('[Current Room API] Returning room:', {
+      roomId: room.id,
+      roomName: room.name,
+      memberCount: members.length,
+    })
 
     return NextResponse.json({
       room,

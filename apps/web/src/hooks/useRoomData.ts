@@ -31,7 +31,7 @@ export interface RoomData {
  * Returns null if user is not in any room
  */
 export function useRoomData() {
-  const { data: userId } = useViewerId()
+  const { data: userId, isPending: isUserIdPending } = useViewerId()
   const [socket, setSocket] = useState<Socket | null>(null)
   const [roomData, setRoomData] = useState<RoomData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -39,35 +39,42 @@ export function useRoomData() {
   // Fetch the user's current room
   useEffect(() => {
     if (!userId) {
+      console.log('[useRoomData] No userId, clearing room data')
       setRoomData(null)
       return
     }
 
+    console.log('[useRoomData] Fetching current room for user:', userId)
     setIsLoading(true)
 
     // Fetch current room data
     fetch('/api/arcade/rooms/current')
       .then((res) => {
+        console.log('[useRoomData] API response status:', res.status)
         if (!res.ok) throw new Error('Failed to fetch current room')
         return res.json()
       })
       .then((data) => {
+        console.log('[useRoomData] API response data:', data)
         if (data.room) {
-          setRoomData({
+          const roomData = {
             id: data.room.id,
             name: data.room.name,
             code: data.room.code,
             gameName: data.room.gameName,
             members: data.members || [],
             memberPlayers: data.memberPlayers || {},
-          })
+          }
+          console.log('[useRoomData] Setting room data:', roomData)
+          setRoomData(roomData)
         } else {
+          console.log('[useRoomData] No room in response, clearing room data')
           setRoomData(null)
         }
         setIsLoading(false)
       })
       .catch((error) => {
-        console.error('Failed to fetch room data:', error)
+        console.error('[useRoomData] Failed to fetch room data:', error)
         setRoomData(null)
         setIsLoading(false)
       })
@@ -197,7 +204,7 @@ export function useRoomData() {
 
   return {
     roomData,
-    isLoading,
+    isLoading: isLoading || isUserIdPending, // Wait for both userId and room data
     isInRoom: !!roomData,
   }
 }

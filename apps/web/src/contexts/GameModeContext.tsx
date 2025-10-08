@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
-import { io } from 'socket.io-client'
 import type { Player as DBPlayer } from '@/db/schema/players'
 import {
   useCreatePlayer,
@@ -157,26 +156,6 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       setIsInitialized(true)
     }
   }, [dbPlayers, isLoading, isInitialized, createPlayer])
-
-  // When in a room, broadcast player updates to other members
-  useEffect(() => {
-    if (!roomData || !viewerId || !isInitialized) return
-
-    const socket = io({ path: '/api/socket' })
-
-    // Wait for connection before emitting
-    socket.on('connect', () => {
-      console.log('[GameModeContext] Emitting players-updated for room:', roomData.id)
-      socket.emit('players-updated', {
-        roomId: roomData.id,
-        userId: viewerId,
-      })
-    })
-
-    return () => {
-      socket.disconnect()
-    }
-  }, [dbPlayers, roomData, viewerId, isInitialized])
 
   const addPlayer = (playerData?: Partial<Player>) => {
     const playerList = Array.from(players.values())
