@@ -15,15 +15,9 @@ export default function RoomPage() {
   const router = useRouter()
   const { roomData, isLoading } = useRoomData()
 
-  // Debug logging
-  useEffect(() => {
-    console.log('[RoomPage] State:', { isLoading, hasRoomData: !!roomData, roomData })
-  }, [isLoading, roomData])
-
   // Redirect to arcade if no room
   useEffect(() => {
     if (!isLoading && !roomData) {
-      console.log('[RoomPage] No active room, redirecting to /arcade')
       router.push('/arcade')
     }
   }, [isLoading, roomData, router])

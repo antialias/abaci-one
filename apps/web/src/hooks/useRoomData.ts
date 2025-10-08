@@ -40,25 +40,21 @@ export function useRoomData() {
   // Fetch the user's current room
   useEffect(() => {
     if (!userId) {
-      console.log('[useRoomData] No userId, clearing room data')
       setRoomData(null)
       setHasAttemptedFetch(false)
       return
     }
 
-    console.log('[useRoomData] Fetching current room for user:', userId)
     setIsLoading(true)
     setHasAttemptedFetch(false)
 
     // Fetch current room data
     fetch('/api/arcade/rooms/current')
       .then((res) => {
-        console.log('[useRoomData] API response status:', res.status)
         if (!res.ok) throw new Error('Failed to fetch current room')
         return res.json()
       })
       .then((data) => {
-        console.log('[useRoomData] API response data:', data)
         if (data.room) {
           const roomData = {
             id: data.room.id,
@@ -68,10 +64,8 @@ export function useRoomData() {
             members: data.members || [],
             memberPlayers: data.memberPlayers || {},
           }
-          console.log('[useRoomData] Setting room data:', roomData)
           setRoomData(roomData)
         } else {
-          console.log('[useRoomData] No room in response, clearing room data')
           setRoomData(null)
         }
         setIsLoading(false)
@@ -98,13 +92,12 @@ export function useRoomData() {
     const sock = io({ path: '/api/socket' })
 
     sock.on('connect', () => {
-      console.log('[useRoomData] Socket connected, joining room:', roomData.id)
       // Join the room to receive updates
       sock.emit('join-room', { roomId: roomData.id, userId })
     })
 
     sock.on('disconnect', () => {
-      console.log('[useRoomData] Socket disconnected')
+      // Socket disconnected
     })
 
     setSocket(sock)
@@ -127,7 +120,6 @@ export function useRoomData() {
       members: RoomMember[]
       memberPlayers: Record<string, RoomPlayer[]>
     }) => {
-      console.log('[useRoomData] Received room-joined event:', data)
       if (data.roomId === roomData.id) {
         setRoomData((prev) => {
           if (!prev) return null
@@ -146,7 +138,6 @@ export function useRoomData() {
       members: RoomMember[]
       memberPlayers: Record<string, RoomPlayer[]>
     }) => {
-      console.log('[useRoomData] Received member-joined event:', data)
       if (data.roomId === roomData.id) {
         setRoomData((prev) => {
           if (!prev) return null
@@ -165,7 +156,6 @@ export function useRoomData() {
       members: RoomMember[]
       memberPlayers: Record<string, RoomPlayer[]>
     }) => {
-      console.log('[useRoomData] Received member-left event:', data)
       if (data.roomId === roomData.id) {
         setRoomData((prev) => {
           if (!prev) return null
@@ -182,7 +172,6 @@ export function useRoomData() {
       roomId: string
       memberPlayers: Record<string, RoomPlayer[]>
     }) => {
-      console.log('[useRoomData] Received room-players-updated event:', data)
       if (data.roomId === roomData.id) {
         setRoomData((prev) => {
           if (!prev) return null
