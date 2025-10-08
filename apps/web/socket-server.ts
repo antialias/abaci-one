@@ -9,12 +9,7 @@ import {
   updateSessionActivity,
 } from './src/lib/arcade/session-manager'
 import { createRoom, getRoomById } from './src/lib/arcade/room-manager'
-import {
-  getOnlineRoomMembers,
-  getRoomMembers,
-  getUserRooms,
-  setMemberOnline,
-} from './src/lib/arcade/room-membership'
+import { getRoomMembers, getUserRooms, setMemberOnline } from './src/lib/arcade/room-membership'
 import { getRoomActivePlayers } from './src/lib/arcade/player-manager'
 import type { GameMove, GameName } from './src/lib/arcade/validation'
 import { matchingGameValidator } from './src/lib/arcade/validation/MatchingGameValidator'
@@ -232,7 +227,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
         // Get room data
         const members = await getRoomMembers(roomId)
-        const onlineMembers = await getOnlineRoomMembers(roomId)
         const memberPlayers = await getRoomActivePlayers(roomId)
 
         // Convert memberPlayers Map to object for JSON serialization
@@ -245,7 +239,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         socket.emit('room-joined', {
           roomId,
           members,
-          onlineMembers,
           memberPlayers: memberPlayersObj,
         })
 
@@ -253,7 +246,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         socket.to(`room:${roomId}`).emit('member-joined', {
           roomId,
           userId,
-          onlineMembers,
+          members,
           memberPlayers: memberPlayersObj,
         })
 
@@ -275,8 +268,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         // Mark member as offline
         await setMemberOnline(roomId, userId, false)
 
-        // Get updated online members
-        const onlineMembers = await getOnlineRoomMembers(roomId)
+        // Get updated members
+        const members = await getRoomMembers(roomId)
         const memberPlayers = await getRoomActivePlayers(roomId)
 
         // Convert memberPlayers Map to object
@@ -289,7 +282,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         io.to(`room:${roomId}`).emit('member-left', {
           roomId,
           userId,
-          onlineMembers,
+          members,
           memberPlayers: memberPlayersObj,
         })
 

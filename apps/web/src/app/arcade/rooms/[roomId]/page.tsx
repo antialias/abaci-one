@@ -83,8 +83,8 @@ export default function RoomDetailPage() {
 
     sock.on('member-joined', (data) => {
       console.log('Member joined:', data)
-      if (data.onlineMembers) {
-        setMembers(data.onlineMembers)
+      if (data.members) {
+        setMembers(data.members)
       }
       if (data.memberPlayers) {
         setMemberPlayers(data.memberPlayers)
@@ -93,8 +93,8 @@ export default function RoomDetailPage() {
 
     sock.on('member-left', (data) => {
       console.log('Member left:', data)
-      if (data.onlineMembers) {
-        setMembers(data.onlineMembers)
+      if (data.members) {
+        setMembers(data.members)
       }
       if (data.memberPlayers) {
         setMemberPlayers(data.memberPlayers)

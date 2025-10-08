@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getRoomById } from '@/lib/arcade/room-manager'
-import { getOnlineRoomMembers, isMember, removeMember } from '@/lib/arcade/room-membership'
+import { getRoomMembers, isMember, removeMember } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
@@ -37,7 +37,7 @@ export async function POST(_req: NextRequest, context: RouteContext) {
     const io = await getSocketIO()
     if (io) {
       try {
-        const onlineMembers = await getOnlineRoomMembers(roomId)
+        const members = await getRoomMembers(roomId)
         const memberPlayers = await getRoomActivePlayers(roomId)
 
         // Convert memberPlayers Map to object for JSON serialization
@@ -50,7 +50,7 @@ export async function POST(_req: NextRequest, context: RouteContext) {
         io.to(`room:${roomId}`).emit('member-left', {
           roomId,
           userId: viewerId,
-          onlineMembers,
+          members,
           memberPlayers: memberPlayersObj,
         })
 
