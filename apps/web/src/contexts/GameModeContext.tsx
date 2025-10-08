@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
+import { io } from 'socket.io-client'
 import type { Player as DBPlayer } from '@/db/schema/players'
 import {
   useCreatePlayer,
@@ -8,6 +9,8 @@ import {
   useUpdatePlayer,
   useUserPlayers,
 } from '@/hooks/useUserPlayers'
+import { useRoomData } from '@/hooks/useRoomData'
+import { useViewerId } from '@/hooks/useViewerId'
 import { getNextPlayerColor } from '../types/player'
 
 // Client-side Player type (compatible with old type)
@@ -66,28 +69,72 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const { mutate: createPlayer } = useCreatePlayer()
   const { mutate: updatePlayerMutation } = useUpdatePlayer()
   const { mutate: deletePlayer } = useDeletePlayer()
+  const { roomData } = useRoomData()
+  const { data: viewerId } = useViewerId()
 
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Convert DB players to Map
-  const players = useMemo(() => {
+  // Convert DB players to Map (local players)
+  const localPlayers = useMemo(() => {
     const map = new Map<string, Player>()
     dbPlayers.forEach((dbPlayer) => {
-      map.set(dbPlayer.id, toClientPlayer(dbPlayer))
+      map.set(dbPlayer.id, {
+        ...toClientPlayer(dbPlayer),
+        isLocal: true,
+      })
     })
     return map
   }, [dbPlayers])
 
-  // Track active players from DB isActive status
+  // When in a room, merge all players from all room members
+  const players = useMemo(() => {
+    const map = new Map<string, Player>(localPlayers)
+
+    if (roomData) {
+      // Add players from other room members (marked as remote)
+      Object.entries(roomData.memberPlayers).forEach(([userId, memberPlayers]) => {
+        // Skip the current user's players (already in localPlayers)
+        if (userId === viewerId) return
+
+        memberPlayers.forEach((roomPlayer) => {
+          map.set(roomPlayer.id, {
+            id: roomPlayer.id,
+            name: roomPlayer.name,
+            emoji: roomPlayer.emoji,
+            color: roomPlayer.color,
+            createdAt: Date.now(),
+            isActive: true, // Players in memberPlayers are active
+            isLocal: false, // Remote player
+          })
+        })
+      })
+    }
+
+    return map
+  }, [localPlayers, roomData, viewerId])
+
+  // Track active players (local + room members when in a room)
   const activePlayers = useMemo(() => {
     const set = new Set<string>()
-    dbPlayers.forEach((player) => {
-      if (player.isActive) {
-        set.add(player.id)
-      }
-    })
+
+    if (roomData) {
+      // In room mode: all players from all members are active
+      Object.values(roomData.memberPlayers).forEach((memberPlayers) => {
+        memberPlayers.forEach((player) => {
+          set.add(player.id)
+        })
+      })
+    } else {
+      // Solo mode: only local active players
+      dbPlayers.forEach((player) => {
+        if (player.isActive) {
+          set.add(player.id)
+        }
+      })
+    }
+
     return set
-  }, [dbPlayers])
+  }, [dbPlayers, roomData])
 
   // Initialize with default players if none exist
   useEffect(() => {
@@ -111,6 +158,26 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     }
   }, [dbPlayers, isLoading, isInitialized, createPlayer])
 
+  // When in a room, broadcast player updates to other members
+  useEffect(() => {
+    if (!roomData || !viewerId || !isInitialized) return
+
+    const socket = io({ path: '/api/socket' })
+
+    // Wait for connection before emitting
+    socket.on('connect', () => {
+      console.log('[GameModeContext] Emitting players-updated for room:', roomData.id)
+      socket.emit('players-updated', {
+        roomId: roomData.id,
+        userId: viewerId,
+      })
+    })
+
+    return () => {
+      socket.disconnect()
+    }
+  }, [dbPlayers, roomData, viewerId, isInitialized])
+
   const addPlayer = (playerData?: Partial<Player>) => {
     const playerList = Array.from(players.values())
 
@@ -125,15 +192,33 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   }
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
-    updatePlayerMutation({ id, updates })
+    const player = players.get(id)
+    // Only allow updating local players
+    if (player?.isLocal) {
+      updatePlayerMutation({ id, updates })
+    } else {
+      console.warn('[GameModeContext] Cannot update remote player:', id)
+    }
   }
 
   const removePlayer = (id: string) => {
-    deletePlayer(id)
+    const player = players.get(id)
+    // Only allow removing local players
+    if (player?.isLocal) {
+      deletePlayer(id)
+    } else {
+      console.warn('[GameModeContext] Cannot remove remote player:', id)
+    }
   }
 
   const setActive = (id: string, active: boolean) => {
-    updatePlayerMutation({ id, updates: { isActive: active } })
+    const player = players.get(id)
+    // Only allow changing active status of local players
+    if (player?.isLocal) {
+      updatePlayerMutation({ id, updates: { isActive: active } })
+    } else {
+      console.warn('[GameModeContext] Cannot change active status of remote player:', id)
+    }
   }
 
   const getActivePlayers = (): Player[] => {
