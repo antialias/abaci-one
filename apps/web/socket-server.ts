@@ -142,7 +142,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             await createArcadeSession({
               userId: data.userId,
               gameName: 'matching',
-              gameUrl: '/arcade/matching',
+              gameUrl: '/arcade/room', // Room-based sessions use /arcade/room
               initialState,
               activePlayers,
               roomId: room.id,
