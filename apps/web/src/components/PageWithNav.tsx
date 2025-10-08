@@ -3,6 +3,8 @@
 import React from 'react'
 import { useGameMode } from '../contexts/GameModeContext'
 import { useArcadeGuard } from '../hooks/useArcadeGuard'
+import { useRoomData } from '../hooks/useRoomData'
+import { useViewerId } from '../hooks/useViewerId'
 import { AppNavBar } from './AppNavBar'
 import { GameContextNav } from './nav/GameContextNav'
 import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
@@ -30,6 +32,8 @@ export function PageWithNav({
 }: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const { hasActiveSession, activeSession } = useArcadeGuard({ enabled: false }) // Don't redirect, just get info
+  const { roomData, isInRoom } = useRoomData()
+  const { data: viewerId } = useViewerId()
   const [mounted, setMounted] = React.useState(false)
   const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
 
@@ -80,17 +84,33 @@ export function PageWithNav({
 
   // Compute arcade session info for display
   const roomInfo =
-    hasActiveSession && activeSession
+    isInRoom && roomData
       ? {
-          gameName: activeSession.currentGame,
-          playerCount: activePlayerCount, // TODO: Get actual player count from session when available
+          roomName: roomData.name,
+          gameName: roomData.gameName,
+          playerCount: roomData.members.length,
         }
-      : undefined
+      : hasActiveSession && activeSession
+        ? {
+            gameName: activeSession.currentGame,
+            playerCount: activePlayerCount,
+          }
+        : undefined
 
-  // Compute network players (other players in the arcade session)
-  // For now, we don't have this info in activeSession, so return empty array
-  // TODO: When arcade room system is implemented, fetch other players from session
-  const networkPlayers: Array<{ id: string; emoji?: string; name?: string }> = []
+  // Compute network players (other players in the room, excluding current user)
+  const networkPlayers: Array<{ id: string; emoji?: string; name?: string }> =
+    isInRoom && roomData
+      ? roomData.members
+          .filter((member) => member.userId !== viewerId)
+          .flatMap((member) => {
+            const memberPlayerList = roomData.memberPlayers[member.userId] || []
+            return memberPlayerList.map((player) => ({
+              id: player.id,
+              emoji: player.emoji,
+              name: `${player.name} (${member.displayName})`,
+            }))
+          })
+      : []
 
   // Create nav content if title is provided
   const navContent = navTitle ? (

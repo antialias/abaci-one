@@ -1,4 +1,5 @@
 interface RoomInfoProps {
+  roomName?: string
   gameName: string
   playerCount: number
   shouldEmphasize: boolean
@@ -7,7 +8,7 @@ interface RoomInfoProps {
 /**
  * Displays current arcade room/session information
  */
-export function RoomInfo({ gameName, playerCount, shouldEmphasize }: RoomInfoProps) {
+export function RoomInfo({ roomName, gameName, playerCount, shouldEmphasize }: RoomInfoProps) {
   return (
     <div
       style={{
@@ -53,7 +54,7 @@ export function RoomInfo({ gameName, playerCount, shouldEmphasize }: RoomInfoPro
             letterSpacing: '0.5px',
           }}
         >
-          Arcade Session
+          {roomName ? 'Room' : 'Arcade Session'}
         </div>
         <div
           style={{
@@ -61,7 +62,7 @@ export function RoomInfo({ gameName, playerCount, shouldEmphasize }: RoomInfoPro
             fontWeight: 'bold',
           }}
         >
-          {gameName}
+          {roomName || gameName}
         </div>
       </div>
 

@@ -22,6 +22,7 @@ interface NetworkPlayer {
 }
 
 interface ArcadeRoomInfo {
+  roomName?: string
   gameName: string
   playerCount: number
 }
@@ -134,6 +135,7 @@ export function GameContextNav({
         {/* Room Info - show when in arcade session */}
         {roomInfo && !showFullscreenSelection && (
           <RoomInfo
+            roomName={roomInfo.roomName}
             gameName={roomInfo.gameName}
             playerCount={roomInfo.playerCount}
             shouldEmphasize={shouldEmphasize}
