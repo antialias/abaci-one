@@ -7,7 +7,9 @@ import {
   getArcadeSession,
   updateSessionActivity,
 } from './src/lib/arcade/session-manager'
-import type { GameMove } from './src/lib/arcade/validation'
+import { createRoom, getRoomById } from './src/lib/arcade/room-manager'
+import { getUserRooms } from './src/lib/arcade/room-membership'
+import type { GameMove, GameName } from './src/lib/arcade/validation'
 import { matchingGameValidator } from './src/lib/arcade/validation/MatchingGameValidator'
 
 export function initializeSocketServer(httpServer: HTTPServer) {
@@ -85,15 +87,52 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               turnTimer: 30,
             })
 
+            // Check if user is already in a room for this game
+            const userRoomIds = await getUserRooms(data.userId)
+            let room = null
+
+            // Look for an existing active room for this game
+            for (const roomId of userRoomIds) {
+              const existingRoom = await getRoomById(roomId)
+              if (
+                existingRoom &&
+                existingRoom.gameName === 'matching' &&
+                existingRoom.status !== 'finished'
+              ) {
+                room = existingRoom
+                console.log('🏠 Using existing room:', room.code)
+                break
+              }
+            }
+
+            // If no suitable room exists, create a new one
+            if (!room) {
+              room = await createRoom({
+                name: 'Auto-generated Room',
+                createdBy: data.userId,
+                creatorName: 'Player',
+                gameName: 'matching' as GameName,
+                gameConfig: {
+                  difficulty: 6,
+                  gameType: 'abacus-numeral',
+                  turnTimer: 30,
+                },
+                ttlMinutes: 60,
+              })
+              console.log('🏠 Created new room:', room.code)
+            }
+
+            // Now create the session linked to the room
             await createArcadeSession({
               userId: data.userId,
               gameName: 'matching',
               gameUrl: '/arcade/matching',
               initialState,
               activePlayers,
+              roomId: room.id,
             })
 
-            console.log('✅ Session created successfully')
+            console.log('✅ Session created successfully with room association')
 
             // Notify all connected clients about the new session
             const newSession = await getArcadeSession(data.userId)

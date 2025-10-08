@@ -8,6 +8,7 @@ import {
   deleteArcadeSession,
   getArcadeSession,
 } from '../session-manager'
+import { createRoom, deleteRoom } from '../room-manager'
 
 /**
  * Integration test for the full arcade session flow
@@ -16,6 +17,7 @@ import {
 describe('Arcade Session Integration', () => {
   const testUserId = 'integration-test-user'
   const testGuestId = 'integration-test-guest'
+  let testRoomId: string
 
   beforeEach(async () => {
     // Create test user
@@ -27,11 +29,25 @@ describe('Arcade Session Integration', () => {
         createdAt: new Date(),
       })
       .onConflictDoNothing()
+
+    // Create test room
+    const room = await createRoom({
+      name: 'Test Room',
+      createdBy: testGuestId,
+      creatorName: 'Test User',
+      gameName: 'matching',
+      gameConfig: { difficulty: 6, gameType: 'abacus-numeral', turnTimer: 30 },
+      ttlMinutes: 60,
+    })
+    testRoomId = room.id
   })
 
   afterEach(async () => {
     // Clean up
-    await deleteArcadeSession(testUserId)
+    await deleteArcadeSession(testGuestId)
+    if (testRoomId) {
+      await deleteRoom(testRoomId)
+    }
     await db.delete(schema.users).where(eq(schema.users.id, testUserId))
   })
 
@@ -63,11 +79,12 @@ describe('Arcade Session Integration', () => {
     }
 
     const session = await createArcadeSession({
-      userId: testUserId,
+      userId: testGuestId,
       gameName: 'matching',
       gameUrl: '/arcade/matching',
       initialState,
       activePlayers: ['1'],
+      roomId: testRoomId,
     })
 
     expect(session).toBeDefined()
@@ -165,11 +182,12 @@ describe('Arcade Session Integration', () => {
     }
 
     await createArcadeSession({
-      userId: testUserId,
+      userId: testGuestId,
       gameName: 'matching',
       gameUrl: '/arcade/matching',
       initialState: playingState,
       activePlayers: ['1'],
+      roomId: testRoomId,
     })
 
     // First move: flip card 1

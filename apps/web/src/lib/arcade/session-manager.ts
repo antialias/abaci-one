@@ -13,6 +13,7 @@ export interface CreateSessionOptions {
   gameUrl: string
   initialState: unknown
   activePlayers: string[] // Player IDs (UUIDs)
+  roomId: string // Required - sessions must be associated with a room
 }
 
 export interface SessionUpdateResult {
@@ -71,6 +72,7 @@ export async function createArcadeSession(
     gameUrl: options.gameUrl,
     gameState: options.initialState as any,
     activePlayers: options.activePlayers as any,
+    roomId: options.roomId, // Associate session with room
     startedAt: now,
     lastActivityAt: now,
     expiresAt,
@@ -96,8 +98,29 @@ export async function getArcadeSession(guestId: string): Promise<schema.ArcadeSe
     .where(eq(schema.arcadeSessions.userId, userId))
     .limit(1)
 
+  if (!session) return undefined
+
   // Check if session has expired
-  if (session && session.expiresAt < new Date()) {
+  if (session.expiresAt < new Date()) {
+    await deleteArcadeSession(guestId)
+    return undefined
+  }
+
+  // Check if session has a valid room association
+  // Sessions without rooms are orphaned and should be cleaned up
+  if (!session.roomId) {
+    console.log('[Session Manager] Deleting orphaned session without room:', session.userId)
+    await deleteArcadeSession(guestId)
+    return undefined
+  }
+
+  // Verify the room still exists
+  const room = await db.query.arcadeRooms.findFirst({
+    where: eq(schema.arcadeRooms.id, session.roomId),
+  })
+
+  if (!room) {
+    console.log('[Session Manager] Deleting session with non-existent room:', session.roomId)
     await deleteArcadeSession(guestId)
     return undefined
   }

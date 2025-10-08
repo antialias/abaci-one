@@ -47,10 +47,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, gameName, gameUrl, initialState, activePlayers } = body
+    const { userId, gameName, gameUrl, initialState, activePlayers, roomId } = body
 
-    if (!userId || !gameName || !gameUrl || !initialState || !activePlayers) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!userId || !gameName || !gameUrl || !initialState || !activePlayers || !roomId) {
+      return NextResponse.json(
+        {
+          error:
+            'Missing required fields (userId, gameName, gameUrl, initialState, activePlayers, roomId)',
+        },
+        { status: 400 }
+      )
     }
 
     const session = await createArcadeSession({
@@ -59,6 +65,7 @@ export async function POST(request: NextRequest) {
       gameUrl,
       initialState,
       activePlayers,
+      roomId,
     })
 
     return NextResponse.json({

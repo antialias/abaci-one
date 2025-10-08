@@ -104,6 +104,7 @@ describe('session-manager', () => {
         gameUrl: '/arcade/matching',
         initialState: {},
         activePlayers: ['1'],
+        roomId: 'test-room-id',
       })
 
       // Verify user lookup by guestId
@@ -160,6 +161,7 @@ describe('session-manager', () => {
         gameUrl: '/arcade/matching',
         initialState: {},
         activePlayers: ['1'],
+        roomId: 'test-room-id',
       })
 
       // Verify user was created
