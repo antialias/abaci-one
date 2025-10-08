@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { ArcadeGuardedPage } from '@/components/ArcadeGuardedPage'
 import { useRoomData } from '@/hooks/useRoomData'
 import { MemoryPairsGame } from '../matching/components/MemoryPairsGame'
 import { ArcadeMemoryPairsProvider } from '../matching/context/ArcadeMemoryPairsContext'
@@ -46,14 +45,14 @@ export default function RoomPage() {
   }
 
   // Render the appropriate game based on room's gameName
+  // Note: We don't use ArcadeGuardedPage here because room-based games
+  // have their own navigation logic via useRoomData
   switch (roomData.gameName) {
     case 'matching':
       return (
-        <ArcadeGuardedPage>
-          <ArcadeMemoryPairsProvider>
-            <MemoryPairsGame />
-          </ArcadeMemoryPairsProvider>
-        </ArcadeGuardedPage>
+        <ArcadeMemoryPairsProvider>
+          <MemoryPairsGame />
+        </ArcadeMemoryPairsProvider>
       )
 
     // TODO: Add other games (complement-race, memory-quiz, etc.)
