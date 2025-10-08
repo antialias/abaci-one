@@ -8,8 +8,29 @@ import { db, schema } from '@/db'
 import type { Player } from '@/db/schema/players'
 
 /**
- * Get a user's active players
- * These are the players that will participate when the user joins a game
+ * Get all players for a user (regardless of isActive status)
+ * @param viewerId - The guestId from the cookie (same as what getViewerId() returns)
+ */
+export async function getAllPlayers(viewerId: string): Promise<Player[]> {
+  // First get the user record by guestId
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.guestId, viewerId),
+  })
+
+  if (!user) {
+    return []
+  }
+
+  // Now query all players by the actual user.id (no isActive filter)
+  return await db.query.players.findMany({
+    where: eq(schema.players.userId, user.id),
+    orderBy: schema.players.createdAt,
+  })
+}
+
+/**
+ * Get a user's active players (solo mode)
+ * These are the players that will participate when the user joins a solo game
  * @param viewerId - The guestId from the cookie (same as what getViewerId() returns)
  */
 export async function getActivePlayers(viewerId: string): Promise<Player[]> {
@@ -30,7 +51,8 @@ export async function getActivePlayers(viewerId: string): Promise<Player[]> {
 }
 
 /**
- * Get all active players for all members in a room
+ * Get all players for all members in a room
+ * In room mode, ALL players from room members participate (isActive is ignored)
  * Returns a map of userId -> Player[]
  */
 export async function getRoomActivePlayers(roomId: string): Promise<Map<string, Player[]>> {
@@ -39,10 +61,11 @@ export async function getRoomActivePlayers(roomId: string): Promise<Map<string, 
     where: eq(schema.roomMembers.roomId, roomId),
   })
 
-  // Fetch active players for each member
+  // Fetch ALL players for each member (not just isActive ones)
+  // In room mode, the concept is "all players from all members participate"
   const playerMap = new Map<string, Player[]>()
   for (const member of members) {
-    const players = await getActivePlayers(member.userId)
+    const players = await getAllPlayers(member.userId)
     playerMap.set(member.userId, players)
   }
 
