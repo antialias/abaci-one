@@ -196,8 +196,24 @@ export default function RoomDetailPage() {
     }
   }
 
-  const leaveRoom = () => {
-    router.push('/arcade/rooms')
+  const leaveRoom = async () => {
+    try {
+      const response = await fetch(`/api/arcade/rooms/${roomId}/leave`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      // Navigate to arcade home after successfully leaving
+      router.push('/arcade')
+    } catch (err) {
+      console.error('Failed to leave room:', err)
+      alert('Failed to leave room')
+    }
   }
 
   if (loading) {
