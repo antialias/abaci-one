@@ -39,6 +39,8 @@ const initialState: MemoryPairsState = {
   originalConfig: undefined,
   pausedGamePhase: undefined,
   pausedGameState: undefined,
+  // HOVER: Initialize hover state
+  playerHovers: {},
 }
 
 /**
@@ -191,6 +193,17 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
         // Clear paused state
         pausedGamePhase: undefined,
         pausedGameState: undefined,
+      }
+    }
+
+    case 'HOVER_CARD': {
+      // Update player hover state for networked presence
+      return {
+        ...state,
+        playerHovers: {
+          ...state.playerHovers,
+          [move.playerId]: move.data.cardId,
+        },
       }
     }
 
@@ -514,6 +527,22 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     })
   }, [canResumeGame, activePlayers, state.currentPlayer, sendMove])
 
+  const hoverCard = useCallback(
+    (cardId: string | null) => {
+      // HOVER: Send hover state for networked presence
+      // Use current player as the one hovering
+      const playerId = state.currentPlayer || activePlayers[0] || ''
+      if (!playerId) return // No active player to send hover for
+
+      sendMove({
+        type: 'HOVER_CARD',
+        playerId,
+        data: { cardId },
+      })
+    },
+    [state.currentPlayer, activePlayers, sendMove]
+  )
+
   // NO MORE effectiveState merging! Just use session state directly with gameMode added
   const effectiveState = { ...state, gameMode } as MemoryPairsState & { gameMode: GameMode }
 
@@ -536,6 +565,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     setGameType,
     setDifficulty,
     setTurnTimer,
+    hoverCard,
     exitSession,
     gameMode,
     activePlayers,

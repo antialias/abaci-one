@@ -103,6 +103,9 @@ export interface MemoryPairsState {
   isProcessingMove: boolean
   showMismatchFeedback: boolean
   lastMatchedPair: [string, string] | null
+
+  // Hover state for networked presence
+  playerHovers: { [playerId: string]: string | null } // playerId -> cardId (or null if not hovering)
 }
 
 export type MemoryPairsAction =
@@ -143,6 +146,7 @@ export interface MemoryPairsContextValue {
   setGameType: (type: GameType) => void
   setDifficulty: (difficulty: Difficulty) => void
   setTurnTimer: (timer: number) => void
+  hoverCard: (cardId: string | null) => void // Send hover state for networked presence
   goToSetup: () => void
   exitSession: () => void // Exit arcade session (no-op for non-arcade mode)
 }

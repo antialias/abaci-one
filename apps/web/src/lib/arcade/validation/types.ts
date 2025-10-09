@@ -61,6 +61,13 @@ export interface MatchingResumeGameMove extends GameMove {
   data: Record<string, never>
 }
 
+export interface MatchingHoverCardMove extends GameMove {
+  type: 'HOVER_CARD'
+  data: {
+    cardId: string | null // null when mouse leaves card
+  }
+}
+
 export type MatchingGameMove =
   | MatchingFlipCardMove
   | MatchingStartGameMove
@@ -68,6 +75,7 @@ export type MatchingGameMove =
   | MatchingGoToSetupMove
   | MatchingSetConfigMove
   | MatchingResumeGameMove
+  | MatchingHoverCardMove
 
 // Generic game state union
 export type GameState = MemoryPairsState // Add other game states as union later

@@ -44,6 +44,9 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
       case 'RESUME_GAME':
         return this.validateResumeGame(state)
 
+      case 'HOVER_CARD':
+        return this.validateHoverCard(state, move.data.cardId, move.playerId)
+
       default:
         return {
           valid: false,
@@ -479,6 +482,31 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
     }
   }
 
+  /**
+   * Validate hover state update for networked presence
+   *
+   * Hover moves are lightweight and always valid - they just update
+   * which card a player is hovering over for UI feedback to other players.
+   */
+  private validateHoverCard(
+    state: MemoryPairsState,
+    cardId: string | null,
+    playerId: string
+  ): ValidationResult {
+    // Hover is always valid - it's just UI state for networked presence
+    // Update the player's hover state
+    return {
+      valid: true,
+      newState: {
+        ...state,
+        playerHovers: {
+          ...state.playerHovers,
+          [playerId]: cardId,
+        },
+      },
+    }
+  }
+
   isGameComplete(state: MemoryPairsState): boolean {
     return state.gamePhase === 'results' || state.matchedPairs === state.totalPairs
   }
@@ -516,6 +544,8 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
       originalConfig: undefined,
       pausedGamePhase: undefined,
       pausedGameState: undefined,
+      // HOVER: Initialize hover state
+      playerHovers: {},
     }
   }
 }

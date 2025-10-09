@@ -1,13 +1,13 @@
 import { ArcadeGuardedPage } from '@/components/ArcadeGuardedPage'
 import { MemoryPairsGame } from './components/MemoryPairsGame'
-import { ArcadeMemoryPairsProvider } from './context/ArcadeMemoryPairsContext'
+import { RoomMemoryPairsProvider } from './context/RoomMemoryPairsProvider'
 
 export default function MatchingPage() {
   return (
     <ArcadeGuardedPage>
-      <ArcadeMemoryPairsProvider>
+      <RoomMemoryPairsProvider>
         <MemoryPairsGame />
-      </ArcadeMemoryPairsProvider>
+      </RoomMemoryPairsProvider>
     </ArcadeGuardedPage>
   )
 }
