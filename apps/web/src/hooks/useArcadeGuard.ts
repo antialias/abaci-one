@@ -74,10 +74,13 @@ export function useArcadeGuard(options: UseArcadeGuardOptions = {}): UseArcadeGu
       })
 
       // Redirect if we're not already on the active game page (only if enabled)
-      if (enabled && pathname !== data.gameUrl) {
+      const isAlreadyAtTarget = pathname === data.gameUrl
+      if (enabled && !isAlreadyAtTarget) {
         console.log('[ArcadeGuard] Redirecting to active session:', data.gameUrl)
         onRedirect?.(data.gameUrl)
         router.push(data.gameUrl)
+      } else if (isAlreadyAtTarget) {
+        console.log('[ArcadeGuard] Already at target URL, no redirect needed')
       }
     },
 
@@ -127,10 +130,13 @@ export function useArcadeGuard(options: UseArcadeGuardOptions = {}): UseArcadeGu
           })
 
           // Redirect if we're not already on the active game page (only if enabled)
-          if (enabled && pathname !== session.gameUrl) {
+          const isAlreadyAtTarget = pathname === session.gameUrl
+          if (enabled && !isAlreadyAtTarget) {
             console.log('[ArcadeGuard] Redirecting to active session:', session.gameUrl)
             onRedirect?.(session.gameUrl)
             router.push(session.gameUrl)
+          } else if (isAlreadyAtTarget) {
+            console.log('[ArcadeGuard] Already at target URL, no redirect needed')
           }
         } else if (response.status === 404) {
           // No active session

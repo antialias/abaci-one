@@ -71,10 +71,13 @@ export function useArcadeRedirect(options: UseArcadeRedirectOptions = {}): UseAr
       // Determine if we need to redirect
       const isArcadeLobby = currentGame === null || currentGame === undefined
       const isWrongGame = currentGame && currentGame !== data.currentGame
+      const isAlreadyAtTarget = _pathname === data.gameUrl
 
-      if (isArcadeLobby || isWrongGame) {
+      if ((isArcadeLobby || isWrongGame) && !isAlreadyAtTarget) {
         console.log('[ArcadeRedirect] Redirecting to active game:', data.gameUrl)
         router.push(data.gameUrl)
+      } else if (isAlreadyAtTarget) {
+        console.log('[ArcadeRedirect] Already at target URL, no redirect needed')
       }
     },
 
