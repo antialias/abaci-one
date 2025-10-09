@@ -62,11 +62,10 @@ export function PageWithNav({
   const activePlayerList = Array.from(activePlayers)
     .map((id) => players.get(id))
     .filter((p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false) // Filter out remote players
-    .map((p) => ({ id: p.id, name: p.name, emoji: p.emoji }))
 
-  const inactivePlayerList = Array.from(players.values())
-    .filter((p) => !activePlayers.has(p.id) && p.isLocal !== false) // Filter out remote players
-    .map((p) => ({ id: p.id, name: p.name, emoji: p.emoji }))
+  const inactivePlayerList = Array.from(players.values()).filter(
+    (p) => !activePlayers.has(p.id) && p.isLocal !== false
+  ) // Filter out remote players
 
   // Compute game mode from active player count
   const gameMode =
@@ -99,7 +98,13 @@ export function PageWithNav({
         : undefined
 
   // Compute network players (other players in the room, excluding current user)
-  const networkPlayers: Array<{ id: string; emoji?: string; name?: string }> =
+  const networkPlayers: Array<{
+    id: string
+    emoji?: string
+    name?: string
+    color?: string
+    memberName?: string
+  }> =
     isInRoom && roomData
       ? roomData.members
           .filter((member) => member.userId !== viewerId)
@@ -108,7 +113,9 @@ export function PageWithNav({
             return memberPlayerList.map((player) => ({
               id: player.id,
               emoji: player.emoji,
-              name: `${player.name} (${member.displayName})`,
+              name: player.name,
+              color: player.color,
+              memberName: member.displayName,
             }))
           })
       : []

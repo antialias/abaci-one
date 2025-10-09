@@ -50,10 +50,18 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
 
   // Get player number for UI theming (first 4 players get special colors)
   const allPlayers = Array.from(players.values()).sort((a, b) => {
-    const aTime = typeof a.createdAt === 'number' ? a.createdAt :
-                  a.createdAt instanceof Date ? a.createdAt.getTime() : 0
-    const bTime = typeof b.createdAt === 'number' ? b.createdAt :
-                  b.createdAt instanceof Date ? b.createdAt.getTime() : 0
+    const aTime =
+      typeof a.createdAt === 'number'
+        ? a.createdAt
+        : a.createdAt instanceof Date
+          ? a.createdAt.getTime()
+          : 0
+    const bTime =
+      typeof b.createdAt === 'number'
+        ? b.createdAt
+        : b.createdAt instanceof Date
+          ? b.createdAt.getTime()
+          : 0
     return aTime - bTime
   })
   const playerIndex = allPlayers.findIndex((p) => p.id === playerId)
