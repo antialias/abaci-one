@@ -48,8 +48,9 @@ export interface UseArcadeSessionReturn<TState> {
 
   /**
    * Send a game move (applies optimistically and sends to server)
+   * Note: playerId must be provided by caller (not omitted)
    */
-  sendMove: (move: Omit<GameMove, 'playerId' | 'timestamp'>) => void
+  sendMove: (move: Omit<GameMove, 'timestamp'>) => void
 
   /**
    * Exit the arcade session
@@ -149,10 +150,10 @@ export function useArcadeSession<TState>(
       // Apply optimistically
       optimistic.applyOptimisticMove(fullMove)
 
-      // Send to server
-      socketSendMove(userId, fullMove)
+      // Send to server with roomId for room-based games
+      socketSendMove(userId, fullMove, roomId)
     },
-    [userId, optimistic, socketSendMove]
+    [userId, roomId, optimistic, socketSendMove]
   )
 
   const exitSession = useCallback(() => {

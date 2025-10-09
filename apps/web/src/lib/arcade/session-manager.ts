@@ -38,13 +38,53 @@ async function getUserIdFromGuestId(guestId: string): Promise<string | undefined
 }
 
 /**
+ * Get arcade session by room ID (for room-based multiplayer games)
+ * Returns the shared session for all room members
+ * @param roomId - The room ID
+ */
+export async function getArcadeSessionByRoom(
+  roomId: string
+): Promise<schema.ArcadeSession | undefined> {
+  const [session] = await db
+    .select()
+    .from(schema.arcadeSessions)
+    .where(eq(schema.arcadeSessions.roomId, roomId))
+    .limit(1)
+
+  if (!session) return undefined
+
+  // Check if session has expired
+  if (session.expiresAt < new Date()) {
+    // Clean up expired room session
+    await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.roomId, roomId))
+    return undefined
+  }
+
+  return session
+}
+
+/**
  * Create a new arcade session
+ * For room-based games, checks if a session already exists for the room
  */
 export async function createArcadeSession(
   options: CreateSessionOptions
 ): Promise<schema.ArcadeSession> {
   const now = new Date()
   const expiresAt = new Date(now.getTime() + TTL_HOURS * 60 * 60 * 1000)
+
+  // For room-based games, check if session already exists for this room
+  if (options.roomId) {
+    const existingRoomSession = await getArcadeSessionByRoom(options.roomId)
+    if (existingRoomSession) {
+      console.log('[Session Manager] Room session already exists, returning existing:', {
+        roomId: options.roomId,
+        sessionUserId: existingRoomSession.userId,
+        version: existingRoomSession.version,
+      })
+      return existingRoomSession
+    }
+  }
 
   // Find or create user by guest ID
   let user = await db.query.users.findFirst({
@@ -79,6 +119,12 @@ export async function createArcadeSession(
     isActive: true,
     version: 1,
   }
+
+  console.log('[Session Manager] Creating new session:', {
+    userId: user.id,
+    roomId: options.roomId,
+    gameName: options.gameName,
+  })
 
   const [session] = await db.insert(schema.arcadeSessions).values(newSession).returning()
   return session
@@ -130,9 +176,18 @@ export async function getArcadeSession(guestId: string): Promise<schema.ArcadeSe
 
 /**
  * Apply a game move to the session (with validation)
+ * @param userId - The guest ID from the cookie
+ * @param move - The game move to apply
+ * @param roomId - Optional room ID for room-based games (enables shared session)
  */
-export async function applyGameMove(userId: string, move: GameMove): Promise<SessionUpdateResult> {
-  const session = await getArcadeSession(userId)
+export async function applyGameMove(
+  userId: string,
+  move: GameMove,
+  roomId?: string
+): Promise<SessionUpdateResult> {
+  // For room-based games, look up the shared room session
+  // For solo games, look up the user's personal session
+  const session = roomId ? await getArcadeSessionByRoom(roomId) : await getArcadeSession(userId)
 
   if (!session) {
     return {

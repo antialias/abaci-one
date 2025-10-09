@@ -6,6 +6,7 @@ import {
   createArcadeSession,
   deleteArcadeSession,
   getArcadeSession,
+  getArcadeSessionByRoom,
   updateSessionActivity,
 } from './src/lib/arcade/session-manager'
 import { createRoom, getRoomById } from './src/lib/arcade/room-manager'
@@ -56,9 +57,19 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         }
 
         // Send current session state if exists
+        // For room-based games, look up shared room session
         try {
-          const session = await getArcadeSession(userId)
+          const session = roomId
+            ? await getArcadeSessionByRoom(roomId)
+            : await getArcadeSession(userId)
+
           if (session) {
+            console.log('[join-arcade-session] Found session:', {
+              userId,
+              roomId,
+              version: session.version,
+              sessionUserId: session.userId,
+            })
             socket.emit('session-state', {
               gameState: session.gameState,
               currentGame: session.currentGame,
@@ -67,6 +78,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               version: session.version,
             })
           } else {
+            console.log('[join-arcade-session] No active session found for:', {
+              userId,
+              roomId,
+            })
             socket.emit('no-active-session')
           }
         } catch (error) {
@@ -77,19 +92,23 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     )
 
     // Handle game moves
-    socket.on('game-move', async (data: { userId: string; move: GameMove }) => {
+    socket.on('game-move', async (data: { userId: string; move: GameMove; roomId?: string }) => {
       console.log('🎮 Game move received:', {
         userId: data.userId,
         moveType: data.move.type,
         playerId: data.move.playerId,
         timestamp: data.move.timestamp,
+        roomId: data.roomId,
         fullMove: JSON.stringify(data.move, null, 2),
       })
 
       try {
         // Special handling for START_GAME - create session if it doesn't exist
         if (data.move.type === 'START_GAME') {
-          const existingSession = await getArcadeSession(data.userId)
+          // For room-based games, check if room session exists
+          const existingSession = data.roomId
+            ? await getArcadeSessionByRoom(data.roomId)
+            : await getArcadeSession(data.userId)
 
           if (!existingSession) {
             console.log('🎯 Creating new session for START_GAME')
@@ -174,7 +193,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           }
         }
 
-        const result = await applyGameMove(data.userId, data.move)
+        // Apply game move - use roomId for room-based games to access shared session
+        const result = await applyGameMove(data.userId, data.move, data.roomId)
 
         if (result.success && result.session) {
           const moveAcceptedData = {

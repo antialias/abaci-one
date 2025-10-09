@@ -21,7 +21,7 @@ export interface UseArcadeSocketReturn {
   socket: Socket | null
   connected: boolean
   joinSession: (userId: string, roomId?: string) => void
-  sendMove: (userId: string, move: GameMove) => void
+  sendMove: (userId: string, move: GameMove, roomId?: string) => void
   exitSession: (userId: string) => void
   pingSession: (userId: string) => void
 }
@@ -119,12 +119,12 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
   )
 
   const sendMove = useCallback(
-    (userId: string, move: GameMove) => {
+    (userId: string, move: GameMove, roomId?: string) => {
       if (!socket) {
         console.warn('[ArcadeSocket] Cannot send move - socket not connected')
         return
       }
-      const payload = { userId, move }
+      const payload = { userId, move, roomId }
       console.log(
         '[ArcadeSocket] Sending game-move event with payload:',
         JSON.stringify(payload, null, 2)
