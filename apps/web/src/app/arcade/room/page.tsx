@@ -2,7 +2,7 @@
 
 import { useRoomData } from '@/hooks/useRoomData'
 import { MemoryPairsGame } from '../matching/components/MemoryPairsGame'
-import { ArcadeMemoryPairsProvider } from '../matching/context/ArcadeMemoryPairsContext'
+import { RoomMemoryPairsProvider } from '../matching/context/RoomMemoryPairsProvider'
 
 /**
  * /arcade/room - Renders the game for the user's current room
@@ -68,9 +68,9 @@ export default function RoomPage() {
   switch (roomData.gameName) {
     case 'matching':
       return (
-        <ArcadeMemoryPairsProvider>
+        <RoomMemoryPairsProvider>
           <MemoryPairsGame />
-        </ArcadeMemoryPairsProvider>
+        </RoomMemoryPairsProvider>
       )
 
     // TODO: Add other games (complement-race, memory-quiz, etc.)
