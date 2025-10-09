@@ -98,25 +98,35 @@ function HoverAvatar({
   useEffect(() => {
     if (cardElement) {
       const rect = cardElement.getBoundingClientRect()
+      // Calculate the actual position we want the avatar centered at (top-right of card)
+      // Since we're using translate(-50%, -50%), we need the center point
+      const avatarSize = 48
+      const avatarCenterX = rect.right - 12 // 12px from right edge
+      const avatarCenterY = rect.top - 12 // 12px from top edge
+
       setPosition({
-        x: rect.right - 12, // Position at top-right of card
-        y: rect.top - 12,
+        x: avatarCenterX,
+        y: avatarCenterY,
       })
     }
   }, [cardElement])
 
   // Smooth spring animation for position changes
-  // Only animate if we have a position (prevents fly-in from 0,0)
+  // Use 'from' to set initial position when avatar first appears
   const springProps = useSpring({
-    x: position?.x ?? 0,
-    y: position?.y ?? 0,
-    opacity: position ? 1 : 0, // Fade in when position is set
+    from: position
+      ? { x: position.x, y: position.y, opacity: 0 }
+      : { x: 0, y: 0, opacity: 0 },
+    to: {
+      x: position?.x ?? 0,
+      y: position?.y ?? 0,
+      opacity: position ? 1 : 0,
+    },
     config: {
       tension: 280,
       friction: 60,
       mass: 1,
     },
-    immediate: !position, // No animation on first render
   })
 
   // Don't render until we have a position
@@ -126,11 +136,14 @@ function HoverAvatar({
     <animated.div
       style={{
         position: 'fixed',
-        left: springProps.x,
-        top: springProps.y,
-        opacity: springProps.opacity, // Fade in smoothly
+        // Don't use translate, just position directly at the calculated point
+        left: springProps.x.to((x) => `${x}px`),
+        top: springProps.y.to((y) => `${y}px`),
+        opacity: springProps.opacity,
         width: '48px',
         height: '48px',
+        marginLeft: '-24px', // Center horizontally (half of width)
+        marginTop: '-24px', // Center vertically (half of height)
         borderRadius: '50%',
         background: playerInfo.color || 'linear-gradient(135deg, #667eea, #764ba2)',
         display: 'flex',
@@ -143,7 +156,6 @@ function HoverAvatar({
         border: '3px solid white',
         zIndex: 1000,
         pointerEvents: 'none',
-        transform: 'translate(-50%, -50%)',
         filter: 'drop-shadow(0 0 8px rgba(102, 126, 234, 0.8))',
       }}
       className={css({
