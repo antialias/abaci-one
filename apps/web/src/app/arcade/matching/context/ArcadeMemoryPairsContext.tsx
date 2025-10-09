@@ -150,27 +150,62 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
 
   const canFlipCard = useCallback(
     (cardId: string): boolean => {
-      if (!isGameActive || state.isProcessingMove) return false
+      console.log('[canFlipCard] Checking card:', {
+        cardId,
+        isGameActive,
+        isProcessingMove: state.isProcessingMove,
+        currentPlayer: state.currentPlayer,
+        hasRoomData: !!roomData,
+        flippedCardsCount: state.flippedCards.length,
+      })
+
+      if (!isGameActive || state.isProcessingMove) {
+        console.log('[canFlipCard] Blocked: game not active or processing')
+        return false
+      }
 
       const card = state.gameCards.find((c) => c.id === cardId)
-      if (!card || card.matched) return false
+      if (!card || card.matched) {
+        console.log('[canFlipCard] Blocked: card not found or already matched')
+        return false
+      }
 
       // Can't flip if already flipped
-      if (state.flippedCards.some((c) => c.id === cardId)) return false
+      if (state.flippedCards.some((c) => c.id === cardId)) {
+        console.log('[canFlipCard] Blocked: card already flipped')
+        return false
+      }
 
       // Can't flip more than 2 cards
-      if (state.flippedCards.length >= 2) return false
+      if (state.flippedCards.length >= 2) {
+        console.log('[canFlipCard] Blocked: 2 cards already flipped')
+        return false
+      }
 
       // Authorization check: Only allow flipping if it's your player's turn
       if (roomData && state.currentPlayer) {
         const currentPlayerData = players.get(state.currentPlayer)
-        // If current player is not local (isLocal === false), prevent flipping
+        console.log('[canFlipCard] Authorization check:', {
+          currentPlayerId: state.currentPlayer,
+          currentPlayerFound: !!currentPlayerData,
+          currentPlayerIsLocal: currentPlayerData?.isLocal,
+        })
+
+        // Block if current player is explicitly marked as remote (isLocal === false)
         if (currentPlayerData && currentPlayerData.isLocal === false) {
-          console.log('[Client] Cannot flip - not your turn (current player is remote)')
+          console.log('[canFlipCard] BLOCKED: Current player is remote (not your turn)')
           return false
+        }
+
+        // If player data not found in map, this might be an issue - allow for now but warn
+        if (!currentPlayerData) {
+          console.warn(
+            '[canFlipCard] WARNING: Current player not found in players map, allowing move'
+          )
         }
       }
 
+      console.log('[canFlipCard] ALLOWED: All checks passed')
       return true
     },
     [
