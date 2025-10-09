@@ -161,8 +161,19 @@ export async function applyGameMove(userId: string, move: GameMove): Promise<Ses
 
   // Fetch player ownership for authorization checks (room-based games)
   let playerOwnership: Record<string, string> | undefined
+  let internalUserId: string | undefined
   if (session.roomId) {
     try {
+      // Convert guestId to internal userId for ownership comparison
+      internalUserId = await getUserIdFromGuestId(userId)
+      if (!internalUserId) {
+        console.error('[SessionManager] Failed to convert guestId to userId:', userId)
+        return {
+          success: false,
+          error: 'User not found',
+        }
+      }
+
       const players = await db.query.players.findMany({
         columns: {
           id: true,
@@ -171,14 +182,15 @@ export async function applyGameMove(userId: string, move: GameMove): Promise<Ses
       })
       playerOwnership = Object.fromEntries(players.map((p) => [p.id, p.userId]))
       console.log('[SessionManager] Player ownership map:', playerOwnership)
+      console.log('[SessionManager] Internal userId for authorization:', internalUserId)
     } catch (error) {
       console.error('[SessionManager] Failed to fetch player ownership:', error)
     }
   }
 
-  // Validate the move with authorization context
+  // Validate the move with authorization context (use internal userId, not guestId)
   const validationResult = validator.validateMove(session.gameState, move, {
-    userId,
+    userId: internalUserId || userId, // Use internal userId for room-based games
     playerOwnership,
   })
 
