@@ -573,3 +573,6 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
 
   return <MemoryPairsContext.Provider value={contextValue}>{children}</MemoryPairsContext.Provider>
 }
+
+// Export the hook for this provider
+export { useMemoryPairs } from './MemoryPairsContext'

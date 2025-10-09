@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
-import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
+import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { GameCard } from './GameCard'
 
@@ -81,7 +81,7 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
 }
 
 export function MemoryGrid() {
-  const { state, flipCard } = useArcadeMemoryPairs()
+  const { state, flipCard } = useMemoryPairs()
 
   // Hooks must be called before early return
   const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])

@@ -3,12 +3,12 @@
 import { css } from '../../../../../styled-system/css'
 import { useGameMode } from '../../../../contexts/GameModeContext'
 import { pluralizeWord } from '../../../../utils/pluralization'
-import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
+import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { MemoryGrid } from './MemoryGrid'
 import { PlayerStatusBar } from './PlayerStatusBar'
 
 export function GamePhase() {
-  const { state, resetGame: _resetGame, activePlayers } = useArcadeMemoryPairs()
+  const { state, resetGame: _resetGame, activePlayers } = useMemoryPairs()
   const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
 
   // Convert Map to array and create mapping from numeric index to player

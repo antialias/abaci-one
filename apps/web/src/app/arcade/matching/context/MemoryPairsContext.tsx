@@ -251,7 +251,7 @@ function memoryPairsReducer(state: MemoryPairsState, action: MemoryPairsAction):
 }
 
 // Create context
-const MemoryPairsContext = createContext<MemoryPairsContextValue | null>(null)
+export const MemoryPairsContext = createContext<MemoryPairsContextValue | null>(null)
 
 // Provider component
 export function MemoryPairsProvider({ children }: { children: ReactNode }) {

@@ -3,7 +3,7 @@
 import { css } from '../../../../../styled-system/css'
 import { useGameMode } from '../../../../contexts/GameModeContext'
 import { gamePlurals } from '../../../../utils/pluralization'
-import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
+import { useMemoryPairs } from '../context/MemoryPairsContext'
 
 interface PlayerStatusBarProps {
   className?: string
@@ -11,7 +11,7 @@ interface PlayerStatusBarProps {
 
 export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
   const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
-  const { state } = useArcadeMemoryPairs()
+  const { state } = useMemoryPairs()
 
   // Get active players array
   const activePlayersData = Array.from(activePlayerIds)

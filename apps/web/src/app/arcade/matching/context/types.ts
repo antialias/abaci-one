@@ -59,6 +59,7 @@ export interface MemoryPairsState {
   moves: number
   scores: PlayerScore
   activePlayers: Player[] // Track active player IDs
+  playerMetadata?: { [playerId: string]: any } // Player metadata for cross-user visibility
   consecutiveMatches: { [playerId: string]: number } // Track consecutive matches per player
 
   // Timing
@@ -72,6 +73,24 @@ export interface MemoryPairsState {
   isProcessingMove: boolean
   showMismatchFeedback: boolean
   lastMatchedPair: [string, string] | null
+
+  // PAUSE/RESUME: Paused game state
+  originalConfig?: { gameType: GameType; difficulty: Difficulty; turnTimer: number }
+  pausedGamePhase?: GamePhase
+  pausedGameState?: {
+    gameCards: GameCard[]
+    currentPlayer: Player
+    matchedPairs: number
+    moves: number
+    scores: PlayerScore
+    activePlayers: Player[]
+    playerMetadata: { [playerId: string]: any }
+    consecutiveMatches: { [playerId: string]: number }
+    gameStartTime: number | null
+  }
+
+  // HOVER: Networked hover state
+  playerHovers?: { [playerId: string]: string | null }
 }
 
 export type MemoryPairsAction =
@@ -102,12 +121,20 @@ export interface MemoryPairsContextValue {
   gameMode: GameMode // Derived from global context
   activePlayers: Player[] // Active player IDs from arena
 
+  // PAUSE/RESUME: Computed pause/resume values
+  hasConfigChanged?: boolean
+  canResumeGame?: boolean
+
   // Actions
   startGame: () => void
   flipCard: (cardId: string) => void
   resetGame: () => void
   setGameType: (type: GameType) => void
   setDifficulty: (difficulty: Difficulty) => void
+  setTurnTimer?: (timer: number) => void
+  goToSetup?: () => void
+  resumeGame?: () => void
+  hoverCard?: (cardId: string | null) => void
   exitSession: () => void
 }
 

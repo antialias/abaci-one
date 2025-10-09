@@ -7,14 +7,14 @@ import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
 import { css } from '../../../../../styled-system/css'
 import { StandardGameLayout } from '../../../../components/StandardGameLayout'
 import { useFullscreen } from '../../../../contexts/FullscreenContext'
-import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
+import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { GamePhase } from './GamePhase'
 import { ResultsPhase } from './ResultsPhase'
 import { SetupPhase } from './SetupPhase'
 
 export function MemoryPairsGame() {
   const router = useRouter()
-  const { state, exitSession, resetGame } = useArcadeMemoryPairs()
+  const { state, exitSession, resetGame } = useMemoryPairs()
   const { setFullscreenElement } = useFullscreen()
   const { canModifyPlayers } = useArcadeRedirect({ currentGame: 'matching' })
   const gameRef = useRef<HTMLDivElement>(null)

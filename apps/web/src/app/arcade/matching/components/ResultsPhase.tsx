@@ -3,12 +3,12 @@
 import { useRouter } from 'next/navigation'
 import { css } from '../../../../../styled-system/css'
 import { useGameMode } from '../../../../contexts/GameModeContext'
-import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
+import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { formatGameTime, getMultiplayerWinner, getPerformanceAnalysis } from '../utils/gameScoring'
 
 export function ResultsPhase() {
   const router = useRouter()
-  const { state, resetGame, activePlayers, gameMode } = useArcadeMemoryPairs()
+  const { state, resetGame, activePlayers, gameMode, exitSession } = useMemoryPairs()
   const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
 
   // Get active player data array

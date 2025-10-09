@@ -1,6 +1,16 @@
 {
   "permissions": {
-    "allow": ["Bash(npm test:*)", "Read(//Users/antialias/projects/**)"],
+    "allow": [
+      "Bash(npm test:*)",
+      "Read(//Users/antialias/projects/**)",
+      "Bash(npm run lint:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(npm run format:*)"
+    ],
     "deny": [],
     "ask": []
   }
