@@ -87,10 +87,12 @@ function HoverAvatar({
   playerId,
   playerInfo,
   cardElement,
+  isPlayersTurn,
 }: {
   playerId: string
   playerInfo: { emoji: string; name: string; color?: string }
   cardElement: HTMLElement | null
+  isPlayersTurn: boolean
 }) {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
   const isFirstRender = useRef(true)
@@ -99,9 +101,9 @@ function HoverAvatar({
   useEffect(() => {
     if (cardElement) {
       const rect = cardElement.getBoundingClientRect()
-      // Calculate the actual position we want the avatar centered at (top-right of card)
-      const avatarCenterX = rect.right - 12 // 12px from right edge
-      const avatarCenterY = rect.top - 12 // 12px from top edge
+      // Calculate the center of the card for avatar positioning
+      const avatarCenterX = rect.left + rect.width / 2
+      const avatarCenterY = rect.top + rect.height / 2
 
       setPosition({
         x: avatarCenterX,
@@ -114,7 +116,7 @@ function HoverAvatar({
   const springProps = useSpring({
     x: position?.x ?? 0,
     y: position?.y ?? 0,
-    opacity: position ? 1 : 0,
+    opacity: position && isPlayersTurn ? 1 : 0,
     config: {
       tension: 280,
       friction: 60,
@@ -141,23 +143,23 @@ function HoverAvatar({
         left: springProps.x.to((x) => `${x}px`),
         top: springProps.y.to((y) => `${y}px`),
         opacity: springProps.opacity,
-        width: '48px',
-        height: '48px',
-        marginLeft: '-24px', // Center horizontally (half of width)
-        marginTop: '-24px', // Center vertically (half of height)
+        width: '80px',
+        height: '80px',
+        marginLeft: '-40px', // Center horizontally (half of width)
+        marginTop: '-40px', // Center vertically (half of height)
         borderRadius: '50%',
         background: playerInfo.color || 'linear-gradient(135deg, #667eea, #764ba2)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '28px',
+        fontSize: '48px',
         // 3D elevation effect
         boxShadow:
-          '0 8px 20px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.3), 0 0 30px rgba(102, 126, 234, 0.7)',
-        border: '3px solid white',
+          '0 12px 30px rgba(0,0,0,0.5), 0 6px 12px rgba(0,0,0,0.4), 0 0 40px rgba(102, 126, 234, 0.8)',
+        border: '4px solid white',
         zIndex: 1000,
         pointerEvents: 'none',
-        filter: 'drop-shadow(0 0 8px rgba(102, 126, 234, 0.8))',
+        filter: 'drop-shadow(0 0 12px rgba(102, 126, 234, 0.9))',
       }}
       className={css({
         animation: 'hoverFloat 2s ease-in-out infinite',
@@ -380,9 +382,9 @@ export function MemoryGrid() {
       )}
 
       {/* Animated Hover Avatars - Rendered as fixed positioned elements that smoothly transition */}
+      {/* Render one avatar per remote player - key by playerId to keep component alive */}
       {state.playerHovers &&
         Object.entries(state.playerHovers)
-          .filter(([_, cardId]) => cardId !== null) // Only show if hovering a card
           .filter(([playerId]) => {
             // Don't show your own hover avatar (only show remote players)
             const player = playerMap.get(playerId)
@@ -390,16 +392,21 @@ export function MemoryGrid() {
           })
           .map(([playerId, cardId]) => {
             const playerInfo = getPlayerHoverInfo(playerId)
+            // Get card element if player is hovering (cardId might be null)
             const cardElement = cardId ? cardRefs.current.get(cardId) : null
+            // Check if it's this player's turn
+            const isPlayersTurn = state.currentPlayer === playerId
 
-            if (!playerInfo || !cardElement) return null
+            if (!playerInfo) return null
 
+            // Render avatar even if no cardElement (it will handle hiding itself)
             return (
               <HoverAvatar
-                key={playerId}
+                key={playerId} // Key by playerId keeps component alive across card changes!
                 playerId={playerId}
                 playerInfo={playerInfo}
                 cardElement={cardElement}
+                isPlayersTurn={isPlayersTurn}
               />
             )
           })}
@@ -417,10 +424,10 @@ const gridAnimations = `
 
 @keyframes hoverFloat {
   0%, 100% {
-    transform: translate(-50%, -50%) translateY(0px);
+    transform: translateY(0px);
   }
   50% {
-    transform: translate(-50%, -50%) translateY(-6px);
+    transform: translateY(-6px);
   }
 }
 `
