@@ -3,8 +3,6 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
-import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
-import { useRoomData } from '@/hooks/useRoomData'
 import { css } from '../../../../../styled-system/css'
 import { StandardGameLayout } from '../../../../components/StandardGameLayout'
 import { useFullscreen } from '../../../../contexts/FullscreenContext'
@@ -15,13 +13,8 @@ import { SetupPhase } from './SetupPhase'
 
 export function MemoryPairsGame() {
   const router = useRouter()
-  const { state, exitSession, resetGame, goToSetup } = useMemoryPairs()
+  const { state, exitSession, resetGame, goToSetup, canModifyPlayers } = useMemoryPairs()
   const { setFullscreenElement } = useFullscreen()
-  const { isInRoom } = useRoomData()
-  const arcadeRedirect = useArcadeRedirect({ currentGame: 'matching' })
-  // In rooms, always show buttons (canModifyPlayers = false shows buttons)
-  // In arcade sessions, use normal arcade redirect logic
-  const canModifyPlayers = isInRoom ? false : arcadeRedirect.canModifyPlayers
   const gameRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { type ReactNode, useCallback, useEffect, useMemo } from 'react'
+import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useRoomData } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
@@ -217,6 +218,13 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useViewerId()
   const { roomData } = useRoomData() // Fetch room data for room-based play
   const { activePlayerCount, activePlayers: activePlayerIds, players } = useGameMode()
+
+  // Determine if we're in a room vs arcade session
+  const isInRoom = !!roomData?.id
+
+  // For arcade sessions (not in room), use arcade redirect logic
+  // For rooms, we ignore this and always show buttons
+  const arcadeRedirect = useArcadeRedirect({ currentGame: 'matching' })
 
   // Get active player IDs directly as strings (UUIDs)
   const activePlayers = Array.from(activePlayerIds)
@@ -557,6 +565,9 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     currentGameStatistics,
     hasConfigChanged,
     canResumeGame,
+    // Room-based: always show buttons (false = show buttons)
+    // Arcade session: use arcade redirect logic to determine button visibility
+    canModifyPlayers: isInRoom ? false : arcadeRedirect.canModifyPlayers,
     startGame,
     resumeGame,
     flipCard,
