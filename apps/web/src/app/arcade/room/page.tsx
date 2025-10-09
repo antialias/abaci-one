@@ -1,7 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 import { useRoomData } from '@/hooks/useRoomData'
 import { MemoryPairsGame } from '../matching/components/MemoryPairsGame'
 import { ArcadeMemoryPairsProvider } from '../matching/context/ArcadeMemoryPairsContext'
@@ -9,17 +7,13 @@ import { ArcadeMemoryPairsProvider } from '../matching/context/ArcadeMemoryPairs
 /**
  * /arcade/room - Renders the game for the user's current room
  * Since users can only be in one room at a time, this is a simple singular route
+ *
+ * Note: We don't redirect to /arcade if no room exists because:
+ * - It would conflict with arcade session redirects and create loops
+ * - useArcadeRedirect on /arcade page handles redirecting to active sessions
  */
 export default function RoomPage() {
-  const router = useRouter()
   const { roomData, isLoading } = useRoomData()
-
-  // Redirect to arcade if no room
-  useEffect(() => {
-    if (!isLoading && !roomData) {
-      router.push('/arcade')
-    }
-  }, [isLoading, roomData, router])
 
   // Show loading state
   if (isLoading) {
@@ -39,9 +33,33 @@ export default function RoomPage() {
     )
   }
 
-  // Show nothing while redirecting
+  // Show error if no room (instead of redirecting)
   if (!roomData) {
-    return null
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          fontSize: '18px',
+          color: '#666',
+          gap: '1rem',
+        }}
+      >
+        <div>No active room found</div>
+        <a
+          href="/arcade"
+          style={{
+            color: '#3b82f6',
+            textDecoration: 'underline',
+          }}
+        >
+          Go to Champion Arena
+        </a>
+      </div>
+    )
   }
 
   // Render the appropriate game based on room's gameName
