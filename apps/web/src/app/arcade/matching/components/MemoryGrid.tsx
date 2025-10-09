@@ -3,7 +3,7 @@
 import { useSpring, animated } from '@react-spring/web'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
-import { useGameMode } from '../../../../contexts/GameModeContext'
+import { useViewerId } from '@/hooks/useViewerId'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { GameCard } from './GameCard'
@@ -173,7 +173,7 @@ function HoverAvatar({
 
 export function MemoryGrid() {
   const { state, flipCard, hoverCard, gameMode } = useMemoryPairs()
-  const { players: playerMap } = useGameMode()
+  const { data: viewerId } = useViewerId()
 
   // Track card element refs for positioning hover avatars
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map())
@@ -182,9 +182,11 @@ export function MemoryGrid() {
   const isMyTurn = useMemo(() => {
     if (gameMode === 'single') return true // Always your turn in single player
 
-    const currentPlayerData = playerMap.get(state.currentPlayer)
-    return currentPlayerData?.isLocal === true
-  }, [state.currentPlayer, playerMap, gameMode])
+    // In local games, all players belong to current user, so always their turn
+    // In room games, check if current player belongs to this user
+    const currentPlayerMetadata = state.playerMetadata?.[state.currentPlayer]
+    return currentPlayerMetadata?.userId === viewerId
+  }, [state.currentPlayer, state.playerMetadata, viewerId, gameMode])
 
   // Hooks must be called before early return
   const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])
@@ -200,16 +202,8 @@ export function MemoryGrid() {
 
   // Get player metadata for hover avatars
   const getPlayerHoverInfo = (playerId: string) => {
-    // Check playerMetadata first (from room members)
-    if (state.playerMetadata && state.playerMetadata[playerId]) {
-      return {
-        emoji: state.playerMetadata[playerId].emoji,
-        name: state.playerMetadata[playerId].name,
-        color: state.playerMetadata[playerId].color,
-      }
-    }
-    // Fall back to local player map
-    const player = playerMap.get(playerId)
+    // Get player info from game state metadata
+    const player = state.playerMetadata?.[playerId]
     return player
       ? {
           emoji: player.emoji,
@@ -387,8 +381,10 @@ export function MemoryGrid() {
         Object.entries(state.playerHovers)
           .filter(([playerId]) => {
             // Don't show your own hover avatar (only show remote players)
-            const player = playerMap.get(playerId)
-            return player?.isLocal !== true
+            // In local games, all players belong to this user
+            // In room games, check if player belongs to different user
+            const player = state.playerMetadata?.[playerId]
+            return player?.userId !== viewerId
           })
           .map(([playerId, cardId]) => {
             const playerInfo = getPlayerHoverInfo(playerId)

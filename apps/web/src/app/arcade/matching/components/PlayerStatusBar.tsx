@@ -1,7 +1,6 @@
 'use client'
 
 import { css } from '../../../../../styled-system/css'
-import { useGameMode } from '../../../../contexts/GameModeContext'
 import { gamePlurals } from '../../../../utils/pluralization'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 
@@ -10,12 +9,12 @@ interface PlayerStatusBarProps {
 }
 
 export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
-  const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
   const { state } = useMemoryPairs()
 
-  // Get active players array
-  const activePlayersData = Array.from(activePlayerIds)
-    .map((id) => playerMap.get(id))
+  // Get active players from game state (not GameModeContext)
+  // This ensures we only show players actually in this game
+  const activePlayersData = state.activePlayers
+    .map((id) => state.playerMetadata?.[id])
     .filter((p): p is NonNullable<typeof p> => p !== undefined)
 
   // Map active players to display data with scores
@@ -26,7 +25,8 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
     displayEmoji: player.emoji,
     score: state.scores[player.id] || 0,
     consecutiveMatches: state.consecutiveMatches?.[player.id] || 0,
-    isLocalPlayer: player.isLocal !== false, // Local if not explicitly marked as remote
+    // In local games all players are local, in room games check metadata
+    isLocalPlayer: state.gameMode === 'single' || state.gameMode === 'multiplayer',
   }))
 
   // Check if current player is local (your turn) or remote (waiting)
