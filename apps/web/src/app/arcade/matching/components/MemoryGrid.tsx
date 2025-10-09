@@ -93,14 +93,13 @@ function HoverAvatar({
   cardElement: HTMLElement | null
 }) {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
+  const isFirstRender = useRef(true)
 
   // Update position when card element changes
   useEffect(() => {
     if (cardElement) {
       const rect = cardElement.getBoundingClientRect()
       // Calculate the actual position we want the avatar centered at (top-right of card)
-      // Since we're using translate(-50%, -50%), we need the center point
-      const avatarSize = 48
       const avatarCenterX = rect.right - 12 // 12px from right edge
       const avatarCenterY = rect.top - 12 // 12px from top edge
 
@@ -112,22 +111,24 @@ function HoverAvatar({
   }, [cardElement])
 
   // Smooth spring animation for position changes
-  // Use 'from' to set initial position when avatar first appears
   const springProps = useSpring({
-    from: position
-      ? { x: position.x, y: position.y, opacity: 0 }
-      : { x: 0, y: 0, opacity: 0 },
-    to: {
-      x: position?.x ?? 0,
-      y: position?.y ?? 0,
-      opacity: position ? 1 : 0,
-    },
+    x: position?.x ?? 0,
+    y: position?.y ?? 0,
+    opacity: position ? 1 : 0,
     config: {
       tension: 280,
       friction: 60,
       mass: 1,
     },
+    immediate: isFirstRender.current, // Skip animation on first render only
   })
+
+  // Clear first render flag after initial render
+  useEffect(() => {
+    if (position && isFirstRender.current) {
+      isFirstRender.current = false
+    }
+  }, [position])
 
   // Don't render until we have a position
   if (!position) return null
