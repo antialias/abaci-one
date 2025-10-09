@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { css } from '../../../../../styled-system/css'
 import { useGameMode } from '../../../../contexts/GameModeContext'
-import { useArcadeMemoryPairs } from '../context/ArcadeMemoryPairsContext'
+import { useMemoryPairs } from '../context/MemoryPairsContext'
 
 // Add bounce animation for the start button
 const bounceAnimation = `
@@ -32,14 +33,87 @@ export function SetupPhase() {
     state,
     setGameType,
     setDifficulty,
+    setTurnTimer,
     startGame,
+    resumeGame,
+    canResumeGame,
+    hasConfigChanged,
     activePlayers: _activePlayers,
-  } = useArcadeMemoryPairs()
+  } = useMemoryPairs()
 
   const { activePlayerCount, gameMode: _globalGameMode } = useGameMode()
 
-  const handleStartGame = () => {
-    startGame()
+  // PAUSE/RESUME: Warning dialog state
+  const [showConfigWarning, setShowConfigWarning] = useState(false)
+  const [hasSeenWarning, setHasSeenWarning] = useState(false)
+  const [pendingConfigChange, setPendingConfigChange] = useState<{
+    type: 'gameType' | 'difficulty' | 'turnTimer'
+    value: any
+  } | null>(null)
+
+  // Check if we should show warning when changing config
+  const shouldShowWarning = state.pausedGamePhase && !hasSeenWarning && !hasConfigChanged
+
+  // Config change handlers that check for paused game
+  const handleSetGameType = (value: typeof state.gameType) => {
+    if (shouldShowWarning) {
+      setPendingConfigChange({ type: 'gameType', value })
+      setShowConfigWarning(true)
+    } else {
+      setGameType(value)
+    }
+  }
+
+  const handleSetDifficulty = (value: typeof state.difficulty) => {
+    if (shouldShowWarning) {
+      setPendingConfigChange({ type: 'difficulty', value })
+      setShowConfigWarning(true)
+    } else {
+      setDifficulty(value)
+    }
+  }
+
+  const handleSetTurnTimer = (value: typeof state.turnTimer) => {
+    if (shouldShowWarning) {
+      setPendingConfigChange({ type: 'turnTimer', value })
+      setShowConfigWarning(true)
+    } else {
+      setTurnTimer(value)
+    }
+  }
+
+  // Apply pending config change after warning
+  const applyPendingChange = () => {
+    if (pendingConfigChange) {
+      switch (pendingConfigChange.type) {
+        case 'gameType':
+          setGameType(pendingConfigChange.value)
+          break
+        case 'difficulty':
+          setDifficulty(pendingConfigChange.value)
+          break
+        case 'turnTimer':
+          setTurnTimer(pendingConfigChange.value)
+          break
+      }
+      setHasSeenWarning(true)
+      setPendingConfigChange(null)
+      setShowConfigWarning(false)
+    }
+  }
+
+  // Cancel config change
+  const cancelConfigChange = () => {
+    setPendingConfigChange(null)
+    setShowConfigWarning(false)
+  }
+
+  const handleStartOrResumeGame = () => {
+    if (canResumeGame) {
+      resumeGame()
+    } else {
+      startGame()
+    }
   }
 
   const getButtonStyles = (
@@ -150,6 +224,94 @@ export function SetupPhase() {
           minHeight: 0, // Allow shrinking
         })}
       >
+        {/* PAUSE/RESUME: Config change warning */}
+        {showConfigWarning && (
+          <div
+            className={css({
+              p: '4',
+              background:
+                'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15))',
+              border: '2px solid',
+              borderColor: 'yellow.400',
+              rounded: 'xl',
+              textAlign: 'center',
+              boxShadow: '0 4px 12px rgba(251, 191, 36, 0.2)',
+            })}
+          >
+            <p
+              className={css({
+                color: 'yellow.700',
+                fontSize: { base: '15px', md: '17px' },
+                fontWeight: 'bold',
+                marginBottom: '8px',
+              })}
+            >
+              ⚠️ Warning: Changing Settings Will End Current Game
+            </p>
+            <p
+              className={css({
+                color: 'gray.600',
+                fontSize: { base: '13px', md: '14px' },
+                marginBottom: '12px',
+              })}
+            >
+              You have a paused game in progress. Changing any setting will end it and you won't be
+              able to resume.
+            </p>
+            <div
+              className={css({
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+              })}
+            >
+              <button
+                className={css({
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                  _hover: {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
+                  },
+                })}
+                onClick={cancelConfigChange}
+              >
+                ✓ Keep Game & Cancel Change
+              </button>
+              <button
+                className={css({
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
+                  _hover: {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+                  },
+                })}
+                onClick={applyPendingChange}
+              >
+                ✗ End Game & Apply Change
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Warning if no players */}
         {activePlayerCount === 0 && (
           <div
@@ -200,7 +362,7 @@ export function SetupPhase() {
           >
             <button
               className={getButtonStyles(state.gameType === 'abacus-numeral', 'secondary')}
-              onClick={() => setGameType('abacus-numeral')}
+              onClick={() => handleSetGameType('abacus-numeral')}
             >
               <div
                 className={css({
@@ -246,7 +408,7 @@ export function SetupPhase() {
             </button>
             <button
               className={getButtonStyles(state.gameType === 'complement-pairs', 'secondary')}
-              onClick={() => setGameType('complement-pairs')}
+              onClick={() => handleSetGameType('complement-pairs')}
             >
               <div
                 className={css({
@@ -342,7 +504,7 @@ export function SetupPhase() {
                 <button
                   key={difficulty}
                   className={getButtonStyles(state.difficulty === difficulty, 'difficulty')}
-                  onClick={() => setDifficulty(difficulty)}
+                  onClick={() => handleSetDifficulty(difficulty)}
                 >
                   <div
                     className={css({
@@ -414,7 +576,7 @@ export function SetupPhase() {
                   <button
                     key={timer}
                     className={getButtonStyles(state.turnTimer === timer, 'secondary')}
-                    onClick={() => dispatch({ type: 'SET_TURN_TIMER', timer })}
+                    onClick={() => handleSetTurnTimer(timer)}
                   >
                     <div
                       className={css({
@@ -464,7 +626,9 @@ export function SetupPhase() {
         >
           <button
             className={css({
-              background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 50%, #ff9ff3 100%)',
+              background: canResumeGame
+                ? 'linear-gradient(135deg, #10b981 0%, #059669 50%, #34d399 100%)'
+                : 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 50%, #ff9ff3 100%)',
               color: 'white',
               border: 'none',
               borderRadius: { base: '16px', sm: '20px', md: '24px' },
@@ -473,7 +637,9 @@ export function SetupPhase() {
               fontWeight: 'black',
               cursor: 'pointer',
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              boxShadow: '0 8px 20px rgba(255, 107, 107, 0.4), inset 0 2px 0 rgba(255,255,255,0.3)',
+              boxShadow: canResumeGame
+                ? '0 8px 20px rgba(16, 185, 129, 0.4), inset 0 2px 0 rgba(255,255,255,0.3)'
+                : '0 8px 20px rgba(255, 107, 107, 0.4), inset 0 2px 0 rgba(255,255,255,0.3)',
               textShadow: '0 2px 4px rgba(0,0,0,0.3)',
               position: 'relative',
               overflow: 'hidden',
@@ -491,9 +657,12 @@ export function SetupPhase() {
               },
               _hover: {
                 transform: { base: 'translateY(-2px)', md: 'translateY(-3px) scale(1.02)' },
-                boxShadow:
-                  '0 12px 30px rgba(255, 107, 107, 0.6), inset 0 2px 0 rgba(255,255,255,0.3)',
-                background: 'linear-gradient(135deg, #ff5252 0%, #dd2c00 50%, #e91e63 100%)',
+                boxShadow: canResumeGame
+                  ? '0 12px 30px rgba(16, 185, 129, 0.6), inset 0 2px 0 rgba(255,255,255,0.3)'
+                  : '0 12px 30px rgba(255, 107, 107, 0.6), inset 0 2px 0 rgba(255,255,255,0.3)',
+                background: canResumeGame
+                  ? 'linear-gradient(135deg, #059669 0%, #047857 50%, #10b981 100%)'
+                  : 'linear-gradient(135deg, #ff5252 0%, #dd2c00 50%, #e91e63 100%)',
                 _before: {
                   left: '100%',
                 },
@@ -502,7 +671,7 @@ export function SetupPhase() {
                 transform: 'translateY(-1px) scale(1.01)',
               },
             })}
-            onClick={handleStartGame}
+            onClick={handleStartOrResumeGame}
           >
             <div
               className={css({
@@ -518,9 +687,9 @@ export function SetupPhase() {
                   animation: 'bounce 2s infinite',
                 })}
               >
-                🚀
+                {canResumeGame ? '▶️' : '🚀'}
               </span>
-              <span>START GAME</span>
+              <span>{canResumeGame ? 'RESUME GAME' : 'START GAME'}</span>
               <span
                 className={css({
                   fontSize: { base: '18px', sm: '20px', md: '24px' },
@@ -528,7 +697,7 @@ export function SetupPhase() {
                   animationDelay: '0.5s',
                 })}
               >
-                🎮
+                {canResumeGame ? '🎮' : '🎮'}
               </span>
             </div>
           </button>
