@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
+import { useGameMode } from '../../../../contexts/GameModeContext'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { GameCard } from './GameCard'
@@ -81,7 +82,8 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
 }
 
 export function MemoryGrid() {
-  const { state, flipCard } = useMemoryPairs()
+  const { state, flipCard, hoverCard } = useMemoryPairs()
+  const { players: playerMap } = useGameMode()
 
   // Hooks must be called before early return
   const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])
@@ -93,6 +95,27 @@ export function MemoryGrid() {
 
   const handleCardClick = (cardId: string) => {
     flipCard(cardId)
+  }
+
+  // Get player metadata for hover avatars
+  const getPlayerHoverInfo = (playerId: string) => {
+    // Check playerMetadata first (from room members)
+    if (state.playerMetadata && state.playerMetadata[playerId]) {
+      return {
+        emoji: state.playerMetadata[playerId].emoji,
+        name: state.playerMetadata[playerId].name,
+        color: state.playerMetadata[playerId].color,
+      }
+    }
+    // Fall back to local player map
+    const player = playerMap.get(playerId)
+    return player
+      ? {
+          emoji: player.emoji,
+          name: player.name,
+          color: player.color,
+        }
+      : null
   }
 
   return (
@@ -172,7 +195,20 @@ export function MemoryGrid() {
                 opacity: isDimmed ? 0.3 : 1,
                 transition: 'opacity 0.3s ease',
                 filter: isDimmed ? 'grayscale(0.7)' : 'none',
+                position: 'relative', // For avatar positioning
               })}
+              onMouseEnter={() => {
+                // Send hover state when mouse enters card (if not matched)
+                if (hoverCard && !isMatched) {
+                  hoverCard(card.id)
+                }
+              }}
+              onMouseLeave={() => {
+                // Clear hover state when mouse leaves card
+                if (hoverCard && !isMatched) {
+                  hoverCard(null)
+                }
+              }}
             >
               <GameCard
                 card={card}
@@ -181,6 +217,43 @@ export function MemoryGrid() {
                 onClick={() => (isValidForSelection ? handleCardClick(card.id) : undefined)}
                 disabled={state.isProcessingMove || !isValidForSelection}
               />
+
+              {/* Hover Avatars - Show which players are hovering over this card */}
+              {state.playerHovers &&
+                Object.entries(state.playerHovers)
+                  .filter(([playerId, hoveredCardId]) => hoveredCardId === card.id)
+                  .map(([playerId]) => {
+                    const playerInfo = getPlayerHoverInfo(playerId)
+                    if (!playerInfo) return null
+
+                    return (
+                      <div
+                        key={playerId}
+                        className={css({
+                          position: 'absolute',
+                          top: '-12px',
+                          right: '-12px',
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: playerInfo.color || 'linear-gradient(135deg, #667eea, #764ba2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '24px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.3), 0 0 20px rgba(102, 126, 234, 0.6)',
+                          border: '3px solid white',
+                          zIndex: 100,
+                          animation: 'hoverPulse 1.5s ease-in-out infinite',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
+                          pointerEvents: 'none',
+                        })}
+                        title={`${playerInfo.name} is considering this card`}
+                      >
+                        {playerInfo.emoji}
+                      </div>
+                    )
+                  })}
             </div>
           )
         })}
@@ -237,12 +310,23 @@ export function MemoryGrid() {
   )
 }
 
-// Add shake animation for mismatch feedback
-const shakeAnimation = `
+// Add animations for mismatch feedback and hover avatars
+const gridAnimations = `
 @keyframes shake {
   0%, 100% { transform: translate(-50%, -50%) translateX(0); }
   25% { transform: translate(-50%, -50%) translateX(-5px); }
   75% { transform: translate(-50%, -50%) translateX(5px); }
+}
+
+@keyframes hoverPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 20px rgba(102, 126, 234, 0.6);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4), 0 0 30px rgba(102, 126, 234, 0.9);
+  }
 }
 `
 
@@ -250,6 +334,6 @@ const shakeAnimation = `
 if (typeof document !== 'undefined' && !document.getElementById('memory-grid-animations')) {
   const style = document.createElement('style')
   style.id = 'memory-grid-animations'
-  style.textContent = shakeAnimation
+  style.textContent = gridAnimations
   document.head.appendChild(style)
 }
