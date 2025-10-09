@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EmojiPicker } from '../../app/games/matching/components/EmojiPicker'
 import { useGameMode } from '../../contexts/GameModeContext'
 
@@ -11,17 +11,36 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
   // All hooks must be called before early return
   const { getPlayer, updatePlayer, players } = useGameMode()
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [localName, setLocalName] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const player = getPlayer(playerId)
-  const [tempName, setTempName] = useState(player?.name || '')
+
+  // Initialize local name from player
+  useEffect(() => {
+    if (player) {
+      setLocalName(player.name)
+    }
+  }, [player])
 
   if (!player) {
     return null
   }
 
-  const handleSave = () => {
-    updatePlayer(playerId, { name: tempName })
-    onClose()
+  const handleNameChange = (newName: string) => {
+    setLocalName(newName)
+
+    // Debounce the update to avoid too many API calls
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    setIsSaving(true)
+    debounceTimerRef.current = setTimeout(() => {
+      updatePlayer(playerId, { name: newName })
+      setIsSaving(false)
+    }, 500) // Wait 500ms after user stops typing
   }
 
   const handleEmojiSelect = (emoji: string) => {
@@ -30,7 +49,13 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
   }
 
   // Get player number for UI theming (first 4 players get special colors)
-  const allPlayers = Array.from(players.values()).sort((a, b) => a.createdAt - b.createdAt)
+  const allPlayers = Array.from(players.values()).sort((a, b) => {
+    const aTime = typeof a.createdAt === 'number' ? a.createdAt :
+                  a.createdAt instanceof Date ? a.createdAt.getTime() : 0
+    const bTime = typeof b.createdAt === 'number' ? b.createdAt :
+                  b.createdAt instanceof Date ? b.createdAt.getTime() : 0
+    return aTime - bTime
+  })
   const playerIndex = allPlayers.findIndex((p) => p.id === playerId)
   const displayNumber = playerIndex + 1
 
@@ -81,22 +106,35 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             marginBottom: '24px',
           }}
         >
-          <h2
-            style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
-              backgroundClip: 'text',
-              color: 'transparent',
-              margin: 0,
-            }}
-          >
-            Configure Player
-          </h2>
+          <div>
+            <h2
+              style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
+                backgroundClip: 'text',
+                color: 'transparent',
+                margin: 0,
+                marginBottom: '4px',
+              }}
+            >
+              Player Settings
+            </h2>
+            <div
+              style={{
+                fontSize: '12px',
+                color: isSaving ? '#f59e0b' : '#10b981',
+                fontWeight: '500',
+                opacity: 0.8,
+              }}
+            >
+              {isSaving ? '💾 Saving...' : '✓ Changes saved automatically'}
+            </div>
+          </div>
           <button
             onClick={onClose}
             style={{
@@ -198,7 +236,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
         </div>
 
         {/* Name Input */}
-        <div style={{ marginBottom: '24px' }}>
+        <div>
           <label
             style={{
               display: 'block',
@@ -212,8 +250,8 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
           </label>
           <input
             type="text"
-            value={tempName}
-            onChange={(e) => setTempName(e.target.value)}
+            value={localName}
+            onChange={(e) => handleNameChange(e.target.value)}
             placeholder="Player Name"
             maxLength={20}
             style={{
@@ -243,68 +281,8 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
               textAlign: 'right',
             }}
           >
-            {tempName.length}/20 characters
+            {localName.length}/20 characters
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '12px',
-          }}
-        >
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: '12px',
-              background: 'white',
-              border: '2px solid #e5e7eb',
-              borderRadius: '12px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#6b7280',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#f9fafb'
-              e.currentTarget.style.borderColor = '#d1d5db'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'white'
-              e.currentTarget.style.borderColor = '#e5e7eb'
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            style={{
-              flex: 1,
-              padding: '12px',
-              background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: 'white',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'
-            }}
-          >
-            Save Changes
-          </button>
         </div>
       </div>
     </div>

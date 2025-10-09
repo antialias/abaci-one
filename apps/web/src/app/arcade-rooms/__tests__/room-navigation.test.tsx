@@ -90,6 +90,7 @@ describe('Room Navigation with Active Sessions', () => {
         },
         isLoading: false,
         isInRoom: true,
+        notifyRoomOfPlayerUpdate: vi.fn(),
       })
 
       // Mock rooms API
@@ -140,6 +141,7 @@ describe('Room Navigation with Active Sessions', () => {
         roomData: null,
         isLoading: false,
         isInRoom: false,
+        notifyRoomOfPlayerUpdate: vi.fn(),
       })
 
       ;(global.fetch as any).mockResolvedValue({
@@ -172,6 +174,7 @@ describe('Room Navigation with Active Sessions', () => {
         roomData: null,
         isLoading: false,
         isInRoom: false,
+        notifyRoomOfPlayerUpdate: vi.fn(),
       })
 
       ;(global.fetch as any).mockResolvedValue({
@@ -225,6 +228,7 @@ describe('Room Navigation with Active Sessions', () => {
         roomData: null,
         isLoading: false,
         isInRoom: false,
+        notifyRoomOfPlayerUpdate: vi.fn(),
       })
 
       ;(global.fetch as any).mockResolvedValue({
@@ -271,6 +275,7 @@ describe('Room Navigation with Active Sessions', () => {
         },
         isLoading: false,
         isInRoom: true,
+        notifyRoomOfPlayerUpdate: vi.fn(),
       })
 
       ;(global.fetch as any).mockResolvedValue({

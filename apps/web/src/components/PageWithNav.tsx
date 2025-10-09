@@ -61,7 +61,7 @@ export function PageWithNav({
   // Only show LOCAL players in the active/inactive lists (remote players shown separately in networkPlayers)
   const activePlayerList = Array.from(activePlayers)
     .map((id) => players.get(id))
-    .filter((p) => p !== undefined && p.isLocal !== false) // Filter out remote players
+    .filter((p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false) // Filter out remote players
     .map((p) => ({ id: p.id, name: p.name, emoji: p.emoji }))
 
   const inactivePlayerList = Array.from(players.values())
