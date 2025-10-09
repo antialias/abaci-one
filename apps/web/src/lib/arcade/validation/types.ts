@@ -50,13 +50,24 @@ export type MatchingGameMove =
 export type GameState = MemoryPairsState // Add other game states as union later
 
 /**
+ * Validation context for authorization checks
+ */
+export interface ValidationContext {
+  userId?: string
+  playerOwnership?: Record<string, string> // playerId -> userId mapping
+}
+
+/**
  * Base validator interface that all games must implement
  */
 export interface GameValidator<TState = unknown, TMove extends GameMove = GameMove> {
   /**
    * Validate a game move and return the new state if valid
+   * @param state Current game state
+   * @param move The move to validate
+   * @param context Optional validation context for authorization checks
    */
-  validateMove(state: TState, move: TMove): ValidationResult
+  validateMove(state: TState, move: TMove, context?: ValidationContext): ValidationResult
 
   /**
    * Check if the game is in a terminal state (completed)

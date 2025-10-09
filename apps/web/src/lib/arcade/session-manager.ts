@@ -159,8 +159,28 @@ export async function applyGameMove(userId: string, move: GameMove): Promise<Ses
     gameStatePhase: (session.gameState as any)?.gamePhase,
   })
 
-  // Validate the move
-  const validationResult = validator.validateMove(session.gameState, move)
+  // Fetch player ownership for authorization checks (room-based games)
+  let playerOwnership: Record<string, string> | undefined
+  if (session.roomId) {
+    try {
+      const players = await db.query.players.findMany({
+        columns: {
+          id: true,
+          userId: true,
+        },
+      })
+      playerOwnership = Object.fromEntries(players.map((p) => [p.id, p.userId]))
+      console.log('[SessionManager] Player ownership map:', playerOwnership)
+    } catch (error) {
+      console.error('[SessionManager] Failed to fetch player ownership:', error)
+    }
+  }
+
+  // Validate the move with authorization context
+  const validationResult = validator.validateMove(session.gameState, move, {
+    userId,
+    playerOwnership,
+  })
 
   console.log('[SessionManager] Validation result:', {
     valid: validationResult.valid,

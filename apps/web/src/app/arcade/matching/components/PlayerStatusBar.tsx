@@ -26,7 +26,12 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
     displayEmoji: player.emoji,
     score: state.scores[player.id] || 0,
     consecutiveMatches: state.consecutiveMatches?.[player.id] || 0,
+    isLocalPlayer: player.isLocal !== false, // Local if not explicitly marked as remote
   }))
+
+  // Check if current player is local (your turn) or remote (waiting)
+  const currentPlayer = activePlayers.find((p) => p.id === state.currentPlayer)
+  const isYourTurn = currentPlayer?.isLocalPlayer === true
 
   // Get celebration level based on consecutive matches
   const getCelebrationLevel = (consecutiveMatches: number) => {
@@ -250,14 +255,16 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
                   {isCurrentPlayer && (
                     <span
                       className={css({
-                        color: 'red.600',
+                        color: player.isLocalPlayer ? 'red.600' : 'blue.600',
                         fontWeight: 'black',
                         fontSize: isCurrentPlayer ? { base: 'sm', md: 'lg' } : 'inherit',
-                        animation: 'none',
-                        textShadow: '0 0 15px currentColor',
+                        animation: player.isLocalPlayer
+                          ? 'none'
+                          : 'gentle-pulse 2s ease-in-out infinite',
+                        textShadow: player.isLocalPlayer ? '0 0 15px currentColor' : 'none',
                       })}
                     >
-                      {' • Your turn'}
+                      {player.isLocalPlayer ? ' • Your turn' : ' • Their turn'}
                     </span>
                   )}
                   {player.consecutiveMatches > 1 && (

@@ -146,6 +146,8 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
   // Computed values
   const isGameActive = state.gamePhase === 'playing'
 
+  const { players } = useGameMode()
+
   const canFlipCard = useCallback(
     (cardId: string): boolean => {
       if (!isGameActive || state.isProcessingMove) return false
@@ -159,9 +161,27 @@ export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode })
       // Can't flip more than 2 cards
       if (state.flippedCards.length >= 2) return false
 
+      // Authorization check: Only allow flipping if it's your player's turn
+      if (roomData && state.currentPlayer) {
+        const currentPlayerData = players.get(state.currentPlayer)
+        // If current player is not local (isLocal === false), prevent flipping
+        if (currentPlayerData && currentPlayerData.isLocal === false) {
+          console.log('[Client] Cannot flip - not your turn (current player is remote)')
+          return false
+        }
+      }
+
       return true
     },
-    [isGameActive, state.isProcessingMove, state.gameCards, state.flippedCards]
+    [
+      isGameActive,
+      state.isProcessingMove,
+      state.gameCards,
+      state.flippedCards,
+      state.currentPlayer,
+      roomData,
+      players,
+    ]
   )
 
   const currentGameStatistics: GameStatistics = useMemo(

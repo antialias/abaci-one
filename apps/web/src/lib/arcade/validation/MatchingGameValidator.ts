@@ -15,10 +15,14 @@ import { canFlipCard, validateMatch } from '@/app/games/matching/utils/matchVali
 import type { GameValidator, MatchingGameMove, ValidationResult } from './types'
 
 export class MatchingGameValidator implements GameValidator<MemoryPairsState, MatchingGameMove> {
-  validateMove(state: MemoryPairsState, move: MatchingGameMove): ValidationResult {
+  validateMove(
+    state: MemoryPairsState,
+    move: MatchingGameMove,
+    context?: { userId?: string; playerOwnership?: Record<string, string> }
+  ): ValidationResult {
     switch (move.type) {
       case 'FLIP_CARD':
-        return this.validateFlipCard(state, move.data.cardId, move.playerId)
+        return this.validateFlipCard(state, move.data.cardId, move.playerId, context)
 
       case 'START_GAME':
         return this.validateStartGame(state, move.data.activePlayers, move.data.cards)
@@ -37,7 +41,8 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
   private validateFlipCard(
     state: MemoryPairsState,
     cardId: string,
-    playerId: string
+    playerId: string,
+    context?: { userId?: string; playerOwnership?: Record<string, string> }
   ): ValidationResult {
     // Game must be in playing phase
     if (state.gamePhase !== 'playing') {
@@ -60,6 +65,22 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
       return {
         valid: false,
         error: 'Not your turn',
+      }
+    }
+
+    // Check player ownership authorization (if context provided)
+    if (context?.userId && context?.playerOwnership) {
+      const playerOwner = context.playerOwnership[playerId]
+      if (playerOwner && playerOwner !== context.userId) {
+        console.log('[Validator] Player ownership check failed:', {
+          playerId,
+          playerOwner,
+          requestingUserId: context.userId,
+        })
+        return {
+          valid: false,
+          error: 'You can only move your own players',
+        }
       }
     }
 
