@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useSpring, animated } from '@react-spring/web'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '../../../../../styled-system/css'
 import { useGameMode } from '../../../../contexts/GameModeContext'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
@@ -81,9 +82,87 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
   return gridDimensions
 }
 
+// Animated hover avatar component
+function HoverAvatar({
+  playerId,
+  playerInfo,
+  cardElement,
+}: {
+  playerId: string
+  playerInfo: { emoji: string; name: string; color?: string }
+  cardElement: HTMLElement | null
+}) {
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+
+  // Update position when card element changes
+  useEffect(() => {
+    if (cardElement) {
+      const rect = cardElement.getBoundingClientRect()
+      setPosition({
+        x: rect.right - 12, // Position at top-right of card
+        y: rect.top - 12,
+      })
+    }
+  }, [cardElement])
+
+  // Smooth spring animation for position changes
+  const springProps = useSpring({
+    x: position.x,
+    y: position.y,
+    config: {
+      tension: 280,
+      friction: 60,
+      mass: 1,
+    },
+  })
+
+  return (
+    <animated.div
+      style={{
+        position: 'fixed',
+        left: springProps.x,
+        top: springProps.y,
+        width: '48px',
+        height: '48px',
+        borderRadius: '50%',
+        background: playerInfo.color || 'linear-gradient(135deg, #667eea, #764ba2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '28px',
+        // 3D elevation effect
+        boxShadow:
+          '0 8px 20px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.3), 0 0 30px rgba(102, 126, 234, 0.7)',
+        border: '3px solid white',
+        zIndex: 1000,
+        pointerEvents: 'none',
+        transform: 'translate(-50%, -50%)',
+        filter: 'drop-shadow(0 0 8px rgba(102, 126, 234, 0.8))',
+      }}
+      className={css({
+        animation: 'hoverFloat 2s ease-in-out infinite',
+      })}
+      title={`${playerInfo.name} is considering this card`}
+    >
+      {playerInfo.emoji}
+    </animated.div>
+  )
+}
+
 export function MemoryGrid() {
-  const { state, flipCard, hoverCard } = useMemoryPairs()
+  const { state, flipCard, hoverCard, gameMode } = useMemoryPairs()
   const { players: playerMap } = useGameMode()
+
+  // Track card element refs for positioning hover avatars
+  const cardRefs = useRef<Map<string, HTMLElement>>(new Map())
+
+  // Check if it's the local player's turn
+  const isMyTurn = useMemo(() => {
+    if (gameMode === 'single') return true // Always your turn in single player
+
+    const currentPlayerData = playerMap.get(state.currentPlayer)
+    return currentPlayerData?.isLocal === true
+  }, [state.currentPlayer, playerMap, gameMode])
 
   // Hooks must be called before early return
   const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])
@@ -116,6 +195,15 @@ export function MemoryGrid() {
           color: player.color,
         }
       : null
+  }
+
+  // Set card ref callback
+  const setCardRef = (cardId: string) => (element: HTMLDivElement | null) => {
+    if (element) {
+      cardRefs.current.set(cardId, element)
+    } else {
+      cardRefs.current.delete(cardId)
+    }
   }
 
   return (
@@ -185,6 +273,7 @@ export function MemoryGrid() {
           return (
             <div
               key={card.id}
+              ref={setCardRef(card.id)}
               className={css({
                 aspectRatio: '3/4',
                 // Fully responsive card sizing - no fixed pixel sizes
@@ -195,17 +284,17 @@ export function MemoryGrid() {
                 opacity: isDimmed ? 0.3 : 1,
                 transition: 'opacity 0.3s ease',
                 filter: isDimmed ? 'grayscale(0.7)' : 'none',
-                position: 'relative', // For avatar positioning
+                position: 'relative',
               })}
               onMouseEnter={() => {
-                // Send hover state when mouse enters card (if not matched)
-                if (hoverCard && !isMatched) {
+                // Only send hover if it's your turn and card is not matched
+                if (hoverCard && !isMatched && isMyTurn) {
                   hoverCard(card.id)
                 }
               }}
               onMouseLeave={() => {
                 // Clear hover state when mouse leaves card
-                if (hoverCard && !isMatched) {
+                if (hoverCard && !isMatched && isMyTurn) {
                   hoverCard(null)
                 }
               }}
@@ -217,43 +306,6 @@ export function MemoryGrid() {
                 onClick={() => (isValidForSelection ? handleCardClick(card.id) : undefined)}
                 disabled={state.isProcessingMove || !isValidForSelection}
               />
-
-              {/* Hover Avatars - Show which players are hovering over this card */}
-              {state.playerHovers &&
-                Object.entries(state.playerHovers)
-                  .filter(([playerId, hoveredCardId]) => hoveredCardId === card.id)
-                  .map(([playerId]) => {
-                    const playerInfo = getPlayerHoverInfo(playerId)
-                    if (!playerInfo) return null
-
-                    return (
-                      <div
-                        key={playerId}
-                        className={css({
-                          position: 'absolute',
-                          top: '-12px',
-                          right: '-12px',
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          background: playerInfo.color || 'linear-gradient(135deg, #667eea, #764ba2)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '24px',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.3), 0 0 20px rgba(102, 126, 234, 0.6)',
-                          border: '3px solid white',
-                          zIndex: 100,
-                          animation: 'hoverPulse 1.5s ease-in-out infinite',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)',
-                          pointerEvents: 'none',
-                        })}
-                        title={`${playerInfo.name} is considering this card`}
-                      >
-                        {playerInfo.emoji}
-                      </div>
-                    )
-                  })}
             </div>
           )
         })}
@@ -306,6 +358,26 @@ export function MemoryGrid() {
           })}
         />
       )}
+
+      {/* Animated Hover Avatars - Rendered as fixed positioned elements that smoothly transition */}
+      {state.playerHovers &&
+        Object.entries(state.playerHovers)
+          .filter(([_, cardId]) => cardId !== null) // Only show if hovering a card
+          .map(([playerId, cardId]) => {
+            const playerInfo = getPlayerHoverInfo(playerId)
+            const cardElement = cardId ? cardRefs.current.get(cardId) : null
+
+            if (!playerInfo || !cardElement) return null
+
+            return (
+              <HoverAvatar
+                key={playerId}
+                playerId={playerId}
+                playerInfo={playerInfo}
+                cardElement={cardElement}
+              />
+            )
+          })}
     </div>
   )
 }
@@ -318,14 +390,12 @@ const gridAnimations = `
   75% { transform: translate(-50%, -50%) translateX(5px); }
 }
 
-@keyframes hoverPulse {
+@keyframes hoverFloat {
   0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 20px rgba(102, 126, 234, 0.6);
+    transform: translate(-50%, -50%) translateY(0px);
   }
   50% {
-    transform: scale(1.1);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.4), 0 0 30px rgba(102, 126, 234, 0.9);
+    transform: translate(-50%, -50%) translateY(-6px);
   }
 }
 `
