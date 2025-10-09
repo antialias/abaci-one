@@ -40,6 +40,20 @@ export interface GameStatistics {
   averageTimePerMove: number
 }
 
+export interface PlayerMetadata {
+  id: string // Player ID
+  name: string
+  emoji: string
+  userId: string // Which user owns this player
+  color?: string
+}
+
+export interface GameConfiguration {
+  gameType: GameType
+  difficulty: Difficulty
+  turnTimer: number
+}
+
 export interface MemoryPairsState {
   // Core game data
   cards: GameCard[]
@@ -51,6 +65,22 @@ export interface MemoryPairsState {
   difficulty: Difficulty
   turnTimer: number // Seconds for two-player mode
 
+  // Paused game state - for Resume functionality
+  originalConfig?: GameConfiguration // Config when game started - used to detect changes
+  pausedGamePhase?: 'playing' | 'results' // Set when GO_TO_SETUP called from active game
+  pausedGameState?: {
+    // Snapshot of game state when paused
+    gameCards: GameCard[]
+    currentPlayer: Player
+    matchedPairs: number
+    moves: number
+    scores: PlayerScore
+    activePlayers: Player[]
+    playerMetadata: { [playerId: string]: PlayerMetadata }
+    consecutiveMatches: { [playerId: string]: number }
+    gameStartTime: number | null
+  }
+
   // Game progression
   gamePhase: GamePhase
   currentPlayer: Player
@@ -59,6 +89,7 @@ export interface MemoryPairsState {
   moves: number
   scores: PlayerScore
   activePlayers: Player[] // Track active player IDs
+  playerMetadata: { [playerId: string]: PlayerMetadata } // Player metadata snapshot for cross-user visibility
   consecutiveMatches: { [playerId: string]: number } // Track consecutive matches per player
 
   // Timing
@@ -101,13 +132,18 @@ export interface MemoryPairsContextValue {
   currentGameStatistics: GameStatistics
   gameMode: GameMode // Derived from global context
   activePlayers: Player[] // Active player IDs from arena
+  hasConfigChanged: boolean // True if current config differs from originalConfig
+  canResumeGame: boolean // True if there's a paused game and config hasn't changed
 
   // Actions
   startGame: () => void
+  resumeGame: () => void
   flipCard: (cardId: string) => void
   resetGame: () => void
   setGameType: (type: GameType) => void
   setDifficulty: (difficulty: Difficulty) => void
+  setTurnTimer: (timer: number) => void
+  goToSetup: () => void
   exitSession: () => void // Exit arcade session (no-op for non-arcade mode)
 }
 
@@ -131,14 +167,6 @@ export interface GameGridProps {
   cards: GameCard[]
   onCardClick: (cardId: string) => void
   disabled?: boolean
-}
-
-// Configuration interfaces
-export interface GameConfiguration {
-  gameMode: GameMode
-  gameType: GameType
-  difficulty: Difficulty
-  turnTimer: number
 }
 
 export interface MatchValidationResult {

@@ -33,6 +33,7 @@ export interface MatchingStartGameMove extends GameMove {
   data: {
     activePlayers: string[] // Player IDs (UUIDs)
     cards?: any[] // GameCard type from context
+    playerMetadata?: { [playerId: string]: any } // Player metadata for cross-user visibility
   }
 }
 
@@ -41,10 +42,32 @@ export interface MatchingClearMismatchMove extends GameMove {
   data: Record<string, never>
 }
 
+// Standard setup moves - pattern for all arcade games
+export interface MatchingGoToSetupMove extends GameMove {
+  type: 'GO_TO_SETUP'
+  data: Record<string, never>
+}
+
+export interface MatchingSetConfigMove extends GameMove {
+  type: 'SET_CONFIG'
+  data: {
+    field: 'gameType' | 'difficulty' | 'turnTimer'
+    value: any
+  }
+}
+
+export interface MatchingResumeGameMove extends GameMove {
+  type: 'RESUME_GAME'
+  data: Record<string, never>
+}
+
 export type MatchingGameMove =
   | MatchingFlipCardMove
   | MatchingStartGameMove
   | MatchingClearMismatchMove
+  | MatchingGoToSetupMove
+  | MatchingSetConfigMove
+  | MatchingResumeGameMove
 
 // Generic game state union
 export type GameState = MemoryPairsState // Add other game states as union later
