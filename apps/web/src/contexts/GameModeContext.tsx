@@ -68,7 +68,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const { mutate: createPlayer } = useCreatePlayer()
   const { mutate: updatePlayerMutation } = useUpdatePlayer()
   const { mutate: deletePlayer } = useDeletePlayer()
-  const { roomData } = useRoomData()
+  const { roomData, notifyRoomOfPlayerUpdate } = useRoomData()
   const { data: viewerId } = useViewerId()
 
   const [isInitialized, setIsInitialized] = useState(false)
@@ -167,14 +167,27 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       isActive: playerData?.isActive ?? false,
     }
 
-    createPlayer(newPlayer)
+    createPlayer(newPlayer, {
+      onSuccess: () => {
+        // Notify room members if in a room
+        notifyRoomOfPlayerUpdate()
+      },
+    })
   }
 
   const updatePlayer = (id: string, updates: Partial<Player>) => {
     const player = players.get(id)
     // Only allow updating local players
     if (player?.isLocal) {
-      updatePlayerMutation({ id, updates })
+      updatePlayerMutation(
+        { id, updates },
+        {
+          onSuccess: () => {
+            // Notify room members if in a room
+            notifyRoomOfPlayerUpdate()
+          },
+        }
+      )
     } else {
       console.warn('[GameModeContext] Cannot update remote player:', id)
     }
@@ -184,7 +197,12 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     const player = players.get(id)
     // Only allow removing local players
     if (player?.isLocal) {
-      deletePlayer(id)
+      deletePlayer(id, {
+        onSuccess: () => {
+          // Notify room members if in a room
+          notifyRoomOfPlayerUpdate()
+        },
+      })
     } else {
       console.warn('[GameModeContext] Cannot remove remote player:', id)
     }
@@ -194,7 +212,15 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
     const player = players.get(id)
     // Only allow changing active status of local players
     if (player?.isLocal) {
-      updatePlayerMutation({ id, updates: { isActive: active } })
+      updatePlayerMutation(
+        { id, updates: { isActive: active } },
+        {
+          onSuccess: () => {
+            // Notify room members if in a room
+            notifyRoomOfPlayerUpdate()
+          },
+        }
+      )
     } else {
       console.warn('[GameModeContext] Cannot change active status of remote player:', id)
     }
@@ -227,6 +253,11 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
         isActive: index === 0,
       })
     })
+
+    // Notify room members after reset (slight delay to ensure mutations complete)
+    setTimeout(() => {
+      notifyRoomOfPlayerUpdate()
+    }, 100)
   }
 
   const activePlayerCount = activePlayers.size

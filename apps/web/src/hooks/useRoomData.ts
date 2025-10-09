@@ -196,10 +196,19 @@ export function useRoomData() {
     }
   }, [socket, roomData?.id])
 
+  // Function to notify room members of player updates
+  const notifyRoomOfPlayerUpdate = () => {
+    if (socket && roomData?.id && userId) {
+      console.log('[useRoomData] Notifying room of player update')
+      socket.emit('players-updated', { roomId: roomData.id, userId })
+    }
+  }
+
   return {
     roomData,
     // Loading if: userId is pending, currently fetching, or have userId but haven't tried fetching yet
     isLoading: isUserIdPending || isLoading || (!!userId && !hasAttemptedFetch),
     isInRoom: !!roomData,
+    notifyRoomOfPlayerUpdate,
   }
 }
