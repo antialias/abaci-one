@@ -92,7 +92,7 @@ function HoverAvatar({
   playerInfo: { emoji: string; name: string; color?: string }
   cardElement: HTMLElement | null
 }) {
-  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
 
   // Update position when card element changes
   useEffect(() => {
@@ -106,15 +106,21 @@ function HoverAvatar({
   }, [cardElement])
 
   // Smooth spring animation for position changes
+  // Only animate if we have a position (prevents fly-in from 0,0)
   const springProps = useSpring({
-    x: position.x,
-    y: position.y,
+    x: position?.x ?? 0,
+    y: position?.y ?? 0,
+    opacity: position ? 1 : 0, // Fade in when position is set
     config: {
       tension: 280,
       friction: 60,
       mass: 1,
     },
+    immediate: !position, // No animation on first render
   })
+
+  // Don't render until we have a position
+  if (!position) return null
 
   return (
     <animated.div
@@ -122,6 +128,7 @@ function HoverAvatar({
         position: 'fixed',
         left: springProps.x,
         top: springProps.y,
+        opacity: springProps.opacity, // Fade in smoothly
         width: '48px',
         height: '48px',
         borderRadius: '50%',
@@ -363,6 +370,11 @@ export function MemoryGrid() {
       {state.playerHovers &&
         Object.entries(state.playerHovers)
           .filter(([_, cardId]) => cardId !== null) // Only show if hovering a card
+          .filter(([playerId]) => {
+            // Don't show your own hover avatar (only show remote players)
+            const player = playerMap.get(playerId)
+            return player?.isLocal !== true
+          })
           .map(([playerId, cardId]) => {
             const playerInfo = getPlayerHoverInfo(playerId)
             const cardElement = cardId ? cardRefs.current.get(cardId) : null
