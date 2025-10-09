@@ -116,7 +116,7 @@ function HoverAvatar({
   const springProps = useSpring({
     x: position?.x ?? 0,
     y: position?.y ?? 0,
-    opacity: position && isPlayersTurn ? 1 : 0,
+    opacity: position && isPlayersTurn && cardElement ? 1 : 0,
     config: {
       tension: 280,
       friction: 60,
