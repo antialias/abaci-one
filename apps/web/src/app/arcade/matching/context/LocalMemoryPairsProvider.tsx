@@ -1,16 +1,16 @@
 'use client'
 
-import { type ReactNode, useCallback, useEffect, useMemo } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, useReducer } from 'react'
+import { useRouter } from 'next/navigation'
 import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
-import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useViewerId } from '@/hooks/useViewerId'
-import type { GameMove } from '@/lib/arcade/validation'
 import { useGameMode } from '../../../../contexts/GameModeContext'
 import { generateGameCards } from '../utils/cardGeneration'
+import { validateMatch } from '../utils/matchValidation'
 import { MemoryPairsContext } from './MemoryPairsContext'
 import type { GameMode, GameStatistics, MemoryPairsContextValue, MemoryPairsState } from './types'
 
-// Initial state
+// Initial state for local-only games
 const initialState: MemoryPairsState = {
   cards: [],
   gameCards: [],
@@ -19,13 +19,13 @@ const initialState: MemoryPairsState = {
   difficulty: 6,
   turnTimer: 30,
   gamePhase: 'setup',
-  currentPlayer: '', // Will be set to first player ID on START_GAME
+  currentPlayer: '',
   matchedPairs: 0,
   totalPairs: 6,
   moves: 0,
   scores: {},
   activePlayers: [],
-  playerMetadata: {}, // Player metadata for cross-user visibility
+  playerMetadata: {},
   consecutiveMatches: {},
   gameStartTime: null,
   gameEndTime: null,
@@ -35,38 +35,43 @@ const initialState: MemoryPairsState = {
   isProcessingMove: false,
   showMismatchFeedback: false,
   lastMatchedPair: null,
-  // PAUSE/RESUME: Initialize paused game fields
   originalConfig: undefined,
   pausedGamePhase: undefined,
   pausedGameState: undefined,
-  // HOVER: Initialize hover state
   playerHovers: {},
 }
 
-/**
- * Optimistic move application (client-side prediction)
- * The server will validate and send back the authoritative state
- */
-function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): MemoryPairsState {
-  switch (move.type) {
+// Action types for local reducer
+type LocalAction =
+  | { type: 'START_GAME'; cards: any[]; activePlayers: string[]; playerMetadata: any }
+  | { type: 'FLIP_CARD'; cardId: string }
+  | { type: 'MATCH_FOUND'; cardIds: [string, string]; playerId: string }
+  | { type: 'MATCH_FAILED'; cardIds: [string, string] }
+  | { type: 'CLEAR_MISMATCH' }
+  | { type: 'SWITCH_PLAYER' }
+  | { type: 'GO_TO_SETUP' }
+  | { type: 'SET_CONFIG'; field: string; value: any }
+  | { type: 'RESUME_GAME' }
+  | { type: 'HOVER_CARD'; playerId: string; cardId: string | null }
+  | { type: 'END_GAME' }
+
+// Pure client-side reducer with complete game logic
+function localMemoryPairsReducer(state: MemoryPairsState, action: LocalAction): MemoryPairsState {
+  switch (action.type) {
     case 'START_GAME':
-      // Generate cards and initialize game
       return {
         ...state,
         gamePhase: 'playing',
-        gameCards: move.data.cards,
-        cards: move.data.cards,
+        gameCards: action.cards,
+        cards: action.cards,
         flippedCards: [],
         matchedPairs: 0,
         moves: 0,
-        scores: move.data.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
-        consecutiveMatches: move.data.activePlayers.reduce(
-          (acc: any, p: string) => ({ ...acc, [p]: 0 }),
-          {}
-        ),
-        activePlayers: move.data.activePlayers,
-        playerMetadata: move.data.playerMetadata || {}, // Include player metadata
-        currentPlayer: move.data.activePlayers[0] || '',
+        scores: action.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
+        consecutiveMatches: action.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
+        activePlayers: action.activePlayers,
+        playerMetadata: action.playerMetadata,
+        currentPlayer: action.activePlayers[0] || '',
         gameStartTime: Date.now(),
         gameEndTime: null,
         currentMoveStartTime: Date.now(),
@@ -74,7 +79,6 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
         isProcessingMove: false,
         showMismatchFeedback: false,
         lastMatchedPair: null,
-        // PAUSE/RESUME: Save original config and clear paused state
         originalConfig: {
           gameType: state.gameType,
           difficulty: state.difficulty,
@@ -85,8 +89,7 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
       }
 
     case 'FLIP_CARD': {
-      // Optimistically flip the card
-      const card = state.gameCards.find((c) => c.id === move.data.cardId)
+      const card = state.gameCards.find((c) => c.id === action.cardId)
       if (!card) return state
 
       const newFlippedCards = [...state.flippedCards, card]
@@ -94,15 +97,69 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
       return {
         ...state,
         flippedCards: newFlippedCards,
-        currentMoveStartTime:
-          state.flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime,
-        isProcessingMove: newFlippedCards.length === 2, // Processing if 2 cards flipped
+        currentMoveStartTime: state.flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime,
+        isProcessingMove: newFlippedCards.length === 2,
         showMismatchFeedback: false,
       }
     }
 
+    case 'MATCH_FOUND': {
+      const [id1, id2] = action.cardIds
+      const updatedCards = state.gameCards.map((card) =>
+        card.id === id1 || card.id === id2
+          ? { ...card, matched: true, matchedBy: action.playerId }
+          : card
+      )
+
+      const newMatchedPairs = state.matchedPairs + 1
+      const newScores = {
+        ...state.scores,
+        [action.playerId]: (state.scores[action.playerId] || 0) + 1,
+      }
+      const newConsecutiveMatches = {
+        ...state.consecutiveMatches,
+        [action.playerId]: (state.consecutiveMatches[action.playerId] || 0) + 1,
+      }
+
+      // Check if game is complete
+      const gameComplete = newMatchedPairs >= state.totalPairs
+
+      return {
+        ...state,
+        gameCards: updatedCards,
+        cards: updatedCards,
+        flippedCards: [],
+        matchedPairs: newMatchedPairs,
+        moves: state.moves + 1,
+        scores: newScores,
+        consecutiveMatches: newConsecutiveMatches,
+        lastMatchedPair: action.cardIds,
+        isProcessingMove: false,
+        showMismatchFeedback: false,
+        gamePhase: gameComplete ? 'results' : state.gamePhase,
+        gameEndTime: gameComplete ? Date.now() : null,
+        // Player keeps their turn on match
+      }
+    }
+
+    case 'MATCH_FAILED': {
+      // Reset consecutive matches for current player
+      const newConsecutiveMatches = {
+        ...state.consecutiveMatches,
+        [state.currentPlayer]: 0,
+      }
+
+      return {
+        ...state,
+        moves: state.moves + 1,
+        showMismatchFeedback: true,
+        isProcessingMove: true,
+        consecutiveMatches: newConsecutiveMatches,
+        // Don't clear flipped cards yet - CLEAR_MISMATCH will do that
+      }
+    }
+
     case 'CLEAR_MISMATCH': {
-      // Clear mismatched cards and feedback
       return {
         ...state,
         flippedCards: [],
@@ -111,14 +168,24 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
       }
     }
 
+    case 'SWITCH_PLAYER': {
+      const currentIndex = state.activePlayers.indexOf(state.currentPlayer)
+      const nextIndex = (currentIndex + 1) % state.activePlayers.length
+      const nextPlayer = state.activePlayers[nextIndex]
+
+      return {
+        ...state,
+        currentPlayer: nextPlayer,
+        currentMoveStartTime: Date.now(),
+      }
+    }
+
     case 'GO_TO_SETUP': {
-      // Return to setup phase - pause game if coming from playing/results
       const isPausingGame = state.gamePhase === 'playing' || state.gamePhase === 'results'
 
       return {
         ...state,
         gamePhase: 'setup',
-        // PAUSE: Save game state if pausing from active game
         pausedGamePhase: isPausingGame ? state.gamePhase : undefined,
         pausedGameState: isPausingGame
           ? {
@@ -128,12 +195,11 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
               moves: state.moves,
               scores: state.scores,
               activePlayers: state.activePlayers,
-              playerMetadata: state.playerMetadata,
+              playerMetadata: state.playerMetadata || {},
               consecutiveMatches: state.consecutiveMatches,
               gameStartTime: state.gameStartTime,
             }
           : undefined,
-        // Reset visible game state
         gameCards: [],
         cards: [],
         flippedCards: [],
@@ -155,16 +221,12 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
     }
 
     case 'SET_CONFIG': {
-      // Update configuration field optimistically
-      const { field, value } = move.data as { field: string; value: any }
       const clearPausedGame = !!state.pausedGamePhase
 
       return {
         ...state,
-        [field]: value,
-        // Update totalPairs if difficulty changes
-        ...(field === 'difficulty' ? { totalPairs: value } : {}),
-        // Clear paused game if config changed
+        [action.field]: action.value,
+        ...(action.field === 'difficulty' ? { totalPairs: action.value } : {}),
         ...(clearPausedGame
           ? { pausedGamePhase: undefined, pausedGameState: undefined, originalConfig: undefined }
           : {}),
@@ -172,9 +234,8 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
     }
 
     case 'RESUME_GAME': {
-      // Resume paused game
       if (!state.pausedGamePhase || !state.pausedGameState) {
-        return state // No paused game, no-op
+        return state
       }
 
       return {
@@ -190,20 +251,26 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
         playerMetadata: state.pausedGameState.playerMetadata,
         consecutiveMatches: state.pausedGameState.consecutiveMatches,
         gameStartTime: state.pausedGameState.gameStartTime,
-        // Clear paused state
         pausedGamePhase: undefined,
         pausedGameState: undefined,
       }
     }
 
     case 'HOVER_CARD': {
-      // Update player hover state for networked presence
       return {
         ...state,
         playerHovers: {
           ...state.playerHovers,
-          [move.playerId]: move.data.cardId,
+          [action.playerId]: action.cardId,
         },
+      }
+    }
+
+    case 'END_GAME': {
+      return {
+        ...state,
+        gamePhase: 'results',
+        gameEndTime: Date.now(),
       }
     }
 
@@ -212,118 +279,95 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
   }
 }
 
-// Provider component for LOCAL play (no network sync)
+// Provider component for LOCAL-ONLY play (no network, no arcade session)
 export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
   const { data: viewerId } = useViewerId()
-  // NOTE: We deliberately do NOT call useRoomData() for local play
   const { activePlayerCount, activePlayers: activePlayerIds, players } = useGameMode()
 
-  // Use arcade redirect to determine button visibility for arcade sessions
+  // Use arcade redirect to determine button visibility
   const { canModifyPlayers } = useArcadeRedirect({ currentGame: 'matching' })
 
-  // Get active player IDs directly as strings (UUIDs)
+  // Get active player IDs as array
   const activePlayers = Array.from(activePlayerIds)
 
   // Derive game mode from active player count
   const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'
 
-  // NO LOCAL STATE - Configuration lives in session state
-  // Changes are sent as moves and synchronized (even in local mode for consistency)
+  // Pure client-side state with useReducer
+  const [state, dispatch] = useReducer(localMemoryPairsReducer, initialState)
 
-  // Arcade session integration WITHOUT room sync
-  const {
-    state,
-    sendMove,
-    connected: _connected,
-    exitSession,
-  } = useArcadeSession<MemoryPairsState>({
-    userId: viewerId || '',
-    roomId: undefined, // CRITICAL: No roomId means no network sync
-    initialState,
-    applyMove: applyMoveOptimistically,
-  })
-
-  // Handle mismatch feedback timeout
+  // Handle mismatch feedback timeout and player switching
   useEffect(() => {
     if (state.showMismatchFeedback && state.flippedCards.length === 2) {
-      // After 1.5 seconds, send CLEAR_MISMATCH
-      // Server will validate that cards are still in mismatch state before clearing
       const timeout = setTimeout(() => {
-        sendMove({
-          type: 'CLEAR_MISMATCH',
-          playerId: state.currentPlayer,
-          data: {},
-        })
+        dispatch({ type: 'CLEAR_MISMATCH' })
+        // Switch to next player after mismatch
+        dispatch({ type: 'SWITCH_PLAYER' })
       }, 1500)
 
       return () => clearTimeout(timeout)
     }
-  }, [state.showMismatchFeedback, state.flippedCards.length, sendMove, state.currentPlayer])
+  }, [state.showMismatchFeedback, state.flippedCards.length])
+
+  // Handle automatic match checking when 2 cards flipped
+  useEffect(() => {
+    if (state.flippedCards.length === 2 && !state.showMismatchFeedback) {
+      const [card1, card2] = state.flippedCards
+      const isMatch = validateMatch(card1, card2)
+
+      const timeout = setTimeout(() => {
+        if (isMatch.isValid) {
+          dispatch({
+            type: 'MATCH_FOUND',
+            cardIds: [card1.id, card2.id],
+            playerId: state.currentPlayer,
+          })
+          // Player keeps turn on match - no SWITCH_PLAYER
+        } else {
+          dispatch({
+            type: 'MATCH_FAILED',
+            cardIds: [card1.id, card2.id],
+          })
+          // SWITCH_PLAYER will happen after CLEAR_MISMATCH timeout
+        }
+      }, 600) // Small delay to show both cards
+
+      return () => clearTimeout(timeout)
+    }
+  }, [state.flippedCards, state.showMismatchFeedback, state.currentPlayer])
 
   // Computed values
   const isGameActive = state.gamePhase === 'playing'
 
   const canFlipCard = useCallback(
     (cardId: string): boolean => {
-      console.log('[LocalProvider][canFlipCard] Checking card:', {
-        cardId,
-        isGameActive,
-        isProcessingMove: state.isProcessingMove,
-        currentPlayer: state.currentPlayer,
-        flippedCardsCount: state.flippedCards.length,
-      })
-
       if (!isGameActive || state.isProcessingMove) {
-        console.log('[LocalProvider][canFlipCard] Blocked: game not active or processing')
         return false
       }
 
       const card = state.gameCards.find((c) => c.id === cardId)
       if (!card || card.matched) {
-        console.log('[LocalProvider][canFlipCard] Blocked: card not found or already matched')
         return false
       }
 
-      // Can't flip if already flipped
       if (state.flippedCards.some((c) => c.id === cardId)) {
-        console.log('[LocalProvider][canFlipCard] Blocked: card already flipped')
         return false
       }
 
-      // Can't flip more than 2 cards
       if (state.flippedCards.length >= 2) {
-        console.log('[LocalProvider][canFlipCard] Blocked: 2 cards already flipped')
         return false
       }
 
-      // In local play, we allow the current player to flip
-      // Authorization is simpler - just check if it's this player's turn
+      // In local play, all local players can flip during their turn
       const currentPlayerData = players.get(state.currentPlayer)
-      console.log('[LocalProvider][canFlipCard] Authorization check:', {
-        currentPlayerId: state.currentPlayer,
-        currentPlayerFound: !!currentPlayerData,
-        currentPlayerIsLocal: currentPlayerData?.isLocal,
-      })
-
-      // Block if current player is explicitly marked as remote (shouldn't happen in local play)
       if (currentPlayerData && currentPlayerData.isLocal === false) {
-        console.log(
-          '[LocalProvider][canFlipCard] BLOCKED: Current player is remote (unexpected in local play)'
-        )
         return false
       }
 
-      console.log('[LocalProvider][canFlipCard] ALLOWED: All checks passed')
       return true
     },
-    [
-      isGameActive,
-      state.isProcessingMove,
-      state.gameCards,
-      state.flippedCards,
-      state.currentPlayer,
-      players,
-    ]
+    [isGameActive, state.isProcessingMove, state.gameCards, state.flippedCards, state.currentPlayer, players]
   )
 
   const currentGameStatistics: GameStatistics = useMemo(
@@ -341,7 +385,6 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
     [state.moves, state.matchedPairs, state.totalPairs, state.gameStartTime, state.gameEndTime]
   )
 
-  // PAUSE/RESUME: Computed values for pause/resume functionality
   const hasConfigChanged = useMemo(() => {
     if (!state.originalConfig) return false
     return (
@@ -355,16 +398,13 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
     return !!state.pausedGamePhase && !!state.pausedGameState && !hasConfigChanged
   }, [state.pausedGamePhase, state.pausedGameState, hasConfigChanged])
 
-  // Action creators - send moves to arcade session
+  // Action creators
   const startGame = useCallback(() => {
-    // Must have at least one active player
     if (activePlayers.length === 0) {
       console.error('[LocalMemoryPairs] Cannot start game without active players')
       return
     }
 
-    // Capture player metadata from local players map
-    // This ensures all room members can display player info even if they don't own the players
     const playerMetadata: { [playerId: string]: any } = {}
     for (const playerId of activePlayers) {
       const playerData = players.get(playerId)
@@ -379,56 +419,31 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
       }
     }
 
-    // Use current session state configuration (no local state!)
     const cards = generateGameCards(state.gameType, state.difficulty)
-    // Use first active player as playerId for START_GAME move
-    const firstPlayer = activePlayers[0]
-    sendMove({
+    dispatch({
       type: 'START_GAME',
-      playerId: firstPlayer,
-      data: {
-        cards,
-        activePlayers,
-        playerMetadata,
-      },
+      cards,
+      activePlayers,
+      playerMetadata,
     })
-  }, [state.gameType, state.difficulty, activePlayers, players, viewerId, sendMove])
+  }, [state.gameType, state.difficulty, activePlayers, players, viewerId])
 
   const flipCard = useCallback(
     (cardId: string) => {
-      console.log('[LocalProvider] flipCard called:', {
-        cardId,
-        viewerId,
-        currentPlayer: state.currentPlayer,
-        activePlayers: state.activePlayers,
-        gamePhase: state.gamePhase,
-        canFlip: canFlipCard(cardId),
-      })
-
       if (!canFlipCard(cardId)) {
-        console.log('[LocalProvider] Cannot flip card - canFlipCard returned false')
         return
       }
-
-      const move = {
-        type: 'FLIP_CARD' as const,
-        playerId: state.currentPlayer, // Use the current player ID from game state (database player ID)
-        data: { cardId },
-      }
-      console.log('[LocalProvider] Sending FLIP_CARD move via sendMove:', move)
-      sendMove(move)
+      dispatch({ type: 'FLIP_CARD', cardId })
     },
-    [canFlipCard, sendMove, viewerId, state.currentPlayer, state.activePlayers, state.gamePhase]
+    [canFlipCard]
   )
 
   const resetGame = useCallback(() => {
-    // Must have at least one active player
     if (activePlayers.length === 0) {
       console.error('[LocalMemoryPairs] Cannot reset game without active players')
       return
     }
 
-    // Capture player metadata from local players map
     const playerMetadata: { [playerId: string]: any } = {}
     for (const playerId of activePlayers) {
       const playerData = players.get(playerId)
@@ -443,114 +458,71 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
       }
     }
 
-    // Use current session state configuration (no local state!)
     const cards = generateGameCards(state.gameType, state.difficulty)
-    // Use first active player as playerId for START_GAME move
-    const firstPlayer = activePlayers[0]
-    sendMove({
+    dispatch({
       type: 'START_GAME',
-      playerId: firstPlayer,
-      data: {
-        cards,
-        activePlayers,
-        playerMetadata,
-      },
+      cards,
+      activePlayers,
+      playerMetadata,
     })
-  }, [state.gameType, state.difficulty, activePlayers, players, viewerId, sendMove])
+  }, [state.gameType, state.difficulty, activePlayers, players, viewerId])
 
-  const setGameType = useCallback(
-    (gameType: typeof state.gameType) => {
-      // Use first active player as playerId, or empty string if none
-      const playerId = activePlayers[0] || ''
-      sendMove({
-        type: 'SET_CONFIG',
-        playerId,
-        data: { field: 'gameType', value: gameType },
-      })
-    },
-    [activePlayers, sendMove]
-  )
+  const setGameType = useCallback((gameType: typeof state.gameType) => {
+    dispatch({ type: 'SET_CONFIG', field: 'gameType', value: gameType })
+  }, [])
 
-  const setDifficulty = useCallback(
-    (difficulty: typeof state.difficulty) => {
-      const playerId = activePlayers[0] || ''
-      sendMove({
-        type: 'SET_CONFIG',
-        playerId,
-        data: { field: 'difficulty', value: difficulty },
-      })
-    },
-    [activePlayers, sendMove]
-  )
+  const setDifficulty = useCallback((difficulty: typeof state.difficulty) => {
+    dispatch({ type: 'SET_CONFIG', field: 'difficulty', value: difficulty })
+  }, [])
 
-  const setTurnTimer = useCallback(
-    (turnTimer: typeof state.turnTimer) => {
-      const playerId = activePlayers[0] || ''
-      sendMove({
-        type: 'SET_CONFIG',
-        playerId,
-        data: { field: 'turnTimer', value: turnTimer },
-      })
-    },
-    [activePlayers, sendMove]
-  )
+  const setTurnTimer = useCallback((turnTimer: typeof state.turnTimer) => {
+    dispatch({ type: 'SET_CONFIG', field: 'turnTimer', value: turnTimer })
+  }, [])
 
   const resumeGame = useCallback(() => {
-    // PAUSE/RESUME: Resume paused game if config unchanged
     if (!canResumeGame) {
       console.warn('[LocalMemoryPairs] Cannot resume - no paused game or config changed')
       return
     }
-
-    const playerId = activePlayers[0] || state.currentPlayer || ''
-    sendMove({
-      type: 'RESUME_GAME',
-      playerId,
-      data: {},
-    })
-  }, [canResumeGame, activePlayers, state.currentPlayer, sendMove])
+    dispatch({ type: 'RESUME_GAME' })
+  }, [canResumeGame])
 
   const goToSetup = useCallback(() => {
-    // Send GO_TO_SETUP move
-    const playerId = activePlayers[0] || state.currentPlayer || ''
-    sendMove({
-      type: 'GO_TO_SETUP',
-      playerId,
-      data: {},
-    })
-  }, [activePlayers, state.currentPlayer, sendMove])
+    dispatch({ type: 'GO_TO_SETUP' })
+  }, [])
 
   const hoverCard = useCallback(
     (cardId: string | null) => {
-      // HOVER: Send hover state for networked presence
-      // Use current player as the one hovering
       const playerId = state.currentPlayer || activePlayers[0] || ''
-      if (!playerId) return // No active player to send hover for
+      if (!playerId) return
 
-      sendMove({
+      dispatch({
         type: 'HOVER_CARD',
         playerId,
-        data: { cardId },
+        cardId,
       })
     },
-    [state.currentPlayer, activePlayers, sendMove]
+    [state.currentPlayer, activePlayers]
   )
 
-  // NO MORE effectiveState merging! Just use session state directly with gameMode added
+  const exitSession = useCallback(() => {
+    router.push('/arcade')
+  }, [router])
+
   const effectiveState = { ...state, gameMode } as MemoryPairsState & { gameMode: GameMode }
 
   const contextValue: MemoryPairsContextValue = {
     state: effectiveState,
     dispatch: () => {
-      // No-op - replaced with sendMove
-      console.warn('dispatch() is deprecated in arcade mode, use action creators instead')
+      // No-op - local provider uses action creators instead
+      console.warn('dispatch() is not available in local mode, use action creators instead')
     },
     isGameActive,
     canFlipCard,
     currentGameStatistics,
     hasConfigChanged,
     canResumeGame,
-    canModifyPlayers, // Arcade sessions: use arcade redirect logic
+    canModifyPlayers,
     startGame,
     resumeGame,
     flipCard,
