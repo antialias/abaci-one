@@ -38,10 +38,15 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built application
+# Copy built application from standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+
+# Copy node_modules with proper structure for pnpm symlinks
+# The standalone output has symlinks that point to ../../../node_modules/.pnpm
+# which resolves to /node_modules/.pnpm when CWD is /app
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules /node_modules
 
 # Set up environment
 USER nextjs
