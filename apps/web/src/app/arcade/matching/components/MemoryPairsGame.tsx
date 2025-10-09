@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
+import { useRoomData } from '@/hooks/useRoomData'
 import { css } from '../../../../../styled-system/css'
 import { StandardGameLayout } from '../../../../components/StandardGameLayout'
 import { useFullscreen } from '../../../../contexts/FullscreenContext'
@@ -14,9 +15,13 @@ import { SetupPhase } from './SetupPhase'
 
 export function MemoryPairsGame() {
   const router = useRouter()
-  const { state, exitSession, resetGame } = useMemoryPairs()
+  const { state, exitSession, resetGame, goToSetup } = useMemoryPairs()
   const { setFullscreenElement } = useFullscreen()
-  const { canModifyPlayers } = useArcadeRedirect({ currentGame: 'matching' })
+  const { isInRoom } = useRoomData()
+  const arcadeRedirect = useArcadeRedirect({ currentGame: 'matching' })
+  // In rooms, always show buttons (canModifyPlayers = false shows buttons)
+  // In arcade sessions, use normal arcade redirect logic
+  const canModifyPlayers = isInRoom ? false : arcadeRedirect.canModifyPlayers
   const gameRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -37,11 +42,14 @@ export function MemoryPairsGame() {
         exitSession()
         router.push('/arcade')
       }}
-      onSetup={() => {
-        // Exit current session and return to arcade (which will redirect to setup)
-        exitSession()
-        router.push('/arcade/matching')
-      }}
+      onSetup={
+        goToSetup
+          ? () => {
+              // Transition to setup phase (will pause game if active)
+              goToSetup()
+            }
+          : undefined
+      }
       onNewGame={() => {
         resetGame()
       }}
