@@ -1,6 +1,7 @@
 'use client'
 
 import { type ReactNode, useCallback, useEffect, useMemo } from 'react'
+import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useViewerId } from '@/hooks/useViewerId'
 import type { GameMove } from '@/lib/arcade/validation'
@@ -38,6 +39,8 @@ const initialState: MemoryPairsState = {
   originalConfig: undefined,
   pausedGamePhase: undefined,
   pausedGameState: undefined,
+  // HOVER: Initialize hover state
+  playerHovers: {},
 }
 
 /**
@@ -193,6 +196,17 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
       }
     }
 
+    case 'HOVER_CARD': {
+      // Update player hover state for networked presence
+      return {
+        ...state,
+        playerHovers: {
+          ...state.playerHovers,
+          [move.playerId]: move.data.cardId,
+        },
+      }
+    }
+
     default:
       return state
   }
@@ -203,6 +217,9 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
   const { data: viewerId } = useViewerId()
   // NOTE: We deliberately do NOT call useRoomData() for local play
   const { activePlayerCount, activePlayers: activePlayerIds, players } = useGameMode()
+
+  // Use arcade redirect to determine button visibility for arcade sessions
+  const { canModifyPlayers } = useArcadeRedirect({ currentGame: 'matching' })
 
   // Get active player IDs directly as strings (UUIDs)
   const activePlayers = Array.from(activePlayerIds)
@@ -494,7 +511,7 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
   }, [canResumeGame, activePlayers, state.currentPlayer, sendMove])
 
   const goToSetup = useCallback(() => {
-    // Send GO_TO_SETUP move - synchronized across all room members
+    // Send GO_TO_SETUP move
     const playerId = activePlayers[0] || state.currentPlayer || ''
     sendMove({
       type: 'GO_TO_SETUP',
@@ -502,6 +519,22 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
       data: {},
     })
   }, [activePlayers, state.currentPlayer, sendMove])
+
+  const hoverCard = useCallback(
+    (cardId: string | null) => {
+      // HOVER: Send hover state for networked presence
+      // Use current player as the one hovering
+      const playerId = state.currentPlayer || activePlayers[0] || ''
+      if (!playerId) return // No active player to send hover for
+
+      sendMove({
+        type: 'HOVER_CARD',
+        playerId,
+        data: { cardId },
+      })
+    },
+    [state.currentPlayer, activePlayers, sendMove]
+  )
 
   // NO MORE effectiveState merging! Just use session state directly with gameMode added
   const effectiveState = { ...state, gameMode } as MemoryPairsState & { gameMode: GameMode }
@@ -517,6 +550,7 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
     currentGameStatistics,
     hasConfigChanged,
     canResumeGame,
+    canModifyPlayers, // Arcade sessions: use arcade redirect logic
     startGame,
     resumeGame,
     flipCard,
@@ -525,6 +559,7 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
     setGameType,
     setDifficulty,
     setTurnTimer,
+    hoverCard,
     exitSession,
     gameMode,
     activePlayers,
