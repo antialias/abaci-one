@@ -16,7 +16,7 @@
   },
   "include": [
     "src/db/index.ts",
-    "src/db/schema.ts",
+    "src/db/schema/**/*.ts",
     "src/db/migrate.ts",
     "src/lib/arcade/**/*.ts",
     "src/app/games/matching/context/types.ts",
@@ -24,5 +24,5 @@
     "src/app/games/matching/utils/matchValidation.ts",
     "src/socket-server.ts"
   ],
-  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"]
 }

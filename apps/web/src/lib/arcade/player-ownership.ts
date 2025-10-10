@@ -7,6 +7,7 @@
 
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
+import type { PlayerOwnershipMap } from "./player-ownership.client";
 
 // Re-export all client-safe utilities
 export * from "./player-ownership.client";
