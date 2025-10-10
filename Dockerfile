@@ -40,8 +40,8 @@ RUN adduser --system --uid 1001 nextjs
 
 # Copy built application from standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./public
 
 # Copy node_modules with proper structure for pnpm symlinks
 # The standalone output has symlinks that point to ../../../node_modules/.pnpm
