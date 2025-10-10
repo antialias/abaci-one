@@ -8,10 +8,11 @@ import {
   getArcadeSession,
   getArcadeSessionByRoom,
   updateSessionActivity,
+  updateSessionActivePlayers,
 } from './lib/arcade/session-manager'
 import { createRoom, getRoomById } from './lib/arcade/room-manager'
 import { getRoomMembers, getUserRooms, setMemberOnline } from './lib/arcade/room-membership'
-import { getRoomActivePlayers } from './lib/arcade/player-manager'
+import { getRoomActivePlayers, getRoomPlayerIds } from './lib/arcade/player-manager'
 import type { GameMove, GameName } from './lib/arcade/validation'
 import { matchingGameValidator } from './lib/arcade/validation/MatchingGameValidator'
 
@@ -71,6 +72,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             // Get the room to determine game type and config
             const room = await getRoomById(roomId)
             if (room) {
+              // Fetch all active player IDs from room members (respects isActive flag)
+              const roomPlayerIds = await getRoomPlayerIds(roomId)
+              console.log('[join-arcade-session] Room active players:', roomPlayerIds)
+
               // Get initial state from validator (starts in "setup" phase)
               const initialState = matchingGameValidator.getInitialState({
                 difficulty: (room.gameConfig as any)?.difficulty || 6,
@@ -83,7 +88,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
                 gameName: room.gameName as GameName,
                 gameUrl: '/arcade/room',
                 initialState,
-                activePlayers: [], // No active players yet (setup phase)
+                activePlayers: roomPlayerIds, // Include all room members' active players
                 roomId: room.id,
               })
 
@@ -91,6 +96,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
                 roomId,
                 sessionId: session.userId,
                 gamePhase: (session.gameState as any).gamePhase,
+                activePlayersCount: roomPlayerIds.length,
               })
             }
           }
@@ -307,6 +313,30 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           memberPlayersObj[uid] = players
         }
 
+        // Update session's activePlayers if game hasn't started yet
+        // This ensures new members' players are included in the session
+        const roomPlayerIds = await getRoomPlayerIds(roomId)
+        const sessionUpdated = await updateSessionActivePlayers(roomId, roomPlayerIds)
+
+        if (sessionUpdated) {
+          console.log(`🎮 Updated session activePlayers for room ${roomId}:`, {
+            playerCount: roomPlayerIds.length,
+          })
+
+          // Broadcast updated session state to all users in the game room
+          const updatedSession = await getArcadeSessionByRoom(roomId)
+          if (updatedSession) {
+            io!.to(`game:${roomId}`).emit('session-state', {
+              gameState: updatedSession.gameState,
+              currentGame: updatedSession.currentGame,
+              gameUrl: updatedSession.gameUrl,
+              activePlayers: updatedSession.activePlayers,
+              version: updatedSession.version,
+            })
+            console.log(`📢 Broadcasted updated session state to game room ${roomId}`)
+          }
+        }
+
         // Send current room state to the joining user
         socket.emit('room-joined', {
           roomId,
@@ -376,6 +406,30 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         const memberPlayersObj: Record<string, any[]> = {}
         for (const [uid, players] of memberPlayers.entries()) {
           memberPlayersObj[uid] = players
+        }
+
+        // Update session's activePlayers if game hasn't started yet
+        const roomPlayerIds = await getRoomPlayerIds(roomId)
+        const sessionUpdated = await updateSessionActivePlayers(roomId, roomPlayerIds)
+
+        if (sessionUpdated) {
+          console.log(`🎮 Updated session activePlayers after player toggle:`, {
+            roomId,
+            playerCount: roomPlayerIds.length,
+          })
+
+          // Broadcast updated session state to all users in the game room
+          const updatedSession = await getArcadeSessionByRoom(roomId)
+          if (updatedSession) {
+            io!.to(`game:${roomId}`).emit('session-state', {
+              gameState: updatedSession.gameState,
+              currentGame: updatedSession.currentGame,
+              gameUrl: updatedSession.gameUrl,
+              activePlayers: updatedSession.activePlayers,
+              version: updatedSession.version,
+            })
+            console.log(`📢 Broadcasted updated session state to game room ${roomId}`)
+          }
         }
 
         // Broadcast to all members in the room (including sender)

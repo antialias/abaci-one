@@ -354,6 +354,56 @@ export async function updateSessionActivity(guestId: string): Promise<void> {
 }
 
 /**
+ * Update session's active players (only if game hasn't started)
+ * Used when new members join a room
+ * @param roomId - The room ID (PRIMARY KEY)
+ * @param playerIds - Array of player IDs to set as active players
+ * @returns true if updated, false if game already started or session not found
+ */
+export async function updateSessionActivePlayers(
+  roomId: string,
+  playerIds: string[]
+): Promise<boolean> {
+  const session = await getArcadeSessionByRoom(roomId)
+  if (!session) return false
+
+  // Only update if game is in setup phase (not started yet)
+  const gameState = session.gameState as any
+  if (gameState.gamePhase !== 'setup') {
+    console.log('[Session Manager] Cannot update activePlayers - game already started:', {
+      roomId,
+      gamePhase: gameState.gamePhase,
+    })
+    return false
+  }
+
+  // Update both the session's activePlayers field AND the game state
+  const updatedGameState = {
+    ...gameState,
+    activePlayers: playerIds,
+  }
+
+  const now = new Date()
+  await db
+    .update(schema.arcadeSessions)
+    .set({
+      activePlayers: playerIds as any,
+      gameState: updatedGameState as any,
+      lastActivityAt: now,
+      version: session.version + 1,
+    })
+    .where(eq(schema.arcadeSessions.roomId, roomId))
+
+  console.log('[Session Manager] Updated session activePlayers:', {
+    roomId,
+    playerIds,
+    count: playerIds.length,
+  })
+
+  return true
+}
+
+/**
  * Clean up expired sessions (should be called periodically)
  */
 export async function cleanupExpiredSessions(): Promise<number> {
