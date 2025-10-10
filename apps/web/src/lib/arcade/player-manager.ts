@@ -7,6 +7,9 @@ import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { Player } from '@/db/schema/players'
 
+// Re-export ownership utilities for convenience
+export { buildPlayerOwnershipMap, type PlayerOwnershipMap } from './player-ownership'
+
 /**
  * Get all players for a user (regardless of isActive status)
  * @param viewerId - The guestId from the cookie (same as what getViewerId() returns)
