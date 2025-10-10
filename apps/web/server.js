@@ -12,7 +12,7 @@ const handle = app.getRequestHandler()
 // Run migrations before starting server
 console.log('🔄 Running database migrations...')
 const { migrate } = require('drizzle-orm/better-sqlite3/migrator')
-const { db } = require('./src/db/index.js')
+const { db } = require('./dist/db/index')
 
 try {
   migrate(db, { migrationsFolder: './drizzle' })
@@ -35,7 +35,7 @@ app.prepare().then(() => {
   })
 
   // Initialize Socket.IO
-  const { initializeSocketServer } = require('./socket-server.js')
+  const { initializeSocketServer } = require('./dist/socket-server')
   initializeSocketServer(server)
 
   server

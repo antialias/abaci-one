@@ -4,6 +4,7 @@
     "module": "commonjs",
     "target": "es2020",
     "outDir": "./dist",
+    "rootDir": "./src",
     "noEmit": false,
     "incremental": false,
     "skipLibCheck": true,
@@ -21,7 +22,7 @@
     "src/app/games/matching/context/types.ts",
     "src/app/games/matching/utils/cardGeneration.ts",
     "src/app/games/matching/utils/matchValidation.ts",
-    "socket-server.ts"
+    "src/socket-server.ts"
   ],
   "exclude": [
     "node_modules",

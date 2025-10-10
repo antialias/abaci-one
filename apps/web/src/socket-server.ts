@@ -8,12 +8,12 @@ import {
   getArcadeSession,
   getArcadeSessionByRoom,
   updateSessionActivity,
-} from './src/lib/arcade/session-manager'
-import { createRoom, getRoomById } from './src/lib/arcade/room-manager'
-import { getRoomMembers, getUserRooms, setMemberOnline } from './src/lib/arcade/room-membership'
-import { getRoomActivePlayers } from './src/lib/arcade/player-manager'
-import type { GameMove, GameName } from './src/lib/arcade/validation'
-import { matchingGameValidator } from './src/lib/arcade/validation/MatchingGameValidator'
+} from './lib/arcade/session-manager'
+import { createRoom, getRoomById } from './lib/arcade/room-manager'
+import { getRoomMembers, getUserRooms, setMemberOnline } from './lib/arcade/room-membership'
+import { getRoomActivePlayers } from './lib/arcade/player-manager'
+import type { GameMove, GameName } from './lib/arcade/validation'
+import { matchingGameValidator } from './lib/arcade/validation/MatchingGameValidator'
 
 // Use globalThis to store socket.io instance to avoid module isolation issues
 // This ensures the same instance is accessible across dynamic imports

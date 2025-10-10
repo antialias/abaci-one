@@ -38,6 +38,7 @@ next-env.d.ts
 /dist
 src/**/*.js
 src/**/*.js.map
+/socket-server.js
 
 # vitest
 /.vitest
