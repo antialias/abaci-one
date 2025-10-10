@@ -12,6 +12,7 @@ Transform the current singleton arcade session into a multi-room system where us
 ## 1. Core Requirements
 
 ### Room Features
+
 - ✅ **Public by default** - All rooms visible in public lobby
 - ✅ **No capacity limits** - Unlimited players per room
 - ✅ **Configurable TTL** - Rooms expire based on inactivity (similar to existing session TTL)
@@ -29,55 +30,56 @@ Transform the current singleton arcade session into a multi-room system where us
 ```typescript
 // arcade_rooms table
 interface ArcadeRoom {
-  id: string                    // UUID - primary key
-  code: string                  // 6-char join code (e.g., "ABC123") - unique
-  name: string                  // User-defined room name (max 50 chars)
+  id: string; // UUID - primary key
+  code: string; // 6-char join code (e.g., "ABC123") - unique
+  name: string; // User-defined room name (max 50 chars)
 
   // Creator info
-  createdBy: string             // User/guest ID of creator
-  creatorName: string           // Display name at creation time
-  createdAt: Date
+  createdBy: string; // User/guest ID of creator
+  creatorName: string; // Display name at creation time
+  createdAt: Date;
 
   // Lifecycle
-  lastActivity: Date            // Updated on any room activity
-  ttlMinutes: number            // Time to live in minutes (default: 60)
-  isLocked: boolean             // Creator can lock room (no new joins)
+  lastActivity: Date; // Updated on any room activity
+  ttlMinutes: number; // Time to live in minutes (default: 60)
+  isLocked: boolean; // Creator can lock room (no new joins)
 
   // Game configuration
-  gameName: string              // 'matching', 'complement-race', etc.
-  gameConfig: JSON              // Game-specific settings (difficulty, etc.)
+  gameName: string; // 'matching', 'complement-race', etc.
+  gameConfig: JSON; // Game-specific settings (difficulty, etc.)
 
   // Current state
-  status: 'lobby' | 'playing' | 'finished'
-  currentSessionId: string | null // FK to arcade_sessions (when game active)
+  status: "lobby" | "playing" | "finished";
+  currentSessionId: string | null; // FK to arcade_sessions (when game active)
 
   // Metadata
-  totalGamesPlayed: number      // Track room usage
+  totalGamesPlayed: number; // Track room usage
 }
 
 // room_members table
 interface RoomMember {
-  id: string                    // UUID - primary key
-  roomId: string                // FK to arcade_rooms - indexed
-  userId: string                // User/guest ID - indexed
-  displayName: string           // Name shown in room
-  isCreator: boolean            // True for room creator
-  joinedAt: Date
-  lastSeen: Date                // Updated on any activity
-  isOnline: boolean             // Currently connected via socket
+  id: string; // UUID - primary key
+  roomId: string; // FK to arcade_rooms - indexed
+  userId: string; // User/guest ID - indexed
+  displayName: string; // Name shown in room
+  isCreator: boolean; // True for room creator
+  joinedAt: Date;
+  lastSeen: Date; // Updated on any activity
+  isOnline: boolean; // Currently connected via socket
 }
 
 // Modify existing: arcade_sessions
 interface ArcadeSession {
-  id: string
-  userId: string
+  id: string;
+  userId: string;
   // ... existing fields
-  roomId: string | null         // FK to arcade_rooms (null for solo play)
+  roomId: string | null; // FK to arcade_rooms (null for solo play)
   // When roomId is set, session is shared across room members
 }
 ```
 
 ### Indexes
+
 ```sql
 CREATE INDEX idx_rooms_code ON arcade_rooms(code);
 CREATE INDEX idx_rooms_status ON arcade_rooms(status);
@@ -382,12 +384,12 @@ User Journey D: Browse Lobby
 interface GameContextNavProps {
   // ... existing props
   roomContext?: {
-    roomId: string
-    roomName: string
-    roomCode: string
-    memberCount: number
-    isCreator: boolean
-  }
+    roomId: string;
+    roomName: string;
+    roomCode: string;
+    memberCount: number;
+    isCreator: boolean;
+  };
 }
 
 // Shows in nav during room gameplay:
@@ -492,64 +494,63 @@ export function useArcadeSession<TState>(options: {
 ```typescript
 // socket-server.ts modifications
 
-io.on('connection', (socket) => {
-
+io.on("connection", (socket) => {
   // Join room (socket.io namespace)
-  socket.on('join-room', async ({ roomId, userId }) => {
+  socket.on("join-room", async ({ roomId, userId }) => {
     // Validate membership
-    const member = await getRoomMember(roomId, userId)
+    const member = await getRoomMember(roomId, userId);
     if (!member) {
-      socket.emit('room-error', { error: 'Not a room member' })
-      return
+      socket.emit("room-error", { error: "Not a room member" });
+      return;
     }
 
     // Join socket.io room
-    socket.join(`room:${roomId}`)
+    socket.join(`room:${roomId}`);
 
     // Update presence
-    await updateMemberPresence(roomId, userId, true)
+    await updateMemberPresence(roomId, userId, true);
 
     // Broadcast to room
-    io.to(`room:${roomId}`).emit('member-joined', { member })
+    io.to(`room:${roomId}`).emit("member-joined", { member });
 
     // Send current state
-    const room = await getRoomById(roomId)
-    const members = await getRoomMembers(roomId)
-    socket.emit('room-state', { room, members })
-  })
+    const room = await getRoomById(roomId);
+    const members = await getRoomMembers(roomId);
+    socket.emit("room-state", { room, members });
+  });
 
   // Leave room
-  socket.on('leave-room', async ({ roomId, userId }) => {
-    socket.leave(`room:${roomId}`)
-    await updateMemberPresence(roomId, userId, false)
-    io.to(`room:${roomId}`).emit('member-left', { userId })
-  })
+  socket.on("leave-room", async ({ roomId, userId }) => {
+    socket.leave(`room:${roomId}`);
+    await updateMemberPresence(roomId, userId, false);
+    io.to(`room:${roomId}`).emit("member-left", { userId });
+  });
 
   // Game moves (room-scoped)
-  socket.on('game-move', async ({ roomId, userId, move }) => {
+  socket.on("game-move", async ({ roomId, userId, move }) => {
     // Validate room membership
-    const member = await getRoomMember(roomId, userId)
-    if (!member) return
+    const member = await getRoomMember(roomId, userId);
+    if (!member) return;
 
     // Apply move to room's session
-    const result = await applyGameMove(userId, move, roomId)
+    const result = await applyGameMove(userId, move, roomId);
 
     if (result.success) {
       // Broadcast to all room members
-      io.to(`room:${roomId}`).emit('move-accepted', {
+      io.to(`room:${roomId}`).emit("move-accepted", {
         gameState: result.session.gameState,
         version: result.session.version,
-        move
-      })
+        move,
+      });
     }
-  })
+  });
 
   // Disconnect handling
-  socket.on('disconnect', () => {
+  socket.on("disconnect", () => {
     // Update presence for all rooms user was in
-    updateAllUserPresence(userId, false)
-  })
-})
+    updateAllUserPresence(userId, false);
+  });
+});
 ```
 
 ---
@@ -564,20 +565,20 @@ io.on('connection', (socket) => {
 export function generateGuestId(): string {
   // Format: guest_{timestamp}_{random}
   // Example: guest_1704556800000_a3f2e1
-  const timestamp = Date.now()
-  const random = Math.random().toString(36).substring(2, 8)
-  return `guest_${timestamp}_${random}`
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  return `guest_${timestamp}_${random}`;
 }
 
 export function isGuestId(userId: string): boolean {
-  return userId.startsWith('guest_')
+  return userId.startsWith("guest_");
 }
 
 export function getGuestDisplayName(guestId: string): string {
   // Generate friendly name like "Guest 1234"
-  const hash = guestId.split('_')[2]
-  const num = parseInt(hash, 36) % 10000
-  return `Guest ${num}`
+  const hash = guestId.split("_")[2];
+  const num = parseInt(hash, 36) % 10000;
+  return `Guest ${num}`;
 }
 ```
 
@@ -585,15 +586,15 @@ export function getGuestDisplayName(guestId: string): string {
 
 ```typescript
 // Store guest ID in localStorage
-const GUEST_ID_KEY = 'soroban_guest_id'
+const GUEST_ID_KEY = "soroban_guest_id";
 
 export function getOrCreateGuestId(): string {
-  let guestId = localStorage.getItem(GUEST_ID_KEY)
+  let guestId = localStorage.getItem(GUEST_ID_KEY);
   if (!guestId) {
-    guestId = generateGuestId()
-    localStorage.setItem(GUEST_ID_KEY, guestId)
+    guestId = generateGuestId();
+    localStorage.setItem(GUEST_ID_KEY, guestId);
   }
-  return guestId
+  return guestId;
 }
 ```
 
@@ -606,41 +607,47 @@ export function getOrCreateGuestId(): string {
 ```typescript
 // room-ttl.ts
 
-const DEFAULT_ROOM_TTL_MINUTES = 60
+const DEFAULT_ROOM_TTL_MINUTES = 60;
 
 // Cleanup job (run every 5 minutes)
-setInterval(async () => {
-  await cleanupExpiredRooms()
-}, 5 * 60 * 1000)
+setInterval(
+  async () => {
+    await cleanupExpiredRooms();
+  },
+  5 * 60 * 1000,
+);
 
 async function cleanupExpiredRooms() {
-  const now = new Date()
+  const now = new Date();
 
   // Find expired rooms
   const expiredRooms = await db.query(`
     SELECT id FROM arcade_rooms
     WHERE status != 'playing'
     AND lastActivity < NOW() - INTERVAL '1 minute' * ttlMinutes
-  `)
+  `);
 
   for (const room of expiredRooms) {
     // Notify members
-    io.to(`room:${room.id}`).emit('room-deleted', {
-      reason: 'Room expired due to inactivity'
-    })
+    io.to(`room:${room.id}`).emit("room-deleted", {
+      reason: "Room expired due to inactivity",
+    });
 
     // Delete room and members
-    await deleteRoom(room.id)
+    await deleteRoom(room.id);
   }
 }
 
 // Update activity on any room action
 export async function touchRoom(roomId: string) {
-  await db.query(`
+  await db.query(
+    `
     UPDATE arcade_rooms
     SET lastActivity = NOW()
     WHERE id = $1
-  `, [roomId])
+  `,
+    [roomId],
+  );
 }
 ```
 
@@ -651,30 +658,30 @@ export async function touchRoom(roomId: string) {
 ```typescript
 // /src/lib/arcade/room-code.ts
 
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // No ambiguous chars
-const CODE_LENGTH = 6
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No ambiguous chars
+const CODE_LENGTH = 6;
 
 export async function generateUniqueRoomCode(): Promise<string> {
-  let attempts = 0
-  const maxAttempts = 10
+  let attempts = 0;
+  const maxAttempts = 10;
 
   while (attempts < maxAttempts) {
-    const code = generateCode()
-    const existing = await getRoomByCode(code)
-    if (!existing) return code
-    attempts++
+    const code = generateCode();
+    const existing = await getRoomByCode(code);
+    if (!existing) return code;
+    attempts++;
   }
 
-  throw new Error('Failed to generate unique room code')
+  throw new Error("Failed to generate unique room code");
 }
 
 function generateCode(): string {
-  let code = ''
+  let code = "";
   for (let i = 0; i < CODE_LENGTH; i++) {
-    const idx = Math.floor(Math.random() * CODE_CHARS.length)
-    code += CODE_CHARS[idx]
+    const idx = Math.floor(Math.random() * CODE_CHARS.length);
+    code += CODE_CHARS[idx];
   }
-  return code
+  return code;
 }
 ```
 
@@ -683,6 +690,7 @@ function generateCode(): string {
 ## 12. Migration Plan
 
 ### Phase 1: Database & API Foundation (Day 1-2)
+
 1. Create database tables and indexes
 2. Implement room-manager.ts and room-membership.ts
 3. Build API endpoints
@@ -691,6 +699,7 @@ function generateCode(): string {
 6. Write unit tests
 
 ### Phase 2: Socket.IO Integration (Day 2-3)
+
 1. Update socket-server.ts for room namespacing
 2. Implement room-scoped broadcasts
 3. Add presence tracking
@@ -698,12 +707,14 @@ function generateCode(): string {
 5. Test multi-user room sessions
 
 ### Phase 3: Guest User System (Day 3)
+
 1. Implement guest ID generation
 2. Add guest user hooks
 3. Update auth flow for optional guest access
 4. Test guest join/leave flow
 
 ### Phase 4: UI Components (Day 4-5)
+
 1. Build CreateRoomDialog
 2. Build RoomLobby component
 3. Build RoomLobbyBrowser (public lobby)
@@ -711,6 +722,7 @@ function generateCode(): string {
 5. Wire up all hooks
 
 ### Phase 5: Routes & Navigation (Day 5-6)
+
 1. Create /arcade/rooms routes
 2. Update arcade home for room access
 3. Add room selector to nav
@@ -718,6 +730,7 @@ function generateCode(): string {
 5. Add share room functionality
 
 ### Phase 6: Testing & Polish (Day 6-7)
+
 1. E2E tests for room creation/join
 2. Multi-user gameplay tests
 3. TTL and cleanup tests
@@ -730,12 +743,14 @@ function generateCode(): string {
 ## 13. Backward Compatibility
 
 ### Solo Play Preserved
+
 - Existing `/arcade/matching` routes work unchanged
 - `roomId = null` for solo sessions
 - No breaking changes to `useArcadeSession`
 - All current functionality remains intact
 
 ### Migration Strategy
+
 - Add `roomId` column to `arcade_sessions` (nullable)
 - Existing sessions have `roomId = null`
 - New room-based sessions have `roomId` populated
@@ -746,6 +761,7 @@ function generateCode(): string {
 ## 14. Security Considerations
 
 ### Room Access
+
 - ✅ Validate room membership before allowing game moves
 - ✅ Check `isCreator` flag for moderation actions
 - ✅ Prevent joining locked rooms
@@ -753,6 +769,7 @@ function generateCode(): string {
 - ✅ Sanitize room names (max length, no XSS)
 
 ### Guest Users
+
 - ✅ Guest IDs stored client-side only (localStorage)
 - ✅ No sensitive data in guest profiles
 - ✅ Guest names sanitized
@@ -760,6 +777,7 @@ function generateCode(): string {
 - ✅ Allow authenticated users to "claim" guest activity
 
 ### Room Moderation
+
 - ✅ Only creator can kick/lock/delete
 - ✅ Kicked users cannot rejoin unless creator unlocks
 - ✅ Room deletion clears all associated data
@@ -770,6 +788,7 @@ function generateCode(): string {
 ## 15. Testing Strategy
 
 ### Unit Tests
+
 - Room CRUD operations
 - Member join/leave logic
 - Code generation uniqueness
@@ -778,6 +797,7 @@ function generateCode(): string {
 - Access control validation
 
 ### Integration Tests
+
 - Full room creation → join → play → leave flow
 - Multi-user concurrent gameplay
 - Socket.IO room broadcasts
@@ -785,6 +805,7 @@ function generateCode(): string {
 - TTL expiration and cleanup
 
 ### E2E Tests (Playwright)
+
 - Create room → share link → join as guest
 - Browse lobby → join room → play game
 - Creator kicks member
@@ -792,6 +813,7 @@ function generateCode(): string {
 - Room TTL expiration
 
 ### Load Tests
+
 - 100+ concurrent rooms
 - 10+ players per room
 - Rapid join/leave cycles
@@ -802,17 +824,20 @@ function generateCode(): string {
 ## 16. Performance Optimizations
 
 ### Database
+
 - Index on `room_members.roomId` for fast member queries
 - Index on `arcade_rooms.code` for quick code lookups
 - Index on `room_members.isOnline` for presence queries
 - Partition `arcade_rooms` by `createdAt` for TTL cleanup
 
 ### Caching
+
 - Cache active room list (1-minute TTL)
 - Cache room member counts
 - Redis pub/sub for cross-server socket broadcasts (future)
 
 ### Socket.IO
+
 - Use socket.io rooms for efficient broadcasting
 - Batch presence updates (debounce member online status)
 - Compress socket messages for large game states
@@ -860,12 +885,14 @@ function generateCode(): string {
 ## 20. Dependencies
 
 ### Existing Systems to Leverage
+
 - ✅ Current arcade session management
 - ✅ Existing WebSocket infrastructure (socket-server.ts)
 - ✅ Database setup (PostgreSQL)
 - ✅ Guest player system (from GameModeContext)
 
 ### New Dependencies (if needed)
+
 - None! All can be built with existing stack
 
 ---

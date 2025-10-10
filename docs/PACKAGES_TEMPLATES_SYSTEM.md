@@ -77,17 +77,20 @@ graph LR
 ### Rich Interactive Features
 
 #### **Tabbed Organization**
+
 - **Basic**: Simple number representations (5, 123, 42, 999, 1234)
 - **Crop Tools**: Advanced cropping demonstrations with before/after
 - **Debug**: Development views with crop marks visible
 
 #### **Professional UI**
+
 - Modern CSS Grid responsive layouts
 - Card-based design with shadows and hover effects
 - Smooth transitions and animations
 - Mobile-optimized responsive breakpoints
 
 #### **Embedded SVG Processing**
+
 - Inline vector graphics for instant loading
 - Smart crop mark analysis with transform accumulation
 - Automatic viewBox optimization
@@ -143,16 +146,16 @@ const html = `<!DOCTYPE html>
 
 ```javascript
 const generateCards = (examples, includeCropComparison = false) => {
-    return examples.map(example => {
-        // Read SVG file and embed inline
-        const svgContent = fs.readFileSync(`gallery/${example.id}.svg`, 'utf8');
+  return examples.map((example) => {
+    // Read SVG file and embed inline
+    const svgContent = fs.readFileSync(`gallery/${example.id}.svg`, "utf8");
 
-        // Generate configuration display
-        const configText = Object.entries(example.config)
-            .map(([key, value]) => `<strong>${key}:</strong> <code>${value}</code>`)
-            .join('<br>');
+    // Generate configuration display
+    const configText = Object.entries(example.config)
+      .map(([key, value]) => `<strong>${key}:</strong> <code>${value}</code>`)
+      .join("<br>");
 
-        return `
+    return `
             <div class="example-card">
                 <div class="card-header">
                     <div class="card-title">${example.title}</div>
@@ -167,7 +170,7 @@ const generateCards = (examples, includeCropComparison = false) => {
                 </div>
             </div>
         `;
-    });
+  });
 };
 ```
 
@@ -177,42 +180,42 @@ const generateCards = (examples, includeCropComparison = false) => {
 
 ```javascript
 const examples = [
-    {
-        id: 'basic-5',
-        title: 'Basic Number 5',
-        description: 'Simple representation with monochrome diamonds',
-        number: 5,
-        category: 'basic',
-        config: {
-            bead_shape: 'diamond',
-            color_scheme: 'monochrome',
-            base_size: 1.5
-        }
+  {
+    id: "basic-5",
+    title: "Basic Number 5",
+    description: "Simple representation with monochrome diamonds",
+    number: 5,
+    category: "basic",
+    config: {
+      bead_shape: "diamond",
+      color_scheme: "monochrome",
+      base_size: 1.5,
     },
-    {
-        id: 'colorful-123',
-        title: 'Colorful 123',
-        description: 'Place-value colors with diamond beads',
-        number: 123,
-        category: 'basic',
-        config: {
-            bead_shape: 'diamond',
-            color_scheme: 'place-value',
-            base_size: 1.2
-        }
+  },
+  {
+    id: "colorful-123",
+    title: "Colorful 123",
+    description: "Place-value colors with diamond beads",
+    number: 123,
+    category: "basic",
+    config: {
+      bead_shape: "diamond",
+      color_scheme: "place-value",
+      base_size: 1.2,
     },
-    {
-        id: 'circles-42',
-        title: 'Circle Beads - 42',
-        description: 'Circular beads with heaven-earth colors',
-        number: 42,
-        category: 'basic',
-        config: {
-            bead_shape: 'circle',
-            color_scheme: 'heaven-earth',
-            base_size: 1.8
-        }
-    }
+  },
+  {
+    id: "circles-42",
+    title: "Circle Beads - 42",
+    description: "Circular beads with heaven-earth colors",
+    number: 42,
+    category: "basic",
+    config: {
+      bead_shape: "circle",
+      color_scheme: "heaven-earth",
+      base_size: 1.8,
+    },
+  },
 ];
 ```
 
@@ -241,13 +244,21 @@ const examples = [
 
 ```tsx
 // AbacusExample.tsx - Full-featured React demo
-import React, { useState } from 'react';
-import { AbacusReact, useAbacusDimensions, useAbacusState } from './AbacusReact';
+import React, { useState } from "react";
+import {
+  AbacusReact,
+  useAbacusDimensions,
+  useAbacusState,
+} from "./AbacusReact";
 
 const AbacusExample: React.FC = () => {
   const [demoValue, setDemoValue] = useState(123);
-  const [beadShape, setBeadShape] = useState<'diamond' | 'square' | 'circle'>('diamond');
-  const [colorScheme, setColorScheme] = useState<'monochrome' | 'place-value' | 'alternating' | 'heaven-earth'>('place-value');
+  const [beadShape, setBeadShape] = useState<"diamond" | "square" | "circle">(
+    "diamond",
+  );
+  const [colorScheme, setColorScheme] = useState<
+    "monochrome" | "place-value" | "alternating" | "heaven-earth"
+  >("place-value");
   const [scaleFactor, setScaleFactor] = useState(1);
   const [animated, setAnimated] = useState(true);
   const [draggable, setDraggable] = useState(false);
@@ -267,13 +278,19 @@ const AbacusExample: React.FC = () => {
           onChange={(e) => setDemoValue(parseInt(e.target.value) || 0)}
         />
 
-        <select value={beadShape} onChange={(e) => setBeadShape(e.target.value)}>
+        <select
+          value={beadShape}
+          onChange={(e) => setBeadShape(e.target.value)}
+        >
           <option value="diamond">Diamond</option>
           <option value="circle">Circle</option>
           <option value="square">Square</option>
         </select>
 
-        <select value={colorScheme} onChange={(e) => setColorScheme(e.target.value)}>
+        <select
+          value={colorScheme}
+          onChange={(e) => setColorScheme(e.target.value)}
+        >
           <option value="monochrome">Monochrome</option>
           <option value="place-value">Place Value Colors</option>
           <option value="heaven-earth">Heaven-Earth</option>
@@ -376,12 +393,14 @@ rect(width: bead-size, height: bead-size)
 ```javascript
 // svg-crop-processor.js
 function extractCropMarks(svgPath) {
-  const svgContent = fs.readFileSync(svgPath, 'utf8');
+  const svgContent = fs.readFileSync(svgPath, "utf8");
 
   // Parse SVG and find crop mark elements
   const cropMarks = {
-    left: null, right: null,
-    top: null, bottom: null
+    left: null,
+    right: null,
+    top: null,
+    bottom: null,
   };
 
   // Analyze with transform accumulation
@@ -445,16 +464,16 @@ npm run test:watch
 ### Node.js Integration
 
 ```javascript
-const { FLASHCARDS_TEMPLATE, processSVG } = require('@soroban/templates');
-const fs = require('fs');
+const { FLASHCARDS_TEMPLATE, processSVG } = require("@soroban/templates");
+const fs = require("fs");
 
 // Use template in Node.js application
-const templateContent = fs.readFileSync(FLASHCARDS_TEMPLATE, 'utf-8');
+const templateContent = fs.readFileSync(FLASHCARDS_TEMPLATE, "utf-8");
 
 // Process generated SVG
 const processedSVG = processSVG(svgContent, {
   cropMarks: true,
-  optimize: true
+  optimize: true,
 });
 ```
 
@@ -462,12 +481,12 @@ const processedSVG = processSVG(svgContent, {
 
 ```typescript
 // TypeScript support with full type definitions
-import { getTemplatePath, processSVGFile } from '@soroban/templates';
+import { getTemplatePath, processSVGFile } from "@soroban/templates";
 
-const flashcardsPath = getTemplatePath('flashcards.typ');
-const result = await processSVGFile('./output.svg', {
+const flashcardsPath = getTemplatePath("flashcards.typ");
+const result = await processSVGFile("./output.svg", {
   extractCropMarks: true,
-  generateComparison: true
+  generateComparison: true,
 });
 ```
 
@@ -493,18 +512,18 @@ const result = await processSVGFile('./output.svg', {
 ```javascript
 // In generate-gallery.js or build-unified-gallery.js
 const newExample = {
-    id: 'custom-789',
-    title: 'Custom Configuration',
-    description: 'Demonstrates custom styling options',
-    number: 789,
-    category: 'basic',  // 'basic' | 'crop' | 'debug'
-    config: {
-        bead_shape: 'circle',
-        color_scheme: 'heaven-earth',
-        base_size: 1.5,
-        hide_inactive: true,
-        show_crop_marks: false
-    }
+  id: "custom-789",
+  title: "Custom Configuration",
+  description: "Demonstrates custom styling options",
+  number: 789,
+  category: "basic", // 'basic' | 'crop' | 'debug'
+  config: {
+    bead_shape: "circle",
+    color_scheme: "heaven-earth",
+    base_size: 1.5,
+    hide_inactive: true,
+    show_crop_marks: false,
+  },
 };
 ```
 
@@ -513,18 +532,18 @@ const newExample = {
 ```css
 /* Override gallery styles */
 .example-card {
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    transition: transform 0.3s ease;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
 }
 
 .example-card:hover {
-    transform: translateY(-4px);
+  transform: translateY(-4px);
 }
 
 .card-content svg {
-    max-width: 100%;
-    height: auto;
+  max-width: 100%;
+  height: auto;
 }
 ```
 
@@ -536,7 +555,7 @@ const EnhancedAbacus: React.FC<AbacusProps> = (props) => {
   const [history, setHistory] = useState<number[]>([]);
 
   const handleValueChange = (newValue: number) => {
-    setHistory(prev => [...prev, newValue]);
+    setHistory((prev) => [...prev, newValue]);
     props.onValueChange?.(newValue);
   };
 
@@ -545,7 +564,9 @@ const EnhancedAbacus: React.FC<AbacusProps> = (props) => {
       <AbacusReact {...props} onValueChange={handleValueChange} />
       <div className="value-history">
         {history.map((value, i) => (
-          <span key={i} className="history-value">{value}</span>
+          <span key={i} className="history-value">
+            {value}
+          </span>
         ))}
       </div>
     </div>
@@ -606,15 +627,18 @@ The packages/templates system generates **multiple HTML outputs**, not a single 
 #### **🎮 Main Comprehensive Website Generator**
 
 **Location**: `/Users/antialias/projects/soroban-abacus-flashcards/packages/core/src/web_generator.py`
+
 - **583KB** comprehensive Python script
 - Generates complete interactive flashcards website with games
 - Creates rich HTML with embedded SVG abacus representations
 
 **Command Tool**: `/Users/antialias/projects/soroban-abacus-flashcards/packages/core/src/generate.py`
+
 - Command-line interface for website generation
 - Supports configuration files and custom ranges
 
 **Example Output**: `/Users/antialias/projects/soroban-abacus-flashcards/out/flashcards.html`
+
 - Complete interactive website example (substantial file)
 - Contains all games and learning features
 
@@ -644,6 +668,7 @@ The packages/templates system generates **multiple HTML outputs**, not a single 
 #### **🚂 Train Racing Features (Detailed)**
 
 The Speed Complement Race includes sophisticated train elements:
+
 - **Dynamic track generation** with race-track CSS styling
 - **Steam locomotive physics** - momentum affects speed
 - **Coal shoveling mechanism** - correct answers provide fuel

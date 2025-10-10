@@ -7,11 +7,12 @@ This is the detailed implementation task list for the arcade rooms feature. Use 
 - [ ] Phase 1.1: Create database migration for arcade_rooms and room_members tables
 - [ ] Phase 1.2: Implement room-manager.ts with CRUD operations (create, get, update, delete)
 - [ ] Phase 1.3: Implement room-membership.ts for member management
-- [ ] Phase 1.4: Build API endpoints for room CRUD (/api/arcade/rooms/*)
+- [ ] Phase 1.4: Build API endpoints for room CRUD (/api/arcade/rooms/\*)
 - [ ] Phase 1.5: Add room code generation utility
 - [ ] Phase 1.6: Implement TTL cleanup system for rooms
 
 ### Testing Checkpoint 1
+
 - [ ] TESTING CHECKPOINT 1: Write unit tests for all room manager functions
 - [ ] TESTING CHECKPOINT 1: Write unit tests for room membership functions
 - [ ] TESTING CHECKPOINT 1: Write API endpoint tests for room CRUD operations
@@ -26,6 +27,7 @@ This is the detailed implementation task list for the arcade rooms feature. Use 
 - [ ] Phase 2.5: Update game state sync to respect room boundaries
 
 ### Testing Checkpoint 2
+
 - [ ] TESTING CHECKPOINT 2: Write integration tests for multi-user room sessions
 - [ ] TESTING CHECKPOINT 2: Write tests for room-scoped broadcasts
 - [ ] TESTING CHECKPOINT 2: Manual testing of multi-tab synchronization within rooms
@@ -39,6 +41,7 @@ This is the detailed implementation task list for the arcade rooms feature. Use 
 - [ ] Phase 3.4: Update API endpoints to accept guest user IDs
 
 ### Testing Checkpoint 3
+
 - [ ] TESTING CHECKPOINT 3: Write unit tests for guest ID system
 - [ ] TESTING CHECKPOINT 3: Manual testing of guest join flow
 - [ ] TESTING CHECKPOINT 3: Test guest user persistence across page refreshes
@@ -53,6 +56,7 @@ This is the detailed implementation task list for the arcade rooms feature. Use 
 - [ ] Phase 4.6: Implement player selection UI when joining room
 
 ### Testing Checkpoint 4
+
 - [ ] TESTING CHECKPOINT 4: Write component unit tests for all room UI components
 - [ ] TESTING CHECKPOINT 4: Manual UI testing of room creation flow
 - [ ] TESTING CHECKPOINT 4: Manual UI testing of room browser and filtering
@@ -69,6 +73,7 @@ This is the detailed implementation task list for the arcade rooms feature. Use 
 - [ ] Phase 5.7: Add share room functionality (copy link, share code)
 
 ### Testing Checkpoint 5
+
 - [ ] TESTING CHECKPOINT 5: Write E2E tests for room creation navigation flow
 - [ ] TESTING CHECKPOINT 5: Write E2E tests for join-by-URL flow
 - [ ] TESTING CHECKPOINT 5: Write E2E tests for join-by-code flow
@@ -100,6 +105,7 @@ This is the detailed implementation task list for the arcade rooms feature. Use 
 ## Restoring TodoWrite
 
 To restore this list to TodoWrite format, convert each task to:
+
 ```json
 {
   "content": "Task description",

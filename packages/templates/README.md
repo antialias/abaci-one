@@ -17,15 +17,15 @@ pnpm add @soroban/templates    # or npm install @soroban/templates
 ### 🟨 Node.js/TypeScript (Next.js, Express, etc.)
 
 ```typescript
-import { FLASHCARDS_TEMPLATE, getTemplatePath } from '@soroban/templates';
-import fs from 'fs';
+import { FLASHCARDS_TEMPLATE, getTemplatePath } from "@soroban/templates";
+import fs from "fs";
 
 // Method 1: Direct path (most common)
-const template = fs.readFileSync(FLASHCARDS_TEMPLATE, 'utf-8');
+const template = fs.readFileSync(FLASHCARDS_TEMPLATE, "utf-8");
 
 // Method 2: Dynamic resolution (webpack-safe)
-const templatePath = getTemplatePath('flashcards.typ');
-const template = fs.readFileSync(templatePath, 'utf-8');
+const templatePath = getTemplatePath("flashcards.typ");
+const template = fs.readFileSync(templatePath, "utf-8");
 
 // Use with your Typst compiler...
 // const svg = await typst.compile(template, { number: 1234 });
@@ -48,6 +48,7 @@ with open(FLASHCARDS_TEMPLATE, 'r') as f:
 ```
 
 **What you get:**
+
 - ✅ `flashcards.typ` - Full-featured soroban template with `draw-soroban()` function
 - ✅ `single-card.typ` - Optimized single card template
 - ✅ Webpack compatibility (Next.js, Vite, etc.)
@@ -145,6 +146,7 @@ Both templates use Typst's `link()` function to annotate elements for post-proce
 **Note**: Link annotations are exported to PDF format but not SVG. For SVG processing, the crop marks work as invisible positioning elements that can be identified by their precise coordinates and styling.
 
 Example annotations in generated PDFs:
+
 - `bead://col1-ones-heaven` - Heaven bead in column 1, ones position
 - `bead://col2-tens-earth-1` - First earth bead in column 2, tens position
 - `crop-mark://top` - Top edge crop boundary
@@ -165,19 +167,19 @@ Example annotations in generated PDFs:
 ### Quick Start
 
 ```javascript
-import { processSVG } from '@soroban/templates';
-import fs from 'fs';
+import { processSVG } from "@soroban/templates";
+import fs from "fs";
 
 // Process SVG with full optimization
-const svgContent = fs.readFileSync('soroban.svg', 'utf-8');
+const svgContent = fs.readFileSync("soroban.svg", "utf-8");
 const result = processSVG(svgContent, {
-  extractBeadAnnotations: true,    // Convert bead:// links to data attributes
-  preserveAspectRatio: true,       // Update width/height to match viewBox
-  removeCropMarks: false           // Keep crop marks for debugging
+  extractBeadAnnotations: true, // Convert bead:// links to data attributes
+  preserveAspectRatio: true, // Update width/height to match viewBox
+  removeCropMarks: false, // Keep crop marks for debugging
 });
 
 // Save optimized SVG
-fs.writeFileSync('optimized.svg', result.svg);
+fs.writeFileSync("optimized.svg", result.svg);
 
 console.log(`✨ Optimized! Size reduction: ${result.cropData.reduction}%`);
 console.log(`🎯 Found ${result.beadData?.count || 0} interactive beads`);
@@ -187,6 +189,7 @@ console.log(`📏 New viewBox: ${result.cropData.viewBox}`);
 ### Before/After Example
 
 **Input SVG (270×210px canvas):**
+
 ```svg
 <svg viewBox="0 0 270 210" width="270pt" height="210pt">
   <!-- Full canvas with excess whitespace -->
@@ -197,6 +200,7 @@ console.log(`📏 New viewBox: ${result.cropData.viewBox}`);
 ```
 
 **Output SVG (optimized 58×136px):**
+
 ```svg
 <svg viewBox="78.7 11 58.6 136.4" width="58.6pt" height="136.4pt"
      data-crop-reduction="67%">
@@ -213,32 +217,32 @@ console.log(`📏 New viewBox: ${result.cropData.viewBox}`);
 
 ```typescript
 import {
-  processSVG,           // Main processing function
-  processSVGFile,       // Browser File/Blob processing
-  extractCropMarks,     // Crop optimization only
+  processSVG, // Main processing function
+  processSVGFile, // Browser File/Blob processing
+  extractCropMarks, // Crop optimization only
   extractBeadAnnotations, // Bead processing only
-  SVGCropError          // Error class
-} from '@soroban/templates';
+  SVGCropError, // Error class
+} from "@soroban/templates";
 
 // Process with options
 const result = processSVG(svgContent, {
-  extractBeadAnnotations: true,  // Default: true
-  preserveAspectRatio: true,     // Default: true
-  removeCropMarks: false         // Default: false
+  extractBeadAnnotations: true, // Default: true
+  preserveAspectRatio: true, // Default: true
+  removeCropMarks: false, // Default: false
 });
 
 // Result structure
 interface ProcessResult {
-  svg: string;                   // Optimized SVG content
+  svg: string; // Optimized SVG content
   cropData: {
-    viewBox: string;             // "x y width height"
-    reduction: number;           // Size reduction %
-    width: number;               // Cropped width
-    height: number;              // Cropped height
+    viewBox: string; // "x y width height"
+    reduction: number; // Size reduction %
+    width: number; // Cropped width
+    height: number; // Cropped height
   };
   beadData?: {
-    count: number;               // Number of beads found
-    beads: BeadData[];          // Extracted bead metadata
+    count: number; // Number of beads found
+    beads: BeadData[]; // Extracted bead metadata
   };
   success: boolean;
   warnings: string[];
@@ -248,24 +252,26 @@ interface ProcessResult {
 ### Browser Usage
 
 ```html
-<input type="file" id="svg-upload" accept=".svg">
+<input type="file" id="svg-upload" accept=".svg" />
 <script type="module">
-import { processSVGFile } from '@soroban/templates/svg-crop-processor.js';
+  import { processSVGFile } from "@soroban/templates/svg-crop-processor.js";
 
-document.getElementById('svg-upload').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    try {
-      const result = await processSVGFile(file);
-      console.log(`Processed! Reduction: ${result.cropData.reduction}%`);
+  document
+    .getElementById("svg-upload")
+    .addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        try {
+          const result = await processSVGFile(file);
+          console.log(`Processed! Reduction: ${result.cropData.reduction}%`);
 
-      // Use optimized SVG
-      document.body.innerHTML = result.svg;
-    } catch (error) {
-      console.error('Processing failed:', error.message);
-    }
-  }
-});
+          // Use optimized SVG
+          document.body.innerHTML = result.svg;
+        } catch (error) {
+          console.error("Processing failed:", error.message);
+        }
+      }
+    });
 </script>
 ```
 
@@ -274,6 +280,7 @@ document.getElementById('svg-upload').addEventListener('change', async (e) => {
 The post-processor converts Typst bead annotations into HTML5 data attributes for easy JavaScript interaction:
 
 **Input (Typst link):**
+
 ```typst
 #link("bead://heaven-col1-active1",
   rect(fill: blue, width: 10pt, height: 8pt)
@@ -281,6 +288,7 @@ The post-processor converts Typst bead annotations into HTML5 data attributes fo
 ```
 
 **Output (HTML5 data attributes):**
+
 ```svg
 <path data-bead-id="heaven-col1-active1"
       data-bead-type="heaven"
@@ -293,17 +301,18 @@ The post-processor converts Typst bead annotations into HTML5 data attributes fo
 ```
 
 **JavaScript interaction:**
+
 ```javascript
 // Find all heaven beads
 const heavenBeads = document.querySelectorAll('[data-bead-type="heaven"]');
 
 // Toggle bead state
-heavenBeads.forEach(bead => {
-  bead.addEventListener('click', () => {
-    const active = bead.dataset.beadActive === 'true';
+heavenBeads.forEach((bead) => {
+  bead.addEventListener("click", () => {
+    const active = bead.dataset.beadActive === "true";
     bead.dataset.beadActive = !active;
-    bead.dataset.beadState = active ? 'inactive' : 'active';
-    bead.style.opacity = active ? '0.5' : '1.0';
+    bead.dataset.beadState = active ? "inactive" : "active";
+    bead.style.opacity = active ? "0.5" : "1.0";
   });
 });
 ```
@@ -320,6 +329,7 @@ heavenBeads.forEach(bead => {
 ### Why Use Post-Processing?
 
 **Without post-processing:**
+
 - ❌ Large file sizes (excess canvas space)
 - ❌ Inconsistent viewBox dimensions across SVGs
 - ❌ Manual cropping required for each file
@@ -327,6 +337,7 @@ heavenBeads.forEach(bead => {
 - ❌ Poor web performance
 
 **With @soroban/templates post-processing:**
+
 - ✅ **67% average file size reduction**
 - ✅ **Consistent, optimized viewBoxes**
 - ✅ **Zero manual work - fully automated**
@@ -341,17 +352,17 @@ try {
 } catch (error) {
   if (error instanceof SVGCropError) {
     switch (error.code) {
-      case 'NO_CROP_MARKS':
-        console.log('SVG has no crop marks - using original viewBox');
+      case "NO_CROP_MARKS":
+        console.log("SVG has no crop marks - using original viewBox");
         break;
-      case 'INSUFFICIENT_CROP_MARKS':
+      case "INSUFFICIENT_CROP_MARKS":
         console.log(`Only ${error.details.found.length}/4 crop marks found`);
         break;
-      case 'INVALID_DIMENSIONS':
-        console.log('Crop marks resulted in invalid dimensions');
+      case "INVALID_DIMENSIONS":
+        console.log("Crop marks resulted in invalid dimensions");
         break;
       default:
-        console.error('Processing failed:', error.message);
+        console.error("Processing failed:", error.message);
     }
   }
 }
@@ -362,6 +373,7 @@ try {
 ### Node.js Projects
 
 1. **Add to package.json dependencies:**
+
 ```json
 {
   "dependencies": {
@@ -371,6 +383,7 @@ try {
 ```
 
 2. **Install via PNPM:**
+
 ```bash
 pnpm install
 ```
@@ -378,11 +391,13 @@ pnpm install
 ### Python Projects
 
 1. **With uv workspace:**
+
 ```bash
 uv add --dev ../packages/templates
 ```
 
 2. **Or add to pyproject.toml:**
+
 ```toml
 [tool.uv.workspace]
 members = ["packages/templates"]
@@ -413,16 +428,16 @@ packages/templates/
 
 ```typescript
 // pages/api/generate-soroban.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { getTemplatePath } from '@soroban/templates';
-import fs from 'fs';
+import { NextRequest, NextResponse } from "next/server";
+import { getTemplatePath } from "@soroban/templates";
+import fs from "fs";
 
 export async function POST(request: NextRequest) {
   const { number } = await request.json();
 
   // Webpack-safe path resolution
-  const templatePath = getTemplatePath('flashcards.typ');
-  const template = fs.readFileSync(templatePath, 'utf-8');
+  const templatePath = getTemplatePath("flashcards.typ");
+  const template = fs.readFileSync(templatePath, "utf-8");
 
   // Use with typst.ts or other Typst compiler
   // ... generate SVG/PNG
@@ -515,8 +530,8 @@ The package handles webpack static analysis automatically using dynamic path res
 
 ```typescript
 // Use the function export instead of direct paths
-import { getTemplatePath } from '@soroban/templates';
-const path = getTemplatePath('flashcards.typ'); // ✅ Works with webpack
+import { getTemplatePath } from "@soroban/templates";
+const path = getTemplatePath("flashcards.typ"); // ✅ Works with webpack
 ```
 
 ### Python Import Issues
@@ -560,7 +575,10 @@ interface TemplateExports {
   processSVG(svgContent: string, options?: ProcessOptions): ProcessResult;
 
   /** Browser-compatible File/Blob processing */
-  processSVGFile(file: File | Blob, options?: ProcessOptions): Promise<ProcessResult>;
+  processSVGFile(
+    file: File | Blob,
+    options?: ProcessOptions,
+  ): Promise<ProcessResult>;
 
   /** Crop mark detection and viewBox optimization only */
   extractCropMarks(svgContent: string): CropResult;

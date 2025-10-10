@@ -1,6 +1,6 @@
-import { cookies, headers } from 'next/headers'
-import { auth } from '@/auth'
-import { GUEST_COOKIE_NAME, verifyGuestToken } from './guest-token'
+import { cookies, headers } from "next/headers";
+import { auth } from "@/auth";
+import { GUEST_COOKIE_NAME, verifyGuestToken } from "./guest-token";
 
 /**
  * Unified viewer utility for server components
@@ -11,36 +11,36 @@ import { GUEST_COOKIE_NAME, verifyGuestToken } from './guest-token'
  * @returns Viewer information with discriminated union type
  */
 export async function getViewer(): Promise<
-  | { kind: 'user'; session: Awaited<ReturnType<typeof auth>> }
-  | { kind: 'guest'; guestId: string }
-  | { kind: 'unknown' }
+  | { kind: "user"; session: Awaited<ReturnType<typeof auth>> }
+  | { kind: "guest"; guestId: string }
+  | { kind: "unknown" }
 > {
   // Check if user is authenticated via NextAuth
-  const session = await auth()
+  const session = await auth();
   if (session) {
-    return { kind: 'user', session }
+    return { kind: "user", session };
   }
 
   // Check for guest ID in header (set by middleware)
-  const headerStore = await headers()
-  const headerGuestId = headerStore.get('x-guest-id')
+  const headerStore = await headers();
+  const headerGuestId = headerStore.get("x-guest-id");
   if (headerGuestId) {
-    return { kind: 'guest', guestId: headerGuestId }
+    return { kind: "guest", guestId: headerGuestId };
   }
 
   // Fallback: check for guest cookie
-  const cookieStore = await cookies()
-  const guestCookie = cookieStore.get(GUEST_COOKIE_NAME)?.value
+  const cookieStore = await cookies();
+  const guestCookie = cookieStore.get(GUEST_COOKIE_NAME)?.value;
 
   if (!guestCookie) {
-    return { kind: 'unknown' }
+    return { kind: "unknown" };
   }
 
   try {
-    const { sid } = await verifyGuestToken(guestCookie)
-    return { kind: 'guest', guestId: sid }
+    const { sid } = await verifyGuestToken(guestCookie);
+    return { kind: "guest", guestId: sid };
   } catch {
-    return { kind: 'unknown' }
+    return { kind: "unknown" };
   }
 }
 
@@ -54,14 +54,14 @@ export async function getViewer(): Promise<
  * @throws Error if no valid viewer found
  */
 export async function getViewerId(): Promise<string> {
-  const viewer = await getViewer()
+  const viewer = await getViewer();
 
   switch (viewer.kind) {
-    case 'user':
-      return viewer.session!.user!.id
-    case 'guest':
-      return viewer.guestId
-    case 'unknown':
-      throw new Error('No valid viewer session found')
+    case "user":
+      return viewer.session!.user!.id;
+    case "guest":
+      return viewer.guestId;
+    case "unknown":
+      throw new Error("No valid viewer session found");
   }
 }

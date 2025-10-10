@@ -20,5 +20,5 @@ show_empty_columns: true
 hide_inactive_beads: false
 bead_shape: "diamond"
 color_scheme: "place-value"
-colored_numerals: true  # Color the numerals to match the bead colors
+colored_numerals: true # Color the numerals to match the bead colors
 shuffle: false

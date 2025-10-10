@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
-import { db, schema } from '@/db'
-import { getViewerId } from '@/lib/viewer'
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { db, schema } from "@/db";
+import { getViewerId } from "@/lib/viewer";
 
 /**
  * GET /api/players
@@ -9,21 +9,24 @@ import { getViewerId } from '@/lib/viewer'
  */
 export async function GET() {
   try {
-    const viewerId = await getViewerId()
+    const viewerId = await getViewerId();
 
     // Get or create user record
-    const user = await getOrCreateUser(viewerId)
+    const user = await getOrCreateUser(viewerId);
 
     // Get all players for this user
     const players = await db.query.players.findMany({
       where: eq(schema.players.userId, user.id),
       orderBy: (players, { desc }) => [desc(players.createdAt)],
-    })
+    });
 
-    return NextResponse.json({ players })
+    return NextResponse.json({ players });
   } catch (error) {
-    console.error('Failed to fetch players:', error)
-    return NextResponse.json({ error: 'Failed to fetch players' }, { status: 500 })
+    console.error("Failed to fetch players:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch players" },
+      { status: 500 },
+    );
   }
 }
 
@@ -33,19 +36,19 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
   try {
-    const viewerId = await getViewerId()
-    const body = await req.json()
+    const viewerId = await getViewerId();
+    const body = await req.json();
 
     // Validate required fields
     if (!body.name || !body.emoji || !body.color) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, emoji, color' },
-        { status: 400 }
-      )
+        { error: "Missing required fields: name, emoji, color" },
+        { status: 400 },
+      );
     }
 
     // Get or create user record
-    const user = await getOrCreateUser(viewerId)
+    const user = await getOrCreateUser(viewerId);
 
     // Create player
     const [player] = await db
@@ -57,12 +60,15 @@ export async function POST(req: NextRequest) {
         color: body.color,
         isActive: body.isActive ?? false,
       })
-      .returning()
+      .returning();
 
-    return NextResponse.json({ player }, { status: 201 })
+    return NextResponse.json({ player }, { status: 201 });
   } catch (error) {
-    console.error('Failed to create player:', error)
-    return NextResponse.json({ error: 'Failed to create player' }, { status: 500 })
+    console.error("Failed to create player:", error);
+    return NextResponse.json(
+      { error: "Failed to create player" },
+      { status: 500 },
+    );
   }
 }
 
@@ -73,7 +79,7 @@ async function getOrCreateUser(viewerId: string) {
   // Try to find existing user by guest ID
   let user = await db.query.users.findFirst({
     where: eq(schema.users.guestId, viewerId),
-  })
+  });
 
   // If no user exists, create one
   if (!user) {
@@ -82,10 +88,10 @@ async function getOrCreateUser(viewerId: string) {
       .values({
         guestId: viewerId,
       })
-      .returning()
+      .returning();
 
-    user = newUser
+    user = newUser;
   }
 
-  return user
+  return user;
 }

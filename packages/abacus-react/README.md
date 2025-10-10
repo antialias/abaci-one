@@ -48,14 +48,9 @@ The package is published to both npm and GitHub Packages simultaneously for redu
 Simple static abacus display:
 
 ```tsx
-import { AbacusReact } from '@soroban/abacus-react';
+import { AbacusReact } from "@soroban/abacus-react";
 
-<AbacusReact
-  value={123}
-  columns={3}
-  showNumbers={true}
-  scaleFactor={1.0}
-/>
+<AbacusReact value={123} columns={3} showNumbers={true} scaleFactor={1.0} />;
 ```
 
 ### Interactive Mode
@@ -71,8 +66,8 @@ Clickable abacus with animations and callbacks:
   gestures={true}
   showNumbers={true}
   callbacks={{
-    onValueChange: (newValue) => console.log('New value:', newValue),
-    onBeadClick: (event) => console.log('Bead clicked:', event)
+    onValueChange: (newValue) => console.log("New value:", newValue),
+    onBeadClick: (event) => console.log("Bead clicked:", event),
   }}
 />
 ```
@@ -89,14 +84,14 @@ Personalized colors and visual themes:
   beadShape="circle"
   colorPalette="nature"
   customStyles={{
-    heavenBeads: { fill: '#2ecc71', stroke: '#27ae60' },
-    earthBeads: { fill: '#3498db', stroke: '#2980b9' },
-    numerals: { color: '#2c3e50', fontWeight: 'bold' },
-    reckoningBar: { stroke: '#34495e', strokeWidth: 3 }
+    heavenBeads: { fill: "#2ecc71", stroke: "#27ae60" },
+    earthBeads: { fill: "#3498db", stroke: "#2980b9" },
+    numerals: { color: "#2c3e50", fontWeight: "bold" },
+    reckoningBar: { stroke: "#34495e", strokeWidth: 3 },
   }}
   highlightBeads={[
-    { placeValue: 2, beadType: 'heaven' },  // Hundreds place heaven bead
-    { placeValue: 0, beadType: 'earth', position: 1 }  // Ones place, second earth bead
+    { placeValue: 2, beadType: "heaven" }, // Hundreds place heaven bead
+    { placeValue: 0, beadType: "earth", position: 1 }, // Ones place, second earth bead
   ]}
 />
 ```
@@ -110,43 +105,53 @@ Educational guidance with interactive overlays:
   value={42}
   columns={2}
   interactive={true}
-  overlays={[{
-    id: 'tutorial-tip',
-    type: 'tooltip',
-    target: {
-      type: 'bead',
-      columnIndex: 0,
-      beadType: 'earth',
-      beadPosition: 1
+  overlays={[
+    {
+      id: "tutorial-tip",
+      type: "tooltip",
+      target: {
+        type: "bead",
+        columnIndex: 0,
+        beadType: "earth",
+        beadPosition: 1,
+      },
+      content: (
+        <div
+          style={{
+            background: "#333",
+            color: "white",
+            padding: "8px",
+            borderRadius: "4px",
+            fontSize: "14px",
+          }}
+        >
+          Click this bead to add 1!
+        </div>
+      ),
+      offset: { x: 0, y: -30 },
     },
-    content: (
-      <div style={{
-        background: '#333',
-        color: 'white',
-        padding: '8px',
-        borderRadius: '4px',
-        fontSize: '14px'
-      }}>
-        Click this bead to add 1!
-      </div>
-    ),
-    offset: { x: 0, y: -30 }
-  }]}
-  stepBeadHighlights={[{
-    placeValue: 0,
-    beadType: 'earth',
-    position: 1,
-    stepIndex: 0,
-    direction: 'activate',
-    order: 1
-  }]}
+  ]}
+  stepBeadHighlights={[
+    {
+      placeValue: 0,
+      beadType: "earth",
+      position: 1,
+      stepIndex: 0,
+      direction: "activate",
+      order: 1,
+    },
+  ]}
   showDirectionIndicators={true}
   callbacks={{
     onBeadClick: (event) => {
-      if (event.placeValue === 0 && event.beadType === 'earth' && event.position === 1) {
-        console.log('Tutorial step completed!');
+      if (
+        event.placeValue === 0 &&
+        event.beadType === "earth" &&
+        event.position === 1
+      ) {
+        console.log("Tutorial step completed!");
       }
-    }
+    },
   }}
 />
 ```
@@ -158,31 +163,31 @@ Educational guidance with interactive overlays:
 ```tsx
 interface AbacusConfig {
   // Display
-  value?: number;                    // 0-99999, number to display
-  columns?: number | 'auto';         // Number of columns or auto-calculate
-  showNumbers?: boolean;             // Show place value numbers below
-  scaleFactor?: number;              // 0.5 - 3.0, size multiplier
-  showEmptyColumns?: boolean;        // Display columns with value 0
+  value?: number; // 0-99999, number to display
+  columns?: number | "auto"; // Number of columns or auto-calculate
+  showNumbers?: boolean; // Show place value numbers below
+  scaleFactor?: number; // 0.5 - 3.0, size multiplier
+  showEmptyColumns?: boolean; // Display columns with value 0
 
   // Appearance
-  beadShape?: 'diamond' | 'square' | 'circle';
-  colorScheme?: 'monochrome' | 'place-value' | 'alternating' | 'heaven-earth';
-  colorPalette?: 'default' | 'colorblind' | 'mnemonic' | 'grayscale' | 'nature';
-  hideInactiveBeads?: boolean;       // Hide/show inactive beads
+  beadShape?: "diamond" | "square" | "circle";
+  colorScheme?: "monochrome" | "place-value" | "alternating" | "heaven-earth";
+  colorPalette?: "default" | "colorblind" | "mnemonic" | "grayscale" | "nature";
+  hideInactiveBeads?: boolean; // Hide/show inactive beads
 
   // Interaction
-  interactive?: boolean;             // Enable user interactions
-  animated?: boolean;               // Enable React Spring animations
-  gestures?: boolean;               // Enable directional drag gestures
+  interactive?: boolean; // Enable user interactions
+  animated?: boolean; // Enable React Spring animations
+  gestures?: boolean; // Enable directional drag gestures
 
   // Advanced
   customStyles?: AbacusCustomStyles; // Granular styling control
-  callbacks?: AbacusCallbacks;       // Event handlers
-  overlays?: AbacusOverlay[];        // Tutorial overlay system
-  highlightBeads?: BeadHighlight[];  // Highlight specific beads
+  callbacks?: AbacusCallbacks; // Event handlers
+  overlays?: AbacusOverlay[]; // Tutorial overlay system
+  highlightBeads?: BeadHighlight[]; // Highlight specific beads
   stepBeadHighlights?: StepBeadHighlight[]; // Progressive tutorial highlighting
   showDirectionIndicators?: boolean; // Show movement direction indicators
-  disabledBeads?: BeadHighlight[];   // Disable specific bead interactions
+  disabledBeads?: BeadHighlight[]; // Disable specific bead interactions
 }
 ```
 
@@ -195,19 +200,23 @@ interface AbacusCallbacks {
   onBeadHover?: (event: BeadClickEvent) => void;
   onBeadLeave?: (event: BeadClickEvent) => void;
   onColumnClick?: (columnIndex: number, event: React.MouseEvent) => void;
-  onNumeralClick?: (columnIndex: number, value: number, event: React.MouseEvent) => void;
+  onNumeralClick?: (
+    columnIndex: number,
+    value: number,
+    event: React.MouseEvent,
+  ) => void;
   onBeadRef?: (bead: BeadConfig, element: SVGElement | null) => void;
 }
 
 interface BeadClickEvent {
-  bead: BeadConfig;                 // Complete bead configuration
-  columnIndex: number;              // 0, 1, 2... (array index)
-  placeValue: ValidPlaceValues;     // 0=ones, 1=tens, 2=hundreds...
-  beadType: 'heaven' | 'earth';     // Type of bead
-  position: number;                 // Position within type (0-3 for earth)
-  active: boolean;                  // Current activation state
-  value: number;                    // Numeric value (1 or 5)
-  event: React.MouseEvent;          // Original mouse event
+  bead: BeadConfig; // Complete bead configuration
+  columnIndex: number; // 0, 1, 2... (array index)
+  placeValue: ValidPlaceValues; // 0=ones, 1=tens, 2=hundreds...
+  beadType: "heaven" | "earth"; // Type of bead
+  position: number; // Position within type (0-3 for earth)
+  active: boolean; // Current activation state
+  value: number; // Numeric value (1 or 5)
+  event: React.MouseEvent; // Original mouse event
 }
 ```
 
@@ -220,19 +229,19 @@ Target beads by mathematical place value instead of visual column position:
 ```tsx
 // Target beads by place value (recommended)
 const placeValueHighlights = [
-  { placeValue: 0, beadType: 'earth', position: 2 },  // Ones place, 3rd earth bead
-  { placeValue: 1, beadType: 'heaven' },              // Tens place, heaven bead
-  { placeValue: 2, beadType: 'earth', position: 0 }   // Hundreds place, 1st earth bead
+  { placeValue: 0, beadType: "earth", position: 2 }, // Ones place, 3rd earth bead
+  { placeValue: 1, beadType: "heaven" }, // Tens place, heaven bead
+  { placeValue: 2, beadType: "earth", position: 0 }, // Hundreds place, 1st earth bead
 ];
 
 // Legacy column-index targeting (still supported)
 const columnHighlights = [
-  { columnIndex: 2, beadType: 'earth', position: 2 }, // Rightmost column
-  { columnIndex: 1, beadType: 'heaven' },             // Middle column
-  { columnIndex: 0, beadType: 'earth', position: 0 }  // Leftmost column
+  { columnIndex: 2, beadType: "earth", position: 2 }, // Rightmost column
+  { columnIndex: 1, beadType: "heaven" }, // Middle column
+  { columnIndex: 0, beadType: "earth", position: 0 }, // Leftmost column
 ];
 
-<AbacusReact highlightBeads={placeValueHighlights} />
+<AbacusReact highlightBeads={placeValueHighlights} />;
 ```
 
 ### Progressive Tutorial Steps
@@ -243,27 +252,27 @@ Create multi-step interactive tutorials:
 const tutorialSteps = [
   {
     placeValue: 0,
-    beadType: 'earth',
+    beadType: "earth",
     position: 0,
     stepIndex: 0,
-    direction: 'activate',
-    order: 1
+    direction: "activate",
+    order: 1,
   },
   {
     placeValue: 0,
-    beadType: 'earth',
+    beadType: "earth",
     position: 1,
     stepIndex: 1,
-    direction: 'activate',
-    order: 1
+    direction: "activate",
+    order: 1,
   },
   {
     placeValue: 1,
-    beadType: 'heaven',
+    beadType: "heaven",
     stepIndex: 2,
-    direction: 'activate',
-    order: 1
-  }
+    direction: "activate",
+    order: 1,
+  },
 ];
 
 <AbacusReact
@@ -271,7 +280,7 @@ const tutorialSteps = [
   currentStep={currentStepIndex}
   showDirectionIndicators={true}
   interactive={true}
-/>
+/>;
 ```
 
 ### Granular Style Customization
@@ -281,45 +290,47 @@ Target any visual element with precise control:
 ```tsx
 const advancedStyles = {
   // Global defaults
-  heavenBeads: { fill: '#e74c3c', stroke: '#c0392b' },
-  earthBeads: { fill: '#3498db', stroke: '#2980b9' },
+  heavenBeads: { fill: "#e74c3c", stroke: "#c0392b" },
+  earthBeads: { fill: "#3498db", stroke: "#2980b9" },
   activeBeads: { opacity: 1.0 },
   inactiveBeads: { opacity: 0.3 },
 
   // Column-specific overrides (by array index)
   columns: {
-    0: { // Leftmost column (highest place value)
-      heavenBeads: { fill: '#f39c12' },
-      earthBeads: { fill: '#e67e22' },
-      backgroundGlow: { fill: '#fff3cd', opacity: 0.3 }
-    }
+    0: {
+      // Leftmost column (highest place value)
+      heavenBeads: { fill: "#f39c12" },
+      earthBeads: { fill: "#e67e22" },
+      backgroundGlow: { fill: "#fff3cd", opacity: 0.3 },
+    },
   },
 
   // Individual bead targeting (by array index)
   beads: {
-    1: { // Middle column
-      heaven: { fill: '#9b59b6' },
+    1: {
+      // Middle column
+      heaven: { fill: "#9b59b6" },
       earth: {
-        0: { fill: '#1abc9c' }, // First earth bead
-        1: { fill: '#16a085' }, // Second earth bead
-        2: { fill: '#17a2b8' }, // Third earth bead
-        3: { fill: '#138496' }  // Fourth earth bead
-      }
-    }
+        0: { fill: "#1abc9c" }, // First earth bead
+        1: { fill: "#16a085" }, // Second earth bead
+        2: { fill: "#17a2b8" }, // Third earth bead
+        3: { fill: "#138496" }, // Fourth earth bead
+      },
+    },
   },
 
   // UI elements
-  reckoningBar: { stroke: '#34495e', strokeWidth: 3 },
-  columnPosts: { stroke: '#7f8c8d', strokeWidth: 2 },
+  reckoningBar: { stroke: "#34495e", strokeWidth: 3 },
+  columnPosts: { stroke: "#7f8c8d", strokeWidth: 2 },
   numerals: {
-    color: '#2c3e50',
-    fontSize: '16px',
-    fontFamily: 'monospace',
-    fontWeight: 'bold'
-  }
+    color: "#2c3e50",
+    fontSize: "16px",
+    fontFamily: "monospace",
+    fontWeight: "bold",
+  },
 };
 
-<AbacusReact customStyles={advancedStyles} />
+<AbacusReact customStyles={advancedStyles} />;
 ```
 
 ### Overlay System
@@ -329,9 +340,9 @@ Create rich interactive educational experiences:
 ```tsx
 const educationalOverlays = [
   {
-    id: 'value-explanation',
-    type: 'tooltip',
-    target: { type: 'bead', columnIndex: 0, beadType: 'heaven' },
+    id: "value-explanation",
+    type: "tooltip",
+    target: { type: "bead", columnIndex: 0, beadType: "heaven" },
     content: (
       <div className="tutorial-tooltip">
         <h4>Heaven Bead</h4>
@@ -339,24 +350,29 @@ const educationalOverlays = [
         <button onClick={() => nextStep()}>Got it!</button>
       </div>
     ),
-    offset: { x: 0, y: -40 }
+    offset: { x: 0, y: -40 },
   },
   {
-    id: 'direction-arrow',
-    type: 'arrow',
-    target: { type: 'bead', columnIndex: 1, beadType: 'earth', beadPosition: 0 },
+    id: "direction-arrow",
+    type: "arrow",
+    target: {
+      type: "bead",
+      columnIndex: 1,
+      beadType: "earth",
+      beadPosition: 0,
+    },
     content: <div className="arrow-down">⬇</div>,
-    offset: { x: 0, y: -20 }
-  }
+    offset: { x: 0, y: -20 },
+  },
 ];
 
 <AbacusReact
   overlays={educationalOverlays}
   interactive={true}
   callbacks={{
-    onBeadClick: handleTutorialProgression
+    onBeadClick: handleTutorialProgression,
   }}
-/>
+/>;
 ```
 
 ### Dimension Calculation Hook
@@ -364,13 +380,13 @@ const educationalOverlays = [
 Get exact sizing information for layout planning:
 
 ```tsx
-import { useAbacusDimensions } from '@soroban/abacus-react';
+import { useAbacusDimensions } from "@soroban/abacus-react";
 
 function ResponsiveAbacusContainer() {
   const dimensions = useAbacusDimensions(
-    5,     // columns
-    1.2,   // scale factor
-    true   // show numbers
+    5, // columns
+    1.2, // scale factor
+    true, // show numbers
   );
 
   return (
@@ -378,8 +394,8 @@ function ResponsiveAbacusContainer() {
       style={{
         width: dimensions.width,
         height: dimensions.height,
-        border: '1px solid #ccc',
-        padding: '10px'
+        border: "1px solid #ccc",
+        padding: "10px",
       }}
     >
       <AbacusReact
@@ -413,10 +429,7 @@ function AdvancedPositioning() {
   };
 
   return (
-    <AbacusReact
-      callbacks={{ onBeadRef: handleBeadRef }}
-      interactive={true}
-    />
+    <AbacusReact callbacks={{ onBeadRef: handleBeadRef }} interactive={true} />
   );
 }
 ```
@@ -441,8 +454,8 @@ import {
   PlaceValue,
   ColumnIndex,
   ValidPlaceValues,
-  EarthBeadPosition
-} from '@soroban/abacus-react';
+  EarthBeadPosition,
+} from "@soroban/abacus-react";
 
 // Branded types prevent mixing place values and column indices
 const placeValue: ValidPlaceValues = 2; // hundreds place
@@ -450,9 +463,9 @@ const earthPosition: EarthBeadPosition = 3; // fourth earth bead
 
 // Type-safe bead specification
 const bead: PlaceValueBead = {
-  placeValue: 1,    // tens place
-  beadType: 'earth',
-  position: 2       // third earth bead
+  placeValue: 1, // tens place
+  beadType: "earth",
+  position: 2, // third earth bead
 };
 ```
 
@@ -463,32 +476,34 @@ const bead: PlaceValueBead = {
 ```tsx
 function AdditionLesson() {
   const [problem] = useState({ a: 23, b: 45 });
-  const [step, setStep] = useState('show-first');
+  const [step, setStep] = useState("show-first");
   const [userValue, setUserValue] = useState(0);
 
   const checkAnswer = (newValue: number) => {
     setUserValue(newValue);
     if (newValue === problem.a + problem.b) {
-      setStep('completed');
+      setStep("completed");
       showCelebration();
     }
   };
 
   return (
     <div className="math-lesson">
-      <h3>Add {problem.a} + {problem.b}</h3>
+      <h3>
+        Add {problem.a} + {problem.b}
+      </h3>
 
       <AbacusReact
-        value={step === 'show-first' ? problem.a : userValue}
+        value={step === "show-first" ? problem.a : userValue}
         columns={3}
-        interactive={step === 'user-input'}
+        interactive={step === "user-input"}
         animated={true}
         showNumbers={true}
         callbacks={{ onValueChange: checkAnswer }}
-        highlightBeads={step === 'hint' ? getHintBeads() : []}
+        highlightBeads={step === "hint" ? getHintBeads() : []}
       />
 
-      {step === 'completed' && (
+      {step === "completed" && (
         <div className="success">
           🎉 Correct! {problem.a} + {problem.b} = {problem.a + problem.b}
         </div>
@@ -503,18 +518,18 @@ function AdditionLesson() {
 ```tsx
 function AbacusQuiz() {
   const [answers, setAnswers] = useState<BeadClickEvent[]>([]);
-  const [feedback, setFeedback] = useState<string>('');
+  const [feedback, setFeedback] = useState<string>("");
 
   const validateAnswer = (event: BeadClickEvent) => {
     const isCorrect = checkBeadClick(event, expectedAnswer);
 
-    setAnswers(prev => [...prev, event]);
+    setAnswers((prev) => [...prev, event]);
 
     if (isCorrect) {
-      setFeedback('Correct! Well done.');
+      setFeedback("Correct! Well done.");
       advanceToNextQuestion();
     } else {
-      setFeedback('Try again. Remember: this bead represents...');
+      setFeedback("Try again. Remember: this bead represents...");
       showHint(event);
     }
   };

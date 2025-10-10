@@ -1,26 +1,32 @@
-import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
-import { AbacusReact } from '../AbacusReact';
+import { describe, it, expect } from "vitest";
+import { render } from "@testing-library/react";
+import { AbacusReact } from "../AbacusReact";
 
-describe('Debug Columns Test', () => {
-  it('should render value=3 with columns=3 correctly', () => {
+describe("Debug Columns Test", () => {
+  it("should render value=3 with columns=3 correctly", () => {
     const { container } = render(
-      <AbacusReact value={3} columns={3} interactive={true} />
+      <AbacusReact value={3} columns={3} interactive={true} />,
     );
 
     // Debug: log all testids to see what's happening
-    const allBeads = container.querySelectorAll('[data-testid]');
-    console.log('All bead testids:');
-    allBeads.forEach(bead => {
-      const testId = bead.getAttribute('data-testid');
-      const isActive = bead.classList.contains('active');
+    const allBeads = container.querySelectorAll("[data-testid]");
+    console.log("All bead testids:");
+    allBeads.forEach((bead) => {
+      const testId = bead.getAttribute("data-testid");
+      const isActive = bead.classList.contains("active");
       console.log(`  ${testId} - active: ${isActive}`);
     });
 
     // Check that we have beads in all 3 places
-    const place0Beads = container.querySelectorAll('[data-testid*="bead-place-0-"]');
-    const place1Beads = container.querySelectorAll('[data-testid*="bead-place-1-"]');
-    const place2Beads = container.querySelectorAll('[data-testid*="bead-place-2-"]');
+    const place0Beads = container.querySelectorAll(
+      '[data-testid*="bead-place-0-"]',
+    );
+    const place1Beads = container.querySelectorAll(
+      '[data-testid*="bead-place-1-"]',
+    );
+    const place2Beads = container.querySelectorAll(
+      '[data-testid*="bead-place-2-"]',
+    );
 
     console.log(`Place 0 beads: ${place0Beads.length}`);
     console.log(`Place 1 beads: ${place1Beads.length}`);
@@ -37,12 +43,18 @@ describe('Debug Columns Test', () => {
     expect(place2Beads.length).toBeGreaterThan(0); // hundreds place
 
     // Check active beads - only place 0 should have active beads
-    const activePlaceZero = container.querySelectorAll('[data-testid*="bead-place-0-"].active');
-    const activePlaceOne = container.querySelectorAll('[data-testid*="bead-place-1-"].active');
-    const activePlaceTwo = container.querySelectorAll('[data-testid*="bead-place-2-"].active');
+    const activePlaceZero = container.querySelectorAll(
+      '[data-testid*="bead-place-0-"].active',
+    );
+    const activePlaceOne = container.querySelectorAll(
+      '[data-testid*="bead-place-1-"].active',
+    );
+    const activePlaceTwo = container.querySelectorAll(
+      '[data-testid*="bead-place-2-"].active',
+    );
 
     expect(activePlaceZero).toHaveLength(3); // 3 active earth beads for ones
-    expect(activePlaceOne).toHaveLength(0);  // no active beads for tens
-    expect(activePlaceTwo).toHaveLength(0);  // no active beads for hundreds
+    expect(activePlaceOne).toHaveLength(0); // no active beads for tens
+    expect(activePlaceTwo).toHaveLength(0); // no active beads for hundreds
   });
 });

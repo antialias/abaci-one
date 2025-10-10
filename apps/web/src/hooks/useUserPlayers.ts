@@ -1,43 +1,43 @@
-'use client'
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { Player } from '@/db/schema/players'
-import { api } from '@/lib/queryClient'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Player } from "@/db/schema/players";
+import { api } from "@/lib/queryClient";
 
 /**
  * Query key factory for players
  */
 export const playerKeys = {
-  all: ['players'] as const,
-  lists: () => [...playerKeys.all, 'list'] as const,
+  all: ["players"] as const,
+  lists: () => [...playerKeys.all, "list"] as const,
   list: () => [...playerKeys.lists()] as const,
-  detail: (id: string) => [...playerKeys.all, 'detail', id] as const,
-}
+  detail: (id: string) => [...playerKeys.all, "detail", id] as const,
+};
 
 /**
  * Fetch all players for the current user
  */
 async function fetchPlayers(): Promise<Player[]> {
-  const res = await api('players')
-  if (!res.ok) throw new Error('Failed to fetch players')
-  const data = await res.json()
-  return data.players
+  const res = await api("players");
+  if (!res.ok) throw new Error("Failed to fetch players");
+  const data = await res.json();
+  return data.players;
 }
 
 /**
  * Create a new player
  */
 async function createPlayer(
-  newPlayer: Pick<Player, 'name' | 'emoji' | 'color'> & { isActive?: boolean }
+  newPlayer: Pick<Player, "name" | "emoji" | "color"> & { isActive?: boolean },
 ): Promise<Player> {
-  const res = await api('players', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const res = await api("players", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(newPlayer),
-  })
-  if (!res.ok) throw new Error('Failed to create player')
-  const data = await res.json()
-  return data.player
+  });
+  if (!res.ok) throw new Error("Failed to create player");
+  const data = await res.json();
+  return data.player;
 }
 
 /**
@@ -47,25 +47,25 @@ async function updatePlayer({
   id,
   updates,
 }: {
-  id: string
-  updates: Partial<Pick<Player, 'name' | 'emoji' | 'color' | 'isActive'>>
+  id: string;
+  updates: Partial<Pick<Player, "name" | "emoji" | "color" | "isActive">>;
 }): Promise<Player> {
   const res = await api(`players/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(updates),
-  })
+  });
   if (!res.ok) {
     // Extract error message from response if available
     try {
-      const errorData = await res.json()
-      throw new Error(errorData.error || 'Failed to update player')
+      const errorData = await res.json();
+      throw new Error(errorData.error || "Failed to update player");
     } catch (_jsonError) {
-      throw new Error('Failed to update player')
+      throw new Error("Failed to update player");
     }
   }
-  const data = await res.json()
-  return data.player
+  const data = await res.json();
+  return data.player;
 }
 
 /**
@@ -73,9 +73,9 @@ async function updatePlayer({
  */
 async function deletePlayer(id: string): Promise<void> {
   const res = await api(`players/${id}`, {
-    method: 'DELETE',
-  })
-  if (!res.ok) throw new Error('Failed to delete player')
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete player");
 }
 
 /**
@@ -85,23 +85,25 @@ export function useUserPlayers() {
   return useQuery({
     queryKey: playerKeys.list(),
     queryFn: fetchPlayers,
-  })
+  });
 }
 
 /**
  * Hook: Create a new player
  */
 export function useCreatePlayer() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: createPlayer,
     onMutate: async (newPlayer) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: playerKeys.lists() })
+      await queryClient.cancelQueries({ queryKey: playerKeys.lists() });
 
       // Snapshot previous value
-      const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
+      const previousPlayers = queryClient.getQueryData<Player[]>(
+        playerKeys.list(),
+      );
 
       // Optimistically update to new value
       if (previousPlayers) {
@@ -110,118 +112,130 @@ export function useCreatePlayer() {
           ...newPlayer,
           createdAt: new Date(),
           isActive: newPlayer.isActive ?? false,
-          userId: 'temp-user', // Temporary userId, will be replaced by server response
-        }
+          userId: "temp-user", // Temporary userId, will be replaced by server response
+        };
         queryClient.setQueryData<Player[]>(playerKeys.list(), [
           ...previousPlayers,
           optimisticPlayer,
-        ])
+        ]);
       }
 
-      return { previousPlayers }
+      return { previousPlayers };
     },
     onError: (_err, _newPlayer, context) => {
       // Rollback on error
       if (context?.previousPlayers) {
-        queryClient.setQueryData(playerKeys.list(), context.previousPlayers)
+        queryClient.setQueryData(playerKeys.list(), context.previousPlayers);
       }
     },
     onSettled: () => {
       // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: playerKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: playerKeys.lists() });
     },
-  })
+  });
 }
 
 /**
  * Hook: Update a player
  */
 export function useUpdatePlayer() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: updatePlayer,
     onMutate: async ({ id, updates }) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: playerKeys.lists() })
+      await queryClient.cancelQueries({ queryKey: playerKeys.lists() });
 
       // Snapshot previous value
-      const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
+      const previousPlayers = queryClient.getQueryData<Player[]>(
+        playerKeys.list(),
+      );
 
       // Optimistically update
       if (previousPlayers) {
         const optimisticPlayers = previousPlayers.map((player) =>
-          player.id === id ? { ...player, ...updates } : player
-        )
-        queryClient.setQueryData<Player[]>(playerKeys.list(), optimisticPlayers)
+          player.id === id ? { ...player, ...updates } : player,
+        );
+        queryClient.setQueryData<Player[]>(
+          playerKeys.list(),
+          optimisticPlayers,
+        );
       }
 
-      return { previousPlayers }
+      return { previousPlayers };
     },
     onError: (err, _variables, context) => {
       // Log error for debugging
-      console.error('Failed to update player:', err.message)
+      console.error("Failed to update player:", err.message);
 
       // Rollback on error
       if (context?.previousPlayers) {
-        queryClient.setQueryData(playerKeys.list(), context.previousPlayers)
+        queryClient.setQueryData(playerKeys.list(), context.previousPlayers);
       }
     },
     onSettled: (_data, _error, { id }) => {
       // Refetch after error or success
-      queryClient.invalidateQueries({ queryKey: playerKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: playerKeys.lists() });
       if (_data) {
-        queryClient.setQueryData(playerKeys.detail(id), _data)
+        queryClient.setQueryData(playerKeys.detail(id), _data);
       }
     },
-  })
+  });
 }
 
 /**
  * Hook: Delete a player
  */
 export function useDeletePlayer() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: deletePlayer,
     onMutate: async (id) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: playerKeys.lists() })
+      await queryClient.cancelQueries({ queryKey: playerKeys.lists() });
 
       // Snapshot previous value
-      const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
+      const previousPlayers = queryClient.getQueryData<Player[]>(
+        playerKeys.list(),
+      );
 
       // Optimistically remove from list
       if (previousPlayers) {
-        const optimisticPlayers = previousPlayers.filter((player) => player.id !== id)
-        queryClient.setQueryData<Player[]>(playerKeys.list(), optimisticPlayers)
+        const optimisticPlayers = previousPlayers.filter(
+          (player) => player.id !== id,
+        );
+        queryClient.setQueryData<Player[]>(
+          playerKeys.list(),
+          optimisticPlayers,
+        );
       }
 
-      return { previousPlayers }
+      return { previousPlayers };
     },
     onError: (_err, _id, context) => {
       // Rollback on error
       if (context?.previousPlayers) {
-        queryClient.setQueryData(playerKeys.list(), context.previousPlayers)
+        queryClient.setQueryData(playerKeys.list(), context.previousPlayers);
       }
     },
     onSettled: () => {
       // Refetch after error or success
-      queryClient.invalidateQueries({ queryKey: playerKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: playerKeys.lists() });
     },
-  })
+  });
 }
 
 /**
  * Hook: Set player active status
  */
 export function useSetPlayerActive() {
-  const { mutate: updatePlayer } = useUpdatePlayer()
+  const { mutate: updatePlayer } = useUpdatePlayer();
 
   return {
     setActive: (id: string, isActive: boolean) => {
-      updatePlayer({ id, updates: { isActive } })
+      updatePlayer({ id, updates: { isActive } });
     },
-  }
+  };
 }

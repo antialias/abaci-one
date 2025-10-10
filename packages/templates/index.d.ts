@@ -195,7 +195,10 @@ export class SVGCropError extends Error {
  * fs.writeFileSync('optimized.svg', result.svg);
  * ```
  */
-export function processSVG(svgContent: string, options?: ProcessOptions): ProcessResult;
+export function processSVG(
+  svgContent: string,
+  options?: ProcessOptions,
+): ProcessResult;
 
 /**
  * Browser-compatible file processing function.
@@ -223,7 +226,10 @@ export function processSVG(svgContent: string, options?: ProcessOptions): Proces
  * });
  * ```
  */
-export function processSVGFile(file: File | Blob, options?: ProcessOptions): Promise<ProcessResult>;
+export function processSVGFile(
+  file: File | Blob,
+  options?: ProcessOptions,
+): Promise<ProcessResult>;
 
 /**
  * Extract crop marks from SVG content and calculate optimal viewBox.

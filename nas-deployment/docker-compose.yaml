@@ -52,7 +52,7 @@ services:
     environment:
       - TZ=America/Chicago
     ports:
-      - "8000:8000"   # optional web UI
+      - "8000:8000" # optional web UI
     restart: unless-stopped
     networks:
       - webgateway
@@ -78,4 +78,4 @@ services:
 # ──────────────────────────────────────
 networks:
   webgateway:
-    external: true          # same network Traefik lives on
+    external: true # same network Traefik lives on

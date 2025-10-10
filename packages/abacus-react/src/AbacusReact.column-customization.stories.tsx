@@ -1,12 +1,12 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { AbacusReact } from './AbacusReact';
-import React, { useState, useMemo } from 'react';
+import type { Meta, StoryObj } from "@storybook/react";
+import { AbacusReact } from "./AbacusReact";
+import React, { useState, useMemo } from "react";
 
 const meta: Meta<typeof AbacusReact> = {
-  title: 'Soroban/Column Customization',
+  title: "Soroban/Column Customization",
   component: AbacusReact,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component: `
@@ -43,7 +43,7 @@ customStyles: {
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 };
 
 export default meta;
@@ -52,12 +52,20 @@ type Story = StoryObj<typeof meta>;
 // Basic Column Highlighting
 export const BasicColumnHighlighting: Story = {
   render: () => (
-    <div style={{ textAlign: 'center' }}>
-      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+    <div style={{ textAlign: "center" }}>
+      <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
         Basic Column Highlighting
       </h3>
-      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '400px', margin: '0 auto 20px' }}>
-        Individual columns can be highlighted with background colors and enhanced rod styling.
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "#666",
+          maxWidth: "400px",
+          margin: "0 auto 20px",
+        }}
+      >
+        Individual columns can be highlighted with background colors and
+        enhanced rod styling.
       </p>
 
       <AbacusReact
@@ -70,16 +78,16 @@ export const BasicColumnHighlighting: Story = {
             // Highlight the tens column (index 2)
             2: {
               columnPost: {
-                stroke: '#3b82f6', // Blue stroke
-                strokeWidth: 4,     // Thicker rod
-                opacity: 1
-              }
-            }
-          }
+                stroke: "#3b82f6", // Blue stroke
+                strokeWidth: 4, // Thicker rod
+                opacity: 1,
+              },
+            },
+          },
         }}
       />
 
-      <div style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
+      <div style={{ marginTop: "15px", fontSize: "14px", color: "#666" }}>
         The tens column (3rd from left) is highlighted with a blue rod
       </div>
     </div>
@@ -112,12 +120,20 @@ customStyles: {
 // Multiple Column Highlights
 export const MultipleColumnHighlights: Story = {
   render: () => (
-    <div style={{ textAlign: 'center' }}>
-      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+    <div style={{ textAlign: "center" }}>
+      <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
         Multiple Column Highlights
       </h3>
-      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '400px', margin: '0 auto 20px' }}>
-        Different columns can have different highlight styles for complex educational scenarios.
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "#666",
+          maxWidth: "400px",
+          margin: "0 auto 20px",
+        }}
+      >
+        Different columns can have different highlight styles for complex
+        educational scenarios.
       </p>
 
       <AbacusReact
@@ -130,32 +146,32 @@ export const MultipleColumnHighlights: Story = {
             // Thousands column - Red highlight
             0: {
               columnPost: {
-                stroke: '#ef4444',
+                stroke: "#ef4444",
                 strokeWidth: 4,
-                opacity: 1
-              }
+                opacity: 1,
+              },
             },
             // Hundreds column - Orange highlight
             1: {
               columnPost: {
-                stroke: '#f97316',
+                stroke: "#f97316",
                 strokeWidth: 4,
-                opacity: 1
-              }
+                opacity: 1,
+              },
             },
             // Ones column - Green highlight
             4: {
               columnPost: {
-                stroke: '#22c55e',
+                stroke: "#22c55e",
                 strokeWidth: 4,
-                opacity: 1
-              }
-            }
-          }
+                opacity: 1,
+              },
+            },
+          },
         }}
       />
 
-      <div style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
+      <div style={{ marginTop: "15px", fontSize: "14px", color: "#666" }}>
         Thousands (red), hundreds (orange), and ones (green) columns highlighted
       </div>
     </div>
@@ -188,12 +204,20 @@ customStyles: {
 // Column Bead Styling
 export const ColumnBeadStyling: Story = {
   render: () => (
-    <div style={{ textAlign: 'center' }}>
-      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+    <div style={{ textAlign: "center" }}>
+      <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
         Column-Level Bead Styling
       </h3>
-      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '400px', margin: '0 auto 20px' }}>
-        All beads within a column can be styled together while maintaining the column's visual coherence.
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "#666",
+          maxWidth: "400px",
+          margin: "0 auto 20px",
+        }}
+      >
+        All beads within a column can be styled together while maintaining the
+        column's visual coherence.
       </p>
 
       <AbacusReact
@@ -205,28 +229,53 @@ export const ColumnBeadStyling: Story = {
           columns: {
             // Thousands column - Purple theme
             0: {
-              heavenBeads: { fill: '#a855f7', stroke: '#7c3aed', strokeWidth: 2 },
-              earthBeads: { fill: '#c084fc', stroke: '#7c3aed', strokeWidth: 2 },
-              columnPost: { stroke: '#7c3aed', strokeWidth: 3 }
+              heavenBeads: {
+                fill: "#a855f7",
+                stroke: "#7c3aed",
+                strokeWidth: 2,
+              },
+              earthBeads: {
+                fill: "#c084fc",
+                stroke: "#7c3aed",
+                strokeWidth: 2,
+              },
+              columnPost: { stroke: "#7c3aed", strokeWidth: 3 },
             },
             // Tens column - Teal theme
             2: {
-              heavenBeads: { fill: '#14b8a6', stroke: '#0d9488', strokeWidth: 2 },
-              earthBeads: { fill: '#5eead4', stroke: '#0d9488', strokeWidth: 2 },
-              columnPost: { stroke: '#0d9488', strokeWidth: 3 }
+              heavenBeads: {
+                fill: "#14b8a6",
+                stroke: "#0d9488",
+                strokeWidth: 2,
+              },
+              earthBeads: {
+                fill: "#5eead4",
+                stroke: "#0d9488",
+                strokeWidth: 2,
+              },
+              columnPost: { stroke: "#0d9488", strokeWidth: 3 },
             },
             // Ones column - Pink theme
             3: {
-              heavenBeads: { fill: '#ec4899', stroke: '#be185d', strokeWidth: 2 },
-              earthBeads: { fill: '#f9a8d4', stroke: '#be185d', strokeWidth: 2 },
-              columnPost: { stroke: '#be185d', strokeWidth: 3 }
-            }
-          }
+              heavenBeads: {
+                fill: "#ec4899",
+                stroke: "#be185d",
+                strokeWidth: 2,
+              },
+              earthBeads: {
+                fill: "#f9a8d4",
+                stroke: "#be185d",
+                strokeWidth: 2,
+              },
+              columnPost: { stroke: "#be185d", strokeWidth: 3 },
+            },
+          },
         }}
       />
 
-      <div style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
-        Thousands (purple), tens (teal), and ones (pink) columns with coordinated bead colors
+      <div style={{ marginTop: "15px", fontSize: "14px", color: "#666" }}>
+        Thousands (purple), tens (teal), and ones (pink) columns with
+        coordinated bead colors
       </div>
     </div>
   ),
@@ -262,12 +311,20 @@ customStyles: {
 // Active/Inactive Column States
 export const ActiveInactiveColumnStates: Story = {
   render: () => (
-    <div style={{ textAlign: 'center' }}>
-      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+    <div style={{ textAlign: "center" }}>
+      <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
         Active vs Inactive Column States
       </h3>
-      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '400px', margin: '0 auto 20px' }}>
-        Different styling for active and inactive beads within specific columns for enhanced visual feedback.
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "#666",
+          maxWidth: "400px",
+          margin: "0 auto 20px",
+        }}
+      >
+        Different styling for active and inactive beads within specific columns
+        for enhanced visual feedback.
       </p>
 
       <AbacusReact
@@ -280,41 +337,42 @@ export const ActiveInactiveColumnStates: Story = {
             // Hundreds column - Enhanced active/inactive distinction
             1: {
               activeBeads: {
-                fill: '#10b981',
-                stroke: '#047857',
+                fill: "#10b981",
+                stroke: "#047857",
                 strokeWidth: 3,
-                opacity: 1.0
+                opacity: 1.0,
               },
               inactiveBeads: {
-                fill: '#d1fae5',
-                stroke: '#6ee7b7',
+                fill: "#d1fae5",
+                stroke: "#6ee7b7",
                 strokeWidth: 1,
-                opacity: 0.6
+                opacity: 0.6,
               },
-              columnPost: { stroke: '#047857', strokeWidth: 4 }
+              columnPost: { stroke: "#047857", strokeWidth: 4 },
             },
             // Ones column - Different active/inactive styling
             3: {
               activeBeads: {
-                fill: '#f59e0b',
-                stroke: '#d97706',
+                fill: "#f59e0b",
+                stroke: "#d97706",
                 strokeWidth: 3,
-                opacity: 1.0
+                opacity: 1.0,
               },
               inactiveBeads: {
-                fill: '#fef3c7',
-                stroke: '#fbbf24',
+                fill: "#fef3c7",
+                stroke: "#fbbf24",
                 strokeWidth: 1,
-                opacity: 0.4
+                opacity: 0.4,
               },
-              columnPost: { stroke: '#d97706', strokeWidth: 4 }
-            }
-          }
+              columnPost: { stroke: "#d97706", strokeWidth: 4 },
+            },
+          },
         }}
       />
 
-      <div style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
-        Hundreds (green) and ones (amber) columns with enhanced active/inactive bead distinction
+      <div style={{ marginTop: "15px", fontSize: "14px", color: "#666" }}>
+        Hundreds (green) and ones (amber) columns with enhanced active/inactive
+        bead distinction
       </div>
     </div>
   ),
@@ -357,11 +415,18 @@ customStyles: {
 // Column Number Styling
 export const ColumnNumberStyling: Story = {
   render: () => (
-    <div style={{ textAlign: 'center' }}>
-      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+    <div style={{ textAlign: "center" }}>
+      <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
         Column Number Customization
       </h3>
-      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '400px', margin: '0 auto 20px' }}>
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "#666",
+          maxWidth: "400px",
+          margin: "0 auto 20px",
+        }}
+      >
         Customize the appearance of place value numbers below specific columns.
       </p>
 
@@ -375,61 +440,62 @@ export const ColumnNumberStyling: Story = {
             // Thousands column - Red numbers
             0: {
               numerals: {
-                color: '#dc2626',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                backgroundColor: '#fee2e2',
+                color: "#dc2626",
+                fontWeight: "bold",
+                fontSize: "16px",
+                backgroundColor: "#fee2e2",
                 borderRadius: 4,
-                borderColor: '#fca5a5',
-                borderWidth: 2
+                borderColor: "#fca5a5",
+                borderWidth: 2,
               },
-              columnPost: { stroke: '#dc2626', strokeWidth: 3 }
+              columnPost: { stroke: "#dc2626", strokeWidth: 3 },
             },
             // Hundreds column - Blue numbers
             1: {
               numerals: {
-                color: '#2563eb',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                backgroundColor: '#dbeafe',
+                color: "#2563eb",
+                fontWeight: "bold",
+                fontSize: "16px",
+                backgroundColor: "#dbeafe",
                 borderRadius: 4,
-                borderColor: '#93c5fd',
-                borderWidth: 2
+                borderColor: "#93c5fd",
+                borderWidth: 2,
               },
-              columnPost: { stroke: '#2563eb', strokeWidth: 3 }
+              columnPost: { stroke: "#2563eb", strokeWidth: 3 },
             },
             // Tens column - Green numbers
             2: {
               numerals: {
-                color: '#16a34a',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                backgroundColor: '#dcfce7',
+                color: "#16a34a",
+                fontWeight: "bold",
+                fontSize: "16px",
+                backgroundColor: "#dcfce7",
                 borderRadius: 4,
-                borderColor: '#86efac',
-                borderWidth: 2
+                borderColor: "#86efac",
+                borderWidth: 2,
               },
-              columnPost: { stroke: '#16a34a', strokeWidth: 3 }
+              columnPost: { stroke: "#16a34a", strokeWidth: 3 },
             },
             // Ones column - Purple numbers
             3: {
               numerals: {
-                color: '#9333ea',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                backgroundColor: '#f3e8ff',
+                color: "#9333ea",
+                fontWeight: "bold",
+                fontSize: "16px",
+                backgroundColor: "#f3e8ff",
                 borderRadius: 4,
-                borderColor: '#c4b5fd',
-                borderWidth: 2
+                borderColor: "#c4b5fd",
+                borderWidth: 2,
               },
-              columnPost: { stroke: '#9333ea', strokeWidth: 3 }
-            }
-          }
+              columnPost: { stroke: "#9333ea", strokeWidth: 3 },
+            },
+          },
         }}
       />
 
-      <div style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
-        Each column has coordinated number styling with colored backgrounds and borders
+      <div style={{ marginTop: "15px", fontSize: "14px", color: "#666" }}>
+        Each column has coordinated number styling with colored backgrounds and
+        borders
       </div>
     </div>
   ),
@@ -471,11 +537,16 @@ customStyles: {
 export const InteractiveColumnHighlighting: Story = {
   render: () => {
     const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
-    const [clickedColumns, setClickedColumns] = useState<Set<number>>(new Set());
+    const [clickedColumns, setClickedColumns] = useState<Set<number>>(
+      new Set(),
+    );
 
-    const handleColumnClick = (columnIndex: number, event: React.MouseEvent) => {
+    const handleColumnClick = (
+      columnIndex: number,
+      event: React.MouseEvent,
+    ) => {
       event.preventDefault();
-      setClickedColumns(prev => {
+      setClickedColumns((prev) => {
         const newSet = new Set(prev);
         if (newSet.has(columnIndex)) {
           newSet.delete(columnIndex);
@@ -486,51 +557,76 @@ export const InteractiveColumnHighlighting: Story = {
       });
     };
 
-    const handleColumnHover = (columnIndex: number, event: React.MouseEvent) => {
+    const handleColumnHover = (
+      columnIndex: number,
+      event: React.MouseEvent,
+    ) => {
       setHoveredColumn(columnIndex);
     };
 
-    const handleColumnLeave = (columnIndex: number, event: React.MouseEvent) => {
+    const handleColumnLeave = (
+      columnIndex: number,
+      event: React.MouseEvent,
+    ) => {
       setHoveredColumn(null);
     };
 
     // Generate dynamic styles based on interaction state
     const customStyles = {
-      columns: Object.fromEntries([0, 1, 2, 3].map(colIndex => {
-        const isClicked = clickedColumns.has(colIndex);
-        const isHovered = hoveredColumn === colIndex;
+      columns: Object.fromEntries(
+        [0, 1, 2, 3].map((colIndex) => {
+          const isClicked = clickedColumns.has(colIndex);
+          const isHovered = hoveredColumn === colIndex;
 
-        if (isClicked) {
-          return [colIndex, {
-            columnPost: { stroke: '#ef4444', strokeWidth: 5, opacity: 1 },
-            heavenBeads: { stroke: '#ef4444', strokeWidth: 3 },
-            earthBeads: { stroke: '#ef4444', strokeWidth: 3 }
-          }];
-        } else if (isHovered) {
-          return [colIndex, {
-            columnPost: { stroke: '#3b82f6', strokeWidth: 4, opacity: 1 },
-            heavenBeads: { stroke: '#3b82f6', strokeWidth: 2 },
-            earthBeads: { stroke: '#3b82f6', strokeWidth: 2 }
-          }];
-        }
+          if (isClicked) {
+            return [
+              colIndex,
+              {
+                columnPost: { stroke: "#ef4444", strokeWidth: 5, opacity: 1 },
+                heavenBeads: { stroke: "#ef4444", strokeWidth: 3 },
+                earthBeads: { stroke: "#ef4444", strokeWidth: 3 },
+              },
+            ];
+          } else if (isHovered) {
+            return [
+              colIndex,
+              {
+                columnPost: { stroke: "#3b82f6", strokeWidth: 4, opacity: 1 },
+                heavenBeads: { stroke: "#3b82f6", strokeWidth: 2 },
+                earthBeads: { stroke: "#3b82f6", strokeWidth: 2 },
+              },
+            ];
+          }
 
-        // Always provide some styling to make columns interactive
-        return [colIndex, {
-          columnPost: { stroke: 'transparent', strokeWidth: 3, opacity: 1 }
-        }];
-      }))
+          // Always provide some styling to make columns interactive
+          return [
+            colIndex,
+            {
+              columnPost: { stroke: "transparent", strokeWidth: 3, opacity: 1 },
+            },
+          ];
+        }),
+      ),
     };
 
     return (
-      <div style={{ textAlign: 'center' }}>
-        <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+      <div style={{ textAlign: "center" }}>
+        <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
           Interactive Column Highlighting
         </h3>
-        <p style={{ marginBottom: '20px', color: '#666', maxWidth: '400px', margin: '0 auto 20px' }}>
-          Hover over columns to see highlights. Click to toggle persistent selection.
+        <p
+          style={{
+            marginBottom: "20px",
+            color: "#666",
+            maxWidth: "400px",
+            margin: "0 auto 20px",
+          }}
+        >
+          Hover over columns to see highlights. Click to toggle persistent
+          selection.
         </p>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: "20px" }}>
           <AbacusReact
             value={9876}
             columns={4}
@@ -541,51 +637,60 @@ export const InteractiveColumnHighlighting: Story = {
             callbacks={{
               onColumnClick: handleColumnClick,
               onColumnHover: handleColumnHover,
-              onColumnLeave: handleColumnLeave
+              onColumnLeave: handleColumnLeave,
             }}
           />
         </div>
 
-        <div style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
-          <strong>Interaction States:</strong><br/>
-          • <span style={{ color: '#3b82f6' }}>Blue</span> = Hovered<br/>
-          • <span style={{ color: '#ef4444' }}>Red</span> = Clicked/Selected<br/>
-          • Gray = Default
+        <div style={{ fontSize: "14px", color: "#666", marginBottom: "15px" }}>
+          <strong>Interaction States:</strong>
+          <br />• <span style={{ color: "#3b82f6" }}>Blue</span> = Hovered
+          <br />• <span style={{ color: "#ef4444" }}>Red</span> =
+          Clicked/Selected
+          <br />• Gray = Default
         </div>
 
-        <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>
-          Hovered column: {hoveredColumn !== null ? hoveredColumn : 'None'}
+        <div style={{ fontSize: "12px", color: "#888", marginBottom: "10px" }}>
+          Hovered column: {hoveredColumn !== null ? hoveredColumn : "None"}
         </div>
 
-        <div style={{ fontSize: '12px', color: '#888' }}>
-          Selected columns: {Array.from(clickedColumns).length > 0 ? Array.from(clickedColumns).join(', ') : 'None'}
+        <div style={{ fontSize: "12px", color: "#888" }}>
+          Selected columns:{" "}
+          {Array.from(clickedColumns).length > 0
+            ? Array.from(clickedColumns).join(", ")
+            : "None"}
         </div>
 
         <button
           onClick={() => setClickedColumns(new Set())}
           style={{
-            marginTop: '15px',
-            padding: '8px 16px',
-            background: '#6b7280',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
+            marginTop: "15px",
+            padding: "8px 16px",
+            background: "#6b7280",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
           }}
         >
           Clear Selection
         </button>
 
-        <div style={{
-          marginTop: '20px',
-          padding: '15px',
-          backgroundColor: '#f0f9ff',
-          borderRadius: '8px',
-          fontSize: '12px',
-          color: '#0c4a6e',
-          textAlign: 'left'
-        }}>
-          <strong>SVG Hover Support:</strong> Now includes proper hover events via <code>onColumnHover</code> and <code>onColumnLeave</code> callbacks. Each column has an invisible interaction area that responds to mouse events.
+        <div
+          style={{
+            marginTop: "20px",
+            padding: "15px",
+            backgroundColor: "#f0f9ff",
+            borderRadius: "8px",
+            fontSize: "12px",
+            color: "#0c4a6e",
+            textAlign: "left",
+          }}
+        >
+          <strong>SVG Hover Support:</strong> Now includes proper hover events
+          via <code>onColumnHover</code> and <code>onColumnLeave</code>{" "}
+          callbacks. Each column has an invisible interaction area that responds
+          to mouse events.
         </div>
       </div>
     );
@@ -665,17 +770,17 @@ export const EducationalUseCase: Story = {
         highlightColumn: 1,
         styles: {
           1: {
-            columnPost: { stroke: '#10b981', strokeWidth: 5, opacity: 1 },
-            heavenBeads: { stroke: '#10b981', strokeWidth: 3 },
-            earthBeads: { stroke: '#10b981', strokeWidth: 3 },
+            columnPost: { stroke: "#10b981", strokeWidth: 5, opacity: 1 },
+            heavenBeads: { stroke: "#10b981", strokeWidth: 3 },
+            earthBeads: { stroke: "#10b981", strokeWidth: 3 },
             numerals: {
-              color: '#065f46',
-              fontWeight: 'bold',
-              backgroundColor: '#d1fae5',
-              borderRadius: 4
-            }
-          }
-        }
+              color: "#065f46",
+              fontWeight: "bold",
+              backgroundColor: "#d1fae5",
+              borderRadius: 4,
+            },
+          },
+        },
       },
       {
         title: "Step 2: Identify the Tens",
@@ -683,17 +788,17 @@ export const EducationalUseCase: Story = {
         highlightColumn: 2,
         styles: {
           2: {
-            columnPost: { stroke: '#3b82f6', strokeWidth: 5, opacity: 1 },
-            heavenBeads: { stroke: '#3b82f6', strokeWidth: 3 },
-            earthBeads: { stroke: '#3b82f6', strokeWidth: 3 },
+            columnPost: { stroke: "#3b82f6", strokeWidth: 5, opacity: 1 },
+            heavenBeads: { stroke: "#3b82f6", strokeWidth: 3 },
+            earthBeads: { stroke: "#3b82f6", strokeWidth: 3 },
             numerals: {
-              color: '#1d4ed8',
-              fontWeight: 'bold',
-              backgroundColor: '#dbeafe',
-              borderRadius: 4
-            }
-          }
-        }
+              color: "#1d4ed8",
+              fontWeight: "bold",
+              backgroundColor: "#dbeafe",
+              borderRadius: 4,
+            },
+          },
+        },
       },
       {
         title: "Step 3: Identify the Ones",
@@ -701,17 +806,17 @@ export const EducationalUseCase: Story = {
         highlightColumn: 3,
         styles: {
           3: {
-            columnPost: { stroke: '#dc2626', strokeWidth: 5, opacity: 1 },
-            heavenBeads: { stroke: '#dc2626', strokeWidth: 3 },
-            earthBeads: { stroke: '#dc2626', strokeWidth: 3 },
+            columnPost: { stroke: "#dc2626", strokeWidth: 5, opacity: 1 },
+            heavenBeads: { stroke: "#dc2626", strokeWidth: 3 },
+            earthBeads: { stroke: "#dc2626", strokeWidth: 3 },
             numerals: {
-              color: '#991b1b',
-              fontWeight: 'bold',
-              backgroundColor: '#fee2e2',
-              borderRadius: 4
-            }
-          }
-        }
+              color: "#991b1b",
+              fontWeight: "bold",
+              backgroundColor: "#fee2e2",
+              borderRadius: 4,
+            },
+          },
+        },
       },
       {
         title: "Step 4: All Place Values",
@@ -719,40 +824,42 @@ export const EducationalUseCase: Story = {
         highlightColumn: null,
         styles: {
           1: {
-            columnPost: { stroke: '#10b981', strokeWidth: 3 },
-            numerals: { color: '#065f46', fontWeight: 'bold' }
+            columnPost: { stroke: "#10b981", strokeWidth: 3 },
+            numerals: { color: "#065f46", fontWeight: "bold" },
           },
           2: {
-            columnPost: { stroke: '#3b82f6', strokeWidth: 3 },
-            numerals: { color: '#1d4ed8', fontWeight: 'bold' }
+            columnPost: { stroke: "#3b82f6", strokeWidth: 3 },
+            numerals: { color: "#1d4ed8", fontWeight: "bold" },
           },
           3: {
-            columnPost: { stroke: '#dc2626', strokeWidth: 3 },
-            numerals: { color: '#991b1b', fontWeight: 'bold' }
-          }
-        }
-      }
+            columnPost: { stroke: "#dc2626", strokeWidth: 3 },
+            numerals: { color: "#991b1b", fontWeight: "bold" },
+          },
+        },
+      },
     ];
 
     const currentStepData = steps[currentStep];
 
     return (
-      <div style={{ textAlign: 'center', maxWidth: '500px', margin: '0 auto' }}>
-        <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+      <div style={{ textAlign: "center", maxWidth: "500px", margin: "0 auto" }}>
+        <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
           Educational Tutorial: Place Values
         </h3>
 
-        <div style={{
-          backgroundColor: '#f8f9fa',
-          padding: '15px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          border: '1px solid #e9ecef'
-        }}>
-          <h4 style={{ margin: '0 0 8px 0', color: '#495057' }}>
+        <div
+          style={{
+            backgroundColor: "#f8f9fa",
+            padding: "15px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            border: "1px solid #e9ecef",
+          }}
+        >
+          <h4 style={{ margin: "0 0 8px 0", color: "#495057" }}>
             {currentStepData.title}
           </h4>
-          <p style={{ margin: 0, color: '#6c757d', fontSize: '14px' }}>
+          <p style={{ margin: 0, color: "#6c757d", fontSize: "14px" }}>
             {currentStepData.description}
           </p>
         </div>
@@ -765,50 +872,70 @@ export const EducationalUseCase: Story = {
           customStyles={{ columns: currentStepData.styles }}
         />
 
-        <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+        <div
+          style={{
+            marginTop: "20px",
+            display: "flex",
+            gap: "10px",
+            justifyContent: "center",
+          }}
+        >
           <button
             onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
             disabled={currentStep === 0}
             style={{
-              padding: '8px 16px',
-              background: currentStep === 0 ? '#e5e7eb' : '#6b7280',
-              color: currentStep === 0 ? '#9ca3af' : 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: currentStep === 0 ? 'not-allowed' : 'pointer'
+              padding: "8px 16px",
+              background: currentStep === 0 ? "#e5e7eb" : "#6b7280",
+              color: currentStep === 0 ? "#9ca3af" : "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: currentStep === 0 ? "not-allowed" : "pointer",
             }}
           >
             Previous
           </button>
-          <span style={{
-            padding: '8px 16px',
-            background: '#f3f4f6',
-            borderRadius: '4px',
-            fontSize: '14px',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
+          <span
+            style={{
+              padding: "8px 16px",
+              background: "#f3f4f6",
+              borderRadius: "4px",
+              fontSize: "14px",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
             {currentStep + 1} of {steps.length}
           </span>
           <button
-            onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}
+            onClick={() =>
+              setCurrentStep(Math.min(steps.length - 1, currentStep + 1))
+            }
             disabled={currentStep === steps.length - 1}
             style={{
-              padding: '8px 16px',
-              background: currentStep === steps.length - 1 ? '#e5e7eb' : '#3b82f6',
-              color: currentStep === steps.length - 1 ? '#9ca3af' : 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: currentStep === steps.length - 1 ? 'not-allowed' : 'pointer'
+              padding: "8px 16px",
+              background:
+                currentStep === steps.length - 1 ? "#e5e7eb" : "#3b82f6",
+              color: currentStep === steps.length - 1 ? "#9ca3af" : "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor:
+                currentStep === steps.length - 1 ? "not-allowed" : "pointer",
             }}
           >
             Next
           </button>
         </div>
 
-        <div style={{ marginTop: '20px', fontSize: '12px', color: '#6c757d', textAlign: 'left' }}>
+        <div
+          style={{
+            marginTop: "20px",
+            fontSize: "12px",
+            color: "#6c757d",
+            textAlign: "left",
+          }}
+        >
           <strong>Teaching Benefits:</strong>
-          <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+          <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
             <li>Progressive disclosure of concepts</li>
             <li>Clear visual focus on current topic</li>
             <li>Coordinated colors for place value memory</li>
@@ -850,59 +977,113 @@ This pattern works for many educational scenarios:
 // Performance and Best Practices
 export const PerformanceAndBestPractices: Story = {
   render: () => (
-    <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
-      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+    <div style={{ textAlign: "center", maxWidth: "600px", margin: "0 auto" }}>
+      <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
         Performance & Best Practices
       </h3>
 
-      <div style={{ textAlign: 'left', fontSize: '14px', lineHeight: '1.6' }}>
-        <div style={{
-          backgroundColor: '#f0f9ff',
-          padding: '15px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          borderLeft: '4px solid #0ea5e9'
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#0c4a6e' }}>✅ Best Practices</h4>
-          <ul style={{ margin: 0, paddingLeft: '20px' }}>
-            <li><strong>Memoize styles:</strong> Use \`useMemo\` for dynamic style generation</li>
-            <li><strong>Minimize re-renders:</strong> Only update styles when interaction state changes</li>
-            <li><strong>Use column post highlighting:</strong> Less visually intrusive than bead colors</li>
-            <li><strong>Coordinate colors:</strong> Maintain visual harmony across columns</li>
-            <li><strong>Progressive disclosure:</strong> Show one concept at a time</li>
+      <div style={{ textAlign: "left", fontSize: "14px", lineHeight: "1.6" }}>
+        <div
+          style={{
+            backgroundColor: "#f0f9ff",
+            padding: "15px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            borderLeft: "4px solid #0ea5e9",
+          }}
+        >
+          <h4 style={{ margin: "0 0 10px 0", color: "#0c4a6e" }}>
+            ✅ Best Practices
+          </h4>
+          <ul style={{ margin: 0, paddingLeft: "20px" }}>
+            <li>
+              <strong>Memoize styles:</strong> Use \`useMemo\` for dynamic style
+              generation
+            </li>
+            <li>
+              <strong>Minimize re-renders:</strong> Only update styles when
+              interaction state changes
+            </li>
+            <li>
+              <strong>Use column post highlighting:</strong> Less visually
+              intrusive than bead colors
+            </li>
+            <li>
+              <strong>Coordinate colors:</strong> Maintain visual harmony across
+              columns
+            </li>
+            <li>
+              <strong>Progressive disclosure:</strong> Show one concept at a
+              time
+            </li>
           </ul>
         </div>
 
-        <div style={{
-          backgroundColor: '#fef2f2',
-          padding: '15px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          borderLeft: '4px solid #ef4444'
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#991b1b' }}>❌ Common Pitfalls</h4>
-          <ul style={{ margin: 0, paddingLeft: '20px' }}>
-            <li><strong>Overusing bead colors:</strong> Can conflict with existing decorations</li>
-            <li><strong>Too many highlights:</strong> Overwhelming and confusing</li>
-            <li><strong>Inconsistent styling:</strong> Different patterns for similar concepts</li>
-            <li><strong>Heavy re-rendering:</strong> Not memoizing expensive style calculations</li>
-            <li><strong>Poor contrast:</strong> Highlights that don't stand out</li>
+        <div
+          style={{
+            backgroundColor: "#fef2f2",
+            padding: "15px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            borderLeft: "4px solid #ef4444",
+          }}
+        >
+          <h4 style={{ margin: "0 0 10px 0", color: "#991b1b" }}>
+            ❌ Common Pitfalls
+          </h4>
+          <ul style={{ margin: 0, paddingLeft: "20px" }}>
+            <li>
+              <strong>Overusing bead colors:</strong> Can conflict with existing
+              decorations
+            </li>
+            <li>
+              <strong>Too many highlights:</strong> Overwhelming and confusing
+            </li>
+            <li>
+              <strong>Inconsistent styling:</strong> Different patterns for
+              similar concepts
+            </li>
+            <li>
+              <strong>Heavy re-rendering:</strong> Not memoizing expensive style
+              calculations
+            </li>
+            <li>
+              <strong>Poor contrast:</strong> Highlights that don't stand out
+            </li>
           </ul>
         </div>
 
-        <div style={{
-          backgroundColor: '#f0fdf4',
-          padding: '15px',
-          borderRadius: '8px',
-          borderLeft: '4px solid #22c55e'
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#166534' }}>💡 Pro Tips</h4>
-          <ul style={{ margin: 0, paddingLeft: '20px' }}>
-            <li><strong>Layer styling:</strong> Combine column posts, backgrounds, and numbers</li>
-            <li><strong>Use semantic colors:</strong> Green for correct, red for errors, blue for active</li>
-            <li><strong>Add transitions:</strong> Smooth changes between states</li>
-            <li><strong>Consider accessibility:</strong> Ensure sufficient color contrast</li>
-            <li><strong>Test interactions:</strong> Verify hover and click behaviors work correctly</li>
+        <div
+          style={{
+            backgroundColor: "#f0fdf4",
+            padding: "15px",
+            borderRadius: "8px",
+            borderLeft: "4px solid #22c55e",
+          }}
+        >
+          <h4 style={{ margin: "0 0 10px 0", color: "#166534" }}>
+            💡 Pro Tips
+          </h4>
+          <ul style={{ margin: 0, paddingLeft: "20px" }}>
+            <li>
+              <strong>Layer styling:</strong> Combine column posts, backgrounds,
+              and numbers
+            </li>
+            <li>
+              <strong>Use semantic colors:</strong> Green for correct, red for
+              errors, blue for active
+            </li>
+            <li>
+              <strong>Add transitions:</strong> Smooth changes between states
+            </li>
+            <li>
+              <strong>Consider accessibility:</strong> Ensure sufficient color
+              contrast
+            </li>
+            <li>
+              <strong>Test interactions:</strong> Verify hover and click
+              behaviors work correctly
+            </li>
           </ul>
         </div>
       </div>
@@ -916,15 +1097,23 @@ export const PerformanceAndBestPractices: Story = {
           columns: {
             // Example of well-coordinated column styling
             1: {
-              columnPost: { stroke: '#059669', strokeWidth: 3, opacity: 1 },
-              numerals: { color: '#065f46', fontWeight: 'bold' }
-            }
-          }
+              columnPost: { stroke: "#059669", strokeWidth: 3, opacity: 1 },
+              numerals: { color: "#065f46", fontWeight: "bold" },
+            },
+          },
         }}
       />
 
-      <p style={{ marginTop: '15px', fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
-        Example of clean, accessible column highlighting following best practices
+      <p
+        style={{
+          marginTop: "15px",
+          fontSize: "12px",
+          color: "#666",
+          fontStyle: "italic",
+        }}
+      >
+        Example of clean, accessible column highlighting following best
+        practices
       </p>
     </div>
   ),
@@ -978,7 +1167,9 @@ Column styles follow CSS-like specificity:
 export const InteractiveWithHighlighting: Story = {
   render: () => {
     const [value, setValue] = useState(1234);
-    const [highlightedColumn, setHighlightedColumn] = useState<number | null>(null);
+    const [highlightedColumn, setHighlightedColumn] = useState<number | null>(
+      null,
+    );
 
     const customStyles = useMemo(() => {
       if (highlightedColumn === null) return undefined;
@@ -988,38 +1179,42 @@ export const InteractiveWithHighlighting: Story = {
           [highlightedColumn]: {
             // Clean background glow effect
             backgroundGlow: {
-              fill: 'rgba(59, 130, 246, 0.25)',
+              fill: "rgba(59, 130, 246, 0.25)",
               blur: 4,
-              spread: 16
+              spread: 16,
             },
             // Subtle numeral highlighting
             numerals: {
-              color: '#1e40af',
-              backgroundColor: 'rgba(219, 234, 254, 0.9)',
-              fontWeight: 'bold',
+              color: "#1e40af",
+              backgroundColor: "rgba(219, 234, 254, 0.9)",
+              fontWeight: "bold",
               borderRadius: 6,
               borderWidth: 2,
-              borderColor: '#3b82f6'
-            }
-          }
-        }
+              borderColor: "#3b82f6",
+            },
+          },
+        },
       };
     }, [highlightedColumn]);
 
     return (
-      <div style={{ padding: '20px' }}>
+      <div style={{ padding: "20px" }}>
         <h3>Interactive Abacus with Column Highlighting</h3>
         <p>Test both bead interaction AND column highlighting</p>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: "20px" }}>
           <strong>Current Value: {value}</strong>
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: "20px" }}>
           <label>Highlight Column: </label>
           <select
-            value={highlightedColumn ?? ''}
-            onChange={(e) => setHighlightedColumn(e.target.value ? parseInt(e.target.value) : null)}
+            value={highlightedColumn ?? ""}
+            onChange={(e) =>
+              setHighlightedColumn(
+                e.target.value ? parseInt(e.target.value) : null,
+              )
+            }
           >
             <option value="">None</option>
             <option value="0">Column 0 (Ten Thousands)</option>
@@ -1040,12 +1235,19 @@ export const InteractiveWithHighlighting: Story = {
           onValueChange={setValue}
           callbacks={{
             onBeadClick: (event) => {
-              console.log('Bead clicked:', event);
-            }
+              console.log("Bead clicked:", event);
+            },
           }}
         />
 
-        <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+        <div
+          style={{
+            marginTop: "20px",
+            padding: "15px",
+            backgroundColor: "#f5f5f5",
+            borderRadius: "8px",
+          }}
+        >
           <h4>Test Instructions:</h4>
           <ol>
             <li>Try clicking beads to change the value</li>
@@ -1075,28 +1277,30 @@ Use this to debug any conflicts between styling and interaction.
 // Two-Level Highlighting Demo
 export const TwoLevelHighlighting: Story = {
   render: () => {
-    const [groupColumns, setGroupColumns] = useState<Set<number>>(new Set([1, 2]));
+    const [groupColumns, setGroupColumns] = useState<Set<number>>(
+      new Set([1, 2]),
+    );
     const [individualColumn, setIndividualColumn] = useState<number | null>(2);
 
     const customStyles = useMemo(() => {
       const highlights: Record<number, any> = {};
 
       // Level 1: Group highlights (blue glow)
-      groupColumns.forEach(columnIndex => {
+      groupColumns.forEach((columnIndex) => {
         highlights[columnIndex] = {
           backgroundGlow: {
-            fill: 'rgba(59, 130, 246, 0.2)',
+            fill: "rgba(59, 130, 246, 0.2)",
             blur: 4,
-            spread: 16
+            spread: 16,
           },
           numerals: {
-            color: '#1e40af',
-            backgroundColor: 'rgba(219, 234, 254, 0.8)',
-            fontWeight: 'bold',
+            color: "#1e40af",
+            backgroundColor: "rgba(219, 234, 254, 0.8)",
+            fontWeight: "bold",
             borderRadius: 4,
             borderWidth: 1,
-            borderColor: '#3b82f6'
-          }
+            borderColor: "#3b82f6",
+          },
         };
       });
 
@@ -1104,36 +1308,41 @@ export const TwoLevelHighlighting: Story = {
       if (individualColumn !== null) {
         highlights[individualColumn] = {
           backgroundGlow: {
-            fill: 'rgba(249, 115, 22, 0.3)',
+            fill: "rgba(249, 115, 22, 0.3)",
             blur: 6,
-            spread: 20
+            spread: 20,
           },
           numerals: {
-            color: '#c2410c',
-            backgroundColor: 'rgba(254, 215, 170, 0.9)',
-            fontWeight: 'bold',
+            color: "#c2410c",
+            backgroundColor: "rgba(254, 215, 170, 0.9)",
+            fontWeight: "bold",
             borderRadius: 6,
             borderWidth: 2,
-            borderColor: '#ea580c'
-          }
+            borderColor: "#ea580c",
+          },
         };
       }
 
-      return Object.keys(highlights).length > 0 ? { columns: highlights } : undefined;
+      return Object.keys(highlights).length > 0
+        ? { columns: highlights }
+        : undefined;
     }, [groupColumns, individualColumn]);
 
     return (
-      <div style={{ padding: '20px' }}>
+      <div style={{ padding: "20px" }}>
         <h3>Two-Level Column Highlighting</h3>
-        <p>Demonstrates group highlighting (blue) with individual term override (orange)</p>
+        <p>
+          Demonstrates group highlighting (blue) with individual term override
+          (orange)
+        </p>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: "20px" }}>
           <h4>Controls:</h4>
-          <div style={{ marginBottom: '10px' }}>
+          <div style={{ marginBottom: "10px" }}>
             <label>
               <strong>Group Columns (blue):</strong>
-              {[0, 1, 2, 3, 4].map(col => (
-                <label key={col} style={{ marginLeft: '10px' }}>
+              {[0, 1, 2, 3, 4].map((col) => (
+                <label key={col} style={{ marginLeft: "10px" }}>
                   <input
                     type="checkbox"
                     checked={groupColumns.has(col)}
@@ -1156,13 +1365,19 @@ export const TwoLevelHighlighting: Story = {
             <label>
               <strong>Individual Column (orange):</strong>
               <select
-                value={individualColumn ?? ''}
-                onChange={(e) => setIndividualColumn(e.target.value ? parseInt(e.target.value) : null)}
-                style={{ marginLeft: '10px' }}
+                value={individualColumn ?? ""}
+                onChange={(e) =>
+                  setIndividualColumn(
+                    e.target.value ? parseInt(e.target.value) : null,
+                  )
+                }
+                style={{ marginLeft: "10px" }}
               >
                 <option value="">None</option>
-                {[0, 1, 2, 3, 4].map(col => (
-                  <option key={col} value={col}>Column {col}</option>
+                {[0, 1, 2, 3, 4].map((col) => (
+                  <option key={col} value={col}>
+                    Column {col}
+                  </option>
                 ))}
               </select>
             </label>
@@ -1178,12 +1393,28 @@ export const TwoLevelHighlighting: Story = {
           customStyles={customStyles}
         />
 
-        <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+        <div
+          style={{
+            marginTop: "20px",
+            padding: "15px",
+            backgroundColor: "#f5f5f5",
+            borderRadius: "8px",
+          }}
+        >
           <h4>Two-Level Highlighting System:</h4>
           <ul>
-            <li><strong>Blue glow:</strong> Group-level highlighting (e.g., complement group like "100 - 90 - 9")</li>
-            <li><strong>Orange glow:</strong> Individual term highlighting (overrides group styling)</li>
-            <li><strong>Use case:</strong> When hovering over "90" in "100 - 90 - 9", show orange for tens column and blue for hundreds column</li>
+            <li>
+              <strong>Blue glow:</strong> Group-level highlighting (e.g.,
+              complement group like "100 - 90 - 9")
+            </li>
+            <li>
+              <strong>Orange glow:</strong> Individual term highlighting
+              (overrides group styling)
+            </li>
+            <li>
+              <strong>Use case:</strong> When hovering over "90" in "100 - 90 -
+              9", show orange for tens column and blue for hundreds column
+            </li>
           </ul>
         </div>
       </div>
@@ -1208,18 +1439,41 @@ The system allows users to see both the overall group context and the specific t
 // Invisible Column Posts
 export const InvisibleColumnPosts: Story = {
   render: () => (
-    <div style={{ textAlign: 'center' }}>
-      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+    <div style={{ textAlign: "center" }}>
+      <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
         Invisible Column Posts
       </h3>
-      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '500px', margin: '0 auto 20px' }}>
-        Column posts can be made completely invisible using <code>opacity: 0</code>, creating a floating bead effect ideal for inline displays.
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "#666",
+          maxWidth: "500px",
+          margin: "0 auto 20px",
+        }}
+      >
+        Column posts can be made completely invisible using{" "}
+        <code>opacity: 0</code>, creating a floating bead effect ideal for
+        inline displays.
       </p>
 
-      <div style={{ display: 'flex', gap: '40px', justifyContent: 'center', alignItems: 'center' }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "40px",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         {/* Default visible posts */}
         <div>
-          <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}>
+          <div
+            style={{
+              marginBottom: "10px",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: "#6b7280",
+            }}
+          >
             Default (Visible Posts)
           </div>
           <AbacusReact
@@ -1232,7 +1486,14 @@ export const InvisibleColumnPosts: Story = {
 
         {/* Invisible posts */}
         <div>
-          <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}>
+          <div
+            style={{
+              marginBottom: "10px",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: "#6b7280",
+            }}
+          >
             Invisible Posts
           </div>
           <AbacusReact
@@ -1241,13 +1502,13 @@ export const InvisibleColumnPosts: Story = {
             scaleFactor={1.5}
             showNumbers={true}
             customStyles={{
-              columnPosts: { opacity: 0 }
+              columnPosts: { opacity: 0 },
             }}
           />
         </div>
       </div>
 
-      <div style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
+      <div style={{ marginTop: "20px", fontSize: "14px", color: "#666" }}>
         Notice how the beads appear to float when the column post is invisible
       </div>
     </div>
@@ -1278,43 +1539,57 @@ customStyles={{
 // Single Column Inline
 export const SingleColumnInline: Story = {
   render: () => (
-    <div style={{ textAlign: 'center' }}>
-      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+    <div style={{ textAlign: "center" }}>
+      <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
         Single Column for Inline Equations
       </h3>
-      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '600px', margin: '0 auto 20px' }}>
-        Demonstrates single-column abacus with invisible posts and no numbers, perfect for embedding in complement equations.
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "#666",
+          maxWidth: "600px",
+          margin: "0 auto 20px",
+        }}
+      >
+        Demonstrates single-column abacus with invisible posts and no numbers,
+        perfect for embedding in complement equations.
       </p>
 
       {/* Example equation like in complement race */}
-      <div style={{
-        fontSize: '72px',
-        fontWeight: 'bold',
-        color: '#1f2937',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '20px',
-        justifyContent: 'center',
-        marginBottom: '30px'
-      }}>
-        <span style={{
-          background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-          color: 'white',
-          padding: '8px 24px',
-          borderRadius: '12px',
-          minWidth: '100px',
-          display: 'inline-block',
-          textShadow: '0 3px 10px rgba(0, 0, 0, 0.3)'
-        }}>
+      <div
+        style={{
+          fontSize: "72px",
+          fontWeight: "bold",
+          color: "#1f2937",
+          display: "flex",
+          alignItems: "center",
+          gap: "20px",
+          justifyContent: "center",
+          marginBottom: "30px",
+        }}
+      >
+        <span
+          style={{
+            background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+            color: "white",
+            padding: "8px 24px",
+            borderRadius: "12px",
+            minWidth: "100px",
+            display: "inline-block",
+            textShadow: "0 3px 10px rgba(0, 0, 0, 0.3)",
+          }}
+        >
           ?
         </span>
-        <span style={{ color: '#6b7280' }}>+</span>
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          lineHeight: 0
-        }}>
+        <span style={{ color: "#6b7280" }}>+</span>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            lineHeight: 0,
+          }}
+        >
           <AbacusReact
             value={3}
             columns={1}
@@ -1322,16 +1597,17 @@ export const SingleColumnInline: Story = {
             showNumbers={false}
             scaleFactor={0.72}
             customStyles={{
-              columnPosts: { opacity: 0 }
+              columnPosts: { opacity: 0 },
             }}
           />
         </div>
-        <span style={{ color: '#6b7280' }}>=</span>
-        <span style={{ color: '#10b981' }}>10</span>
+        <span style={{ color: "#6b7280" }}>=</span>
+        <span style={{ color: "#10b981" }}>10</span>
       </div>
 
-      <div style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}>
-        The abacus integrates seamlessly into the equation with no visible structure
+      <div style={{ marginTop: "20px", fontSize: "14px", color: "#666" }}>
+        The abacus integrates seamlessly into the equation with no visible
+        structure
       </div>
     </div>
   ),
@@ -1375,18 +1651,41 @@ This pattern is used in the complement race game to display abacus representatio
 // Multi-Column Invisible
 export const MultiColumnInvisible: Story = {
   render: () => (
-    <div style={{ textAlign: 'center' }}>
-      <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>
+    <div style={{ textAlign: "center" }}>
+      <h3 style={{ marginBottom: "20px", color: "#2c3e50" }}>
         Multi-Column Invisible Posts
       </h3>
-      <p style={{ marginBottom: '20px', color: '#666', maxWidth: '600px', margin: '0 auto 20px' }}>
-        Multi-column abacus with invisible posts creates a floating bead pattern that emphasizes the bead positions.
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "#666",
+          maxWidth: "600px",
+          margin: "0 auto 20px",
+        }}
+      >
+        Multi-column abacus with invisible posts creates a floating bead pattern
+        that emphasizes the bead positions.
       </p>
 
-      <div style={{ display: 'flex', gap: '60px', justifyContent: 'center', alignItems: 'center', marginBottom: '30px' }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "60px",
+          justifyContent: "center",
+          alignItems: "center",
+          marginBottom: "30px",
+        }}
+      >
         {/* With visible posts */}
         <div>
-          <div style={{ marginBottom: '15px', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}>
+          <div
+            style={{
+              marginBottom: "15px",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: "#6b7280",
+            }}
+          >
             Standard Display
           </div>
           <AbacusReact
@@ -1399,7 +1698,14 @@ export const MultiColumnInvisible: Story = {
 
         {/* With invisible posts */}
         <div>
-          <div style={{ marginBottom: '15px', fontSize: '14px', fontWeight: 'bold', color: '#6b7280' }}>
+          <div
+            style={{
+              marginBottom: "15px",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: "#6b7280",
+            }}
+          >
             Invisible Posts
           </div>
           <AbacusReact
@@ -1408,14 +1714,23 @@ export const MultiColumnInvisible: Story = {
             scaleFactor={1.3}
             showNumbers={true}
             customStyles={{
-              columnPosts: { opacity: 0 }
+              columnPosts: { opacity: 0 },
             }}
           />
         </div>
       </div>
 
-      <div style={{ marginTop: '20px', fontSize: '14px', color: '#666', maxWidth: '600px', margin: '0 auto' }}>
-        The invisible posts create a unique visual effect where beads appear to float in organized columns
+      <div
+        style={{
+          marginTop: "20px",
+          fontSize: "14px",
+          color: "#666",
+          maxWidth: "600px",
+          margin: "0 auto",
+        }}
+      >
+        The invisible posts create a unique visual effect where beads appear to
+        float in organized columns
       </div>
     </div>
   ),

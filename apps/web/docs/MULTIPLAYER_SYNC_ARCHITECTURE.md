@@ -15,45 +15,49 @@
 
 ```typescript
 // Client (Tab A)
-sendMove({ type: 'FLIP_CARD', playerId: 'player-1', data: { cardId: 'card-5' } })
+sendMove({
+  type: "FLIP_CARD",
+  playerId: "player-1",
+  data: { cardId: "card-5" },
+});
 
 // Optimistic update applied locally
-state = applyMoveOptimistically(state, move)
+state = applyMoveOptimistically(state, move);
 
 // Socket emits to server
-socket.emit('game-move', { userId, move })
+socket.emit("game-move", { userId, move });
 ```
 
 **Server Processing:**
 
 ```typescript
 // socket-server.ts line 71
-socket.on('game-move', async (data) => {
+socket.on("game-move", async (data) => {
   // Validate move
-  const result = await applyGameMove(data.userId, data.move)
+  const result = await applyGameMove(data.userId, data.move);
 
   if (result.success) {
     // ✅ Broadcast to ALL tabs of this user
-    io.to(`arcade:${data.userId}`).emit('move-accepted', {
+    io.to(`arcade:${data.userId}`).emit("move-accepted", {
       gameState: result.session.gameState,
       version: result.session.version,
-      move: data.move
-    })
+      move: data.move,
+    });
   }
-})
+});
 ```
 
 **Both Tabs Receive Update:**
 
 ```typescript
 // Client (Tab A and Tab B)
-socket.on('move-accepted', (data) => {
+socket.on("move-accepted", (data) => {
   // Update server state
-  optimistic.handleMoveAccepted(data.gameState, data.version, data.move)
+  optimistic.handleMoveAccepted(data.gameState, data.version, data.move);
 
   // Tab A: Remove from pending queue (was optimistic)
   // Tab B: Just sync with server state (wasn't expecting it)
-})
+});
 ```
 
 ### Key Components
@@ -92,6 +96,7 @@ Multiple users in the same room at `/arcade/room` should all see synchronized ga
 - User C (2 tabs): Tab C1, Tab C2
 
 When User A makes a move in Tab A1:
+
 - **All of User A's tabs** see the move (Tab A1, Tab A2)
 - **All of User B's tabs** see the move (Tab B1)
 - **All of User C's tabs** see the move (Tab C1, Tab C2)
@@ -99,12 +104,14 @@ When User A makes a move in Tab A1:
 ### The Challenge
 
 Current architecture only broadcasts within one user:
+
 ```typescript
 // ❌ Only reaches User A's tabs
 io.to(`arcade:${userA}`).emit('move-accepted', ...)
 ```
 
 We need to broadcast to the entire room:
+
 ```typescript
 // ✅ Reaches all users in the room
 io.to(`game:${roomId}`).emit('move-accepted', ...)
@@ -118,18 +125,18 @@ When a user joins `/arcade/room`, they join TWO socket rooms:
 
 ```typescript
 // socket-server.ts - extend join-arcade-session
-socket.on('join-arcade-session', async ({ userId, roomId }) => {
+socket.on("join-arcade-session", async ({ userId, roomId }) => {
   // Join user's personal room (for multi-tab sync)
-  socket.join(`arcade:${userId}`)
+  socket.join(`arcade:${userId}`);
 
   // If this session is part of a room, also join the game room
   if (roomId) {
-    socket.join(`game:${roomId}`)
-    console.log(`🎮 User ${userId} joined game room ${roomId}`)
+    socket.join(`game:${roomId}`);
+    console.log(`🎮 User ${userId} joined game room ${roomId}`);
   }
 
   // Send current session state...
-})
+});
 ```
 
 #### 2. Broadcast to Both Rooms
@@ -138,29 +145,33 @@ When processing moves for room-based sessions:
 
 ```typescript
 // socket-server.ts - modify game-move handler
-socket.on('game-move', async (data) => {
-  const result = await applyGameMove(data.userId, data.move)
+socket.on("game-move", async (data) => {
+  const result = await applyGameMove(data.userId, data.move);
 
   if (result.success && result.session) {
     const moveAcceptedData = {
       gameState: result.session.gameState,
       version: result.session.version,
       move: data.move,
-    }
+    };
 
     // Broadcast to user's own tabs (for optimistic update reconciliation)
-    io.to(`arcade:${data.userId}`).emit('move-accepted', moveAcceptedData)
+    io.to(`arcade:${data.userId}`).emit("move-accepted", moveAcceptedData);
 
     // If this is a room-based session, ALSO broadcast to all room members
     if (result.session.roomId) {
-      io.to(`game:${result.session.roomId}`).emit('move-accepted', moveAcceptedData)
-      console.log(`📢 Broadcasted move to room ${result.session.roomId}`)
+      io.to(`game:${result.session.roomId}`).emit(
+        "move-accepted",
+        moveAcceptedData,
+      );
+      console.log(`📢 Broadcasted move to room ${result.session.roomId}`);
     }
   }
-})
+});
 ```
 
 **Why broadcast to both?**
+
 - `arcade:${userId}` - So the acting user's tabs can reconcile their optimistic updates
 - `game:${roomId}` - So all other users in the room receive the update
 
@@ -183,6 +194,7 @@ sendMove({ type: 'FLIP_CARD', ... })
 ```
 
 The beauty is that `handleMoveAccepted()` already handles both cases:
+
 - **Own move**: Remove from pending queue
 - **Other's move**: Clear pending queue (since server state is now ahead)
 
@@ -192,19 +204,22 @@ Client needs to send roomId when joining:
 
 ```typescript
 // hooks/useArcadeSocket.ts
-const joinSession = useCallback((userId: string, roomId?: string) => {
-  if (!socket) return
-  socket.emit('join-arcade-session', { userId, roomId })
-}, [socket])
+const joinSession = useCallback(
+  (userId: string, roomId?: string) => {
+    if (!socket) return;
+    socket.emit("join-arcade-session", { userId, roomId });
+  },
+  [socket],
+);
 
 // hooks/useArcadeSession.ts
 useEffect(() => {
   if (connected && autoJoin && userId) {
     // Get roomId from session or room context
-    const roomId = getRoomId() // Need to provide this
-    joinSession(userId, roomId)
+    const roomId = getRoomId(); // Need to provide this
+    joinSession(userId, roomId);
   }
-}, [connected, autoJoin, userId, joinSession])
+}, [connected, autoJoin, userId, joinSession]);
 ```
 
 ---
@@ -216,47 +231,49 @@ useEffect(() => {
 **File: `socket-server.ts`**
 
 1. ✅ Accept `roomId` in `join-arcade-session` event
+
    ```typescript
-   socket.on('join-arcade-session', async ({ userId, roomId }) => {
-     socket.join(`arcade:${userId}`)
+   socket.on("join-arcade-session", async ({ userId, roomId }) => {
+     socket.join(`arcade:${userId}`);
 
      // Join game room if session is room-based
      if (roomId) {
-       socket.join(`game:${roomId}`)
+       socket.join(`game:${roomId}`);
      }
 
      // Rest of logic...
-   })
+   });
    ```
 
 2. ✅ Broadcast to room in `game-move` handler
+
    ```typescript
    if (result.success && result.session) {
      const moveData = {
        gameState: result.session.gameState,
        version: result.session.version,
        move: data.move,
-     }
+     };
 
      // Broadcast to user's tabs
-     io.to(`arcade:${data.userId}`).emit('move-accepted', moveData)
+     io.to(`arcade:${data.userId}`).emit("move-accepted", moveData);
 
      // ALSO broadcast to room if room-based session
      if (result.session.roomId) {
-       io.to(`game:${result.session.roomId}`).emit('move-accepted', moveData)
+       io.to(`game:${result.session.roomId}`).emit("move-accepted", moveData);
      }
    }
    ```
 
 3. ✅ Handle room disconnects
    ```typescript
-   socket.on('disconnect', () => {
+   socket.on("disconnect", () => {
      // Leave all rooms (handled automatically by socket.io)
      // But log for debugging
      if (currentUserId && currentRoomId) {
-       console.log(`User ${currentUserId} left game room ${currentRoomId}`)
+       console.log(`User ${currentUserId} left game room ${currentRoomId}`);
      }
-   })
+   });
    ```
 
 ### Phase 2: Client-Side Changes
@@ -264,39 +281,46 @@ useEffect(() => {
 **File: `hooks/useArcadeSocket.ts`**
 
 1. ✅ Add roomId parameter to joinSession
+
    ```typescript
    export interface UseArcadeSocketReturn {
      // ... existing
-     joinSession: (userId: string, roomId?: string) => void
+     joinSession: (userId: string, roomId?: string) => void;
    }
 
-   const joinSession = useCallback((userId: string, roomId?: string) => {
-     if (!socket) return
-     socket.emit('join-arcade-session', { userId, roomId })
-   }, [socket])
+   const joinSession = useCallback(
+     (userId: string, roomId?: string) => {
+       if (!socket) return;
+       socket.emit("join-arcade-session", { userId, roomId });
+     },
+     [socket],
+   );
    ```
 
 **File: `hooks/useArcadeSession.ts`**
 
 2. ✅ Accept roomId in options
+
    ```typescript
    export interface UseArcadeSessionOptions<TState> {
-     userId: string
-     roomId?: string // NEW
-     initialState: TState
-     applyMove: (state: TState, move: GameMove) => TState
+     userId: string;
+     roomId?: string; // NEW
+     initialState: TState;
+     applyMove: (state: TState, move: GameMove) => TState;
      // ... rest
    }
 
-   export function useArcadeSession<TState>(options: UseArcadeSessionOptions<TState>) {
-     const { userId, roomId, ...optimisticOptions } = options
+   export function useArcadeSession<TState>(
+     options: UseArcadeSessionOptions<TState>,
+   ) {
+     const { userId, roomId, ...optimisticOptions } = options;
 
      // Auto-join with roomId
      useEffect(() => {
        if (connected && autoJoin && userId) {
-         joinSession(userId, roomId)
+         joinSession(userId, roomId);
        }
-     }, [connected, autoJoin, userId, roomId, joinSession])
+     }, [connected, autoJoin, userId, roomId, joinSession]);
 
      // ... rest
    }
@@ -305,6 +329,7 @@ useEffect(() => {
 **File: `app/arcade/matching/context/ArcadeMemoryPairsContext.tsx`**
 
 3. ✅ Get roomId from room data and pass to session
+
    ```typescript
    import { useRoomData } from '@/hooks/useRoomData'
 
@@ -357,6 +382,7 @@ useEffect(() => {
 **Current behavior:** Session persists, user can rejoin
 
 **Required behavior:**
+
 - If user leaves room (HTTP POST to `/api/arcade/rooms/[roomId]/leave`):
   - Delete their session
   - Emit `session-ended` to their tabs
@@ -365,6 +391,7 @@ useEffect(() => {
 ### 2. Version Conflicts
 
 **Already handled** by optimistic locking:
+
 - Each move increments version
 - Client tracks server version
 - If conflict detected, reconciliation happens automatically
@@ -372,12 +399,14 @@ useEffect(() => {
 ### 3. Session Without Room
 
 **Already handled** by session-manager.ts:
+
 - Sessions without `roomId` are considered orphaned
 - They're cleaned up on next access (lines 111-115)
 
 ### 4. Multiple Users Same Move
 
 **Handled by server validation:**
+
 - Server processes moves sequentially
 - First valid move wins
 - Second move gets rejected if it's now invalid
@@ -418,13 +447,13 @@ Before processing moves, verify user is in the room:
 
 ```typescript
 // session-manager.ts - in applyGameMove()
-const session = await getArcadeSession(userId)
+const session = await getArcadeSession(userId);
 
 if (session.roomId) {
   // Verify user is a member of this room
-  const membership = await getRoomMember(session.roomId, userId)
+  const membership = await getRoomMember(session.roomId, userId);
   if (!membership) {
-    return { success: false, error: 'User not in room' }
+    return { success: false, error: "User not in room" };
   }
 }
 ```

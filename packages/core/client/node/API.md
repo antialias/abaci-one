@@ -9,12 +9,12 @@ npm install python-shell
 ## Basic Usage
 
 ```typescript
-import { SorobanGenerator } from './soroban-generator-bridge';
+import { SorobanGenerator } from "./soroban-generator-bridge";
 
 const generator = new SorobanGenerator();
 const result = await generator.generate({
-  range: '0-99',
-  cardsPerPage: 6
+  range: "0-99",
+  cardsPerPage: 6,
 });
 ```
 
@@ -39,9 +39,11 @@ new SorobanGenerator(projectRoot?: string)
 Generate flashcards with the specified configuration.
 
 **Parameters:**
+
 - `config`: Configuration object (see FlashcardConfig below)
 
 **Returns:** Promise resolving to:
+
 ```typescript
 {
   pdf: string;      // Base64 encoded PDF
@@ -55,6 +57,7 @@ Generate flashcards with the specified configuration.
 Generate flashcards and return as Node.js Buffer.
 
 **Parameters:**
+
 - `config`: Configuration object
 
 **Returns:** Promise resolving to Buffer containing PDF data
@@ -72,33 +75,33 @@ Clean up the persistent Python process.
 ```typescript
 interface FlashcardConfig {
   // Required
-  range: string;              // e.g., "0-99" or "1,2,5,10"
-  
+  range: string; // e.g., "0-99" or "1,2,5,10"
+
   // Optional
-  step?: number;              // Increment (default: 1)
-  cardsPerPage?: number;      // 1-30+ (default: 6)
-  paperSize?: 'us-letter' | 'a4' | 'a3' | 'a5';
-  orientation?: 'portrait' | 'landscape';
+  step?: number; // Increment (default: 1)
+  cardsPerPage?: number; // 1-30+ (default: 6)
+  paperSize?: "us-letter" | "a4" | "a3" | "a5";
+  orientation?: "portrait" | "landscape";
   margins?: {
-    top?: string;           // e.g., "0.5in"
+    top?: string; // e.g., "0.5in"
     bottom?: string;
     left?: string;
     right?: string;
   };
-  gutter?: string;           // Space between cards (default: "5mm")
-  shuffle?: boolean;         // Randomize order
-  seed?: number;             // Random seed for deterministic shuffle
-  showCutMarks?: boolean;    // Show cutting guides
+  gutter?: string; // Space between cards (default: "5mm")
+  shuffle?: boolean; // Randomize order
+  seed?: number; // Random seed for deterministic shuffle
+  showCutMarks?: boolean; // Show cutting guides
   showRegistration?: boolean; // Show alignment marks
-  fontFamily?: string;       // Font name (default: "DejaVu Sans")
-  fontSize?: string;         // Font size (default: "48pt")
+  fontFamily?: string; // Font name (default: "DejaVu Sans")
+  fontSize?: string; // Font size (default: "48pt")
   columns?: string | number; // "auto" or specific number
   showEmptyColumns?: boolean;
   hideInactiveBeads?: boolean;
-  beadShape?: 'diamond' | 'circle' | 'square';
-  colorScheme?: 'monochrome' | 'place-value' | 'heaven-earth' | 'alternating';
+  beadShape?: "diamond" | "circle" | "square";
+  colorScheme?: "monochrome" | "place-value" | "heaven-earth" | "alternating";
   coloredNumerals?: boolean; // Color numerals to match beads
-  scaleFactor?: number;      // 0.1 to 1.0 (default: 0.9)
+  scaleFactor?: number; // 0.1 to 1.0 (default: 0.9)
 }
 ```
 
@@ -111,7 +114,7 @@ const generator = new SorobanGenerator();
 
 // Simple 0-9 flashcards
 const result = await generator.generate({
-  range: '0-9'
+  range: "0-9",
 });
 ```
 
@@ -120,9 +123,9 @@ const result = await generator.generate({
 ```typescript
 // Count by 5s from 0 to 100
 const result = await generator.generate({
-  range: '0-100',
+  range: "0-100",
   step: 5,
-  cardsPerPage: 12
+  cardsPerPage: 12,
 });
 ```
 
@@ -131,39 +134,42 @@ const result = await generator.generate({
 ```typescript
 // Place-value coloring for learning
 const result = await generator.generate({
-  range: '0-999',
-  colorScheme: 'place-value',
+  range: "0-999",
+  colorScheme: "place-value",
   coloredNumerals: true,
-  showCutMarks: true
+  showCutMarks: true,
 });
 ```
 
 ### Express.js Route
 
 ```typescript
-app.post('/api/flashcards', async (req, res) => {
+app.post("/api/flashcards", async (req, res) => {
   try {
     const generator = new SorobanGenerator();
     const config = {
-      range: req.body.range || '0-9',
+      range: req.body.range || "0-9",
       cardsPerPage: req.body.cardsPerPage || 6,
-      colorScheme: req.body.colorScheme || 'monochrome',
-      ...req.body
+      colorScheme: req.body.colorScheme || "monochrome",
+      ...req.body,
     };
-    
+
     const result = await generator.generate(config);
-    
-    if (req.query.format === 'json') {
+
+    if (req.query.format === "json") {
       // Return metadata
       res.json({
         count: result.count,
-        numbers: result.numbers
+        numbers: result.numbers,
       });
     } else {
       // Return PDF
-      const pdfBuffer = Buffer.from(result.pdf, 'base64');
-      res.contentType('application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename=flashcards.pdf');
+      const pdfBuffer = Buffer.from(result.pdf, "base64");
+      res.contentType("application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=flashcards.pdf",
+      );
       res.send(pdfBuffer);
     }
   } catch (error) {
@@ -176,24 +182,24 @@ app.post('/api/flashcards', async (req, res) => {
 
 ```typescript
 // pages/api/flashcards.ts
-import { NextApiRequest, NextApiResponse } from 'next';
-import { SorobanGenerator } from '@/lib/soroban-generator-bridge';
+import { NextApiRequest, NextApiResponse } from "next";
+import { SorobanGenerator } from "@/lib/soroban-generator-bridge";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const generator = new SorobanGenerator();
     const result = await generator.generate(req.body);
-    const pdfBuffer = Buffer.from(result.pdf, 'base64');
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=flashcards.pdf');
+    const pdfBuffer = Buffer.from(result.pdf, "base64");
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=flashcards.pdf");
     res.send(pdfBuffer);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -231,6 +237,7 @@ await generator.close();
 ## Error Handling
 
 The generator will throw errors for:
+
 - Missing Python installation
 - Missing Typst installation
 - Invalid configuration
@@ -242,7 +249,7 @@ Always wrap calls in try/catch blocks:
 try {
   const result = await generator.generate(config);
 } catch (error) {
-  console.error('Generation failed:', error.message);
+  console.error("Generation failed:", error.message);
 }
 ```
 
@@ -251,9 +258,9 @@ try {
 All interfaces and types are included in the module. Import them as needed:
 
 ```typescript
-import { 
+import {
   SorobanGenerator,
   FlashcardConfig,
-  FlashcardResult 
-} from './soroban-generator-bridge';
+  FlashcardResult,
+} from "./soroban-generator-bridge";
 ```

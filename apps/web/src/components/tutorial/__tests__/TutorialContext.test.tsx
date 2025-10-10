@@ -1,41 +1,41 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import { vi } from 'vitest'
-import type { Tutorial } from '../../../types/tutorial'
-import { TutorialProvider, useTutorialContext } from '../TutorialContext'
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import React from "react";
+import { vi } from "vitest";
+import type { Tutorial } from "../../../types/tutorial";
+import { TutorialProvider, useTutorialContext } from "../TutorialContext";
 
 // Mock tutorial data
 const mockTutorial: Tutorial = {
-  id: 'test-tutorial',
-  title: 'Test Tutorial',
-  description: 'A test tutorial',
+  id: "test-tutorial",
+  title: "Test Tutorial",
+  description: "A test tutorial",
   steps: [
     {
-      id: 'step-1',
-      title: 'Step 1',
-      problem: '5 + 3',
-      description: 'Add 3 to 5',
+      id: "step-1",
+      title: "Step 1",
+      problem: "5 + 3",
+      description: "Add 3 to 5",
       startValue: 5,
       targetValue: 8,
     },
     {
-      id: 'step-2',
-      title: 'Step 2',
-      problem: '10 - 2',
-      description: 'Subtract 2 from 10',
+      id: "step-2",
+      title: "Step 2",
+      problem: "10 - 2",
+      description: "Subtract 2 from 10",
       startValue: 10,
       targetValue: 8,
     },
     {
-      id: 'step-3',
-      title: 'Step 3',
-      problem: '15 + 7',
-      description: 'Add 7 to 15',
+      id: "step-3",
+      title: "Step 3",
+      problem: "15 + 7",
+      description: "Add 7 to 15",
       startValue: 15,
       targetValue: 22,
     },
   ],
-}
+};
 
 // Test component that uses the context
 const TestComponent = () => {
@@ -49,7 +49,7 @@ const TestComponent = () => {
     advanceMultiStep,
     previousMultiStep,
     resetMultiStep,
-  } = useTutorialContext()
+  } = useTutorialContext();
 
   return (
     <div>
@@ -83,316 +83,326 @@ const TestComponent = () => {
         Reset Multi-Step
       </button>
     </div>
-  )
-}
+  );
+};
 
-describe('TutorialContext', () => {
+describe("TutorialContext", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
-  describe('Step Initialization', () => {
-    it('should initialize with first step and correct startValue', async () => {
+  describe("Step Initialization", () => {
+    it("should initialize with first step and correct startValue", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('0')
-        expect(screen.getByTestId('current-value')).toHaveTextContent('5')
-        expect(screen.getByTestId('step-title')).toHaveTextContent('Step 1')
-        expect(screen.getByTestId('start-value')).toHaveTextContent('5')
-        expect(screen.getByTestId('target-value')).toHaveTextContent('8')
-      })
-    })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("0");
+        expect(screen.getByTestId("current-value")).toHaveTextContent("5");
+        expect(screen.getByTestId("step-title")).toHaveTextContent("Step 1");
+        expect(screen.getByTestId("start-value")).toHaveTextContent("5");
+        expect(screen.getByTestId("target-value")).toHaveTextContent("8");
+      });
+    });
 
-    it('should initialize with custom initial step index', async () => {
+    it("should initialize with custom initial step index", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial} initialStepIndex={1}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('1')
-        expect(screen.getByTestId('current-value')).toHaveTextContent('10')
-        expect(screen.getByTestId('step-title')).toHaveTextContent('Step 2')
-        expect(screen.getByTestId('start-value')).toHaveTextContent('10')
-      })
-    })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("1");
+        expect(screen.getByTestId("current-value")).toHaveTextContent("10");
+        expect(screen.getByTestId("step-title")).toHaveTextContent("Step 2");
+        expect(screen.getByTestId("start-value")).toHaveTextContent("10");
+      });
+    });
 
-    it('should call onStepChange callback during initialization', async () => {
-      const onStepChange = vi.fn()
+    it("should call onStepChange callback during initialization", async () => {
+      const onStepChange = vi.fn();
 
       render(
         <TutorialProvider tutorial={mockTutorial} onStepChange={onStepChange}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       await waitFor(() => {
-        expect(onStepChange).toHaveBeenCalledWith(0, mockTutorial.steps[0])
-      })
-    })
-  })
+        expect(onStepChange).toHaveBeenCalledWith(0, mockTutorial.steps[0]);
+      });
+    });
+  });
 
-  describe('Step Navigation', () => {
-    it('should navigate to specific step with correct startValue', async () => {
+  describe("Step Navigation", () => {
+    it("should navigate to specific step with correct startValue", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       // Wait for initial render
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('0')
-      })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("0");
+      });
 
       // Navigate to step 2
-      fireEvent.click(screen.getByTestId('go-to-step-2'))
+      fireEvent.click(screen.getByTestId("go-to-step-2"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('1')
-        expect(screen.getByTestId('current-value')).toHaveTextContent('10')
-        expect(screen.getByTestId('step-title')).toHaveTextContent('Step 2')
-        expect(screen.getByTestId('is-completed')).toHaveTextContent('false')
-      })
-    })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("1");
+        expect(screen.getByTestId("current-value")).toHaveTextContent("10");
+        expect(screen.getByTestId("step-title")).toHaveTextContent("Step 2");
+        expect(screen.getByTestId("is-completed")).toHaveTextContent("false");
+      });
+    });
 
-    it('should navigate to next step', async () => {
+    it("should navigate to next step", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('0')
-      })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("0");
+      });
 
-      fireEvent.click(screen.getByTestId('go-next'))
+      fireEvent.click(screen.getByTestId("go-next"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('1')
-        expect(screen.getByTestId('current-value')).toHaveTextContent('10')
-      })
-    })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("1");
+        expect(screen.getByTestId("current-value")).toHaveTextContent("10");
+      });
+    });
 
-    it('should navigate to previous step', async () => {
+    it("should navigate to previous step", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial} initialStepIndex={1}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('1')
-      })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("1");
+      });
 
-      fireEvent.click(screen.getByTestId('go-prev'))
+      fireEvent.click(screen.getByTestId("go-prev"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('0')
-        expect(screen.getByTestId('current-value')).toHaveTextContent('5')
-      })
-    })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("0");
+        expect(screen.getByTestId("current-value")).toHaveTextContent("5");
+      });
+    });
 
-    it('should reset multi-step index when navigating between steps', async () => {
+    it("should reset multi-step index when navigating between steps", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       // Advance multi-step
-      fireEvent.click(screen.getByTestId('advance-multi'))
+      fireEvent.click(screen.getByTestId("advance-multi"));
       await waitFor(() => {
-        expect(screen.getByTestId('current-multi-step')).toHaveTextContent('1')
-      })
+        expect(screen.getByTestId("current-multi-step")).toHaveTextContent("1");
+      });
 
       // Navigate to next step
-      fireEvent.click(screen.getByTestId('go-next'))
+      fireEvent.click(screen.getByTestId("go-next"));
 
       await waitFor(() => {
         // Multi-step should reset to 0
-        expect(screen.getByTestId('current-multi-step')).toHaveTextContent('0')
-      })
-    })
-  })
+        expect(screen.getByTestId("current-multi-step")).toHaveTextContent("0");
+      });
+    });
+  });
 
-  describe('Value Changes', () => {
-    it('should update current value when user changes it', async () => {
+  describe("Value Changes", () => {
+    it("should update current value when user changes it", async () => {
       const TestWithValueChange = () => {
-        const { handleValueChange, state } = useTutorialContext()
+        const { handleValueChange, state } = useTutorialContext();
 
         return (
           <div>
             <TestComponent />
-            <button data-testid="change-value-directly" onClick={() => handleValueChange(42)}>
+            <button
+              data-testid="change-value-directly"
+              onClick={() => handleValueChange(42)}
+            >
               Change Value Directly
             </button>
           </div>
-        )
-      }
+        );
+      };
 
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestWithValueChange />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-value')).toHaveTextContent('5')
-      })
+        expect(screen.getByTestId("current-value")).toHaveTextContent("5");
+      });
 
-      fireEvent.click(screen.getByTestId('change-value-directly'))
+      fireEvent.click(screen.getByTestId("change-value-directly"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-value')).toHaveTextContent('42')
-      })
-    })
+        expect(screen.getByTestId("current-value")).toHaveTextContent("42");
+      });
+    });
 
-    it('should complete step when target value is reached', async () => {
+    it("should complete step when target value is reached", async () => {
       const TestWithCompletion = () => {
-        const { handleValueChange } = useTutorialContext()
+        const { handleValueChange } = useTutorialContext();
 
         React.useEffect(() => {
           // Simulate reaching target value after initialization
-          const timer = setTimeout(() => handleValueChange(8), 100)
-          return () => clearTimeout(timer)
-        }, [handleValueChange])
+          const timer = setTimeout(() => handleValueChange(8), 100);
+          return () => clearTimeout(timer);
+        }, [handleValueChange]);
 
-        return <TestComponent />
-      }
+        return <TestComponent />;
+      };
 
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestWithCompletion />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       await waitFor(
         () => {
-          expect(screen.getByTestId('is-completed')).toHaveTextContent('true')
+          expect(screen.getByTestId("is-completed")).toHaveTextContent("true");
         },
-        { timeout: 2000 }
-      )
-    })
+        { timeout: 2000 },
+      );
+    });
 
-    it('should call onStepComplete when step is completed', async () => {
-      const onStepComplete = vi.fn()
+    it("should call onStepComplete when step is completed", async () => {
+      const onStepComplete = vi.fn();
 
       const TestWithCallback = () => {
-        const { handleValueChange } = useTutorialContext()
+        const { handleValueChange } = useTutorialContext();
 
         React.useEffect(() => {
           // Simulate reaching target value
-          setTimeout(() => handleValueChange(8), 100)
-        }, [handleValueChange])
+          setTimeout(() => handleValueChange(8), 100);
+        }, [handleValueChange]);
 
-        return <TestComponent />
-      }
+        return <TestComponent />;
+      };
 
       render(
-        <TutorialProvider tutorial={mockTutorial} onStepComplete={onStepComplete}>
+        <TutorialProvider
+          tutorial={mockTutorial}
+          onStepComplete={onStepComplete}
+        >
           <TestWithCallback />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       await waitFor(
         () => {
-          expect(onStepComplete).toHaveBeenCalledWith(0, mockTutorial.steps[0], true)
+          expect(onStepComplete).toHaveBeenCalledWith(
+            0,
+            mockTutorial.steps[0],
+            true,
+          );
         },
-        { timeout: 2000 }
-      )
-    })
-  })
+        { timeout: 2000 },
+      );
+    });
+  });
 
-  describe('Multi-Step Navigation', () => {
-    it('should advance multi-step index', async () => {
+  describe("Multi-Step Navigation", () => {
+    it("should advance multi-step index", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
-      expect(screen.getByTestId('current-multi-step')).toHaveTextContent('0')
+      expect(screen.getByTestId("current-multi-step")).toHaveTextContent("0");
 
-      fireEvent.click(screen.getByTestId('advance-multi'))
+      fireEvent.click(screen.getByTestId("advance-multi"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-multi-step')).toHaveTextContent('1')
-      })
-    })
+        expect(screen.getByTestId("current-multi-step")).toHaveTextContent("1");
+      });
+    });
 
-    it('should go to previous multi-step', async () => {
+    it("should go to previous multi-step", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       // First advance to step 1
-      fireEvent.click(screen.getByTestId('advance-multi'))
+      fireEvent.click(screen.getByTestId("advance-multi"));
       await waitFor(() => {
-        expect(screen.getByTestId('current-multi-step')).toHaveTextContent('1')
-      })
+        expect(screen.getByTestId("current-multi-step")).toHaveTextContent("1");
+      });
 
       // Then go back
-      fireEvent.click(screen.getByTestId('prev-multi'))
+      fireEvent.click(screen.getByTestId("prev-multi"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-multi-step')).toHaveTextContent('0')
-      })
-    })
+        expect(screen.getByTestId("current-multi-step")).toHaveTextContent("0");
+      });
+    });
 
-    it('should reset multi-step to 0', async () => {
+    it("should reset multi-step to 0", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       // Advance a few steps
-      fireEvent.click(screen.getByTestId('advance-multi'))
-      fireEvent.click(screen.getByTestId('advance-multi'))
+      fireEvent.click(screen.getByTestId("advance-multi"));
+      fireEvent.click(screen.getByTestId("advance-multi"));
       await waitFor(() => {
-        expect(screen.getByTestId('current-multi-step')).toHaveTextContent('2')
-      })
+        expect(screen.getByTestId("current-multi-step")).toHaveTextContent("2");
+      });
 
       // Reset
-      fireEvent.click(screen.getByTestId('reset-multi'))
+      fireEvent.click(screen.getByTestId("reset-multi"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-multi-step')).toHaveTextContent('0')
-      })
-    })
+        expect(screen.getByTestId("current-multi-step")).toHaveTextContent("0");
+      });
+    });
 
-    it('should not allow previous multi-step below 0', async () => {
+    it("should not allow previous multi-step below 0", async () => {
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestComponent />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
-      expect(screen.getByTestId('current-multi-step')).toHaveTextContent('0')
+      expect(screen.getByTestId("current-multi-step")).toHaveTextContent("0");
 
       // Try to go to previous (should stay at 0)
-      fireEvent.click(screen.getByTestId('prev-multi'))
+      fireEvent.click(screen.getByTestId("prev-multi"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-multi-step')).toHaveTextContent('0')
-      })
-    })
-  })
+        expect(screen.getByTestId("current-multi-step")).toHaveTextContent("0");
+      });
+    });
+  });
 
-  describe('Error Handling', () => {
-    it('should handle invalid step indices gracefully', async () => {
+  describe("Error Handling", () => {
+    it("should handle invalid step indices gracefully", async () => {
       const TestWithInvalidStep = () => {
-        const { goToStep } = useTutorialContext()
+        const { goToStep } = useTutorialContext();
 
         return (
           <div>
@@ -401,49 +411,51 @@ describe('TutorialContext', () => {
               Invalid Step
             </button>
           </div>
-        )
-      }
+        );
+      };
 
       render(
         <TutorialProvider tutorial={mockTutorial}>
           <TestWithInvalidStep />
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('0')
-      })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("0");
+      });
 
       // Click invalid step - should not crash or change step
-      fireEvent.click(screen.getByTestId('invalid-step'))
+      fireEvent.click(screen.getByTestId("invalid-step"));
 
       await waitFor(() => {
-        expect(screen.getByTestId('current-step-index')).toHaveTextContent('0')
-      })
-    })
+        expect(screen.getByTestId("current-step-index")).toHaveTextContent("0");
+      });
+    });
 
-    it('should handle empty tutorial steps', async () => {
+    it("should handle empty tutorial steps", async () => {
       const emptyTutorial: Tutorial = {
-        id: 'empty',
-        title: 'Empty Tutorial',
-        description: 'No steps',
+        id: "empty",
+        title: "Empty Tutorial",
+        description: "No steps",
         steps: [],
-      }
+      };
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       // For empty tutorial, we expect the context to handle gracefully
       // but the component might not render completely
       render(
         <TutorialProvider tutorial={emptyTutorial}>
           <div data-testid="empty-tutorial-test">Empty tutorial test</div>
-        </TutorialProvider>
-      )
+        </TutorialProvider>,
+      );
 
       // Should at least render without crashing
-      expect(screen.getByTestId('empty-tutorial-test')).toBeInTheDocument()
+      expect(screen.getByTestId("empty-tutorial-test")).toBeInTheDocument();
 
-      consoleSpy.mockRestore()
-    })
-  })
-})
+      consoleSpy.mockRestore();
+    });
+  });
+});

@@ -6,19 +6,32 @@
 function generateSimpleCropDemo(svgContent, title) {
   // Extract original viewBox
   const originalViewBoxMatch = svgContent.match(/viewBox="([^"]*)"/);
-  const originalViewBox = originalViewBoxMatch ? originalViewBoxMatch[1] : '0 0 200 180';
+  const originalViewBox = originalViewBoxMatch
+    ? originalViewBoxMatch[1]
+    : "0 0 200 180";
 
   try {
     // Find crop mark coordinates by parsing transforms hierarchically
     const cropMarks = extractCropMarkCoordinates(svgContent);
 
-    if (cropMarks.left && cropMarks.right && cropMarks.top && cropMarks.bottom) {
+    if (
+      cropMarks.left &&
+      cropMarks.right &&
+      cropMarks.top &&
+      cropMarks.bottom
+    ) {
       // Create cropped version with calculated viewBox
       let processedSVG = svgContent;
 
       // Remove crop mark visual elements
-      processedSVG = processedSVG.replace(/<path[^>]*fill="#ff4136"[^>]*\/>/g, '');
-      processedSVG = processedSVG.replace(/<a[^>]*xlink:href="crop-mark:\/\/[^"]*"[^>]*>.*?<\/a>/g, '');
+      processedSVG = processedSVG.replace(
+        /<path[^>]*fill="#ff4136"[^>]*\/>/g,
+        "",
+      );
+      processedSVG = processedSVG.replace(
+        /<a[^>]*xlink:href="crop-mark:\/\/[^"]*"[^>]*>.*?<\/a>/g,
+        "",
+      );
 
       // Calculate optimized viewBox from crop mark coordinates
       const minX = Math.min(cropMarks.left.x, cropMarks.right.x);
@@ -27,10 +40,15 @@ function generateSimpleCropDemo(svgContent, title) {
       const maxY = Math.max(cropMarks.top.y, cropMarks.bottom.y);
 
       const newViewBox = `${minX} ${minY} ${maxX - minX} ${maxY - minY}`;
-      processedSVG = processedSVG.replace(/viewBox="[^"]*"/, `viewBox="${newViewBox}"`);
+      processedSVG = processedSVG.replace(
+        /viewBox="[^"]*"/,
+        `viewBox="${newViewBox}"`,
+      );
 
       // Calculate size reduction
-      const [origX, origY, origW, origH] = originalViewBox.split(' ').map(Number);
+      const [origX, origY, origW, origH] = originalViewBox
+        .split(" ")
+        .map(Number);
       const newArea = (maxX - minX) * (maxY - minY);
       const origArea = origW * origH;
       const reduction = Math.round((1 - newArea / origArea) * 100);
@@ -41,7 +59,7 @@ function generateSimpleCropDemo(svgContent, title) {
         originalViewBox,
         croppedViewBox: newViewBox,
         reduction: `${reduction}%`,
-        success: true
+        success: true,
       };
     }
   } catch (error) {
@@ -49,19 +67,22 @@ function generateSimpleCropDemo(svgContent, title) {
   }
 
   // Fallback to simple demo
-  const [x, y, width, height] = originalViewBox.split(' ').map(Number);
+  const [x, y, width, height] = originalViewBox.split(" ").map(Number);
   const margin = Math.min(width, height) * 0.1;
-  const newViewBox = `${x + margin} ${y + margin} ${width - 2*margin} ${height - 2*margin}`;
+  const newViewBox = `${x + margin} ${y + margin} ${width - 2 * margin} ${height - 2 * margin}`;
 
-  let processedSVG = svgContent.replace(/viewBox="[^"]*"/, `viewBox="${newViewBox}"`);
+  let processedSVG = svgContent.replace(
+    /viewBox="[^"]*"/,
+    `viewBox="${newViewBox}"`,
+  );
 
   return {
     originalSVG: svgContent,
     croppedSVG: processedSVG,
     originalViewBox,
     croppedViewBox: newViewBox,
-    reduction: '15%',
-    success: false
+    reduction: "15%",
+    success: false,
   };
 }
 
@@ -69,8 +90,11 @@ function extractCropMarkCoordinates(svgContent) {
   const cropMarks = {};
 
   // Find crop mark links and calculate their absolute coordinates
-  ['left', 'right', 'top', 'bottom'].forEach(type => {
-    const linkPattern = new RegExp(`<a[^>]*xlink:href="crop-mark://${type}"[^>]*>`, 'g');
+  ["left", "right", "top", "bottom"].forEach((type) => {
+    const linkPattern = new RegExp(
+      `<a[^>]*xlink:href="crop-mark://${type}"[^>]*>`,
+      "g",
+    );
     const linkMatch = svgContent.match(linkPattern);
 
     if (linkMatch) {
@@ -89,7 +113,7 @@ function calculateAbsoluteCoordinates(svgContent, cropMarkType) {
   // Find the group hierarchy that contains this crop mark
   const pattern = new RegExp(
     `<g[^>]*transform="translate\\(([^,]+),([^)]+)\\)"[^>]*>.*?<a[^>]*xlink:href="crop-mark://${cropMarkType}"[^>]*>`,
-    's'
+    "s",
   );
 
   const match = svgContent.match(pattern);

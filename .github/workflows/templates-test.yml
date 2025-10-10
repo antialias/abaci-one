@@ -3,12 +3,12 @@ name: Templates Package Tests
 on:
   push:
     paths:
-      - 'packages/templates/**'
-      - '.github/workflows/templates-test.yml'
+      - "packages/templates/**"
+      - ".github/workflows/templates-test.yml"
   pull_request:
     paths:
-      - 'packages/templates/**'
-      - '.github/workflows/templates-test.yml'
+      - "packages/templates/**"
+      - ".github/workflows/templates-test.yml"
 
 jobs:
   test-templates:
@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         node-version: [18, 20]
-        python-version: ['3.8', '3.9', '3.10', '3.11']
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
       - name: Checkout repository
@@ -27,7 +27,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -69,8 +69,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v2
@@ -125,7 +125,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Check JavaScript syntax
         working-directory: packages/templates
@@ -164,7 +164,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v2

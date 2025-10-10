@@ -27,7 +27,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
@@ -51,13 +51,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: pnpm build || true  # Allow build to fail for now
+        run: pnpm build || true # Allow build to fail for now
 
       - name: Run tests
-        run: pnpm test || true  # Allow tests to fail for now
+        run: pnpm test || true # Allow tests to fail for now
 
       - name: Run linting
-        run: pnpm lint || true  # Allow linting to fail for now
+        run: pnpm lint || true # Allow linting to fail for now
 
       - name: Release
         env:

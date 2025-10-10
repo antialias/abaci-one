@@ -1,40 +1,40 @@
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import type { ArcadeSessionResponse } from '@/app/api/arcade-session/types'
-import { useArcadeSocket } from './useArcadeSocket'
-import { useViewerId } from './useViewerId'
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import type { ArcadeSessionResponse } from "@/app/api/arcade-session/types";
+import { useArcadeSocket } from "./useArcadeSocket";
+import { useViewerId } from "./useViewerId";
 
 export interface UseArcadeGuardOptions {
   /**
    * Whether to enable the guard
    * @default true
    */
-  enabled?: boolean
+  enabled?: boolean;
 
   /**
    * Callback when redirecting to active session
    */
-  onRedirect?: (gameUrl: string) => void
+  onRedirect?: (gameUrl: string) => void;
 }
 
 export interface UseArcadeGuardReturn {
   /**
    * Whether there's an active arcade session
    */
-  hasActiveSession: boolean
+  hasActiveSession: boolean;
 
   /**
    * Whether currently loading session state
    */
-  loading: boolean
+  loading: boolean;
 
   /**
    * Active session details if exists
    */
   activeSession: {
-    gameUrl: string
-    currentGame: string
-  } | null
+    gameUrl: string;
+    currentGame: string;
+  } | null;
 }
 
 /**
@@ -51,118 +51,128 @@ export interface UseArcadeGuardReturn {
  * if (loading) return <LoadingSpinner />
  * ```
  */
-export function useArcadeGuard(options: UseArcadeGuardOptions = {}): UseArcadeGuardReturn {
-  const { enabled = true, onRedirect } = options
-  const router = useRouter()
-  const pathname = usePathname()
-  const { data: userId, isLoading: isLoadingUserId } = useViewerId()
+export function useArcadeGuard(
+  options: UseArcadeGuardOptions = {},
+): UseArcadeGuardReturn {
+  const { enabled = true, onRedirect } = options;
+  const router = useRouter();
+  const pathname = usePathname();
+  const { data: userId, isLoading: isLoadingUserId } = useViewerId();
 
-  const [hasActiveSession, setHasActiveSession] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeSession, setActiveSession] = useState<{
-    gameUrl: string
-    currentGame: string
-  } | null>(null)
+    gameUrl: string;
+    currentGame: string;
+  } | null>(null);
 
   // WebSocket connection to listen for session changes
   const { connected, joinSession } = useArcadeSocket({
     onSessionState: (data) => {
-      setHasActiveSession(true)
+      setHasActiveSession(true);
       setActiveSession({
         gameUrl: data.gameUrl,
         currentGame: data.currentGame,
-      })
+      });
 
       // Redirect if we're not already on the active game page (only if enabled)
-      const isAlreadyAtTarget = pathname === data.gameUrl
+      const isAlreadyAtTarget = pathname === data.gameUrl;
       if (enabled && !isAlreadyAtTarget) {
-        console.log('[ArcadeGuard] Redirecting to active session:', data.gameUrl)
-        onRedirect?.(data.gameUrl)
-        router.push(data.gameUrl)
+        console.log(
+          "[ArcadeGuard] Redirecting to active session:",
+          data.gameUrl,
+        );
+        onRedirect?.(data.gameUrl);
+        router.push(data.gameUrl);
       } else if (isAlreadyAtTarget) {
-        console.log('[ArcadeGuard] Already at target URL, no redirect needed')
+        console.log("[ArcadeGuard] Already at target URL, no redirect needed");
       }
     },
 
     onNoActiveSession: () => {
-      setHasActiveSession(false)
-      setActiveSession(null)
-      setLoading(false)
+      setHasActiveSession(false);
+      setActiveSession(null);
+      setLoading(false);
     },
 
     onSessionEnded: () => {
-      console.log('[ArcadeGuard] Session ended, clearing active session')
-      setHasActiveSession(false)
-      setActiveSession(null)
+      console.log("[ArcadeGuard] Session ended, clearing active session");
+      setHasActiveSession(false);
+      setActiveSession(null);
     },
-  })
+  });
 
   // Check for active session on mount and when userId changes
   useEffect(() => {
     if (!enabled) {
-      setLoading(false)
-      return
+      setLoading(false);
+      return;
     }
 
     if (isLoadingUserId) {
-      setLoading(true)
-      return
+      setLoading(true);
+      return;
     }
 
     if (!userId) {
-      setLoading(false)
-      return
+      setLoading(false);
+      return;
     }
 
     const checkSession = async () => {
       try {
-        setLoading(true)
-        const response = await fetch(`/api/arcade-session?userId=${userId}`)
+        setLoading(true);
+        const response = await fetch(`/api/arcade-session?userId=${userId}`);
 
         if (response.ok) {
-          const data: ArcadeSessionResponse = await response.json()
-          const session = data.session // API wraps response in { session: {...} }
+          const data: ArcadeSessionResponse = await response.json();
+          const session = data.session; // API wraps response in { session: {...} }
 
-          setHasActiveSession(true)
+          setHasActiveSession(true);
           setActiveSession({
             gameUrl: session.gameUrl,
             currentGame: session.currentGame,
-          })
+          });
 
           // Redirect if we're not already on the active game page (only if enabled)
-          const isAlreadyAtTarget = pathname === session.gameUrl
+          const isAlreadyAtTarget = pathname === session.gameUrl;
           if (enabled && !isAlreadyAtTarget) {
-            console.log('[ArcadeGuard] Redirecting to active session:', session.gameUrl)
-            onRedirect?.(session.gameUrl)
-            router.push(session.gameUrl)
+            console.log(
+              "[ArcadeGuard] Redirecting to active session:",
+              session.gameUrl,
+            );
+            onRedirect?.(session.gameUrl);
+            router.push(session.gameUrl);
           } else if (isAlreadyAtTarget) {
-            console.log('[ArcadeGuard] Already at target URL, no redirect needed')
+            console.log(
+              "[ArcadeGuard] Already at target URL, no redirect needed",
+            );
           }
         } else if (response.status === 404) {
           // No active session
-          setHasActiveSession(false)
-          setActiveSession(null)
+          setHasActiveSession(false);
+          setActiveSession(null);
         }
       } catch (error) {
-        console.error('[ArcadeGuard] Failed to check session:', error)
+        console.error("[ArcadeGuard] Failed to check session:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    checkSession()
-  }, [userId, enabled, pathname, router, onRedirect, isLoadingUserId])
+    checkSession();
+  }, [userId, enabled, pathname, router, onRedirect, isLoadingUserId]);
 
   // Join WebSocket room when connected
   useEffect(() => {
     if (connected && userId) {
-      joinSession(userId)
+      joinSession(userId);
     }
-  }, [connected, userId, joinSession])
+  }, [connected, userId, joinSession]);
 
   return {
     hasActiveSession,
     loading,
     activeSession,
-  }
+  };
 }

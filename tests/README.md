@@ -5,7 +5,7 @@ This directory contains automated tests for the Soroban flashcard generator.
 ## Test Structure
 
 - `test_config.py` - Configuration loading and parsing tests
-- `test_generation.py` - Core generation logic tests  
+- `test_generation.py` - Core generation logic tests
 - `test_visual.py` - Visual regression tests using image comparison
 - `conftest.py` - Pytest fixtures and configuration
 - `references/` - Reference images for visual regression tests
@@ -13,6 +13,7 @@ This directory contains automated tests for the Soroban flashcard generator.
 ## Running Tests
 
 ### Quick Start
+
 ```bash
 make pytest-fast    # Run unit tests (fast)
 make pytest-visual  # Run visual regression tests
@@ -21,12 +22,13 @@ make pytest-cov     # Run with coverage report
 ```
 
 ### Direct pytest usage
+
 ```bash
 # All tests
 python3 -m pytest tests/ -v
 
 # Skip slow tests
-python3 -m pytest tests/ -v -m "not slow" 
+python3 -m pytest tests/ -v -m "not slow"
 
 # Visual tests only
 python3 -m pytest tests/test_visual.py -v
@@ -53,7 +55,7 @@ When you make intentional visual changes, manually delete the old reference imag
 ### Test Philosophy
 
 - **Fast unit tests** for logic and configuration
-- **Visual regression tests** for output verification  
+- **Visual regression tests** for output verification
 - **Integration tests** marked as `@pytest.mark.slow`
 - **Meaningful failures** with clear error messages
 - **Easy maintenance** when the app evolves

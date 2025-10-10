@@ -55,7 +55,7 @@ class SVGCropError extends Error {
    */
   constructor(message, code, details = {}) {
     super(message);
-    this.name = 'SVGCropError';
+    this.name = "SVGCropError";
     this.code = code;
     this.details = details;
   }
@@ -71,7 +71,7 @@ class SVGCropError extends Error {
  */
 function parseSVGWithTransforms(svgContent) {
   const elements = [];
-  const lines = svgContent.split('\n');
+  const lines = svgContent.split("\n");
   const stack = []; // Track parent transforms for accumulation
 
   for (let i = 0; i < lines.length; i++) {
@@ -79,7 +79,7 @@ function parseSVGWithTransforms(svgContent) {
     const indent = line.match(/^(\s*)/)[1].length;
 
     // Handle opening transform groups
-    if (line.includes('<g ') && line.includes('transform=')) {
+    if (line.includes("<g ") && line.includes("transform=")) {
       const transformMatch = line.match(/transform="translate\(([^)]+)\)"/);
       if (!transformMatch) continue;
 
@@ -95,14 +95,14 @@ function parseSVGWithTransforms(svgContent) {
       const accumulated = stack.reduce(
         (acc, parent) => ({
           x: acc.x + parent.transform.x,
-          y: acc.y + parent.transform.y
+          y: acc.y + parent.transform.y,
         }),
-        { x: 0, y: 0 }
+        { x: 0, y: 0 },
       );
 
       const finalTransform = {
         x: accumulated.x + transform.x,
-        y: accumulated.y + transform.y
+        y: accumulated.y + transform.y,
       };
 
       stack.push({ indent, transform, finalTransform });
@@ -112,18 +112,19 @@ function parseSVGWithTransforms(svgContent) {
       const checkLine = (lineToCheck, lineIndex) => {
         // Find all crop marks in the line using regex
         // Look for 0.1x0.1 rectangles, not dashed lines
-        const cropMarkRegex = /<path[^>]*d="M 0 0 L 0 0\.1 L 0\.1 0\.1 L 0\.1 0 Z "[^>]*fill="#ff4136"[^>]*\/>/g;
+        const cropMarkRegex =
+          /<path[^>]*d="M 0 0 L 0 0\.1 L 0\.1 0\.1 L 0\.1 0 Z "[^>]*fill="#ff4136"[^>]*\/>/g;
         const matches = lineToCheck.match(cropMarkRegex);
 
         if (matches) {
           // Add one element for each crop mark found
           matches.forEach((match, matchIndex) => {
             elements.push({
-              type: 'crop-mark',
+              type: "crop-mark",
               finalTransform,
               line: lineIndex,
               matchIndex,
-              raw: match
+              raw: match,
             });
           });
         }
@@ -149,21 +150,23 @@ function parseSVGWithTransforms(svgContent) {
 function extractCropMarkCoordinatesFromLinks(svgContent) {
   const cropMarks = {};
 
-  console.log('🔍 === VIEWPORT CROPPING: Starting crop mark extraction ===');
+  console.log("🔍 === VIEWPORT CROPPING: Starting crop mark extraction ===");
 
   // Find each crop mark type and calculate its absolute coordinates
-  ['left', 'right', 'top', 'bottom'].forEach(type => {
+  ["left", "right", "top", "bottom"].forEach((type) => {
     console.log(`🔍 Looking for crop mark: ${type}`);
     const coords = calculateCropMarkCoordinates(svgContent, type);
     if (coords) {
-      console.log(`✅ Found ${type} crop mark at: x=${coords.x}, y=${coords.y}`);
+      console.log(
+        `✅ Found ${type} crop mark at: x=${coords.x}, y=${coords.y}`,
+      );
       cropMarks[type] = coords;
     } else {
       console.log(`❌ Could not find ${type} crop mark`);
     }
   });
 
-  console.log('🔍 Final crop marks:', cropMarks);
+  console.log("🔍 Final crop marks:", cropMarks);
   return cropMarks;
 }
 
@@ -179,10 +182,14 @@ function calculateCropMarkCoordinates(svgContent, cropMarkType) {
     console.log(`🔍   ❌ No crop-mark://${cropMarkType} link found in SVG`);
     return null;
   }
-  console.log(`🔍   ✅ Found crop-mark://${cropMarkType} link at position ${linkPosition}`);
+  console.log(
+    `🔍   ✅ Found crop-mark://${cropMarkType} link at position ${linkPosition}`,
+  );
 
   // Extract the base page offset from the root page group
-  const pageOffsetMatch = svgContent.match(/transform="translate\(([^,]+),([^)]+)\)"[^>]*data-tid="[^"]*"[^>]*class="typst-group"/);
+  const pageOffsetMatch = svgContent.match(
+    /transform="translate\(([^,]+),([^)]+)\)"[^>]*data-tid="[^"]*"[^>]*class="typst-group"/,
+  );
   let baseX = 0;
   let baseY = 0;
 
@@ -201,7 +208,9 @@ function calculateCropMarkCoordinates(svgContent, cropMarkType) {
   let totalX = baseX;
   let totalY = baseY;
 
-  console.log(`🔍   🔍 Scanning for transforms before position ${linkPosition}...`);
+  console.log(
+    `🔍   🔍 Scanning for transforms before position ${linkPosition}...`,
+  );
 
   // Find all transforms that could apply to this crop mark
   const transforms = [];
@@ -213,9 +222,13 @@ function calculateCropMarkCoordinates(svgContent, cropMarkType) {
     // Skip zero transforms
     if (x !== 0 || y !== 0) {
       transforms.push({ x, y, pos });
-      console.log(`🔍     Found non-zero transform at pos ${pos}: translate(${x}, ${y})`);
+      console.log(
+        `🔍     Found non-zero transform at pos ${pos}: translate(${x}, ${y})`,
+      );
     } else {
-      console.log(`🔍     Skipped zero transform at pos ${pos}: translate(${x}, ${y})`);
+      console.log(
+        `🔍     Skipped zero transform at pos ${pos}: translate(${x}, ${y})`,
+      );
     }
   }
 
@@ -227,14 +240,18 @@ function calculateCropMarkCoordinates(svgContent, cropMarkType) {
     transforms.sort((a, b) => b.pos - a.pos);
     const lastTransform = transforms[0];
 
-    console.log(`🔍   📐 Applying last transform: translate(${lastTransform.x}, ${lastTransform.y})`);
+    console.log(
+      `🔍   📐 Applying last transform: translate(${lastTransform.x}, ${lastTransform.y})`,
+    );
     totalX += lastTransform.x;
     totalY += lastTransform.y;
   } else {
     console.log(`🔍   📐 No non-zero transforms found, using only base offset`);
   }
 
-  console.log(`🔍   🎯 Final coordinates for ${cropMarkType}: x=${totalX}, y=${totalY}`);
+  console.log(
+    `🔍   🎯 Final coordinates for ${cropMarkType}: x=${totalX}, y=${totalY}`,
+  );
   return { x: totalX, y: totalY };
 }
 
@@ -246,26 +263,21 @@ function calculateCropMarkCoordinates(svgContent, cropMarkType) {
  * @throws {SVGCropError} When crop marks cannot be found or processed
  */
 function extractCropMarks(svgContent) {
-  if (typeof svgContent !== 'string') {
-    throw new SVGCropError(
-      'SVG content must be a string',
-      'INVALID_INPUT',
-      { received: typeof svgContent }
-    );
+  if (typeof svgContent !== "string") {
+    throw new SVGCropError("SVG content must be a string", "INVALID_INPUT", {
+      received: typeof svgContent,
+    });
   }
 
   if (!svgContent.trim()) {
-    throw new SVGCropError(
-      'SVG content is empty',
-      'EMPTY_INPUT'
-    );
+    throw new SVGCropError("SVG content is empty", "EMPTY_INPUT");
   }
 
   // Validate SVG structure
-  if (!svgContent.includes('<svg') || !svgContent.includes('</svg>')) {
+  if (!svgContent.includes("<svg") || !svgContent.includes("</svg>")) {
     throw new SVGCropError(
-      'Invalid SVG format - missing <svg> tags',
-      'INVALID_SVG_FORMAT'
+      "Invalid SVG format - missing <svg> tags",
+      "INVALID_SVG_FORMAT",
     );
   }
 
@@ -278,37 +290,39 @@ function extractCropMarks(svgContent) {
 
   if (Object.keys(cropMarks).length === 0) {
     throw new SVGCropError(
-      'No crop marks found in SVG. Ensure the SVG was generated with crop marks enabled.',
-      'NO_CROP_MARKS',
+      "No crop marks found in SVG. Ensure the SVG was generated with crop marks enabled.",
+      "NO_CROP_MARKS",
       {
         originalViewBox,
-        hint: 'Add crop marks to your Typst template using the crop mark system'
-      }
+        hint: "Add crop marks to your Typst template using the crop mark system",
+      },
     );
   }
 
   if (Object.keys(cropMarks).length < 4) {
     throw new SVGCropError(
       `Insufficient crop marks found (${Object.keys(cropMarks).length}/4). Need left, right, top, and bottom markers.`,
-      'INSUFFICIENT_CROP_MARKS',
+      "INSUFFICIENT_CROP_MARKS",
       {
         found: Object.keys(cropMarks),
-        required: ['left', 'right', 'top', 'bottom']
-      }
+        required: ["left", "right", "top", "bottom"],
+      },
     );
   }
 
   // Calculate viewBox boundaries
   const positions = Object.values(cropMarks);
-  console.log('🔍 === VIEWPORT CROPPING: Calculating viewBox boundaries ===');
-  console.log('🔍 Crop mark positions:', positions);
+  console.log("🔍 === VIEWPORT CROPPING: Calculating viewBox boundaries ===");
+  console.log("🔍 Crop mark positions:", positions);
 
-  const minX = Math.min(...positions.map(p => p.x));
-  const maxX = Math.max(...positions.map(p => p.x));
-  const minY = Math.min(...positions.map(p => p.y));
-  const maxY = Math.max(...positions.map(p => p.y));
+  const minX = Math.min(...positions.map((p) => p.x));
+  const maxX = Math.max(...positions.map((p) => p.x));
+  const minY = Math.min(...positions.map((p) => p.y));
+  const maxY = Math.max(...positions.map((p) => p.y));
 
-  console.log(`🔍 Calculated boundaries: minX=${minX}, maxX=${maxX}, minY=${minY}, maxY=${maxY}`);
+  console.log(
+    `🔍 Calculated boundaries: minX=${minX}, maxX=${maxX}, minY=${minY}, maxY=${maxY}`,
+  );
 
   const width = maxX - minX;
   const height = maxY - minY;
@@ -320,23 +334,28 @@ function extractCropMarks(svgContent) {
     console.error(`🔍 ❌ Invalid dimensions: width=${width}, height=${height}`);
     throw new SVGCropError(
       `Invalid crop dimensions calculated: ${width} × ${height}`,
-      'INVALID_DIMENSIONS',
+      "INVALID_DIMENSIONS",
       {
-        minX, maxX, minY, maxY, width, height,
+        minX,
+        maxX,
+        minY,
+        maxY,
+        width,
+        height,
         cropMarks,
-        hint: 'Check that crop marks are positioned correctly'
-      }
+        hint: "Check that crop marks are positioned correctly",
+      },
     );
   }
 
   const viewBox = `${minX} ${minY} ${width} ${height}`;
   console.log(`🔍 Final viewBox: "${viewBox}"`);
-  console.log('🔍 === VIEWPORT CROPPING: Complete ===');
+  console.log("🔍 === VIEWPORT CROPPING: Complete ===");
 
   // Calculate file size reduction estimate
   let reduction = 0;
   if (originalViewBox) {
-    const originalParts = originalViewBox.split(' ').map(Number);
+    const originalParts = originalViewBox.split(" ").map(Number);
     if (originalParts.length === 4) {
       const originalArea = originalParts[2] * originalParts[3];
       const newArea = width * height;
@@ -353,7 +372,7 @@ function extractCropMarks(svgContent) {
     maxX,
     maxY,
     cropMarks,
-    reduction: Math.max(0, reduction)
+    reduction: Math.max(0, reduction),
   };
 }
 
@@ -374,17 +393,17 @@ function extractBeadAnnotations(svgContent) {
     // SVG <a> elements with href
     /<a[^>]+href="bead:\/\/([^"]+)"[^>]*>(.*?)<\/a>/gs,
     // Elements with xlink:href
-    /<[^>]+xlink:href="bead:\/\/([^"]+)"[^>]*>/g
+    /<[^>]+xlink:href="bead:\/\/([^"]+)"[^>]*>/g,
   ];
 
   let processedSVG = svgContent;
 
-  linkPatterns.forEach(pattern => {
+  linkPatterns.forEach((pattern) => {
     let match;
     while ((match = pattern.exec(svgContent)) !== null) {
       const beadId = match[1];
       const linkElement = match[0];
-      const innerContent = match[2] || ''; // For <a> elements
+      const innerContent = match[2] || ""; // For <a> elements
 
       // Parse the bead ID to extract meaningful data
       const beadData = parseBeadId(beadId);
@@ -393,34 +412,40 @@ function extractBeadAnnotations(svgContent) {
         id: beadId,
         data: beadData,
         originalElement: linkElement,
-        innerContent
+        innerContent,
       });
 
       // Convert link to data attributes on the inner element
       if (innerContent) {
         // For <a> wrapper elements, extract inner content and add data attributes
         const dataAttributes = createDataAttributes(beadData);
-        const updatedInner = addDataAttributesToElement(innerContent, dataAttributes);
+        const updatedInner = addDataAttributesToElement(
+          innerContent,
+          dataAttributes,
+        );
         processedSVG = processedSVG.replace(linkElement, updatedInner);
       } else {
         // For xlink:href attributes, convert to data attributes on the same element
         const dataAttributes = createDataAttributes(beadData);
-        const updatedElement = linkElement.replace(/xlink:href="bead:\/\/[^"]+"/, '')
-          .replace(/>$/, dataAttributes + '>');
+        const updatedElement = linkElement
+          .replace(/xlink:href="bead:\/\/[^"]+"/, "")
+          .replace(/>$/, dataAttributes + ">");
         processedSVG = processedSVG.replace(linkElement, updatedElement);
       }
     }
   });
 
   if (beadLinks.length === 0) {
-    warnings.push('No bead annotations found - SVG may not contain interactive beads');
+    warnings.push(
+      "No bead annotations found - SVG may not contain interactive beads",
+    );
   }
 
   return {
     processedSVG,
     beadLinks,
     warnings,
-    count: beadLinks.length
+    count: beadLinks.length,
   };
 }
 
@@ -436,12 +461,12 @@ function parseBeadId(beadId) {
   const data = { id: beadId };
 
   // Extract bead type (heaven/earth)
-  if (beadId.includes('heaven-')) {
-    data.type = 'heaven';
-    data.position = 'heaven';
-  } else if (beadId.includes('earth-')) {
-    data.type = 'earth';
-    data.position = 'earth';
+  if (beadId.includes("heaven-")) {
+    data.type = "heaven";
+    data.position = "heaven";
+  } else if (beadId.includes("earth-")) {
+    data.type = "earth";
+    data.position = "earth";
   }
 
   // Extract column/place value
@@ -460,8 +485,8 @@ function parseBeadId(beadId) {
   // Extract active state
   const activeMatch = beadId.match(/active(\d+)/);
   if (activeMatch) {
-    data.active = activeMatch[1] === '1';
-    data.state = data.active ? 'active' : 'inactive';
+    data.active = activeMatch[1] === "1";
+    data.state = data.active ? "active" : "inactive";
   }
 
   return data;
@@ -479,13 +504,13 @@ function createDataAttributes(beadData) {
 
   Object.entries(beadData).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
-      const attrName = `data-bead-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-      const attrValue = String(value).replace(/"/g, '&quot;');
+      const attrName = `data-bead-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
+      const attrValue = String(value).replace(/"/g, "&quot;");
       attributes.push(`${attrName}="${attrValue}"`);
     }
   });
 
-  return attributes.length > 0 ? ' ' + attributes.join(' ') : '';
+  return attributes.length > 0 ? " " + attributes.join(" ") : "";
 }
 
 /**
@@ -533,7 +558,7 @@ function processSVG(svgContent, options = {}) {
   const {
     removeCropMarks = false,
     preserveAspectRatio = true,
-    extractBeadAnnotations: shouldExtractBeadAnnotations = true
+    extractBeadAnnotations: shouldExtractBeadAnnotations = true,
   } = options;
 
   const warnings = [];
@@ -550,8 +575,8 @@ function processSVG(svgContent, options = {}) {
       const beadResult = extractBeadAnnotations(svgContent);
       beadData = {
         count: beadResult.count,
-        beads: beadResult.beadLinks.map(link => link.data),
-        links: beadResult.beadLinks
+        beads: beadResult.beadLinks.map((link) => link.data),
+        links: beadResult.beadLinks,
       };
       workingSVG = beadResult.processedSVG;
       warnings.push(...beadResult.warnings);
@@ -560,30 +585,27 @@ function processSVG(svgContent, options = {}) {
     // Update SVG with optimized viewBox
     let optimizedSVG = workingSVG.replace(
       /viewBox="[^"]*"/,
-      `viewBox="${cropData.viewBox}"`
+      `viewBox="${cropData.viewBox}"`,
     );
 
     // Update width and height attributes to match viewBox aspect ratio
     if (preserveAspectRatio) {
       optimizedSVG = optimizedSVG.replace(
         /width="[^"]*"/,
-        `width="${cropData.width}pt"`
+        `width="${cropData.width}pt"`,
       );
 
       optimizedSVG = optimizedSVG.replace(
         /height="[^"]*"/,
-        `height="${cropData.height}pt"`
+        `height="${cropData.height}pt"`,
       );
     }
 
     // Remove crop marks if requested (not recommended for debugging)
     if (removeCropMarks) {
-      warnings.push('Crop marks removed - debugging may be more difficult');
+      warnings.push("Crop marks removed - debugging may be more difficult");
       // Remove crop mark elements (lines with 0.1x0.1 red rectangles)
-      optimizedSVG = optimizedSVG.replace(
-        /.*fill="#ff4136".*0\.1 0\.1.*/g,
-        ''
-      );
+      optimizedSVG = optimizedSVG.replace(/.*fill="#ff4136".*0\.1 0\.1.*/g, "");
     }
 
     return {
@@ -591,9 +613,8 @@ function processSVG(svgContent, options = {}) {
       cropData,
       beadData,
       success: true,
-      warnings
+      warnings,
     };
-
   } catch (error) {
     if (error instanceof SVGCropError) {
       throw error;
@@ -602,8 +623,8 @@ function processSVG(svgContent, options = {}) {
     // Wrap unexpected errors
     throw new SVGCropError(
       `Unexpected error during SVG processing: ${error.message}`,
-      'PROCESSING_ERROR',
-      { originalError: error.message }
+      "PROCESSING_ERROR",
+      { originalError: error.message },
     );
   }
 }
@@ -633,12 +654,16 @@ function processSVG(svgContent, options = {}) {
  * ```
  */
 async function processSVGFile(file, options = {}) {
-  if (typeof File !== 'undefined' && !(file instanceof File) &&
-      typeof Blob !== 'undefined' && !(file instanceof Blob)) {
+  if (
+    typeof File !== "undefined" &&
+    !(file instanceof File) &&
+    typeof Blob !== "undefined" &&
+    !(file instanceof Blob)
+  ) {
     throw new SVGCropError(
-      'Expected File or Blob object',
-      'INVALID_FILE_TYPE',
-      { received: typeof file }
+      "Expected File or Blob object",
+      "INVALID_FILE_TYPE",
+      { received: typeof file },
     );
   }
 
@@ -652,29 +677,29 @@ async function processSVGFile(file, options = {}) {
 
     throw new SVGCropError(
       `Failed to read file: ${error.message}`,
-      'FILE_READ_ERROR',
-      { originalError: error.message }
+      "FILE_READ_ERROR",
+      { originalError: error.message },
     );
   }
 }
 
 // Export for both Node.js and browser environments
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   // Node.js environment
   module.exports = {
     processSVG,
     processSVGFile,
     extractCropMarks,
     extractBeadAnnotations,
-    SVGCropError
+    SVGCropError,
   };
-} else if (typeof window !== 'undefined') {
+} else if (typeof window !== "undefined") {
   // Browser environment
   window.SorobanSVGCropProcessor = {
     processSVG,
     processSVGFile,
     extractCropMarks,
     extractBeadAnnotations,
-    SVGCropError
+    SVGCropError,
   };
 }

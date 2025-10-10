@@ -2,51 +2,51 @@ name: Verify Examples
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'src/**'
-      - 'templates/**'
-      - 'docs/images/**'
-      - '.github/workflows/verify-examples.yml'
+      - "src/**"
+      - "templates/**"
+      - "docs/images/**"
+      - ".github/workflows/verify-examples.yml"
 
 jobs:
   verify-examples:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y poppler-utils qpdf
-    
-    - name: Install Typst
-      run: |
-        # Download and install Typst
-        wget https://github.com/typst/typst/releases/latest/download/typst-x86_64-unknown-linux-musl.tar.xz
-        tar -xf typst-x86_64-unknown-linux-musl.tar.xz
-        sudo mv typst-x86_64-unknown-linux-musl/typst /usr/local/bin/
-        typst --version
-    
-    - name: Install Python dependencies
-      run: |
-        pip install pyyaml
-    
-    - name: Verify examples are up to date
-      run: |
-        make verify-examples
-    
-    - name: Upload example images if changed
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: updated-examples
-        path: docs/images/
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils qpdf
+
+      - name: Install Typst
+        run: |
+          # Download and install Typst
+          wget https://github.com/typst/typst/releases/latest/download/typst-x86_64-unknown-linux-musl.tar.xz
+          tar -xf typst-x86_64-unknown-linux-musl.tar.xz
+          sudo mv typst-x86_64-unknown-linux-musl/typst /usr/local/bin/
+          typst --version
+
+      - name: Install Python dependencies
+        run: |
+          pip install pyyaml
+
+      - name: Verify examples are up to date
+        run: |
+          make verify-examples
+
+      - name: Upload example images if changed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: updated-examples
+          path: docs/images/

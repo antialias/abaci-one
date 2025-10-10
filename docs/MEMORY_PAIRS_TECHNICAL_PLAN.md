@@ -9,6 +9,7 @@ Port the sophisticated Matching Pairs Challenge from the static HTML games websi
 After analyzing the existing Speed Memory Quiz implementation and identifying areas for improvement, I've designed a proper component composition approach that prioritizes maintainability, testability, and reusability:
 
 ### **Modern Architecture Patterns**
+
 - **Component composition**: Small, focused, testable components
 - **Context-based state management**: Centralized state with clean separation
 - **useReducer pattern**: Complex state management with typed actions and reducer
@@ -21,6 +22,7 @@ After analyzing the existing Speed Memory Quiz implementation and identifying ar
 ## **🏗️ Component Architecture**
 
 ### **File Structure** (Component Composition Approach)
+
 ```
 src/app/games/matching/
 ├── page.tsx                          # Main page entry point (minimal)
@@ -52,45 +54,46 @@ src/lib/
 ```
 
 ### **State Management** (Following memory-quiz reducer pattern)
+
 ```typescript
 interface MemoryPairsState {
   // Core game data
-  cards: GameCard[]
-  gameCards: GameCard[]
-  flippedCards: GameCard[]
+  cards: GameCard[];
+  gameCards: GameCard[];
+  flippedCards: GameCard[];
 
   // Game configuration
-  gameMode: 'single' | 'two-player'
-  gameType: 'abacus-numeral' | 'complement-pairs'
-  difficulty: 6 | 8 | 12 | 15 // Number of pairs
-  turnTimer: number // For two-player mode
+  gameMode: "single" | "two-player";
+  gameType: "abacus-numeral" | "complement-pairs";
+  difficulty: 6 | 8 | 12 | 15; // Number of pairs
+  turnTimer: number; // For two-player mode
 
   // Game progression
-  currentPlayer: 1 | 2
-  matchedPairs: number
-  totalPairs: number
-  moves: number
-  scores: { player1: number; player2: number }
+  currentPlayer: 1 | 2;
+  matchedPairs: number;
+  totalPairs: number;
+  moves: number;
+  scores: { player1: number; player2: number };
 
   // UI state
-  gamePhase: 'setup' | 'playing' | 'results'
-  gameStartTime: number | null
-  timerInterval: NodeJS.Timeout | null
-  celebrationAnimations: CelebrationAnimation[]
+  gamePhase: "setup" | "playing" | "results";
+  gameStartTime: number | null;
+  timerInterval: NodeJS.Timeout | null;
+  celebrationAnimations: CelebrationAnimation[];
 }
 
 type MemoryPairsAction =
-  | { type: 'SET_GAME_MODE'; mode: 'single' | 'two-player' }
-  | { type: 'SET_GAME_TYPE'; gameType: 'abacus-numeral' | 'complement-pairs' }
-  | { type: 'SET_DIFFICULTY'; difficulty: 6 | 8 | 12 | 15 }
-  | { type: 'START_GAME'; cards: GameCard[] }
-  | { type: 'FLIP_CARD'; cardId: string }
-  | { type: 'MATCH_FOUND'; cardIds: [string, string] }
-  | { type: 'MATCH_FAILED'; cardIds: [string, string] }
-  | { type: 'SWITCH_PLAYER' }
-  | { type: 'ADD_CELEBRATION'; animation: CelebrationAnimation }
-  | { type: 'SHOW_RESULTS' }
-  | { type: 'RESET_GAME' }
+  | { type: "SET_GAME_MODE"; mode: "single" | "two-player" }
+  | { type: "SET_GAME_TYPE"; gameType: "abacus-numeral" | "complement-pairs" }
+  | { type: "SET_DIFFICULTY"; difficulty: 6 | 8 | 12 | 15 }
+  | { type: "START_GAME"; cards: GameCard[] }
+  | { type: "FLIP_CARD"; cardId: string }
+  | { type: "MATCH_FOUND"; cardIds: [string, string] }
+  | { type: "MATCH_FAILED"; cardIds: [string, string] }
+  | { type: "SWITCH_PLAYER" }
+  | { type: "ADD_CELEBRATION"; animation: CelebrationAnimation }
+  | { type: "SHOW_RESULTS" }
+  | { type: "RESET_GAME" };
 ```
 
 ## **🎮 Core Features Implementation**
@@ -98,20 +101,22 @@ type MemoryPairsAction =
 ### **1. Card System Integration**
 
 #### **GameCard Interface** (Following memory-quiz QuizCard pattern)
+
 ```typescript
 interface GameCard {
-  id: string
-  type: 'abacus' | 'number' | 'complement'
-  number: number
-  complement?: number // For complement pairs
-  targetSum?: 5 | 10 // For complement pairs
-  matched: boolean
-  matchedBy?: 1 | 2 // For two-player mode
-  element?: HTMLElement | null // Following memory-quiz pattern
+  id: string;
+  type: "abacus" | "number" | "complement";
+  number: number;
+  complement?: number; // For complement pairs
+  targetSum?: 5 | 10; // For complement pairs
+  matched: boolean;
+  matchedBy?: 1 | 2; // For two-player mode
+  element?: HTMLElement | null; // Following memory-quiz pattern
 }
 ```
 
 #### **AbacusReact Integration** (Following memory-quiz pattern)
+
 ```typescript
 // In card rendering - following memory-quiz AbacusReact usage
 <AbacusReact
@@ -130,109 +135,119 @@ interface GameCard {
 ### **2. Game Generation Logic**
 
 #### **Abacus-Numeral Mode** (Similar to memory-quiz generateQuizCards)
+
 ```typescript
 const generateAbacusNumeralCards = (
   pairs: number,
-  appConfig: AbacusDisplayConfig
+  appConfig: AbacusDisplayConfig,
 ): GameCard[] => {
   // Generate unique numbers based on difficulty
-  const numbers = generateUniqueNumbers(pairs, { min: 1, max: 999 })
+  const numbers = generateUniqueNumbers(pairs, { min: 1, max: 999 });
 
-  const cards: GameCard[] = []
-  numbers.forEach(number => {
+  const cards: GameCard[] = [];
+  numbers.forEach((number) => {
     // Abacus card
     cards.push({
       id: `abacus_${number}`,
-      type: 'abacus',
+      type: "abacus",
       number,
-      matched: false
-    })
+      matched: false,
+    });
 
     // Number card
     cards.push({
       id: `number_${number}`,
-      type: 'number',
+      type: "number",
       number,
-      matched: false
-    })
-  })
+      matched: false,
+    });
+  });
 
-  return shuffleArray(cards)
-}
+  return shuffleArray(cards);
+};
 ```
 
 #### **Complement Pairs Mode**
+
 ```typescript
 const generateComplementCards = (pairs: number): GameCard[] => {
   const complementPairs = [
-    [0, 5], [1, 4], [2, 3], // Friends of 5
-    [0, 10], [1, 9], [2, 8], [3, 7], [4, 6], [5, 5] // Friends of 10
-  ]
+    [0, 5],
+    [1, 4],
+    [2, 3], // Friends of 5
+    [0, 10],
+    [1, 9],
+    [2, 8],
+    [3, 7],
+    [4, 6],
+    [5, 5], // Friends of 10
+  ];
 
-  const selectedPairs = complementPairs.slice(0, pairs)
-  const cards: GameCard[] = []
+  const selectedPairs = complementPairs.slice(0, pairs);
+  const cards: GameCard[] = [];
 
   selectedPairs.forEach(([num1, num2]) => {
-    const targetSum = num1 + num2
+    const targetSum = num1 + num2;
     cards.push(
       {
         id: `comp1_${num1}_${num2}`,
-        type: 'complement',
+        type: "complement",
         number: num1,
         complement: num2,
         targetSum: targetSum as 5 | 10,
-        matched: false
+        matched: false,
       },
       {
         id: `comp2_${num1}_${num2}`,
-        type: 'complement',
+        type: "complement",
         number: num2,
         complement: num1,
         targetSum: targetSum as 5 | 10,
-        matched: false
-      }
-    )
-  })
+        matched: false,
+      },
+    );
+  });
 
-  return shuffleArray(cards)
-}
+  return shuffleArray(cards);
+};
 ```
 
 ### **3. Match Validation Logic**
 
 #### **Validation Utilities** (Following memory-quiz-utils pattern)
+
 ```typescript
 // lib/memory-pairs-utils.ts
 export function validateAbacusNumeralMatch(
   card1: GameCard,
-  card2: GameCard
+  card2: GameCard,
 ): boolean {
   return (
     card1.number === card2.number &&
     card1.type !== card2.type &&
-    card1.type !== 'complement' &&
-    card2.type !== 'complement'
-  )
+    card1.type !== "complement" &&
+    card2.type !== "complement"
+  );
 }
 
 export function validateComplementMatch(
   card1: GameCard,
-  card2: GameCard
+  card2: GameCard,
 ): boolean {
   return (
-    card1.type === 'complement' &&
-    card2.type === 'complement' &&
+    card1.type === "complement" &&
+    card2.type === "complement" &&
     card1.number === card2.complement &&
     card2.number === card1.complement &&
     card1.targetSum === card2.targetSum
-  )
+  );
 }
 
 export function isValidMatch(card1: GameCard, card2: GameCard): boolean {
-  if (card1.type === 'complement' || card2.type === 'complement') {
-    return validateComplementMatch(card1, card2)
+  if (card1.type === "complement" || card2.type === "complement") {
+    return validateComplementMatch(card1, card2);
   }
-  return validateAbacusNumeralMatch(card1, card2)
+  return validateAbacusNumeralMatch(card1, card2);
 }
 ```
 
@@ -241,6 +256,7 @@ export function isValidMatch(card1: GameCard, card2: GameCard): boolean {
 ### **Component Implementation Examples**
 
 #### **Context Provider** (Centralized state management)
+
 ```typescript
 // context/MemoryPairsContext.tsx
 export function MemoryPairsProvider({ children }: { children: ReactNode }) {
@@ -267,6 +283,7 @@ export function MemoryPairsProvider({ children }: { children: ReactNode }) {
 ```
 
 #### **Setup Phase Component** (Clean separation of concerns)
+
 ```typescript
 // components/SetupPhase.tsx
 export function SetupPhase() {
@@ -326,7 +343,8 @@ export function SetupPhase() {
 ```
 
 ### **Card Flip Animation** (Following memory-quiz 3D card patterns)
-```typescript
+
+````typescript
 #### **Game Card Component** (Focused single responsibility)
 ```typescript
 // components/GameCard.tsx
@@ -416,10 +434,11 @@ export function GameCard({ card, isFlipped, isMatched, onClick }: GameCardProps)
     </div>
   )
 }
-```
+````
 
 ### **Responsive Grid System** (Following memory-quiz adaptive grid patterns)
-```typescript
+
+````typescript
 #### **Memory Grid Component** (Layout management)
 ```typescript
 // components/MemoryGrid.tsx
@@ -471,11 +490,12 @@ export function MemoryGrid() {
     </div>
   )
 }
-```
+````
 
 ## **🎉 Advanced Features**
 
 ### **Two-Player System** (Enhanced from original)
+
 ```typescript
 // Two-player logic in reducer
 case 'MATCH_FOUND': {
@@ -520,6 +540,7 @@ case 'MATCH_FAILED': {
 ```
 
 ### **Celebration Effects** (Following memory-quiz animation patterns)
+
 ```typescript
 // Global animations (following memory-quiz global animations pattern)
 const globalAnimations = `
@@ -554,70 +575,100 @@ const globalAnimations = `
   25% { transform: translateX(-5px); }
   75% { transform: translateX(5px); }
 }
-`
+`;
 ```
 
 ## **🧪 Testing Strategy** (Following memory-quiz test patterns)
 
 ### **1. Utility Function Tests**
+
 ```typescript
 // lib/memory-pairs-utils.test.ts (following memory-quiz-utils.test.ts patterns)
-describe('memory-pairs-utils', () => {
-  describe('validateAbacusNumeralMatch', () => {
-    it('should match same numbers with different types', () => {
+describe("memory-pairs-utils", () => {
+  describe("validateAbacusNumeralMatch", () => {
+    it("should match same numbers with different types", () => {
       const abacusCard: GameCard = {
-        id: '1', type: 'abacus', number: 5, matched: false
-      }
+        id: "1",
+        type: "abacus",
+        number: 5,
+        matched: false,
+      };
       const numberCard: GameCard = {
-        id: '2', type: 'number', number: 5, matched: false
-      }
+        id: "2",
+        type: "number",
+        number: 5,
+        matched: false,
+      };
 
-      expect(validateAbacusNumeralMatch(abacusCard, numberCard)).toBe(true)
-    })
+      expect(validateAbacusNumeralMatch(abacusCard, numberCard)).toBe(true);
+    });
 
-    it('should reject same types', () => {
+    it("should reject same types", () => {
       const card1: GameCard = {
-        id: '1', type: 'abacus', number: 5, matched: false
-      }
+        id: "1",
+        type: "abacus",
+        number: 5,
+        matched: false,
+      };
       const card2: GameCard = {
-        id: '2', type: 'abacus', number: 5, matched: false
-      }
+        id: "2",
+        type: "abacus",
+        number: 5,
+        matched: false,
+      };
 
-      expect(validateAbacusNumeralMatch(card1, card2)).toBe(false)
-    })
-  })
+      expect(validateAbacusNumeralMatch(card1, card2)).toBe(false);
+    });
+  });
 
-  describe('validateComplementMatch', () => {
-    it('should match friends of 5', () => {
+  describe("validateComplementMatch", () => {
+    it("should match friends of 5", () => {
       const card1: GameCard = {
-        id: '1', type: 'complement', number: 2, complement: 3,
-        targetSum: 5, matched: false
-      }
+        id: "1",
+        type: "complement",
+        number: 2,
+        complement: 3,
+        targetSum: 5,
+        matched: false,
+      };
       const card2: GameCard = {
-        id: '2', type: 'complement', number: 3, complement: 2,
-        targetSum: 5, matched: false
-      }
+        id: "2",
+        type: "complement",
+        number: 3,
+        complement: 2,
+        targetSum: 5,
+        matched: false,
+      };
 
-      expect(validateComplementMatch(card1, card2)).toBe(true)
-    })
+      expect(validateComplementMatch(card1, card2)).toBe(true);
+    });
 
-    it('should reject different target sums', () => {
+    it("should reject different target sums", () => {
       const card1: GameCard = {
-        id: '1', type: 'complement', number: 2, complement: 3,
-        targetSum: 5, matched: false
-      }
+        id: "1",
+        type: "complement",
+        number: 2,
+        complement: 3,
+        targetSum: 5,
+        matched: false,
+      };
       const card2: GameCard = {
-        id: '2', type: 'complement', number: 4, complement: 6,
-        targetSum: 10, matched: false
-      }
+        id: "2",
+        type: "complement",
+        number: 4,
+        complement: 6,
+        targetSum: 10,
+        matched: false,
+      };
 
-      expect(validateComplementMatch(card1, card2)).toBe(false)
-    })
-  })
-})
+      expect(validateComplementMatch(card1, card2)).toBe(false);
+    });
+  });
+});
 ```
 
 ### **2. Component Integration Tests**
+
 ```typescript
 // __tests__/memory-pairs.integration.test.tsx
 describe('Memory Pairs Game Integration', () => {
@@ -652,29 +703,31 @@ describe('Memory Pairs Game Integration', () => {
 ```
 
 ### **3. E2E Tests** (Following Playwright patterns)
+
 ```typescript
 // e2e/memory-pairs.spec.ts
-test.describe('Memory Pairs Game E2E', () => {
-  test('should complete full game flow', async ({ page }) => {
-    await page.goto('/games/matching')
+test.describe("Memory Pairs Game E2E", () => {
+  test("should complete full game flow", async ({ page }) => {
+    await page.goto("/games/matching");
 
     // Game setup
-    await page.click('[data-testid="game-type-abacus"]')
-    await page.click('[data-testid="difficulty-6"]')
-    await page.click('[data-testid="start-game"]')
+    await page.click('[data-testid="game-type-abacus"]');
+    await page.click('[data-testid="difficulty-6"]');
+    await page.click('[data-testid="start-game"]');
 
     // Game interaction
-    const cards = page.locator('.memory-card')
-    await expect(cards).toHaveCount(12)
+    const cards = page.locator(".memory-card");
+    await expect(cards).toHaveCount(12);
 
     // Test card interactions...
-  })
-})
+  });
+});
 ```
 
 ## **📚 Documentation & Storybook**
 
 ### **Storybook Stories** (Following memory-quiz patterns)
+
 ```typescript
 // stories/MemoryPairs.stories.tsx
 export default {
@@ -717,6 +770,7 @@ export const CardStates: Story = {
 ## **🚀 Implementation Phases**
 
 ### **Phase 1: Core Architecture (Week 1)**
+
 - [ ] Create minimal `apps/web/src/app/games/matching/page.tsx` entry point
 - [ ] Implement `MemoryPairsContext` with useReducer state management
 - [ ] Create `types.ts` with comprehensive TypeScript interfaces
@@ -724,6 +778,7 @@ export const CardStates: Story = {
 - [ ] Add utility functions in `utils/` directory with proper separation
 
 ### **Phase 2: Core Components (Week 2)**
+
 - [ ] Implement `GameCard` component with flip animations
 - [ ] Create `MemoryGrid` component with responsive layout
 - [ ] Build `GamePhase` component orchestrating active gameplay
@@ -731,6 +786,7 @@ export const CardStates: Story = {
 - [ ] Implement card generation utilities in `utils/cardGeneration.ts`
 
 ### **Phase 3: Game Logic & Polish (Week 3)**
+
 - [ ] Create `ResultsPhase` component with game statistics
 - [ ] Implement `PlayerIndicator` component for two-player mode
 - [ ] Add `GameControls` component for game actions
@@ -738,6 +794,7 @@ export const CardStates: Story = {
 - [ ] Add celebration effects and visual feedback
 
 ### **Phase 4: Advanced Features (Week 4)**
+
 - [ ] Implement two-player turn-based gameplay logic
 - [ ] Add scoring system in `utils/gameScoring.ts`
 - [ ] Create `useMemoryPairsGame` hook for complex game orchestration
@@ -745,12 +802,14 @@ export const CardStates: Story = {
 - [ ] Implement complement pairs game mode
 
 ### **Phase 5: Testing & Documentation (Week 5)**
+
 - [ ] Write comprehensive utility tests following memory-quiz test patterns
 - [ ] Add component integration tests
 - [ ] Create E2E test scenarios
 - [ ] Write Storybook stories for all components
 
 ### **Phase 6: Final Polish & Integration (Week 6)**
+
 - [ ] Performance optimization and code review
 - [ ] Accessibility audit and improvements
 - [ ] Cross-browser and mobile testing
@@ -759,6 +818,7 @@ export const CardStates: Story = {
 ## **📝 Key Technical Decisions**
 
 ### **Improved Architecture Patterns**
+
 1. **Component Composition**: Small, focused, testable components with single responsibilities
 2. **Context-Based State**: Centralized state management with clean separation of concerns
 3. **Custom Hooks**: Encapsulated logic in reusable, testable hooks
@@ -767,6 +827,7 @@ export const CardStates: Story = {
 6. **Panda CSS**: Use `css()` function with design tokens for consistent styling
 
 ### **Quality Standards**
+
 - **TypeScript**: Strict mode with comprehensive type coverage
 - **Testing**: Unit, integration, and E2E following memory-quiz test patterns
 - **Performance**: React.memo, useMemo, useCallback for optimization

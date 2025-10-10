@@ -1,29 +1,29 @@
-import { useEffect, useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
-import { useViewerId } from './useViewerId'
+import { useEffect, useState } from "react";
+import { io, type Socket } from "socket.io-client";
+import { useViewerId } from "./useViewerId";
 
 export interface RoomMember {
-  id: string
-  userId: string
-  displayName: string
-  isOnline: boolean
-  isCreator: boolean
+  id: string;
+  userId: string;
+  displayName: string;
+  isOnline: boolean;
+  isCreator: boolean;
 }
 
 export interface RoomPlayer {
-  id: string
-  name: string
-  emoji: string
-  color: string
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
 }
 
 export interface RoomData {
-  id: string
-  name: string
-  code: string
-  gameName: string
-  members: RoomMember[]
-  memberPlayers: Record<string, RoomPlayer[]> // userId -> players
+  id: string;
+  name: string;
+  code: string;
+  gameName: string;
+  members: RoomMember[];
+  memberPlayers: Record<string, RoomPlayer[]>; // userId -> players
 }
 
 /**
@@ -31,28 +31,28 @@ export interface RoomData {
  * Returns null if user is not in any room
  */
 export function useRoomData() {
-  const { data: userId, isPending: isUserIdPending } = useViewerId()
-  const [socket, setSocket] = useState<Socket | null>(null)
-  const [roomData, setRoomData] = useState<RoomData | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false)
+  const { data: userId, isPending: isUserIdPending } = useViewerId();
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [roomData, setRoomData] = useState<RoomData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
   // Fetch the user's current room
   useEffect(() => {
     if (!userId) {
-      setRoomData(null)
-      setHasAttemptedFetch(false)
-      return
+      setRoomData(null);
+      setHasAttemptedFetch(false);
+      return;
     }
 
-    setIsLoading(true)
-    setHasAttemptedFetch(false)
+    setIsLoading(true);
+    setHasAttemptedFetch(false);
 
     // Fetch current room data
-    fetch('/api/arcade/rooms/current')
+    fetch("/api/arcade/rooms/current")
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch current room')
-        return res.json()
+        if (!res.ok) throw new Error("Failed to fetch current room");
+        return res.json();
       })
       .then((data) => {
         if (data.room) {
@@ -63,146 +63,146 @@ export function useRoomData() {
             gameName: data.room.gameName,
             members: data.members || [],
             memberPlayers: data.memberPlayers || {},
-          }
-          setRoomData(roomData)
+          };
+          setRoomData(roomData);
         } else {
-          setRoomData(null)
+          setRoomData(null);
         }
-        setIsLoading(false)
-        setHasAttemptedFetch(true)
+        setIsLoading(false);
+        setHasAttemptedFetch(true);
       })
       .catch((error) => {
-        console.error('[useRoomData] Failed to fetch room data:', error)
-        setRoomData(null)
-        setIsLoading(false)
-        setHasAttemptedFetch(true)
-      })
-  }, [userId])
+        console.error("[useRoomData] Failed to fetch room data:", error);
+        setRoomData(null);
+        setIsLoading(false);
+        setHasAttemptedFetch(true);
+      });
+  }, [userId]);
 
   // Initialize socket connection when user has a room
   useEffect(() => {
     if (!roomData?.id || !userId) {
       if (socket) {
-        socket.disconnect()
-        setSocket(null)
+        socket.disconnect();
+        setSocket(null);
       }
-      return
+      return;
     }
 
-    const sock = io({ path: '/api/socket' })
+    const sock = io({ path: "/api/socket" });
 
-    sock.on('connect', () => {
+    sock.on("connect", () => {
       // Join the room to receive updates
-      sock.emit('join-room', { roomId: roomData.id, userId })
-    })
+      sock.emit("join-room", { roomId: roomData.id, userId });
+    });
 
-    sock.on('disconnect', () => {
+    sock.on("disconnect", () => {
       // Socket disconnected
-    })
+    });
 
-    setSocket(sock)
+    setSocket(sock);
 
     return () => {
       if (sock.connected) {
         // Leave the room before disconnecting
-        sock.emit('leave-room', { roomId: roomData.id, userId })
-        sock.disconnect()
+        sock.emit("leave-room", { roomId: roomData.id, userId });
+        sock.disconnect();
       }
-    }
-  }, [roomData?.id, userId])
+    };
+  }, [roomData?.id, userId]);
 
   // Subscribe to real-time updates via socket
   useEffect(() => {
-    if (!socket || !roomData?.id) return
+    if (!socket || !roomData?.id) return;
 
     const handleRoomJoined = (data: {
-      roomId: string
-      members: RoomMember[]
-      memberPlayers: Record<string, RoomPlayer[]>
+      roomId: string;
+      members: RoomMember[];
+      memberPlayers: Record<string, RoomPlayer[]>;
     }) => {
       if (data.roomId === roomData.id) {
         setRoomData((prev) => {
-          if (!prev) return null
+          if (!prev) return null;
           return {
             ...prev,
             members: data.members,
             memberPlayers: data.memberPlayers,
-          }
-        })
+          };
+        });
       }
-    }
+    };
 
     const handleMemberJoined = (data: {
-      roomId: string
-      userId: string
-      members: RoomMember[]
-      memberPlayers: Record<string, RoomPlayer[]>
+      roomId: string;
+      userId: string;
+      members: RoomMember[];
+      memberPlayers: Record<string, RoomPlayer[]>;
     }) => {
       if (data.roomId === roomData.id) {
         setRoomData((prev) => {
-          if (!prev) return null
+          if (!prev) return null;
           return {
             ...prev,
             members: data.members,
             memberPlayers: data.memberPlayers,
-          }
-        })
+          };
+        });
       }
-    }
+    };
 
     const handleMemberLeft = (data: {
-      roomId: string
-      userId: string
-      members: RoomMember[]
-      memberPlayers: Record<string, RoomPlayer[]>
+      roomId: string;
+      userId: string;
+      members: RoomMember[];
+      memberPlayers: Record<string, RoomPlayer[]>;
     }) => {
       if (data.roomId === roomData.id) {
         setRoomData((prev) => {
-          if (!prev) return null
+          if (!prev) return null;
           return {
             ...prev,
             members: data.members,
             memberPlayers: data.memberPlayers,
-          }
-        })
+          };
+        });
       }
-    }
+    };
 
     const handleRoomPlayersUpdated = (data: {
-      roomId: string
-      memberPlayers: Record<string, RoomPlayer[]>
+      roomId: string;
+      memberPlayers: Record<string, RoomPlayer[]>;
     }) => {
       if (data.roomId === roomData.id) {
         setRoomData((prev) => {
-          if (!prev) return null
+          if (!prev) return null;
           return {
             ...prev,
             memberPlayers: data.memberPlayers,
-          }
-        })
+          };
+        });
       }
-    }
+    };
 
-    socket.on('room-joined', handleRoomJoined)
-    socket.on('member-joined', handleMemberJoined)
-    socket.on('member-left', handleMemberLeft)
-    socket.on('room-players-updated', handleRoomPlayersUpdated)
+    socket.on("room-joined", handleRoomJoined);
+    socket.on("member-joined", handleMemberJoined);
+    socket.on("member-left", handleMemberLeft);
+    socket.on("room-players-updated", handleRoomPlayersUpdated);
 
     return () => {
-      socket.off('room-joined', handleRoomJoined)
-      socket.off('member-joined', handleMemberJoined)
-      socket.off('member-left', handleMemberLeft)
-      socket.off('room-players-updated', handleRoomPlayersUpdated)
-    }
-  }, [socket, roomData?.id])
+      socket.off("room-joined", handleRoomJoined);
+      socket.off("member-joined", handleMemberJoined);
+      socket.off("member-left", handleMemberLeft);
+      socket.off("room-players-updated", handleRoomPlayersUpdated);
+    };
+  }, [socket, roomData?.id]);
 
   // Function to notify room members of player updates
   const notifyRoomOfPlayerUpdate = () => {
     if (socket && roomData?.id && userId) {
-      console.log('[useRoomData] Notifying room of player update')
-      socket.emit('players-updated', { roomId: roomData.id, userId })
+      console.log("[useRoomData] Notifying room of player update");
+      socket.emit("players-updated", { roomId: roomData.id, userId });
     }
-  }
+  };
 
   return {
     roomData,
@@ -210,5 +210,5 @@ export function useRoomData() {
     isLoading: isUserIdPending || isLoading || (!!userId && !hasAttemptedFetch),
     isInRoom: !!roomData,
     notifyRoomOfPlayerUpdate,
-  }
+  };
 }

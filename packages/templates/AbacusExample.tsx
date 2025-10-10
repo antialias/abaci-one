@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { AbacusReact, useAbacusDimensions, useAbacusState, BeadConfig } from './AbacusReact';
+import React, { useState } from "react";
+import {
+  AbacusReact,
+  useAbacusDimensions,
+  useAbacusState,
+  BeadConfig,
+} from "./AbacusReact";
 
 const AbacusExample: React.FC = () => {
   const [demoValue, setDemoValue] = useState(123);
-  const [demoColumns, setDemoColumns] = useState<number | 'auto'>('auto');
-  const [beadShape, setBeadShape] = useState<'diamond' | 'square' | 'circle'>('diamond');
-  const [colorScheme, setColorScheme] = useState<'monochrome' | 'place-value' | 'alternating' | 'heaven-earth'>('place-value');
-  const [colorPalette, setColorPalette] = useState<'default' | 'colorblind' | 'mnemonic' | 'grayscale' | 'nature'>('default');
+  const [demoColumns, setDemoColumns] = useState<number | "auto">("auto");
+  const [beadShape, setBeadShape] = useState<"diamond" | "square" | "circle">(
+    "diamond",
+  );
+  const [colorScheme, setColorScheme] = useState<
+    "monochrome" | "place-value" | "alternating" | "heaven-earth"
+  >("place-value");
+  const [colorPalette, setColorPalette] = useState<
+    "default" | "colorblind" | "mnemonic" | "grayscale" | "nature"
+  >("default");
   const [scaleFactor, setScaleFactor] = useState(1);
   const [animated, setAnimated] = useState(true);
   const [draggable, setDraggable] = useState(false);
@@ -14,31 +25,41 @@ const AbacusExample: React.FC = () => {
   const [showEmpty, setShowEmpty] = useState(false);
 
   // Demonstrate hooks usage
-  const actualColumns = demoColumns === 'auto' ? Math.max(1, demoValue.toString().length) : demoColumns;
+  const actualColumns =
+    demoColumns === "auto"
+      ? Math.max(1, demoValue.toString().length)
+      : demoColumns;
   const dimensions = useAbacusDimensions(actualColumns, scaleFactor);
   const { value, setValue, toggleBead } = useAbacusState(demoValue);
 
   const handleBeadClick = (bead: BeadConfig) => {
-    console.log('Bead clicked:', {
+    console.log("Bead clicked:", {
       type: bead.type,
       value: bead.value,
       active: bead.active,
       column: bead.columnIndex,
-      position: bead.position
+      position: bead.position,
     });
   };
 
   const handleValueChange = (newValue: number) => {
-    console.log('Value changed to:', newValue);
+    console.log("Value changed to:", newValue);
     setDemoValue(newValue);
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
       <h1>Interactive Abacus React Component</h1>
 
       {/* Controls */}
-      <div style={{ marginBottom: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+      <div
+        style={{
+          marginBottom: "20px",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "15px",
+        }}
+      >
         <div>
           <label>
             Value:
@@ -46,7 +67,7 @@ const AbacusExample: React.FC = () => {
               type="number"
               value={demoValue}
               onChange={(e) => setDemoValue(parseInt(e.target.value) || 0)}
-              style={{ marginLeft: '5px', width: '80px' }}
+              style={{ marginLeft: "5px", width: "80px" }}
               min="0"
               max="99999"
             />
@@ -58,12 +79,18 @@ const AbacusExample: React.FC = () => {
             Columns:
             <select
               value={demoColumns}
-              onChange={(e) => setDemoColumns(e.target.value === 'auto' ? 'auto' : parseInt(e.target.value))}
-              style={{ marginLeft: '5px' }}
+              onChange={(e) =>
+                setDemoColumns(
+                  e.target.value === "auto" ? "auto" : parseInt(e.target.value),
+                )
+              }
+              style={{ marginLeft: "5px" }}
             >
               <option value="auto">Auto</option>
-              {[1, 2, 3, 4, 5].map(n => (
-                <option key={n} value={n}>{n}</option>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
               ))}
             </select>
           </label>
@@ -75,7 +102,7 @@ const AbacusExample: React.FC = () => {
             <select
               value={beadShape}
               onChange={(e) => setBeadShape(e.target.value as any)}
-              style={{ marginLeft: '5px' }}
+              style={{ marginLeft: "5px" }}
             >
               <option value="diamond">Diamond</option>
               <option value="square">Square</option>
@@ -90,7 +117,7 @@ const AbacusExample: React.FC = () => {
             <select
               value={colorScheme}
               onChange={(e) => setColorScheme(e.target.value as any)}
-              style={{ marginLeft: '5px' }}
+              style={{ marginLeft: "5px" }}
             >
               <option value="monochrome">Monochrome</option>
               <option value="place-value">Place Value</option>
@@ -106,7 +133,7 @@ const AbacusExample: React.FC = () => {
             <select
               value={colorPalette}
               onChange={(e) => setColorPalette(e.target.value as any)}
-              style={{ marginLeft: '5px' }}
+              style={{ marginLeft: "5px" }}
             >
               <option value="default">Default</option>
               <option value="colorblind">Colorblind</option>
@@ -127,14 +154,14 @@ const AbacusExample: React.FC = () => {
               step="0.1"
               value={scaleFactor}
               onChange={(e) => setScaleFactor(parseFloat(e.target.value))}
-              style={{ marginLeft: '5px' }}
+              style={{ marginLeft: "5px" }}
             />
             {scaleFactor}x
           </label>
         </div>
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
+      <div style={{ marginBottom: "20px" }}>
         <label>
           <input
             type="checkbox"
@@ -144,7 +171,7 @@ const AbacusExample: React.FC = () => {
           Animated
         </label>
 
-        <label style={{ marginLeft: '15px' }}>
+        <label style={{ marginLeft: "15px" }}>
           <input
             type="checkbox"
             checked={draggable}
@@ -153,7 +180,7 @@ const AbacusExample: React.FC = () => {
           Draggable
         </label>
 
-        <label style={{ marginLeft: '15px' }}>
+        <label style={{ marginLeft: "15px" }}>
           <input
             type="checkbox"
             checked={hideInactive}
@@ -162,7 +189,7 @@ const AbacusExample: React.FC = () => {
           Hide Inactive Beads
         </label>
 
-        <label style={{ marginLeft: '15px' }}>
+        <label style={{ marginLeft: "15px" }}>
           <input
             type="checkbox"
             checked={showEmpty}
@@ -173,8 +200,16 @@ const AbacusExample: React.FC = () => {
       </div>
 
       {/* Component info */}
-      <div style={{ marginBottom: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
-        <strong>Component Dimensions:</strong> {dimensions.width.toFixed(1)} × {dimensions.height.toFixed(1)}px
+      <div
+        style={{
+          marginBottom: "20px",
+          padding: "10px",
+          backgroundColor: "#f5f5f5",
+          borderRadius: "5px",
+        }}
+      >
+        <strong>Component Dimensions:</strong> {dimensions.width.toFixed(1)} ×{" "}
+        {dimensions.height.toFixed(1)}px
         <br />
         <strong>Rod Spacing:</strong> {dimensions.rodSpacing.toFixed(1)}px
         <br />
@@ -186,13 +221,15 @@ const AbacusExample: React.FC = () => {
       </div>
 
       {/* Main Abacus Component */}
-      <div style={{
-        border: '2px solid #ddd',
-        borderRadius: '10px',
-        padding: '20px',
-        display: 'inline-block',
-        backgroundColor: '#fafafa'
-      }}>
+      <div
+        style={{
+          border: "2px solid #ddd",
+          borderRadius: "10px",
+          padding: "20px",
+          display: "inline-block",
+          backgroundColor: "#fafafa",
+        }}
+      >
         <AbacusReact
           value={demoValue}
           columns={demoColumns}
@@ -210,19 +247,31 @@ const AbacusExample: React.FC = () => {
       </div>
 
       {/* Usage Examples */}
-      <div style={{ marginTop: '40px' }}>
+      <div style={{ marginTop: "40px" }}>
         <h2>Usage Examples</h2>
 
         <h3>Basic Usage</h3>
-        <pre style={{ backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '5px' }}>
-{`import { AbacusReact } from './AbacusReact';
+        <pre
+          style={{
+            backgroundColor: "#f0f0f0",
+            padding: "10px",
+            borderRadius: "5px",
+          }}
+        >
+          {`import { AbacusReact } from './AbacusReact';
 
 <AbacusReact value={123} />`}
         </pre>
 
         <h3>With Hooks</h3>
-        <pre style={{ backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '5px' }}>
-{`import { AbacusReact, useAbacusState, useAbacusDimensions } from './AbacusReact';
+        <pre
+          style={{
+            backgroundColor: "#f0f0f0",
+            padding: "10px",
+            borderRadius: "5px",
+          }}
+        >
+          {`import { AbacusReact, useAbacusState, useAbacusDimensions } from './AbacusReact';
 
 function MyComponent() {
   const { value, setValue, toggleBead } = useAbacusState(0);
@@ -244,8 +293,14 @@ function MyComponent() {
         </pre>
 
         <h3>Advanced Configuration</h3>
-        <pre style={{ backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '5px' }}>
-{`<AbacusReact
+        <pre
+          style={{
+            backgroundColor: "#f0f0f0",
+            padding: "10px",
+            borderRadius: "5px",
+          }}
+        >
+          {`<AbacusReact
   value={12345}
   columns={5}
   beadShape="diamond"
@@ -263,24 +318,42 @@ function MyComponent() {
       </div>
 
       {/* Quick Test Buttons */}
-      <div style={{ marginTop: '20px' }}>
+      <div style={{ marginTop: "20px" }}>
         <h3>Quick Tests</h3>
-        <button onClick={() => setDemoValue(0)} style={{ margin: '0 5px', padding: '5px 10px' }}>
+        <button
+          onClick={() => setDemoValue(0)}
+          style={{ margin: "0 5px", padding: "5px 10px" }}
+        >
           Zero
         </button>
-        <button onClick={() => setDemoValue(5)} style={{ margin: '0 5px', padding: '5px 10px' }}>
+        <button
+          onClick={() => setDemoValue(5)}
+          style={{ margin: "0 5px", padding: "5px 10px" }}
+        >
           Five
         </button>
-        <button onClick={() => setDemoValue(9)} style={{ margin: '0 5px', padding: '5px 10px' }}>
+        <button
+          onClick={() => setDemoValue(9)}
+          style={{ margin: "0 5px", padding: "5px 10px" }}
+        >
           Nine
         </button>
-        <button onClick={() => setDemoValue(123)} style={{ margin: '0 5px', padding: '5px 10px' }}>
+        <button
+          onClick={() => setDemoValue(123)}
+          style={{ margin: "0 5px", padding: "5px 10px" }}
+        >
           123
         </button>
-        <button onClick={() => setDemoValue(5555)} style={{ margin: '0 5px', padding: '5px 10px' }}>
+        <button
+          onClick={() => setDemoValue(5555)}
+          style={{ margin: "0 5px", padding: "5px 10px" }}
+        >
           5555
         </button>
-        <button onClick={() => setDemoValue(Math.floor(Math.random() * 10000))} style={{ margin: '0 5px', padding: '5px 10px' }}>
+        <button
+          onClick={() => setDemoValue(Math.floor(Math.random() * 10000))}
+          style={{ margin: "0 5px", padding: "5px 10px" }}
+        >
           Random
         </button>
       </div>

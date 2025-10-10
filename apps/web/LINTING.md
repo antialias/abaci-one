@@ -35,6 +35,7 @@ npm run format:check
 ## What Each Tool Does
 
 ### Biome
+
 - Code formatting (Prettier-compatible)
 - General JavaScript/TypeScript linting
 - Import organization (alphabetical, remove unused)
@@ -42,18 +43,22 @@ npm run format:check
 - Performance optimizations
 
 ### ESLint (React Hooks only)
+
 - `react-hooks/rules-of-hooks` - Ensures hooks are called unconditionally
 - `react-hooks/exhaustive-deps` - Warns about incomplete dependency arrays
 
 ## IDE Integration
 
 ### VS Code
+
 Install the Biome extension:
+
 ```
 code --install-extension biomejs.biome
 ```
 
 Add to `.vscode/settings.json`:
+
 ```json
 {
   "editor.defaultFormatter": "biomejs.biome",
@@ -85,6 +90,7 @@ Add to your GitHub Actions workflow:
 ## Migration from ESLint + Prettier
 
 This setup replaces most ESLint and Prettier functionality:
+
 - ✅ Removed `eslint-config-next` inline config from `package.json`
 - ✅ No `.eslintrc.js` or `.prettierrc` files needed
 - ✅ ESLint now only runs React Hooks rules
@@ -100,5 +106,6 @@ This setup replaces most ESLint and Prettier functionality:
 ## Customization
 
 To add custom lint rules, edit:
+
 - `biome.jsonc` for general rules
 - `eslint.config.js` for React Hooks rules

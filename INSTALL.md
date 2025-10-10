@@ -17,20 +17,24 @@ make
 Typst is the rendering engine that generates PDFs from templates.
 
 #### Option A: Using Homebrew (Recommended)
+
 ```bash
 brew install typst
 ```
 
 #### Option B: Direct Download
+
 1. Visit https://github.com/typst/typst/releases
 2. Download the latest macOS binary
 3. Extract and move to your PATH:
+
 ```bash
 tar xzf typst-*.tar.gz
 sudo mv typst /usr/local/bin/
 ```
 
 #### Option C: Using Cargo (Rust)
+
 ```bash
 cargo install typst-cli
 ```
@@ -68,6 +72,7 @@ make test
 ### "command not found: brew"
 
 Install Homebrew first:
+
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
@@ -75,6 +80,7 @@ Install Homebrew first:
 ### "command not found: pip3"
 
 Python 3 should be included with macOS. If not:
+
 ```bash
 brew install python3
 ```
@@ -82,11 +88,13 @@ brew install python3
 ### "Permission denied" errors
 
 Use sudo for system-wide installation:
+
 ```bash
 sudo pip3 install pyyaml
 ```
 
 Or use user installation:
+
 ```bash
 pip3 install --user pyyaml
 ```
@@ -94,21 +102,23 @@ pip3 install --user pyyaml
 ### Typst font errors
 
 The bundled fonts should work automatically. If you see font errors:
+
 1. Verify fonts exist: `ls fonts/*.ttf`
 2. Explicitly specify font path: `python3 src/generate.py --font-path fonts/`
 
 ## Dependencies Summary
 
-| Component | Required | Purpose | Size |
-|-----------|----------|---------|------|
-| Python 3 | Yes | Script execution | Included with macOS |
-| Typst | Yes | PDF generation | ~30MB |
-| PyYAML | Yes | Config file parsing | <1MB |
-| qpdf | Optional | PDF optimization | ~5MB |
+| Component | Required | Purpose             | Size                |
+| --------- | -------- | ------------------- | ------------------- |
+| Python 3  | Yes      | Script execution    | Included with macOS |
+| Typst     | Yes      | PDF generation      | ~30MB               |
+| PyYAML    | Yes      | Config file parsing | <1MB                |
+| qpdf      | Optional | PDF optimization    | ~5MB                |
 
 ## Platform Support
 
 This tool is designed for macOS but should work on:
+
 - **macOS**: Full support (10.15+)
 - **Linux**: Should work with same dependencies
 - **Windows**: Requires WSL or manual adaptation
@@ -116,6 +126,7 @@ This tool is designed for macOS but should work on:
 ## Next Steps
 
 After installation:
+
 1. Run `make` to generate default flashcards
 2. Check `out/flashcards.pdf` for output
 3. Run `make samples` for more examples

@@ -15,6 +15,7 @@
 **When a USER joins a room, their ACTIVE PLAYERS join the game.**
 
 Example:
+
 - USER "Jane" has 3 players: Alice, Bob, Charlie
 - Alice and Bob are active (`isActive: true`)
 - When Jane joins a room, Alice and Bob participate in the game

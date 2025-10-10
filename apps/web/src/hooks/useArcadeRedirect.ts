@@ -1,36 +1,36 @@
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { useArcadeSocket } from './useArcadeSocket'
-import { useViewerId } from './useViewerId'
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useArcadeSocket } from "./useArcadeSocket";
+import { useViewerId } from "./useViewerId";
 
 export interface UseArcadeRedirectOptions {
   /**
    * The current game this page represents (e.g., 'matching', 'memory-quiz')
    * If null, this is the arcade lobby
    */
-  currentGame?: string | null
+  currentGame?: string | null;
 }
 
 export interface UseArcadeRedirectReturn {
   /**
    * Whether we're checking for an active session
    */
-  isChecking: boolean
+  isChecking: boolean;
 
   /**
    * Whether user has an active session
    */
-  hasActiveSession: boolean
+  hasActiveSession: boolean;
 
   /**
    * The URL of the active game (if any)
    */
-  activeGameUrl: string | null
+  activeGameUrl: string | null;
 
   /**
    * Whether players can be modified (only true in arcade lobby with no active session)
    */
-  canModifyPlayers: boolean
+  canModifyPlayers: boolean;
 }
 
 /**
@@ -49,74 +49,81 @@ export interface UseArcadeRedirectReturn {
  * const { canModifyPlayers } = useArcadeRedirect({ currentGame: 'matching' })
  * ```
  */
-export function useArcadeRedirect(options: UseArcadeRedirectOptions = {}): UseArcadeRedirectReturn {
-  const { currentGame } = options
-  const router = useRouter()
-  const _pathname = usePathname()
-  const { data: viewerId } = useViewerId()
+export function useArcadeRedirect(
+  options: UseArcadeRedirectOptions = {},
+): UseArcadeRedirectReturn {
+  const { currentGame } = options;
+  const router = useRouter();
+  const _pathname = usePathname();
+  const { data: viewerId } = useViewerId();
 
-  const [isChecking, setIsChecking] = useState(true)
-  const [hasActiveSession, setHasActiveSession] = useState(false)
-  const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null)
-  const [_activeGameName, setActiveGameName] = useState<string | null>(null)
+  const [isChecking, setIsChecking] = useState(true);
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+  const [activeGameUrl, setActiveGameUrl] = useState<string | null>(null);
+  const [_activeGameName, setActiveGameName] = useState<string | null>(null);
 
   const { connected, joinSession } = useArcadeSocket({
     onSessionState: (data) => {
-      console.log('[ArcadeRedirect] Got session state:', data)
-      setIsChecking(false)
-      setHasActiveSession(true)
-      setActiveGameUrl(data.gameUrl)
-      setActiveGameName(data.currentGame)
+      console.log("[ArcadeRedirect] Got session state:", data);
+      setIsChecking(false);
+      setHasActiveSession(true);
+      setActiveGameUrl(data.gameUrl);
+      setActiveGameName(data.currentGame);
 
       // Determine if we need to redirect
-      const isArcadeLobby = currentGame === null || currentGame === undefined
-      const isWrongGame = currentGame && currentGame !== data.currentGame
-      const isAlreadyAtTarget = _pathname === data.gameUrl
+      const isArcadeLobby = currentGame === null || currentGame === undefined;
+      const isWrongGame = currentGame && currentGame !== data.currentGame;
+      const isAlreadyAtTarget = _pathname === data.gameUrl;
 
       if ((isArcadeLobby || isWrongGame) && !isAlreadyAtTarget) {
-        console.log('[ArcadeRedirect] Redirecting to active game:', data.gameUrl)
-        router.push(data.gameUrl)
+        console.log(
+          "[ArcadeRedirect] Redirecting to active game:",
+          data.gameUrl,
+        );
+        router.push(data.gameUrl);
       } else if (isAlreadyAtTarget) {
-        console.log('[ArcadeRedirect] Already at target URL, no redirect needed')
+        console.log(
+          "[ArcadeRedirect] Already at target URL, no redirect needed",
+        );
       }
     },
 
     onNoActiveSession: () => {
-      console.log('[ArcadeRedirect] No active session')
-      setIsChecking(false)
-      setHasActiveSession(false)
-      setActiveGameUrl(null)
-      setActiveGameName(null)
+      console.log("[ArcadeRedirect] No active session");
+      setIsChecking(false);
+      setHasActiveSession(false);
+      setActiveGameUrl(null);
+      setActiveGameName(null);
 
       // No redirect needed - user can navigate to any game page to start a new session
       // Only redirect when they have an active session for a different game
     },
 
     onSessionEnded: () => {
-      console.log('[ArcadeRedirect] Session ended')
-      setHasActiveSession(false)
-      setActiveGameUrl(null)
-      setActiveGameName(null)
+      console.log("[ArcadeRedirect] Session ended");
+      setHasActiveSession(false);
+      setActiveGameUrl(null);
+      setActiveGameName(null);
     },
-  })
+  });
 
   // Check for active session when connected
   useEffect(() => {
     if (connected && viewerId) {
-      console.log('[ArcadeRedirect] Checking for active session')
-      setIsChecking(true)
-      joinSession(viewerId)
+      console.log("[ArcadeRedirect] Checking for active session");
+      setIsChecking(true);
+      joinSession(viewerId);
     }
-  }, [connected, viewerId, joinSession])
+  }, [connected, viewerId, joinSession]);
 
   // Can modify players whenever there's no active session
   // (applies to arcade lobby and game setup pages)
-  const canModifyPlayers = !hasActiveSession && !isChecking
+  const canModifyPlayers = !hasActiveSession && !isChecking;
 
   return {
     isChecking,
     hasActiveSession,
     activeGameUrl,
     canModifyPlayers,
-  }
+  };
 }

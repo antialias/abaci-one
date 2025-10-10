@@ -9,7 +9,7 @@
  * @version 0.1.0
  */
 
-const path = require('path');
+const path = require("path");
 
 /**
  * Dynamic template path resolver that works across different execution contexts.
@@ -36,22 +36,34 @@ function getTemplatePath(filename) {
   const cwd = process.cwd();
   let templatesDir;
 
-  if (cwd.includes('apps/web')) {
+  if (cwd.includes("apps/web")) {
     // Running from web app, go up two levels
-    templatesDir = path.resolve(cwd, '..', '..', 'packages', 'templates', filename);
-  } else if (cwd.endsWith('packages/templates') || cwd.includes('packages/templates')) {
+    templatesDir = path.resolve(
+      cwd,
+      "..",
+      "..",
+      "packages",
+      "templates",
+      filename,
+    );
+  } else if (
+    cwd.endsWith("packages/templates") ||
+    cwd.includes("packages/templates")
+  ) {
     // Running from templates directory itself
     templatesDir = path.resolve(cwd, filename);
   } else {
     // Running from monorepo root or other location
-    templatesDir = path.resolve(cwd, 'packages', 'templates', filename);
+    templatesDir = path.resolve(cwd, "packages", "templates", filename);
   }
 
   // Verify the file exists
-  const fs = require('fs');
+  const fs = require("fs");
   if (!fs.existsSync(templatesDir)) {
     const templatesDirectoryPath = path.dirname(templatesDir);
-    throw new Error(`Template file '${filename}' not found in ${templatesDirectoryPath}`);
+    throw new Error(
+      `Template file '${filename}' not found in ${templatesDirectoryPath}`,
+    );
   }
 
   return templatesDir;
@@ -74,7 +86,7 @@ function getTemplatePath(filename) {
  * const template = fs.readFileSync(FLASHCARDS_TEMPLATE, 'utf-8');
  * ```
  */
-const FLASHCARDS_TEMPLATE = getTemplatePath('flashcards.typ');
+const FLASHCARDS_TEMPLATE = getTemplatePath("flashcards.typ");
 
 /**
  * Absolute path to the single-card Typst template.
@@ -93,10 +105,10 @@ const FLASHCARDS_TEMPLATE = getTemplatePath('flashcards.typ');
  * const template = fs.readFileSync(SINGLE_CARD_TEMPLATE, 'utf-8');
  * ```
  */
-const SINGLE_CARD_TEMPLATE = getTemplatePath('single-card.typ');
+const SINGLE_CARD_TEMPLATE = getTemplatePath("single-card.typ");
 
 // Import SVG post-processor
-const svgProcessor = require('./svg-crop-processor');
+const svgProcessor = require("./svg-crop-processor");
 
 /**
  * Template exports for Node.js/TypeScript environments.
@@ -124,5 +136,5 @@ module.exports = {
   /** @see {svg-crop-processor} */
   extractBeadAnnotations: svgProcessor.extractBeadAnnotations,
   /** @see {svg-crop-processor} */
-  SVGCropError: svgProcessor.SVGCropError
+  SVGCropError: svgProcessor.SVGCropError,
 };

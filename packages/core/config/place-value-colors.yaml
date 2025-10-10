@@ -18,5 +18,5 @@ columns: 3
 show_empty_columns: true
 hide_inactive_beads: false
 bead_shape: "diamond"
-color_scheme: "place-value"  # Blue=ones, Magenta=tens, Orange=hundreds
+color_scheme: "place-value" # Blue=ones, Magenta=tens, Orange=hundreds
 shuffle: false

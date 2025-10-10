@@ -5,10 +5,12 @@
 ### Number Encoding
 
 The soroban uses a bi-quinary system where each column represents a decimal digit:
+
 - **Heaven bead**: 1 bead worth 5 when active
 - **Earth beads**: 4 beads worth 1 each when active
 
 For any digit 0-9:
+
 - Heaven bead is active if digit ≥ 5
 - Number of active earth beads = digit mod 5
 
@@ -32,7 +34,7 @@ For any digit 0-9:
 for each digit in number:
     heaven_active = 1 if digit >= 5 else 0
     earth_active = digit % 5
-    
+
     draw_rod()
     draw_heaven_bead(active=heaven_active)
     for i in range(4):
@@ -57,7 +59,7 @@ Double-sided printing must align front and back cards precisely when using long-
 
 ```typst
 // Front side: normal left-to-right layout
-grid(columns: 2, rows: 3, 
+grid(columns: 2, rows: 3,
      card1, card2,
      card3, card4,
      card5, card6)
@@ -88,6 +90,7 @@ grid(columns: 2, rows: 3,
 ### No Rasterization
 
 All elements remain vectors through the entire pipeline:
+
 - Typst → PDF (vector primitives)
 - qpdf linearization (preserves vectors)
 - No image assets or bitmaps
@@ -135,6 +138,7 @@ final_config.update(cli_args)
 ### Scalability
 
 Tested ranges:
+
 - 0-9: ~0.5 seconds
 - 0-99: ~1 second
 - 0-999: ~3 seconds

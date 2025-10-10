@@ -29,9 +29,11 @@ This is a monorepo with the following structure:
 ## Quick Start
 
 1. **Initial Setup**
+
    ```bash
    pnpm setup
    ```
+
    This script will:
    - Install all dependencies
    - Build the core packages
@@ -39,9 +41,11 @@ This is a monorepo with the following structure:
    - Run type checks
 
 2. **Development**
+
    ```bash
    pnpm dev
    ```
+
    This starts all development servers in parallel using Turborepo.
 
    The web app will be available at: http://localhost:3000
@@ -59,10 +63,13 @@ This is a monorepo with the following structure:
 ## Packages
 
 ### @soroban/core
+
 Node.js TypeScript bindings that call the Python generator directly via `child_process`. Located in `packages/core/client/node/`.
 
 ### @soroban/web
+
 Next.js web application with beautiful UI built using:
+
 - **Panda CSS** for styling
 - **TanStack Form** for form management
 - **Radix UI** primitives for accessibility

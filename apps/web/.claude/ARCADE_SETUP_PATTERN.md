@@ -43,6 +43,7 @@ Transitions game to setup phase, allowing reconfiguration.
 ```
 
 **Behavior:**
+
 - Can be called from any phase (setup, playing, results)
 - Sets `gamePhase: 'setup'`
 - Resets game progression (scores, cards, etc.)
@@ -65,6 +66,7 @@ Updates a configuration field during setup phase.
 ```
 
 **Behavior:**
+
 - Only allowed during setup phase
 - Validates field name and value
 - Updates immediately with optimistic update
@@ -87,6 +89,7 @@ Starts the game with current configuration.
 ```
 
 **Behavior:**
+
 - Only allowed during setup phase
 - Uses current session state configuration
 - Initializes game-specific state
@@ -130,17 +133,19 @@ Add validators for setup moves in your game's validator class:
 ```typescript
 // src/lib/arcade/validation/YourGameValidator.ts
 
-export class YourGameValidator implements GameValidator<YourGameState, YourGameMove> {
+export class YourGameValidator
+  implements GameValidator<YourGameState, YourGameMove>
+{
   validateMove(state, move, context) {
     switch (move.type) {
-      case 'GO_TO_SETUP':
-        return this.validateGoToSetup(state)
+      case "GO_TO_SETUP":
+        return this.validateGoToSetup(state);
 
-      case 'SET_CONFIG':
-        return this.validateSetConfig(state, move.data.field, move.data.value)
+      case "SET_CONFIG":
+        return this.validateSetConfig(state, move.data.field, move.data.value);
 
-      case 'START_GAME':
-        return this.validateStartGame(state, move.data)
+      case "START_GAME":
+        return this.validateStartGame(state, move.data);
 
       // ... other moves
     }
@@ -151,55 +156,58 @@ export class YourGameValidator implements GameValidator<YourGameState, YourGameM
       valid: true,
       newState: {
         ...state,
-        gamePhase: 'setup',
+        gamePhase: "setup",
         // Reset game progression, preserve configuration
         // ... reset scores, game data, etc.
       },
-    }
+    };
   }
 
   private validateSetConfig(
     state: YourGameState,
     field: string,
-    value: any
+    value: any,
   ): ValidationResult {
     // Only during setup
-    if (state.gamePhase !== 'setup') {
-      return { valid: false, error: 'Cannot change config outside setup' }
+    if (state.gamePhase !== "setup") {
+      return { valid: false, error: "Cannot change config outside setup" };
     }
 
     // Validate field-specific values
     switch (field) {
-      case 'configField1':
+      case "configField1":
         if (!isValidValue(value)) {
-          return { valid: false, error: 'Invalid value' }
+          return { valid: false, error: "Invalid value" };
         }
-        break
+        break;
       // ... validate other fields
     }
 
     return {
       valid: true,
       newState: { ...state, [field]: value },
-    }
+    };
   }
 
   private validateStartGame(state: YourGameState, data: any): ValidationResult {
-    if (state.gamePhase !== 'setup') {
-      return { valid: false, error: 'Can only start from setup' }
+    if (state.gamePhase !== "setup") {
+      return { valid: false, error: "Can only start from setup" };
     }
 
     // Use current state configuration to initialize game
-    const initialGameData = initializeYourGame(state.configField1, state.configField2)
+    const initialGameData = initializeYourGame(
+      state.configField1,
+      state.configField2,
+    );
 
     return {
       valid: true,
       newState: {
         ...state,
-        gamePhase: 'playing',
+        gamePhase: "playing",
         ...initialGameData,
       },
-    }
+    };
   }
 }
 ```
@@ -211,28 +219,31 @@ Update `applyMoveOptimistically` in your providers:
 ```typescript
 // src/app/arcade/your-game/context/YourGameProvider.tsx
 
-function applyMoveOptimistically(state: YourGameState, move: GameMove): YourGameState {
+function applyMoveOptimistically(
+  state: YourGameState,
+  move: GameMove,
+): YourGameState {
   switch (move.type) {
-    case 'GO_TO_SETUP':
+    case "GO_TO_SETUP":
       return {
         ...state,
-        gamePhase: 'setup',
+        gamePhase: "setup",
         // Reset game state, preserve config
-      }
+      };
 
-    case 'SET_CONFIG':
-      const { field, value } = move.data
+    case "SET_CONFIG":
+      const { field, value } = move.data;
       return {
         ...state,
         [field]: value,
-      }
+      };
 
-    case 'START_GAME':
+    case "START_GAME":
       return {
         ...state,
-        gamePhase: 'playing',
+        gamePhase: "playing",
         // ... initialize game data from move
-      }
+      };
 
     // ... other moves
   }
@@ -245,15 +256,16 @@ function applyMoveOptimistically(state: YourGameState, move: GameMove): YourGame
 
 ```typescript
 // DON'T: Local React state for configuration
-const [localDifficulty, setLocalDifficulty] = useState(6)
+const [localDifficulty, setLocalDifficulty] = useState(6);
 
 // DON'T: Merge hack
-const effectiveState = state.gamePhase === 'setup'
-  ? { ...state, difficulty: localDifficulty }
-  : state
+const effectiveState =
+  state.gamePhase === "setup"
+    ? { ...state, difficulty: localDifficulty }
+    : state;
 
 // DON'T: Direct setter
-const setDifficulty = (value) => setLocalDifficulty(value)
+const setDifficulty = (value) => setLocalDifficulty(value);
 ```
 
 **✅ NEW PATTERN (Do this):**
@@ -327,21 +339,25 @@ export function YourGameProvider({ children }) {
 ## Benefits of This Pattern
 
 ### 1. **Synchronized Setup**
+
 - User A clicks "Setup" → All room members see setup screen
 - User B changes difficulty → All room members see the change
 - User A clicks "Start" → All room members start playing
 
 ### 2. **No Special Cases**
+
 - Setup works like gameplay (moves + validation)
 - No conditional logic based on phase
 - No React state merging hacks
 
 ### 3. **Easy to Extend**
+
 - New games copy the same pattern
 - Well-documented and tested
 - Consistent developer experience
 
 ### 4. **Optimistic Updates**
+
 - Config changes feel instant
 - Client-side prediction + server validation
 - Rollback on validation failure
@@ -353,17 +369,20 @@ export function YourGameProvider({ children }) {
 When implementing this pattern, test these scenarios:
 
 ### Local Mode
+
 - [ ] Click setup button during game → returns to setup
 - [ ] Change config fields → updates immediately
 - [ ] Start game → uses current config
 
 ### Room Mode (Multi-User)
+
 - [ ] User A clicks setup → User B sees setup screen
 - [ ] User A changes difficulty → User B sees change in real-time
 - [ ] User B changes game type → User A sees change in real-time
 - [ ] User A starts game → Both users see game with same config
 
 ### Edge Cases
+
 - [ ] Change config rapidly → no race conditions
 - [ ] User with 0 players can see/modify setup
 - [ ] Setup → Play → Setup preserves last config
@@ -376,20 +395,25 @@ When implementing this pattern, test these scenarios:
 If you have an existing game using local state, follow these steps:
 
 ### Step 1: Add Move Types
+
 Add `GO_TO_SETUP` and `SET_CONFIG` to your validation types.
 
 ### Step 2: Implement Validators
+
 Add validators for the new moves in your game validator class.
 
 ### Step 3: Add Optimistic Updates
+
 Update `applyMoveOptimistically` to handle the new moves.
 
 ### Step 4: Remove Local State
+
 1. Delete all `useState` calls for configuration
 2. Delete the `effectiveState` merging logic
 3. Update action creators to send moves instead
 
 ### Step 5: Test
+
 Run through the testing checklist above.
 
 ---
@@ -404,6 +428,7 @@ See the Matching game for a complete reference implementation:
 - **Optimistic Updates**: `applyMoveOptimistically` function in provider
 
 Look for comments marked with:
+
 - `// STANDARD ARCADE PATTERN: GO_TO_SETUP`
 - `// STANDARD ARCADE PATTERN: SET_CONFIG`
 - `// NO LOCAL STATE`

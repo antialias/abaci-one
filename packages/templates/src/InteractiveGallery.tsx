@@ -1,205 +1,205 @@
-import React, { useState, useCallback } from 'react';
-import { AbacusReact, useAbacusDimensions, BeadConfig } from './AbacusReact';
+import React, { useState, useCallback } from "react";
+import { AbacusReact, useAbacusDimensions, BeadConfig } from "./AbacusReact";
 
 // Gallery configuration mapping from the original examples
 const GALLERY_EXAMPLES = [
   {
-    id: 'basic-5',
-    title: 'Basic Number 5',
-    subtitle: 'Simple representation of 5',
+    id: "basic-5",
+    title: "Basic Number 5",
+    subtitle: "Simple representation of 5",
     value: 5,
     config: {
       columns: 1,
-      beadShape: 'diamond' as const,
-      colorScheme: 'monochrome' as const,
+      beadShape: "diamond" as const,
+      colorScheme: "monochrome" as const,
       scaleFactor: 1,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'colorful-123',
-    title: 'Colorful 123',
-    subtitle: 'Multi-column with place value colors',
+    id: "colorful-123",
+    title: "Colorful 123",
+    subtitle: "Multi-column with place value colors",
     value: 123,
     config: {
       columns: 3,
-      beadShape: 'diamond' as const,
-      colorScheme: 'place-value' as const,
-      colorPalette: 'default' as const,
+      beadShape: "diamond" as const,
+      colorScheme: "place-value" as const,
+      colorPalette: "default" as const,
       scaleFactor: 1,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'circles-42',
-    title: 'Circle Beads - 42',
-    subtitle: 'Different bead shape demonstration',
+    id: "circles-42",
+    title: "Circle Beads - 42",
+    subtitle: "Different bead shape demonstration",
     value: 42,
     config: {
       columns: 2,
-      beadShape: 'circle' as const,
-      colorScheme: 'place-value' as const,
-      colorPalette: 'default' as const,
+      beadShape: "circle" as const,
+      colorScheme: "place-value" as const,
+      colorPalette: "default" as const,
       scaleFactor: 1.2,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'large-7',
-    title: 'Large Scale - 7',
-    subtitle: 'Larger scale for better visibility',
+    id: "large-7",
+    title: "Large Scale - 7",
+    subtitle: "Larger scale for better visibility",
     value: 7,
     config: {
       columns: 1,
-      beadShape: 'diamond' as const,
-      colorScheme: 'place-value' as const,
-      colorPalette: 'default' as const,
+      beadShape: "diamond" as const,
+      colorScheme: "place-value" as const,
+      colorPalette: "default" as const,
       scaleFactor: 2,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'compact-999',
-    title: 'Compact 999',
-    subtitle: 'Square beads with alternating colors',
+    id: "compact-999",
+    title: "Compact 999",
+    subtitle: "Square beads with alternating colors",
     value: 999,
     config: {
       columns: 3,
-      beadShape: 'square' as const,
-      colorScheme: 'alternating' as const,
+      beadShape: "square" as const,
+      colorScheme: "alternating" as const,
       scaleFactor: 0.8,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'educational-1234',
-    title: 'Educational 1234',
-    subtitle: 'Four-digit educational example',
+    id: "educational-1234",
+    title: "Educational 1234",
+    subtitle: "Four-digit educational example",
     value: 1234,
     config: {
       columns: 4,
-      beadShape: 'circle' as const,
-      colorScheme: 'place-value' as const,
-      colorPalette: 'mnemonic' as const,
+      beadShape: "circle" as const,
+      colorScheme: "place-value" as const,
+      colorPalette: "mnemonic" as const,
       scaleFactor: 0.9,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'crop-single-1',
-    title: 'Single Digit',
-    subtitle: 'Minimal single column design',
+    id: "crop-single-1",
+    title: "Single Digit",
+    subtitle: "Minimal single column design",
     value: 1,
     config: {
       columns: 1,
-      beadShape: 'diamond' as const,
-      colorScheme: 'monochrome' as const,
+      beadShape: "diamond" as const,
+      colorScheme: "monochrome" as const,
       scaleFactor: 0.8,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'crop-quad-9999',
-    title: 'Four 9s',
-    subtitle: 'Maximum value demonstration',
+    id: "crop-quad-9999",
+    title: "Four 9s",
+    subtitle: "Maximum value demonstration",
     value: 9999,
     config: {
       columns: 4,
-      beadShape: 'diamond' as const,
-      colorScheme: 'place-value' as const,
-      colorPalette: 'colorblind' as const,
+      beadShape: "diamond" as const,
+      colorScheme: "place-value" as const,
+      colorPalette: "colorblind" as const,
       scaleFactor: 0.9,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'crop-large-scale-0',
-    title: 'Large Zero',
-    subtitle: 'Empty abacus representation',
+    id: "crop-large-scale-0",
+    title: "Large Zero",
+    subtitle: "Empty abacus representation",
     value: 0,
     config: {
       columns: 1,
-      beadShape: 'circle' as const,
-      colorScheme: 'monochrome' as const,
+      beadShape: "circle" as const,
+      colorScheme: "monochrome" as const,
       scaleFactor: 2,
       hideInactiveBeads: false,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'crop-hidden-inactive-555',
-    title: 'Hidden Inactive',
-    subtitle: 'Clean look with hidden inactive beads',
+    id: "crop-hidden-inactive-555",
+    title: "Hidden Inactive",
+    subtitle: "Clean look with hidden inactive beads",
     value: 555,
     config: {
       columns: 3,
-      beadShape: 'diamond' as const,
-      colorScheme: 'place-value' as const,
-      colorPalette: 'nature' as const,
+      beadShape: "diamond" as const,
+      colorScheme: "place-value" as const,
+      colorPalette: "nature" as const,
       hideInactiveBeads: true,
       scaleFactor: 1.4,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'crop-mixed-geometry-321',
-    title: 'Mixed Geometry',
-    subtitle: 'Demonstrating various configurations',
+    id: "crop-mixed-geometry-321",
+    title: "Mixed Geometry",
+    subtitle: "Demonstrating various configurations",
     value: 321,
     config: {
       columns: 3,
-      beadShape: 'circle' as const,
-      colorScheme: 'place-value' as const,
-      colorPalette: 'colorblind' as const,
+      beadShape: "circle" as const,
+      colorScheme: "place-value" as const,
+      colorPalette: "colorblind" as const,
       scaleFactor: 1.1,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'debug-89',
-    title: 'Debug: 89',
-    subtitle: 'Two-digit debugging example',
+    id: "debug-89",
+    title: "Debug: 89",
+    subtitle: "Two-digit debugging example",
     value: 89,
     config: {
       columns: 2,
-      beadShape: 'diamond' as const,
-      colorScheme: 'place-value' as const,
-      colorPalette: 'default' as const,
+      beadShape: "diamond" as const,
+      colorScheme: "place-value" as const,
+      colorPalette: "default" as const,
       scaleFactor: 1,
       animated: true,
-      gestures: true
-    }
+      gestures: true,
+    },
   },
   {
-    id: 'debug-456',
-    title: 'Debug: 456',
-    subtitle: 'Three-digit debugging example',
+    id: "debug-456",
+    title: "Debug: 456",
+    subtitle: "Three-digit debugging example",
     value: 456,
     config: {
       columns: 3,
-      beadShape: 'circle' as const,
-      colorScheme: 'place-value' as const,
-      colorPalette: 'default' as const,
+      beadShape: "circle" as const,
+      colorScheme: "place-value" as const,
+      colorPalette: "default" as const,
       scaleFactor: 0.8,
       animated: true,
-      gestures: true
-    }
-  }
+      gestures: true,
+    },
+  },
 ];
 
 interface InteractiveAbacusCardProps {
-  example: typeof GALLERY_EXAMPLES[0];
+  example: (typeof GALLERY_EXAMPLES)[0];
   onValueChange?: (newValue: number) => void;
   onBeadClick?: (bead: BeadConfig) => void;
 }
@@ -207,25 +207,33 @@ interface InteractiveAbacusCardProps {
 const InteractiveAbacusCard: React.FC<InteractiveAbacusCardProps> = ({
   example,
   onValueChange,
-  onBeadClick
+  onBeadClick,
 }) => {
   const [currentValue, setCurrentValue] = useState(example.value);
   const [clickCount, setClickCount] = useState(0);
 
   const dimensions = useAbacusDimensions(
-    example.config.columns === 'auto' ? Math.max(1, currentValue.toString().length) : example.config.columns,
-    example.config.scaleFactor || 1
+    example.config.columns === "auto"
+      ? Math.max(1, currentValue.toString().length)
+      : example.config.columns,
+    example.config.scaleFactor || 1,
   );
 
-  const handleValueChange = useCallback((newValue: number) => {
-    setCurrentValue(newValue);
-    onValueChange?.(newValue);
-  }, [onValueChange]);
+  const handleValueChange = useCallback(
+    (newValue: number) => {
+      setCurrentValue(newValue);
+      onValueChange?.(newValue);
+    },
+    [onValueChange],
+  );
 
-  const handleBeadClick = useCallback((bead: BeadConfig) => {
-    setClickCount(prev => prev + 1);
-    onBeadClick?.(bead);
-  }, [onBeadClick]);
+  const handleBeadClick = useCallback(
+    (bead: BeadConfig) => {
+      setClickCount((prev) => prev + 1);
+      onBeadClick?.(bead);
+    },
+    [onBeadClick],
+  );
 
   const resetValue = useCallback(() => {
     setCurrentValue(example.value);
@@ -246,7 +254,11 @@ const InteractiveAbacusCard: React.FC<InteractiveAbacusCardProps> = ({
           <div className="interaction-stats">
             Clicks: <strong>{clickCount}</strong>
           </div>
-          <button className="reset-btn" onClick={resetValue} title="Reset to original value">
+          <button
+            className="reset-btn"
+            onClick={resetValue}
+            title="Reset to original value"
+          >
             ↻
           </button>
         </div>
@@ -258,7 +270,7 @@ const InteractiveAbacusCard: React.FC<InteractiveAbacusCardProps> = ({
           style={{
             width: `${dimensions.width}px`,
             height: `${dimensions.height}px`,
-            margin: '0 auto'
+            margin: "0 auto",
           }}
         >
           <AbacusReact
@@ -282,40 +294,52 @@ const InteractiveAbacusCard: React.FC<InteractiveAbacusCardProps> = ({
 };
 
 const InteractiveGallery: React.FC = () => {
-  const [selectedTab, setSelectedTab] = useState('basic');
+  const [selectedTab, setSelectedTab] = useState("basic");
   const [globalStats, setGlobalStats] = useState({
     totalClicks: 0,
     totalValueChanges: 0,
-    activeExample: null as string | null
+    activeExample: null as string | null,
   });
 
   const categorizedExamples = {
-    basic: GALLERY_EXAMPLES.filter(ex =>
-      ['basic-5', 'colorful-123', 'circles-42', 'large-7'].includes(ex.id)
+    basic: GALLERY_EXAMPLES.filter((ex) =>
+      ["basic-5", "colorful-123", "circles-42", "large-7"].includes(ex.id),
     ),
-    advanced: GALLERY_EXAMPLES.filter(ex =>
-      ['compact-999', 'educational-1234', 'crop-hidden-inactive-555', 'crop-mixed-geometry-321'].includes(ex.id)
+    advanced: GALLERY_EXAMPLES.filter((ex) =>
+      [
+        "compact-999",
+        "educational-1234",
+        "crop-hidden-inactive-555",
+        "crop-mixed-geometry-321",
+      ].includes(ex.id),
     ),
-    debug: GALLERY_EXAMPLES.filter(ex =>
-      ['crop-single-1', 'crop-quad-9999', 'crop-large-scale-0', 'debug-89', 'debug-456'].includes(ex.id)
-    )
+    debug: GALLERY_EXAMPLES.filter((ex) =>
+      [
+        "crop-single-1",
+        "crop-quad-9999",
+        "crop-large-scale-0",
+        "debug-89",
+        "debug-456",
+      ].includes(ex.id),
+    ),
   };
 
   const handleGlobalValueChange = useCallback((newValue: number) => {
-    setGlobalStats(prev => ({
+    setGlobalStats((prev) => ({
       ...prev,
-      totalValueChanges: prev.totalValueChanges + 1
+      totalValueChanges: prev.totalValueChanges + 1,
     }));
   }, []);
 
   const handleGlobalBeadClick = useCallback((bead: BeadConfig) => {
-    setGlobalStats(prev => ({
+    setGlobalStats((prev) => ({
       ...prev,
-      totalClicks: prev.totalClicks + 1
+      totalClicks: prev.totalClicks + 1,
     }));
   }, []);
 
-  const currentExamples = categorizedExamples[selectedTab as keyof typeof categorizedExamples];
+  const currentExamples =
+    categorizedExamples[selectedTab as keyof typeof categorizedExamples];
 
   return (
     <div className="interactive-gallery">
@@ -574,7 +598,10 @@ const InteractiveGallery: React.FC = () => {
       <div className="container">
         <div className="header">
           <h1>🧮 Interactive Soroban Gallery</h1>
-          <p>Click or drag the beads in natural directions to explore how a Japanese abacus works!</p>
+          <p>
+            Click or drag the beads in natural directions to explore how a
+            Japanese abacus works!
+          </p>
 
           <div className="global-stats">
             <div className="stat-item">
@@ -590,37 +617,39 @@ const InteractiveGallery: React.FC = () => {
 
         <div className="stats">
           <div className="stats-info">
-            <strong>{GALLERY_EXAMPLES.length}</strong> interactive examples
-            • All abaci are fully interactive with click and directional gesture support
-            • Generated with React + TypeScript
+            <strong>{GALLERY_EXAMPLES.length}</strong> interactive examples •
+            All abaci are fully interactive with click and directional gesture
+            support • Generated with React + TypeScript
           </div>
         </div>
 
         <div className="tutorial-box">
           <h3>🎯 How to Interact</h3>
           <p>
-            <strong>Click</strong> beads to toggle their positions • <strong>Drag</strong> beads toward/away from the center bar •
-            <strong>Reset</strong> button restores original values • Each interaction updates the value in real-time
+            <strong>Click</strong> beads to toggle their positions •{" "}
+            <strong>Drag</strong> beads toward/away from the center bar •
+            <strong>Reset</strong> button restores original values • Each
+            interaction updates the value in real-time
           </p>
         </div>
 
         <div className="tabs">
           <div className="tab-nav">
             <button
-              className={`tab-button ${selectedTab === 'basic' ? 'active' : ''}`}
-              onClick={() => setSelectedTab('basic')}
+              className={`tab-button ${selectedTab === "basic" ? "active" : ""}`}
+              onClick={() => setSelectedTab("basic")}
             >
               📚 Basic Examples
             </button>
             <button
-              className={`tab-button ${selectedTab === 'advanced' ? 'active' : ''}`}
-              onClick={() => setSelectedTab('advanced')}
+              className={`tab-button ${selectedTab === "advanced" ? "active" : ""}`}
+              onClick={() => setSelectedTab("advanced")}
             >
               🎨 Advanced Features
             </button>
             <button
-              className={`tab-button ${selectedTab === 'debug' ? 'active' : ''}`}
-              onClick={() => setSelectedTab('debug')}
+              className={`tab-button ${selectedTab === "debug" ? "active" : ""}`}
+              onClick={() => setSelectedTab("debug")}
             >
               🔧 Debug & Edge Cases
             </button>

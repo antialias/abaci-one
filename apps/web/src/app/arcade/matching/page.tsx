@@ -1,6 +1,6 @@
-import { ArcadeGuardedPage } from '@/components/ArcadeGuardedPage'
-import { MemoryPairsGame } from './components/MemoryPairsGame'
-import { LocalMemoryPairsProvider } from './context/LocalMemoryPairsProvider'
+import { ArcadeGuardedPage } from "@/components/ArcadeGuardedPage";
+import { MemoryPairsGame } from "./components/MemoryPairsGame";
+import { LocalMemoryPairsProvider } from "./context/LocalMemoryPairsProvider";
 
 export default function MatchingPage() {
   return (
@@ -9,5 +9,5 @@ export default function MatchingPage() {
         <MemoryPairsGame />
       </LocalMemoryPairsProvider>
     </ArcadeGuardedPage>
-  )
+  );
 }

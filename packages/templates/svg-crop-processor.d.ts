@@ -70,9 +70,9 @@ export interface BeadData {
   /** Original bead ID string */
   id: string;
   /** Bead type (heaven or earth) */
-  type?: 'heaven' | 'earth';
+  type?: "heaven" | "earth";
   /** Bead position (same as type for compatibility) */
-  position?: 'heaven' | 'earth';
+  position?: "heaven" | "earth";
   /** Column number (place value) */
   column?: number;
   /** Place value (same as column) */
@@ -82,7 +82,7 @@ export interface BeadData {
   /** Whether the bead is active/selected */
   active?: boolean;
   /** Bead state (active or inactive) */
-  state?: 'active' | 'inactive';
+  state?: "active" | "inactive";
 }
 
 /**
@@ -132,15 +132,15 @@ export interface ProcessOptions {
  * Error codes for programmatic error handling.
  */
 export type SVGCropErrorCode =
-  | 'INVALID_INPUT'
-  | 'EMPTY_INPUT'
-  | 'INVALID_SVG_FORMAT'
-  | 'NO_CROP_MARKS'
-  | 'INSUFFICIENT_CROP_MARKS'
-  | 'INVALID_DIMENSIONS'
-  | 'PROCESSING_ERROR'
-  | 'INVALID_FILE_TYPE'
-  | 'FILE_READ_ERROR';
+  | "INVALID_INPUT"
+  | "EMPTY_INPUT"
+  | "INVALID_SVG_FORMAT"
+  | "NO_CROP_MARKS"
+  | "INSUFFICIENT_CROP_MARKS"
+  | "INVALID_DIMENSIONS"
+  | "PROCESSING_ERROR"
+  | "INVALID_FILE_TYPE"
+  | "FILE_READ_ERROR";
 
 /**
  * Specialized error class for SVG crop processing failures.
@@ -163,7 +163,11 @@ export class SVGCropError extends Error {
    * @param code - Programmatic error code
    * @param details - Additional error context
    */
-  constructor(message: string, code: SVGCropErrorCode, details?: Record<string, unknown>);
+  constructor(
+    message: string,
+    code: SVGCropErrorCode,
+    details?: Record<string, unknown>,
+  );
 }
 
 /**
@@ -230,7 +234,10 @@ export function extractCropMarks(svgContent: string): CropResult;
  * }
  * ```
  */
-export function processSVG(svgContent: string, options?: ProcessOptions): ProcessResult;
+export function processSVG(
+  svgContent: string,
+  options?: ProcessOptions,
+): ProcessResult;
 
 /**
  * Extract bead annotation data from link elements and convert to data attributes.
@@ -316,7 +323,10 @@ export function extractBeadAnnotations(svgContent: string): {
  * });
  * ```
  */
-export function processSVGFile(file: File | Blob, options?: ProcessOptions): Promise<ProcessResult>;
+export function processSVGFile(
+  file: File | Blob,
+  options?: ProcessOptions,
+): Promise<ProcessResult>;
 
 /**
  * Browser global namespace when loaded via script tag.

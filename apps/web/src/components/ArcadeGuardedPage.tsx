@@ -1,14 +1,14 @@
-'use client'
+"use client";
 
-import type { ReactNode } from 'react'
-import { useArcadeGuard } from '@/hooks/useArcadeGuard'
+import type { ReactNode } from "react";
+import { useArcadeGuard } from "@/hooks/useArcadeGuard";
 
 export interface ArcadeGuardedPageProps {
-  children: ReactNode
+  children: ReactNode;
   /**
    * Loading component to show while checking for active session
    */
-  loadingComponent?: ReactNode
+  loadingComponent?: ReactNode;
 }
 
 /**
@@ -32,12 +32,15 @@ export interface ArcadeGuardedPageProps {
  * }
  * ```
  */
-export function ArcadeGuardedPage({ children, loadingComponent }: ArcadeGuardedPageProps) {
-  const { loading } = useArcadeGuard()
+export function ArcadeGuardedPage({
+  children,
+  loadingComponent,
+}: ArcadeGuardedPageProps) {
+  const { loading } = useArcadeGuard();
 
   if (loading && loadingComponent) {
-    return <>{loadingComponent}</>
+    return <>{loadingComponent}</>;
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }

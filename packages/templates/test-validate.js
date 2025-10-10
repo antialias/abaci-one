@@ -5,16 +5,16 @@
  * Verifies that all declared package files exist
  */
 
-const fs = require('fs');
-const packageJson = require('./package.json');
+const fs = require("fs");
+const packageJson = require("./package.json");
 
-console.log('📦 Package Validation - @soroban/templates');
+console.log("📦 Package Validation - @soroban/templates");
 
 try {
   const declaredFiles = packageJson.files || [];
 
   for (const file of declaredFiles) {
-    if (file.includes('*')) {
+    if (file.includes("*")) {
       // Skip glob patterns - they're handled by npm
       continue;
     }
@@ -26,9 +26,8 @@ try {
     console.log(`✓ ${file}`);
   }
 
-  console.log('✅ Package files validated');
-
+  console.log("✅ Package files validated");
 } catch (error) {
-  console.error('❌ Package validation failed:', error.message);
+  console.error("❌ Package validation failed:", error.message);
   process.exit(1);
 }

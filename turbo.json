@@ -3,7 +3,16 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "build/**"],
-      "inputs": ["src/**", "app/**", "components/**", "lib/**", "*.py", "*.ts", "*.tsx", "*.json"]
+      "inputs": [
+        "src/**",
+        "app/**",
+        "components/**",
+        "lib/**",
+        "*.py",
+        "*.ts",
+        "*.tsx",
+        "*.json"
+      ]
     },
     "dev": {
       "cache": false,

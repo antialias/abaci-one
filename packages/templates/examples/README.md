@@ -6,13 +6,14 @@ This directory contains practical examples showing how to use the `@soroban/temp
 
 These files demonstrate template rendering with actual output:
 
-| File | Output | Description |
-|------|--------|-------------|
-| [`example-5.typ`](./example-5.typ) | [`example-5-1.svg`](./example-5-1.svg) | Simple number 5 with place-value colors and diamond beads |
-| [`example-123.typ`](./example-123.typ) | [`example-123-1.svg`](./example-123-1.svg) | Number 123 with heaven-earth colors and circle beads |
-| [`example-single-card.typ`](./example-single-card.typ) | [`example-single-card-1.svg`](./example-single-card-1.svg) | Single flashcard format for number 42 |
+| File                                                   | Output                                                     | Description                                               |
+| ------------------------------------------------------ | ---------------------------------------------------------- | --------------------------------------------------------- |
+| [`example-5.typ`](./example-5.typ)                     | [`example-5-1.svg`](./example-5-1.svg)                     | Simple number 5 with place-value colors and diamond beads |
+| [`example-123.typ`](./example-123.typ)                 | [`example-123-1.svg`](./example-123-1.svg)                 | Number 123 with heaven-earth colors and circle beads      |
+| [`example-single-card.typ`](./example-single-card.typ) | [`example-single-card-1.svg`](./example-single-card-1.svg) | Single flashcard format for number 42                     |
 
 **To generate your own:**
+
 ```bash
 # From packages/templates directory
 typst compile --root . --format svg examples/example-5.typ examples/my-output-{p}.svg
@@ -20,11 +21,11 @@ typst compile --root . --format svg examples/example-5.typ examples/my-output-{p
 
 ## 📁 Code Examples Overview
 
-| File | Environment | Description |
-|------|-------------|-------------|
-| [`node-example.js`](./node-example.js) | Node.js | Basic Node.js usage with comprehensive examples |
-| [`python-example.py`](./python-example.py) | Python | Python integration with CLI simulation |
-| [`nextjs-example.ts`](./nextjs-example.ts) | TypeScript/Next.js | Full Next.js API route implementation |
+| File                                       | Environment        | Description                                     |
+| ------------------------------------------ | ------------------ | ----------------------------------------------- |
+| [`node-example.js`](./node-example.js)     | Node.js            | Basic Node.js usage with comprehensive examples |
+| [`python-example.py`](./python-example.py) | Python             | Python integration with CLI simulation          |
+| [`nextjs-example.ts`](./nextjs-example.ts) | TypeScript/Next.js | Full Next.js API route implementation           |
 
 ## 🚀 Running the Examples
 
@@ -37,6 +38,7 @@ node examples/node-example.js
 ```
 
 **What it demonstrates:**
+
 - Direct template path access
 - Dynamic path resolution
 - Template content loading
@@ -53,6 +55,7 @@ python3 examples/python-example.py
 ```
 
 **What it demonstrates:**
+
 - Template path access
 - Template verification
 - Content analysis
@@ -64,6 +67,7 @@ python3 examples/python-example.py
 ### TypeScript/Next.js Example
 
 The TypeScript example is a reference implementation showing:
+
 - Complete Next.js API route setup
 - TypeScript interfaces and types
 - React hooks for frontend integration
@@ -72,6 +76,7 @@ The TypeScript example is a reference implementation showing:
 - Error handling and validation
 
 **To use in your project:**
+
 1. Copy relevant parts to your Next.js API routes
 2. Install the package: `npm install @soroban/templates`
 3. Add proper imports and dependencies
@@ -82,11 +87,11 @@ The TypeScript example is a reference implementation showing:
 
 ```javascript
 // Node.js - Always check file existence
-const fs = require('fs');
-const { FLASHCARDS_TEMPLATE } = require('@soroban/templates');
+const fs = require("fs");
+const { FLASHCARDS_TEMPLATE } = require("@soroban/templates");
 
 if (fs.existsSync(FLASHCARDS_TEMPLATE)) {
-  const content = fs.readFileSync(FLASHCARDS_TEMPLATE, 'utf-8');
+  const content = fs.readFileSync(FLASHCARDS_TEMPLATE, "utf-8");
   // Use the content...
 }
 ```
@@ -106,13 +111,13 @@ if template_path.exists():
 
 ```javascript
 // For webpack compatibility
-const { getTemplatePath } = require('@soroban/templates');
+const { getTemplatePath } = require("@soroban/templates");
 
 try {
-  const path = getTemplatePath('flashcards.typ');
+  const path = getTemplatePath("flashcards.typ");
   // Use the path...
 } catch (error) {
-  console.error('Template not found:', error.message);
+  console.error("Template not found:", error.message);
 }
 ```
 
@@ -191,6 +196,7 @@ from soroban_templates import FLASHCARDS_TEMPLATE
 ### Webpack Issues
 
 For webpack bundling problems:
+
 - Always use `getTemplatePath()` in webpack contexts
 - Never use `fs.readFileSync()` with direct paths in client code
 - Handle template loading in API routes or server-side code only

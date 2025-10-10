@@ -16,5 +16,5 @@ font_size: "48pt"
 columns: auto
 show_empty_columns: false
 hide_inactive_beads: false
-bead_shape: "circle"  # Use traditional circular beads
+bead_shape: "circle" # Use traditional circular beads
 shuffle: false

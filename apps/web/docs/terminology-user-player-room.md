@@ -5,6 +5,7 @@
 ## Core Concepts
 
 ### 1. **USER** (Identity Layer)
+
 - **Table**: `users`
 - **Purpose**: Identity - guest or authenticated account
 - **Identified by**: `guestId` (HttpOnly cookie)
@@ -13,6 +14,7 @@
 - **Example**: A person visiting the site
 
 ### 2. **PLAYER** (Game Avatar Layer)
+
 - **Table**: `players`
 - **Purpose**: Game profiles/avatars that represent a participant in the game
 - **Belongs to**: USER (via `userId` FK)
@@ -22,6 +24,7 @@
 - **Active Players**: Players where `isActive = true` are the ones currently participating
 
 ### 3. **ROOM MEMBER** (Room Participation Layer)
+
 - **Table**: `room_members`
 - **Purpose**: Tracks a USER's participation in a multiplayer room
 - **Identified by**: `userId` (references the guest/user)
@@ -134,14 +137,14 @@ const session = {
 
 ```typescript
 // User joins room (presence)
-socket.emit('join-room', { roomId, userId })
+socket.emit("join-room", { roomId, userId });
 
 // Player makes a move (game action)
-socket.emit('game-move', {
+socket.emit("game-move", {
   roomId,
   playerId, // PLAYER ID, not USER ID
-  move
-})
+  move,
+});
 ```
 
 ## Summary

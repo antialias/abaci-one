@@ -20,6 +20,7 @@ Following `docs/terminology-user-player-room.md`:
 **Important:** A USER can have many PLAYERS in their roster, but only the ACTIVE PLAYERS (where `isActive = true`) participate in games. This enables "hot-potato" style local multiplayer where multiple people share the same device. This is LOCAL play (not networked), even though multiple PLAYERS participate.
 
 In arcade sessions:
+
 - `arcade_sessions.userId` - The USER who owns the session
 - `arcade_sessions.activePlayers` - Array of PLAYER IDs (only active players with `isActive = true`)
 - `arcade_sessions.roomId` - If present, the room ID for networked play (references `arcade_rooms.id`)
@@ -29,6 +30,7 @@ In arcade sessions:
 ### 1. Mode Isolation (MUST ENFORCE)
 
 **Local Play** (`/arcade/[game-name]`)
+
 - MUST NOT sync game state across the network
 - MUST NOT use room data, even if the USER is currently a member of an active room
 - MUST create isolated, per-USER game sessions
@@ -37,6 +39,7 @@ In arcade sessions:
 - State is NOT shared across the network, only within the browser session
 
 **Room-Based Play** (`/arcade/room`)
+
 - MUST sync game state across all room members via network
 - MUST use the USER's current active room
 - MUST coordinate moves via server WebSocket
@@ -48,15 +51,21 @@ In arcade sessions:
 
 ```typescript
 // ❌ WRONG: Always checking for room data
-const { roomData } = useRoomData()
-useArcadeSession({ roomId: roomData?.id })  // This causes the bug!
-
-// ✅ CORRECT: Explicit mode control via separate providers
-<LocalMemoryPairsProvider>     {/* Never passes roomId */}
-<RoomMemoryPairsProvider>       {/* Always passes roomId */}
+const { roomData } = useRoomData();
+useArcadeSession({ roomId: roomData?.id }) < // This causes the bug!
+  // ✅ CORRECT: Explicit mode control via separate providers
+  LocalMemoryPairsProvider >
+  {
+    /* Never passes roomId */
+  } <
+  RoomMemoryPairsProvider >
+  {
+    /* Always passes roomId */
+  };
 ```
 
 **Key principle:** The presence of a `roomId` parameter in `useArcadeSession` determines synchronization behavior:
+
 - `roomId` present → room-wide network sync enabled (room-based play)
 - `roomId` undefined → local play only (no network sync)
 
@@ -69,16 +78,16 @@ Create two distinct provider components:
 ```typescript
 // context/LocalMemoryPairsProvider.tsx
 export function LocalMemoryPairsProvider({ children }) {
-  const { data: viewerId } = useViewerId()
-  const { activePlayers } = useGameMode()  // Gets active players (isActive = true)
+  const { data: viewerId } = useViewerId();
+  const { activePlayers } = useGameMode(); // Gets active players (isActive = true)
   // NEVER fetch room data for local play
 
   const { state, sendMove } = useArcadeSession<MemoryPairsState>({
-    userId: viewerId || '',
-    roomId: undefined,  // Explicitly undefined - no network sync
+    userId: viewerId || "",
+    roomId: undefined, // Explicitly undefined - no network sync
     initialState,
     applyMove: applyMoveOptimistically,
-  })
+  });
 
   // ... rest of provider logic
   // Note: activePlayers contains only PLAYERS with isActive = true
@@ -86,22 +95,23 @@ export function LocalMemoryPairsProvider({ children }) {
 
 // context/RoomMemoryPairsProvider.tsx
 export function RoomMemoryPairsProvider({ children }) {
-  const { data: viewerId } = useViewerId()
-  const { roomData } = useRoomData()  // OK to fetch for room-based play
-  const { activePlayers } = useGameMode()  // Gets active players (isActive = true)
+  const { data: viewerId } = useViewerId();
+  const { roomData } = useRoomData(); // OK to fetch for room-based play
+  const { activePlayers } = useGameMode(); // Gets active players (isActive = true)
 
   const { state, sendMove } = useArcadeSession<MemoryPairsState>({
-    userId: viewerId || '',
-    roomId: roomData?.id,  // Pass roomId for network sync
+    userId: viewerId || "",
+    roomId: roomData?.id, // Pass roomId for network sync
     initialState,
     applyMove: applyMoveOptimistically,
-  })
+  });
 
   // ... rest of provider logic
 }
 ```
 
 Then use them explicitly:
+
 ```typescript
 // /arcade/matching/page.tsx (Local Play)
 export default function MatchingPage() {
@@ -128,12 +138,14 @@ export default function RoomPage() {
 ```
 
 **Benefits of separate providers:**
+
 - Compile-time safety - impossible to mix modes
 - Clear intent - any developer can see which mode at a glance
 - No runtime conditionals needed
 - Easier to test - each provider tests separately
 
 **❌ Avoid:** Runtime flag checking scattered throughout code
+
 ```typescript
 // Anti-pattern: Too many conditionals
 if (isRoomBased) { ... } else { ... }
@@ -142,6 +154,7 @@ if (isRoomBased) { ... } else { ... }
 ### 4. How Synchronization Works
 
 #### Local Play Flow
+
 ```
 USER Action → useArcadeSession (roomId: undefined)
            → WebSocket emit('join-arcade-session', { userId })
@@ -155,6 +168,7 @@ Note: Multiple ACTIVE PLAYERS from same USER can participate (local multiplayer)
 ```
 
 #### Room-Based Play Flow
+
 ```
 USER Action (on behalf of PLAYER)
          → useArcadeSession (roomId: 'room_xyz')
@@ -172,6 +186,7 @@ Note: Each USER can still have multiple ACTIVE PLAYERS (local + networked multip
 ```
 
 The server-side logic uses `roomId` to determine session scope:
+
 - No `roomId`: Session key = `userId` (isolated to USER's browser)
 - With `roomId`: Session key = `roomId` (shared across all room members)
 
@@ -180,6 +195,7 @@ See `docs/MULTIPLAYER_SYNC_ARCHITECTURE.md` for detailed socket room mechanics.
 ### 5. USER vs PLAYER in Game Logic
 
 **Important distinction:**
+
 - **Session ownership**: Tracked by USER ID (`useViewerId()`)
 - **Player roster**: All PLAYERS for a USER (can be many)
 - **Active players**: PLAYERS with `isActive = true` (these join the game)
@@ -190,24 +206,24 @@ See `docs/MULTIPLAYER_SYNC_ARCHITECTURE.md` for detailed socket room mechanics.
 
 ```typescript
 // ✅ Correct: USER owns session, ACTIVE PLAYERS participate
-const { data: viewerId } = useViewerId()  // USER ID
-const { activePlayers } = useGameMode()   // ACTIVE PLAYER IDs (isActive = true)
+const { data: viewerId } = useViewerId(); // USER ID
+const { activePlayers } = useGameMode(); // ACTIVE PLAYER IDs (isActive = true)
 
 // activePlayers might be [player_001, player_002]
 // even though USER has 5 total PLAYERS in their roster
 
 const { state, sendMove } = useArcadeSession({
-  userId: viewerId,  // Session owned by USER
+  userId: viewerId, // Session owned by USER
   roomId: undefined, // Local play (or roomData?.id for room-based)
   // ...
-})
+});
 
 // When PLAYER flips card:
 sendMove({
-  type: 'FLIP_CARD',
-  playerId: currentPlayerId,  // PLAYER ID from activePlayers
-  data: { cardId: '...' }
-})
+  type: "FLIP_CARD",
+  playerId: currentPlayerId, // PLAYER ID from activePlayers
+  data: { cardId: "..." },
+});
 ```
 
 **Example Scenarios:**
@@ -245,15 +261,17 @@ sendMove({
 ## Common Mistakes to Avoid
 
 ### Mistake 1: Conditional Room Usage
+
 ```typescript
 // ❌ BAD: Room sync leaks into local play
-const { roomData } = useRoomData()
+const { roomData } = useRoomData();
 useArcadeSession({
-  roomId: roomData?.id  // Local play will sync if USER is in a room!
-})
+  roomId: roomData?.id, // Local play will sync if USER is in a room!
+});
 ```
 
 ### Mistake 2: Shared Components Without Mode Context
+
 ```typescript
 // ❌ BAD: Same provider used for both modes
 export default function LocalGamePage() {
@@ -262,6 +280,7 @@ export default function LocalGamePage() {
 ```
 
 ### Mistake 3: Confusing "multiplayer" with "networked"
+
 ```typescript
 // ❌ BAD: Thinking multiple PLAYERS means room-based
 if (activePlayers.length > 1) {
@@ -270,50 +289,50 @@ if (activePlayers.length > 1) {
 }
 
 // ✅ CORRECT: Check for roomId to determine network sync
-const isNetworked = !!roomId
-const isLocalMultiplayer = activePlayers.length > 1 && !roomId
+const isNetworked = !!roomId;
+const isLocalMultiplayer = activePlayers.length > 1 && !roomId;
 ```
 
 ### Mistake 4: Using all PLAYERS instead of only active ones
+
 ```typescript
 // ❌ BAD: Including inactive players
 const allPlayers = await db.query.players.findMany({
-  where: eq(players.userId, userId)
-})
+  where: eq(players.userId, userId),
+});
 
 // ✅ CORRECT: Only active players join the game
 const activePlayers = await db.query.players.findMany({
-  where: and(
-    eq(players.userId, userId),
-    eq(players.isActive, true)
-  )
-})
+  where: and(eq(players.userId, userId), eq(players.isActive, true)),
+});
 ```
 
 ### Mistake 5: Mixing USER ID and PLAYER ID
+
 ```typescript
 // ❌ BAD: Using USER ID for game actions
 sendMove({
-  type: 'FLIP_CARD',
-  playerId: viewerId,  // WRONG! viewerId is USER ID, not PLAYER ID
-  data: { cardId: '...' }
-})
+  type: "FLIP_CARD",
+  playerId: viewerId, // WRONG! viewerId is USER ID, not PLAYER ID
+  data: { cardId: "..." },
+});
 
 // ✅ CORRECT: Use PLAYER ID from game state
 sendMove({
-  type: 'FLIP_CARD',
-  playerId: state.currentPlayer,  // PLAYER ID from activePlayers
-  data: { cardId: '...' }
-})
+  type: "FLIP_CARD",
+  playerId: state.currentPlayer, // PLAYER ID from activePlayers
+  data: { cardId: "..." },
+});
 ```
 
 ### Mistake 6: Server-Side Ambiguity
+
 ```typescript
 // ❌ BAD: Server can't distinguish intent
-socket.on('join-arcade-session', ({ userId, roomId }) => {
+socket.on("join-arcade-session", ({ userId, roomId }) => {
   // If roomId exists, did USER want local or room-based play?
   // This happens when provider always passes roomData?.id
-})
+});
 ```
 
 ## Testing Requirements
@@ -321,85 +340,87 @@ socket.on('join-arcade-session', ({ userId, roomId }) => {
 Tests MUST verify mode isolation:
 
 ### Local Play Tests
+
 ```typescript
-it('should NOT sync state when USER is in a room but playing locally', async () => {
+it("should NOT sync state when USER is in a room but playing locally", async () => {
   // Setup: USER is a member of an active room
   // Action: USER navigates to /arcade/matching
   // Assert: Game state is NOT shared with other room members
   // Assert: Other room members' actions do NOT affect this game
-})
+});
 
-it('should create isolated sessions for concurrent local games', () => {
+it("should create isolated sessions for concurrent local games", () => {
   // Setup: Two USERS who are members of the same room
   // Action: Both navigate to /arcade/matching separately
   // Assert: Each has independent game state
   // Assert: USER A's moves do NOT appear in USER B's game
-})
+});
 
-it('should support local multiplayer without network sync', () => {
+it("should support local multiplayer without network sync", () => {
   // Setup: USER with 3 active PLAYERS in roster (hot-potato style)
   // Action: USER plays at /arcade/matching with the 3 active PLAYERS
   // Assert: All 3 active PLAYERS participate in the same session
   // Assert: Inactive PLAYERS do NOT participate
   // Assert: State is NOT synced across network
   // Assert: Game rotates turns between active PLAYERS locally
-})
+});
 
-it('should only include active players in game', () => {
+it("should only include active players in game", () => {
   // Setup: USER has 5 PLAYERS in roster, but only 2 are active
   // Action: USER starts a local game
   // Assert: Only the 2 active PLAYERS are in activePlayers array
   // Assert: Inactive PLAYERS are not included
-})
+});
 
-it('should sync across USER tabs but not across network', () => {
+it("should sync across USER tabs but not across network", () => {
   // Setup: USER opens /arcade/matching in 2 browser tabs
   // Action: PLAYER makes move in Tab 1
   // Assert: Tab 2 sees the move (multi-tab sync)
   // Assert: Other USERS do NOT see the move (no network sync)
-})
+});
 ```
 
 ### Room-Based Play Tests
+
 ```typescript
-it('should sync state across all room members', async () => {
+it("should sync state across all room members", async () => {
   // Setup: Two USERS are members of the same room
   // Action: USER A's PLAYER flips card at /arcade/room
   // Assert: USER B sees the card flip in real-time
-})
+});
 
-it('should sync across multiple active PLAYERS from multiple USERS', () => {
+it("should sync across multiple active PLAYERS from multiple USERS", () => {
   // Setup: USER A has 2 active PLAYERS, USER B has 1 active PLAYER in same room
   // Action: USER A's PLAYER 1 makes move
   // Assert: All 3 PLAYERS see the move (networked)
-})
+});
 
-it('should only include active players in room games', () => {
+it("should only include active players in room games", () => {
   // Setup: USER A (5 PLAYERS, 2 active), USER B (3 PLAYERS, 1 active) join room
   // Action: Game starts
   // Assert: session.activePlayers = [userA_player1, userA_player2, userB_player1]
   // Assert: Inactive PLAYERS are NOT included
-})
+});
 
-it('should handle combined local + networked multiplayer', () => {
+it("should handle combined local + networked multiplayer", () => {
   // Setup: USER A (3 active PLAYERS), USER B (2 active PLAYERS) in same room
   // Action: Any PLAYER makes a move
   // Assert: All 5 active PLAYERS see the move across both devices
-})
+});
 
-it('should fail gracefully when no room exists', () => {
+it("should fail gracefully when no room exists", () => {
   // Setup: USER is not a member of any room
   // Action: Navigate to /arcade/room
   // Assert: Shows "No active room" message
   // Assert: Does not create a session
-})
+});
 
-it('should validate PLAYER ownership', async () => {
+it("should validate PLAYER ownership", async () => {
   // Setup: USER A in room with active PLAYER 'alice'
   // Action: USER A attempts move for PLAYER 'bob' (owned by USER B)
   // Assert: Server rejects the move
   // Assert: Error indicates unauthorized PLAYER
-})
+});
 ```
 
 ## Implementation Checklist

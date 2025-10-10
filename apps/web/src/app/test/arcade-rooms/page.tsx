@@ -1,355 +1,374 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { io, type Socket } from 'socket.io-client'
+import { useState } from "react";
+import { io, type Socket } from "socket.io-client";
 
 interface TestResult {
-  name: string
-  status: 'pending' | 'running' | 'success' | 'error'
-  message?: string
-  data?: any
+  name: string;
+  status: "pending" | "running" | "success" | "error";
+  message?: string;
+  data?: any;
 }
 
 export default function ArcadeRoomsTestPage() {
-  const [results, setResults] = useState<TestResult[]>([])
-  const [roomId, setRoomId] = useState('')
-  const [socket1, setSocket1] = useState<Socket | null>(null)
-  const [socket2, setSocket2] = useState<Socket | null>(null)
+  const [results, setResults] = useState<TestResult[]>([]);
+  const [roomId, setRoomId] = useState("");
+  const [socket1, setSocket1] = useState<Socket | null>(null);
+  const [socket2, setSocket2] = useState<Socket | null>(null);
 
   const updateResult = (name: string, updates: Partial<TestResult>) => {
     setResults((prev) => {
-      const existing = prev.find((r) => r.name === name)
+      const existing = prev.find((r) => r.name === name);
       if (existing) {
-        return prev.map((r) => (r.name === name ? { ...r, ...updates } : r))
+        return prev.map((r) => (r.name === name ? { ...r, ...updates } : r));
       }
-      return [...prev, { name, status: 'pending', ...updates }]
-    })
-  }
+      return [...prev, { name, status: "pending", ...updates }];
+    });
+  };
 
   const log = (name: string, message: string, data?: any) => {
-    console.log(`[${name}]`, message, data)
-    updateResult(name, { message, data })
-  }
+    console.log(`[${name}]`, message, data);
+    updateResult(name, { message, data });
+  };
 
   const clearResults = () => {
-    setResults([])
-    socket1?.disconnect()
-    socket2?.disconnect()
-    setSocket1(null)
-    setSocket2(null)
-  }
+    setResults([]);
+    socket1?.disconnect();
+    socket2?.disconnect();
+    setSocket1(null);
+    setSocket2(null);
+  };
 
   // Test 1: Create Room
   const testCreateRoom = async () => {
-    const testName = 'Create Room'
-    updateResult(testName, { status: 'running' })
+    const testName = "Create Room";
+    updateResult(testName, { status: "running" });
 
     try {
-      const response = await fetch('/api/arcade/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/arcade/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: `Test Room ${Date.now()}`,
-          createdBy: 'test-user-1',
-          creatorName: 'Test User 1',
-          gameName: 'matching',
+          createdBy: "test-user-1",
+          creatorName: "Test User 1",
+          gameName: "matching",
           gameConfig: { difficulty: 6 },
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      const data = await response.json()
-      setRoomId(data.room.id)
-      log(testName, `✅ Room created: ${data.room.code}`, data.room)
-      updateResult(testName, { status: 'success' })
+      const data = await response.json();
+      setRoomId(data.room.id);
+      log(testName, `✅ Room created: ${data.room.code}`, data.room);
+      updateResult(testName, { status: "success" });
     } catch (error) {
-      log(testName, `❌ ${error}`)
-      updateResult(testName, { status: 'error' })
+      log(testName, `❌ ${error}`);
+      updateResult(testName, { status: "error" });
     }
-  }
+  };
 
   // Test 2: Join Room (Socket)
   const testJoinRoom = async (testRoomId?: string) => {
-    const testName = 'Join Room'
-    const activeRoomId = testRoomId || roomId
+    const testName = "Join Room";
+    const activeRoomId = testRoomId || roomId;
     if (!activeRoomId) {
-      log(testName, '❌ No room ID - create room first')
-      updateResult(testName, { status: 'error' })
-      return
+      log(testName, "❌ No room ID - create room first");
+      updateResult(testName, { status: "error" });
+      return;
     }
 
-    updateResult(testName, { status: 'running' })
+    updateResult(testName, { status: "running" });
 
-    const sock = io({ path: '/api/socket' })
-    setSocket1(sock)
+    const sock = io({ path: "/api/socket" });
+    setSocket1(sock);
 
-    sock.on('connect', () => {
-      log(testName, `Connected: ${sock.id}`)
-      sock.emit('join-room', { roomId: activeRoomId, userId: 'test-user-1' })
-    })
+    sock.on("connect", () => {
+      log(testName, `Connected: ${sock.id}`);
+      sock.emit("join-room", { roomId: activeRoomId, userId: "test-user-1" });
+    });
 
-    sock.on('room-joined', (data) => {
-      log(testName, `✅ Joined room`, data)
-      updateResult(testName, { status: 'success' })
-    })
+    sock.on("room-joined", (data) => {
+      log(testName, `✅ Joined room`, data);
+      updateResult(testName, { status: "success" });
+    });
 
-    sock.on('room-error', (error) => {
-      log(testName, `❌ ${error.error}`)
-      updateResult(testName, { status: 'error' })
-    })
-  }
+    sock.on("room-error", (error) => {
+      log(testName, `❌ ${error.error}`);
+      updateResult(testName, { status: "error" });
+    });
+  };
 
   // Test 3: Multi-User Join
   const testMultiUserJoin = async (testRoomId?: string) => {
-    const testName = 'Multi-User Join'
-    const activeRoomId = testRoomId || roomId
+    const testName = "Multi-User Join";
+    const activeRoomId = testRoomId || roomId;
     if (!activeRoomId || !socket1) {
-      log(testName, '❌ Join room first (Test 2)')
-      updateResult(testName, { status: 'error' })
-      return
+      log(testName, "❌ Join room first (Test 2)");
+      updateResult(testName, { status: "error" });
+      return;
     }
 
-    updateResult(testName, { status: 'running' })
+    updateResult(testName, { status: "running" });
 
     // Listen on socket1 for member-joined
-    socket1.once('member-joined', (data) => {
-      log(testName, `✅ User 2 joined, ${data.onlineMembers.length} online`, data)
-      updateResult(testName, { status: 'success' })
-    })
+    socket1.once("member-joined", (data) => {
+      log(
+        testName,
+        `✅ User 2 joined, ${data.onlineMembers.length} online`,
+        data,
+      );
+      updateResult(testName, { status: "success" });
+    });
 
     // Connect socket2
-    const sock2 = io({ path: '/api/socket' })
-    setSocket2(sock2)
+    const sock2 = io({ path: "/api/socket" });
+    setSocket2(sock2);
 
-    sock2.on('connect', () => {
-      log(testName, `User 2 connected: ${sock2.id}`)
-      sock2.emit('join-room', { roomId: activeRoomId, userId: 'test-user-2' })
-    })
+    sock2.on("connect", () => {
+      log(testName, `User 2 connected: ${sock2.id}`);
+      sock2.emit("join-room", { roomId: activeRoomId, userId: "test-user-2" });
+    });
 
-    sock2.on('room-error', (error) => {
-      log(testName, `❌ ${error.error}`)
-      updateResult(testName, { status: 'error' })
-    })
-  }
+    sock2.on("room-error", (error) => {
+      log(testName, `❌ ${error.error}`);
+      updateResult(testName, { status: "error" });
+    });
+  };
 
   // Test 4: Game Move Broadcast
   const testGameMoveBroadcast = async (testRoomId?: string) => {
-    const testName = 'Game Move Broadcast'
-    const activeRoomId = testRoomId || roomId
+    const testName = "Game Move Broadcast";
+    const activeRoomId = testRoomId || roomId;
     if (!activeRoomId || !socket1 || !socket2) {
-      log(testName, '❌ Run Multi-User Join first (Test 3)')
-      updateResult(testName, { status: 'error' })
-      return
+      log(testName, "❌ Run Multi-User Join first (Test 3)");
+      updateResult(testName, { status: "error" });
+      return;
     }
 
-    updateResult(testName, { status: 'running' })
+    updateResult(testName, { status: "running" });
 
-    let socket1Received = false
-    let socket2Received = false
+    let socket1Received = false;
+    let socket2Received = false;
 
     const checkComplete = () => {
       if (socket1Received && socket2Received) {
-        log(testName, '✅ Both sockets received move')
-        updateResult(testName, { status: 'success' })
+        log(testName, "✅ Both sockets received move");
+        updateResult(testName, { status: "success" });
       }
-    }
+    };
 
-    socket1.once('room-move-accepted', (data) => {
-      log(testName, 'Socket 1 received move', data.move.type)
-      socket1Received = true
-      checkComplete()
-    })
+    socket1.once("room-move-accepted", (data) => {
+      log(testName, "Socket 1 received move", data.move.type);
+      socket1Received = true;
+      checkComplete();
+    });
 
-    socket2.once('room-move-accepted', (data) => {
-      log(testName, 'Socket 2 received move', data.move.type)
-      socket2Received = true
-      checkComplete()
-    })
+    socket2.once("room-move-accepted", (data) => {
+      log(testName, "Socket 2 received move", data.move.type);
+      socket2Received = true;
+      checkComplete();
+    });
 
     // Send move from socket1
-    socket1.emit('room-game-move', {
+    socket1.emit("room-game-move", {
       roomId: activeRoomId,
-      userId: 'test-guest-1',
+      userId: "test-guest-1",
       move: {
-        type: 'START_GAME',
-        playerId: 'player-1',
+        type: "START_GAME",
+        playerId: "player-1",
         timestamp: Date.now(),
-        data: { activePlayers: ['player-1'] },
+        data: { activePlayers: ["player-1"] },
       },
-    })
-  }
+    });
+  };
 
   // Test 5: Solo Play (Backward Compatibility)
   const testSoloPlay = async () => {
-    const testName = 'Solo Play'
-    updateResult(testName, { status: 'running' })
+    const testName = "Solo Play";
+    updateResult(testName, { status: "running" });
 
-    const soloSocket = io({ path: '/api/socket' })
+    const soloSocket = io({ path: "/api/socket" });
 
-    soloSocket.on('connect', () => {
-      log(testName, `Solo connected: ${soloSocket.id}`)
-      soloSocket.emit('join-arcade-session', { userId: `solo-guest-${Date.now()}` })
-    })
+    soloSocket.on("connect", () => {
+      log(testName, `Solo connected: ${soloSocket.id}`);
+      soloSocket.emit("join-arcade-session", {
+        userId: `solo-guest-${Date.now()}`,
+      });
+    });
 
-    soloSocket.on('no-active-session', () => {
-      log(testName, 'No active session (expected)')
+    soloSocket.on("no-active-session", () => {
+      log(testName, "No active session (expected)");
 
       // Send START_GAME
-      soloSocket.emit('game-move', {
+      soloSocket.emit("game-move", {
         userId: `solo-guest-${Date.now()}`,
         move: {
-          type: 'START_GAME',
-          playerId: 'player-1',
+          type: "START_GAME",
+          playerId: "player-1",
           timestamp: Date.now(),
-          data: { activePlayers: ['player-1'] },
+          data: { activePlayers: ["player-1"] },
         },
-      })
-    })
+      });
+    });
 
-    soloSocket.on('move-accepted', (data) => {
-      log(testName, '✅ Solo move accepted', data)
-      updateResult(testName, { status: 'success' })
-      soloSocket.disconnect()
-    })
+    soloSocket.on("move-accepted", (data) => {
+      log(testName, "✅ Solo move accepted", data);
+      updateResult(testName, { status: "success" });
+      soloSocket.disconnect();
+    });
 
-    soloSocket.on('move-rejected', (error) => {
-      log(testName, `❌ ${error.error}`)
-      updateResult(testName, { status: 'error' })
-      soloSocket.disconnect()
-    })
-  }
+    soloSocket.on("move-rejected", (error) => {
+      log(testName, `❌ ${error.error}`);
+      updateResult(testName, { status: "error" });
+      soloSocket.disconnect();
+    });
+  };
 
   // Test 6: Room Isolation (ensure solo doesn't leak to room)
   const testRoomIsolation = async () => {
-    const testName = 'Room Isolation'
+    const testName = "Room Isolation";
     if (!socket1) {
-      log(testName, '❌ Join room first (Test 2)')
-      updateResult(testName, { status: 'error' })
-      return
+      log(testName, "❌ Join room first (Test 2)");
+      updateResult(testName, { status: "error" });
+      return;
     }
 
-    updateResult(testName, { status: 'running' })
+    updateResult(testName, { status: "running" });
 
-    let receivedSoloMove = false
+    let receivedSoloMove = false;
 
-    socket1.once('room-move-accepted', (data) => {
-      if (data.userId.includes('solo-guest')) {
-        receivedSoloMove = true
-        log(testName, '❌ LEAK: Received solo move in room!')
-        updateResult(testName, { status: 'error' })
+    socket1.once("room-move-accepted", (data) => {
+      if (data.userId.includes("solo-guest")) {
+        receivedSoloMove = true;
+        log(testName, "❌ LEAK: Received solo move in room!");
+        updateResult(testName, { status: "error" });
       }
-    })
+    });
 
     // Create solo session
-    const soloSocket = io({ path: '/api/socket' })
-    soloSocket.on('connect', () => {
-      const soloUserId = `solo-guest-${Date.now()}`
-      soloSocket.emit('join-arcade-session', { userId: soloUserId })
+    const soloSocket = io({ path: "/api/socket" });
+    soloSocket.on("connect", () => {
+      const soloUserId = `solo-guest-${Date.now()}`;
+      soloSocket.emit("join-arcade-session", { userId: soloUserId });
 
       setTimeout(() => {
-        soloSocket.emit('game-move', {
+        soloSocket.emit("game-move", {
           userId: soloUserId,
           move: {
-            type: 'START_GAME',
-            playerId: 'player-1',
+            type: "START_GAME",
+            playerId: "player-1",
             timestamp: Date.now(),
-            data: { activePlayers: ['player-1'] },
+            data: { activePlayers: ["player-1"] },
           },
-        })
-      }, 500)
-    })
+        });
+      }, 500);
+    });
 
-    soloSocket.on('move-accepted', () => {
+    soloSocket.on("move-accepted", () => {
       // Wait to see if room received it
       setTimeout(() => {
         if (!receivedSoloMove) {
-          log(testName, '✅ Solo move did not leak to room')
-          updateResult(testName, { status: 'success' })
+          log(testName, "✅ Solo move did not leak to room");
+          updateResult(testName, { status: "success" });
         }
-        soloSocket.disconnect()
-      }, 1000)
-    })
-  }
+        soloSocket.disconnect();
+      }, 1000);
+    });
+  };
 
   const runAllTests = async () => {
-    clearResults()
-    setRoomId('') // Reset room ID
-    setSocket1(null)
-    setSocket2(null)
+    clearResults();
+    setRoomId(""); // Reset room ID
+    setSocket1(null);
+    setSocket2(null);
 
     // Test 1: Create Room
-    updateResult('Run All Tests', { status: 'running', message: 'Creating room...' })
+    updateResult("Run All Tests", {
+      status: "running",
+      message: "Creating room...",
+    });
 
     try {
-      const response = await fetch('/api/arcade/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/arcade/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: `Test Room ${Date.now()}`,
-          createdBy: 'test-user-1',
-          creatorName: 'Test User 1',
-          gameName: 'matching',
+          createdBy: "test-user-1",
+          creatorName: "Test User 1",
+          gameName: "matching",
           gameConfig: { difficulty: 6 },
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      const data = await response.json()
-      const createdRoomId = data.room.id
-      setRoomId(createdRoomId)
+      const data = await response.json();
+      const createdRoomId = data.room.id;
+      setRoomId(createdRoomId);
 
-      log('Create Room', `✅ Room created: ${data.room.code}`, data.room)
-      updateResult('Create Room', { status: 'success' })
+      log("Create Room", `✅ Room created: ${data.room.code}`, data.room);
+      updateResult("Create Room", { status: "success" });
 
-      updateResult('Run All Tests', { message: 'Room created, running tests...' })
-      await new Promise((r) => setTimeout(r, 1000))
+      updateResult("Run All Tests", {
+        message: "Room created, running tests...",
+      });
+      await new Promise((r) => setTimeout(r, 1000));
 
       // Now run tests with the roomId we just got
-      await runTestsWithRoom(createdRoomId)
+      await runTestsWithRoom(createdRoomId);
     } catch (error) {
-      log('Create Room', `❌ ${error}`)
-      updateResult('Create Room', { status: 'error' })
-      updateResult('Run All Tests', { status: 'error', message: 'Room creation failed' })
+      log("Create Room", `❌ ${error}`);
+      updateResult("Create Room", { status: "error" });
+      updateResult("Run All Tests", {
+        status: "error",
+        message: "Room creation failed",
+      });
     }
-  }
+  };
 
   const runTestsWithRoom = async (testRoomId: string) => {
     // Pass testRoomId to each test to avoid state closure issues
 
     // Test 2: Join Room
-    await testJoinRoom(testRoomId)
-    await new Promise((r) => setTimeout(r, 2000))
+    await testJoinRoom(testRoomId);
+    await new Promise((r) => setTimeout(r, 2000));
 
     // Test 3: Multi-User Join
-    await testMultiUserJoin(testRoomId)
-    await new Promise((r) => setTimeout(r, 2000))
+    await testMultiUserJoin(testRoomId);
+    await new Promise((r) => setTimeout(r, 2000));
 
     // Test 4: Game Move Broadcast
-    await testGameMoveBroadcast(testRoomId)
-    await new Promise((r) => setTimeout(r, 2000))
+    await testGameMoveBroadcast(testRoomId);
+    await new Promise((r) => setTimeout(r, 2000));
 
     // Test 5: Solo Play (doesn't need roomId)
-    await testSoloPlay()
-    await new Promise((r) => setTimeout(r, 2000))
+    await testSoloPlay();
+    await new Promise((r) => setTimeout(r, 2000));
 
     // Test 6: Room Isolation (doesn't need roomId parameter since it uses socket1)
-    await testRoomIsolation()
-    await new Promise((r) => setTimeout(r, 1000))
+    await testRoomIsolation();
+    await new Promise((r) => setTimeout(r, 1000));
 
-    updateResult('Run All Tests', { status: 'success', message: '✅ All tests completed' })
-  }
+    updateResult("Run All Tests", {
+      status: "success",
+      message: "✅ All tests completed",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-2">Arcade Rooms Manual Testing</h1>
-        <p className="text-gray-600 mb-8">Phase 1 & 2: Room CRUD, Socket.IO Integration</p>
+        <p className="text-gray-600 mb-8">
+          Phase 1 & 2: Room CRUD, Socket.IO Integration
+        </p>
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Test Controls</h2>
@@ -411,7 +430,8 @@ export default function ArcadeRoomsTestPage() {
           {roomId && (
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
               <p className="text-sm">
-                <strong>Room ID:</strong> <code className="text-xs">{roomId}</code>
+                <strong>Room ID:</strong>{" "}
+                <code className="text-xs">{roomId}</code>
               </p>
             </div>
           )}
@@ -421,7 +441,9 @@ export default function ArcadeRoomsTestPage() {
           <h2 className="text-xl font-semibold mb-4">Test Results</h2>
 
           {results.length === 0 && (
-            <p className="text-gray-500 italic">No tests run yet. Click a button above to start.</p>
+            <p className="text-gray-500 italic">
+              No tests run yet. Click a button above to start.
+            </p>
           )}
 
           <div className="space-y-3">
@@ -429,13 +451,13 @@ export default function ArcadeRoomsTestPage() {
               <div
                 key={i}
                 className={`p-4 rounded border ${
-                  result.status === 'success'
-                    ? 'bg-green-50 border-green-200'
-                    : result.status === 'error'
-                      ? 'bg-red-50 border-red-200'
-                      : result.status === 'running'
-                        ? 'bg-yellow-50 border-yellow-200'
-                        : 'bg-gray-50 border-gray-200'
+                  result.status === "success"
+                    ? "bg-green-50 border-green-200"
+                    : result.status === "error"
+                      ? "bg-red-50 border-red-200"
+                      : result.status === "running"
+                        ? "bg-yellow-50 border-yellow-200"
+                        : "bg-gray-50 border-gray-200"
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -444,20 +466,22 @@ export default function ArcadeRoomsTestPage() {
                       <span className="font-semibold">{result.name}</span>
                       <span
                         className={`text-xs px-2 py-1 rounded ${
-                          result.status === 'success'
-                            ? 'bg-green-200 text-green-800'
-                            : result.status === 'error'
-                              ? 'bg-red-200 text-red-800'
-                              : result.status === 'running'
-                                ? 'bg-yellow-200 text-yellow-800'
-                                : 'bg-gray-200 text-gray-800'
+                          result.status === "success"
+                            ? "bg-green-200 text-green-800"
+                            : result.status === "error"
+                              ? "bg-red-200 text-red-800"
+                              : result.status === "running"
+                                ? "bg-yellow-200 text-yellow-800"
+                                : "bg-gray-200 text-gray-800"
                         }`}
                       >
                         {result.status}
                       </span>
                     </div>
                     {result.message && (
-                      <p className="text-sm mt-1 text-gray-700">{result.message}</p>
+                      <p className="text-sm mt-1 text-gray-700">
+                        {result.message}
+                      </p>
                     )}
                     {result.data && (
                       <details className="mt-2">
@@ -488,5 +512,5 @@ export default function ArcadeRoomsTestPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

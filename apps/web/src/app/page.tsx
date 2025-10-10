@@ -1,59 +1,73 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { PageWithNav } from '@/components/PageWithNav'
-import { css } from '../../styled-system/css'
-import { container, hstack, stack } from '../../styled-system/patterns'
+import Link from "next/link";
+import { PageWithNav } from "@/components/PageWithNav";
+import { css } from "../../styled-system/css";
+import { container, hstack, stack } from "../../styled-system/patterns";
 
 export default function HomePage() {
   return (
     <PageWithNav navTitle="Soroban Flashcards" navEmoji="🧮">
-      <div className={css({ minHeight: '100vh', bg: 'gradient-to-br from-brand.50 to-brand.100' })}>
+      <div
+        className={css({
+          minHeight: "100vh",
+          bg: "gradient-to-br from-brand.50 to-brand.100",
+        })}
+      >
         {/* Hero Section */}
-        <main className={container({ maxW: '6xl', px: '4' })}>
-          <div className={stack({ gap: '12', py: '16', align: 'center', textAlign: 'center' })}>
+        <main className={container({ maxW: "6xl", px: "4" })}>
+          <div
+            className={stack({
+              gap: "12",
+              py: "16",
+              align: "center",
+              textAlign: "center",
+            })}
+          >
             {/* Hero Content */}
-            <div className={stack({ gap: '6', maxW: '4xl' })}>
+            <div className={stack({ gap: "6", maxW: "4xl" })}>
               <h1
                 className={css({
-                  fontSize: { base: '4xl', md: '6xl' },
-                  fontWeight: 'bold',
-                  color: 'gray.900',
-                  lineHeight: 'tight',
+                  fontSize: { base: "4xl", md: "6xl" },
+                  fontWeight: "bold",
+                  color: "gray.900",
+                  lineHeight: "tight",
                 })}
               >
-                Beautiful Soroban <span className={css({ color: 'brand.600' })}>Flashcards</span>
+                Beautiful Soroban{" "}
+                <span className={css({ color: "brand.600" })}>Flashcards</span>
               </h1>
 
               <p
                 className={css({
-                  fontSize: { base: 'lg', md: 'xl' },
-                  color: 'gray.600',
-                  maxW: '2xl',
-                  mx: 'auto',
+                  fontSize: { base: "lg", md: "xl" },
+                  color: "gray.600",
+                  maxW: "2xl",
+                  mx: "auto",
                 })}
               >
-                Create stunning, educational flashcards with authentic Japanese abacus
-                representations. Perfect for teachers, students, and mental math enthusiasts.
+                Create stunning, educational flashcards with authentic Japanese
+                abacus representations. Perfect for teachers, students, and
+                mental math enthusiasts.
               </p>
 
-              <div className={hstack({ gap: '4', justify: 'center', mt: '8' })}>
+              <div className={hstack({ gap: "4", justify: "center", mt: "8" })}>
                 <Link
                   href="/create"
                   className={css({
-                    px: '8',
-                    py: '4',
-                    bg: 'brand.600',
-                    color: 'white',
-                    fontSize: 'lg',
-                    fontWeight: 'semibold',
-                    rounded: 'xl',
-                    shadow: 'card',
-                    transition: 'all',
+                    px: "8",
+                    py: "4",
+                    bg: "brand.600",
+                    color: "white",
+                    fontSize: "lg",
+                    fontWeight: "semibold",
+                    rounded: "xl",
+                    shadow: "card",
+                    transition: "all",
                     _hover: {
-                      bg: 'brand.700',
-                      transform: 'translateY(-2px)',
-                      shadow: 'modal',
+                      bg: "brand.700",
+                      transform: "translateY(-2px)",
+                      shadow: "modal",
                     },
                   })}
                 >
@@ -63,20 +77,20 @@ export default function HomePage() {
                 <Link
                   href="/guide"
                   className={css({
-                    px: '8',
-                    py: '4',
-                    bg: 'white',
-                    color: 'brand.700',
-                    fontSize: 'lg',
-                    fontWeight: 'semibold',
-                    rounded: 'xl',
-                    shadow: 'card',
-                    border: '2px solid',
-                    borderColor: 'brand.200',
-                    transition: 'all',
+                    px: "8",
+                    py: "4",
+                    bg: "white",
+                    color: "brand.700",
+                    fontSize: "lg",
+                    fontWeight: "semibold",
+                    rounded: "xl",
+                    shadow: "card",
+                    border: "2px solid",
+                    borderColor: "brand.200",
+                    transition: "all",
                     _hover: {
-                      borderColor: 'brand.400',
-                      transform: 'translateY(-2px)',
+                      borderColor: "brand.400",
+                      transform: "translateY(-2px)",
                     },
                   })}
                 >
@@ -88,11 +102,11 @@ export default function HomePage() {
             {/* Features Grid */}
             <div
               className={css({
-                display: 'grid',
-                gridTemplateColumns: { base: '1', md: '3' },
-                gap: '8',
-                mt: '16',
-                w: 'full',
+                display: "grid",
+                gridTemplateColumns: { base: "1", md: "3" },
+                gap: "8",
+                mt: "16",
+                w: "full",
               })}
             >
               <FeatureCard
@@ -115,7 +129,7 @@ export default function HomePage() {
         </main>
       </div>
     </PageWithNav>
-  )
+  );
 }
 
 function FeatureCard({
@@ -123,51 +137,51 @@ function FeatureCard({
   title,
   description,
 }: {
-  icon: string
-  title: string
-  description: string
+  icon: string;
+  title: string;
+  description: string;
 }) {
   return (
     <div
       className={css({
-        p: '8',
-        bg: 'white',
-        rounded: '2xl',
-        shadow: 'card',
-        textAlign: 'center',
-        transition: 'all',
+        p: "8",
+        bg: "white",
+        rounded: "2xl",
+        shadow: "card",
+        textAlign: "center",
+        transition: "all",
         _hover: {
-          transform: 'translateY(-4px)',
-          shadow: 'modal',
+          transform: "translateY(-4px)",
+          shadow: "modal",
         },
       })}
     >
       <div
         className={css({
-          fontSize: '4xl',
-          mb: '4',
+          fontSize: "4xl",
+          mb: "4",
         })}
       >
         {icon}
       </div>
       <h3
         className={css({
-          fontSize: 'xl',
-          fontWeight: 'bold',
-          color: 'gray.900',
-          mb: '3',
+          fontSize: "xl",
+          fontWeight: "bold",
+          color: "gray.900",
+          mb: "3",
         })}
       >
         {title}
       </h3>
       <p
         className={css({
-          color: 'gray.600',
-          lineHeight: 'relaxed',
+          color: "gray.600",
+          lineHeight: "relaxed",
         })}
       >
         {description}
       </p>
     </div>
-  )
+  );
 }

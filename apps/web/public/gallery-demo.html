@@ -1,379 +1,451 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>🧮 Soroban Templates - Live Demo</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: #f5f5f5;
-            padding: 20px;
-        }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f5f5f5;
+        padding: 20px;
+      }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
 
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 40px 20px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 40px 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
 
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            color: #2c3e50;
-        }
+      .header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        color: #2c3e50;
+      }
 
-        .header p {
-            font-size: 1.1rem;
-            color: #666;
-            margin-bottom: 20px;
-        }
+      .header p {
+        font-size: 1.1rem;
+        color: #666;
+        margin-bottom: 20px;
+      }
 
-        .section {
-            background: white;
-            margin-bottom: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
+      .section {
+        background: white;
+        margin-bottom: 30px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
 
-        .section-header {
-            padding: 20px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #eee;
-        }
+      .section-header {
+        padding: 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #eee;
+      }
 
-        .section-header h2 {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
+      .section-header h2 {
+        font-size: 1.5rem;
+        color: #2c3e50;
+        margin-bottom: 5px;
+      }
 
-        .section-header p {
-            color: #666;
-            font-size: 0.95rem;
-        }
+      .section-header p {
+        color: #666;
+        font-size: 0.95rem;
+      }
 
-        .section-content {
-            padding: 30px;
-        }
+      .section-content {
+        padding: 30px;
+      }
 
-        .demo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
+      .demo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+      }
 
-        .demo-item {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            background: #fafafa;
-        }
+      .demo-item {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        background: #fafafa;
+      }
 
-        .demo-item h3 {
-            margin-bottom: 10px;
-            color: #444;
-            font-size: 1.1rem;
-        }
+      .demo-item h3 {
+        margin-bottom: 10px;
+        color: #444;
+        font-size: 1.1rem;
+      }
 
-        .demo-item .description {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 15px;
-        }
+      .demo-item .description {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 15px;
+      }
 
-        .svg-container {
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            padding: 10px;
-            background: white;
-            display: inline-block;
-            margin: 10px 0;
-        }
+      .svg-container {
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 10px;
+        background: white;
+        display: inline-block;
+        margin: 10px 0;
+      }
 
-        .controls {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
+      .controls {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
 
-        .controls h3 {
-            margin-bottom: 15px;
-            color: #333;
-        }
+      .controls h3 {
+        margin-bottom: 15px;
+        color: #333;
+      }
 
-        .control-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+      .control-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
 
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
 
-        .control-group label {
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #555;
-        }
+      .control-group label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #555;
+      }
 
-        .control-group input, .control-group select {
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
+      .control-group input,
+      .control-group select {
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 0.9rem;
+      }
 
-        button {
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
+      button {
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
 
-        button:hover {
-            background: #0056b3;
-        }
+      button:hover {
+        background: #0056b3;
+      }
 
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
 
-        .status {
-            margin-top: 15px;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 0.9rem;
-        }
+      .status {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+      }
 
-        .status.loading {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-        }
+      .status.loading {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+      }
 
-        .status.success {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-        }
+      .status.success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+      }
 
-        .status.error {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-        }
+      .status.error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+      }
 
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
+      .comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+      }
 
-        .comparison-item {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            background: white;
-        }
+      .comparison-item {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        background: white;
+      }
 
-        .comparison-item h4 {
-            margin-bottom: 10px;
-            color: #333;
-        }
+      .comparison-item h4 {
+        margin-bottom: 10px;
+        color: #333;
+      }
 
-        .size-info {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 10px;
-            font-family: monospace;
-        }
+      .size-info {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 10px;
+        font-family: monospace;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="header">
-            <h1>🧮 Soroban Templates - Live Browser Demo</h1>
-            <p>Real-time SVG generation with viewport cropping using Typst.ts in your browser</p>
-            <p><strong>This demonstrates the EXACT same functionality as the template package examples</strong></p>
+      <div class="header">
+        <h1>🧮 Soroban Templates - Live Browser Demo</h1>
+        <p>
+          Real-time SVG generation with viewport cropping using Typst.ts in your
+          browser
+        </p>
+        <p>
+          <strong
+            >This demonstrates the EXACT same functionality as the template
+            package examples</strong
+          >
+        </p>
+      </div>
+
+      <!-- Interactive Controls -->
+      <div class="section">
+        <div class="section-header">
+          <h2>🎛️ Interactive Generation</h2>
+          <p>Generate SVGs in real-time and see viewport cropping in action</p>
         </div>
-
-        <!-- Interactive Controls -->
-        <div class="section">
-            <div class="section-header">
-                <h2>🎛️ Interactive Generation</h2>
-                <p>Generate SVGs in real-time and see viewport cropping in action</p>
+        <div class="section-content">
+          <div class="controls">
+            <h3>Configuration</h3>
+            <div class="control-row">
+              <div class="control-group">
+                <label for="number">Number:</label>
+                <input
+                  type="number"
+                  id="number"
+                  value="42"
+                  min="0"
+                  max="9999"
+                />
+              </div>
+              <div class="control-group">
+                <label for="beadShape">Bead Shape:</label>
+                <select id="beadShape">
+                  <option value="diamond">Diamond</option>
+                  <option value="circle">Circle</option>
+                  <option value="square">Square</option>
+                </select>
+              </div>
+              <div class="control-group">
+                <label for="colorScheme">Color Scheme:</label>
+                <select id="colorScheme">
+                  <option value="monochrome">Monochrome</option>
+                  <option value="place-value" selected>Place Value</option>
+                  <option value="heaven-earth">Heaven Earth</option>
+                  <option value="alternating">Alternating</option>
+                </select>
+              </div>
+              <div class="control-group">
+                <label for="scaleFactor">Scale:</label>
+                <select id="scaleFactor">
+                  <option value="0.5">0.5x</option>
+                  <option value="1.0" selected>1.0x</option>
+                  <option value="1.5">1.5x</option>
+                  <option value="2.0">2.0x</option>
+                </select>
+              </div>
             </div>
-            <div class="section-content">
-                <div class="controls">
-                    <h3>Configuration</h3>
-                    <div class="control-row">
-                        <div class="control-group">
-                            <label for="number">Number:</label>
-                            <input type="number" id="number" value="42" min="0" max="9999">
-                        </div>
-                        <div class="control-group">
-                            <label for="beadShape">Bead Shape:</label>
-                            <select id="beadShape">
-                                <option value="diamond">Diamond</option>
-                                <option value="circle">Circle</option>
-                                <option value="square">Square</option>
-                            </select>
-                        </div>
-                        <div class="control-group">
-                            <label for="colorScheme">Color Scheme:</label>
-                            <select id="colorScheme">
-                                <option value="monochrome">Monochrome</option>
-                                <option value="place-value" selected>Place Value</option>
-                                <option value="heaven-earth">Heaven Earth</option>
-                                <option value="alternating">Alternating</option>
-                            </select>
-                        </div>
-                        <div class="control-group">
-                            <label for="scaleFactor">Scale:</label>
-                            <select id="scaleFactor">
-                                <option value="0.5">0.5x</option>
-                                <option value="1.0" selected>1.0x</option>
-                                <option value="1.5">1.5x</option>
-                                <option value="2.0">2.0x</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="control-row">
-                        <button onclick="generateSingle()">Generate Single SVG</button>
-                        <button onclick="generateComparison()">Generate Size Comparison</button>
-                        <button onclick="clearResults()">Clear Results</button>
-                    </div>
-                    <div id="status" class="status" style="display: none;"></div>
-                </div>
-
-                <div id="singleResult" class="demo-grid" style="display: none;">
-                    <!-- Single generation result will appear here -->
-                </div>
-
-                <div id="comparisonResult" class="comparison-grid" style="display: none;">
-                    <!-- Size comparison results will appear here -->
-                </div>
+            <div class="control-row">
+              <button onclick="generateSingle()">Generate Single SVG</button>
+              <button onclick="generateComparison()">
+                Generate Size Comparison
+              </button>
+              <button onclick="clearResults()">Clear Results</button>
             </div>
+            <div id="status" class="status" style="display: none"></div>
+          </div>
+
+          <div id="singleResult" class="demo-grid" style="display: none">
+            <!-- Single generation result will appear here -->
+          </div>
+
+          <div
+            id="comparisonResult"
+            class="comparison-grid"
+            style="display: none"
+          >
+            <!-- Size comparison results will appear here -->
+          </div>
         </div>
+      </div>
 
-        <!-- Viewport Cropping Demo -->
-        <div class="section">
-            <div class="section-header">
-                <h2>📏 Viewport Cropping Test</h2>
-                <p>Different canvas sizes should produce identical visual output after processing</p>
-            </div>
-            <div class="section-content">
-                <div class="controls">
-                    <button onclick="runViewportTest()">Run Viewport Cropping Test</button>
-                    <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">
-                        This will generate the same number (123) with different canvas sizes.
-                        If viewport cropping works, all outputs should look identical despite different initial dimensions.
-                    </p>
-                </div>
-                <div id="viewportTestResult" class="comparison-grid" style="display: none;">
-                    <!-- Viewport test results will appear here -->
-                </div>
-            </div>
+      <!-- Viewport Cropping Demo -->
+      <div class="section">
+        <div class="section-header">
+          <h2>📏 Viewport Cropping Test</h2>
+          <p>
+            Different canvas sizes should produce identical visual output after
+            processing
+          </p>
         </div>
+        <div class="section-content">
+          <div class="controls">
+            <button onclick="runViewportTest()">
+              Run Viewport Cropping Test
+            </button>
+            <p style="margin-top: 10px; font-size: 0.9rem; color: #666">
+              This will generate the same number (123) with different canvas
+              sizes. If viewport cropping works, all outputs should look
+              identical despite different initial dimensions.
+            </p>
+          </div>
+          <div
+            id="viewportTestResult"
+            class="comparison-grid"
+            style="display: none"
+          >
+            <!-- Viewport test results will appear here -->
+          </div>
+        </div>
+      </div>
 
-        <!-- Technical Info -->
-        <div class="section">
-            <div class="section-header">
-                <h2>🔧 How It Works</h2>
-                <p>Technical details about the browser-side generation and processing</p>
-            </div>
-            <div class="section-content">
-                <div style="font-size: 0.95rem; line-height: 1.7;">
-                    <p><strong>1. Browser-side Typst Compilation:</strong> Uses <code>@myriaddreamin/typst-all-in-one.ts</code> WASM module to compile Typst templates directly in your browser.</p>
-                    <p><strong>2. Template Loading:</strong> Fetches the official <code>flashcards.typ</code> template from the <code>@soroban/templates</code> package via API.</p>
-                    <p><strong>3. Crop Mark Generation:</strong> Template generates invisible crop marks as linked elements (<code>crop-mark://left</code>, etc.).</p>
-                    <p><strong>4. SVG Post-Processing:</strong> Uses the official SVG processor to detect crop marks and optimize the viewBox for minimal whitespace.</p>
-                    <p><strong>5. Bead Annotations:</strong> Adds interactive data attributes to each bead element for hover effects and click handling.</p>
-                    <p style="margin-top: 15px; padding: 15px; background: #e8f4fd; border-left: 4px solid #007bff; border-radius: 4px;">
-                        <strong>🎯 Key Test:</strong> If viewport cropping is working correctly, SVGs generated with different canvas sizes (100x120pt vs 500x600pt) should look identical after processing, proving that the processor successfully detected crop marks and optimized the viewBox.
-                    </p>
-                </div>
-            </div>
+      <!-- Technical Info -->
+      <div class="section">
+        <div class="section-header">
+          <h2>🔧 How It Works</h2>
+          <p>
+            Technical details about the browser-side generation and processing
+          </p>
         </div>
+        <div class="section-content">
+          <div style="font-size: 0.95rem; line-height: 1.7">
+            <p>
+              <strong>1. Browser-side Typst Compilation:</strong> Uses
+              <code>@myriaddreamin/typst-all-in-one.ts</code> WASM module to
+              compile Typst templates directly in your browser.
+            </p>
+            <p>
+              <strong>2. Template Loading:</strong> Fetches the official
+              <code>flashcards.typ</code> template from the
+              <code>@soroban/templates</code> package via API.
+            </p>
+            <p>
+              <strong>3. Crop Mark Generation:</strong> Template generates
+              invisible crop marks as linked elements
+              (<code>crop-mark://left</code>, etc.).
+            </p>
+            <p>
+              <strong>4. SVG Post-Processing:</strong> Uses the official SVG
+              processor to detect crop marks and optimize the viewBox for
+              minimal whitespace.
+            </p>
+            <p>
+              <strong>5. Bead Annotations:</strong> Adds interactive data
+              attributes to each bead element for hover effects and click
+              handling.
+            </p>
+            <p
+              style="
+                margin-top: 15px;
+                padding: 15px;
+                background: #e8f4fd;
+                border-left: 4px solid #007bff;
+                border-radius: 4px;
+              "
+            >
+              <strong>🎯 Key Test:</strong> If viewport cropping is working
+              correctly, SVGs generated with different canvas sizes (100x120pt
+              vs 500x600pt) should look identical after processing, proving that
+              the processor successfully detected crop marks and optimized the
+              viewBox.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Import Typst.ts and SVG Processor -->
     <script>
-        // Global variables
-        let typstRenderer = null;
-        let flashcardsTemplate = null;
+      // Global variables
+      let typstRenderer = null;
+      let flashcardsTemplate = null;
 
-        // Initialize everything - use web app's API instead of direct Typst
-        async function initialize() {
-            try {
-                // Test that the API is available
-                const healthResponse = await fetch('/api/typst-svg');
-                const healthData = await healthResponse.json();
-                if (healthData.status === 'healthy') {
-                    console.log('✅ Web app SVG API is available');
-                } else {
-                    throw new Error('SVG API not healthy');
-                }
+      // Initialize everything - use web app's API instead of direct Typst
+      async function initialize() {
+        try {
+          // Test that the API is available
+          const healthResponse = await fetch("/api/typst-svg");
+          const healthData = await healthResponse.json();
+          if (healthData.status === "healthy") {
+            console.log("✅ Web app SVG API is available");
+          } else {
+            throw new Error("SVG API not healthy");
+          }
 
-                // Enable buttons
-                document.querySelectorAll('button').forEach(btn => btn.disabled = false);
-
-            } catch (error) {
-                console.error('❌ Initialization failed:', error);
-                showStatus('Initialization failed: ' + error.message + '. Make sure the web app is running.', 'error');
-            }
+          // Enable buttons
+          document
+            .querySelectorAll("button")
+            .forEach((btn) => (btn.disabled = false));
+        } catch (error) {
+          console.error("❌ Initialization failed:", error);
+          showStatus(
+            "Initialization failed: " +
+              error.message +
+              ". Make sure the web app is running.",
+            "error",
+          );
         }
+      }
 
-        function showStatus(message, type = 'loading') {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = `status ${type}`;
-            status.style.display = 'block';
-        }
+      function showStatus(message, type = "loading") {
+        const status = document.getElementById("status");
+        status.textContent = message;
+        status.className = `status ${type}`;
+        status.style.display = "block";
+      }
 
-        function createTypstContent(config) {
-            const {
-                number = 42,
-                beadShape = 'diamond',
-                colorScheme = 'place-value',
-                scaleFactor = 1.0,
-                width = '200pt',
-                height = '250pt'
-            } = config;
+      function createTypstContent(config) {
+        const {
+          number = 42,
+          beadShape = "diamond",
+          colorScheme = "place-value",
+          scaleFactor = 1.0,
+          width = "200pt",
+          height = "250pt",
+        } = config;
 
-            return `
+        return `
 ${flashcardsTemplate}
 
 #set page(
@@ -408,61 +480,65 @@ ${flashcardsTemplate}
   ]
 ]
 `;
+      }
+
+      async function generateSVG(config) {
+        console.log("🎨 Generating SVG via web app API for:", config);
+
+        // Use the web app's API to generate the SVG (which includes processing)
+        const response = await fetch("/api/typst-svg", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            number: config.number,
+            beadShape: config.beadShape,
+            colorScheme: config.colorScheme,
+            scaleFactor: config.scaleFactor,
+            width: config.width,
+            height: config.height,
+            transparent: false,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`);
         }
 
-        async function generateSVG(config) {
-            console.log('🎨 Generating SVG via web app API for:', config);
-
-            // Use the web app's API to generate the SVG (which includes processing)
-            const response = await fetch('/api/typst-svg', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    number: config.number,
-                    beadShape: config.beadShape,
-                    colorScheme: config.colorScheme,
-                    scaleFactor: config.scaleFactor,
-                    width: config.width,
-                    height: config.height,
-                    transparent: false
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`API request failed: ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (!data.success) {
-                throw new Error(data.error || 'SVG generation failed');
-            }
-
-            console.log('✅ SVG generated via API, length:', data.svg.length);
-            console.log('🎯 This SVG has been processed by the web app with viewport cropping!');
-
-            return data.svg;
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.error || "SVG generation failed");
         }
 
-        // Global functions for button handlers
-        async function generateSingle() {
-            try {
-                showStatus('Generating SVG...', 'loading');
+        console.log("✅ SVG generated via API, length:", data.svg.length);
+        console.log(
+          "🎯 This SVG has been processed by the web app with viewport cropping!",
+        );
 
-                const config = {
-                    number: parseInt(document.getElementById('number').value),
-                    beadShape: document.getElementById('beadShape').value,
-                    colorScheme: document.getElementById('colorScheme').value,
-                    scaleFactor: parseFloat(document.getElementById('scaleFactor').value),
-                    width: '200pt',
-                    height: '250pt'
-                };
+        return data.svg;
+      }
 
-                const svg = await generateSVG(config);
+      // Global functions for button handlers
+      async function generateSingle() {
+        try {
+          showStatus("Generating SVG...", "loading");
 
-                const resultDiv = document.getElementById('singleResult');
-                resultDiv.innerHTML = `
+          const config = {
+            number: parseInt(document.getElementById("number").value),
+            beadShape: document.getElementById("beadShape").value,
+            colorScheme: document.getElementById("colorScheme").value,
+            scaleFactor: parseFloat(
+              document.getElementById("scaleFactor").value,
+            ),
+            width: "200pt",
+            height: "250pt",
+          };
+
+          const svg = await generateSVG(config);
+
+          const resultDiv = document.getElementById("singleResult");
+          resultDiv.innerHTML = `
                     <div class="demo-item">
                         <h3>Generated Soroban</h3>
                         <div class="description">Number: ${config.number}, Shape: ${config.beadShape}, Scheme: ${config.colorScheme}</div>
@@ -470,43 +546,46 @@ ${flashcardsTemplate}
                         <div class="size-info">Canvas: ${config.width} × ${config.height}<br>SVG Length: ${svg.length} chars</div>
                     </div>
                 `;
-                resultDiv.style.display = 'grid';
+          resultDiv.style.display = "grid";
 
-                showStatus('SVG generated successfully!', 'success');
-
-            } catch (error) {
-                console.error('❌ Generation failed:', error);
-                showStatus('Generation failed: ' + error.message, 'error');
-            }
+          showStatus("SVG generated successfully!", "success");
+        } catch (error) {
+          console.error("❌ Generation failed:", error);
+          showStatus("Generation failed: " + error.message, "error");
         }
+      }
 
-        async function generateComparison() {
-            try {
-                showStatus('Generating size comparison...', 'loading');
+      async function generateComparison() {
+        try {
+          showStatus("Generating size comparison...", "loading");
 
-                const baseConfig = {
-                    number: parseInt(document.getElementById('number').value),
-                    beadShape: document.getElementById('beadShape').value,
-                    colorScheme: document.getElementById('colorScheme').value,
-                    scaleFactor: parseFloat(document.getElementById('scaleFactor').value)
-                };
+          const baseConfig = {
+            number: parseInt(document.getElementById("number").value),
+            beadShape: document.getElementById("beadShape").value,
+            colorScheme: document.getElementById("colorScheme").value,
+            scaleFactor: parseFloat(
+              document.getElementById("scaleFactor").value,
+            ),
+          };
 
-                const sizes = [
-                    { width: '150pt', height: '180pt', label: 'Small' },
-                    { width: '200pt', height: '250pt', label: 'Medium' },
-                    { width: '300pt', height: '400pt', label: 'Large' },
-                    { width: '500pt', height: '600pt', label: 'Huge' }
-                ];
+          const sizes = [
+            { width: "150pt", height: "180pt", label: "Small" },
+            { width: "200pt", height: "250pt", label: "Medium" },
+            { width: "300pt", height: "400pt", label: "Large" },
+            { width: "500pt", height: "600pt", label: "Huge" },
+          ];
 
-                const results = [];
-                for (const size of sizes) {
-                    const config = { ...baseConfig, ...size };
-                    const svg = await generateSVG(config);
-                    results.push({ ...size, svg, config });
-                }
+          const results = [];
+          for (const size of sizes) {
+            const config = { ...baseConfig, ...size };
+            const svg = await generateSVG(config);
+            results.push({ ...size, svg, config });
+          }
 
-                const resultDiv = document.getElementById('comparisonResult');
-                resultDiv.innerHTML = results.map(({ label, width, height, svg, config }) => `
+          const resultDiv = document.getElementById("comparisonResult");
+          resultDiv.innerHTML = results
+            .map(
+              ({ label, width, height, svg, config }) => `
                     <div class="comparison-item">
                         <h4>${label} Canvas</h4>
                         <div class="svg-container">${svg}</div>
@@ -516,44 +595,50 @@ ${flashcardsTemplate}
                             Number: ${config.number}
                         </div>
                     </div>
-                `).join('');
-                resultDiv.style.display = 'grid';
+                `,
+            )
+            .join("");
+          resultDiv.style.display = "grid";
 
-                showStatus('Size comparison complete! Check if all look identical (proving viewport cropping works)', 'success');
-
-            } catch (error) {
-                console.error('❌ Comparison failed:', error);
-                showStatus('Comparison failed: ' + error.message, 'error');
-            }
+          showStatus(
+            "Size comparison complete! Check if all look identical (proving viewport cropping works)",
+            "success",
+          );
+        } catch (error) {
+          console.error("❌ Comparison failed:", error);
+          showStatus("Comparison failed: " + error.message, "error");
         }
+      }
 
-        async function runViewportTest() {
-            try {
-                showStatus('Running viewport cropping test...', 'loading');
+      async function runViewportTest() {
+        try {
+          showStatus("Running viewport cropping test...", "loading");
 
-                const testNumber = 123;
-                const sizes = [
-                    { width: '100pt', height: '120pt', label: 'Tiny Canvas' },
-                    { width: '200pt', height: '250pt', label: 'Normal Canvas' },
-                    { width: '400pt', height: '500pt', label: 'Large Canvas' },
-                    { width: '800pt', height: '1000pt', label: 'Huge Canvas' }
-                ];
+          const testNumber = 123;
+          const sizes = [
+            { width: "100pt", height: "120pt", label: "Tiny Canvas" },
+            { width: "200pt", height: "250pt", label: "Normal Canvas" },
+            { width: "400pt", height: "500pt", label: "Large Canvas" },
+            { width: "800pt", height: "1000pt", label: "Huge Canvas" },
+          ];
 
-                const results = [];
-                for (const size of sizes) {
-                    const config = {
-                        number: testNumber,
-                        beadShape: 'diamond',
-                        colorScheme: 'place-value',
-                        scaleFactor: 1.0,
-                        ...size
-                    };
-                    const svg = await generateSVG(config);
-                    results.push({ ...size, svg });
-                }
+          const results = [];
+          for (const size of sizes) {
+            const config = {
+              number: testNumber,
+              beadShape: "diamond",
+              colorScheme: "place-value",
+              scaleFactor: 1.0,
+              ...size,
+            };
+            const svg = await generateSVG(config);
+            results.push({ ...size, svg });
+          }
 
-                const resultDiv = document.getElementById('viewportTestResult');
-                resultDiv.innerHTML = results.map(({ label, width, height, svg }) => `
+          const resultDiv = document.getElementById("viewportTestResult");
+          resultDiv.innerHTML = results
+            .map(
+              ({ label, width, height, svg }) => `
                     <div class="comparison-item">
                         <h4>${label}</h4>
                         <div class="description">Initial: ${width} × ${height}</div>
@@ -564,31 +649,37 @@ ${flashcardsTemplate}
                             <strong>If cropping works: all should look identical!</strong>
                         </div>
                     </div>
-                `).join('');
-                resultDiv.style.display = 'grid';
+                `,
+            )
+            .join("");
+          resultDiv.style.display = "grid";
 
-                showStatus('Viewport test complete! Compare results - they should look identical if cropping works.', 'success');
-
-            } catch (error) {
-                console.error('❌ Viewport test failed:', error);
-                showStatus('Viewport test failed: ' + error.message, 'error');
-            }
+          showStatus(
+            "Viewport test complete! Compare results - they should look identical if cropping works.",
+            "success",
+          );
+        } catch (error) {
+          console.error("❌ Viewport test failed:", error);
+          showStatus("Viewport test failed: " + error.message, "error");
         }
+      }
 
-        function clearResults() {
-            document.getElementById('singleResult').style.display = 'none';
-            document.getElementById('comparisonResult').style.display = 'none';
-            document.getElementById('viewportTestResult').style.display = 'none';
-            document.getElementById('status').style.display = 'none';
-        }
+      function clearResults() {
+        document.getElementById("singleResult").style.display = "none";
+        document.getElementById("comparisonResult").style.display = "none";
+        document.getElementById("viewportTestResult").style.display = "none";
+        document.getElementById("status").style.display = "none";
+      }
 
-        // Initialize when page loads
-        window.addEventListener('load', () => {
-            // Disable buttons initially
-            document.querySelectorAll('button').forEach(btn => btn.disabled = true);
-            showStatus('Loading Typst renderer and template...', 'loading');
-            initialize();
-        });
+      // Initialize when page loads
+      window.addEventListener("load", () => {
+        // Disable buttons initially
+        document
+          .querySelectorAll("button")
+          .forEach((btn) => (btn.disabled = true));
+        showStatus("Loading Typst renderer and template...", "loading");
+        initialize();
+      });
     </script>
-</body>
+  </body>
 </html>

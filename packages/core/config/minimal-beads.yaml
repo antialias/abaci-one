@@ -15,5 +15,5 @@ font_family: "DejaVu Sans"
 font_size: "48pt"
 columns: auto
 show_empty_columns: false
-hide_inactive_beads: true  # Only show active beads
+hide_inactive_beads: true # Only show active beads
 shuffle: false

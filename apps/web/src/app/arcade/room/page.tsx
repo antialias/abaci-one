@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useRoomData } from '@/hooks/useRoomData'
-import { MemoryPairsGame } from '../matching/components/MemoryPairsGame'
-import { RoomMemoryPairsProvider } from '../matching/context/RoomMemoryPairsProvider'
+import { useRoomData } from "@/hooks/useRoomData";
+import { MemoryPairsGame } from "../matching/components/MemoryPairsGame";
+import { RoomMemoryPairsProvider } from "../matching/context/RoomMemoryPairsProvider";
 
 /**
  * /arcade/room - Renders the game for the user's current room
@@ -13,24 +13,24 @@ import { RoomMemoryPairsProvider } from '../matching/context/RoomMemoryPairsProv
  * - useArcadeRedirect on /arcade page handles redirecting to active sessions
  */
 export default function RoomPage() {
-  const { roomData, isLoading } = useRoomData()
+  const { roomData, isLoading } = useRoomData();
 
   // Show loading state
   if (isLoading) {
     return (
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          fontSize: '18px',
-          color: '#666',
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          fontSize: "18px",
+          color: "#666",
         }}
       >
         Loading room...
       </div>
-    )
+    );
   }
 
   // Show error if no room (instead of redirecting)
@@ -38,56 +38,56 @@ export default function RoomPage() {
     return (
       <div
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          fontSize: '18px',
-          color: '#666',
-          gap: '1rem',
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          fontSize: "18px",
+          color: "#666",
+          gap: "1rem",
         }}
       >
         <div>No active room found</div>
         <a
           href="/arcade"
           style={{
-            color: '#3b82f6',
-            textDecoration: 'underline',
+            color: "#3b82f6",
+            textDecoration: "underline",
           }}
         >
           Go to Champion Arena
         </a>
       </div>
-    )
+    );
   }
 
   // Render the appropriate game based on room's gameName
   // Note: We don't use ArcadeGuardedPage here because room-based games
   // have their own navigation logic via useRoomData
   switch (roomData.gameName) {
-    case 'matching':
+    case "matching":
       return (
         <RoomMemoryPairsProvider>
           <MemoryPairsGame />
         </RoomMemoryPairsProvider>
-      )
+      );
 
     // TODO: Add other games (complement-race, memory-quiz, etc.)
     default:
       return (
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100vh',
-            fontSize: '18px',
-            color: '#666',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100vh",
+            fontSize: "18px",
+            color: "#666",
           }}
         >
           Game "{roomData.gameName}" not yet supported
         </div>
-      )
+      );
   }
 }

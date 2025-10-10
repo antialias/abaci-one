@@ -42,12 +42,14 @@ packages/templates/
 ## 🎨 Gallery Features
 
 ### 📊 **Example Showcase**
+
 - **6 curated examples** with different numbers and configurations
 - **Visual comparison** of bead shapes, color schemes, and scales
 - **Configuration details** for each example
 - **One-click generation** per example or all at once
 
 ### 🛠️ **Examples Included**
+
 1. **Basic 5** - Simple single digit with default settings
 2. **Colorful 123** - Place-value colors with diamond beads
 3. **Circle Beads 42** - Circular beads with heaven-earth colors
@@ -56,6 +58,7 @@ packages/templates/
 6. **Educational 1234** - Four digits with empty columns shown
 
 ### ✨ **Gallery Controls**
+
 - **Generate All** - Create all examples at once
 - **Clear All** - Reset gallery to initial state
 - **Export Config** - Download configuration as JSON
@@ -64,18 +67,21 @@ packages/templates/
 ## 🔧 Technical Details
 
 ### **No Build Required**
+
 - Pure HTML + vanilla JavaScript
 - Works in any modern browser
 - No TypeScript compilation needed
 - No package dependencies
 
 ### **Typst Integration**
+
 - Uses `typst` CLI for actual SVG generation
 - Generates temporary `.typ` files with configurations
 - Compiles to SVG format for web display
 - Cleans up temporary files automatically
 
 ### **Self-Contained**
+
 - Lives entirely in `packages/templates/`
 - Uses existing template files (`flashcards.typ`)
 - Generated SVGs stored in `gallery/` subdirectory
@@ -84,6 +90,7 @@ packages/templates/
 ## 🎯 Usage Scenarios
 
 ### **Rapid Prototyping**
+
 ```bash
 # Quickly test different configurations
 node generate-gallery.js
@@ -91,6 +98,7 @@ open gallery.html
 ```
 
 ### **Documentation**
+
 ```bash
 # Generate examples for README or docs
 node generate-gallery.js
@@ -98,12 +106,14 @@ node generate-gallery.js
 ```
 
 ### **Design Review**
+
 ```bash
 # Share gallery.html with team for visual review
 # No development environment needed on reviewer's machine
 ```
 
 ### **Configuration Testing**
+
 1. Edit examples in `generate-gallery.js`
 2. Add new configurations
 3. Run generator to see results
@@ -115,25 +125,26 @@ Edit the `examples` array in `generate-gallery.js`:
 
 ```javascript
 const examples = [
-    {
-        id: 'my-example',
-        title: 'My Custom Example',
-        description: 'Testing a specific configuration',
-        number: 456,
-        config: {
-            bead_shape: 'circle',
-            color_scheme: 'alternating',
-            base_size: 1.5,
-            hide_inactive: true,
-            show_empty: false,
-            columns: 'auto'
-        }
+  {
+    id: "my-example",
+    title: "My Custom Example",
+    description: "Testing a specific configuration",
+    number: 456,
+    config: {
+      bead_shape: "circle",
+      color_scheme: "alternating",
+      base_size: 1.5,
+      hide_inactive: true,
+      show_empty: false,
+      columns: "auto",
     },
-    // ... more examples
+  },
+  // ... more examples
 ];
 ```
 
 Then regenerate:
+
 ```bash
 node generate-gallery.js
 ```
@@ -163,16 +174,19 @@ brew install typst
 ## 💡 Tips
 
 ### **File Organization**
+
 - Keep `gallery/` in `.gitignore` if SVGs are temporary
 - Commit `gallery/` if you want to share generated examples
 - Update examples in `generate-gallery.js` for consistency
 
 ### **Performance**
+
 - Generator creates temporary files, then cleans up
 - SVG files are optimized by Typst automatically
 - Gallery loads SVGs as images for fast rendering
 
 ### **Sharing**
+
 - Send `gallery.html` + `gallery/` folder to share gallery
 - Or host on any static file server
 - Works offline once generated

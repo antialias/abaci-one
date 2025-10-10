@@ -9,6 +9,7 @@ This file documents automated workflows that Claude should be aware of when work
 **Status**: ✅ Fully configured and ready for automated publishing to npm
 
 **How to trigger a release**:
+
 ```bash
 # Minor version bump (new features)
 git commit -m "feat(abacus-react): add new bead animation system"
@@ -24,11 +25,13 @@ git commit -m "feat(abacus-react)!: change callback signature"
 ```
 
 **Key Requirements**:
+
 - Must use `(abacus-react)` scope in commit message
 - Changes must be in `packages/abacus-react/` directory
 - NPM_TOKEN secret must be configured in GitHub repository settings
 
 **Workflow Details**:
+
 - **File**: `.github/workflows/publish-abacus-react.yml`
 - **Triggers**: Push to main branch with changes in `packages/abacus-react/`
 - **Steps**: Install deps → Build package → Run tests → Configure dual auth → Semantic release → Publish to npm + GitHub Packages
@@ -36,6 +39,7 @@ git commit -m "feat(abacus-react)!: change callback signature"
 - **Publishing**: Dual publishing to both npm and GitHub Packages simultaneously
 
 **Current Status**:
+
 - ✅ Workflow configured for dual publishing
 - ✅ Semantic release setup for both registries
 - ✅ Package build/test passing
@@ -44,6 +48,7 @@ git commit -m "feat(abacus-react)!: change callback signature"
 
 **What Claude should do**:
 When making changes to the abacus-react package:
+
 1. Use the proper commit format with `(abacus-react)` scope
 2. Remember this will trigger automatic npm publishing
 3. Ensure changes are meaningful enough for a version bump
@@ -55,6 +60,7 @@ When making changes to the abacus-react package:
 
 **Trigger**: Any push to main branch
 **Output**: https://antialias.github.io/soroban-abacus-flashcards/
+
 - Web app Storybook: `/web/`
 - Abacus React component Storybook: `/abacus-react/`
 
@@ -75,13 +81,13 @@ When making changes to the abacus-react package:
 
 ## Quick Reference
 
-| Action | Commit Format | Result |
-|--------|---------------|---------|
-| Add abacus-react feature | `feat(abacus-react): description` | npm minor version bump |
-| Fix abacus-react bug | `fix(abacus-react): description` | npm patch version bump |
-| Breaking abacus-react change | `feat(abacus-react)!: description` | npm major version bump |
-| Regular monorepo feature | `feat: description` | monorepo minor version bump |
-| Regular monorepo fix | `fix: description` | monorepo patch version bump |
+| Action                       | Commit Format                      | Result                      |
+| ---------------------------- | ---------------------------------- | --------------------------- |
+| Add abacus-react feature     | `feat(abacus-react): description`  | npm minor version bump      |
+| Fix abacus-react bug         | `fix(abacus-react): description`   | npm patch version bump      |
+| Breaking abacus-react change | `feat(abacus-react)!: description` | npm major version bump      |
+| Regular monorepo feature     | `feat: description`                | monorepo minor version bump |
+| Regular monorepo fix         | `fix: description`                 | monorepo patch version bump |
 
 ## Files to Reference
 

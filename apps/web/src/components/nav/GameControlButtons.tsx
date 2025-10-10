@@ -1,42 +1,55 @@
-import type React from 'react'
+import type React from "react";
 
 interface GameControlButtonsProps {
-  onSetup?: () => void
-  onNewGame?: () => void
-  onQuit?: () => void
+  onSetup?: () => void;
+  onNewGame?: () => void;
+  onQuit?: () => void;
 }
 
-export function GameControlButtons({ onSetup, onNewGame, onQuit }: GameControlButtonsProps) {
+export function GameControlButtons({
+  onSetup,
+  onNewGame,
+  onQuit,
+}: GameControlButtonsProps) {
   const buttonBaseStyle: React.CSSProperties = {
-    background: 'linear-gradient(135deg, #3498db, #2980b9)',
-    border: 'none',
-    borderRadius: '8px',
-    padding: '6px 12px',
-    fontSize: '13px',
-    fontWeight: 'bold',
-    color: 'white',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    transition: 'all 0.2s ease',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  }
+    background: "linear-gradient(135deg, #3498db, #2980b9)",
+    border: "none",
+    borderRadius: "8px",
+    padding: "6px 12px",
+    fontSize: "13px",
+    fontWeight: "bold",
+    color: "white",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+    transition: "all 0.2s ease",
+    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+  };
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = 'linear-gradient(135deg, #2980b9, #1c6ca1)'
-    e.currentTarget.style.transform = 'translateY(-1px)'
-    e.currentTarget.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.15)'
-  }
+    e.currentTarget.style.background =
+      "linear-gradient(135deg, #2980b9, #1c6ca1)";
+    e.currentTarget.style.transform = "translateY(-1px)";
+    e.currentTarget.style.boxShadow = "0 3px 6px rgba(0, 0, 0, 0.15)";
+  };
 
   const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = 'linear-gradient(135deg, #3498db, #2980b9)'
-    e.currentTarget.style.transform = 'translateY(0)'
-    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)'
-  }
+    e.currentTarget.style.background =
+      "linear-gradient(135deg, #3498db, #2980b9)";
+    e.currentTarget.style.transform = "translateY(0)";
+    e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
+  };
 
   return (
-    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap' }}>
+    <div
+      style={{
+        display: "flex",
+        gap: "8px",
+        alignItems: "center",
+        flexWrap: "nowrap",
+      }}
+    >
       {onSetup && (
         <button
           onClick={onSetup}
@@ -46,7 +59,7 @@ export function GameControlButtons({ onSetup, onNewGame, onQuit }: GameControlBu
           aria-label="Setup game"
         >
           <span>⚙️</span>
-          <span style={{ whiteSpace: 'nowrap' }}>Setup</span>
+          <span style={{ whiteSpace: "nowrap" }}>Setup</span>
         </button>
       )}
 
@@ -59,7 +72,7 @@ export function GameControlButtons({ onSetup, onNewGame, onQuit }: GameControlBu
           aria-label="Start new game"
         >
           <span>🎮</span>
-          <span style={{ whiteSpace: 'nowrap' }}>New Game</span>
+          <span style={{ whiteSpace: "nowrap" }}>New Game</span>
         </button>
       )}
 
@@ -72,9 +85,9 @@ export function GameControlButtons({ onSetup, onNewGame, onQuit }: GameControlBu
           aria-label="Quit to arcade"
         >
           <span>🏟️</span>
-          <span style={{ whiteSpace: 'nowrap' }}>Quit</span>
+          <span style={{ whiteSpace: "nowrap" }}>Quit</span>
         </button>
       )}
     </div>
-  )
+  );
 }

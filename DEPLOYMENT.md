@@ -65,6 +65,7 @@ When code is pushed to the `main` branch:
 ## Key Configuration Files
 
 ### Dockerfile
+
 - Multi-stage build optimized for monorepo
 - pnpm workspace dependency management
 - Panda CSS generation step
@@ -72,18 +73,21 @@ When code is pushed to the `main` branch:
 - Proper static file serving configuration
 
 ### GitHub Actions Workflow
+
 - Triggers on push to main branch
 - Builds and pushes Docker images to ghcr.io
 - Uses GitHub Container Registry for hosting
 - Simplified build process (no type checking in CI)
 
 ### Docker Compose
+
 - Single service deployment
 - Traefik labels for reverse proxy routing
 - Watchtower compatibility for auto-updates
 - Environment variable configuration
 
 ### Next.js Configuration
+
 - Standalone output mode for Docker optimization
 - Build optimization settings
 - Static file serving configuration
@@ -170,12 +174,14 @@ nslookup abaci.one
 ## Dependencies
 
 ### External Services
+
 - GitHub (source code and CI/CD)
 - GitHub Container Registry (image hosting)
 - Porkbun (DNS management)
 - Let's Encrypt (SSL certificates)
 
 ### Infrastructure
+
 - Synology NAS (hosting)
 - Docker and Docker Compose
 - Traefik reverse proxy
@@ -184,6 +190,7 @@ nslookup abaci.one
 ## Backup and Recovery
 
 ### Container Recovery
+
 ```bash
 # Stop and remove container
 docker-compose down
@@ -196,6 +203,7 @@ docker-compose up -d
 ```
 
 ### Configuration Backup
+
 - `docker-compose.yaml` and `.env` files are backed up via NAS snapshots
 - Source code is version controlled in GitHub
 - Container images stored in GitHub Container Registry
@@ -218,4 +226,4 @@ docker-compose up -d
 
 ---
 
-*This deployment system provides a production-ready, automated, and maintainable infrastructure for the Soroban Abacus Flashcards application.*
+_This deployment system provides a production-ready, automated, and maintainable infrastructure for the Soroban Abacus Flashcards application._

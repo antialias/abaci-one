@@ -5,6 +5,7 @@
 ## Definition of "Done"
 
 Work is NOT complete until:
+
 - ✅ All TypeScript errors are fixed (0 errors)
 - ✅ All code is formatted with Biome
 - ✅ All linting passes (0 errors, 0 warnings)
@@ -15,6 +16,7 @@ Work is NOT complete until:
 ## Quality Check Checklist (Always Required)
 
 Run these before:
+
 - Committing code
 - Saying work is "done" or "complete"
 - Marking tasks as finished
@@ -43,11 +45,13 @@ npm run pre-commit
 ```
 
 **What it does:**
+
 ```json
 "pre-commit": "npm run type-check && npm run format && npm run lint:fix && npm run lint"
 ```
 
 This single command runs:
+
 1. `npm run type-check` → `tsc --noEmit` (TypeScript errors)
 2. `npm run format` → `npx @biomejs/biome format . --write` (auto-format)
 3. `npm run lint:fix` → `npx @biomejs/biome lint . --write && npx eslint . --fix` (auto-fix)
@@ -58,21 +62,25 @@ Fails fast if any step fails.
 ## The Regime Rules
 
 ### 1. TypeScript Errors: ZERO TOLERANCE
+
 - Run `npm run type-check` before every commit
 - Fix ALL TypeScript errors
 - No `@ts-ignore` or `@ts-expect-error` without explicit justification
 
 ### 2. Formatting: AUTOMATIC
+
 - Run `npm run format` before every commit
 - Biome handles all formatting automatically
 - Never commit unformatted code
 
 ### 3. Linting: ZERO ERRORS, ZERO WARNINGS
+
 - Run `npm run lint:fix` to auto-fix issues
 - Then run `npm run lint` to verify 0 errors, 0 warnings
 - Fix any remaining issues manually
 
 ### 4. Commit Order
+
 1. Make code changes
 2. Run `npm run pre-commit`
 3. If any check fails, fix and repeat
@@ -93,6 +101,7 @@ Instead, Claude Code is responsible for enforcing this regime through:
 **READ THIS FILE AT THE START OF EVERY SESSION WHERE YOU WILL COMMIT CODE**
 
 When asked to commit:
+
 1. Check if you've run `npm run pre-commit` (or all 4 steps individually)
 2. If not, STOP and run the checks first
 3. Fix all issues before proceeding with the commit
@@ -117,6 +126,7 @@ From `apps/web/package.json`:
 ```
 
 **Tools used:**
+
 - TypeScript: `tsc --noEmit` (type checking only, no output)
 - Biome: Fast formatter + linter (Rust-based, 10-100x faster than Prettier)
 - ESLint: React Hooks rules only (`rules-of-hooks` validation)
@@ -124,6 +134,7 @@ From `apps/web/package.json`:
 ## Emergency Override
 
 If you absolutely MUST commit with failing checks:
+
 1. Document WHY in the commit message
 2. Create a follow-up task to fix the issues
 3. Only use for emergency hotfixes
@@ -131,6 +142,7 @@ If you absolutely MUST commit with failing checks:
 ## Verification
 
 After following this regime, you should see:
+
 ```
 ✓ Type check passed (0 errors)
 ✓ Formatting applied

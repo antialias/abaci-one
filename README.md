@@ -1,7 +1,8 @@
 <div align="center">
 
 # 🧮 Soroban Flashcard Generator
-### *Master the Ancient Art of Mental Math*
+
+### _Master the Ancient Art of Mental Math_
 
 <p align="center">
 <img src="docs/images/hero-colorblind-large.svg" width="400" alt="Colorful Soroban showing 987,654,321"><br>
@@ -11,7 +12,7 @@
 **The ultimate toolkit for learning soroban (Japanese abacus) calculation**  
 🎯 Perfect for students, teachers, and mental math enthusiasts  
 🚀 From zero to calculation ninja in record time  
-🎨 Stunning visuals meet ancient wisdom  
+🎨 Stunning visuals meet ancient wisdom
 
 </div>
 
@@ -20,6 +21,7 @@
 Create **gorgeous flashcards**, **interactive web games**, and **immersive quizzes** that make learning soroban addictive. Whether you're teaching a classroom or mastering mental math yourself, this generator transforms traditional number learning into a vibrant, engaging adventure.
 
 **🔥 What makes this special:**
+
 - **Visual perfection**: Crystal-clear soroban representations with authentic bead positioning
 - **Game-changing interactivity**: Memory challenges, sorting games, and smart input systems
 - **Universal compatibility**: Generate PDFs, web apps, PNGs, SVGs - whatever you need
@@ -52,7 +54,7 @@ Create **gorgeous flashcards**, **interactive web games**, and **immersive quizz
 </tr>
 </table>
 
-*Each bead precisely positioned, every color carefully chosen, all interactions thoughtfully designed.*
+_Each bead precisely positioned, every color carefully chosen, all interactions thoughtfully designed._
 
 </div>
 
@@ -157,6 +159,7 @@ python3 src/generate.py --format web --range 0-50 --shuffle
 ```
 
 **Web Features:**
+
 - **🃏 Digital Flashcards**: Hover to reveal numbers, click to flip cards
 - **🧠 Timed Quiz Mode**: Configurable display times (0.5-10 seconds), multiple card counts (5, 10, 15, 25, All)
 - **📊 Smart Scoring**: Fair scoring algorithm, progress tracking, detailed results
@@ -181,6 +184,7 @@ python3 src/generate.py --format pdf --range 0-99 --cut-marks --registration
 ```
 
 **PDF Features:**
+
 - Pure vector graphics for crisp output at any scale
 - Duplex printing alignment with registration marks
 - Cutting guides for precise card separation
@@ -199,6 +203,7 @@ python3 src/generate.py --format svg --range 0-99 --separate
 ```
 
 **Image Features:**
+
 - High-resolution PNG (configurable DPI)
 - Scalable SVG with embedded CSS
 - Transparent backgrounds supported
@@ -207,6 +212,7 @@ python3 src/generate.py --format svg --range 0-99 --separate
 ## Features
 
 ### 🎓 Learning & Teaching Tools
+
 - **🧠 Interactive Quiz Mode**: Timed flashcard quizzes with configurable display times and scoring
 - **🎯 Sorting Challenges**: Drag-and-drop number sorting games with intelligent gap-filling
 - **🎮 Matching Pairs Game**: Memory challenges matching soroban patterns with numerals
@@ -218,6 +224,7 @@ python3 src/generate.py --format svg --range 0-99 --separate
 - **📱 Multi-Device Support**: Responsive design works on desktop, tablet, and mobile
 
 ### 🎨 Visual Customization
+
 - **🎯 Pure vector graphics** - Crisp output at any scale, all formats
 - **🎨 Color schemes** - Educational colors for place-value, heaven-earth, alternating
 - **🌈 Colored numerals** - Match numeral colors to bead colors for reinforcement
@@ -225,18 +232,21 @@ python3 src/generate.py --format svg --range 0-99 --separate
 - **🔀 Minimalist mode** - Hide inactive beads for cleaner displays
 
 ### 📋 Flexible Content
+
 - **🔢 Flexible ranges** - Any range (0-9999+) or custom lists (1,2,5,10,20,50,100)
 - **📈 Skip counting** - Count by 2s, 5s, 10s, or any increment
 - **🎲 Shuffling** - Randomize with optional seeds for reproducible builds
 - **📊 Smart scaling** - Automatic column management and font sizing
 
 ### 🖨️ Print & Production
+
 - **📏 Configurable layouts** - 1 to 30+ cards per page with automatic scaling
 - **🖨️ Duplex printing ready** - Automatic front/back alignment for double-sided printing
 - **✂️ Cutting guides** - Full-page guides and registration marks for accurate separation
 - **🔤 Embedded fonts** - Bundled DejaVu Sans for consistent cross-platform output
 
 ### 🔧 Integration & Formats
+
 - **📱 Web HTML** - Self-contained interactive flashcards with quiz modes
 - **📄 Vector PDF** - High-quality print-ready documents
 - **🖼️ PNG/SVG** - Individual card images for digital use
@@ -310,7 +320,7 @@ Explore our comprehensive component documentation and interactive examples:
 </tr>
 </table>
 
-*Browse interactive demos, component APIs, and implementation examples*
+_Browse interactive demos, component APIs, and implementation examples_
 
 </div>
 
@@ -319,29 +329,36 @@ Explore our comprehensive component documentation and interactive examples:
 The web format includes three immersive learning experiences designed to make soroban mastery engaging and fun:
 
 ### 🧠 Memory Quiz Challenge
+
 Test your number recognition skills with timed flashcard quizzes:
+
 - **Adaptive Timing**: 0.5-10 second display windows
 - **Flexible Difficulty**: 5, 10, 15, 25 cards or full deck
 - **Smart Scoring**: Accounts for difficulty and accuracy
 - **Progress Tracking**: Real-time feedback and performance analytics
 
 ### 🎯 Sorting Master
+
 Develop number sense through drag-and-drop sorting challenges:
+
 - **Intelligent Gap-Filling**: Place cards in the correct sequence
 - **Visual Feedback**: Immediate validation and hints
 - **Scalable Difficulty**: Choose your challenge level
 - **Educational Design**: Reinforces number relationships
 
 ### 🎮 Matching Pairs Arena
+
 Memory game combining visual pattern recognition with numerical understanding:
 
 **Single Player Mode:**
+
 - 🏆 **Medal System**: Gold (≤1.5× pairs), Silver (≤2× pairs), Bronze (≤3× pairs)
 - 📏 **Four Grid Sizes**: 3×4 (6 pairs), 4×4 (8 pairs), 4×6 (12 pairs), 5×6 (15 pairs)
 - ⚡ **Efficiency Scoring**: Rewards optimal play and quick thinking
 - 🎯 **Smart Validation**: Only allows valid matches (abacus ↔ numeral)
 
 **Two Player Mode:**
+
 - 👥 **Competitive Multiplayer**: Turn-based gameplay with score tracking
 - ⏱️ **Turn Timers**: Optional 15s/30s/60s time limits with visual countdown
 - 🏆 **Player Indicators**: Color-coded badges show who found each match
@@ -349,6 +366,7 @@ Memory game combining visual pattern recognition with numerical understanding:
 - 🎨 **Visual Clarity**: De-emphasized matched cards guide continued play
 
 **Technical Features:**
+
 - 📱 **Responsive Design**: Scales perfectly on all devices without scrolling
 - 🔄 **One-Click Start**: Integrated mode and grid selection
 - 🎨 **Kid-Friendly UX**: Clear visual feedback prevents confusion
@@ -378,7 +396,7 @@ font_size: "48pt"
 columns: auto
 show_empty_columns: false
 shuffle: false
-seed: 42  # For deterministic shuffling
+seed: 42 # For deterministic shuffling
 ```
 
 ### Command-Line Options
@@ -415,6 +433,7 @@ Options:
 ## Soroban Representation
 
 The soroban is rendered with:
+
 - **1 heaven bead** (worth 5) per column
 - **4 earth beads** (worth 1 each) per column
 - **Active beads** shown in black, moved toward the reckoning bar
@@ -441,12 +460,14 @@ The soroban is rendered with:
 ### Duplex Printing
 
 The PDFs are specifically formatted for double-sided printing:
+
 - **Odd pages (1, 3, 5...)**: Soroban bead diagrams (front of cards)
 - **Even pages (2, 4, 6...)**: Arabic numerals (back of cards)
 - Pages are properly ordered for **long-edge binding** (standard duplex)
 - Back sides are horizontally mirrored to align correctly when flipped
 
 To print double-sided:
+
 1. Open the PDF in your viewer
 2. Select Print → Two-Sided → Long-Edge Binding
 3. The printer will automatically place numerals on the back of each soroban diagram
@@ -512,6 +533,7 @@ soroban-abacus-flashcards/
 ### Soroban Number Mapping
 
 Numbers are decomposed into heaven (5s) and earth (1s) beads:
+
 - **7** = 1 heaven bead (5) + 2 earth beads (2×1)
 - **23** = Tens: 4 earth beads (4×1), Ones: 3 earth beads (3×1)
 - **156** = Hundreds: 1 heaven + 0 earth, Tens: 1 heaven + 0 earth, Ones: 1 heaven + 1 earth
@@ -526,6 +548,7 @@ Numbers are decomposed into heaven (5s) and earth (1s) beads:
 ### Vector Graphics
 
 All elements are rendered as vectors using Typst's drawing primitives:
+
 - Beads are vector circles with stroke
 - Rods and reckoning bar are vector rectangles
 - No rasterization ensures crisp output at any scale
@@ -533,15 +556,19 @@ All elements are rendered as vectors using Typst's drawing primitives:
 ## Troubleshooting
 
 ### "typst command not found"
+
 Run `make install` or `brew install typst`
 
 ### "qpdf command not found"
+
 PDF will generate but won't be linearized. Install with `brew install qpdf`
 
 ### Fonts not embedding
+
 Ensure the `fonts/` directory contains the DejaVu TTF files
 
 ### Misaligned duplex printing
+
 - Check printer duplex settings (should be long-edge)
 - Enable registration marks with `--registration`
 - Verify margins match your printer's capabilities
@@ -599,43 +626,43 @@ npm install
 ### Usage Example
 
 ```typescript
-import { SorobanGenerator } from './soroban-generator-bridge';
+import { SorobanGenerator } from "./soroban-generator-bridge";
 
 async function generateFlashcards() {
   const generator = new SorobanGenerator();
-  
+
   // Generate with clean function interface - no CLI args!
   const result = await generator.generate({
-    range: '0-99',
+    range: "0-99",
     cardsPerPage: 6,
-    colorScheme: 'place-value',
+    colorScheme: "place-value",
     coloredNumerals: true,
-    showCutMarks: true
+    showCutMarks: true,
   });
-  
+
   // Get PDF as Buffer
-  const pdfBuffer = Buffer.from(result.pdf, 'base64');
-  
+  const pdfBuffer = Buffer.from(result.pdf, "base64");
+
   // Save to file or send to client
-  await fs.writeFile('flashcards.pdf', pdfBuffer);
+  await fs.writeFile("flashcards.pdf", pdfBuffer);
 }
 ```
 
 ### Express.js Integration
 
 ```typescript
-import express from 'express';
-import { SorobanGenerator } from './soroban-generator-bridge';
+import express from "express";
+import { SorobanGenerator } from "./soroban-generator-bridge";
 
 const app = express();
 const generator = new SorobanGenerator();
 
-app.post('/api/flashcards', async (req, res) => {
+app.post("/api/flashcards", async (req, res) => {
   // Direct function call - no shell commands!
   const result = await generator.generate(req.body);
-  const pdfBuffer = Buffer.from(result.pdf, 'base64');
-  
-  res.contentType('application/pdf');
+  const pdfBuffer = Buffer.from(result.pdf, "base64");
+
+  res.contentType("application/pdf");
   res.send(pdfBuffer);
 });
 ```
@@ -773,16 +800,15 @@ make verify-examples
 
 MIT License - see LICENSE file for details.
 
-This project uses DejaVu Sans font (included), which is released under a free license.
----
+## This project uses DejaVu Sans font (included), which is released under a free license.
 
 ## 🚀 Active Development Projects
 
 ### Speed Complement Race Port (In Progress)
+
 **Status**: Planning Complete, Ready to Implement  
 **Plan Document**: [`apps/web/COMPLEMENT_RACE_PORT_PLAN.md`](./apps/web/COMPLEMENT_RACE_PORT_PLAN.md)  
 **Source**: `packages/core/src/web_generator.py` (lines 10956-15113)  
-**Target**: `apps/web/src/app/games/complement-race/`  
+**Target**: `apps/web/src/app/games/complement-race/`
 
 A comprehensive port of the sophisticated Speed Complement Race game from standalone HTML to Next.js. Features 3 game modes, 2 AI personalities with 82 unique commentary messages, adaptive difficulty, and multiple visualization systems.
-

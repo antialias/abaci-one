@@ -5,9 +5,9 @@
  * This replaces the Typst CLI approach which doesn't support link export to SVG
  */
 
-const fs = require('fs');
-const path = require('path');
-const { svgCropProcessor } = require('./index.js');
+const fs = require("fs");
+const path = require("path");
+const { svgCropProcessor } = require("./index.js");
 
 // Import typst.ts for SVG generation with link support
 let $typst = null;
@@ -18,20 +18,22 @@ async function initializeTypst() {
   if (isLoading) {
     // Wait for ongoing initialization
     while (isLoading) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
     return $typst;
   }
 
   isLoading = true;
   try {
-    console.log('🔧 Initializing typst.ts for SVG generation...');
-    const { $typst: typstInstance } = await import('@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs');
+    console.log("🔧 Initializing typst.ts for SVG generation...");
+    const { $typst: typstInstance } = await import(
+      "@myriaddreamin/typst.ts/dist/esm/contrib/snippet.mjs"
+    );
     $typst = typstInstance;
-    console.log('✅ typst.ts initialized successfully');
+    console.log("✅ typst.ts initialized successfully");
     return $typst;
   } catch (error) {
-    console.error('❌ Failed to initialize typst.ts:', error);
+    console.error("❌ Failed to initialize typst.ts:", error);
     throw error;
   } finally {
     isLoading = false;
@@ -40,15 +42,15 @@ async function initializeTypst() {
 
 function createTypstContent(number, config = {}) {
   const {
-    beadShape = 'diamond',
-    colorScheme = 'monochrome',
-    colorPalette = 'default',
+    beadShape = "diamond",
+    colorScheme = "monochrome",
+    colorPalette = "default",
     hideInactiveBeads = false,
     showEmptyColumns = false,
-    columns = 'auto',
+    columns = "auto",
     baseSize = 1.0,
     showCropMarks = false,
-    cropMargin = '10pt'
+    cropMargin = "10pt",
   } = config;
 
   // Calculate canvas size based on number and scale
@@ -57,12 +59,15 @@ function createTypstContent(number, config = {}) {
   let height = Math.max(150, 120 * baseSize);
 
   if (showCropMarks) {
-    const cropMarginPt = parseFloat(cropMargin.replace('pt', ''));
+    const cropMarginPt = parseFloat(cropMargin.replace("pt", ""));
     width += cropMarginPt * 2;
     height += cropMarginPt * 2;
   }
 
-  const template = fs.readFileSync(path.join(__dirname, 'flashcards.typ'), 'utf-8');
+  const template = fs.readFileSync(
+    path.join(__dirname, "flashcards.typ"),
+    "utf-8",
+  );
 
   return `${template}
 
@@ -70,15 +75,15 @@ function createTypstContent(number, config = {}) {
 
 #let soroban-content = draw-soroban(
   ${number},
-  columns: ${columns === 'auto' ? 'auto' : columns},
+  columns: ${columns === "auto" ? "auto" : columns},
   bead-shape: "${beadShape}",
   color-scheme: "${colorScheme}",
   color-palette: "${colorPalette}",
-  ${showEmptyColumns ? 'show-empty: true,' : ''}
-  ${hideInactiveBeads ? 'hide-inactive: true,' : ''}
+  ${showEmptyColumns ? "show-empty: true," : ""}
+  ${hideInactiveBeads ? "hide-inactive: true," : ""}
   base-size: ${baseSize},
-  ${showCropMarks ? 'show-crop-marks: true,' : ''}
-  ${showCropMarks ? `crop-margin: ${cropMargin},` : ''}
+  ${showCropMarks ? "show-crop-marks: true," : ""}
+  ${showCropMarks ? `crop-margin: ${cropMargin},` : ""}
 )
 
 #align(center + horizon)[
@@ -106,7 +111,9 @@ async function generateSVGWithLinks(number, config = {}) {
     const processedSvg = result.processedSVG;
     const dataAttrCount = (processedSvg.match(/data-bead-/g) || []).length;
 
-    console.log(`✅ Generated SVG for ${number} - ${beadLinkCount} links → ${dataAttrCount} data attributes`);
+    console.log(
+      `✅ Generated SVG for ${number} - ${beadLinkCount} links → ${dataAttrCount} data attributes`,
+    );
     return processedSvg;
   } catch (error) {
     console.error(`❌ Failed to generate SVG for ${number}:`, error);
@@ -116,30 +123,34 @@ async function generateSVGWithLinks(number, config = {}) {
 
 const examples = [
   {
-    name: 'example-5-1',
-    title: 'Basic Number 5',
+    name: "example-5-1",
+    title: "Basic Number 5",
     number: 5,
-    config: { beadShape: 'diamond', colorScheme: 'monochrome', baseSize: 1.5 }
+    config: { beadShape: "diamond", colorScheme: "monochrome", baseSize: 1.5 },
   },
   {
-    name: 'example-123-1',
-    title: 'Colorful 123',
+    name: "example-123-1",
+    title: "Colorful 123",
     number: 123,
-    config: { beadShape: 'circle', colorScheme: 'place-value', baseSize: 1.2 }
+    config: { beadShape: "circle", colorScheme: "place-value", baseSize: 1.2 },
   },
   {
-    name: 'example-single-card-1',
-    title: 'Single Card 42',
+    name: "example-single-card-1",
+    title: "Single Card 42",
     number: 42,
-    config: { beadShape: 'diamond', colorScheme: 'heaven-earth', baseSize: 1.8 }
-  }
+    config: {
+      beadShape: "diamond",
+      colorScheme: "heaven-earth",
+      baseSize: 1.8,
+    },
+  },
 ];
 
 async function main() {
-  console.log('🚀 Starting template example generation with bead links...\n');
+  console.log("🚀 Starting template example generation with bead links...\n");
 
   // Ensure examples directory exists
-  const examplesDir = path.join(__dirname, 'examples');
+  const examplesDir = path.join(__dirname, "examples");
   if (!fs.existsSync(examplesDir)) {
     fs.mkdirSync(examplesDir, { recursive: true });
   }
@@ -157,32 +168,35 @@ async function main() {
       fs.writeFileSync(outputPath, svg);
       console.log(`✅ Saved ${example.name}.svg`);
       successful++;
-
     } catch (error) {
       console.error(`❌ Failed to generate ${example.name}:`, error.message);
       failed++;
     }
   }
 
-  console.log('\n📈 Generation Summary:');
+  console.log("\n📈 Generation Summary:");
   console.log(`   ✅ Successful: ${successful}`);
   console.log(`   ❌ Failed: ${failed}`);
 
   if (successful > 0) {
-    console.log('\n🎉 Template examples generated with bead links!');
-    console.log('   📁 Files saved to examples/ directory');
+    console.log("\n🎉 Template examples generated with bead links!");
+    console.log("   📁 Files saved to examples/ directory");
 
     // Verify bead links exist in generated files
     const firstExample = path.join(examplesDir, `${examples[0].name}.svg`);
     if (fs.existsSync(firstExample)) {
-      const content = fs.readFileSync(firstExample, 'utf-8');
+      const content = fs.readFileSync(firstExample, "utf-8");
       const beadDataCount = (content.match(/data-bead-/g) || []).length;
-      console.log(`   🏷️  Found ${beadDataCount} bead data attributes in ${examples[0].name}.svg`);
+      console.log(
+        `   🏷️  Found ${beadDataCount} bead data attributes in ${examples[0].name}.svg`,
+      );
 
       if (beadDataCount > 0) {
-        console.log('   ✅ Bead annotations are working correctly!');
+        console.log("   ✅ Bead annotations are working correctly!");
       } else {
-        console.log('   ⚠️  No bead annotations found - check processing pipeline');
+        console.log(
+          "   ⚠️  No bead annotations found - check processing pipeline",
+        );
       }
     }
   }
@@ -191,10 +205,12 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().then(process.exit).catch(error => {
-    console.error('💥 Fatal error:', error);
-    process.exit(1);
-  });
+  main()
+    .then(process.exit)
+    .catch((error) => {
+      console.error("💥 Fatal error:", error);
+      process.exit(1);
+    });
 }
 
 module.exports = { generateSVGWithLinks, createTypstContent };

@@ -1,20 +1,25 @@
-'use client'
+"use client";
 
-import type { PedagogicalSegment } from '../DecompositionWithReasons'
-import { useTutorialUI } from '../TutorialUIContext'
+import type { PedagogicalSegment } from "../DecompositionWithReasons";
+import { useTutorialUI } from "../TutorialUIContext";
 
 export function CoachBar() {
-  const ui = useTutorialUI()
-  const seg: PedagogicalSegment | null = ui.activeSegment
+  const ui = useTutorialUI();
+  const seg: PedagogicalSegment | null = ui.activeSegment;
 
-  if (!ui.showCoachBar || !seg || !seg.readable?.summary) return null
+  if (!ui.showCoachBar || !seg || !seg.readable?.summary) return null;
 
-  const r = seg.readable
+  const r = seg.readable;
 
   return (
-    <aside className="coachbar" role="status" aria-live="polite" data-test-id="coachbar">
+    <aside
+      className="coachbar"
+      role="status"
+      aria-live="polite"
+      data-test-id="coachbar"
+    >
       <div className="coachbar__row">
-        <div className="coachbar__title">{r.title ?? 'Step'}</div>
+        <div className="coachbar__title">{r.title ?? "Step"}</div>
         {ui.canHideCoachBar && (
           <button
             type="button"
@@ -37,5 +42,5 @@ export function CoachBar() {
         </div>
       )}
     </aside>
-  )
+  );
 }

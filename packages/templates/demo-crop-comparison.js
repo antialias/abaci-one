@@ -3,67 +3,71 @@
 // Create a comparison gallery showing before/after crop mark processing
 // This demonstrates the automatic viewBox cropping capability
 
-const fs = require('fs');
-const { extractViewBoxFromCropMarks } = require('./extract-viewbox.js');
+const fs = require("fs");
+const { extractViewBoxFromCropMarks } = require("./extract-viewbox.js");
 
 function createCropComparisonDemo() {
-    console.log('🎨 Creating crop mark demonstration...');
+  console.log("🎨 Creating crop mark demonstration...");
 
-    // Select examples to demonstrate
-    const demoExamples = [
-        'gallery/debug-crop-marks-89.svg',
-        'gallery/crop-single-1.svg',
-        'gallery/crop-quad-9999.svg'
-    ];
+  // Select examples to demonstrate
+  const demoExamples = [
+    "gallery/debug-crop-marks-89.svg",
+    "gallery/crop-single-1.svg",
+    "gallery/crop-quad-9999.svg",
+  ];
 
-    const comparisons = [];
+  const comparisons = [];
 
-    for (const svgPath of demoExamples) {
-        if (!fs.existsSync(svgPath)) {
-            console.log(`⚠️  Skipping ${svgPath} - file not found`);
-            continue;
-        }
-
-        console.log(`\n📐 Processing ${svgPath}...`);
-
-        // Extract crop marks and calculate new viewBox
-        const result = extractViewBoxFromCropMarks(svgPath);
-        if (!result) {
-            console.log(`❌ No crop marks found in ${svgPath}`);
-            continue;
-        }
-
-        // Read original SVG
-        const originalSVG = fs.readFileSync(svgPath, 'utf8');
-
-        // Create cropped version
-        const croppedSVG = originalSVG.replace(
-            /viewBox="[^"]*"/,
-            `viewBox="${result.viewBox}"`
-        );
-
-        // Extract original viewBox for comparison
-        const originalViewBoxMatch = originalSVG.match(/viewBox="([^"]*)"/);
-        const originalViewBox = originalViewBoxMatch ? originalViewBoxMatch[1] : 'unknown';
-
-        const filename = svgPath.replace('gallery/', '').replace('.svg', '');
-
-        comparisons.push({
-            name: filename,
-            originalViewBox,
-            croppedViewBox: result.viewBox,
-            originalSVG,
-            croppedSVG,
-            reduction: `${Math.round((1 - (result.width * result.height) / (270 * 210)) * 100)}%`
-        });
-
-        console.log(`  ✅ Original: ${originalViewBox}`);
-        console.log(`  ✅ Cropped:  ${result.viewBox}`);
-        console.log(`  📉 Size reduction: ${comparisons[comparisons.length - 1].reduction}`);
+  for (const svgPath of demoExamples) {
+    if (!fs.existsSync(svgPath)) {
+      console.log(`⚠️  Skipping ${svgPath} - file not found`);
+      continue;
     }
 
-    // Generate HTML comparison page
-    const comparisonHTML = `<!DOCTYPE html>
+    console.log(`\n📐 Processing ${svgPath}...`);
+
+    // Extract crop marks and calculate new viewBox
+    const result = extractViewBoxFromCropMarks(svgPath);
+    if (!result) {
+      console.log(`❌ No crop marks found in ${svgPath}`);
+      continue;
+    }
+
+    // Read original SVG
+    const originalSVG = fs.readFileSync(svgPath, "utf8");
+
+    // Create cropped version
+    const croppedSVG = originalSVG.replace(
+      /viewBox="[^"]*"/,
+      `viewBox="${result.viewBox}"`,
+    );
+
+    // Extract original viewBox for comparison
+    const originalViewBoxMatch = originalSVG.match(/viewBox="([^"]*)"/);
+    const originalViewBox = originalViewBoxMatch
+      ? originalViewBoxMatch[1]
+      : "unknown";
+
+    const filename = svgPath.replace("gallery/", "").replace(".svg", "");
+
+    comparisons.push({
+      name: filename,
+      originalViewBox,
+      croppedViewBox: result.viewBox,
+      originalSVG,
+      croppedSVG,
+      reduction: `${Math.round((1 - (result.width * result.height) / (270 * 210)) * 100)}%`,
+    });
+
+    console.log(`  ✅ Original: ${originalViewBox}`);
+    console.log(`  ✅ Cropped:  ${result.viewBox}`);
+    console.log(
+      `  📉 Size reduction: ${comparisons[comparisons.length - 1].reduction}`,
+    );
+  }
+
+  // Generate HTML comparison page
+  const comparisonHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -256,7 +260,9 @@ function createCropComparisonDemo() {
             </p>
         </div>
 
-        ${comparisons.map(comp => `
+        ${comparisons
+          .map(
+            (comp) => `
         <div class="comparison">
             <div class="comparison-header">
                 <div class="comparison-title">${comp.name}</div>
@@ -292,7 +298,9 @@ function createCropComparisonDemo() {
                 </div>
             </div>
         </div>
-        `).join('\n')}
+        `,
+          )
+          .join("\n")}
 
         <div class="footer">
             <h3>🛠️ How It Works</h3>
@@ -308,18 +316,18 @@ function createCropComparisonDemo() {
 </body>
 </html>`;
 
-    fs.writeFileSync('crop-marks-demo.html', comparisonHTML);
+  fs.writeFileSync("crop-marks-demo.html", comparisonHTML);
 
-    console.log('\n🎉 Crop marks demonstration created!');
-    console.log('   📄 Open crop-marks-demo.html in your browser');
-    console.log(`   📊 ${comparisons.length} examples processed`);
+  console.log("\n🎉 Crop marks demonstration created!");
+  console.log("   📄 Open crop-marks-demo.html in your browser");
+  console.log(`   📊 ${comparisons.length} examples processed`);
 
-    return true;
+  return true;
 }
 
 // Run the demo generator
 if (require.main === module) {
-    createCropComparisonDemo();
+  createCropComparisonDemo();
 }
 
 module.exports = { createCropComparisonDemo };

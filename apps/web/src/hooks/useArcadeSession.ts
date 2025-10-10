@@ -1,66 +1,67 @@
-import { useCallback, useEffect } from 'react'
-import type { GameMove } from '@/lib/arcade/validation'
-import { useArcadeSocket } from './useArcadeSocket'
+import { useCallback, useEffect } from "react";
+import type { GameMove } from "@/lib/arcade/validation";
+import { useArcadeSocket } from "./useArcadeSocket";
 import {
   type UseOptimisticGameStateOptions,
   useOptimisticGameState,
-} from './useOptimisticGameState'
+} from "./useOptimisticGameState";
 
-export interface UseArcadeSessionOptions<TState> extends UseOptimisticGameStateOptions<TState> {
+export interface UseArcadeSessionOptions<TState>
+  extends UseOptimisticGameStateOptions<TState> {
   /**
    * User ID for the session
    */
-  userId: string
+  userId: string;
 
   /**
    * Room ID for multi-user sync (optional)
    * If provided, game state will sync across all users in the room
    */
-  roomId?: string
+  roomId?: string;
 
   /**
    * Auto-join session on mount
    * @default true
    */
-  autoJoin?: boolean
+  autoJoin?: boolean;
 }
 
 export interface UseArcadeSessionReturn<TState> {
   /**
    * Current game state (with optimistic updates)
    */
-  state: TState
+  state: TState;
 
   /**
    * Server-confirmed version
    */
-  version: number
+  version: number;
 
   /**
    * Whether socket is connected
    */
-  connected: boolean
+  connected: boolean;
 
   /**
    * Whether there are pending moves
    */
-  hasPendingMoves: boolean
+  hasPendingMoves: boolean;
 
   /**
    * Send a game move (applies optimistically and sends to server)
    * Note: playerId must be provided by caller (not omitted)
    */
-  sendMove: (move: Omit<GameMove, 'timestamp'>) => void
+  sendMove: (move: Omit<GameMove, "timestamp">) => void;
 
   /**
    * Exit the arcade session
    */
-  exitSession: () => void
+  exitSession: () => void;
 
   /**
    * Manually sync with server (useful after reconnect)
    */
-  refresh: () => void
+  refresh: () => void;
 }
 
 /**
@@ -81,12 +82,12 @@ export interface UseArcadeSessionReturn<TState> {
  * ```
  */
 export function useArcadeSession<TState>(
-  options: UseArcadeSessionOptions<TState>
+  options: UseArcadeSessionOptions<TState>,
 ): UseArcadeSessionReturn<TState> {
-  const { userId, roomId, autoJoin = true, ...optimisticOptions } = options
+  const { userId, roomId, autoJoin = true, ...optimisticOptions } = options;
 
   // Optimistic state management
-  const optimistic = useOptimisticGameState<TState>(optimisticOptions)
+  const optimistic = useOptimisticGameState<TState>(optimisticOptions);
 
   // WebSocket connection
   const {
@@ -97,75 +98,81 @@ export function useArcadeSession<TState>(
     exitSession: socketExitSession,
   } = useArcadeSocket({
     onSessionState: (data) => {
-      console.log('[ArcadeSession] Syncing with server state')
-      optimistic.syncWithServer(data.gameState as TState, data.version)
+      console.log("[ArcadeSession] Syncing with server state");
+      optimistic.syncWithServer(data.gameState as TState, data.version);
     },
 
     onMoveAccepted: (data) => {
-      console.log('[ArcadeSession] Move accepted by server')
-      optimistic.handleMoveAccepted(data.gameState as TState, data.version, data.move)
+      console.log("[ArcadeSession] Move accepted by server");
+      optimistic.handleMoveAccepted(
+        data.gameState as TState,
+        data.version,
+        data.move,
+      );
     },
 
     onMoveRejected: (data) => {
-      console.log('[ArcadeSession] Move rejected by server:', data.error)
-      optimistic.handleMoveRejected(data.error, data.move)
+      console.log("[ArcadeSession] Move rejected by server:", data.error);
+      optimistic.handleMoveRejected(data.error, data.move);
     },
 
     onSessionEnded: () => {
-      console.log('[ArcadeSession] Session ended')
-      optimistic.reset()
+      console.log("[ArcadeSession] Session ended");
+      optimistic.reset();
     },
 
     onNoActiveSession: () => {
-      console.log('[ArcadeSession] No active session found')
+      console.log("[ArcadeSession] No active session found");
     },
 
     onError: (data) => {
-      console.error('[ArcadeSession] Error:', data.error)
+      console.error("[ArcadeSession] Error:", data.error);
       // Users can handle errors via the onMoveRejected callback
     },
-  })
+  });
 
   // Auto-join session when connected
   useEffect(() => {
     if (connected && autoJoin && userId) {
-      joinSession(userId, roomId)
+      joinSession(userId, roomId);
     }
-  }, [connected, autoJoin, userId, roomId, joinSession])
+  }, [connected, autoJoin, userId, roomId, joinSession]);
 
   // Send move with optimistic update
   const sendMove = useCallback(
-    (move: Omit<GameMove, 'timestamp'>) => {
+    (move: Omit<GameMove, "timestamp">) => {
       // IMPORTANT: playerId must always be explicitly provided by caller
       // playerId is the database player ID (avatar), never the userId/viewerId
-      if (!('playerId' in move) || !move.playerId) {
-        throw new Error('playerId is required in all moves and must be a valid player ID')
+      if (!("playerId" in move) || !move.playerId) {
+        throw new Error(
+          "playerId is required in all moves and must be a valid player ID",
+        );
       }
 
       const fullMove: GameMove = {
         ...move,
         timestamp: Date.now(),
-      } as GameMove
+      } as GameMove;
 
       // Apply optimistically
-      optimistic.applyOptimisticMove(fullMove)
+      optimistic.applyOptimisticMove(fullMove);
 
       // Send to server with roomId for room-based games
-      socketSendMove(userId, fullMove, roomId)
+      socketSendMove(userId, fullMove, roomId);
     },
-    [userId, roomId, optimistic, socketSendMove]
-  )
+    [userId, roomId, optimistic, socketSendMove],
+  );
 
   const exitSession = useCallback(() => {
-    socketExitSession(userId)
-    optimistic.reset()
-  }, [userId, socketExitSession, optimistic])
+    socketExitSession(userId);
+    optimistic.reset();
+  }, [userId, socketExitSession, optimistic]);
 
   const refresh = useCallback(() => {
     if (connected && userId) {
-      joinSession(userId, roomId)
+      joinSession(userId, roomId);
     }
-  }, [connected, userId, roomId, joinSession])
+  }, [connected, userId, roomId, joinSession]);
 
   return {
     state: optimistic.state,
@@ -175,5 +182,5 @@ export function useArcadeSession<TState>(
     sendMove,
     exitSession,
     refresh,
-  }
+  };
 }

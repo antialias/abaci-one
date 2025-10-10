@@ -3,15 +3,15 @@
  * No CLI arguments - just function calls with objects
  */
 
-import { PythonShell } from 'python-shell';
-import * as path from 'path';
+import { PythonShell } from "python-shell";
+import * as path from "path";
 
 export interface FlashcardConfig {
   range: string;
   step?: number;
   cardsPerPage?: number;
-  paperSize?: 'us-letter' | 'a4' | 'a3' | 'a5';
-  orientation?: 'portrait' | 'landscape';
+  paperSize?: "us-letter" | "a4" | "a3" | "a5";
+  orientation?: "portrait" | "landscape";
   margins?: {
     top?: string;
     bottom?: string;
@@ -28,17 +28,17 @@ export interface FlashcardConfig {
   columns?: string | number;
   showEmptyColumns?: boolean;
   hideInactiveBeads?: boolean;
-  beadShape?: 'diamond' | 'circle' | 'square';
-  colorScheme?: 'monochrome' | 'place-value' | 'heaven-earth' | 'alternating';
+  beadShape?: "diamond" | "circle" | "square";
+  colorScheme?: "monochrome" | "place-value" | "heaven-earth" | "alternating";
   coloredNumerals?: boolean;
   scaleFactor?: number;
-  format?: 'pdf' | 'svg';
-  mode?: 'single-card' | 'flashcards';
+  format?: "pdf" | "svg";
+  mode?: "single-card" | "flashcards";
   number?: number;
 }
 
 export interface FlashcardResult {
-  pdf: string;  // base64 encoded PDF or SVG content (depending on format)
+  pdf: string; // base64 encoded PDF or SVG content (depending on format)
   count: number;
   numbers: number[];
 }
@@ -48,7 +48,7 @@ export class SorobanGenerator {
   private projectRoot: string;
 
   constructor(projectRoot?: string) {
-    this.projectRoot = projectRoot || path.join(__dirname, '../../');
+    this.projectRoot = projectRoot || path.join(__dirname, "../../");
   }
 
   /**
@@ -57,15 +57,12 @@ export class SorobanGenerator {
   async initialize(): Promise<void> {
     if (this.pythonShell) return;
 
-    this.pythonShell = new PythonShell(
-      path.join('src', 'bridge.py'),
-      {
-        mode: 'json',
-        pythonPath: 'python3',
-        pythonOptions: ['-u'], // Unbuffered
-        scriptPath: this.projectRoot,
-      }
-    );
+    this.pythonShell = new PythonShell(path.join("src", "bridge.py"), {
+      mode: "json",
+      pythonPath: "python3",
+      pythonOptions: ["-u"], // Unbuffered
+      scriptPath: this.projectRoot,
+    });
   }
 
   /**
@@ -75,16 +72,13 @@ export class SorobanGenerator {
     // One-shot mode if not initialized
     if (!this.pythonShell) {
       return new Promise((resolve, reject) => {
-        const shell = new PythonShell(
-          path.join('src', 'bridge.py'),
-          {
-            mode: 'json',
-            pythonPath: 'python3',
-            scriptPath: this.projectRoot,
-          }
-        );
+        const shell = new PythonShell(path.join("src", "bridge.py"), {
+          mode: "json",
+          pythonPath: "python3",
+          scriptPath: this.projectRoot,
+        });
 
-        shell.on('message', (message: any) => {
+        shell.on("message", (message: any) => {
           if (message.error) {
             reject(new Error(message.error));
           } else {
@@ -92,7 +86,7 @@ export class SorobanGenerator {
           }
         });
 
-        shell.on('error', (err: any) => {
+        shell.on("error", (err: any) => {
           reject(err);
         });
 
@@ -106,7 +100,7 @@ export class SorobanGenerator {
     // Persistent mode
     return new Promise((resolve, reject) => {
       if (!this.pythonShell) {
-        reject(new Error('Not initialized'));
+        reject(new Error("Not initialized"));
         return;
       }
 
@@ -116,10 +110,10 @@ export class SorobanGenerator {
         } else {
           resolve(message as FlashcardResult);
         }
-        this.pythonShell?.removeListener('message', handler);
+        this.pythonShell?.removeListener("message", handler);
       };
 
-      this.pythonShell.on('message', handler);
+      this.pythonShell.on("message", handler);
       this.pythonShell.send(config);
     });
   }
@@ -129,7 +123,7 @@ export class SorobanGenerator {
    */
   async generateBuffer(config: FlashcardConfig): Promise<Buffer> {
     const result = await this.generate(config);
-    return Buffer.from(result.pdf, 'base64');
+    return Buffer.from(result.pdf, "base64");
   }
 
   /**
@@ -146,29 +140,29 @@ export class SorobanGenerator {
 // Example usage - just like calling a regular TypeScript function
 async function example() {
   const generator = new SorobanGenerator();
-  
+
   // Just call it like a function!
   const result = await generator.generate({
-    range: '0-99',
+    range: "0-99",
     cardsPerPage: 6,
-    colorScheme: 'place-value',
+    colorScheme: "place-value",
     coloredNumerals: true,
-    showCutMarks: true
+    showCutMarks: true,
   });
-  
+
   // You get back a clean result object
   console.log(`Generated ${result.count} flashcards`);
-  
+
   // Convert to Buffer if needed
-  const pdfBuffer = Buffer.from(result.pdf, 'base64');
-  
+  const pdfBuffer = Buffer.from(result.pdf, "base64");
+
   // Or use persistent mode for better performance
   await generator.initialize();
-  
+
   // Now calls are faster
-  const result2 = await generator.generate({ range: '0-9' });
-  const result3 = await generator.generate({ range: '10-19' });
-  
+  const result2 = await generator.generate({ range: "0-9" });
+  const result3 = await generator.generate({ range: "10-19" });
+
   await generator.close();
 }
 
@@ -176,17 +170,17 @@ async function example() {
 export function expressRoute(app: any) {
   const generator = new SorobanGenerator();
 
-  app.post('/api/flashcards', async (req: any, res: any) => {
+  app.post("/api/flashcards", async (req: any, res: any) => {
     try {
       // Just pass the config object directly!
       const result = await generator.generate(req.body);
-      
+
       // Send back JSON or PDF
-      if (req.query.format === 'json') {
+      if (req.query.format === "json") {
         res.json(result);
       } else {
-        const pdfBuffer = Buffer.from(result.pdf, 'base64');
-        res.contentType('application/pdf');
+        const pdfBuffer = Buffer.from(result.pdf, "base64");
+        res.contentType("application/pdf");
         res.send(pdfBuffer);
       }
     } catch (error) {

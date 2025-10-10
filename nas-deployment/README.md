@@ -14,6 +14,7 @@ After pushing code changes to trigger the GitHub Actions build:
 ## Manual Deployment
 
 1. **Copy files to NAS:**
+
    ```bash
    scp nas-deployment/docker-compose.yaml nas.home.network:/volume1/homes/antialias/projects/abaci.one/
    scp nas-deployment/.env nas.home.network:/volume1/homes/antialias/projects/abaci.one/
@@ -33,16 +34,20 @@ After pushing code changes to trigger the GitHub Actions build:
 ## Configuration
 
 ### Environment Variables
+
 Copy `.env.example` to `.env` and customize as needed.
 
 ### DDNS Configuration
+
 The Porkbun DDNS configuration is in `ddns-data/ddns-config.json` and handles:
+
 - Domain: `abaci.one`
 - Provider: Porkbun
 - Auto IP detection via ipinfo.io
 - TTL: 300 seconds
 
 ### Traefik Integration
+
 - Automatic HTTPS via Let's Encrypt
 - HTTP → HTTPS redirect
 - HSTS headers for security

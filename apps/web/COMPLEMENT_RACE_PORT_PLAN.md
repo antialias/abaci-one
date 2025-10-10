@@ -14,6 +14,7 @@
 **Critical Requirement**: Preserve ALL gameplay mechanics, AI personalities, adaptive systems, and visual polish from the original
 
 **Original Game Features**:
+
 - 3 game modes: Endurance Race (20 answers), Lightning Sprint (60 seconds), Survival Mode (infinite)
 - 2 AI opponents with distinct personalities: Swift AI (competitive), Math Bot (analytical)
 - Adaptive difficulty system that tracks per-pair performance
@@ -30,6 +31,7 @@
 ## **Phase 1: Architecture & Setup** ⚙️
 
 ### **1.1 Directory Structure**
+
 ```
 apps/web/src/app/games/complement-race/
 ├── page.tsx                           # Main page wrapper
@@ -69,97 +71,105 @@ apps/web/src/app/games/complement-race/
 ```
 
 ### **1.2 Core Types** (gameTypes.ts)
+
 ```typescript
-export type GameMode = 'friends5' | 'friends10' | 'mixed'
-export type GameStyle = 'practice' | 'sprint' | 'survival'
-export type TimeoutSetting = 'preschool' | 'kindergarten' | 'relaxed' | 'slow' | 'normal' | 'fast' | 'expert'
+export type GameMode = "friends5" | "friends10" | "mixed";
+export type GameStyle = "practice" | "sprint" | "survival";
+export type TimeoutSetting =
+  | "preschool"
+  | "kindergarten"
+  | "relaxed"
+  | "slow"
+  | "normal"
+  | "fast"
+  | "expert";
 
 export interface ComplementQuestion {
-  number: number
-  targetSum: number
-  correctAnswer: number
+  number: number;
+  targetSum: number;
+  correctAnswer: number;
 }
 
 export interface AIRacer {
-  id: string
-  position: number
-  speed: number
-  name: string
-  personality: 'competitive' | 'analytical'
-  icon: string
-  lastComment: number
-  commentCooldown: number
-  previousPosition: number
+  id: string;
+  position: number;
+  speed: number;
+  name: string;
+  personality: "competitive" | "analytical";
+  icon: string;
+  lastComment: number;
+  commentCooldown: number;
+  previousPosition: number;
 }
 
 export interface DifficultyTracker {
-  pairPerformance: Map<string, PairPerformance>
-  baseTimeLimit: number
-  currentTimeLimit: number
-  difficultyLevel: number
-  consecutiveCorrect: number
-  consecutiveIncorrect: number
-  learningMode: boolean
-  adaptationRate: number
+  pairPerformance: Map<string, PairPerformance>;
+  baseTimeLimit: number;
+  currentTimeLimit: number;
+  difficultyLevel: number;
+  consecutiveCorrect: number;
+  consecutiveIncorrect: number;
+  learningMode: boolean;
+  adaptationRate: number;
 }
 
 export interface PairPerformance {
-  attempts: number
-  correct: number
-  avgTime: number
-  difficulty: number
+  attempts: number;
+  correct: number;
+  avgTime: number;
+  difficulty: number;
 }
 
 export interface GameState {
   // Game configuration
-  mode: GameMode
-  style: GameStyle
-  timeoutSetting: TimeoutSetting
+  mode: GameMode;
+  style: GameStyle;
+  timeoutSetting: TimeoutSetting;
 
   // Current question
-  currentQuestion: ComplementQuestion | null
-  previousQuestion: ComplementQuestion | null
+  currentQuestion: ComplementQuestion | null;
+  previousQuestion: ComplementQuestion | null;
 
   // Game progress
-  score: number
-  streak: number
-  bestStreak: number
-  totalQuestions: number
-  correctAnswers: number
+  score: number;
+  streak: number;
+  bestStreak: number;
+  totalQuestions: number;
+  correctAnswers: number;
 
   // Game status
-  isGameActive: boolean
-  isPaused: boolean
-  gamePhase: 'intro' | 'controls' | 'countdown' | 'playing' | 'results'
+  isGameActive: boolean;
+  isPaused: boolean;
+  gamePhase: "intro" | "controls" | "countdown" | "playing" | "results";
 
   // Timing
-  gameStartTime: number | null
-  questionStartTime: number
+  gameStartTime: number | null;
+  questionStartTime: number;
 
   // Race mechanics
-  raceGoal: number
-  timeLimit: number | null
-  speedMultiplier: number
-  aiRacers: AIRacer[]
+  raceGoal: number;
+  timeLimit: number | null;
+  speedMultiplier: number;
+  aiRacers: AIRacer[];
 
   // Adaptive difficulty
-  difficultyTracker: DifficultyTracker
+  difficultyTracker: DifficultyTracker;
 
   // Survival mode specific
-  playerLap: number
-  aiLaps: Map<string, number>
-  survivalMultiplier: number
+  playerLap: number;
+  aiLaps: Map<string, number>;
+  survivalMultiplier: number;
 
   // Sprint mode specific
-  momentum: number
-  trainPosition: number
-  lastCorrectAnswerTime: number
+  momentum: number;
+  trainPosition: number;
+  lastCorrectAnswerTime: number;
 
   // Input
-  currentInput: string
+  currentInput: string;
 
   // UI state
-  showScoreModal: boolean
+  showScoreModal: boolean;
 }
 ```
 
@@ -168,33 +178,44 @@ export interface GameState {
 ## **Phase 2: State Management** 🔄
 
 ### **2.1 Context Pattern**
+
 Follow existing pattern from memory-quiz:
+
 - Use `useReducer` for complex game state
 - Create ComplementRaceContext with provider
 - Export custom hooks for game actions
 
 ### **2.2 Game Actions**
+
 ```typescript
 type GameAction =
-  | { type: 'SET_MODE'; mode: GameMode }
-  | { type: 'SET_STYLE'; style: GameStyle }
-  | { type: 'SET_TIMEOUT'; timeout: TimeoutSetting }
-  | { type: 'START_RACE' }
-  | { type: 'START_COUNTDOWN' }
-  | { type: 'BEGIN_GAME' }
-  | { type: 'NEXT_QUESTION' }
-  | { type: 'SUBMIT_ANSWER'; answer: number }
-  | { type: 'UPDATE_INPUT'; input: string }
-  | { type: 'UPDATE_AI_POSITIONS'; positions: Array<{id: string, position: number}> }
-  | { type: 'TRIGGER_AI_COMMENTARY'; racerId: string; message: string; context: string }
-  | { type: 'UPDATE_MOMENTUM'; momentum: number }
-  | { type: 'UPDATE_TRAIN_POSITION'; position: number }
-  | { type: 'COMPLETE_LAP'; racerId: string }
-  | { type: 'PAUSE_RACE' }
-  | { type: 'RESUME_RACE' }
-  | { type: 'END_RACE' }
-  | { type: 'SHOW_RESULTS' }
-  | { type: 'RESET_GAME' }
+  | { type: "SET_MODE"; mode: GameMode }
+  | { type: "SET_STYLE"; style: GameStyle }
+  | { type: "SET_TIMEOUT"; timeout: TimeoutSetting }
+  | { type: "START_RACE" }
+  | { type: "START_COUNTDOWN" }
+  | { type: "BEGIN_GAME" }
+  | { type: "NEXT_QUESTION" }
+  | { type: "SUBMIT_ANSWER"; answer: number }
+  | { type: "UPDATE_INPUT"; input: string }
+  | {
+      type: "UPDATE_AI_POSITIONS";
+      positions: Array<{ id: string; position: number }>;
+    }
+  | {
+      type: "TRIGGER_AI_COMMENTARY";
+      racerId: string;
+      message: string;
+      context: string;
+    }
+  | { type: "UPDATE_MOMENTUM"; momentum: number }
+  | { type: "UPDATE_TRAIN_POSITION"; position: number }
+  | { type: "COMPLETE_LAP"; racerId: string }
+  | { type: "PAUSE_RACE" }
+  | { type: "RESUME_RACE" }
+  | { type: "END_RACE" }
+  | { type: "SHOW_RESULTS" }
+  | { type: "RESET_GAME" };
 ```
 
 ---
@@ -202,6 +223,7 @@ type GameAction =
 ## **Phase 3: Core Game Logic** 🎯
 
 ### **3.1 Game Loop Hook** (useGameLoop.ts)
+
 ```typescript
 export function useGameLoop() {
   // Manages:
@@ -211,7 +233,6 @@ export function useGameLoop() {
   // - Score calculation
   // - Streak tracking
   // - Race completion detection
-
   // Returns:
   // - nextQuestion()
   // - submitAnswer()
@@ -222,6 +243,7 @@ export function useGameLoop() {
 ```
 
 **Critical Details to Preserve**:
+
 - Avoid repeating same question consecutively
 - Safety limit of 10 attempts when generating questions
 - Exact timer calculations based on timeout setting
@@ -230,6 +252,7 @@ export function useGameLoop() {
 - Speed bonus: `max(0, 300 - (avgTime * 10))`
 
 ### **3.2 AI Racers Hook** (useAIRacers.ts)
+
 ```typescript
 export function useAIRacers() {
   // Manages:
@@ -238,7 +261,6 @@ export function useAIRacers() {
   // - Passing event detection
   // - Commentary trigger logic
   // - Speed adaptation
-
   // Returns:
   // - aiRacers state
   // - updateAIPositions()
@@ -248,8 +270,9 @@ export function useAIRacers() {
 ```
 
 **Critical Details to Preserve**:
-- Swift AI: speed = 0.25 * multiplier
-- Math Bot: speed = 0.15 * multiplier
+
+- Swift AI: speed = 0.25 \* multiplier
+- Math Bot: speed = 0.15 \* multiplier
 - AI updates every 200ms
 - Random variance in AI progress (0.6-1.4 range via `Math.random() * 0.8 + 0.6`)
 - Rubber-banding: AI speeds up 2x when >10 units behind
@@ -257,6 +280,7 @@ export function useAIRacers() {
 - Commentary cooldown (2-6 seconds random via `Math.random() * 4000 + 2000`)
 
 ### **3.3 Adaptive Difficulty Hook** (useAdaptiveDifficulty.ts)
+
 ```typescript
 export function useAdaptiveDifficulty() {
   // Manages:
@@ -265,7 +289,6 @@ export function useAdaptiveDifficulty() {
   // - Difficulty level calculation
   // - Learning mode detection
   // - Adaptive feedback messages
-
   // Returns:
   // - currentTimeLimit
   // - updatePairPerformance()
@@ -275,21 +298,22 @@ export function useAdaptiveDifficulty() {
 ```
 
 **Critical Details to Preserve**:
+
 - Pair key format: `"${number}_${complement}_${targetSum}"`
 - Base time limit: 3000ms
 - Difficulty scale: 1-5
 - Learning mode: first 10-15 questions
 - Adaptation rate: 0.1 (gradual changes)
 - Success rate thresholds:
-  - >85% → adaptiveMultiplier = 1.6x
-  - >75% → 1.3x
-  - >60% → 1.0x
-  - >45% → 0.75x
+  - > 85% → adaptiveMultiplier = 1.6x
+  - > 75% → 1.3x
+  - > 60% → 1.0x
+  - > 45% → 0.75x
   - <45% → 0.5x
 - Response time factors:
   - <1500ms → 1.2x
   - <2500ms → 1.1x
-  - >4000ms → 0.9x
+  - > 4000ms → 0.9x
 - Streak bonuses:
   - 8+ streak → 1.3x
   - 5+ streak → 1.15x
@@ -300,12 +324,13 @@ export function useAdaptiveDifficulty() {
 ## **Phase 4: Visualization Components** 🎨
 
 ### **4.1 Linear Track** (LinearTrack.tsx)
+
 ```typescript
 export function LinearTrack({
   playerProgress,
   aiRacers,
   raceGoal,
-  showFinishLine
+  showFinishLine,
 }) {
   // Renders:
   // - Horizontal track with background
@@ -317,25 +342,21 @@ export function LinearTrack({
 ```
 
 **Position Calculation**:
+
 ```typescript
-const leftPercent = Math.min(98, (progress / raceGoal) * 96 + 2)
+const leftPercent = Math.min(98, (progress / raceGoal) * 96 + 2);
 // 2% minimum (start), 98% maximum (near finish), 96% range for race
 ```
 
 ### **4.2 Circular Track** (CircularTrack.tsx)
+
 ```typescript
-export function CircularTrack({
-  playerProgress,
-  playerLap,
-  aiRacers,
-  aiLaps
-}) {
+export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }) {
   // Renders:
   // - Circular SVG track
   // - Racers positioned using trigonometry
   // - Lap counter display
   // - Celebration effects on lap completion
-
   // Math:
   // progressPerLap = 50
   // currentLap = Math.floor(progress / 50)
@@ -348,6 +369,7 @@ export function CircularTrack({
 ```
 
 **Critical Details**:
+
 - Track radius: (trackWidth / 2) - 20
 - Start at top of circle (offset by -π/2)
 - Counter-rotate speech bubbles: `--counter-rotation: ${-angle}deg`
@@ -356,12 +378,13 @@ export function CircularTrack({
 - Track lap counts per racer in Map
 
 ### **4.3 Steam Train Journey** (SteamTrainJourney.tsx)
+
 ```typescript
 export function SteamTrainJourney({
   momentum,
   trainPosition,
   timeElapsed,
-  correctAnswers
+  correctAnswers,
 }) {
   // Renders:
   // - Dynamic sky gradient (6 time periods)
@@ -372,7 +395,6 @@ export function SteamTrainJourney({
   // - Station markers
   // - Pressure gauge with PSI
   // - Momentum bar
-
   // Systems:
   // - Momentum decay (1% per second base)
   // - Accelerated decay if no answers (>5s)
@@ -382,36 +404,42 @@ export function SteamTrainJourney({
 ```
 
 **Time of Day Gradients** (from web_generator.py lines 4344-4351):
+
 ```typescript
 const timeOfDayGradients = {
-  dawn: 'linear-gradient(135deg, #ffb347 0%, #ffcc5c 30%, #87ceeb 70%, #98d8e8 100%)',
-  morning: 'linear-gradient(135deg, #87ceeb 0%, #98d8e8 30%, #b6e2ff 70%, #cce7ff 100%)',
-  midday: 'linear-gradient(135deg, #87ceeb 0%, #a8d8ea 30%, #c7e2f7 70%, #e3f2fd 100%)',
-  afternoon: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 30%, #ff8a65 70%, #ff7043 100%)',
-  dusk: 'linear-gradient(135deg, #ff8a65 0%, #ff7043 30%, #8e44ad 70%, #5b2c87 100%)',
-  night: 'linear-gradient(135deg, #2c3e50 0%, #34495e 30%, #1a252f 70%, #0f1419 100%)'
-}
+  dawn: "linear-gradient(135deg, #ffb347 0%, #ffcc5c 30%, #87ceeb 70%, #98d8e8 100%)",
+  morning:
+    "linear-gradient(135deg, #87ceeb 0%, #98d8e8 30%, #b6e2ff 70%, #cce7ff 100%)",
+  midday:
+    "linear-gradient(135deg, #87ceeb 0%, #a8d8ea 30%, #c7e2f7 70%, #e3f2fd 100%)",
+  afternoon:
+    "linear-gradient(135deg, #ffecd2 0%, #fcb69f 30%, #ff8a65 70%, #ff7043 100%)",
+  dusk: "linear-gradient(135deg, #ff8a65 0%, #ff7043 30%, #8e44ad 70%, #5b2c87 100%)",
+  night:
+    "linear-gradient(135deg, #2c3e50 0%, #34495e 30%, #1a252f 70%, #0f1419 100%)",
+};
 
 // Time progression (from line 13064-13088):
-if (gameProgress < 0.17) return 'dawn'
-else if (gameProgress < 0.33) return 'morning'
-else if (gameProgress < 0.67) return 'midday'
-else if (gameProgress < 0.83) return 'afternoon'
-else if (gameProgress < 0.92) return 'dusk'
-else return 'night'
+if (gameProgress < 0.17) return "dawn";
+else if (gameProgress < 0.33) return "morning";
+else if (gameProgress < 0.67) return "midday";
+else if (gameProgress < 0.83) return "afternoon";
+else if (gameProgress < 0.92) return "dusk";
+else return "night";
 ```
 
 **Momentum Decay Config by Skill Level** (calibrated for different ages):
+
 ```typescript
 const momentumConfigs = {
   preschool: {
-    baseDecay: 0.3,           // Very gentle decay
-    highSpeedDecay: 0.5,      // >75% momentum
-    mediumSpeedDecay: 0.4,    // >50% momentum
-    starvationThreshold: 10,  // Seconds before extra decay
-    starvationRate: 2,        // Divisor for extra decay calculation
-    maxExtraDecay: 2.0,       // Maximum extra decay per second
-    warningThreshold: 8       // When to log warnings
+    baseDecay: 0.3, // Very gentle decay
+    highSpeedDecay: 0.5, // >75% momentum
+    mediumSpeedDecay: 0.4, // >50% momentum
+    starvationThreshold: 10, // Seconds before extra decay
+    starvationRate: 2, // Divisor for extra decay calculation
+    maxExtraDecay: 2.0, // Maximum extra decay per second
+    warningThreshold: 8, // When to log warnings
   },
   kindergarten: {
     baseDecay: 0.4,
@@ -420,7 +448,7 @@ const momentumConfigs = {
     starvationThreshold: 8,
     starvationRate: 2,
     maxExtraDecay: 2.5,
-    warningThreshold: 6
+    warningThreshold: 6,
   },
   relaxed: {
     baseDecay: 0.6,
@@ -429,7 +457,7 @@ const momentumConfigs = {
     starvationThreshold: 6,
     starvationRate: 1.8,
     maxExtraDecay: 3.0,
-    warningThreshold: 5
+    warningThreshold: 5,
   },
   slow: {
     baseDecay: 0.8,
@@ -438,7 +466,7 @@ const momentumConfigs = {
     starvationThreshold: 5,
     starvationRate: 1.5,
     maxExtraDecay: 3.5,
-    warningThreshold: 4
+    warningThreshold: 4,
   },
   normal: {
     baseDecay: 1.0,
@@ -447,7 +475,7 @@ const momentumConfigs = {
     starvationThreshold: 5,
     starvationRate: 1.5,
     maxExtraDecay: 4.0,
-    warningThreshold: 4
+    warningThreshold: 4,
   },
   fast: {
     baseDecay: 1.2,
@@ -456,7 +484,7 @@ const momentumConfigs = {
     starvationThreshold: 4,
     starvationRate: 1.2,
     maxExtraDecay: 5.0,
-    warningThreshold: 3
+    warningThreshold: 3,
   },
   expert: {
     baseDecay: 1.5,
@@ -465,45 +493,54 @@ const momentumConfigs = {
     starvationThreshold: 3,
     starvationRate: 1.0,
     maxExtraDecay: 6.0,
-    warningThreshold: 2
-  }
-}
+    warningThreshold: 2,
+  },
+};
 
 // Decay calculation (from line 13036-13046):
-let decayRate = momentum > 75 ? config.highSpeedDecay :
-                momentum > 50 ? config.mediumSpeedDecay :
-                config.baseDecay
+let decayRate =
+  momentum > 75
+    ? config.highSpeedDecay
+    : momentum > 50
+      ? config.mediumSpeedDecay
+      : config.baseDecay;
 
 if (timeSinceLastCoal > config.starvationThreshold) {
-  const extraDecay = Math.min(config.maxExtraDecay, timeSinceLastCoal / config.starvationRate)
-  decayRate += extraDecay
+  const extraDecay = Math.min(
+    config.maxExtraDecay,
+    timeSinceLastCoal / config.starvationRate,
+  );
+  decayRate += extraDecay;
 }
 
-momentum = Math.max(0, momentum - decayRate)
+momentum = Math.max(0, momentum - decayRate);
 ```
 
 **Pressure Gauge Calculation** (lines 13118-13146):
+
 ```typescript
-const pressure = Math.round(momentum) // 0-100
-const psi = Math.round(pressure * 1.5) // Scale to 0-150 PSI
+const pressure = Math.round(momentum); // 0-100
+const psi = Math.round(pressure * 1.5); // Scale to 0-150 PSI
 
 // Arc progress (circumference = 251.2 pixels)
-const circumference = 251.2
-const offset = circumference - (pressure / 100) * circumference
+const circumference = 251.2;
+const offset = circumference - (pressure / 100) * circumference;
 
 // Needle rotation (-90 to +90 degrees for half-circle)
-const rotation = -90 + (pressure / 100) * 180
+const rotation = -90 + (pressure / 100) * 180;
 
 // Gauge color
-let gaugeColor = '#ff6b6b' // Coral red for low pressure
-if (pressure > 70) gaugeColor = '#4ecdc4' // Turquoise for high pressure
-else if (pressure > 40) gaugeColor = '#feca57' // Sunny yellow for medium pressure
+let gaugeColor = "#ff6b6b"; // Coral red for low pressure
+if (pressure > 70)
+  gaugeColor = "#4ecdc4"; // Turquoise for high pressure
+else if (pressure > 40) gaugeColor = "#feca57"; // Sunny yellow for medium pressure
 ```
 
 **Train Movement** (line 13057-13058):
+
 ```typescript
 // Updates 5x per second (200ms intervals)
-trainPosition += (momentum * 0.4) // Continuous movement rate
+trainPosition += momentum * 0.4; // Continuous movement rate
 ```
 
 ---
@@ -521,40 +558,40 @@ export const swiftAICommentary = {
     "🔥 Too slow for me!",
     "⚡ You can't catch me!",
     "🚀 I'm built for speed!",
-    "🏃‍♂️ This is way too easy!"
+    "🏃‍♂️ This is way too easy!",
   ],
   behind: [
     "😤 Not over yet!",
     "💪 I'm just getting started!",
     "🔥 Watch me catch up to you!",
     "⚡ I'm coming for you!",
-    "🏃‍♂️ This is my comeback!"
+    "🏃‍♂️ This is my comeback!",
   ],
   adaptive_struggle: [
     "😏 You struggling much?",
     "🤖 Math is easy for me!",
     "⚡ You need to think faster!",
-    "🔥 Need me to slow down?"
+    "🔥 Need me to slow down?",
   ],
   adaptive_mastery: [
     "😮 You're actually impressive!",
     "🤔 You're getting faster...",
     "😤 Time for me to step it up!",
-    "⚡ Not bad for a human!"
+    "⚡ Not bad for a human!",
   ],
   player_passed: [
     "😠 No way you just passed me!",
     "🔥 This isn't over!",
     "💨 I'm just getting warmed up!",
     "😤 Your lucky streak won't last!",
-    "⚡ I'll be back in front of you soon!"
+    "⚡ I'll be back in front of you soon!",
   ],
   ai_passed: [
     "💨 See ya later, slowpoke!",
     "😎 Thanks for the warm-up!",
     "🔥 This is how it's done!",
     "⚡ I'll see you at the finish line!",
-    "💪 Try to keep up with me!"
+    "💪 Try to keep up with me!",
   ],
   lapped: [
     "😡 You just lapped me?! No way!",
@@ -562,7 +599,7 @@ export const swiftAICommentary = {
     "😤 I'm not going down without a fight!",
     "💢 How did you get so far ahead?!",
     "🔥 Time to show you my real speed!",
-    "😠 You won't stay ahead for long!"
+    "😠 You won't stay ahead for long!",
   ],
   desperate_catchup: [
     "🚨 TURBO MODE ACTIVATED! I'm coming for you!",
@@ -570,9 +607,9 @@ export const swiftAICommentary = {
     "🔥 NO MORE MR. NICE AI! Time to go all out!",
     "⚡ I'm switching to MAXIMUM OVERDRIVE!",
     "😤 You made me angry - now you'll see what I can do!",
-    "🚀 AFTERBURNERS ENGAGED! This isn't over!"
-  ]
-}
+    "🚀 AFTERBURNERS ENGAGED! This isn't over!",
+  ],
+};
 
 export const mathBotCommentary = {
   ahead: [
@@ -580,40 +617,40 @@ export const mathBotCommentary = {
     "🤖 My logic beats your speed!",
     "📈 I have 87% win probability!",
     "⚙️ I'm perfectly calibrated!",
-    "🔬 Science prevails over you!"
+    "🔬 Science prevails over you!",
   ],
   behind: [
     "🤔 Recalculating my strategy...",
     "📊 You're exceeding my projections!",
     "⚙️ Adjusting my parameters!",
     "🔬 I'm analyzing your technique!",
-    "📈 You're a statistical anomaly!"
+    "📈 You're a statistical anomaly!",
   ],
   adaptive_struggle: [
     "📊 I detect inefficiencies in you!",
     "🔬 You should focus on patterns!",
     "⚙️ Use that extra time wisely!",
-    "📈 You have room for improvement!"
+    "📈 You have room for improvement!",
   ],
   adaptive_mastery: [
     "🤖 Your optimization is excellent!",
     "📊 Your metrics are impressive!",
     "⚙️ I'm updating my models because of you!",
-    "🔬 You have near-AI efficiency!"
+    "🔬 You have near-AI efficiency!",
   ],
   player_passed: [
     "🤖 Your strategy is fascinating!",
     "📊 You're an unexpected variable!",
     "⚙️ I'm adjusting my algorithms...",
     "🔬 Your execution is impressive!",
-    "📈 I'm recalculating the odds!"
+    "📈 I'm recalculating the odds!",
   ],
   ai_passed: [
     "🤖 My efficiency is optimized!",
     "📊 Just as I calculated!",
     "⚙️ All my systems nominal!",
     "🔬 My logic prevails over you!",
-    "📈 I'm at 96% confidence level!"
+    "📈 I'm at 96% confidence level!",
   ],
   lapped: [
     "🤖 Error: You have exceeded my projections!",
@@ -621,7 +658,7 @@ export const mathBotCommentary = {
     "⚙️ I need to recalibrate my systems!",
     "🔬 Your performance is... statistically improbable!",
     "📈 My confidence level just dropped to 12%!",
-    "🤔 I must analyze your methodology!"
+    "🤔 I must analyze your methodology!",
   ],
   desperate_catchup: [
     "🤖 EMERGENCY PROTOCOL ACTIVATED! Initiating maximum speed!",
@@ -629,35 +666,37 @@ export const mathBotCommentary = {
     "⚙️ OVERCLOCKING MY PROCESSORS! Prepare for rapid acceleration!",
     "📊 PROBABILITY OF FAILURE: UNACCEPTABLE! Switching to turbo mode!",
     "🔬 HYPOTHESIS: You're about to see my true potential!",
-    "📈 CONFIDENCE LEVEL: RISING! My comeback protocol is online!"
-  ]
-}
+    "📈 CONFIDENCE LEVEL: RISING! My comeback protocol is online!",
+  ],
+};
 
 export function getAICommentary(
   racer: AIRacer,
   context: CommentaryContext,
   playerProgress: number,
-  aiProgress: number
+  aiProgress: number,
 ): string | null {
   // Check cooldown (line 11759-11761)
-  const now = Date.now()
+  const now = Date.now();
   if (now - racer.lastComment < racer.commentCooldown) {
-    return null
+    return null;
   }
 
   // Select message set based on personality and context
-  const messages = racer.personality === 'competitive'
-    ? swiftAICommentary[context]
-    : mathBotCommentary[context]
+  const messages =
+    racer.personality === "competitive"
+      ? swiftAICommentary[context]
+      : mathBotCommentary[context];
 
-  if (!messages || messages.length === 0) return null
+  if (!messages || messages.length === 0) return null;
 
   // Return random message
-  return messages[Math.floor(Math.random() * messages.length)]
+  return messages[Math.floor(Math.random() * messages.length)];
 }
 ```
 
 **Commentary Contexts** (8 total):
+
 1. `ahead` - AI is winning (AI progress > player progress)
 2. `behind` - AI is losing (AI progress < player progress)
 3. `adaptive_struggle` - Player struggling (success rate < 60%, triggered periodically)
@@ -668,30 +707,31 @@ export function getAICommentary(
 8. `desperate_catchup` - AI is >30 units behind (emergency catchup mode)
 
 **Commentary Trigger Logic** (line 11911-11942):
+
 ```typescript
 // Triggers every 4 questions
-if (totalQuestions % 4 !== 0) return
+if (totalQuestions % 4 !== 0) return;
 
 // Check each AI racer
-aiRacers.forEach(racer => {
-  const playerProgress = correctAnswers
-  const aiProgress = Math.floor(racer.position)
+aiRacers.forEach((racer) => {
+  const playerProgress = correctAnswers;
+  const aiProgress = Math.floor(racer.position);
 
-  let context = ''
+  let context = "";
 
   // Determine context based on positions
   if (aiProgress > playerProgress + 5) {
-    context = 'ahead'
+    context = "ahead";
   } else if (playerProgress > aiProgress + 5) {
-    context = 'behind'
+    context = "behind";
   }
 
   // Trigger commentary
-  const message = getAICommentary(racer, context, playerProgress, aiProgress)
+  const message = getAICommentary(racer, context, playerProgress, aiProgress);
   if (message) {
-    showAICommentary(racer, message, context)
+    showAICommentary(racer, message, context);
   }
-})
+});
 ```
 
 ### **5.2 Speech Bubble Component** (SpeechBubble.tsx)
@@ -702,7 +742,7 @@ export function SpeechBubble({
   message,
   isVisible,
   position,
-  counterRotation
+  counterRotation,
 }) {
   // Renders:
   // - Bubble with content
@@ -716,11 +756,11 @@ export function SpeechBubble({
   useEffect(() => {
     if (isVisible) {
       const timer = setTimeout(() => {
-        setIsVisible(false)
-      }, 3500)
-      return () => clearTimeout(timer)
+        setIsVisible(false);
+      }, 3500);
+      return () => clearTimeout(timer);
     }
-  }, [isVisible])
+  }, [isVisible]);
 
   // Cooldown setting (line 11746-11747):
   // racer.lastComment = Date.now()
@@ -729,6 +769,7 @@ export function SpeechBubble({
 ```
 
 **CSS Styles** (lines 5864-5977):
+
 ```css
 .speech-bubble {
   position: absolute;
@@ -738,7 +779,7 @@ export function SpeechBubble({
   background: white;
   border-radius: 15px;
   padding: 10px 15px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   font-size: 14px;
   white-space: nowrap;
   opacity: 0;
@@ -762,30 +803,38 @@ export function SpeechBubble({
 ## **Phase 6: Sound & Polish** 🎵
 
 ### **6.1 Sound System**
+
 ```typescript
 export function useSoundEffects() {
-  const sounds = useMemo(() => ({
-    correct: new Audio('/sounds/correct.mp3'),
-    incorrect: new Audio('/sounds/incorrect.mp3'),
-    countdown: new Audio('/sounds/countdown.mp3'),
-    raceStart: new Audio('/sounds/race_start.mp3'),
-    victory: new Audio('/sounds/victory.mp3'),
-    defeat: new Audio('/sounds/defeat.mp3')
-  }), [])
+  const sounds = useMemo(
+    () => ({
+      correct: new Audio("/sounds/correct.mp3"),
+      incorrect: new Audio("/sounds/incorrect.mp3"),
+      countdown: new Audio("/sounds/countdown.mp3"),
+      raceStart: new Audio("/sounds/race_start.mp3"),
+      victory: new Audio("/sounds/victory.mp3"),
+      defeat: new Audio("/sounds/defeat.mp3"),
+    }),
+    [],
+  );
 
   return {
-    playSound: useCallback((type: keyof typeof sounds, volume = 0.5) => {
-      sounds[type].volume = volume
-      sounds[type].currentTime = 0 // Reset to start
-      sounds[type].play().catch(err => {
-        console.warn('Sound play failed:', err)
-      })
-    }, [sounds])
-  }
+    playSound: useCallback(
+      (type: keyof typeof sounds, volume = 0.5) => {
+        sounds[type].volume = volume;
+        sounds[type].currentTime = 0; // Reset to start
+        sounds[type].play().catch((err) => {
+          console.warn("Sound play failed:", err);
+        });
+      },
+      [sounds],
+    ),
+  };
 }
 ```
 
 **Sound Triggers** (from original):
+
 - Countdown: 0.4 volume (line 11186)
 - Race start: 0.6 volume (line 11196)
 - Correct answer: full volume
@@ -796,61 +845,72 @@ export function useSoundEffects() {
 ### **6.2 Animation Classes** (Panda CSS)
 
 **Correct Answer Animation**:
+
 ```typescript
 const correctAnimation = css({
-  background: 'linear-gradient(45deg, #d4edda, #c3e6cb)',
-  border: '2px solid #28a745',
-  boxShadow: '0 0 20px rgba(40, 167, 69, 0.3)',
-  animation: 'correctPulse 0.3s ease',
+  background: "linear-gradient(45deg, #d4edda, #c3e6cb)",
+  border: "2px solid #28a745",
+  boxShadow: "0 0 20px rgba(40, 167, 69, 0.3)",
+  animation: "correctPulse 0.3s ease",
 
-  '@keyframes correctPulse': {
-    '0%': { transform: 'scale(1)', backgroundColor: 'white' },
-    '50%': { transform: 'scale(1.05)', backgroundColor: '#d4edda' },
-    '100%': { transform: 'scale(1)', backgroundColor: 'white' }
-  }
-})
+  "@keyframes correctPulse": {
+    "0%": { transform: "scale(1)", backgroundColor: "white" },
+    "50%": { transform: "scale(1.05)", backgroundColor: "#d4edda" },
+    "100%": { transform: "scale(1)", backgroundColor: "white" },
+  },
+});
 ```
 
 **Incorrect Answer Animation**:
+
 ```typescript
 const incorrectAnimation = css({
-  background: 'linear-gradient(45deg, #f8d7da, #f1b0b7)',
-  border: '2px solid #dc3545',
-  boxShadow: '0 0 20px rgba(220, 53, 69, 0.3)',
-  animation: 'incorrectShake 0.3s ease',
+  background: "linear-gradient(45deg, #f8d7da, #f1b0b7)",
+  border: "2px solid #dc3545",
+  boxShadow: "0 0 20px rgba(220, 53, 69, 0.3)",
+  animation: "incorrectShake 0.3s ease",
 
-  '@keyframes incorrectShake': {
-    '0%, 100%': { transform: 'translateX(0)' },
-    '25%': { transform: 'translateX(-10px)' },
-    '75%': { transform: 'translateX(10px)' }
-  }
-})
+  "@keyframes incorrectShake": {
+    "0%, 100%": { transform: "translateX(0)" },
+    "25%": { transform: "translateX(-10px)" },
+    "75%": { transform: "translateX(10px)" },
+  },
+});
 ```
 
 **Racer Bounce Animation** (lines 5596-5612):
+
 ```typescript
 const racerBounce = css({
-  animation: 'racerBounce 0.3s ease-out',
+  animation: "racerBounce 0.3s ease-out",
 
-  '@keyframes racerBounce': {
-    '0%': { transform: 'translateY(0) scale(1)' },
-    '30%': { transform: 'translateY(-8px) scale(1.1)' },
-    '50%': { transform: 'translateY(-12px) scale(1.15)' },
-    '70%': { transform: 'translateY(-8px) scale(1.1)' },
-    '100%': { transform: 'translateY(0) scale(1)' }
-  }
-})
+  "@keyframes racerBounce": {
+    "0%": { transform: "translateY(0) scale(1)" },
+    "30%": { transform: "translateY(-8px) scale(1.1)" },
+    "50%": { transform: "translateY(-12px) scale(1.15)" },
+    "70%": { transform: "translateY(-8px) scale(1.1)" },
+    "100%": { transform: "translateY(0) scale(1)" },
+  },
+});
 
 // Special bounce for circular track (preserves rotation)
 const circularBounce = css({
-  '@keyframes circularBounce': {
-    '0%': { transform: 'rotate(var(--racer-rotation)) translateY(0) scale(1)' },
-    '30%': { transform: 'rotate(var(--racer-rotation)) translateY(-8px) scale(1.1)' },
-    '50%': { transform: 'rotate(var(--racer-rotation)) translateY(-12px) scale(1.15)' },
-    '70%': { transform: 'rotate(var(--racer-rotation)) translateY(-8px) scale(1.1)' },
-    '100%': { transform: 'rotate(var(--racer-rotation)) translateY(0) scale(1)' }
-  }
-})
+  "@keyframes circularBounce": {
+    "0%": { transform: "rotate(var(--racer-rotation)) translateY(0) scale(1)" },
+    "30%": {
+      transform: "rotate(var(--racer-rotation)) translateY(-8px) scale(1.1)",
+    },
+    "50%": {
+      transform: "rotate(var(--racer-rotation)) translateY(-12px) scale(1.15)",
+    },
+    "70%": {
+      transform: "rotate(var(--racer-rotation)) translateY(-8px) scale(1.1)",
+    },
+    "100%": {
+      transform: "rotate(var(--racer-rotation)) translateY(0) scale(1)",
+    },
+  },
+});
 ```
 
 ---
@@ -858,6 +918,7 @@ const circularBounce = css({
 ## **Phase 7: Testing Strategy** ✅
 
 ### **7.1 Unit Tests**
+
 - [ ] Question generation (no repeats, 10 attempt safety)
 - [ ] Score calculation formulas (base + streak + speed bonus)
 - [ ] AI speed adaptation logic (all threshold values)
@@ -869,6 +930,7 @@ const circularBounce = css({
 - [ ] Lap tracking and celebration cooldown
 
 ### **7.2 Integration Tests**
+
 - [ ] Game flow: intro → controls → countdown → playing → results
 - [ ] AI movement synchronized with game timer (200ms updates)
 - [ ] Speech bubbles appear/disappear correctly (3.5s auto-hide)
@@ -879,6 +941,7 @@ const circularBounce = css({
 - [ ] Time of day progression (6 periods over 60s)
 
 ### **7.3 Manual Testing Checklist**
+
 - [ ] All 3 game modes work correctly
 - [ ] Both AI personalities have distinct commentary
 - [ ] All 8 commentary contexts trigger appropriately
@@ -905,6 +968,7 @@ const circularBounce = css({
 ## **Phase 8: Migration Checklist** 📋
 
 ### **Must Preserve - Exact Values**:
+
 - ✅ Swift AI speed: 0.25x base multiplier
 - ✅ Math Bot speed: 0.15x base multiplier
 - ✅ AI update interval: 200ms
@@ -933,6 +997,7 @@ const circularBounce = css({
 - ✅ Question repeat safety: 10 attempts max
 
 ### **Must Preserve - All Commentary**:
+
 - ✅ All 41 Swift AI messages across 8 contexts
 - ✅ All 41 Math Bot messages across 8 contexts
 - ✅ Exact emoji and wording for each message
@@ -940,6 +1005,7 @@ const circularBounce = css({
 - ✅ Context-appropriate triggering
 
 ### **Must Preserve - Visual Polish**:
+
 - ✅ All time of day gradients (6 periods)
 - ✅ Momentum gauge colors (red/yellow/turquoise thresholds)
 - ✅ Racer bounce animation (with circular variant)
@@ -954,6 +1020,7 @@ const circularBounce = css({
 ## **Implementation Order**
 
 ### **Week 1: Core Infrastructure**
+
 1. Create directory structure
 2. Set up TypeScript types (gameTypes.ts)
 3. Create ComplementRaceContext with useReducer
@@ -962,6 +1029,7 @@ const circularBounce = css({
 6. Basic GameControls component (mode/timeout/style buttons)
 
 ### **Week 2: Game Mechanics**
+
 1. Implement useGameLoop hook
    - Question generation with repeat avoidance
    - Timer management
@@ -974,6 +1042,7 @@ const circularBounce = css({
 6. Wire up game flow: intro → controls → countdown → playing
 
 ### **Week 3: AI System**
+
 1. Implement useAIRacers hook
    - Position updates (200ms interval)
    - Rubber-banding logic
@@ -985,6 +1054,7 @@ const circularBounce = css({
 6. Test all 8 commentary contexts
 
 ### **Week 4: Adaptive Difficulty**
+
 1. Implement useAdaptiveDifficulty hook
    - Per-pair performance tracking
    - Learning mode detection
@@ -994,6 +1064,7 @@ const circularBounce = css({
 4. Test difficulty scaling
 
 ### **Week 5: Visualizations Part 1 (Linear & Circular)**
+
 1. Implement LinearTrack component
    - Horizontal track layout
    - Position calculations
@@ -1006,6 +1077,7 @@ const circularBounce = css({
 3. Test both visualizations with AI movement
 
 ### **Week 6: Visualizations Part 2 (Steam Train)**
+
 1. Implement useSteamJourney hook
    - Momentum system
    - Decay calculations
@@ -1020,6 +1092,7 @@ const circularBounce = css({
 4. Test momentum decay at all skill levels
 
 ### **Week 7: Scoring & Results**
+
 1. Implement scoring system (scoringSystem.ts)
    - Score calculation
    - Medal determination
@@ -1029,6 +1102,7 @@ const circularBounce = css({
 4. Test all scoring scenarios
 
 ### **Week 8: Polish & Testing**
+
 1. Implement sound effects system
 2. Add all animations (Panda CSS)
 3. Unit tests for critical functions
@@ -1045,6 +1119,7 @@ const circularBounce = css({
 ### **Source File**: `packages/core/src/web_generator.py`
 
 **Key Line Ranges**:
+
 - Class definition: 10956-10957
 - Constructor & state: 10957-11030
 - Game configuration: 11098-11161 (startRace)
@@ -1111,6 +1186,7 @@ const circularBounce = css({
 ## **Success Criteria**
 
 ### **Functional**:
+
 - ✅ All 3 game modes (practice/sprint/survival) working
 - ✅ All 8 commentary contexts triggering appropriately
 - ✅ Adaptive difficulty responding to player performance
@@ -1119,6 +1195,7 @@ const circularBounce = css({
 - ✅ Scoring and medals calculating correctly
 
 ### **Quality**:
+
 - ✅ No regressions from original gameplay
 - ✅ Smooth animations (60fps target)
 - ✅ Responsive on all screen sizes
@@ -1127,6 +1204,7 @@ const circularBounce = css({
 - ✅ Unit test coverage for critical logic
 
 ### **Preservation**:
+
 - ✅ All 82 commentary messages preserved exactly
 - ✅ All numerical values match original
 - ✅ All formulas calculate identically
@@ -1157,6 +1235,7 @@ const circularBounce = css({
 5. Review recent commits to see what phase was being worked on
 
 **Key Context**:
+
 - Original source: `packages/core/src/web_generator.py` (lines 10956-15113)
 - Generated output example: `packages/core/src/flashcards_en.html`
 - Implementation follows pattern from existing games: `memory-quiz/` and `matching/`

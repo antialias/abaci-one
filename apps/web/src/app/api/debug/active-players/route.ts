@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server'
-import { getViewerId } from '@/lib/viewer'
-import { getActivePlayers } from '@/lib/arcade/player-manager'
-import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
+import { NextResponse } from "next/server";
+import { getViewerId } from "@/lib/viewer";
+import { getActivePlayers } from "@/lib/arcade/player-manager";
+import { db, schema } from "@/db";
+import { eq } from "drizzle-orm";
 
 /**
  * GET /api/debug/active-players
@@ -10,24 +10,27 @@ import { eq } from 'drizzle-orm'
  */
 export async function GET() {
   try {
-    const viewerId = await getViewerId()
+    const viewerId = await getViewerId();
 
     // Get user record
     const user = await db.query.users.findFirst({
       where: eq(schema.users.guestId, viewerId),
-    })
+    });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found', viewerId }, { status: 404 })
+      return NextResponse.json(
+        { error: "User not found", viewerId },
+        { status: 404 },
+      );
     }
 
     // Get ALL players for this user
     const allPlayers = await db.query.players.findMany({
       where: eq(schema.players.userId, user.id),
-    })
+    });
 
     // Get active players using the helper
-    const activePlayers = await getActivePlayers(viewerId)
+    const activePlayers = await getActivePlayers(viewerId);
 
     return NextResponse.json({
       viewerId,
@@ -46,12 +49,12 @@ export async function GET() {
       })),
       activeCount: activePlayers.length,
       totalCount: allPlayers.length,
-    })
+    });
   } catch (error) {
-    console.error('Failed to fetch active players:', error)
+    console.error("Failed to fetch active players:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch active players', details: String(error) },
-      { status: 500 }
-    )
+      { error: "Failed to fetch active players", details: String(error) },
+      { status: 500 },
+    );
   }
 }

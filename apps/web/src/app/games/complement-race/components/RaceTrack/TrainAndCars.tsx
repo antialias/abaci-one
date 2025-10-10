@@ -1,34 +1,41 @@
-'use client'
+"use client";
 
-import { memo } from 'react'
-import type { BoardingAnimation, DisembarkingAnimation } from '../../hooks/usePassengerAnimations'
-import type { Passenger } from '../../lib/gameTypes'
+import { memo } from "react";
+import type {
+  BoardingAnimation,
+  DisembarkingAnimation,
+} from "../../hooks/usePassengerAnimations";
+import type { Passenger } from "../../lib/gameTypes";
 
 interface TrainCarTransform {
-  x: number
-  y: number
-  rotation: number
-  position: number
-  opacity: number
+  x: number;
+  y: number;
+  rotation: number;
+  position: number;
+  opacity: number;
 }
 
 interface TrainTransform {
-  x: number
-  y: number
-  rotation: number
+  x: number;
+  y: number;
+  rotation: number;
 }
 
 interface TrainAndCarsProps {
-  boardingAnimations: Map<string, BoardingAnimation>
-  disembarkingAnimations: Map<string, DisembarkingAnimation>
-  BoardingPassengerAnimation: React.ComponentType<{ animation: BoardingAnimation }>
-  DisembarkingPassengerAnimation: React.ComponentType<{ animation: DisembarkingAnimation }>
-  trainCars: TrainCarTransform[]
-  boardedPassengers: Passenger[]
-  trainTransform: TrainTransform
-  locomotiveOpacity: number
-  playerEmoji: string
-  momentum: number
+  boardingAnimations: Map<string, BoardingAnimation>;
+  disembarkingAnimations: Map<string, DisembarkingAnimation>;
+  BoardingPassengerAnimation: React.ComponentType<{
+    animation: BoardingAnimation;
+  }>;
+  DisembarkingPassengerAnimation: React.ComponentType<{
+    animation: DisembarkingAnimation;
+  }>;
+  trainCars: TrainCarTransform[];
+  boardedPassengers: Passenger[];
+  trainTransform: TrainTransform;
+  locomotiveOpacity: number;
+  playerEmoji: string;
+  momentum: number;
 }
 
 export const TrainAndCars = memo(
@@ -65,7 +72,7 @@ export const TrainAndCars = memo(
         {/* Train cars - render in reverse order so locomotive appears on top */}
         {trainCars.map((carTransform, carIndex) => {
           // Assign passenger to this car (if one exists for this car index)
-          const passenger = boardedPassengers[carIndex]
+          const passenger = boardedPassengers[carIndex];
 
           return (
             <g
@@ -74,7 +81,7 @@ export const TrainAndCars = memo(
               transform={`translate(${carTransform.x}, ${carTransform.y}) rotate(${carTransform.rotation}) scale(-1, 1)`}
               opacity={carTransform.opacity}
               style={{
-                transition: 'opacity 0.5s ease-in',
+                transition: "opacity 0.5s ease-in",
               }}
             >
               {/* Train car */}
@@ -84,9 +91,9 @@ export const TrainAndCars = memo(
                 y={0}
                 textAnchor="middle"
                 style={{
-                  fontSize: '65px',
-                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
-                  pointerEvents: 'none',
+                  fontSize: "65px",
+                  filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))",
+                  pointerEvents: "none",
                 }}
               >
                 🚃
@@ -100,18 +107,18 @@ export const TrainAndCars = memo(
                   y={0}
                   textAnchor="middle"
                   style={{
-                    fontSize: '42px',
+                    fontSize: "42px",
                     filter: passenger.isUrgent
-                      ? 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.8))'
-                      : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
-                    pointerEvents: 'none',
+                      ? "drop-shadow(0 0 6px rgba(245, 158, 11, 0.8))"
+                      : "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))",
+                    pointerEvents: "none",
                   }}
                 >
                   {passenger.avatar}
                 </text>
               )}
             </g>
-          )
+          );
         })}
 
         {/* Locomotive - rendered last so it appears on top */}
@@ -120,7 +127,7 @@ export const TrainAndCars = memo(
           transform={`translate(${trainTransform.x}, ${trainTransform.y}) rotate(${trainTransform.rotation}) scale(-1, 1)`}
           opacity={locomotiveOpacity}
           style={{
-            transition: 'opacity 0.5s ease-in',
+            transition: "opacity 0.5s ease-in",
           }}
         >
           {/* Train locomotive */}
@@ -130,9 +137,9 @@ export const TrainAndCars = memo(
             y={0}
             textAnchor="middle"
             style={{
-              fontSize: '100px',
-              filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
-              pointerEvents: 'none',
+              fontSize: "100px",
+              filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))",
+              pointerEvents: "none",
             }}
           >
             🚂
@@ -145,9 +152,9 @@ export const TrainAndCars = memo(
             y={0}
             textAnchor="middle"
             style={{
-              fontSize: '70px',
-              filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
-              pointerEvents: 'none',
+              fontSize: "70px",
+              filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))",
+              pointerEvents: "none",
             }}
           >
             {playerEmoji}
@@ -163,10 +170,10 @@ export const TrainAndCars = memo(
                 r="10"
                 fill="rgba(255, 255, 255, 0.6)"
                 style={{
-                  filter: 'blur(4px)',
+                  filter: "blur(4px)",
                   animation: `steamPuffSVG 2s ease-out infinite`,
                   animationDelay: `${delay}s`,
-                  pointerEvents: 'none',
+                  pointerEvents: "none",
                 }}
               />
             ))}
@@ -181,16 +188,16 @@ export const TrainAndCars = memo(
                 r="3"
                 fill="#2c2c2c"
                 style={{
-                  animation: 'coalFallingSVG 1.2s ease-out infinite',
+                  animation: "coalFallingSVG 1.2s ease-out infinite",
                   animationDelay: `${delay}s`,
-                  pointerEvents: 'none',
+                  pointerEvents: "none",
                 }}
               />
             ))}
         </g>
       </>
-    )
-  }
-)
+    );
+  },
+);
 
-TrainAndCars.displayName = 'TrainAndCars'
+TrainAndCars.displayName = "TrainAndCars";

@@ -4,10 +4,10 @@
  */
 
 // Export the hook (works with both local and room providers)
-export { useMemoryPairs } from './MemoryPairsContext'
+export { useMemoryPairs } from "./MemoryPairsContext";
 
 // Export the room provider (networked multiplayer)
-export { RoomMemoryPairsProvider } from './RoomMemoryPairsProvider'
+export { RoomMemoryPairsProvider } from "./RoomMemoryPairsProvider";
 
 // Export types
 export type {
@@ -17,4 +17,4 @@ export type {
   GameType,
   MemoryPairsState,
   MemoryPairsContextValue,
-} from './types'
+} from "./types";

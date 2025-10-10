@@ -7,19 +7,19 @@
  * generates a balanced README with usage examples.
  */
 
-const fs = require('fs').promises;
-const path = require('path');
-const React = require('react');
-const { renderToStaticMarkup } = require('react-dom/server');
+const fs = require("fs").promises;
+const path = require("path");
+const React = require("react");
+const { renderToStaticMarkup } = require("react-dom/server");
 
 // Setup comprehensive DOM globals for React Spring and dependencies
-const { JSDOM } = require('jsdom');
+const { JSDOM } = require("jsdom");
 
-if (typeof global.window === 'undefined') {
-  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-    url: 'http://localhost',
+if (typeof global.window === "undefined") {
+  const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
+    url: "http://localhost",
     pretendToBeVisual: true,
-    resources: 'usable'
+    resources: "usable",
   });
 
   global.window = dom.window;
@@ -28,14 +28,26 @@ if (typeof global.window === 'undefined') {
   global.HTMLElement = dom.window.HTMLElement;
   global.SVGElement = dom.window.SVGElement;
   global.Element = dom.window.Element;
-  global.requestAnimationFrame = dom.window.requestAnimationFrame || function(cb) { return setTimeout(cb, 16); };
-  global.cancelAnimationFrame = dom.window.cancelAnimationFrame || function(id) { return clearTimeout(id); };
+  global.requestAnimationFrame =
+    dom.window.requestAnimationFrame ||
+    function (cb) {
+      return setTimeout(cb, 16);
+    };
+  global.cancelAnimationFrame =
+    dom.window.cancelAnimationFrame ||
+    function (id) {
+      return clearTimeout(id);
+    };
 
   // Add customElements for number-flow compatibility
   global.customElements = {
-    define: function() {},
-    get: function() { return undefined; },
-    whenDefined: function() { return Promise.resolve(); }
+    define: function () {},
+    get: function () {
+      return undefined;
+    },
+    whenDefined: function () {
+      return Promise.resolve();
+    },
   };
 
   // Add ResizeObserver mock
@@ -54,39 +66,42 @@ if (typeof global.window === 'undefined') {
   };
 
   const mockAnimated = {
-    div: createAnimatedComponent('div'),
-    svg: createAnimatedComponent('svg'),
-    g: createAnimatedComponent('g'),
-    circle: createAnimatedComponent('circle'),
-    rect: createAnimatedComponent('rect'),
-    path: createAnimatedComponent('path'),
-    text: createAnimatedComponent('text'),
-    polygon: createAnimatedComponent('polygon'),
-    line: createAnimatedComponent('line'),
-    foreignObject: createAnimatedComponent('foreignObject')
+    div: createAnimatedComponent("div"),
+    svg: createAnimatedComponent("svg"),
+    g: createAnimatedComponent("g"),
+    circle: createAnimatedComponent("circle"),
+    rect: createAnimatedComponent("rect"),
+    path: createAnimatedComponent("path"),
+    text: createAnimatedComponent("text"),
+    polygon: createAnimatedComponent("polygon"),
+    line: createAnimatedComponent("line"),
+    foreignObject: createAnimatedComponent("foreignObject"),
   };
 
   // Mock @react-spring/web with better stubs
-  require.cache[require.resolve('@react-spring/web')] = {
+  require.cache[require.resolve("@react-spring/web")] = {
     exports: {
-      useSpring: () => [{ x: 0, y: 0 }, { start: () => {}, set: () => {} }],
+      useSpring: () => [
+        { x: 0, y: 0 },
+        { start: () => {}, set: () => {} },
+      ],
       useSpringValue: () => ({ start: () => {}, get: () => 0, to: () => {} }),
       animated: mockAnimated,
       config: { default: {}, slow: {}, wobbly: {}, stiff: {} },
-      to: (springs, fn) => fn ? fn(springs) : springs
-    }
+      to: (springs, fn) => (fn ? fn(springs) : springs),
+    },
   };
 
   // Mock @use-gesture/react with proper signatures
-  require.cache[require.resolve('@use-gesture/react')] = {
+  require.cache[require.resolve("@use-gesture/react")] = {
     exports: {
       useDrag: () => () => ({}),
-      useGesture: () => () => ({})
-    }
+      useGesture: () => () => ({}),
+    },
   };
 
   // Mock @number-flow/react with aggressive SVG text replacement
-  require.cache[require.resolve('@number-flow/react')] = {
+  require.cache[require.resolve("@number-flow/react")] = {
     exports: {
       __esModule: true,
       default: ({ children, value, format, style, ...props }) => {
@@ -94,20 +109,20 @@ if (typeof global.window === 'undefined') {
         const displayValue = value !== undefined ? value : children;
         // Return raw text content - React will render this as a text node
         return String(displayValue);
-      }
-    }
+      },
+    },
   };
 }
 
 // Import our component after setting up globals - use source directly
-const { AbacusReact } = require('./src/AbacusReact.tsx');
+const { AbacusReact } = require("./src/AbacusReact.tsx");
 
 // Key example configurations for different use cases
 const examples = [
   {
-    name: 'basic-usage',
-    title: 'Basic Usage',
-    description: 'Simple abacus showing a number',
+    name: "basic-usage",
+    title: "Basic Usage",
+    description: "Simple abacus showing a number",
     code: `<AbacusReact
   value={123}
   columns={3}
@@ -119,13 +134,13 @@ const examples = [
       columns: 3,
       showNumbers: true,
       scaleFactor: 1.0,
-      animated: false // Disable animations for static SVG
-    }
+      animated: false, // Disable animations for static SVG
+    },
   },
   {
-    name: 'interactive',
-    title: 'Interactive Mode',
-    description: 'Clickable abacus with animations',
+    name: "interactive",
+    title: "Interactive Mode",
+    description: "Clickable abacus with animations",
     code: `<AbacusReact
   value={456}
   columns={3}
@@ -142,13 +157,13 @@ const examples = [
       columns: 3,
       interactive: true,
       animated: false, // Disable animations for static SVG
-      showNumbers: true
-    }
+      showNumbers: true,
+    },
   },
   {
-    name: 'custom-styling',
-    title: 'Custom Styling',
-    description: 'Personalized colors and highlights',
+    name: "custom-styling",
+    title: "Custom Styling",
+    description: "Personalized colors and highlights",
     code: `<AbacusReact
   value={789}
   columns={3}
@@ -166,23 +181,21 @@ const examples = [
     props: {
       value: 789,
       columns: 3,
-      colorScheme: 'place-value',
-      beadShape: 'circle',
+      colorScheme: "place-value",
+      beadShape: "circle",
       animated: false, // Disable animations for static SVG
       customStyles: {
-        heavenBeads: { fill: '#ff6b35' },
-        earthBeads: { fill: '#3498db' },
-        numerals: { color: '#2c3e50', fontWeight: 'bold' }
+        heavenBeads: { fill: "#ff6b35" },
+        earthBeads: { fill: "#3498db" },
+        numerals: { color: "#2c3e50", fontWeight: "bold" },
       },
-      highlightBeads: [
-        { columnIndex: 1, beadType: 'heaven' }
-      ]
-    }
+      highlightBeads: [{ columnIndex: 1, beadType: "heaven" }],
+    },
   },
   {
-    name: 'tutorial-mode',
-    title: 'Tutorial System',
-    description: 'Educational guidance with tooltips',
+    name: "tutorial-mode",
+    title: "Tutorial System",
+    description: "Educational guidance with tooltips",
     code: `<AbacusReact
   value={42}
   columns={2}
@@ -207,9 +220,9 @@ const examples = [
       columns: 2,
       interactive: true,
       animated: false, // Disable animations for static SVG
-      showNumbers: true
-    }
-  }
+      showNumbers: true,
+    },
+  },
 ];
 
 /**
@@ -217,21 +230,21 @@ const examples = [
  */
 async function generateSVGExamples() {
   if (!AbacusReact) {
-    console.log('🔨 Building package first...');
-    const { execSync } = require('child_process');
+    console.log("🔨 Building package first...");
+    const { execSync } = require("child_process");
     try {
-      execSync('pnpm run build', { stdio: 'inherit' });
-      AbacusReact = require('./dist/index.cjs.js').AbacusReact;
+      execSync("pnpm run build", { stdio: "inherit" });
+      AbacusReact = require("./dist/index.cjs.js").AbacusReact;
     } catch (error) {
-      console.error('❌ Failed to build package:', error.message);
+      console.error("❌ Failed to build package:", error.message);
       throw error;
     }
   }
 
-  console.log('🎨 Generating SVG examples...');
+  console.log("🎨 Generating SVG examples...");
 
   // Create examples directory
-  const examplesDir = path.join(__dirname, 'examples');
+  const examplesDir = path.join(__dirname, "examples");
   try {
     await fs.mkdir(examplesDir, { recursive: true });
   } catch (error) {
@@ -255,10 +268,10 @@ async function generateSVGExamples() {
       let svgMarkup = svgMatch ? svgMatch[0] : fullMarkup;
 
       // Add required xmlns attributes for GitHub compatibility
-      if (svgMarkup.includes('<svg')) {
+      if (svgMarkup.includes("<svg")) {
         svgMarkup = svgMarkup.replace(
           /<svg([^>]*)>/,
-          '<svg$1 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:h5="http://www.w3.org/1999/xhtml">'
+          '<svg$1 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:h5="http://www.w3.org/1999/xhtml">',
         );
       }
 
@@ -290,22 +303,21 @@ async function generateSVGExamples() {
             return `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-family="monospace" font-weight="bold" font-size="${fontSize}" fill="#333">${textContent.trim()}</text>`;
           }
           return match; // Return original if we can't parse
-        }
+        },
       );
 
       // Add metadata as comments
       const svgWithMetadata = `<!-- ${example.description} -->
-<!-- Generated from: ${JSON.stringify(example.props, null, 2).replace(/-->/g, '--&gt;')} -->
+<!-- Generated from: ${JSON.stringify(example.props, null, 2).replace(/-->/g, "--&gt;")} -->
 ${svgMarkup}`;
 
       // Save to file
       const filename = `${example.name}.svg`;
       const filepath = path.join(examplesDir, filename);
-      await fs.writeFile(filepath, svgWithMetadata, 'utf8');
+      await fs.writeFile(filepath, svgWithMetadata, "utf8");
 
       generatedFiles.push(filename);
       console.log(`✅ Generated ${filename}`);
-
     } catch (error) {
       console.error(`❌ Failed to generate ${example.name}:`, error.message);
     }
@@ -318,10 +330,12 @@ Generated SVG examples demonstrating various features of the AbacusReact compone
 
 ## Files
 
-${generatedFiles.map(file => {
-  const example = examples.find(ex => `${ex.name}.svg` === file);
-  return `- **${file}** - ${example?.description || 'Example usage'}`;
-}).join('\n')}
+${generatedFiles
+  .map((file) => {
+    const example = examples.find((ex) => `${ex.name}.svg` === file);
+    return `- **${file}** - ${example?.description || "Example usage"}`;
+  })
+  .join("\n")}
 
 ## Usage in Documentation
 
@@ -343,14 +357,13 @@ _Generated automatically by generate-examples.js using react-dom/server_
 _Last updated: ${new Date().toISOString()}_
 `;
 
-  await fs.writeFile(path.join(examplesDir, 'README.md'), indexContent, 'utf8');
+  await fs.writeFile(path.join(examplesDir, "README.md"), indexContent, "utf8");
 
   console.log(`✅ Generated ${generatedFiles.length} SVG example files`);
   console.log(`📂 Examples available in: ${examplesDir}`);
 
   return generatedFiles;
 }
-
 
 // Generate enhanced Storybook stories
 async function generateStorybookStories() {
@@ -375,7 +388,9 @@ const meta: Meta<typeof AbacusReact> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-${examples.map(example => `
+${examples
+  .map(
+    (example) => `
 export const ${example.name.replace(/-([a-z])/g, (g) => g[1].toUpperCase())}: Story = {
   name: '${example.title}',
   args: ${JSON.stringify(example.props, null, 2)},
@@ -386,7 +401,9 @@ export const ${example.name.replace(/-([a-z])/g, (g) => g[1].toUpperCase())}: St
       }
     }
   }
-};`).join('\n')}
+};`,
+  )
+  .join("\n")}
 
 // Advanced tutorial example (from our previous implementation)
 export const TutorialExample: Story = {
@@ -542,8 +559,12 @@ export const TutorialExample: Story = {
 };
 `;
 
-  await fs.writeFile(path.join(__dirname, 'src', 'AbacusReact.examples.stories.tsx'), storyContent, 'utf8');
-  console.log('✅ Generated AbacusReact.examples.stories.tsx');
+  await fs.writeFile(
+    path.join(__dirname, "src", "AbacusReact.examples.stories.tsx"),
+    storyContent,
+    "utf8",
+  );
+  console.log("✅ Generated AbacusReact.examples.stories.tsx");
 }
 
 // Generate balanced README
@@ -576,7 +597,9 @@ yarn add @soroban/abacus-react
 
 ## Quick Start
 
-${examples.map(example => `
+${examples
+  .map(
+    (example) => `
 ### ${example.title}
 
 ${example.description}
@@ -586,7 +609,9 @@ ${example.description}
 \`\`\`tsx
 ${example.code}
 \`\`\`
-`).join('')}
+`,
+  )
+  .join("")}
 
 ## Core API
 
@@ -858,13 +883,13 @@ Contributions welcome! Please see our contributing guidelines and feel free to s
 MIT License - see LICENSE file for details.
 `;
 
-  await fs.writeFile(path.join(__dirname, 'README.md'), readmeContent, 'utf8');
-  console.log('✅ Generated balanced README.md');
+  await fs.writeFile(path.join(__dirname, "README.md"), readmeContent, "utf8");
+  console.log("✅ Generated balanced README.md");
 }
 
 // Main execution
 async function generateExamples() {
-  console.log('🎨 Generating AbacusReact examples and documentation...');
+  console.log("🎨 Generating AbacusReact examples and documentation...");
 
   try {
     // Generate actual SVG files first
@@ -874,13 +899,14 @@ async function generateExamples() {
     await generateStorybookStories();
     await generateREADME();
 
-    console.log('\n✅ All examples and documentation generated successfully!');
-    console.log('📸 Generated SVG examples using react-dom/server');
-    console.log('📖 Updated README.md with balanced documentation');
-    console.log('📚 Created new Storybook examples in AbacusReact.examples.stories.tsx');
-
+    console.log("\n✅ All examples and documentation generated successfully!");
+    console.log("📸 Generated SVG examples using react-dom/server");
+    console.log("📖 Updated README.md with balanced documentation");
+    console.log(
+      "📚 Created new Storybook examples in AbacusReact.examples.stories.tsx",
+    );
   } catch (error) {
-    console.error('💥 Generation failed:', error);
+    console.error("💥 Generation failed:", error);
     process.exit(1);
   }
 }

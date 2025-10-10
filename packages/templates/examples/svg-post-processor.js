@@ -14,15 +14,15 @@
  *   - Crop mark annotations: link("crop-mark://top-left") -> data-crop-* attributes
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 // Use jsdom if available, fallback to regex-based processing
 let JSDOM;
 try {
-  JSDOM = require('jsdom').JSDOM;
+  JSDOM = require("jsdom").JSDOM;
 } catch (e) {
-  console.warn('jsdom not found, using fallback regex processing');
+  console.warn("jsdom not found, using fallback regex processing");
 }
 
 function processWithJSDOM(svgContent) {
@@ -30,56 +30,58 @@ function processWithJSDOM(svgContent) {
   const document = dom.window.document;
 
   // Find all elements with href attributes (Typst link annotations)
-  const linkedElements = document.querySelectorAll('[href]');
+  const linkedElements = document.querySelectorAll("[href]");
   let processedCount = 0;
 
-  linkedElements.forEach(element => {
-    const href = element.getAttribute('href');
+  linkedElements.forEach((element) => {
+    const href = element.getAttribute("href");
 
-    if (href.startsWith('bead://')) {
+    if (href.startsWith("bead://")) {
       // Extract bead information: bead://col1-ones-heaven or bead://col2-tens-earth-1
-      const beadInfo = href.replace('bead://', '');
-      const parts = beadInfo.split('-');
+      const beadInfo = href.replace("bead://", "");
+      const parts = beadInfo.split("-");
 
       if (parts.length >= 3) {
-        const column = parts[0];  // col1, col2, etc.
+        const column = parts[0]; // col1, col2, etc.
         const position = parts[1]; // ones, tens, hundreds, etc.
-        const type = parts[2];     // heaven, earth
-        const index = parts[3];    // For earth beads: 1, 2, 3, 4
+        const type = parts[2]; // heaven, earth
+        const index = parts[3]; // For earth beads: 1, 2, 3, 4
 
-        element.setAttribute('data-bead-column', column);
-        element.setAttribute('data-bead-position', position);
-        element.setAttribute('data-bead-type', type);
-        element.setAttribute('data-element-type', 'bead');
+        element.setAttribute("data-bead-column", column);
+        element.setAttribute("data-bead-position", position);
+        element.setAttribute("data-bead-type", type);
+        element.setAttribute("data-element-type", "bead");
 
         if (index) {
-          element.setAttribute('data-bead-index', index);
+          element.setAttribute("data-bead-index", index);
         }
 
         processedCount++;
       }
-    }
-    else if (href.startsWith('crop-mark://')) {
+    } else if (href.startsWith("crop-mark://")) {
       // Extract crop mark position: crop-mark://top-left
-      const position = href.replace('crop-mark://', '');
+      const position = href.replace("crop-mark://", "");
 
-      element.setAttribute('data-crop-position', position);
-      element.setAttribute('data-element-type', 'crop-mark');
+      element.setAttribute("data-crop-position", position);
+      element.setAttribute("data-element-type", "crop-mark");
 
       // Add CSS class for easier styling
-      const currentClass = element.getAttribute('class') || '';
-      element.setAttribute('class', `${currentClass} crop-mark crop-mark-${position}`.trim());
+      const currentClass = element.getAttribute("class") || "";
+      element.setAttribute(
+        "class",
+        `${currentClass} crop-mark crop-mark-${position}`.trim(),
+      );
 
       processedCount++;
     }
 
     // Remove the original href attribute
-    element.removeAttribute('href');
+    element.removeAttribute("href");
   });
 
   return {
     content: dom.serialize(),
-    processedCount
+    processedCount,
   };
 }
 
@@ -90,7 +92,7 @@ function processWithRegex(svgContent) {
   let result = svgContent.replace(
     /<a[^>]*href="bead:\/\/([^"]+)"[^>]*>(.*?)<\/a>/gs,
     (match, beadInfo, content) => {
-      const parts = beadInfo.split('-');
+      const parts = beadInfo.split("-");
       if (parts.length >= 3) {
         const column = parts[0];
         const position = parts[1];
@@ -107,7 +109,7 @@ function processWithRegex(svgContent) {
         return `<g ${dataAttrs}>${content}</g>`;
       }
       return match;
-    }
+    },
   );
 
   // Process crop mark links: <a href="crop-mark://top-left"><rect.../></a>
@@ -116,12 +118,12 @@ function processWithRegex(svgContent) {
     (match, position, content) => {
       processedCount++;
       return `<g data-crop-position="${position}" data-element-type="crop-mark" class="crop-mark crop-mark-${position}">${content}</g>`;
-    }
+    },
   );
 
   return {
     content: result,
-    processedCount
+    processedCount,
   };
 }
 
@@ -133,11 +135,11 @@ function processTypstSVG(inputPath, outputPath) {
     process.exit(1);
   }
 
-  const svgContent = fs.readFileSync(inputPath, 'utf-8');
+  const svgContent = fs.readFileSync(inputPath, "utf-8");
 
   // Choose processing method
   const processor = JSDOM ? processWithJSDOM : processWithRegex;
-  const processingMethod = JSDOM ? 'JSDOM' : 'regex fallback';
+  const processingMethod = JSDOM ? "JSDOM" : "regex fallback";
 
   console.log(`⚙️  Processing with: ${processingMethod}`);
 
@@ -183,29 +185,33 @@ Dependencies:
 if (require.main === module) {
   const args = process.argv.slice(2);
 
-  if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
+  if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
     showUsage();
     process.exit(0);
   }
 
   const inputPath = args[0];
-  const outputPath = args[1] || inputPath.replace(/\.svg$/, '-processed.svg');
+  const outputPath = args[1] || inputPath.replace(/\.svg$/, "-processed.svg");
 
   try {
     const count = processTypstSVG(inputPath, outputPath);
 
     if (count === 0) {
-      console.log('⚠️  No Typst link annotations found in the SVG file');
-      console.log('   Make sure the SVG was generated with annotated templates');
+      console.log("⚠️  No Typst link annotations found in the SVG file");
+      console.log(
+        "   Make sure the SVG was generated with annotated templates",
+      );
     } else {
-      console.log('🎉 Processing complete!');
-      console.log('   You can now use CSS selectors like:');
+      console.log("🎉 Processing complete!");
+      console.log("   You can now use CSS selectors like:");
       console.log('   • [data-bead-type="heaven"] - Select heaven beads');
-      console.log('   • [data-crop-position="top-left"] - Select crop boundaries');
-      console.log('   • .crop-mark - Select all crop marks');
+      console.log(
+        '   • [data-crop-position="top-left"] - Select crop boundaries',
+      );
+      console.log("   • .crop-mark - Select all crop marks");
     }
   } catch (error) {
-    console.error('❌ Error processing SVG:', error.message);
+    console.error("❌ Error processing SVG:", error.message);
     process.exit(1);
   }
 }

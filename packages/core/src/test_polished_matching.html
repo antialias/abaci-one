@@ -1,518 +1,588 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Polished Matching Game - Orthogonal Controls</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-        }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      }
 
-        .test-info {
-            background: #e7f3ff;
-            border: 1px solid #b3d9ff;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
+      .test-info {
+        background: #e7f3ff;
+        border: 1px solid #b3d9ff;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 20px 0;
+      }
 
-        .challenge-card {
-            background: linear-gradient(135deg, #ff6b6b, #feca57);
-            color: white;
-            border: none;
-            border-radius: 15px;
-            padding: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-            font-family: inherit;
-            width: 300px;
-            margin: 20px auto;
-            display: block;
-        }
+      .challenge-card {
+        background: linear-gradient(135deg, #ff6b6b, #feca57);
+        color: white;
+        border: none;
+        border-radius: 15px;
+        padding: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        font-family: inherit;
+        width: 300px;
+        margin: 20px auto;
+        display: block;
+      }
 
-        .challenge-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(255, 107, 107, 0.3);
-        }
+      .challenge-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(255, 107, 107, 0.3);
+      }
 
-        .challenge-icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-        }
+      .challenge-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+      }
 
-        .challenge-content h4 {
-            margin: 0 0 10px 0;
-            font-size: 1.3rem;
-            font-weight: 700;
-        }
+      .challenge-content h4 {
+        margin: 0 0 10px 0;
+        font-size: 1.3rem;
+        font-weight: 700;
+      }
 
-        .challenge-content p {
-            margin: 0;
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
+      .challenge-content p {
+        margin: 0;
+        font-size: 0.9rem;
+        opacity: 0.9;
+      }
 
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            animation: fadeIn 0.3s ease-out;
-        }
+      /* Modal Styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        animation: fadeIn 0.3s ease-out;
+      }
 
-        .modal-content {
-            background-color: #fefefe;
-            margin: 2% auto;
-            padding: 0;
-            border-radius: 15px;
-            width: 95%;
-            max-width: 900px;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideInDown 0.4s ease-out;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-        }
+      .modal-content {
+        background-color: #fefefe;
+        margin: 2% auto;
+        padding: 0;
+        border-radius: 15px;
+        width: 95%;
+        max-width: 900px;
+        max-height: 90vh;
+        overflow-y: auto;
+        animation: slideInDown 0.4s ease-out;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+      }
 
-        .modal-header {
-            background: linear-gradient(135deg, #ff6b6b, #feca57);
-            color: white;
-            padding: 25px 30px;
-            border-radius: 15px 15px 0 0;
-            position: relative;
-        }
+      .modal-header {
+        background: linear-gradient(135deg, #ff6b6b, #feca57);
+        color: white;
+        padding: 25px 30px;
+        border-radius: 15px 15px 0 0;
+        position: relative;
+      }
 
-        .modal-title {
-            margin: 0;
-            font-size: 1.8rem;
-            font-weight: 700;
-        }
+      .modal-title {
+        margin: 0;
+        font-size: 1.8rem;
+        font-weight: 700;
+      }
 
-        .close {
-            position: absolute;
-            right: 20px;
-            top: 20px;
-            color: white;
-            font-size: 35px;
-            font-weight: bold;
-            cursor: pointer;
-            line-height: 1;
-        }
+      .close {
+        position: absolute;
+        right: 20px;
+        top: 20px;
+        color: white;
+        font-size: 35px;
+        font-weight: bold;
+        cursor: pointer;
+        line-height: 1;
+      }
 
-        .close:hover {
-            opacity: 0.7;
-        }
+      .close:hover {
+        opacity: 0.7;
+      }
 
-        .modal-body {
-            padding: 30px;
-        }
+      .modal-body {
+        padding: 30px;
+      }
 
-        .matching-controls {
-            margin-bottom: 20px;
-        }
+      .matching-controls {
+        margin-bottom: 20px;
+      }
 
-        .control-group {
-            margin-bottom: 20px;
-        }
+      .control-group {
+        margin-bottom: 20px;
+      }
 
-        .control-group label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 600;
-            color: #333;
-        }
+      .control-group label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #333;
+      }
 
-        .mode-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
+      .mode-buttons {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
 
-        .mode-btn, .game-type-btn {
-            background: #f8f9fa;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            padding: 15px 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-            font-family: inherit;
-            min-width: 140px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            justify-content: center;
-        }
+      .mode-btn,
+      .game-type-btn {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 15px 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        font-family: inherit;
+        min-width: 140px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: center;
+      }
 
-        .mode-btn:hover, .game-type-btn:hover {
-            border-color: #007bff;
-            background: #e3f2fd;
-        }
+      .mode-btn:hover,
+      .game-type-btn:hover {
+        border-color: #007bff;
+        background: #e3f2fd;
+      }
 
-        .mode-btn.active, .game-type-btn.active {
-            background: #007bff;
-            border-color: #007bff;
-            color: white;
-        }
+      .mode-btn.active,
+      .game-type-btn.active {
+        background: #007bff;
+        border-color: #007bff;
+        color: white;
+      }
 
-        .mode-btn.active:hover, .game-type-btn.active:hover {
-            background: #0056b3;
-        }
+      .mode-btn.active:hover,
+      .game-type-btn.active:hover {
+        background: #0056b3;
+      }
 
-        .mode-icon {
-            font-size: 1.2rem;
-        }
+      .mode-icon {
+        font-size: 1.2rem;
+      }
 
-        .mode-text {
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
+      .mode-text {
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
 
-        .count-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
+      .count-buttons {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
 
-        .match-size-btn {
-            background: #f8f9fa;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            padding: 15px 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-            font-family: inherit;
-            min-width: 100px;
-        }
+      .match-size-btn {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 15px 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        font-family: inherit;
+        min-width: 100px;
+      }
 
-        .match-size-btn:hover {
-            border-color: #28a745;
-            background: #d4edda;
-        }
+      .match-size-btn:hover {
+        border-color: #28a745;
+        background: #d4edda;
+      }
 
-        .btn-main {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
+      .btn-main {
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
 
-        .btn-sub {
-            font-size: 0.85rem;
-            opacity: 0.7;
-        }
+      .btn-sub {
+        font-size: 0.85rem;
+        opacity: 0.7;
+      }
 
-        .combination-showcase {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            margin: 30px 0;
-        }
+      .combination-showcase {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 20px;
+        margin: 30px 0;
+      }
 
-        .combination-showcase h3 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #495057;
-        }
+      .combination-showcase h3 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #495057;
+      }
 
-        .combinations {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-        }
+      .combinations {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
 
-        .combination {
-            text-align: center;
-            padding: 15px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
+      .combination {
+        text-align: center;
+        padding: 15px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
 
-        .combination h4 {
-            margin: 0 0 15px 0;
-            color: #007bff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
+      .combination h4 {
+        margin: 0 0 15px 0;
+        color: #007bff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
 
-        .combination-example {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #495057;
-            margin: 5px 0;
-        }
+      .combination-example {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #495057;
+        margin: 5px 0;
+      }
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
         }
+        to {
+          opacity: 1;
+        }
+      }
 
-        @keyframes slideInDown {
-            from {
-                transform: translateY(-50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+      @keyframes slideInDown {
+        from {
+          transform: translateY(-50px);
+          opacity: 0;
         }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h1>🎮 Polished Matching Game</h1>
-        
-        <div class="test-info">
-            <h3>✨ Orthogonal Controls Implemented</h3>
-            <p><strong>Fixed the issue!</strong> Now you can independently select:</p>
-            <ul>
-                <li><strong>Number of Players:</strong> Single Player or Two Player (affects turn-taking and scoring)</li>
-                <li><strong>Game Type:</strong> Abacus/Numeral Pairs or Friends of 5 & 10 (affects what to match)</li>
-            </ul>
-            <p>This creates 4 possible combinations, giving players full flexibility to choose their preferred experience!</p>
-        </div>
+      <h1>🎮 Polished Matching Game</h1>
 
-        <div class="combination-showcase">
-            <h3>🎯 Available Game Combinations</h3>
-            <div class="combinations">
-                <div class="combination">
-                    <h4>👤 + 🧮 Single Player + Abacus/Numeral</h4>
-                    <div class="combination-example">Traditional matching: Abacus ↔ Number</div>
-                    <div class="combination-example">Solo challenge, self-paced</div>
-                </div>
-                
-                <div class="combination">
-                    <h4>👤 + 🎯 Single Player + Friends</h4>
-                    <div class="combination-example">Complement pairs: 1+4=5, 2+8=10</div>
-                    <div class="combination-example">Solo arithmetic practice</div>
-                </div>
-                
-                <div class="combination">
-                    <h4>👥 + 🧮 Two Player + Abacus/Numeral</h4>
-                    <div class="combination-example">Traditional matching: Abacus ↔ Number</div>
-                    <div class="combination-example">Competitive turn-based play</div>
-                </div>
-                
-                <div class="combination">
-                    <h4>👥 + 🎯 Two Player + Friends</h4>
-                    <div class="combination-example">Complement pairs: 1+4=5, 2+8=10</div>
-                    <div class="combination-example">Competitive arithmetic learning</div>
-                </div>
-            </div>
-        </div>
+      <div class="test-info">
+        <h3>✨ Orthogonal Controls Implemented</h3>
+        <p>
+          <strong>Fixed the issue!</strong> Now you can independently select:
+        </p>
+        <ul>
+          <li>
+            <strong>Number of Players:</strong> Single Player or Two Player
+            (affects turn-taking and scoring)
+          </li>
+          <li>
+            <strong>Game Type:</strong> Abacus/Numeral Pairs or Friends of 5 &
+            10 (affects what to match)
+          </li>
+        </ul>
+        <p>
+          This creates 4 possible combinations, giving players full flexibility
+          to choose their preferred experience!
+        </p>
+      </div>
 
-        <button id="open-matching-modal" class="challenge-card">
-            <div class="challenge-icon">🧩</div>
-            <div class="challenge-content">
-                <h4>Enhanced Matching Game</h4>
-                <p>Test the new orthogonal controls!</p>
+      <div class="combination-showcase">
+        <h3>🎯 Available Game Combinations</h3>
+        <div class="combinations">
+          <div class="combination">
+            <h4>👤 + 🧮 Single Player + Abacus/Numeral</h4>
+            <div class="combination-example">
+              Traditional matching: Abacus ↔ Number
             </div>
-        </button>
+            <div class="combination-example">Solo challenge, self-paced</div>
+          </div>
 
-        <!-- Matching Modal -->
-        <div id="matching-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">Enhanced Matching Game</h2>
-                    <span class="close" data-modal="matching-modal">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <p id="matching-description">Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves!</p>
-            
-                    <div class="matching-controls">
-                        <div class="control-group">
-                            <label>Number of Players:</label>
-                            <div class="mode-buttons">
-                                <button type="button" class="mode-btn active" data-mode="single">
-                                    <div class="mode-icon">👤</div>
-                                    <div class="mode-text">Single Player</div>
-                                </button>
-                                <button type="button" class="mode-btn" data-mode="two-player">
-                                    <div class="mode-icon">👥</div>
-                                    <div class="mode-text">Two Player</div>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="control-group">
-                            <label>Game Type:</label>
-                            <div class="mode-buttons">
-                                <button type="button" class="game-type-btn active" data-game-type="abacus-numeral">
-                                    <div class="mode-icon">🧮</div>
-                                    <div class="mode-text">Abacus / Numeral Pairs</div>
-                                </button>
-                                <button type="button" class="game-type-btn" data-game-type="complement-pairs">
-                                    <div class="mode-icon">🎯</div>
-                                    <div class="mode-text">Friends of 5 & 10</div>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div class="control-group">
-                            <label>Choose Grid Size to Start:</label>
-                            <div class="count-buttons">
-                                <button type="button" class="match-size-btn start-game-btn" data-pairs="6">
-                                    <div class="btn-main">3×4 Grid</div>
-                                    <div class="btn-sub">6 pairs</div>
-                                </button>
-                                <button type="button" class="match-size-btn start-game-btn" data-pairs="8">
-                                    <div class="btn-main">4×4 Grid</div>
-                                    <div class="btn-sub">8 pairs</div>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+          <div class="combination">
+            <h4>👤 + 🎯 Single Player + Friends</h4>
+            <div class="combination-example">
+              Complement pairs: 1+4=5, 2+8=10
             </div>
+            <div class="combination-example">Solo arithmetic practice</div>
+          </div>
+
+          <div class="combination">
+            <h4>👥 + 🧮 Two Player + Abacus/Numeral</h4>
+            <div class="combination-example">
+              Traditional matching: Abacus ↔ Number
+            </div>
+            <div class="combination-example">Competitive turn-based play</div>
+          </div>
+
+          <div class="combination">
+            <h4>👥 + 🎯 Two Player + Friends</h4>
+            <div class="combination-example">
+              Complement pairs: 1+4=5, 2+8=10
+            </div>
+            <div class="combination-example">
+              Competitive arithmetic learning
+            </div>
+          </div>
         </div>
+      </div>
+
+      <button id="open-matching-modal" class="challenge-card">
+        <div class="challenge-icon">🧩</div>
+        <div class="challenge-content">
+          <h4>Enhanced Matching Game</h4>
+          <p>Test the new orthogonal controls!</p>
+        </div>
+      </button>
+
+      <!-- Matching Modal -->
+      <div id="matching-modal" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 class="modal-title">Enhanced Matching Game</h2>
+            <span class="close" data-modal="matching-modal">&times;</span>
+          </div>
+          <div class="modal-body">
+            <p id="matching-description">
+              Match abacus patterns with their corresponding numerals. Find all
+              pairs in minimum moves!
+            </p>
+
+            <div class="matching-controls">
+              <div class="control-group">
+                <label>Number of Players:</label>
+                <div class="mode-buttons">
+                  <button
+                    type="button"
+                    class="mode-btn active"
+                    data-mode="single"
+                  >
+                    <div class="mode-icon">👤</div>
+                    <div class="mode-text">Single Player</div>
+                  </button>
+                  <button type="button" class="mode-btn" data-mode="two-player">
+                    <div class="mode-icon">👥</div>
+                    <div class="mode-text">Two Player</div>
+                  </button>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label>Game Type:</label>
+                <div class="mode-buttons">
+                  <button
+                    type="button"
+                    class="game-type-btn active"
+                    data-game-type="abacus-numeral"
+                  >
+                    <div class="mode-icon">🧮</div>
+                    <div class="mode-text">Abacus / Numeral Pairs</div>
+                  </button>
+                  <button
+                    type="button"
+                    class="game-type-btn"
+                    data-game-type="complement-pairs"
+                  >
+                    <div class="mode-icon">🎯</div>
+                    <div class="mode-text">Friends of 5 & 10</div>
+                  </button>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label>Choose Grid Size to Start:</label>
+                <div class="count-buttons">
+                  <button
+                    type="button"
+                    class="match-size-btn start-game-btn"
+                    data-pairs="6"
+                  >
+                    <div class="btn-main">3×4 Grid</div>
+                    <div class="btn-sub">6 pairs</div>
+                  </button>
+                  <button
+                    type="button"
+                    class="match-size-btn start-game-btn"
+                    data-pairs="8"
+                  >
+                    <div class="btn-main">4×4 Grid</div>
+                    <div class="btn-sub">8 pairs</div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
-        class TestMatchingGame {
-            constructor() {
-                this.gameMode = 'single';
-                this.gameType = 'abacus-numeral';
-                this.selectedPairs = 6;
-                
-                this.bindEvents();
-                this.updateDescription(); // Set initial description
-            }
+      class TestMatchingGame {
+        constructor() {
+          this.gameMode = "single";
+          this.gameType = "abacus-numeral";
+          this.selectedPairs = 6;
 
-            bindEvents() {
-                // Number of players selection
-                document.querySelectorAll('.mode-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                        e.target.classList.add('active');
-                        this.gameMode = e.target.dataset.mode;
-                        
-                        console.log('Player mode changed to:', this.gameMode);
-                        this.updateDescription();
-                    });
-                });
-                
-                // Game type selection
-                document.querySelectorAll('.game-type-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        document.querySelectorAll('.game-type-btn').forEach(b => b.classList.remove('active'));
-                        e.target.classList.add('active');
-                        this.gameType = e.target.dataset.gameType;
-                        
-                        console.log('Game type changed to:', this.gameType);
-                        this.updateDescription();
-                    });
-                });
-                
-                // Grid size selection
-                document.querySelectorAll('.start-game-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        this.selectedPairs = parseInt(e.target.dataset.pairs);
-                        console.log(`Starting game: ${this.gameMode} + ${this.gameType} with ${this.selectedPairs} pairs`);
-                        this.startGame();
-                    });
-                });
-
-                // Modal controls
-                document.getElementById('open-matching-modal').addEventListener('click', () => {
-                    this.openModal('matching-modal');
-                });
-
-                document.querySelector('.close').addEventListener('click', () => {
-                    this.closeModal('matching-modal');
-                });
-
-                document.getElementById('matching-modal').addEventListener('click', (e) => {
-                    if (e.target.id === 'matching-modal') {
-                        this.closeModal('matching-modal');
-                    }
-                });
-            }
-
-            updateDescription() {
-                const description = document.getElementById('matching-description');
-                
-                if (this.gameType === 'complement-pairs') {
-                    if (this.gameMode === 'two-player') {
-                        description.textContent = 'Match complement pairs! Find numbers that add up to 5 or 10. Two players take turns finding "friends" that work together.';
-                    } else {
-                        description.textContent = 'Match complement pairs! Find numbers that add up to 5 or 10. Each pair contains two numbers that are "friends" - they work together to make 5 or 10.';
-                    }
-                } else {
-                    if (this.gameMode === 'two-player') {
-                        description.textContent = 'Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves! Two players take turns.';
-                    } else {
-                        description.textContent = 'Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves!';
-                    }
-                }
-                
-                console.log('Description updated:', description.textContent);
-            }
-
-            startGame() {
-                const combinations = {
-                    'single-abacus-numeral': 'Single Player Abacus/Numeral Matching',
-                    'single-complement-pairs': 'Single Player Friends of 5 & 10',
-                    'two-player-abacus-numeral': 'Two Player Abacus/Numeral Competition',
-                    'two-player-complement-pairs': 'Two Player Arithmetic Challenge'
-                };
-                
-                const comboKey = `${this.gameMode}-${this.gameType}`;
-                const gameName = combinations[comboKey];
-                
-                alert(`🎮 Starting: ${gameName}\n\n` +
-                      `Players: ${this.gameMode === 'single' ? '1 Player' : '2 Players'}\n` +
-                      `Game Type: ${this.gameType === 'abacus-numeral' ? 'Abacus ↔ Numeral' : 'Friends of 5 & 10'}\n` +
-                      `Grid Size: ${this.selectedPairs} pairs\n\n` +
-                      `This demonstrates the orthogonal controls working correctly!`);
-                
-                this.closeModal('matching-modal');
-            }
-
-            openModal(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) {
-                    modal.style.display = 'block';
-                    document.body.style.overflow = 'hidden';
-                }
-            }
-
-            closeModal(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) {
-                    modal.style.display = 'none';
-                    document.body.style.overflow = 'auto';
-                }
-            }
+          this.bindEvents();
+          this.updateDescription(); // Set initial description
         }
 
-        // Initialize the test game
-        document.addEventListener('DOMContentLoaded', function() {
-            new TestMatchingGame();
-        });
+        bindEvents() {
+          // Number of players selection
+          document.querySelectorAll(".mode-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+              document
+                .querySelectorAll(".mode-btn")
+                .forEach((b) => b.classList.remove("active"));
+              e.target.classList.add("active");
+              this.gameMode = e.target.dataset.mode;
+
+              console.log("Player mode changed to:", this.gameMode);
+              this.updateDescription();
+            });
+          });
+
+          // Game type selection
+          document.querySelectorAll(".game-type-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+              document
+                .querySelectorAll(".game-type-btn")
+                .forEach((b) => b.classList.remove("active"));
+              e.target.classList.add("active");
+              this.gameType = e.target.dataset.gameType;
+
+              console.log("Game type changed to:", this.gameType);
+              this.updateDescription();
+            });
+          });
+
+          // Grid size selection
+          document.querySelectorAll(".start-game-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+              this.selectedPairs = parseInt(e.target.dataset.pairs);
+              console.log(
+                `Starting game: ${this.gameMode} + ${this.gameType} with ${this.selectedPairs} pairs`,
+              );
+              this.startGame();
+            });
+          });
+
+          // Modal controls
+          document
+            .getElementById("open-matching-modal")
+            .addEventListener("click", () => {
+              this.openModal("matching-modal");
+            });
+
+          document.querySelector(".close").addEventListener("click", () => {
+            this.closeModal("matching-modal");
+          });
+
+          document
+            .getElementById("matching-modal")
+            .addEventListener("click", (e) => {
+              if (e.target.id === "matching-modal") {
+                this.closeModal("matching-modal");
+              }
+            });
+        }
+
+        updateDescription() {
+          const description = document.getElementById("matching-description");
+
+          if (this.gameType === "complement-pairs") {
+            if (this.gameMode === "two-player") {
+              description.textContent =
+                'Match complement pairs! Find numbers that add up to 5 or 10. Two players take turns finding "friends" that work together.';
+            } else {
+              description.textContent =
+                'Match complement pairs! Find numbers that add up to 5 or 10. Each pair contains two numbers that are "friends" - they work together to make 5 or 10.';
+            }
+          } else {
+            if (this.gameMode === "two-player") {
+              description.textContent =
+                "Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves! Two players take turns.";
+            } else {
+              description.textContent =
+                "Match abacus patterns with their corresponding numerals. Find all pairs in minimum moves!";
+            }
+          }
+
+          console.log("Description updated:", description.textContent);
+        }
+
+        startGame() {
+          const combinations = {
+            "single-abacus-numeral": "Single Player Abacus/Numeral Matching",
+            "single-complement-pairs": "Single Player Friends of 5 & 10",
+            "two-player-abacus-numeral":
+              "Two Player Abacus/Numeral Competition",
+            "two-player-complement-pairs": "Two Player Arithmetic Challenge",
+          };
+
+          const comboKey = `${this.gameMode}-${this.gameType}`;
+          const gameName = combinations[comboKey];
+
+          alert(
+            `🎮 Starting: ${gameName}\n\n` +
+              `Players: ${this.gameMode === "single" ? "1 Player" : "2 Players"}\n` +
+              `Game Type: ${this.gameType === "abacus-numeral" ? "Abacus ↔ Numeral" : "Friends of 5 & 10"}\n` +
+              `Grid Size: ${this.selectedPairs} pairs\n\n` +
+              `This demonstrates the orthogonal controls working correctly!`,
+          );
+
+          this.closeModal("matching-modal");
+        }
+
+        openModal(modalId) {
+          const modal = document.getElementById(modalId);
+          if (modal) {
+            modal.style.display = "block";
+            document.body.style.overflow = "hidden";
+          }
+        }
+
+        closeModal(modalId) {
+          const modal = document.getElementById(modalId);
+          if (modal) {
+            modal.style.display = "none";
+            document.body.style.overflow = "auto";
+          }
+        }
+      }
+
+      // Initialize the test game
+      document.addEventListener("DOMContentLoaded", function () {
+        new TestMatchingGame();
+      });
     </script>
-</body>
+  </body>
 </html>

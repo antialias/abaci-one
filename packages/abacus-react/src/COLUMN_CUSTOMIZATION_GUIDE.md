@@ -49,6 +49,7 @@ customStyles: {
 ### Style Types
 
 #### BeadStyle
+
 ```typescript
 interface BeadStyle {
   fill?: string;
@@ -61,6 +62,7 @@ interface BeadStyle {
 ```
 
 #### ColumnPostStyle
+
 ```typescript
 interface ColumnPostStyle {
   stroke?: string;
@@ -71,6 +73,7 @@ interface ColumnPostStyle {
 ```
 
 #### NumeralStyle
+
 ```typescript
 interface NumeralStyle {
   color?: string;
@@ -96,18 +99,18 @@ const tutorialStyles = {
   columns: {
     [activeColumnIndex]: {
       columnPost: {
-        stroke: '#3b82f6',
+        stroke: "#3b82f6",
         strokeWidth: 4,
-        opacity: 1
+        opacity: 1,
       },
       numerals: {
-        color: '#1d4ed8',
-        fontWeight: 'bold',
-        backgroundColor: '#dbeafe',
-        borderRadius: 4
-      }
-    }
-  }
+        color: "#1d4ed8",
+        fontWeight: "bold",
+        backgroundColor: "#dbeafe",
+        borderRadius: 4,
+      },
+    },
+  },
 };
 ```
 
@@ -118,17 +121,20 @@ Show hover and click states:
 ```typescript
 const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
 
-const dynamicStyles = useMemo(() => ({
-  columns: {
-    ...(hoveredColumn !== null && {
-      [hoveredColumn]: {
-        columnPost: { stroke: '#3b82f6', strokeWidth: 4 },
-        heavenBeads: { stroke: '#3b82f6', strokeWidth: 2 },
-        earthBeads: { stroke: '#3b82f6', strokeWidth: 2 }
-      }
-    })
-  }
-}), [hoveredColumn]);
+const dynamicStyles = useMemo(
+  () => ({
+    columns: {
+      ...(hoveredColumn !== null && {
+        [hoveredColumn]: {
+          columnPost: { stroke: "#3b82f6", strokeWidth: 4 },
+          heavenBeads: { stroke: "#3b82f6", strokeWidth: 2 },
+          earthBeads: { stroke: "#3b82f6", strokeWidth: 2 },
+        },
+      }),
+    },
+  }),
+  [hoveredColumn],
+);
 ```
 
 ### 3. Place Value Education
@@ -138,23 +144,27 @@ Color-code place values:
 ```typescript
 const placeValueStyles = {
   columns: {
-    0: { // Thousands
-      columnPost: { stroke: '#dc2626', strokeWidth: 3 },
-      numerals: { color: '#991b1b', fontWeight: 'bold' }
+    0: {
+      // Thousands
+      columnPost: { stroke: "#dc2626", strokeWidth: 3 },
+      numerals: { color: "#991b1b", fontWeight: "bold" },
     },
-    1: { // Hundreds
-      columnPost: { stroke: '#ea580c', strokeWidth: 3 },
-      numerals: { color: '#c2410c', fontWeight: 'bold' }
+    1: {
+      // Hundreds
+      columnPost: { stroke: "#ea580c", strokeWidth: 3 },
+      numerals: { color: "#c2410c", fontWeight: "bold" },
     },
-    2: { // Tens
-      columnPost: { stroke: '#16a34a', strokeWidth: 3 },
-      numerals: { color: '#15803d', fontWeight: 'bold' }
+    2: {
+      // Tens
+      columnPost: { stroke: "#16a34a", strokeWidth: 3 },
+      numerals: { color: "#15803d", fontWeight: "bold" },
     },
-    3: { // Ones
-      columnPost: { stroke: '#2563eb', strokeWidth: 3 },
-      numerals: { color: '#1d4ed8', fontWeight: 'bold' }
-    }
-  }
+    3: {
+      // Ones
+      columnPost: { stroke: "#2563eb", strokeWidth: 3 },
+      numerals: { color: "#1d4ed8", fontWeight: "bold" },
+    },
+  },
 };
 ```
 
@@ -214,21 +224,24 @@ Always memoize dynamic style generation:
 
 ```typescript
 // ✅ Good
-const customStyles = useMemo(() => ({
-  columns: {
-    [activeColumn]: {
-      columnPost: { stroke: '#3b82f6', strokeWidth: 4 }
-    }
-  }
-}), [activeColumn]);
+const customStyles = useMemo(
+  () => ({
+    columns: {
+      [activeColumn]: {
+        columnPost: { stroke: "#3b82f6", strokeWidth: 4 },
+      },
+    },
+  }),
+  [activeColumn],
+);
 
 // ❌ Bad - recreates on every render
 const customStyles = {
   columns: {
     [activeColumn]: {
-      columnPost: { stroke: '#3b82f6', strokeWidth: 4 }
-    }
-  }
+      columnPost: { stroke: "#3b82f6", strokeWidth: 4 },
+    },
+  },
 };
 ```
 
@@ -239,15 +252,15 @@ Only update styles when interaction state actually changes:
 ```typescript
 const [interactionState, setInteractionState] = useState({
   hoveredColumn: null,
-  selectedColumns: new Set()
+  selectedColumns: new Set(),
 });
 
 // Update state only when needed
 const handleColumnHover = useCallback((columnIndex: number) => {
-  setInteractionState(prev =>
+  setInteractionState((prev) =>
     prev.hoveredColumn !== columnIndex
       ? { ...prev, hoveredColumn: columnIndex }
-      : prev
+      : prev,
   );
 }, []);
 ```

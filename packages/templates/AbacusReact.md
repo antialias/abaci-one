@@ -26,7 +26,7 @@ npm install --save-dev @types/react typescript
 ## Basic Usage
 
 ```tsx
-import { AbacusReact } from './AbacusReact';
+import { AbacusReact } from "./AbacusReact";
 
 function MyComponent() {
   return <AbacusReact value={123} />;
@@ -36,7 +36,11 @@ function MyComponent() {
 ## Advanced Usage with Hooks
 
 ```tsx
-import { AbacusReact, useAbacusState, useAbacusDimensions } from './AbacusReact';
+import {
+  AbacusReact,
+  useAbacusState,
+  useAbacusDimensions,
+} from "./AbacusReact";
 
 function InteractiveAbacus() {
   const { value, setValue, toggleBead } = useAbacusState(0);
@@ -63,20 +67,20 @@ function InteractiveAbacus() {
 
 ### AbacusReact Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `value` | `number` | `0` | The numeric value to display |
-| `columns` | `number \| 'auto'` | `'auto'` | Number of columns or auto-calculate |
-| `showEmptyColumns` | `boolean` | `false` | Show leading zero columns |
-| `hideInactiveBeads` | `boolean` | `false` | Hide inactive beads completely |
-| `beadShape` | `'diamond' \| 'square' \| 'circle'` | `'diamond'` | Shape of the beads |
-| `colorScheme` | `'monochrome' \| 'place-value' \| 'alternating' \| 'heaven-earth'` | `'monochrome'` | Color scheme strategy |
-| `colorPalette` | `'default' \| 'colorblind' \| 'mnemonic' \| 'grayscale' \| 'nature'` | `'default'` | Color palette for place values |
-| `scaleFactor` | `number` | `1` | Scale multiplier for size |
-| `animated` | `boolean` | `true` | Enable react-spring animations |
-| `draggable` | `boolean` | `false` | Enable drag interactions |
-| `onClick` | `(bead: BeadConfig) => void` | `undefined` | Bead click handler |
-| `onValueChange` | `(newValue: number) => void` | `undefined` | Value change handler |
+| Prop                | Type                                                                 | Default        | Description                         |
+| ------------------- | -------------------------------------------------------------------- | -------------- | ----------------------------------- |
+| `value`             | `number`                                                             | `0`            | The numeric value to display        |
+| `columns`           | `number \| 'auto'`                                                   | `'auto'`       | Number of columns or auto-calculate |
+| `showEmptyColumns`  | `boolean`                                                            | `false`        | Show leading zero columns           |
+| `hideInactiveBeads` | `boolean`                                                            | `false`        | Hide inactive beads completely      |
+| `beadShape`         | `'diamond' \| 'square' \| 'circle'`                                  | `'diamond'`    | Shape of the beads                  |
+| `colorScheme`       | `'monochrome' \| 'place-value' \| 'alternating' \| 'heaven-earth'`   | `'monochrome'` | Color scheme strategy               |
+| `colorPalette`      | `'default' \| 'colorblind' \| 'mnemonic' \| 'grayscale' \| 'nature'` | `'default'`    | Color palette for place values      |
+| `scaleFactor`       | `number`                                                             | `1`            | Scale multiplier for size           |
+| `animated`          | `boolean`                                                            | `true`         | Enable react-spring animations      |
+| `draggable`         | `boolean`                                                            | `false`        | Enable drag interactions            |
+| `onClick`           | `(bead: BeadConfig) => void`                                         | `undefined`    | Bead click handler                  |
+| `onValueChange`     | `(newValue: number) => void`                                         | `undefined`    | Value change handler                |
 
 ### Hooks
 
@@ -85,12 +89,13 @@ function InteractiveAbacus() {
 Calculate component dimensions for layout planning.
 
 **Returns:**
+
 ```tsx
 {
-  width: number;       // Total component width
-  height: number;      // Total component height
-  rodSpacing: number;  // Distance between rods
-  beadSize: number;    // Size of individual beads
+  width: number; // Total component width
+  height: number; // Total component height
+  rodSpacing: number; // Distance between rods
+  beadSize: number; // Size of individual beads
 }
 ```
 
@@ -99,6 +104,7 @@ Calculate component dimensions for layout planning.
 Manage abacus state with proper bead logic.
 
 **Returns:**
+
 ```tsx
 {
   value: number;                                    // Current numeric value
@@ -112,17 +118,19 @@ Manage abacus state with proper bead logic.
 ### Types
 
 #### `BeadConfig`
+
 ```tsx
 interface BeadConfig {
-  type: 'heaven' | 'earth';  // Bead type (heaven=5, earth=1)
-  value: number;             // Numeric value of this bead
-  active: boolean;           // Whether bead is active
-  position: number;          // Position within its type group
-  columnIndex: number;       // Column index (0-based)
+  type: "heaven" | "earth"; // Bead type (heaven=5, earth=1)
+  value: number; // Numeric value of this bead
+  active: boolean; // Whether bead is active
+  position: number; // Position within its type group
+  columnIndex: number; // Column index (0-based)
 }
 ```
 
 #### `AbacusDimensions`
+
 ```tsx
 interface AbacusDimensions {
   width: number;
@@ -135,15 +143,19 @@ interface AbacusDimensions {
 ## Color Schemes
 
 ### `monochrome`
+
 All beads are black when active, gray when inactive.
 
 ### `place-value`
+
 Colors based on place value (ones, tens, hundreds, etc.) using the selected palette.
 
 ### `alternating`
+
 Alternates between two colors for adjacent columns.
 
 ### `heaven-earth`
+
 Different colors for heaven beads (red) vs earth beads (blue).
 
 ## Color Palettes
@@ -157,6 +169,7 @@ Different colors for heaven beads (red) vs earth beads (blue).
 ## Abacus Logic
 
 ### Soroban Structure
+
 - **Heaven beads**: 1 per column, represents value 5
 - **Earth beads**: 4 per column, each represents value 1
 - **Total per column**: 0-9 (0-4 earth beads + 0-1 heaven bead)
@@ -164,10 +177,12 @@ Different colors for heaven beads (red) vs earth beads (blue).
 ### Interaction Behavior
 
 #### Click Interactions
+
 - **Heaven bead**: Toggles between 0 and 5
 - **Earth bead**: Activates/deactivates this bead and all lower-positioned earth beads
 
 #### Drag Interactions (when enabled)
+
 - Beads can be dragged but snap back to original positions
 - Useful for tactile interaction without changing values
 - Can be extended to implement custom drag-to-value logic
@@ -190,11 +205,13 @@ Different colors for heaven beads (red) vs earth beads (blue).
 See `AbacusExample.tsx` for a comprehensive demo with all configuration options.
 
 ### Simple Display
+
 ```tsx
 <AbacusReact value={42} />
 ```
 
 ### Educational Mode
+
 ```tsx
 <AbacusReact
   value={123}
@@ -206,6 +223,7 @@ See `AbacusExample.tsx` for a comprehensive demo with all configuration options.
 ```
 
 ### Interactive Game
+
 ```tsx
 <AbacusReact
   value={gameValue}
@@ -217,6 +235,7 @@ See `AbacusExample.tsx` for a comprehensive demo with all configuration options.
 ```
 
 ### Large Display
+
 ```tsx
 <AbacusReact
   value={5678}
@@ -232,13 +251,16 @@ See `AbacusExample.tsx` for a comprehensive demo with all configuration options.
 The component is written in TypeScript and includes comprehensive type definitions. It follows React best practices and is designed for easy integration into existing projects.
 
 ### Architecture
+
 - **Pure functional components** with hooks
 - **Immutable state management**
 - **Separation of concerns** between display and interaction logic
 - **Configurable rendering pipeline**
 
 ### Testing
+
 Test the component with the interactive example:
+
 ```bash
 # In your React project
 npm install @react-spring/web @use-gesture/react

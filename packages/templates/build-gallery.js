@@ -3,189 +3,190 @@
 // Static site generator for the soroban templates gallery
 // Creates a complete HTML page with embedded SVGs
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 const examples = [
-    {
-        id: 'basic-5',
-        title: 'Basic Number 5',
-        description: 'Simple representation of 5 with monochrome diamonds',
-        number: 5,
-        config: {
-            bead_shape: 'diamond',
-            color_scheme: 'monochrome',
-            base_size: 1.5
-        }
+  {
+    id: "basic-5",
+    title: "Basic Number 5",
+    description: "Simple representation of 5 with monochrome diamonds",
+    number: 5,
+    config: {
+      bead_shape: "diamond",
+      color_scheme: "monochrome",
+      base_size: 1.5,
     },
-    {
-        id: 'colorful-123',
-        title: 'Colorful 123',
-        description: 'Number 123 with place-value colors and diamond beads',
-        number: 123,
-        config: {
-            bead_shape: 'diamond',
-            color_scheme: 'place-value',
-            base_size: 1.2
-        }
+  },
+  {
+    id: "colorful-123",
+    title: "Colorful 123",
+    description: "Number 123 with place-value colors and diamond beads",
+    number: 123,
+    config: {
+      bead_shape: "diamond",
+      color_scheme: "place-value",
+      base_size: 1.2,
     },
-    {
-        id: 'circles-42',
-        title: 'Circle Beads - 42',
-        description: 'Number 42 with circular beads and heaven-earth colors',
-        number: 42,
-        config: {
-            bead_shape: 'circle',
-            color_scheme: 'heaven-earth',
-            base_size: 1.8
-        }
+  },
+  {
+    id: "circles-42",
+    title: "Circle Beads - 42",
+    description: "Number 42 with circular beads and heaven-earth colors",
+    number: 42,
+    config: {
+      bead_shape: "circle",
+      color_scheme: "heaven-earth",
+      base_size: 1.8,
     },
-    {
-        id: 'large-7',
-        title: 'Large Scale - 7',
-        description: 'Single digit with maximum scale for detail work',
-        number: 7,
-        config: {
-            bead_shape: 'diamond',
-            color_scheme: 'place-value',
-            base_size: 2.5
-        }
+  },
+  {
+    id: "large-7",
+    title: "Large Scale - 7",
+    description: "Single digit with maximum scale for detail work",
+    number: 7,
+    config: {
+      bead_shape: "diamond",
+      color_scheme: "place-value",
+      base_size: 2.5,
     },
-    {
-        id: 'compact-999',
-        title: 'Compact 999',
-        description: 'Large number with hidden inactive beads for clean look',
-        number: 999,
-        config: {
-            bead_shape: 'square',
-            color_scheme: 'alternating',
-            hide_inactive: true,
-            base_size: 1.0
-        }
+  },
+  {
+    id: "compact-999",
+    title: "Compact 999",
+    description: "Large number with hidden inactive beads for clean look",
+    number: 999,
+    config: {
+      bead_shape: "square",
+      color_scheme: "alternating",
+      hide_inactive: true,
+      base_size: 1.0,
     },
-    {
-        id: 'educational-1234',
-        title: 'Educational 1234',
-        description: 'Four-digit number showing empty columns for learning',
-        number: 1234,
-        config: {
-            bead_shape: 'circle',
-            color_scheme: 'place-value',
-            show_empty: true,
-            base_size: 1.3
-        }
+  },
+  {
+    id: "educational-1234",
+    title: "Educational 1234",
+    description: "Four-digit number showing empty columns for learning",
+    number: 1234,
+    config: {
+      bead_shape: "circle",
+      color_scheme: "place-value",
+      show_empty: true,
+      base_size: 1.3,
     },
-    {
-        id: 'debug-crop-marks-89',
-        title: 'Debug: Crop Marks - 89',
-        description: 'Visible red crop marks showing viewBox boundaries',
-        number: 89,
-        config: {
-            bead_shape: 'diamond',
-            color_scheme: 'place-value',
-            show_crop_marks: true,
-            crop_margin: '15pt',
-            base_size: 1.5
-        }
+  },
+  {
+    id: "debug-crop-marks-89",
+    title: "Debug: Crop Marks - 89",
+    description: "Visible red crop marks showing viewBox boundaries",
+    number: 89,
+    config: {
+      bead_shape: "diamond",
+      color_scheme: "place-value",
+      show_crop_marks: true,
+      crop_margin: "15pt",
+      base_size: 1.5,
     },
-    {
-        id: 'debug-crop-marks-456',
-        title: 'Debug: Crop Marks - 456',
-        description: 'Three-digit number with visible crop boundaries',
-        number: 456,
-        config: {
-            bead_shape: 'circle',
-            color_scheme: 'heaven-earth',
-            show_crop_marks: true,
-            crop_margin: '12pt',
-            base_size: 1.2
-        }
+  },
+  {
+    id: "debug-crop-marks-456",
+    title: "Debug: Crop Marks - 456",
+    description: "Three-digit number with visible crop boundaries",
+    number: 456,
+    config: {
+      bead_shape: "circle",
+      color_scheme: "heaven-earth",
+      show_crop_marks: true,
+      crop_margin: "12pt",
+      base_size: 1.2,
     },
-    {
-        id: 'crop-single-1',
-        title: 'Crop Marks: Single Digit',
-        description: 'Invisible crop marks for automated viewBox processing',
-        number: 1,
-        config: {
-            bead_shape: 'diamond',
-            color_scheme: 'monochrome',
-            show_crop_marks: true,
-            crop_margin: '10pt',
-            base_size: 1.0
-        }
+  },
+  {
+    id: "crop-single-1",
+    title: "Crop Marks: Single Digit",
+    description: "Invisible crop marks for automated viewBox processing",
+    number: 1,
+    config: {
+      bead_shape: "diamond",
+      color_scheme: "monochrome",
+      show_crop_marks: true,
+      crop_margin: "10pt",
+      base_size: 1.0,
     },
-    {
-        id: 'crop-quad-9999',
-        title: 'Crop Marks: Four 9s',
-        description: 'Large four-digit number with crop boundaries',
-        number: 9999,
-        config: {
-            bead_shape: 'diamond',
-            color_scheme: 'place-value',
-            show_crop_marks: true,
-            crop_margin: '15pt',
-            base_size: 0.8
-        }
+  },
+  {
+    id: "crop-quad-9999",
+    title: "Crop Marks: Four 9s",
+    description: "Large four-digit number with crop boundaries",
+    number: 9999,
+    config: {
+      bead_shape: "diamond",
+      color_scheme: "place-value",
+      show_crop_marks: true,
+      crop_margin: "15pt",
+      base_size: 0.8,
     },
-    {
-        id: 'crop-large-scale-0',
-        title: 'Crop Marks: Large Zero',
-        description: 'Zero representation with large scale and crop marks',
-        number: 0,
-        config: {
-            bead_shape: 'square',
-            color_scheme: 'monochrome',
-            show_crop_marks: true,
-            crop_margin: '20pt',
-            base_size: 2.0
-        }
+  },
+  {
+    id: "crop-large-scale-0",
+    title: "Crop Marks: Large Zero",
+    description: "Zero representation with large scale and crop marks",
+    number: 0,
+    config: {
+      bead_shape: "square",
+      color_scheme: "monochrome",
+      show_crop_marks: true,
+      crop_margin: "20pt",
+      base_size: 2.0,
     },
-    {
-        id: 'crop-hidden-inactive-555',
-        title: 'Crop Marks: Hidden Inactive',
-        description: 'Clean layout with hidden inactive beads and crop marks',
-        number: 555,
-        config: {
-            bead_shape: 'diamond',
-            color_scheme: 'alternating',
-            hide_inactive: true,
-            show_crop_marks: true,
-            crop_margin: '10pt',
-            base_size: 1.5
-        }
+  },
+  {
+    id: "crop-hidden-inactive-555",
+    title: "Crop Marks: Hidden Inactive",
+    description: "Clean layout with hidden inactive beads and crop marks",
+    number: 555,
+    config: {
+      bead_shape: "diamond",
+      color_scheme: "alternating",
+      hide_inactive: true,
+      show_crop_marks: true,
+      crop_margin: "10pt",
+      base_size: 1.5,
     },
-    {
-        id: 'crop-mixed-geometry-321',
-        title: 'Crop Marks: Mixed Geometry',
-        description: 'Circle beads with heaven-earth colors and crop boundaries',
-        number: 321,
-        config: {
-            bead_shape: 'circle',
-            color_scheme: 'heaven-earth',
-            show_crop_marks: true,
-            crop_margin: '12pt',
-            base_size: 1.3
-        }
-    }
+  },
+  {
+    id: "crop-mixed-geometry-321",
+    title: "Crop Marks: Mixed Geometry",
+    description: "Circle beads with heaven-earth colors and crop boundaries",
+    number: 321,
+    config: {
+      bead_shape: "circle",
+      color_scheme: "heaven-earth",
+      show_crop_marks: true,
+      crop_margin: "12pt",
+      base_size: 1.3,
+    },
+  },
 ];
 
 function buildStaticGallery() {
-    console.log('🏗️  Building static soroban gallery...');
+  console.log("🏗️  Building static soroban gallery...");
 
-    let svgCount = 0;
-    let missingCount = 0;
+  let svgCount = 0;
+  let missingCount = 0;
 
-    // Generate the example cards HTML
-    const exampleCards = examples.map(example => {
-        const svgPath = `gallery/${example.id}.svg`;
-        let svgContent = '';
+  // Generate the example cards HTML
+  const exampleCards = examples
+    .map((example) => {
+      const svgPath = `gallery/${example.id}.svg`;
+      let svgContent = "";
 
-        if (fs.existsSync(svgPath)) {
-            svgContent = fs.readFileSync(svgPath, 'utf8');
-            svgCount++;
-            console.log(`✅ Embedded ${example.id}.svg`);
-        } else {
-            svgContent = `
+      if (fs.existsSync(svgPath)) {
+        svgContent = fs.readFileSync(svgPath, "utf8");
+        svgCount++;
+        console.log(`✅ Embedded ${example.id}.svg`);
+      } else {
+        svgContent = `
                 <div style="text-align: center; padding: 40px; color: #666; border: 2px dashed #ddd; border-radius: 8px;">
                     <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
                     <div>SVG not generated</div>
@@ -194,15 +195,15 @@ function buildStaticGallery() {
                     </div>
                 </div>
             `;
-            missingCount++;
-            console.log(`⚠️  Missing ${svgPath}`);
-        }
+        missingCount++;
+        console.log(`⚠️  Missing ${svgPath}`);
+      }
 
-        const configText = Object.entries(example.config)
-            .map(([key, value]) => `<strong>${key}:</strong> <code>${value}</code>`)
-            .join('<br>');
+      const configText = Object.entries(example.config)
+        .map(([key, value]) => `<strong>${key}:</strong> <code>${value}</code>`)
+        .join("<br>");
 
-        return `
+      return `
             <div class="example-card">
                 <div class="card-header">
                     <div class="card-title">${example.title}</div>
@@ -217,10 +218,11 @@ function buildStaticGallery() {
                 </div>
             </div>
         `;
-    }).join('\n');
+    })
+    .join("\n");
 
-    // Create the complete HTML
-    const html = `<!DOCTYPE html>
+  // Create the complete HTML
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -386,7 +388,7 @@ function buildStaticGallery() {
 
         <div class="stats">
             <div class="stats-info">
-                <strong>${svgCount}</strong> examples rendered${missingCount > 0 ? `, <strong>${missingCount}</strong> missing` : ''}
+                <strong>${svgCount}</strong> examples rendered${missingCount > 0 ? `, <strong>${missingCount}</strong> missing` : ""}
                 • Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
             </div>
         </div>
@@ -408,23 +410,23 @@ function buildStaticGallery() {
 </body>
 </html>`;
 
-    // Write the static gallery
-    fs.writeFileSync('gallery-static.html', html);
+  // Write the static gallery
+  fs.writeFileSync("gallery-static.html", html);
 
-    console.log('\n📈 Build Summary:');
-    console.log(`   ✅ SVGs embedded: ${svgCount}`);
-    if (missingCount > 0) {
-        console.log(`   ⚠️  SVGs missing: ${missingCount}`);
-    }
-    console.log(`   📄 Output: gallery-static.html`);
+  console.log("\n📈 Build Summary:");
+  console.log(`   ✅ SVGs embedded: ${svgCount}`);
+  if (missingCount > 0) {
+    console.log(`   ⚠️  SVGs missing: ${missingCount}`);
+  }
+  console.log(`   📄 Output: gallery-static.html`);
 
-    console.log('\n🎉 Static gallery built successfully!');
-    console.log('   📖 Open gallery-static.html in your browser');
+  console.log("\n🎉 Static gallery built successfully!");
+  console.log("   📖 Open gallery-static.html in your browser");
 
-    return true;
+  return true;
 }
 
 // Run the static site generator
 if (require.main === module) {
-    buildStaticGallery();
+  buildStaticGallery();
 }
