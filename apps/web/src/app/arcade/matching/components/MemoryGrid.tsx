@@ -88,11 +88,13 @@ function HoverAvatar({
   playerInfo,
   cardElement,
   isPlayersTurn,
+  isCardFlipped,
 }: {
   playerId: string
   playerInfo: { emoji: string; name: string; color?: string }
   cardElement: HTMLElement | null
   isPlayersTurn: boolean
+  isCardFlipped: boolean
 }) {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
   const isFirstRender = useRef(true)
@@ -116,7 +118,8 @@ function HoverAvatar({
   const springProps = useSpring({
     x: position?.x ?? 0,
     y: position?.y ?? 0,
-    opacity: position && isPlayersTurn && cardElement ? 1 : 0,
+    // Hide avatar if: no position, not player's turn, no card element, OR card is flipped
+    opacity: position && isPlayersTurn && cardElement && !isCardFlipped ? 1 : 0,
     config: {
       tension: 280,
       friction: 60,
@@ -392,6 +395,11 @@ export function MemoryGrid() {
             const cardElement = cardId ? cardRefs.current.get(cardId) : null
             // Check if it's this player's turn
             const isPlayersTurn = state.currentPlayer === playerId
+            // Check if the card being hovered is flipped
+            const hoveredCard = cardId ? state.gameCards.find((c) => c.id === cardId) : null
+            const isCardFlipped = hoveredCard
+              ? state.flippedCards.some((c) => c.id === hoveredCard.id) || hoveredCard.matched
+              : false
 
             if (!playerInfo) return null
 
@@ -403,6 +411,7 @@ export function MemoryGrid() {
                 playerInfo={playerInfo}
                 cardElement={cardElement}
                 isPlayersTurn={isPlayersTurn}
+                isCardFlipped={isCardFlipped}
               />
             )
           })}
