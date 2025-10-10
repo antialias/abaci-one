@@ -3,8 +3,8 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es2020",
-    "outDir": ".",
-    "rootDir": ".",
+    "outDir": "./dist",
+    "rootDir": "./src",
     "noEmit": false,
     "incremental": false,
     "skipLibCheck": true,

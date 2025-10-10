@@ -34,6 +34,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# compiled server-side code (from tsconfig.server.json)
+/dist
+src/**/*.js
+src/**/*.js.map
+
 # vitest
 /.vitest
 
