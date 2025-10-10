@@ -12,7 +12,7 @@ services:
       - .env
     volumes:
       - ./public:/app/public
-      - ./data:/app/data
+      - ./data:/app/apps/web/data
       - ./uploads:/app/uploads
     labels:
       # ── Traefik Routers ───────────────────────────────────
