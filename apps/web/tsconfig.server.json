@@ -1,0 +1,33 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2020",
+    "outDir": ".",
+    "rootDir": ".",
+    "noEmit": false,
+    "incremental": false,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "types": ["node", "react"]
+  },
+  "include": [
+    "src/db/index.ts",
+    "src/db/schema.ts",
+    "src/db/migrate.ts",
+    "src/lib/arcade/**/*.ts",
+    "src/app/games/matching/context/types.ts",
+    "src/app/games/matching/utils/cardGeneration.ts",
+    "src/app/games/matching/utils/matchValidation.ts",
+    "socket-server.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts"
+  ]
+}

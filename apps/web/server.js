@@ -11,9 +11,8 @@ const handle = app.getRequestHandler()
 
 // Run migrations before starting server
 console.log('🔄 Running database migrations...')
-require('tsx/cjs')
 const { migrate } = require('drizzle-orm/better-sqlite3/migrator')
-const { db } = require('./src/db/index.ts')
+const { db } = require('./src/db/index.js')
 
 try {
   migrate(db, { migrationsFolder: './drizzle' })
@@ -35,9 +34,8 @@ app.prepare().then(() => {
     }
   })
 
-  // Initialize Socket.IO (load TypeScript with tsx)
-  require('tsx/cjs')
-  const { initializeSocketServer } = require('./socket-server.ts')
+  // Initialize Socket.IO
+  const { initializeSocketServer } = require('./socket-server.js')
   initializeSocketServer(server)
 
   server
