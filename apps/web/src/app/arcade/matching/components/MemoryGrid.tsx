@@ -401,9 +401,13 @@ export function MemoryGrid() {
       {state.playerHovers &&
         Object.entries(state.playerHovers)
           .filter(([playerId]) => {
-            // Only show avatar for the CURRENT player whose turn it is
-            // Don't show for other players (they're waiting for their turn)
-            return playerId === state.currentPlayer;
+            // Only show hover avatars for REMOTE players (not the current user's own players)
+            // This provides "presence" for opponents without cluttering your own view
+            const playerMetadata = state.playerMetadata?.[playerId];
+            const isRemotePlayer = playerMetadata?.userId !== viewerId;
+            // Also ensure it's the current player's turn (so we only show active hovers)
+            const isCurrentPlayer = playerId === state.currentPlayer;
+            return isRemotePlayer && isCurrentPlayer;
           })
           .map(([playerId, cardId]) => {
             const playerInfo = getPlayerHoverInfo(playerId);
