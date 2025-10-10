@@ -203,6 +203,11 @@ export class MatchingGameValidator
           flippedCards: newFlippedCards,
           isProcessingMove: true, // Keep processing state so no more cards can be flipped
           showMismatchFeedback: true,
+          // Clear hover state for the player whose turn is ending
+          playerHovers: {
+            ...state.playerHovers,
+            [state.currentPlayer]: null,
+          },
         };
       }
     }
@@ -259,6 +264,8 @@ export class MatchingGameValidator
       // Clear any paused game state (starting fresh)
       pausedGamePhase: undefined,
       pausedGameState: undefined,
+      // Clear hover state when starting new game
+      playerHovers: {},
     };
 
     return {
@@ -356,6 +363,7 @@ export class MatchingGameValidator
         isProcessingMove: false,
         showMismatchFeedback: false,
         lastMatchedPair: null,
+        playerHovers: {}, // Clear hover state when returning to setup
         // Preserve configuration - players can modify in setup
         // gameType, difficulty, turnTimer stay as-is
       },
