@@ -27,7 +27,8 @@
       "Bash(docker run:*)",
       "Bash(docker rmi:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(timeout 15 pnpm run dev:*)"
     ],
     "deny": [],
     "ask": []

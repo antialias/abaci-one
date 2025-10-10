@@ -120,12 +120,22 @@ function applyMoveOptimistically(
     }
 
     case "CLEAR_MISMATCH": {
+      // Clear hover for all non-current players
+      const clearedHovers = { ...state.playerHovers };
+      for (const playerId of state.activePlayers) {
+        if (playerId !== state.currentPlayer) {
+          clearedHovers[playerId] = null;
+        }
+      }
+
       // Clear mismatched cards and feedback
       return {
         ...state,
         flippedCards: [],
         showMismatchFeedback: false,
         isProcessingMove: false,
+        // Clear hovers for non-current players
+        playerHovers: clearedHovers,
       };
     }
 

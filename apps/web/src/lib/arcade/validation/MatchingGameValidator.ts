@@ -285,6 +285,17 @@ export class MatchingGameValidator
       };
     }
 
+    // Get the list of all non-current players whose hovers should be cleared
+    // (They're not playing this turn, so their hovers from previous turns should not show)
+    const clearedHovers = { ...state.playerHovers };
+    for (const playerId of state.activePlayers) {
+      // Clear hover for all players except the current player
+      // This ensures only the current player's active hover shows
+      if (playerId !== state.currentPlayer) {
+        clearedHovers[playerId] = null;
+      }
+    }
+
     // Clear mismatched cards and feedback
     return {
       valid: true,
@@ -293,6 +304,8 @@ export class MatchingGameValidator
         flippedCards: [],
         showMismatchFeedback: false,
         isProcessingMove: false,
+        // Clear hovers for non-current players when cards are cleared
+        playerHovers: clearedHovers,
       },
     };
   }
