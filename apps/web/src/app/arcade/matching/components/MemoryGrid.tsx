@@ -1,9 +1,9 @@
 'use client'
 
-import { useSpring, animated } from '@react-spring/web'
+import { animated, useSpring } from '@react-spring/web'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { css } from '../../../../../styled-system/css'
 import { useViewerId } from '@/hooks/useViewerId'
+import { css } from '../../../../../styled-system/css'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { GameCard } from './GameCard'
@@ -379,15 +379,13 @@ export function MemoryGrid() {
       )}
 
       {/* Animated Hover Avatars - Rendered as fixed positioned elements that smoothly transition */}
-      {/* Render one avatar per remote player - key by playerId to keep component alive */}
+      {/* Render one avatar per player - key by playerId to keep component alive */}
       {state.playerHovers &&
         Object.entries(state.playerHovers)
           .filter(([playerId]) => {
-            // Don't show your own hover avatar (only show remote players)
-            // In local games, all players belong to this user
-            // In room games, check if player belongs to different user
-            const player = state.playerMetadata?.[playerId]
-            return player?.userId !== viewerId
+            // Only show avatar for the CURRENT player whose turn it is
+            // Don't show for other players (they're waiting for their turn)
+            return playerId === state.currentPlayer
           })
           .map(([playerId, cardId]) => {
             const playerInfo = getPlayerHoverInfo(playerId)

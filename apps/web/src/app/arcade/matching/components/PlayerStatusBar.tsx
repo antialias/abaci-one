@@ -1,5 +1,6 @@
 'use client'
 
+import { useViewerId } from '@/hooks/useViewerId'
 import { css } from '../../../../../styled-system/css'
 import { gamePlurals } from '../../../../utils/pluralization'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
@@ -10,6 +11,7 @@ interface PlayerStatusBarProps {
 
 export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
   const { state } = useMemoryPairs()
+  const { data: viewerId } = useViewerId()
 
   // Get active players from game state (not GameModeContext)
   // This ensures we only show players actually in this game
@@ -25,8 +27,8 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
     displayEmoji: player.emoji,
     score: state.scores[player.id] || 0,
     consecutiveMatches: state.consecutiveMatches?.[player.id] || 0,
-    // In local games all players are local, in room games check metadata
-    isLocalPlayer: state.gameMode === 'single' || state.gameMode === 'multiplayer',
+    // Check if this player belongs to the current viewer
+    isLocalPlayer: player.userId === viewerId,
   }))
 
   // Check if current player is local (your turn) or remote (waiting)
