@@ -63,23 +63,6 @@ export function NetworkPlayerIndicator({ player, shouldEmphasize }: NetworkPlaye
           }}
         />
 
-        {/* Animated network signal indicator - larger */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '-10px',
-            right: '-10px',
-            width: '16px',
-            height: '16px',
-            borderRadius: '50%',
-            background: 'rgba(34, 197, 94, 0.95)',
-            border: '2px solid rgba(255, 255, 255, 0.8)',
-            boxShadow: '0 0 12px rgba(34, 197, 94, 0.8)',
-            animation: 'networkPulse 2s ease-in-out infinite',
-            zIndex: 1,
-          }}
-        />
-
         {/* Player emoji or fallback */}
         <div
           style={{
@@ -112,23 +95,6 @@ export function NetworkPlayerIndicator({ player, shouldEmphasize }: NetworkPlaye
         >
           📡
         </div>
-
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-            @keyframes networkPulse {
-              0%, 100% {
-                opacity: 1;
-                transform: scale(1);
-              }
-              50% {
-                opacity: 0.5;
-                transform: scale(1.2);
-              }
-            }
-          `,
-          }}
-        />
       </div>
     </PlayerTooltip>
   )
