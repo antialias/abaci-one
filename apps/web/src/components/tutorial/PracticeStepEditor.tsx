@@ -1,15 +1,15 @@
-"use client";
+'use client'
 
-import { useCallback, useEffect, useState } from "react";
-import { css } from "../../../styled-system/css";
-import { vstack } from "../../../styled-system/patterns";
-import type { PracticeStep } from "../../types/tutorial";
-import { validatePracticeStepConfiguration } from "../../utils/problemGenerator";
+import { useCallback, useEffect, useState } from 'react'
+import { css } from '../../../styled-system/css'
+import { vstack } from '../../../styled-system/patterns'
+import type { PracticeStep } from '../../types/tutorial'
+import { validatePracticeStepConfiguration } from '../../utils/problemGenerator'
 import {
   createBasicAllowedConfiguration,
   skillConfigurationToSkillSets,
-} from "../../utils/skillConfiguration";
-import type { SkillConfiguration } from "./SkillSelector";
+} from '../../utils/skillConfiguration'
+import type { SkillConfiguration } from './SkillSelector'
 import {
   Button,
   EditorLayout,
@@ -18,13 +18,13 @@ import {
   NumberInput,
   Section,
   TextInput,
-} from "./shared/EditorComponents";
+} from './shared/EditorComponents'
 
 interface PracticeStepEditorProps {
-  step: PracticeStep;
-  onChange: (step: PracticeStep) => void;
-  onDelete?: () => void;
-  className?: string;
+  step: PracticeStep
+  onChange: (step: PracticeStep) => void
+  onDelete?: () => void
+  className?: string
 }
 
 export function PracticeStepEditor({
@@ -33,113 +33,112 @@ export function PracticeStepEditor({
   onDelete,
   className,
 }: PracticeStepEditorProps) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [validationResult, setValidationResult] = useState<ReturnType<
     typeof validatePracticeStepConfiguration
-  > | null>(null);
+  > | null>(null)
   const [skillConfig, setSkillConfig] = useState<SkillConfiguration>(() => {
     // Initialize with a basic configuration for new steps or convert from existing
-    return createBasicAllowedConfiguration();
-  });
+    return createBasicAllowedConfiguration()
+  })
 
   const updateStep = useCallback(
     (updates: Partial<PracticeStep>) => {
-      onChange({ ...step, ...updates });
+      onChange({ ...step, ...updates })
     },
-    [step, onChange],
-  );
+    [step, onChange]
+  )
 
   const updateSkillConfiguration = useCallback(
     (config: SkillConfiguration) => {
-      setSkillConfig(config);
-      const { required, target, forbidden } =
-        skillConfigurationToSkillSets(config);
+      setSkillConfig(config)
+      const { required, target, forbidden } = skillConfigurationToSkillSets(config)
       updateStep({
         requiredSkills: required,
         targetSkills: target,
         forbiddenSkills: forbidden,
-      });
+      })
     },
-    [updateStep],
-  );
+    [updateStep]
+  )
 
   // Helper functions for skill mode management
   const getModeStyles = (skillMode: string): any => {
     switch (skillMode) {
-      case "off":
+      case 'off':
         return {
-          bg: "gray.100",
-          color: "gray.400",
-          border: "1px solid",
-          borderColor: "gray.200",
-        };
-      case "allowed":
+          bg: 'gray.100',
+          color: 'gray.400',
+          border: '1px solid',
+          borderColor: 'gray.200',
+        }
+      case 'allowed':
         return {
-          bg: "green.100",
-          color: "green.800",
-          border: "1px solid",
-          borderColor: "green.300",
-        };
-      case "target":
+          bg: 'green.100',
+          color: 'green.800',
+          border: '1px solid',
+          borderColor: 'green.300',
+        }
+      case 'target':
         return {
-          bg: "blue.100",
-          color: "blue.800",
-          border: "1px solid",
-          borderColor: "blue.300",
-        };
-      case "forbidden":
+          bg: 'blue.100',
+          color: 'blue.800',
+          border: '1px solid',
+          borderColor: 'blue.300',
+        }
+      case 'forbidden':
         return {
-          bg: "red.100",
-          color: "red.800",
-          border: "1px solid",
-          borderColor: "red.300",
-        };
+          bg: 'red.100',
+          color: 'red.800',
+          border: '1px solid',
+          borderColor: 'red.300',
+        }
       default:
         return {
-          bg: "gray.100",
-          color: "gray.600",
-          border: "1px solid",
-          borderColor: "gray.300",
-        };
+          bg: 'gray.100',
+          color: 'gray.600',
+          border: '1px solid',
+          borderColor: 'gray.300',
+        }
     }
-  };
+  }
 
   const getModeIcon = (skillMode: string): string => {
     switch (skillMode) {
-      case "off":
-        return "⚫";
-      case "allowed":
-        return "✅";
-      case "target":
-        return "🎯";
-      case "forbidden":
-        return "❌";
+      case 'off':
+        return '⚫'
+      case 'allowed':
+        return '✅'
+      case 'target':
+        return '🎯'
+      case 'forbidden':
+        return '❌'
       default:
-        return "⚫";
+        return '⚫'
     }
-  };
+  }
 
   const getNextMode = (currentMode: string): string => {
-    const modes = ["off", "allowed", "target", "forbidden"];
-    const currentIndex = modes.indexOf(currentMode);
-    return modes[(currentIndex + 1) % modes.length];
-  };
+    const modes = ['off', 'allowed', 'target', 'forbidden']
+    const currentIndex = modes.indexOf(currentMode)
+    return modes[(currentIndex + 1) % modes.length]
+  }
 
   const updateSkill = useCallback(
     (category: string, skill: string, mode: string) => {
-      const newSkills = { ...skillConfig };
-      if (category === "basic") {
-        newSkills.basic = { ...newSkills.basic, [skill]: mode };
-      } else if (category === "fiveComplements") {
+      const newSkills = { ...skillConfig }
+      if (category === 'basic') {
+        newSkills.basic = { ...newSkills.basic, [skill]: mode }
+      } else if (category === 'fiveComplements') {
         newSkills.fiveComplements = {
           ...newSkills.fiveComplements,
           [skill]: mode,
-        };
+        }
       }
-      updateSkillConfiguration(newSkills);
+      updateSkillConfiguration(newSkills)
     },
-    [skillConfig, updateSkillConfiguration],
-  );
+    [skillConfig, updateSkillConfiguration]
+  )
 
   // Convert partial skill sets to full skill sets for the selector
   const _targetSkillsForSelector: SkillSet = {
@@ -149,88 +148,88 @@ export function PracticeStepEditor({
       simpleCombinations: step.targetSkills?.basic?.simpleCombinations || false,
     },
     fiveComplements: {
-      "4=5-1": step.targetSkills?.fiveComplements?.["4=5-1"] || false,
-      "3=5-2": step.targetSkills?.fiveComplements?.["3=5-2"] || false,
-      "2=5-3": step.targetSkills?.fiveComplements?.["2=5-3"] || false,
-      "1=5-4": step.targetSkills?.fiveComplements?.["1=5-4"] || false,
+      '4=5-1': step.targetSkills?.fiveComplements?.['4=5-1'] || false,
+      '3=5-2': step.targetSkills?.fiveComplements?.['3=5-2'] || false,
+      '2=5-3': step.targetSkills?.fiveComplements?.['2=5-3'] || false,
+      '1=5-4': step.targetSkills?.fiveComplements?.['1=5-4'] || false,
     },
     tenComplements: {
-      "9=10-1": step.targetSkills?.tenComplements?.["9=10-1"] || false,
-      "8=10-2": step.targetSkills?.tenComplements?.["8=10-2"] || false,
-      "7=10-3": step.targetSkills?.tenComplements?.["7=10-3"] || false,
-      "6=10-4": step.targetSkills?.tenComplements?.["6=10-4"] || false,
-      "5=10-5": step.targetSkills?.tenComplements?.["5=10-5"] || false,
-      "4=10-6": step.targetSkills?.tenComplements?.["4=10-6"] || false,
-      "3=10-7": step.targetSkills?.tenComplements?.["3=10-7"] || false,
-      "2=10-8": step.targetSkills?.tenComplements?.["2=10-8"] || false,
-      "1=10-9": step.targetSkills?.tenComplements?.["1=10-9"] || false,
+      '9=10-1': step.targetSkills?.tenComplements?.['9=10-1'] || false,
+      '8=10-2': step.targetSkills?.tenComplements?.['8=10-2'] || false,
+      '7=10-3': step.targetSkills?.tenComplements?.['7=10-3'] || false,
+      '6=10-4': step.targetSkills?.tenComplements?.['6=10-4'] || false,
+      '5=10-5': step.targetSkills?.tenComplements?.['5=10-5'] || false,
+      '4=10-6': step.targetSkills?.tenComplements?.['4=10-6'] || false,
+      '3=10-7': step.targetSkills?.tenComplements?.['3=10-7'] || false,
+      '2=10-8': step.targetSkills?.tenComplements?.['2=10-8'] || false,
+      '1=10-9': step.targetSkills?.tenComplements?.['1=10-9'] || false,
     },
-  };
+  }
 
   // Validate configuration when step changes
   useEffect(() => {
-    const result = validatePracticeStepConfiguration(step);
-    setValidationResult(result);
-  }, [step]);
+    const result = validatePracticeStepConfiguration(step)
+    setValidationResult(result)
+  }, [step])
 
   const presetConfigurations = [
     {
-      name: "Basic Addition Only",
+      name: 'Basic Addition Only',
       config: {
         ...createBasicAllowedConfiguration(),
         basic: {
-          directAddition: "allowed",
-          heavenBead: "off",
-          simpleCombinations: "off",
+          directAddition: 'allowed',
+          heavenBead: 'off',
+          simpleCombinations: 'off',
         },
       } as SkillConfiguration,
     },
     {
-      name: "Practice Heaven Bead",
+      name: 'Practice Heaven Bead',
       config: {
         ...createBasicAllowedConfiguration(),
         basic: {
-          directAddition: "allowed",
-          heavenBead: "target",
-          simpleCombinations: "allowed",
+          directAddition: 'allowed',
+          heavenBead: 'target',
+          simpleCombinations: 'allowed',
         },
       } as SkillConfiguration,
     },
     {
-      name: "Learn Five Complements",
+      name: 'Learn Five Complements',
       config: {
         ...createBasicAllowedConfiguration(),
         basic: {
-          directAddition: "allowed",
-          heavenBead: "allowed",
-          simpleCombinations: "allowed",
+          directAddition: 'allowed',
+          heavenBead: 'allowed',
+          simpleCombinations: 'allowed',
         },
         fiveComplements: {
-          "4=5-1": "target",
-          "3=5-2": "target",
-          "2=5-3": "off",
-          "1=5-4": "off",
+          '4=5-1': 'target',
+          '3=5-2': 'target',
+          '2=5-3': 'off',
+          '1=5-4': 'off',
         },
       } as SkillConfiguration,
     },
     {
-      name: "All Basic Skills",
+      name: 'All Basic Skills',
       config: {
         ...createBasicAllowedConfiguration(),
         basic: {
-          directAddition: "allowed",
-          heavenBead: "allowed",
-          simpleCombinations: "allowed",
+          directAddition: 'allowed',
+          heavenBead: 'allowed',
+          simpleCombinations: 'allowed',
         },
         fiveComplements: {
-          "4=5-1": "allowed",
-          "3=5-2": "allowed",
-          "2=5-3": "allowed",
-          "1=5-4": "allowed",
+          '4=5-1': 'allowed',
+          '3=5-2': 'allowed',
+          '2=5-3': 'allowed',
+          '1=5-4': 'allowed',
         },
       } as SkillConfiguration,
     },
-  ];
+  ]
 
   return (
     <EditorLayout
@@ -289,7 +288,7 @@ export function PracticeStepEditor({
               size="xs"
               title={preset.name}
             >
-              {preset.name.split(" ")[0]}
+              {preset.name.split(' ')[0]}
             </Button>
           ))}
         </GridLayout>
@@ -299,79 +298,70 @@ export function PracticeStepEditor({
       <div
         className={css({
           p: 2,
-          bg: "white",
-          border: "1px solid",
-          borderColor: "gray.200",
-          rounded: "md",
+          bg: 'white',
+          border: '1px solid',
+          borderColor: 'gray.200',
+          rounded: 'md',
         })}
       >
         <h4
           className={css({
-            fontSize: "sm",
-            fontWeight: "medium",
+            fontSize: 'sm',
+            fontWeight: 'medium',
             mb: 2,
-            color: "gray.800",
+            color: 'gray.800',
           })}
         >
           Skills
         </h4>
 
-        <div className={vstack({ gap: 2, alignItems: "stretch" })}>
+        <div className={vstack({ gap: 2, alignItems: 'stretch' })}>
           {/* Basic Operations - Compact */}
           <div>
             <h5
               className={css({
-                fontSize: "xs",
-                fontWeight: "medium",
+                fontSize: 'xs',
+                fontWeight: 'medium',
                 mb: 1,
-                color: "gray.700",
+                color: 'gray.700',
               })}
             >
               Basic
             </h5>
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
                 gap: 1,
               })}
             >
               {[
-                { key: "directAddition", label: "1-4" },
-                { key: "heavenBead", label: "5" },
-                { key: "simpleCombinations", label: "6-9" },
+                { key: 'directAddition', label: '1-4' },
+                { key: 'heavenBead', label: '5' },
+                { key: 'simpleCombinations', label: '6-9' },
               ].map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() =>
                     updateSkill(
-                      "basic",
+                      'basic',
                       key,
-                      getNextMode(
-                        skillConfig.basic[
-                          key as keyof typeof skillConfig.basic
-                        ],
-                      ),
+                      getNextMode(skillConfig.basic[key as keyof typeof skillConfig.basic])
                     )
                   }
                   className={css(
                     {
                       px: 1,
                       py: 1,
-                      rounded: "sm",
-                      fontSize: "xs",
-                      cursor: "pointer",
-                      textAlign: "center",
+                      rounded: 'sm',
+                      fontSize: 'xs',
+                      cursor: 'pointer',
+                      textAlign: 'center',
                     },
-                    getModeStyles(
-                      skillConfig.basic[key as keyof typeof skillConfig.basic],
-                    ),
+                    getModeStyles(skillConfig.basic[key as keyof typeof skillConfig.basic])
                   )}
                 >
-                  {getModeIcon(
-                    skillConfig.basic[key as keyof typeof skillConfig.basic],
-                  )}{" "}
-                  {label}
+                  {getModeIcon(skillConfig.basic[key as keyof typeof skillConfig.basic])} {label}
                 </button>
               ))}
             </div>
@@ -381,61 +371,55 @@ export function PracticeStepEditor({
           <div>
             <h5
               className={css({
-                fontSize: "xs",
-                fontWeight: "medium",
+                fontSize: 'xs',
+                fontWeight: 'medium',
                 mb: 1,
-                color: "gray.700",
+                color: 'gray.700',
               })}
             >
               Five Complements
             </h5>
             <div
               className={css({
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
                 gap: 1,
               })}
             >
               {[
-                { key: "4=5-1", label: "4=5-1" },
-                { key: "3=5-2", label: "3=5-2" },
-                { key: "2=5-3", label: "2=5-3" },
-                { key: "1=5-4", label: "1=5-4" },
+                { key: '4=5-1', label: '4=5-1' },
+                { key: '3=5-2', label: '3=5-2' },
+                { key: '2=5-3', label: '2=5-3' },
+                { key: '1=5-4', label: '1=5-4' },
               ].map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() =>
                     updateSkill(
-                      "fiveComplements",
+                      'fiveComplements',
                       key,
                       getNextMode(
-                        skillConfig.fiveComplements[
-                          key as keyof typeof skillConfig.fiveComplements
-                        ],
-                      ),
+                        skillConfig.fiveComplements[key as keyof typeof skillConfig.fiveComplements]
+                      )
                     )
                   }
                   className={css(
                     {
                       px: 1,
                       py: 1,
-                      rounded: "sm",
-                      fontSize: "xs",
-                      cursor: "pointer",
-                      textAlign: "center",
+                      rounded: 'sm',
+                      fontSize: 'xs',
+                      cursor: 'pointer',
+                      textAlign: 'center',
                     },
                     getModeStyles(
-                      skillConfig.fiveComplements[
-                        key as keyof typeof skillConfig.fiveComplements
-                      ],
-                    ),
+                      skillConfig.fiveComplements[key as keyof typeof skillConfig.fiveComplements]
+                    )
                   )}
                 >
                   {getModeIcon(
-                    skillConfig.fiveComplements[
-                      key as keyof typeof skillConfig.fiveComplements
-                    ],
-                  )}{" "}
+                    skillConfig.fiveComplements[key as keyof typeof skillConfig.fiveComplements]
+                  )}{' '}
                   {label}
                 </button>
               ))}
@@ -445,12 +429,8 @@ export function PracticeStepEditor({
       </div>
 
       {/* Advanced Toggle */}
-      <Button
-        onClick={() => setShowAdvanced(!showAdvanced)}
-        variant="outline"
-        size="xs"
-      >
-        {showAdvanced ? "▼" : "▶"} Advanced
+      <Button onClick={() => setShowAdvanced(!showAdvanced)} variant="outline" size="xs">
+        {showAdvanced ? '▼' : '▶'} Advanced
       </Button>
 
       {/* Advanced Options */}
@@ -504,7 +484,7 @@ export function PracticeStepEditor({
             />
             <NumberInput
               label="Min Sum"
-              value={step.sumConstraints?.minSum || ""}
+              value={step.sumConstraints?.minSum || ''}
               onChange={(value) =>
                 updateStep({
                   sumConstraints: {
@@ -527,12 +507,12 @@ export function PracticeStepEditor({
           <div
             className={css({
               p: 2,
-              bg: "yellow.50",
-              border: "1px solid",
-              borderColor: "yellow.200",
-              rounded: "sm",
-              fontSize: "xs",
-              color: "yellow.800",
+              bg: 'yellow.50',
+              border: '1px solid',
+              borderColor: 'yellow.200',
+              rounded: 'sm',
+              fontSize: 'xs',
+              color: 'yellow.800',
             })}
           >
             ⚠️ {validationResult.warnings.length} warning(s)
@@ -540,5 +520,5 @@ export function PracticeStepEditor({
         </Section>
       )}
     </EditorLayout>
-  );
+  )
 }

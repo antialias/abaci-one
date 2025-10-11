@@ -1,35 +1,24 @@
-"use client";
+'use client'
 
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-} from "react";
-import { useArcadeSession } from "@/hooks/useArcadeSession";
-import { useRoomData } from "@/hooks/useRoomData";
-import { useViewerId } from "@/hooks/useViewerId";
-import type { GameMove } from "@/lib/arcade/validation";
-import { useGameMode } from "../../../../contexts/GameModeContext";
-import { generateGameCards } from "../utils/cardGeneration";
-import type {
-  GameStatistics,
-  MemoryPairsContextValue,
-  MemoryPairsState,
-} from "./types";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react'
+import { useArcadeSession } from '@/hooks/useArcadeSession'
+import { useRoomData } from '@/hooks/useRoomData'
+import { useViewerId } from '@/hooks/useViewerId'
+import type { GameMove } from '@/lib/arcade/validation'
+import { useGameMode } from '../../../../contexts/GameModeContext'
+import { generateGameCards } from '../utils/cardGeneration'
+import type { GameStatistics, MemoryPairsContextValue, MemoryPairsState } from './types'
 
 // Initial state
 const initialState: MemoryPairsState = {
   cards: [],
   gameCards: [],
   flippedCards: [],
-  gameType: "abacus-numeral",
+  gameType: 'abacus-numeral',
   difficulty: 6,
   turnTimer: 30,
-  gamePhase: "setup",
-  currentPlayer: "", // Will be set to first player ID on START_GAME
+  gamePhase: 'setup',
+  currentPlayer: '', // Will be set to first player ID on START_GAME
   matchedPairs: 0,
   totalPairs: 6,
   moves: 0,
@@ -44,37 +33,31 @@ const initialState: MemoryPairsState = {
   isProcessingMove: false,
   showMismatchFeedback: false,
   lastMatchedPair: null,
-};
+}
 
 /**
  * Optimistic move application (client-side prediction)
  * The server will validate and send back the authoritative state
  */
-function applyMoveOptimistically(
-  state: MemoryPairsState,
-  move: GameMove,
-): MemoryPairsState {
+function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): MemoryPairsState {
   switch (move.type) {
-    case "START_GAME":
+    case 'START_GAME':
       // Generate cards and initialize game
       return {
         ...state,
-        gamePhase: "playing",
+        gamePhase: 'playing',
         gameCards: move.data.cards,
         cards: move.data.cards,
         flippedCards: [],
         matchedPairs: 0,
         moves: 0,
-        scores: move.data.activePlayers.reduce(
-          (acc: any, p: string) => ({ ...acc, [p]: 0 }),
-          {},
-        ),
+        scores: move.data.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
         consecutiveMatches: move.data.activePlayers.reduce(
           (acc: any, p: string) => ({ ...acc, [p]: 0 }),
-          {},
+          {}
         ),
         activePlayers: move.data.activePlayers,
-        currentPlayer: move.data.activePlayers[0] || "",
+        currentPlayer: move.data.activePlayers[0] || '',
         gameStartTime: Date.now(),
         gameEndTime: null,
         currentMoveStartTime: Date.now(),
@@ -82,62 +65,54 @@ function applyMoveOptimistically(
         isProcessingMove: false,
         showMismatchFeedback: false,
         lastMatchedPair: null,
-      };
+      }
 
-    case "FLIP_CARD": {
+    case 'FLIP_CARD': {
       // Optimistically flip the card
-      const card = state.gameCards.find((c) => c.id === move.data.cardId);
-      if (!card) return state;
+      const card = state.gameCards.find((c) => c.id === move.data.cardId)
+      if (!card) return state
 
-      const newFlippedCards = [...state.flippedCards, card];
+      const newFlippedCards = [...state.flippedCards, card]
 
       return {
         ...state,
         flippedCards: newFlippedCards,
         currentMoveStartTime:
-          state.flippedCards.length === 0
-            ? Date.now()
-            : state.currentMoveStartTime,
+          state.flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime,
         isProcessingMove: newFlippedCards.length === 2, // Processing if 2 cards flipped
         showMismatchFeedback: false,
-      };
+      }
     }
 
-    case "CLEAR_MISMATCH": {
+    case 'CLEAR_MISMATCH': {
       // Clear mismatched cards and feedback
       return {
         ...state,
         flippedCards: [],
         showMismatchFeedback: false,
         isProcessingMove: false,
-      };
+      }
     }
 
     default:
-      return state;
+      return state
   }
 }
 
 // Create context
-const ArcadeMemoryPairsContext = createContext<MemoryPairsContextValue | null>(
-  null,
-);
+const ArcadeMemoryPairsContext = createContext<MemoryPairsContextValue | null>(null)
 
 // Provider component
-export function ArcadeMemoryPairsProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const { data: viewerId } = useViewerId();
-  const { roomData } = useRoomData();
-  const { activePlayerCount, activePlayers: activePlayerIds } = useGameMode();
+export function ArcadeMemoryPairsProvider({ children }: { children: ReactNode }) {
+  const { data: viewerId } = useViewerId()
+  const { roomData } = useRoomData()
+  const { activePlayerCount, activePlayers: activePlayerIds } = useGameMode()
 
   // Get active player IDs directly as strings (UUIDs)
-  const activePlayers = Array.from(activePlayerIds);
+  const activePlayers = Array.from(activePlayerIds)
 
   // Derive game mode from active player count
-  const gameMode = activePlayerCount > 1 ? "multiplayer" : "single";
+  const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'
 
   // Arcade session integration with room-wide sync
   const {
@@ -146,11 +121,11 @@ export function ArcadeMemoryPairsProvider({
     connected: _connected,
     exitSession,
   } = useArcadeSession<MemoryPairsState>({
-    userId: viewerId || "",
+    userId: viewerId || '',
     roomId: roomData?.id, // Enable multi-user sync for room-based games
     initialState,
     applyMove: applyMoveOptimistically,
-  });
+  })
 
   // Handle mismatch feedback timeout
   useEffect(() => {
@@ -158,87 +133,80 @@ export function ArcadeMemoryPairsProvider({
       // After 1.5 seconds, clear the flipped cards and feedback
       const timeout = setTimeout(() => {
         sendMove({
-          type: "CLEAR_MISMATCH",
+          type: 'CLEAR_MISMATCH',
           playerId: state.currentPlayer, // Use current player ID for CLEAR_MISMATCH
           data: {},
-        });
-      }, 1500);
+        })
+      }, 1500)
 
-      return () => clearTimeout(timeout);
+      return () => clearTimeout(timeout)
     }
-  }, [
-    state.showMismatchFeedback,
-    state.flippedCards.length,
-    sendMove,
-    state.currentPlayer,
-  ]);
+  }, [state.showMismatchFeedback, state.flippedCards.length, sendMove, state.currentPlayer])
 
   // Computed values
-  const isGameActive = state.gamePhase === "playing";
+  const isGameActive = state.gamePhase === 'playing'
 
-  const { players } = useGameMode();
+  const { players } = useGameMode()
 
   const canFlipCard = useCallback(
     (cardId: string): boolean => {
-      console.log("[canFlipCard] Checking card:", {
+      console.log('[canFlipCard] Checking card:', {
         cardId,
         isGameActive,
         isProcessingMove: state.isProcessingMove,
         currentPlayer: state.currentPlayer,
         hasRoomData: !!roomData,
         flippedCardsCount: state.flippedCards.length,
-      });
+      })
 
       if (!isGameActive || state.isProcessingMove) {
-        console.log("[canFlipCard] Blocked: game not active or processing");
-        return false;
+        console.log('[canFlipCard] Blocked: game not active or processing')
+        return false
       }
 
-      const card = state.gameCards.find((c) => c.id === cardId);
+      const card = state.gameCards.find((c) => c.id === cardId)
       if (!card || card.matched) {
-        console.log("[canFlipCard] Blocked: card not found or already matched");
-        return false;
+        console.log('[canFlipCard] Blocked: card not found or already matched')
+        return false
       }
 
       // Can't flip if already flipped
       if (state.flippedCards.some((c) => c.id === cardId)) {
-        console.log("[canFlipCard] Blocked: card already flipped");
-        return false;
+        console.log('[canFlipCard] Blocked: card already flipped')
+        return false
       }
 
       // Can't flip more than 2 cards
       if (state.flippedCards.length >= 2) {
-        console.log("[canFlipCard] Blocked: 2 cards already flipped");
-        return false;
+        console.log('[canFlipCard] Blocked: 2 cards already flipped')
+        return false
       }
 
       // Authorization check: Only allow flipping if it's your player's turn
       if (roomData && state.currentPlayer) {
-        const currentPlayerData = players.get(state.currentPlayer);
-        console.log("[canFlipCard] Authorization check:", {
+        const currentPlayerData = players.get(state.currentPlayer)
+        console.log('[canFlipCard] Authorization check:', {
           currentPlayerId: state.currentPlayer,
           currentPlayerFound: !!currentPlayerData,
           currentPlayerIsLocal: currentPlayerData?.isLocal,
-        });
+        })
 
         // Block if current player is explicitly marked as remote (isLocal === false)
         if (currentPlayerData && currentPlayerData.isLocal === false) {
-          console.log(
-            "[canFlipCard] BLOCKED: Current player is remote (not your turn)",
-          );
-          return false;
+          console.log('[canFlipCard] BLOCKED: Current player is remote (not your turn)')
+          return false
         }
 
         // If player data not found in map, this might be an issue - allow for now but warn
         if (!currentPlayerData) {
           console.warn(
-            "[canFlipCard] WARNING: Current player not found in players map, allowing move",
-          );
+            '[canFlipCard] WARNING: Current player not found in players map, allowing move'
+          )
         }
       }
 
-      console.log("[canFlipCard] ALLOWED: All checks passed");
-      return true;
+      console.log('[canFlipCard] ALLOWED: All checks passed')
+      return true
     },
     [
       isGameActive,
@@ -248,130 +216,108 @@ export function ArcadeMemoryPairsProvider({
       state.currentPlayer,
       roomData,
       players,
-    ],
-  );
+    ]
+  )
 
   const currentGameStatistics: GameStatistics = useMemo(
     () => ({
       totalMoves: state.moves,
       matchedPairs: state.matchedPairs,
       totalPairs: state.totalPairs,
-      gameTime: state.gameStartTime
-        ? (state.gameEndTime || Date.now()) - state.gameStartTime
-        : 0,
+      gameTime: state.gameStartTime ? (state.gameEndTime || Date.now()) - state.gameStartTime : 0,
       accuracy: state.moves > 0 ? (state.matchedPairs / state.moves) * 100 : 0,
       averageTimePerMove:
         state.moves > 0 && state.gameStartTime
-          ? ((state.gameEndTime || Date.now()) - state.gameStartTime) /
-            state.moves
+          ? ((state.gameEndTime || Date.now()) - state.gameStartTime) / state.moves
           : 0,
     }),
-    [
-      state.moves,
-      state.matchedPairs,
-      state.totalPairs,
-      state.gameStartTime,
-      state.gameEndTime,
-    ],
-  );
+    [state.moves, state.matchedPairs, state.totalPairs, state.gameStartTime, state.gameEndTime]
+  )
 
   // Action creators - send moves to arcade session
   const startGame = useCallback(() => {
     // Must have at least one active player
     if (activePlayers.length === 0) {
-      console.error(
-        "[ArcadeMemoryPairs] Cannot start game without active players",
-      );
-      return;
+      console.error('[ArcadeMemoryPairs] Cannot start game without active players')
+      return
     }
 
-    const cards = generateGameCards(state.gameType, state.difficulty);
+    const cards = generateGameCards(state.gameType, state.difficulty)
     // Use first active player as playerId for START_GAME move
-    const firstPlayer = activePlayers[0];
+    const firstPlayer = activePlayers[0]
     sendMove({
-      type: "START_GAME",
+      type: 'START_GAME',
       playerId: firstPlayer,
       data: {
         cards,
         activePlayers,
       },
-    });
-  }, [state.gameType, state.difficulty, activePlayers, sendMove, roomData]);
+    })
+  }, [state.gameType, state.difficulty, activePlayers, sendMove, roomData])
 
   const flipCard = useCallback(
     (cardId: string) => {
-      console.log("[Client] flipCard called:", {
+      console.log('[Client] flipCard called:', {
         cardId,
         viewerId,
         currentPlayer: state.currentPlayer,
         activePlayers: state.activePlayers,
         gamePhase: state.gamePhase,
         canFlip: canFlipCard(cardId),
-      });
+      })
 
       if (!canFlipCard(cardId)) {
-        console.log("[Client] Cannot flip card - canFlipCard returned false");
-        return;
+        console.log('[Client] Cannot flip card - canFlipCard returned false')
+        return
       }
 
       const move = {
-        type: "FLIP_CARD" as const,
+        type: 'FLIP_CARD' as const,
         playerId: state.currentPlayer, // Use the current player ID from game state (database player ID)
         data: { cardId },
-      };
-      console.log("[Client] Sending FLIP_CARD move via sendMove:", move);
-      sendMove(move);
+      }
+      console.log('[Client] Sending FLIP_CARD move via sendMove:', move)
+      sendMove(move)
     },
-    [
-      canFlipCard,
-      sendMove,
-      viewerId,
-      state.currentPlayer,
-      state.activePlayers,
-      state.gamePhase,
-    ],
-  );
+    [canFlipCard, sendMove, viewerId, state.currentPlayer, state.activePlayers, state.gamePhase]
+  )
 
   const resetGame = useCallback(() => {
     // Must have at least one active player
     if (activePlayers.length === 0) {
-      console.error(
-        "[ArcadeMemoryPairs] Cannot reset game without active players",
-      );
-      return;
+      console.error('[ArcadeMemoryPairs] Cannot reset game without active players')
+      return
     }
 
     // Delete current session and start a new game
-    const cards = generateGameCards(state.gameType, state.difficulty);
+    const cards = generateGameCards(state.gameType, state.difficulty)
     // Use first active player as playerId for START_GAME move
-    const firstPlayer = activePlayers[0];
+    const firstPlayer = activePlayers[0]
     sendMove({
-      type: "START_GAME",
+      type: 'START_GAME',
       playerId: firstPlayer,
       data: {
         cards,
         activePlayers,
       },
-    });
-  }, [state.gameType, state.difficulty, activePlayers, sendMove]);
+    })
+  }, [state.gameType, state.difficulty, activePlayers, sendMove])
 
   const setGameType = useCallback((_gameType: typeof state.gameType) => {
     // TODO: Implement via arcade session if needed
-    console.warn("setGameType not yet implemented for arcade mode");
-  }, []);
+    console.warn('setGameType not yet implemented for arcade mode')
+  }, [])
 
   const setDifficulty = useCallback((_difficulty: typeof state.difficulty) => {
     // TODO: Implement via arcade session if needed
-    console.warn("setDifficulty not yet implemented for arcade mode");
-  }, []);
+    console.warn('setDifficulty not yet implemented for arcade mode')
+  }, [])
 
   const contextValue: MemoryPairsContextValue = {
     state: { ...state, gameMode },
     dispatch: () => {
       // No-op - replaced with sendMove
-      console.warn(
-        "dispatch() is deprecated in arcade mode, use action creators instead",
-      );
+      console.warn('dispatch() is deprecated in arcade mode, use action creators instead')
     },
     isGameActive,
     canFlipCard,
@@ -384,22 +330,20 @@ export function ArcadeMemoryPairsProvider({
     exitSession,
     gameMode,
     activePlayers,
-  };
+  }
 
   return (
     <ArcadeMemoryPairsContext.Provider value={contextValue}>
       {children}
     </ArcadeMemoryPairsContext.Provider>
-  );
+  )
 }
 
 // Hook to use the context
 export function useArcadeMemoryPairs(): MemoryPairsContextValue {
-  const context = useContext(ArcadeMemoryPairsContext);
+  const context = useContext(ArcadeMemoryPairsContext)
   if (!context) {
-    throw new Error(
-      "useArcadeMemoryPairs must be used within an ArcadeMemoryPairsProvider",
-    );
+    throw new Error('useArcadeMemoryPairs must be used within an ArcadeMemoryPairsProvider')
   }
-  return context;
+  return context
 }

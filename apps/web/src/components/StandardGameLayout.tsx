@@ -1,11 +1,11 @@
-"use client";
+'use client'
 
-import type { ReactNode } from "react";
-import { css } from "../../styled-system/css";
+import type { ReactNode } from 'react'
+import { css } from '../../styled-system/css'
 
 interface StandardGameLayoutProps {
-  children: ReactNode;
-  className?: string;
+  children: ReactNode
+  className?: string
 }
 
 /**
@@ -15,40 +15,37 @@ interface StandardGameLayoutProps {
  * 3. Perfect viewport fit on all devices
  * 4. Consistent experience across all games
  */
-export function StandardGameLayout({
-  children,
-  className,
-}: StandardGameLayoutProps) {
+export function StandardGameLayout({ children, className }: StandardGameLayoutProps) {
   return (
     <div
       className={css(
         {
           // Exact viewport sizing - no scrolling ever
-          height: "100vh",
-          width: "100vw",
-          overflow: "hidden",
+          height: '100vh',
+          width: '100vw',
+          overflow: 'hidden',
 
           // Safe area for navigation (fixed at top: 4px, right: 4px)
           // Navigation is ~60px tall, so we need padding-top of ~80px to be safe
-          paddingTop: "80px",
-          paddingRight: "4px", // Ensure nav doesn't overlap content on right side
-          paddingBottom: "4px",
-          paddingLeft: "4px",
+          paddingTop: '80px',
+          paddingRight: '4px', // Ensure nav doesn't overlap content on right side
+          paddingBottom: '4px',
+          paddingLeft: '4px',
 
           // Box sizing to include padding in dimensions
-          boxSizing: "border-box",
+          boxSizing: 'border-box',
 
           // Flex container for game content
-          display: "flex",
-          flexDirection: "column",
+          display: 'flex',
+          flexDirection: 'column',
 
           // Transparent background - themes will be applied at nav level
-          background: "transparent",
+          background: 'transparent',
         },
-        className,
+        className
       )}
     >
       {children}
     </div>
-  );
+  )
 }

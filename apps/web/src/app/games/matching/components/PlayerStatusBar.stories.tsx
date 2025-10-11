@@ -1,8 +1,8 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import type React from "react";
-import { useEffect } from "react";
-import { css } from "../../../../../styled-system/css";
-import { gamePlurals } from "../../../../utils/pluralization";
+import type { Meta, StoryObj } from '@storybook/react'
+import type React from 'react'
+import { useEffect } from 'react'
+import { css } from '../../../../../styled-system/css'
+import { gamePlurals } from '../../../../utils/pluralization'
 
 // Inject the celebration animations for Storybook
 const celebrationAnimations = `
@@ -125,29 +125,26 @@ const celebrationAnimations = `
     box-shadow: 0 0 0 2px white, 0 0 0 6px #a855f7, 0 12px 32px rgba(0,0,0,0.2);
   }
 }
-`;
+`
 
 // Component to inject animations
 const AnimationProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
-    if (
-      typeof document !== "undefined" &&
-      !document.getElementById("celebration-animations")
-    ) {
-      const style = document.createElement("style");
-      style.id = "celebration-animations";
-      style.textContent = celebrationAnimations;
-      document.head.appendChild(style);
+    if (typeof document !== 'undefined' && !document.getElementById('celebration-animations')) {
+      const style = document.createElement('style')
+      style.id = 'celebration-animations'
+      style.textContent = celebrationAnimations
+      document.head.appendChild(style)
     }
-  }, []);
+  }, [])
 
-  return <>{children}</>;
-};
+  return <>{children}</>
+}
 
 const meta: Meta = {
-  title: "Games/Matching/PlayerStatusBar",
+  title: 'Games/Matching/PlayerStatusBar',
   parameters: {
-    layout: "centered",
+    layout: 'centered',
     docs: {
       description: {
         component: `
@@ -177,11 +174,11 @@ The animations demonstrate different celebration levels that activate when playe
       <AnimationProvider>
         <div
           className={css({
-            width: "800px",
-            maxWidth: "90vw",
-            padding: "20px",
-            background: "linear-gradient(135deg, #f8fafc, #e2e8f0)",
-            minHeight: "400px",
+            width: '800px',
+            maxWidth: '90vw',
+            padding: '20px',
+            background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+            minHeight: '400px',
           })}
         >
           <Story />
@@ -189,10 +186,10 @@ The animations demonstrate different celebration levels that activate when playe
       </AnimationProvider>
     ),
   ],
-};
+}
 
-export default meta;
-type Story = StoryObj<typeof meta>;
+export default meta
+type Story = StoryObj<typeof meta>
 
 // Create a mock player card component that showcases the animations
 const MockPlayerCard = ({
@@ -203,68 +200,64 @@ const MockPlayerCard = ({
   isCurrentPlayer = true,
   celebrationLevel,
 }: {
-  emoji: string;
-  name: string;
-  score: number;
-  consecutiveMatches: number;
-  isCurrentPlayer?: boolean;
-  celebrationLevel: "normal" | "great" | "epic" | "legendary";
+  emoji: string
+  name: string
+  score: number
+  consecutiveMatches: number
+  isCurrentPlayer?: boolean
+  celebrationLevel: 'normal' | 'great' | 'epic' | 'legendary'
 }) => {
   const playerColor =
-    celebrationLevel === "legendary"
-      ? "#a855f7"
-      : celebrationLevel === "epic"
-        ? "#f97316"
-        : celebrationLevel === "great"
-          ? "#22c55e"
-          : "#3b82f6";
+    celebrationLevel === 'legendary'
+      ? '#a855f7'
+      : celebrationLevel === 'epic'
+        ? '#f97316'
+        : celebrationLevel === 'great'
+          ? '#22c55e'
+          : '#3b82f6'
 
   return (
     <div
       className={css({
-        display: "flex",
-        alignItems: "center",
-        gap: { base: "3", md: "4" },
-        p: isCurrentPlayer ? { base: "4", md: "6" } : { base: "2", md: "3" },
-        rounded: isCurrentPlayer ? "2xl" : "lg",
+        display: 'flex',
+        alignItems: 'center',
+        gap: { base: '3', md: '4' },
+        p: isCurrentPlayer ? { base: '4', md: '6' } : { base: '2', md: '3' },
+        rounded: isCurrentPlayer ? '2xl' : 'lg',
         background: isCurrentPlayer
           ? `linear-gradient(135deg, ${playerColor}15, ${playerColor}25, ${playerColor}15)`
-          : "white",
-        border: isCurrentPlayer ? "4px solid" : "2px solid",
-        borderColor: isCurrentPlayer ? playerColor : "gray.200",
+          : 'white',
+        border: isCurrentPlayer ? '4px solid' : '2px solid',
+        borderColor: isCurrentPlayer ? playerColor : 'gray.200',
         boxShadow: isCurrentPlayer
           ? `0 0 0 2px white, 0 0 0 6px ${playerColor}40, 0 12px 32px rgba(0,0,0,0.2)`
-          : "0 2px 4px rgba(0,0,0,0.1)",
-        transition: "all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-        position: "relative",
-        transform: isCurrentPlayer
-          ? "scale(1.08) translateY(-4px)"
-          : "scale(1)",
+          : '0 2px 4px rgba(0,0,0,0.1)',
+        transition: 'all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        position: 'relative',
+        transform: isCurrentPlayer ? 'scale(1.08) translateY(-4px)' : 'scale(1)',
         zIndex: isCurrentPlayer ? 10 : 1,
         animation: isCurrentPlayer
-          ? celebrationLevel === "legendary"
-            ? "legendary-celebration 0.8s ease-out, turn-entrance 0.6s ease-out"
-            : celebrationLevel === "epic"
-              ? "epic-celebration 0.7s ease-out, turn-entrance 0.6s ease-out"
-              : celebrationLevel === "great"
-                ? "great-celebration 0.6s ease-out, turn-entrance 0.6s ease-out"
-                : "turn-entrance 0.6s ease-out"
-          : "none",
+          ? celebrationLevel === 'legendary'
+            ? 'legendary-celebration 0.8s ease-out, turn-entrance 0.6s ease-out'
+            : celebrationLevel === 'epic'
+              ? 'epic-celebration 0.7s ease-out, turn-entrance 0.6s ease-out'
+              : celebrationLevel === 'great'
+                ? 'great-celebration 0.6s ease-out, turn-entrance 0.6s ease-out'
+                : 'turn-entrance 0.6s ease-out'
+          : 'none',
       })}
     >
       {/* Player emoji */}
       <div
         className={css({
-          fontSize: isCurrentPlayer
-            ? { base: "3xl", md: "5xl" }
-            : { base: "lg", md: "xl" },
+          fontSize: isCurrentPlayer ? { base: '3xl', md: '5xl' } : { base: 'lg', md: 'xl' },
           flexShrink: 0,
           animation: isCurrentPlayer
-            ? "float 3s ease-in-out infinite"
-            : "breathe 5s ease-in-out infinite",
-          transform: isCurrentPlayer ? "scale(1.2)" : "scale(1)",
-          transition: "all 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-          textShadow: isCurrentPlayer ? "0 0 20px currentColor" : "none",
+            ? 'float 3s ease-in-out infinite'
+            : 'breathe 5s ease-in-out infinite',
+          transform: isCurrentPlayer ? 'scale(1.2)' : 'scale(1)',
+          transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+          textShadow: isCurrentPlayer ? '0 0 20px currentColor' : 'none',
         })}
       >
         {emoji}
@@ -279,12 +272,10 @@ const MockPlayerCard = ({
       >
         <div
           className={css({
-            fontSize: isCurrentPlayer
-              ? { base: "md", md: "lg" }
-              : { base: "xs", md: "sm" },
-            fontWeight: "black",
-            color: isCurrentPlayer ? "gray.900" : "gray.700",
-            textShadow: isCurrentPlayer ? "0 0 10px currentColor" : "none",
+            fontSize: isCurrentPlayer ? { base: 'md', md: 'lg' } : { base: 'xs', md: 'sm' },
+            fontWeight: 'black',
+            color: isCurrentPlayer ? 'gray.900' : 'gray.700',
+            textShadow: isCurrentPlayer ? '0 0 10px currentColor' : 'none',
           })}
         >
           {name}
@@ -292,45 +283,39 @@ const MockPlayerCard = ({
 
         <div
           className={css({
-            fontSize: isCurrentPlayer
-              ? { base: "sm", md: "md" }
-              : { base: "2xs", md: "xs" },
-            color: isCurrentPlayer ? playerColor : "gray.500",
-            fontWeight: isCurrentPlayer ? "black" : "semibold",
+            fontSize: isCurrentPlayer ? { base: 'sm', md: 'md' } : { base: '2xs', md: 'xs' },
+            color: isCurrentPlayer ? playerColor : 'gray.500',
+            fontWeight: isCurrentPlayer ? 'black' : 'semibold',
           })}
         >
           {gamePlurals.pair(score)}
           {isCurrentPlayer && (
             <span
               className={css({
-                color: "red.600",
-                fontWeight: "black",
-                fontSize: isCurrentPlayer
-                  ? { base: "sm", md: "lg" }
-                  : "inherit",
-                textShadow: "0 0 15px currentColor",
+                color: 'red.600',
+                fontWeight: 'black',
+                fontSize: isCurrentPlayer ? { base: 'sm', md: 'lg' } : 'inherit',
+                textShadow: '0 0 15px currentColor',
               })}
             >
-              {" • Your turn"}
+              {' • Your turn'}
             </span>
           )}
           {consecutiveMatches > 1 && (
             <div
               className={css({
-                fontSize: { base: "2xs", md: "xs" },
+                fontSize: { base: '2xs', md: 'xs' },
                 color:
-                  celebrationLevel === "legendary"
-                    ? "purple.600"
-                    : celebrationLevel === "epic"
-                      ? "orange.600"
-                      : celebrationLevel === "great"
-                        ? "green.600"
-                        : "gray.500",
-                fontWeight: "black",
-                animation: isCurrentPlayer
-                  ? "streak-pulse 1s ease-in-out infinite"
-                  : "none",
-                textShadow: isCurrentPlayer ? "0 0 10px currentColor" : "none",
+                  celebrationLevel === 'legendary'
+                    ? 'purple.600'
+                    : celebrationLevel === 'epic'
+                      ? 'orange.600'
+                      : celebrationLevel === 'great'
+                        ? 'green.600'
+                        : 'gray.500',
+                fontWeight: 'black',
+                animation: isCurrentPlayer ? 'streak-pulse 1s ease-in-out infinite' : 'none',
+                textShadow: isCurrentPlayer ? '0 0 10px currentColor' : 'none',
               })}
             >
               🔥 {consecutiveMatches} streak!
@@ -343,24 +328,24 @@ const MockPlayerCard = ({
       {isCurrentPlayer && (
         <div
           className={css({
-            background: "linear-gradient(135deg, #ff6b6b, #ee5a24)",
-            color: "white",
-            px: { base: "3", md: "4" },
-            py: { base: "2", md: "3" },
-            rounded: "xl",
-            fontSize: { base: "lg", md: "xl" },
-            fontWeight: "black",
-            boxShadow: "0 4px 15px rgba(238, 90, 36, 0.4)",
-            animation: "gentle-bounce 1.5s ease-in-out infinite",
-            textShadow: "0 0 10px rgba(255,255,255,0.8)",
+            background: 'linear-gradient(135deg, #ff6b6b, #ee5a24)',
+            color: 'white',
+            px: { base: '3', md: '4' },
+            py: { base: '2', md: '3' },
+            rounded: 'xl',
+            fontSize: { base: 'lg', md: 'xl' },
+            fontWeight: 'black',
+            boxShadow: '0 4px 15px rgba(238, 90, 36, 0.4)',
+            animation: 'gentle-bounce 1.5s ease-in-out infinite',
+            textShadow: '0 0 10px rgba(255,255,255,0.8)',
           })}
         >
           ⚡{score}⚡
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
 // Normal celebration level
 export const NormalPlayer: Story = {
@@ -373,7 +358,7 @@ export const NormalPlayer: Story = {
       celebrationLevel="normal"
     />
   ),
-};
+}
 
 // Great celebration level
 export const GreatStreak: Story = {
@@ -386,7 +371,7 @@ export const GreatStreak: Story = {
       celebrationLevel="great"
     />
   ),
-};
+}
 
 // Epic celebration level
 export const EpicStreak: Story = {
@@ -399,7 +384,7 @@ export const EpicStreak: Story = {
       celebrationLevel="epic"
     />
   ),
-};
+}
 
 // Legendary celebration level
 export const LegendaryStreak: Story = {
@@ -412,20 +397,18 @@ export const LegendaryStreak: Story = {
       celebrationLevel="legendary"
     />
   ),
-};
+}
 
 // All levels showcase
 export const AllCelebrationLevels: Story = {
   render: () => (
-    <div
-      className={css({ display: "flex", flexDirection: "column", gap: "20px" })}
-    >
+    <div className={css({ display: 'flex', flexDirection: 'column', gap: '20px' })}>
       <h3
         className={css({
-          textAlign: "center",
-          fontSize: "24px",
-          fontWeight: "bold",
-          marginBottom: "20px",
+          textAlign: 'center',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          marginBottom: '20px',
         })}
       >
         Consecutive Match Celebration Levels
@@ -433,19 +416,19 @@ export const AllCelebrationLevels: Story = {
 
       <div
         className={css({
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))",
-          gap: "20px",
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
+          gap: '20px',
         })}
       >
         {/* Normal */}
         <div>
           <h4
             className={css({
-              textAlign: "center",
-              marginBottom: "10px",
-              fontSize: "16px",
-              fontWeight: "bold",
+              textAlign: 'center',
+              marginBottom: '10px',
+              fontSize: '16px',
+              fontWeight: 'bold',
             })}
           >
             Normal (0-1 matches)
@@ -463,11 +446,11 @@ export const AllCelebrationLevels: Story = {
         <div>
           <h4
             className={css({
-              textAlign: "center",
-              marginBottom: "10px",
-              color: "green.600",
-              fontSize: "16px",
-              fontWeight: "bold",
+              textAlign: 'center',
+              marginBottom: '10px',
+              color: 'green.600',
+              fontSize: '16px',
+              fontWeight: 'bold',
             })}
           >
             Great (2+ matches)
@@ -485,11 +468,11 @@ export const AllCelebrationLevels: Story = {
         <div>
           <h4
             className={css({
-              textAlign: "center",
-              marginBottom: "10px",
-              color: "orange.600",
-              fontSize: "16px",
-              fontWeight: "bold",
+              textAlign: 'center',
+              marginBottom: '10px',
+              color: 'orange.600',
+              fontSize: '16px',
+              fontWeight: 'bold',
             })}
           >
             Epic (3+ matches)
@@ -507,11 +490,11 @@ export const AllCelebrationLevels: Story = {
         <div>
           <h4
             className={css({
-              textAlign: "center",
-              marginBottom: "10px",
-              color: "purple.600",
-              fontSize: "16px",
-              fontWeight: "bold",
+              textAlign: 'center',
+              marginBottom: '10px',
+              color: 'purple.600',
+              fontSize: '16px',
+              fontWeight: 'bold',
             })}
           >
             Legendary (5+ matches)
@@ -528,23 +511,23 @@ export const AllCelebrationLevels: Story = {
 
       <div
         className={css({
-          textAlign: "center",
-          marginTop: "20px",
-          padding: "16px",
-          background: "rgba(255,255,255,0.8)",
-          borderRadius: "12px",
-          border: "1px solid rgba(0,0,0,0.1)",
+          textAlign: 'center',
+          marginTop: '20px',
+          padding: '16px',
+          background: 'rgba(255,255,255,0.8)',
+          borderRadius: '12px',
+          border: '1px solid rgba(0,0,0,0.1)',
         })}
       >
-        <p className={css({ fontSize: "14px", color: "gray.700", margin: 0 })}>
-          These animations trigger when a player gets consecutive matching pairs
-          in the memory matching game. The celebrations get more intense as the
-          streak grows, providing visual feedback and excitement!
+        <p className={css({ fontSize: '14px', color: 'gray.700', margin: 0 })}>
+          These animations trigger when a player gets consecutive matching pairs in the memory
+          matching game. The celebrations get more intense as the streak grows, providing visual
+          feedback and excitement!
         </p>
       </div>
     </div>
   ),
   parameters: {
-    layout: "fullscreen",
+    layout: 'fullscreen',
   },
-};
+}

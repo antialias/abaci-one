@@ -1,16 +1,13 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { getRoomById, touchRoom } from "@/lib/arcade/room-manager";
-import { addRoomMember, getRoomMembers } from "@/lib/arcade/room-membership";
-import {
-  getActivePlayers,
-  getRoomActivePlayers,
-} from "@/lib/arcade/player-manager";
-import { getViewerId } from "@/lib/viewer";
-import { getSocketIO } from "@/lib/socket-io";
+import { type NextRequest, NextResponse } from 'next/server'
+import { getRoomById, touchRoom } from '@/lib/arcade/room-manager'
+import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
+import { getActivePlayers, getRoomActivePlayers } from '@/lib/arcade/player-manager'
+import { getViewerId } from '@/lib/viewer'
+import { getSocketIO } from '@/lib/socket-io'
 
 type RouteContext = {
-  params: Promise<{ roomId: string }>;
-};
+  params: Promise<{ roomId: string }>
+}
 
 /**
  * POST /api/arcade/rooms/:roomId/join
@@ -20,30 +17,30 @@ type RouteContext = {
  */
 export async function POST(req: NextRequest, context: RouteContext) {
   try {
-    const { roomId } = await context.params;
-    const viewerId = await getViewerId();
-    const body = await req.json().catch(() => ({}));
+    const { roomId } = await context.params
+    const viewerId = await getViewerId()
+    const body = await req.json().catch(() => ({}))
 
     // Get room
-    const room = await getRoomById(roomId);
+    const room = await getRoomById(roomId)
     if (!room) {
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
     // Check if room is locked
     if (room.isLocked) {
-      return NextResponse.json({ error: "Room is locked" }, { status: 403 });
+      return NextResponse.json({ error: 'Room is locked' }, { status: 403 })
     }
 
     // Get or generate display name
-    const displayName = body.displayName || `Guest ${viewerId.slice(-4)}`;
+    const displayName = body.displayName || `Guest ${viewerId.slice(-4)}`
 
     // Validate display name length
     if (displayName.length > 50) {
       return NextResponse.json(
-        { error: "Display name too long (max 50 characters)" },
-        { status: 400 },
-      );
+        { error: 'Display name too long (max 50 characters)' },
+        { status: 400 }
+      )
     }
 
     // Add member (with auto-leave logic for modal room enforcement)
@@ -52,44 +49,39 @@ export async function POST(req: NextRequest, context: RouteContext) {
       userId: viewerId,
       displayName,
       isCreator: false,
-    });
+    })
 
     // Fetch user's active players (these will participate in the game)
-    const activePlayers = await getActivePlayers(viewerId);
+    const activePlayers = await getActivePlayers(viewerId)
 
     // Update room activity to refresh TTL
-    await touchRoom(roomId);
+    await touchRoom(roomId)
 
     // Broadcast to all users in the room via socket
-    const io = await getSocketIO();
+    const io = await getSocketIO()
     if (io) {
       try {
-        const members = await getRoomMembers(roomId);
-        const memberPlayers = await getRoomActivePlayers(roomId);
+        const members = await getRoomMembers(roomId)
+        const memberPlayers = await getRoomActivePlayers(roomId)
 
         // Convert memberPlayers Map to object for JSON serialization
-        const memberPlayersObj: Record<string, any[]> = {};
+        const memberPlayersObj: Record<string, any[]> = {}
         for (const [uid, players] of memberPlayers.entries()) {
-          memberPlayersObj[uid] = players;
+          memberPlayersObj[uid] = players
         }
 
         // Broadcast to all users in this room
-        io.to(`room:${roomId}`).emit("member-joined", {
+        io.to(`room:${roomId}`).emit('member-joined', {
           roomId,
           userId: viewerId,
           members,
           memberPlayers: memberPlayersObj,
-        });
+        })
 
-        console.log(
-          `[Join API] Broadcasted member-joined for user ${viewerId} in room ${roomId}`,
-        );
+        console.log(`[Join API] Broadcasted member-joined for user ${viewerId} in room ${roomId}`)
       } catch (socketError) {
         // Log but don't fail the request if socket broadcast fails
-        console.error(
-          "[Join API] Failed to broadcast member-joined:",
-          socketError,
-        );
+        console.error('[Join API] Failed to broadcast member-joined:', socketError)
       }
     }
 
@@ -107,27 +99,27 @@ export async function POST(req: NextRequest, context: RouteContext) {
             }
           : undefined,
       },
-      { status: 201 },
-    );
+      { status: 201 }
+    )
   } catch (error: any) {
-    console.error("Failed to join room:", error);
+    console.error('Failed to join room:', error)
 
     // Handle specific constraint violation error
-    if (error.message?.includes("ROOM_MEMBERSHIP_CONFLICT")) {
+    if (error.message?.includes('ROOM_MEMBERSHIP_CONFLICT')) {
       return NextResponse.json(
         {
-          error: "You are already in another room",
-          code: "ROOM_MEMBERSHIP_CONFLICT",
+          error: 'You are already in another room',
+          code: 'ROOM_MEMBERSHIP_CONFLICT',
           message:
-            "You can only be in one room at a time. Please leave your current room before joining a new one.",
+            'You can only be in one room at a time. Please leave your current room before joining a new one.',
           userMessage:
-            "⚠️ Already in Another Room\n\nYou can only be in one room at a time. Please refresh the page and try again.",
+            '⚠️ Already in Another Room\n\nYou can only be in one room at a time. Please refresh the page and try again.',
         },
-        { status: 409 }, // 409 Conflict
-      );
+        { status: 409 } // 409 Conflict
+      )
     }
 
     // Generic error
-    return NextResponse.json({ error: "Failed to join room" }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to join room' }, { status: 500 })
   }
 }

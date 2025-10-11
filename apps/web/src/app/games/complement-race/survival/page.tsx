@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import { PageWithNav } from "@/components/PageWithNav";
-import { ComplementRaceGame } from "../components/ComplementRaceGame";
-import { ComplementRaceProvider } from "../context/ComplementRaceContext";
+import { PageWithNav } from '@/components/PageWithNav'
+import { ComplementRaceGame } from '../components/ComplementRaceGame'
+import { ComplementRaceProvider } from '../context/ComplementRaceContext'
 
 export default function SurvivalModePage() {
   return (
@@ -11,5 +11,5 @@ export default function SurvivalModePage() {
         <ComplementRaceGame />
       </ComplementRaceProvider>
     </PageWithNav>
-  );
+  )
 }

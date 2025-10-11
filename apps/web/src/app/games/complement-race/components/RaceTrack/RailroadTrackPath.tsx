@@ -1,24 +1,24 @@
-"use client";
+'use client'
 
-import { memo } from "react";
-import type { Passenger, Station } from "../../lib/gameTypes";
-import type { Landmark } from "../../lib/landmarks";
+import { memo } from 'react'
+import type { Passenger, Station } from '../../lib/gameTypes'
+import type { Landmark } from '../../lib/landmarks'
 
 interface RailroadTrackPathProps {
   tiesAndRails: {
-    ties: Array<{ x1: number; y1: number; x2: number; y2: number }>;
-    leftRailPath: string;
-    rightRailPath: string;
-  } | null;
-  referencePath: string;
-  pathRef: React.RefObject<SVGPathElement>;
-  landmarkPositions: Array<{ x: number; y: number }>;
-  landmarks: Landmark[];
-  stationPositions: Array<{ x: number; y: number }>;
-  stations: Station[];
-  passengers: Passenger[];
-  boardingAnimations: Map<string, unknown>;
-  disembarkingAnimations: Map<string, unknown>;
+    ties: Array<{ x1: number; y1: number; x2: number; y2: number }>
+    leftRailPath: string
+    rightRailPath: string
+  } | null
+  referencePath: string
+  pathRef: React.RefObject<SVGPathElement>
+  landmarkPositions: Array<{ x: number; y: number }>
+  landmarks: Landmark[]
+  stationPositions: Array<{ x: number; y: number }>
+  stations: Station[]
+  passengers: Passenger[]
+  boardingAnimations: Map<string, unknown>
+  disembarkingAnimations: Map<string, unknown>
 }
 
 export const RailroadTrackPath = memo(
@@ -76,13 +76,7 @@ export const RailroadTrackPath = memo(
         )}
 
         {/* Reference path (invisible, used for positioning) */}
-        <path
-          ref={pathRef}
-          d={referencePath}
-          fill="none"
-          stroke="transparent"
-          strokeWidth="2"
-        />
+        <path ref={pathRef} d={referencePath} fill="none" stroke="transparent" strokeWidth="2" />
 
         {/* Landmarks - background scenery */}
         {landmarkPositions.map((pos, index) => (
@@ -93,9 +87,9 @@ export const RailroadTrackPath = memo(
             textAnchor="middle"
             style={{
               fontSize: `${(landmarks[index]?.size || 24) * 2.0}px`,
-              pointerEvents: "none",
+              pointerEvents: 'none',
               opacity: 0.7,
-              filter: "drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2))",
+              filter: 'drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2))',
             }}
           >
             {landmarks[index]?.emoji}
@@ -104,22 +98,22 @@ export const RailroadTrackPath = memo(
 
         {/* Station markers */}
         {stationPositions.map((pos, index) => {
-          const station = stations[index];
+          const station = stations[index]
           // Find passengers waiting at this station (exclude currently boarding)
           const waitingPassengers = passengers.filter(
             (p) =>
               p.originStationId === station?.id &&
               !p.isBoarded &&
               !p.isDelivered &&
-              !boardingAnimations.has(p.id),
-          );
+              !boardingAnimations.has(p.id)
+          )
           // Find passengers delivered at this station (exclude currently disembarking)
           const deliveredPassengers = passengers.filter(
             (p) =>
               p.destinationStationId === station?.id &&
               p.isDelivered &&
-              !disembarkingAnimations.has(p.id),
-          );
+              !disembarkingAnimations.has(p.id)
+          )
 
           return (
             <g key={`station-${index}`}>
@@ -138,7 +132,7 @@ export const RailroadTrackPath = memo(
                 y={pos.y - 40}
                 textAnchor="middle"
                 fontSize="48"
-                style={{ pointerEvents: "none" }}
+                style={{ pointerEvents: 'none' }}
               >
                 {station?.icon}
               </text>
@@ -153,12 +147,11 @@ export const RailroadTrackPath = memo(
                 strokeWidth="0.5"
                 style={{
                   fontWeight: 900,
-                  pointerEvents: "none",
-                  fontFamily:
-                    '"Comic Sans MS", "Chalkboard SE", "Bradley Hand", cursive',
-                  textShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-                  letterSpacing: "0.5px",
-                  paintOrder: "stroke fill",
+                  pointerEvents: 'none',
+                  fontFamily: '"Comic Sans MS", "Chalkboard SE", "Bradley Hand", cursive',
+                  textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                  letterSpacing: '0.5px',
+                  paintOrder: 'stroke fill',
                 }}
               >
                 {station?.name}
@@ -172,11 +165,11 @@ export const RailroadTrackPath = memo(
                   y={pos.y - 30}
                   textAnchor="middle"
                   style={{
-                    fontSize: "55px",
-                    pointerEvents: "none",
+                    fontSize: '55px',
+                    pointerEvents: 'none',
                     filter: passenger.isUrgent
-                      ? "drop-shadow(0 0 8px rgba(245, 158, 11, 0.8))"
-                      : "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))",
+                      ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.8))'
+                      : 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))',
                   }}
                 >
                   {passenger.avatar}
@@ -187,27 +180,25 @@ export const RailroadTrackPath = memo(
               {deliveredPassengers.map((passenger, pIndex) => (
                 <text
                   key={`delivered-${passenger.id}`}
-                  x={
-                    pos.x + (pIndex - deliveredPassengers.length / 2 + 0.5) * 28
-                  }
+                  x={pos.x + (pIndex - deliveredPassengers.length / 2 + 0.5) * 28}
                   y={pos.y - 30}
                   textAnchor="middle"
                   style={{
-                    fontSize: "55px",
-                    pointerEvents: "none",
-                    filter: "drop-shadow(0 0 12px rgba(16, 185, 129, 0.8))",
-                    animation: "celebrateDelivery 2s ease-out forwards",
+                    fontSize: '55px',
+                    pointerEvents: 'none',
+                    filter: 'drop-shadow(0 0 12px rgba(16, 185, 129, 0.8))',
+                    animation: 'celebrateDelivery 2s ease-out forwards',
                   }}
                 >
                   {passenger.avatar}
                 </text>
               ))}
             </g>
-          );
+          )
         })}
       </>
-    );
-  },
-);
+    )
+  }
+)
 
-RailroadTrackPath.displayName = "RailroadTrackPath";
+RailroadTrackPath.displayName = 'RailroadTrackPath'

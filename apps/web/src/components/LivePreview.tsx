@@ -1,58 +1,56 @@
-"use client";
+'use client'
 
-import { AbacusReact } from "@soroban/abacus-react";
-import { Eye } from "lucide-react";
-import { useMemo, useState } from "react";
-import type { FlashcardFormState } from "@/app/create/page";
-import { css } from "../../styled-system/css";
-import { grid, hstack, stack } from "../../styled-system/patterns";
+import { AbacusReact } from '@soroban/abacus-react'
+import { Eye } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import type { FlashcardFormState } from '@/app/create/page'
+import { css } from '../../styled-system/css'
+import { grid, hstack, stack } from '../../styled-system/patterns'
 
 interface LivePreviewProps {
-  config: FlashcardFormState;
+  config: FlashcardFormState
 }
 
 export function LivePreview({ config }: LivePreviewProps) {
   // Generate preview numbers directly from config
   const previewNumbers = useMemo(() => {
-    return getPreviewNumbers(config.range || "1-10");
-  }, [config.range]);
+    return getPreviewNumbers(config.range || '1-10')
+  }, [config.range])
 
-  const previewCount = previewNumbers.length;
+  const previewCount = previewNumbers.length
 
   return (
-    <div className={stack({ gap: "6" })}>
-      <div
-        className={hstack({ justify: "space-between", alignItems: "center" })}
-      >
-        <div className={stack({ gap: "1" })}>
+    <div className={stack({ gap: '6' })}>
+      <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
+        <div className={stack({ gap: '1' })}>
           <h3
             className={css({
-              fontSize: "xl",
-              fontWeight: "bold",
-              color: "gray.900",
+              fontSize: 'xl',
+              fontWeight: 'bold',
+              color: 'gray.900',
             })}
           >
             Live Preview
           </h3>
           <p
             className={css({
-              fontSize: "sm",
-              color: "gray.600",
+              fontSize: 'sm',
+              color: 'gray.600',
             })}
           >
             See how your flashcards will look
           </p>
         </div>
-        <div className={hstack({ gap: "3", alignItems: "center" })}>
+        <div className={hstack({ gap: '3', alignItems: 'center' })}>
           <div
             className={css({
-              px: "3",
-              py: "1",
-              bg: "brand.100",
-              color: "brand.800",
-              fontSize: "xs",
-              fontWeight: "medium",
-              rounded: "full",
+              px: '3',
+              py: '1',
+              bg: 'brand.100',
+              color: 'brand.800',
+              fontSize: 'xs',
+              fontWeight: 'medium',
+              rounded: 'full',
             })}
           >
             {previewCount} cards • {config.format?.toUpperCase()}
@@ -64,7 +62,7 @@ export function LivePreview({ config }: LivePreviewProps) {
       <div
         className={grid({
           columns: { base: 1, md: 2, lg: 3 },
-          gap: "4",
+          gap: '4',
         })}
       >
         {previewNumbers.map((number) => (
@@ -75,68 +73,53 @@ export function LivePreview({ config }: LivePreviewProps) {
       {/* Configuration Summary */}
       <div
         className={css({
-          p: "4",
-          bg: "gray.50",
-          rounded: "xl",
-          border: "1px solid",
-          borderColor: "gray.200",
+          p: '4',
+          bg: 'gray.50',
+          rounded: 'xl',
+          border: '1px solid',
+          borderColor: 'gray.200',
         })}
       >
         <h4
           className={css({
-            fontSize: "sm",
-            fontWeight: "semibold",
-            color: "gray.900",
-            mb: "2",
+            fontSize: 'sm',
+            fontWeight: 'semibold',
+            color: 'gray.900',
+            mb: '2',
           })}
         >
           Configuration Summary
         </h4>
-        <div className={grid({ columns: { base: 1, md: 2 }, gap: "3" })}>
-          <ConfigItem label="Range" value={config.range || "Not set"} />
-          <ConfigItem
-            label="Format"
-            value={config.format?.toUpperCase() || "PDF"}
-          />
-          <ConfigItem
-            label="Cards per page"
-            value={config.cardsPerPage?.toString() || "6"}
-          />
-          <ConfigItem
-            label="Paper size"
-            value={config.paperSize?.toUpperCase() || "US-LETTER"}
-          />
+        <div className={grid({ columns: { base: 1, md: 2 }, gap: '3' })}>
+          <ConfigItem label="Range" value={config.range || 'Not set'} />
+          <ConfigItem label="Format" value={config.format?.toUpperCase() || 'PDF'} />
+          <ConfigItem label="Cards per page" value={config.cardsPerPage?.toString() || '6'} />
+          <ConfigItem label="Paper size" value={config.paperSize?.toUpperCase() || 'US-LETTER'} />
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-function FlashcardPreview({
-  number,
-  config,
-}: {
-  number: number;
-  config: FlashcardFormState;
-}) {
-  const [showBack, setShowBack] = useState(false);
+function FlashcardPreview({ number, config }: { number: number; config: FlashcardFormState }) {
+  const [showBack, setShowBack] = useState(false)
 
   return (
     <div
       className={css({
-        aspectRatio: "3/4",
-        bg: "white",
-        rounded: "xl",
-        border: "2px solid",
-        borderColor: "gray.200",
-        position: "relative",
-        overflow: "hidden",
-        cursor: "pointer",
-        transition: "all",
+        aspectRatio: '3/4',
+        bg: 'white',
+        rounded: 'xl',
+        border: '2px solid',
+        borderColor: 'gray.200',
+        position: 'relative',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        transition: 'all',
         _hover: {
-          borderColor: "brand.300",
-          transform: "translateY(-2px)",
-          shadow: "card",
+          borderColor: 'brand.300',
+          transform: 'translateY(-2px)',
+          shadow: 'card',
         },
       })}
       onClick={() => setShowBack(!showBack)}
@@ -144,37 +127,37 @@ function FlashcardPreview({
       {/* Flip indicator */}
       <div
         className={css({
-          position: "absolute",
-          top: "2",
-          right: "2",
-          p: "1",
-          bg: "white",
-          rounded: "full",
-          shadow: "card",
+          position: 'absolute',
+          top: '2',
+          right: '2',
+          p: '1',
+          bg: 'white',
+          rounded: 'full',
+          shadow: 'card',
           zIndex: 10,
         })}
       >
-        <Eye size={12} className={css({ color: "gray.600" })} />
+        <Eye size={12} className={css({ color: 'gray.600' })} />
       </div>
 
       {showBack ? (
         // Back side - Numeral
         <div
           className={css({
-            w: "full",
-            h: "full",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            bg: "gray.50",
+            w: 'full',
+            h: 'full',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bg: 'gray.50',
           })}
         >
           <div
             className={css({
-              fontSize: "4xl",
-              fontWeight: "bold",
-              color: "gray.900",
-              fontFamily: "mono",
+              fontSize: '4xl',
+              fontWeight: 'bold',
+              color: 'gray.900',
+              fontFamily: 'mono',
             })}
           >
             {number}
@@ -184,20 +167,20 @@ function FlashcardPreview({
         // Front side - Soroban using React component
         <div
           className={css({
-            w: "full",
-            h: "full",
-            p: "2",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
+            w: 'full',
+            h: 'full',
+            p: '2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
           })}
         >
           <AbacusReact
             value={number}
-            columns={"auto"}
-            beadShape={(config.beadShape as any) || "diamond"}
-            colorScheme={(config.colorScheme as any) || "place-value"}
+            columns={'auto'}
+            beadShape={(config.beadShape as any) || 'diamond'}
+            colorScheme={(config.colorScheme as any) || 'place-value'}
             scaleFactor={(config.scaleFactor || 1) * 1.2}
             interactive={false}
             showNumbers="always"
@@ -207,50 +190,49 @@ function FlashcardPreview({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 function ConfigItem({ label, value }: { label: string; value: string }) {
   return (
     <div
       className={css({
-        fontSize: "xs",
-        color: "gray.600",
+        fontSize: 'xs',
+        color: 'gray.600',
       })}
     >
-      <span className={css({ fontWeight: "medium" })}>{label}:</span>{" "}
-      <span>{value}</span>
+      <span className={css({ fontWeight: 'medium' })}>{label}:</span> <span>{value}</span>
     </div>
-  );
+  )
 }
 
 // Helper function to extract numbers from range for preview
 function getPreviewNumbers(range?: string): number[] {
-  if (!range) return [1, 2, 3];
+  if (!range) return [1, 2, 3]
 
   // Handle comma-separated values
-  if (range.includes(",")) {
+  if (range.includes(',')) {
     return range
-      .split(",")
+      .split(',')
       .slice(0, 3)
       .map((n) => parseInt(n.trim(), 10))
-      .filter((n) => !Number.isNaN(n));
+      .filter((n) => !Number.isNaN(n))
   }
 
   // Handle range format like "1-10"
-  if (range.includes("-")) {
-    const [start] = range.split("-").map((n) => parseInt(n.trim(), 10));
+  if (range.includes('-')) {
+    const [start] = range.split('-').map((n) => parseInt(n.trim(), 10))
     if (!Number.isNaN(start)) {
-      return [start, start + 1, start + 2];
+      return [start, start + 1, start + 2]
     }
   }
 
   // Handle single number
-  const singleNum = parseInt(range, 10);
+  const singleNum = parseInt(range, 10)
   if (!Number.isNaN(singleNum)) {
-    return [singleNum, singleNum + 1, singleNum + 2];
+    return [singleNum, singleNum + 1, singleNum + 2]
   }
 
   // Fallback
-  return [1, 2, 3];
+  return [1, 2, 3]
 }
