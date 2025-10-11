@@ -165,26 +165,41 @@ export function GameContextNav({
           showMenu={!canModifyPlayers}
         />
 
-        {/* Mode + Room stacked vertically - compact */}
+        {/* Mode + Room: show combined pane if in room, otherwise just mode */}
         <div
           style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '3px',
             marginLeft: 'auto',
-            alignItems: 'flex-end',
           }}
         >
-          <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
-
-          {roomInfo && (
+          {roomInfo ? (
             <RoomInfo
               roomName={roomInfo.roomName}
               gameName={roomInfo.gameName}
               playerCount={roomInfo.playerCount}
               joinCode={roomInfo.joinCode}
               shouldEmphasize={shouldEmphasize}
+              gameMode={gameMode}
+              modeColor={
+                gameMode === 'battle' ? '#8b5cf6' :
+                gameMode === 'single' ? '#3b82f6' :
+                gameMode === 'tournament' ? '#f59e0b' :
+                '#6b7280'
+              }
+              modeEmoji={
+                gameMode === 'battle' ? '⚔️' :
+                gameMode === 'single' ? '🎯' :
+                gameMode === 'tournament' ? '🏆' :
+                '👥'
+              }
+              modeLabel={
+                gameMode === 'battle' ? 'Battle' :
+                gameMode === 'single' ? 'Solo' :
+                gameMode === 'tournament' ? 'Tournament' :
+                'Select Players'
+              }
             />
+          ) : (
+            <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
           )}
         </div>
       </div>

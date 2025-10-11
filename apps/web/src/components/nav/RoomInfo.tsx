@@ -1,16 +1,23 @@
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { useState } from 'react'
 
+type GameMode = 'none' | 'single' | 'battle' | 'tournament'
+
 interface RoomInfoProps {
   roomName?: string
   gameName: string
   playerCount: number
   joinCode?: string
   shouldEmphasize: boolean
+  gameMode: GameMode
+  modeColor: string
+  modeEmoji: string
+  modeLabel: string
 }
 
 /**
- * Displays current arcade room/session information with tooltip for join code
+ * Displays current arcade room/session information with mode indicator
+ * Combined into single pane with tooltip for join code
  */
 export function RoomInfo({
   roomName,
@@ -18,6 +25,10 @@ export function RoomInfo({
   playerCount,
   joinCode,
   shouldEmphasize,
+  gameMode,
+  modeColor,
+  modeEmoji,
+  modeLabel,
 }: RoomInfoProps) {
   const [copied, setCopied] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
@@ -41,25 +52,46 @@ export function RoomInfo({
           <div
             style={{
               display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '3px 8px',
-              background: 'rgba(139, 92, 246, 0.15)',
-              borderRadius: '6px',
-              border: '1px solid rgba(139, 92, 246, 0.3)',
-              fontSize: '11px',
-              fontWeight: '600',
-              color: 'rgba(196, 181, 253, 1)',
+              flexDirection: 'column',
+              gap: '3px',
+              padding: '4px 10px',
+              background: `linear-gradient(135deg, ${modeColor}12, ${modeColor}08)`,
+              borderRadius: '8px',
+              border: `1px solid ${modeColor}30`,
               transition: 'all 0.2s ease',
-              whiteSpace: 'nowrap',
               cursor: joinCode ? 'pointer' : 'default',
               lineHeight: 1,
             }}
             onMouseEnter={() => joinCode && setIsOpen(true)}
             onMouseLeave={() => !copied && setIsOpen(false)}
           >
-            {/* Room name only */}
-            <span style={{ lineHeight: 1 }}>{displayName}</span>
+            {/* Top: Mode indicator */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                color: modeColor,
+                lineHeight: 1,
+              }}
+            >
+              <span style={{ fontSize: '12px', lineHeight: 1 }}>{modeEmoji}</span>
+              <span style={{ lineHeight: 1 }}>{modeLabel}</span>
+            </div>
+
+            {/* Bottom: Room name */}
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: '600',
+                color: 'rgba(196, 181, 253, 0.8)',
+                lineHeight: 1,
+              }}
+            >
+              {displayName}
+            </div>
           </div>
         </Tooltip.Trigger>
 
