@@ -88,7 +88,7 @@ export function RoomInfo({
                   gap: '4px',
                   fontSize: '13px',
                   fontWeight: 'bold',
-                  color: 'rgba(255, 255, 255, 0.95)',
+                  color: 'rgba(17, 24, 39, 0.9)',
                   lineHeight: 1,
                 }}
               >
@@ -99,7 +99,7 @@ export function RoomInfo({
                 <span
                   style={{
                     fontSize: '9px',
-                    color: 'rgba(255, 255, 255, 0.6)',
+                    color: 'rgba(17, 24, 39, 0.5)',
                     lineHeight: 1,
                   }}
                 >
@@ -128,7 +128,7 @@ export function RoomInfo({
                 style={{
                   fontSize: '10px',
                   fontWeight: '600',
-                  color: 'rgba(255, 255, 255, 0.75)',
+                  color: 'rgba(17, 24, 39, 0.65)',
                   lineHeight: 1,
                 }}
               >
