@@ -289,6 +289,8 @@ export function NetworkPlayerIndicator({
               letterSpacing: '0.5px',
               textShadow: '0 2px 4px rgba(0,0,0,0.2)',
               marginTop: '-2px',
+              position: 'relative',
+              zIndex: 10,
             }}
           >
             Their turn
