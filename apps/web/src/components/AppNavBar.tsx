@@ -3,8 +3,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import type React from 'react'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
 import { useFullscreen } from '../contexts/FullscreenContext'
@@ -33,17 +32,41 @@ function HamburgerMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
+  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
   // Open on hover or click
   const isOpen = open || hovered
+
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    setHovered(true)
+  }
+
+  const handleMouseLeave = () => {
+    // Delay closing to allow moving from button to menu
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHovered(false)
+    }, 150)
+  }
+
+  React.useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current)
+      }
+    }
+  }, [])
 
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={setOpen}>
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -76,8 +99,8 @@ function HamburgerMenu({
           side="bottom"
           align="start"
           sideOffset={8}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
           style={{
             background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))',
             backdropFilter: 'blur(12px)',
