@@ -212,7 +212,14 @@ export function GameContextNav({
                 }}
               />
               {networkPlayers.map((player) => (
-                <NetworkPlayerIndicator key={player.id} player={player} shouldEmphasize={shouldEmphasize} />
+                <NetworkPlayerIndicator
+                  key={player.id}
+                  player={player}
+                  shouldEmphasize={shouldEmphasize}
+                  currentPlayerId={currentPlayerId}
+                  playerScores={playerScores}
+                  playerStreaks={playerStreaks}
+                />
               ))}
             </>
           )}
