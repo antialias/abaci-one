@@ -60,7 +60,7 @@ export function NetworkPlayerIndicator({
       <div
         style={{
           position: 'relative',
-          fontSize: isCurrentPlayer && hasGameState ? '70px' : '56px',
+          fontSize: '56px',
           lineHeight: 1,
           transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
@@ -69,8 +69,6 @@ export function NetworkPlayerIndicator({
           alignItems: 'center',
           justifyContent: 'center',
           opacity: hasGameState ? (isCurrentPlayer ? 1 : 0.65) : 1,
-          transform: isCurrentPlayer && hasGameState ? 'scale(1.1)' : 'scale(1)',
-          animation: isCurrentPlayer && hasGameState ? 'avatarFloat 3s ease-in-out infinite' : 'none',
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
