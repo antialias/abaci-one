@@ -282,12 +282,18 @@ export function NetworkPlayerIndicator({
         {isCurrentPlayer && hasGameState && (
           <div
             style={{
-              fontSize: '11px',
-              fontWeight: 'bold',
+              fontSize: '12px',
+              fontWeight: '900',
               color: player.color || '#3b82f6',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
-              textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              textShadow: `
+                -1px -1px 0 white,
+                1px -1px 0 white,
+                -1px 1px 0 white,
+                1px 1px 0 white,
+                0 2px 4px rgba(0,0,0,0.3)
+              `,
               marginTop: '-2px',
               position: 'relative',
               zIndex: 10,
