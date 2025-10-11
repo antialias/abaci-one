@@ -1,50 +1,51 @@
-import React from "react";
-import { ActivePlayersList } from "./ActivePlayersList";
-import { AddPlayerButton } from "./AddPlayerButton";
-import { FullscreenPlayerSelection } from "./FullscreenPlayerSelection";
-import { GameControlButtons } from "./GameControlButtons";
-import { GameModeIndicator } from "./GameModeIndicator";
-import { NetworkPlayerIndicator } from "./NetworkPlayerIndicator";
-import { RoomInfo } from "./RoomInfo";
+import React from 'react'
+import { ActivePlayersList } from './ActivePlayersList'
+import { AddPlayerButton } from './AddPlayerButton'
+import { FullscreenPlayerSelection } from './FullscreenPlayerSelection'
+import { GameControlButtons } from './GameControlButtons'
+import { GameModeIndicator } from './GameModeIndicator'
+import { NetworkPlayerIndicator } from './NetworkPlayerIndicator'
+import { RoomInfo } from './RoomInfo'
 
-type GameMode = "none" | "single" | "battle" | "tournament";
+type GameMode = 'none' | 'single' | 'battle' | 'tournament'
 
 interface Player {
-  id: string;
-  name: string;
-  emoji: string;
+  id: string
+  name: string
+  emoji: string
 }
 
 interface NetworkPlayer {
-  id: string;
-  emoji?: string;
-  name?: string;
+  id: string
+  emoji?: string
+  name?: string
 }
 
 interface ArcadeRoomInfo {
-  roomName?: string;
-  gameName: string;
-  playerCount: number;
+  roomName?: string
+  gameName: string
+  playerCount: number
+  joinCode?: string
 }
 
 interface GameContextNavProps {
-  navTitle: string;
-  navEmoji?: string;
-  gameMode: GameMode;
-  activePlayers: Player[];
-  inactivePlayers: Player[];
-  shouldEmphasize: boolean;
-  showFullscreenSelection: boolean;
-  onAddPlayer: (playerId: string) => void;
-  onRemovePlayer: (playerId: string) => void;
-  onConfigurePlayer: (playerId: string) => void;
-  onExitSession?: () => void;
-  onSetup?: () => void;
-  onNewGame?: () => void;
-  canModifyPlayers?: boolean;
+  navTitle: string
+  navEmoji?: string
+  gameMode: GameMode
+  activePlayers: Player[]
+  inactivePlayers: Player[]
+  shouldEmphasize: boolean
+  showFullscreenSelection: boolean
+  onAddPlayer: (playerId: string) => void
+  onRemovePlayer: (playerId: string) => void
+  onConfigurePlayer: (playerId: string) => void
+  onExitSession?: () => void
+  onSetup?: () => void
+  onNewGame?: () => void
+  canModifyPlayers?: boolean
   // Arcade session info
-  networkPlayers?: NetworkPlayer[];
-  roomInfo?: ArcadeRoomInfo;
+  networkPlayers?: NetworkPlayer[]
+  roomInfo?: ArcadeRoomInfo
 }
 
 export function GameContextNav({
@@ -65,61 +66,61 @@ export function GameContextNav({
   networkPlayers = [],
   roomInfo,
 }: GameContextNavProps) {
-  const [_isTransitioning, setIsTransitioning] = React.useState(false);
-  const [layoutMode, setLayoutMode] = React.useState<"column" | "row">(
-    showFullscreenSelection ? "column" : "row",
-  );
+  const [_isTransitioning, setIsTransitioning] = React.useState(false)
+  const [layoutMode, setLayoutMode] = React.useState<'column' | 'row'>(
+    showFullscreenSelection ? 'column' : 'row'
+  )
   const [containerWidth, setContainerWidth] = React.useState<string>(
-    showFullscreenSelection ? "100%" : "auto",
-  );
+    showFullscreenSelection ? '100%' : 'auto'
+  )
 
   React.useEffect(() => {
     if (showFullscreenSelection) {
       // Switching to fullscreen - change layout and width immediately
-      setLayoutMode("column");
-      setContainerWidth("100%");
+      setLayoutMode('column')
+      setContainerWidth('100%')
     } else {
       // Switching away from fullscreen - delay layout change until transition completes
-      setIsTransitioning(true);
-      setContainerWidth("auto");
+      setIsTransitioning(true)
+      setContainerWidth('auto')
       const timer = setTimeout(() => {
-        setLayoutMode("row");
-        setIsTransitioning(false);
-      }, 400); // Match transition duration
-      return () => clearTimeout(timer);
+        setLayoutMode('row')
+        setIsTransitioning(false)
+      }, 400) // Match transition duration
+      return () => clearTimeout(timer)
     }
-  }, [showFullscreenSelection]);
+  }, [showFullscreenSelection])
 
   return (
     <div
       style={{
-        display: "flex",
+        display: 'flex',
         flexDirection: layoutMode,
-        alignItems: showFullscreenSelection ? "stretch" : "center",
-        gap: shouldEmphasize ? "16px" : "12px",
+        alignItems: showFullscreenSelection ? 'stretch' : 'center',
+        gap: shouldEmphasize ? '16px' : '12px',
         width: containerWidth,
-        transition: "gap 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+        transition: 'gap 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       {/* Header row */}
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: shouldEmphasize ? "16px" : "12px",
-          justifyContent: showFullscreenSelection ? "center" : "flex-start",
-          width: showFullscreenSelection ? "100%" : "auto",
+          display: 'flex',
+          alignItems: 'center',
+          gap: shouldEmphasize ? '16px' : '12px',
+          justifyContent: showFullscreenSelection ? 'center' : 'flex-start',
+          width: showFullscreenSelection ? '100%' : 'auto',
         }}
       >
         <h1
           style={{
-            fontSize: showFullscreenSelection ? "32px" : "18px",
-            fontWeight: "bold",
-            background: "linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)",
-            backgroundClip: "text",
-            color: "transparent",
+            fontSize: showFullscreenSelection ? '32px' : '18px',
+            fontWeight: 'bold',
+            background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
+            backgroundClip: 'text',
+            color: 'transparent',
             margin: 0,
-            transition: "font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+            transition: 'font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
           {navEmoji && `${navEmoji} `}
@@ -138,17 +139,23 @@ export function GameContextNav({
             roomName={roomInfo.roomName}
             gameName={roomInfo.gameName}
             playerCount={roomInfo.playerCount}
+            joinCode={roomInfo.joinCode}
             shouldEmphasize={shouldEmphasize}
           />
+        )}
+
+        {/* Game Control Buttons - only show during active game */}
+        {!showFullscreenSelection && !canModifyPlayers && (
+          <GameControlButtons onSetup={onSetup} onNewGame={onNewGame} onQuit={onExitSession} />
         )}
 
         {/* Network Players - show other players in the room */}
         {networkPlayers.length > 0 && !showFullscreenSelection && (
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: shouldEmphasize ? "12px" : "6px",
+              display: 'flex',
+              alignItems: 'center',
+              gap: shouldEmphasize ? '12px' : '6px',
             }}
           >
             {networkPlayers.map((player) => (
@@ -161,40 +168,27 @@ export function GameContextNav({
           </div>
         )}
 
-        {/* Game Control Buttons - only show during active game */}
-        {!showFullscreenSelection && !canModifyPlayers && (
-          <GameControlButtons
-            onSetup={onSetup}
-            onNewGame={onNewGame}
-            onQuit={onExitSession}
-          />
-        )}
-
         {/* Active Players + Add Button */}
         {(activePlayers.length > 0 ||
-          (shouldEmphasize &&
-            inactivePlayers.length > 0 &&
-            canModifyPlayers)) && (
+          (shouldEmphasize && inactivePlayers.length > 0 && canModifyPlayers)) && (
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: shouldEmphasize ? "12px" : "2px",
-              padding: shouldEmphasize ? "12px 20px" : "0",
+              display: 'flex',
+              alignItems: 'center',
+              gap: shouldEmphasize ? '12px' : '2px',
+              padding: shouldEmphasize ? '12px 20px' : '0',
               background: shouldEmphasize
-                ? "linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08))"
-                : "transparent",
-              borderRadius: shouldEmphasize ? "16px" : "0",
-              border: shouldEmphasize
-                ? "3px solid rgba(255, 255, 255, 0.25)"
-                : "none",
+                ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08))'
+                : 'transparent',
+              borderRadius: shouldEmphasize ? '16px' : '0',
+              border: shouldEmphasize ? '3px solid rgba(255, 255, 255, 0.25)' : 'none',
               boxShadow: shouldEmphasize
-                ? "0 6px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.3)"
-                : "none",
-              transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-              transform: shouldEmphasize ? "scale(1.05)" : "scale(1)",
+                ? '0 6px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.3)'
+                : 'none',
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)',
               opacity: canModifyPlayers ? 1 : 0.6,
-              pointerEvents: canModifyPlayers ? "auto" : "none",
+              pointerEvents: canModifyPlayers ? 'auto' : 'none',
             }}
           >
             <ActivePlayersList
@@ -251,5 +245,5 @@ export function GameContextNav({
         }}
       />
     </div>
-  );
+  )
 }
