@@ -13,8 +13,6 @@ interface RoomInfoProps {
   modeColor: string
   modeEmoji: string
   modeLabel: string
-  navTitle: string
-  navEmoji?: string
 }
 
 /**
@@ -31,8 +29,6 @@ export function RoomInfo({
   modeColor,
   modeEmoji,
   modeLabel,
-  navTitle,
-  navEmoji,
 }: RoomInfoProps) {
   const [copied, setCopied] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
@@ -69,20 +65,7 @@ export function RoomInfo({
             onMouseEnter={() => joinCode && setIsOpen(true)}
             onMouseLeave={() => !copied && setIsOpen(false)}
           >
-            {/* Top: Game name */}
-            <div
-              style={{
-                fontSize: '12px',
-                fontWeight: 'bold',
-                color: 'rgba(255, 255, 255, 0.9)',
-                lineHeight: 1,
-              }}
-            >
-              {navEmoji && `${navEmoji} `}
-              {navTitle}
-            </div>
-
-            {/* Middle: Mode indicator */}
+            {/* Top: Mode indicator */}
             <div
               style={{
                 display: 'flex',
