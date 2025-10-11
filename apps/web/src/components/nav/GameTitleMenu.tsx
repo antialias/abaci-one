@@ -25,7 +25,7 @@ export function GameTitleMenu({
     return (
       <h1
         style={{
-          fontSize: '18px',
+          fontSize: '22px',
           fontWeight: 'bold',
           background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
           backgroundClip: 'text',
@@ -46,7 +46,7 @@ export function GameTitleMenu({
         <button
           type="button"
           style={{
-            fontSize: '18px',
+            fontSize: '22px',
             fontWeight: 'bold',
             border: 'none',
             padding: '6px 10px',
@@ -84,7 +84,7 @@ export function GameTitleMenu({
           </span>
           <span
             style={{
-              fontSize: '9px',
+              fontSize: '10px',
               color: 'rgba(139, 92, 246, 0.5)',
               transition: 'transform 0.2s ease',
               transform: open ? 'rotate(180deg)' : 'rotate(0deg)',

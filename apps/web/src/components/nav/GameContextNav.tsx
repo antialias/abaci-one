@@ -136,22 +136,22 @@ export function GameContextNav({
     )
   }
 
-  // Normal layout: Left side (2 rows) | Right side (players spanning full height)
+  // Normal layout: Left side | Right side (players spanning full height)
   return (
     <div
       style={{
         display: 'flex',
-        gap: '16px',
+        gap: '20px',
         alignItems: 'center',
         width: 'auto',
       }}
     >
-      {/* Left side: Title + Mode + Room (single row) */}
+      {/* Left side: Title + Mode + Room */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
+          gap: '12px',
           flex: 1,
         }}
       >
@@ -165,12 +165,12 @@ export function GameContextNav({
           showMenu={!canModifyPlayers}
         />
 
-        {/* Mode + Room stacked vertically */}
+        {/* Mode + Room stacked vertically - compact */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '4px',
+            gap: '3px',
             marginLeft: 'auto',
             alignItems: 'flex-end',
           }}

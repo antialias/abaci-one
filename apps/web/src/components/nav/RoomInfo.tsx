@@ -42,13 +42,13 @@ export function RoomInfo({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              background: 'rgba(139, 92, 246, 0.2)',
+              gap: '4px',
+              padding: '3px 8px',
+              background: 'rgba(139, 92, 246, 0.15)',
               borderRadius: '6px',
-              border: '2px solid rgba(139, 92, 246, 0.4)',
-              fontSize: '12px',
-              fontWeight: 'bold',
+              border: '1px solid rgba(139, 92, 246, 0.3)',
+              fontSize: '11px',
+              fontWeight: '600',
               color: 'rgba(196, 181, 253, 1)',
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',
@@ -57,16 +57,8 @@ export function RoomInfo({
             onMouseEnter={() => joinCode && setIsOpen(true)}
             onMouseLeave={() => !copied && setIsOpen(false)}
           >
-            {/* Room icon and name */}
-            <span style={{ fontSize: '12px' }}>🎮</span>
+            {/* Room name only */}
             <span>{displayName}</span>
-
-            {/* Player count */}
-            <span style={{ opacity: 0.6 }}>•</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <span style={{ fontSize: '11px' }}>👥</span>
-              <span>{playerCount}</span>
-            </span>
           </div>
         </Tooltip.Trigger>
 
