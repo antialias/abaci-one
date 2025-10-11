@@ -146,7 +146,7 @@ export function GameContextNav({
         width: 'auto',
       }}
     >
-      {/* Left side: Title + Mode + Room */}
+      {/* Left side: Title (only when not in room) or Room info pane */}
       <div
         style={{
           display: 'flex',
@@ -155,53 +155,52 @@ export function GameContextNav({
           flex: 1,
         }}
       >
-        {/* Title with dropdown menu */}
-        <GameTitleMenu
-          navTitle={navTitle}
-          navEmoji={navEmoji}
-          onSetup={onSetup}
-          onNewGame={onNewGame}
-          onQuit={onExitSession}
-          showMenu={!canModifyPlayers}
-        />
-
-        {/* Mode + Room: show combined pane if in room, otherwise just mode */}
-        <div
-          style={{
-            marginLeft: 'auto',
-          }}
-        >
-          {roomInfo ? (
-            <RoomInfo
-              roomName={roomInfo.roomName}
-              gameName={roomInfo.gameName}
-              playerCount={roomInfo.playerCount}
-              joinCode={roomInfo.joinCode}
-              shouldEmphasize={shouldEmphasize}
-              gameMode={gameMode}
-              modeColor={
-                gameMode === 'battle' ? '#8b5cf6' :
-                gameMode === 'single' ? '#3b82f6' :
-                gameMode === 'tournament' ? '#f59e0b' :
-                '#6b7280'
-              }
-              modeEmoji={
-                gameMode === 'battle' ? '⚔️' :
-                gameMode === 'single' ? '🎯' :
-                gameMode === 'tournament' ? '🏆' :
-                '👥'
-              }
-              modeLabel={
-                gameMode === 'battle' ? 'Battle' :
-                gameMode === 'single' ? 'Solo' :
-                gameMode === 'tournament' ? 'Tournament' :
-                'Select Players'
-              }
+        {roomInfo ? (
+          // Show combined pane with game name, mode, and room
+          <RoomInfo
+            roomName={roomInfo.roomName}
+            gameName={roomInfo.gameName}
+            playerCount={roomInfo.playerCount}
+            joinCode={roomInfo.joinCode}
+            shouldEmphasize={shouldEmphasize}
+            gameMode={gameMode}
+            modeColor={
+              gameMode === 'battle' ? '#8b5cf6' :
+              gameMode === 'single' ? '#3b82f6' :
+              gameMode === 'tournament' ? '#f59e0b' :
+              '#6b7280'
+            }
+            modeEmoji={
+              gameMode === 'battle' ? '⚔️' :
+              gameMode === 'single' ? '🎯' :
+              gameMode === 'tournament' ? '🏆' :
+              '👥'
+            }
+            modeLabel={
+              gameMode === 'battle' ? 'Battle' :
+              gameMode === 'single' ? 'Solo' :
+              gameMode === 'tournament' ? 'Tournament' :
+              'Select Players'
+            }
+            navTitle={navTitle}
+            navEmoji={navEmoji}
+          />
+        ) : (
+          // Show title and mode when not in room
+          <>
+            <GameTitleMenu
+              navTitle={navTitle}
+              navEmoji={navEmoji}
+              onSetup={onSetup}
+              onNewGame={onNewGame}
+              onQuit={onExitSession}
+              showMenu={!canModifyPlayers}
             />
-          ) : (
-            <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
-          )}
-        </div>
+            <div style={{ marginLeft: 'auto' }}>
+              <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Right side: Players spanning full height */}

@@ -13,6 +13,8 @@ interface RoomInfoProps {
   modeColor: string
   modeEmoji: string
   modeLabel: string
+  navTitle: string
+  navEmoji?: string
 }
 
 /**
@@ -29,6 +31,8 @@ export function RoomInfo({
   modeColor,
   modeEmoji,
   modeLabel,
+  navTitle,
+  navEmoji,
 }: RoomInfoProps) {
   const [copied, setCopied] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
@@ -65,44 +69,45 @@ export function RoomInfo({
             onMouseEnter={() => joinCode && setIsOpen(true)}
             onMouseLeave={() => !copied && setIsOpen(false)}
           >
-            {/* Top: Mode indicator */}
+            {/* Top: Game name */}
+            <div
+              style={{
+                fontSize: '12px',
+                fontWeight: 'bold',
+                color: 'rgba(255, 255, 255, 0.9)',
+                lineHeight: 1,
+              }}
+            >
+              {navEmoji && `${navEmoji} `}
+              {navTitle}
+            </div>
+
+            {/* Middle: Mode indicator */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: 'bold',
                 color: modeColor,
                 lineHeight: 1,
               }}
             >
-              <span style={{ fontSize: '12px', lineHeight: 1 }}>{modeEmoji}</span>
+              <span style={{ fontSize: '11px', lineHeight: 1 }}>{modeEmoji}</span>
               <span style={{ lineHeight: 1 }}>{modeLabel}</span>
             </div>
 
-            {/* Middle: Room name */}
+            {/* Bottom: Room name */}
             <div
               style={{
-                fontSize: '11px',
+                fontSize: '10px',
                 fontWeight: '600',
-                color: 'rgba(196, 181, 253, 0.8)',
+                color: 'rgba(196, 181, 253, 0.7)',
                 lineHeight: 1,
               }}
             >
               {displayName}
-            </div>
-
-            {/* Bottom: Player count */}
-            <div
-              style={{
-                fontSize: '9px',
-                fontWeight: '500',
-                color: 'rgba(196, 181, 253, 0.6)',
-                lineHeight: 1,
-              }}
-            >
-              {playerCount} {playerCount === 1 ? 'player' : 'players'}
             </div>
           </div>
         </Tooltip.Trigger>
