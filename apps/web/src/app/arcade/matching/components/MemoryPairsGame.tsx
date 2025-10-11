@@ -46,6 +46,9 @@ export function MemoryPairsGame() {
       onNewGame={() => {
         resetGame()
       }}
+      currentPlayerId={state.currentPlayer}
+      playerScores={state.scores}
+      playerStreaks={state.consecutiveMatches}
     >
       <StandardGameLayout>
         <div
