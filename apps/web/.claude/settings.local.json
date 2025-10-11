@@ -29,7 +29,9 @@
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
       "Bash(timeout 15 pnpm run dev:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx biome format:*)",
+      "Bash(npx biome check:*)"
     ],
     "deny": [],
     "ask": []
