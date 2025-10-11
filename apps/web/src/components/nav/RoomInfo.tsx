@@ -81,7 +81,7 @@ export function RoomInfo({
               <span style={{ lineHeight: 1 }}>{modeLabel}</span>
             </div>
 
-            {/* Bottom: Room name */}
+            {/* Middle: Room name */}
             <div
               style={{
                 fontSize: '11px',
@@ -91,6 +91,18 @@ export function RoomInfo({
               }}
             >
               {displayName}
+            </div>
+
+            {/* Bottom: Player count */}
+            <div
+              style={{
+                fontSize: '9px',
+                fontWeight: '500',
+                color: 'rgba(196, 181, 253, 0.6)',
+                lineHeight: 1,
+              }}
+            >
+              {playerCount} {playerCount === 1 ? 'player' : 'players'}
             </div>
           </div>
         </Tooltip.Trigger>
