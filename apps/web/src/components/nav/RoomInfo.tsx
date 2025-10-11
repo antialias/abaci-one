@@ -1,4 +1,4 @@
-import * as Tooltip from '@radix-ui/react-tooltip'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useState } from 'react'
 
 type GameMode = 'none' | 'single' | 'battle' | 'tournament'
@@ -13,11 +13,15 @@ interface RoomInfoProps {
   modeColor: string
   modeEmoji: string
   modeLabel: string
+  navTitle: string
+  navEmoji?: string
+  onSetup?: () => void
+  onNewGame?: () => void
+  onQuit?: () => void
 }
 
 /**
- * Displays current arcade room/session information with mode indicator
- * Combined into single pane with tooltip for join code
+ * Displays current arcade room/session with unified dropdown for join code + game menu
  */
 export function RoomInfo({
   roomName,
@@ -29,103 +33,143 @@ export function RoomInfo({
   modeColor,
   modeEmoji,
   modeLabel,
+  navTitle,
+  navEmoji,
+  onSetup,
+  onNewGame,
+  onQuit,
 }: RoomInfoProps) {
   const [copied, setCopied] = useState(false)
-  const [isOpen, setIsOpen] = useState(false)
+  const [open, setOpen] = useState(false)
 
-  const handleCodeClick = () => {
+  const handleCodeClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     if (!joinCode) return
     navigator.clipboard.writeText(joinCode)
     setCopied(true)
     setTimeout(() => {
       setCopied(false)
-      setIsOpen(false)
     }, 1500)
   }
 
   const displayName = roomName || gameName
 
   return (
-    <Tooltip.Provider delayDuration={200}>
-      <Tooltip.Root open={isOpen} onOpenChange={setIsOpen}>
-        <Tooltip.Trigger asChild>
-          <div
-            style={{
-              display: 'inline-flex',
-              flexDirection: 'column',
-              gap: '3px',
-              padding: '4px 10px',
-              background: `linear-gradient(135deg, ${modeColor}12, ${modeColor}08)`,
-              borderRadius: '8px',
-              border: `1px solid ${modeColor}30`,
-              transition: 'all 0.2s ease',
-              cursor: joinCode ? 'pointer' : 'default',
-              lineHeight: 1,
-            }}
-            onMouseEnter={() => joinCode && setIsOpen(true)}
-            onMouseLeave={() => !copied && setIsOpen(false)}
-          >
-            {/* Top: Mode indicator */}
+    <DropdownMenu.Root open={open} onOpenChange={setOpen}>
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+          }}
+        >
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                color: modeColor,
+                display: 'inline-flex',
+                flexDirection: 'column',
+                gap: '3px',
+                padding: '5px 12px',
+                background: `linear-gradient(135deg, ${modeColor}15, ${modeColor}10)`,
+                borderRadius: '8px',
+                border: `2px solid ${modeColor}40`,
+                transition: 'all 0.2s ease',
                 lineHeight: 1,
               }}
             >
-              <span style={{ fontSize: '11px', lineHeight: 1 }}>{modeEmoji}</span>
-              <span style={{ lineHeight: 1 }}>{modeLabel}</span>
-            </div>
-
-            {/* Bottom: Room name */}
-            <div
-              style={{
-                fontSize: '10px',
-                fontWeight: '600',
-                color: 'rgba(196, 181, 253, 0.7)',
-                lineHeight: 1,
-              }}
-            >
-              {displayName}
-            </div>
-          </div>
-        </Tooltip.Trigger>
-
-        {joinCode && (
-          <Tooltip.Portal>
-            <Tooltip.Content
-              side="bottom"
-              sideOffset={8}
-              style={{
-                background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))',
-                backdropFilter: 'blur(12px)',
-                borderRadius: '12px',
-                padding: '12px 16px',
-                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.3)',
-                maxWidth: '280px',
-                zIndex: 9999,
-                animation: 'tooltipFadeIn 0.2s ease-out',
-              }}
-            >
-              {/* Join code label */}
+              {/* Top: Game name with dropdown indicator */}
               <div
                 style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '13px',
+                  fontWeight: 'bold',
+                  color: 'rgba(255, 255, 255, 0.95)',
+                  lineHeight: 1,
+                }}
+              >
+                <span style={{ lineHeight: 1 }}>
+                  {navEmoji && `${navEmoji} `}
+                  {navTitle}
+                </span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    lineHeight: 1,
+                  }}
+                >
+                  ▼
+                </span>
+              </div>
+
+              {/* Middle: Mode indicator */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
                   fontSize: '11px',
+                  fontWeight: 'bold',
+                  color: modeColor,
+                  lineHeight: 1,
+                }}
+              >
+                <span style={{ fontSize: '11px', lineHeight: 1 }}>{modeEmoji}</span>
+                <span style={{ lineHeight: 1 }}>{modeLabel}</span>
+              </div>
+
+              {/* Bottom: Room name */}
+              <div
+                style={{
+                  fontSize: '10px',
                   fontWeight: '600',
-                  color: 'rgba(196, 181, 253, 0.8)',
+                  color: 'rgba(255, 255, 255, 0.75)',
+                  lineHeight: 1,
+                }}
+              >
+                {displayName}
+              </div>
+            </div>
+          </button>
+        </DropdownMenu.Trigger>
+
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          side="bottom"
+          align="start"
+          sideOffset={8}
+          style={{
+            background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))',
+            backdropFilter: 'blur(12px)',
+            borderRadius: '12px',
+            padding: '8px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.3)',
+            minWidth: '200px',
+            zIndex: 9999,
+            animation: 'dropdownFadeIn 0.2s ease-out',
+          }}
+        >
+          {/* Join code section */}
+          {joinCode && (
+            <>
+              <div
+                style={{
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  color: 'rgba(196, 181, 253, 0.7)',
                   marginBottom: '6px',
+                  marginLeft: '12px',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
                 }}
               >
                 Room Join Code
               </div>
-
-              {/* Click-to-copy button */}
               <button
                 type="button"
                 onClick={handleCodeClick}
@@ -140,7 +184,7 @@ export function RoomInfo({
                   borderRadius: '8px',
                   padding: '10px 16px',
                   fontFamily: 'monospace',
-                  fontSize: '18px',
+                  fontSize: '16px',
                   fontWeight: 'bold',
                   color: copied ? 'rgba(134, 239, 172, 1)' : 'rgba(196, 181, 253, 1)',
                   cursor: 'pointer',
@@ -150,6 +194,7 @@ export function RoomInfo({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
+                  marginBottom: '6px',
                 }}
                 onMouseEnter={(e) => {
                   if (!copied) {
@@ -166,43 +211,141 @@ export function RoomInfo({
               >
                 {copied ? (
                   <>
-                    <span style={{ fontSize: '16px' }}>✓</span>
+                    <span style={{ fontSize: '14px' }}>✓</span>
                     <span>Copied!</span>
                   </>
                 ) : (
                   <>
                     <span>{joinCode}</span>
-                    <span style={{ fontSize: '14px', opacity: 0.7 }}>📋</span>
+                    <span style={{ fontSize: '12px', opacity: 0.7 }}>📋</span>
                   </>
                 )}
               </button>
 
-              {/* Helper text */}
-              <div
+              <DropdownMenu.Separator
                 style={{
-                  fontSize: '11px',
-                  color: 'rgba(156, 163, 175, 0.8)',
-                  marginTop: '8px',
-                  textAlign: 'center',
-                }}
-              >
-                {copied ? 'Share this code with friends!' : 'Click to copy'}
-              </div>
-
-              <Tooltip.Arrow
-                style={{
-                  fill: 'rgba(17, 24, 39, 0.97)',
+                  height: '1px',
+                  background: 'rgba(75, 85, 99, 0.5)',
+                  margin: '6px 0',
                 }}
               />
-            </Tooltip.Content>
-          </Tooltip.Portal>
-        )}
-      </Tooltip.Root>
+            </>
+          )}
+
+          {/* Game menu items */}
+          {onSetup && (
+            <DropdownMenu.Item
+              onSelect={onSetup}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'transparent',
+                color: 'rgba(209, 213, 219, 1)',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                outline: 'none',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)'
+                e.currentTarget.style.color = 'rgba(196, 181, 253, 1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>⚙️</span>
+              <span>Setup</span>
+            </DropdownMenu.Item>
+          )}
+
+          {onNewGame && (
+            <DropdownMenu.Item
+              onSelect={onNewGame}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'transparent',
+                color: 'rgba(209, 213, 219, 1)',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                outline: 'none',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'
+                e.currentTarget.style.color = 'rgba(147, 197, 253, 1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>🎮</span>
+              <span>New Game</span>
+            </DropdownMenu.Item>
+          )}
+
+          {onQuit && (
+            <>
+              {(onSetup || onNewGame) && (
+                <DropdownMenu.Separator
+                  style={{
+                    height: '1px',
+                    background: 'rgba(75, 85, 99, 0.5)',
+                    margin: '4px 0',
+                  }}
+                />
+              )}
+              <DropdownMenu.Item
+                onSelect={onQuit}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'rgba(209, 213, 219, 1)',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(251, 146, 60, 0.2)'
+                  e.currentTarget.style.color = 'rgba(253, 186, 116, 1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>🏟️</span>
+                <span>Quit to Arcade</span>
+              </DropdownMenu.Item>
+            </>
+          )}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
 
       <style
         dangerouslySetInnerHTML={{
           __html: `
-            @keyframes tooltipFadeIn {
+            @keyframes dropdownFadeIn {
               from {
                 opacity: 0;
                 transform: translateY(-4px);
@@ -215,6 +358,6 @@ export function RoomInfo({
           `,
         }}
       />
-    </Tooltip.Provider>
+    </DropdownMenu.Root>
   )
 }

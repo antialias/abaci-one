@@ -146,27 +146,16 @@ export function GameContextNav({
         width: 'auto',
       }}
     >
-      {/* Left side: Title stacked above room info (if in room) */}
+      {/* Left side: Title/room info and mode */}
       <div
         style={{
           display: 'flex',
-          flexDirection: roomInfo ? 'column' : 'row',
-          alignItems: roomInfo ? 'flex-start' : 'center',
-          gap: roomInfo ? '4px' : '12px',
+          alignItems: 'center',
+          gap: '12px',
           flex: 1,
         }}
       >
-        {/* Title with dropdown menu - always shown */}
-        <GameTitleMenu
-          navTitle={navTitle}
-          navEmoji={navEmoji}
-          onSetup={onSetup}
-          onNewGame={onNewGame}
-          onQuit={onExitSession}
-          showMenu={!canModifyPlayers}
-        />
-
-        {/* Show room info pane if in room, otherwise show mode indicator */}
+        {/* Show room info pane (with unified dropdown) if in room, otherwise show title menu + mode indicator */}
         {roomInfo ? (
           <RoomInfo
             roomName={roomInfo.roomName}
@@ -193,11 +182,26 @@ export function GameContextNav({
               gameMode === 'tournament' ? 'Tournament' :
               'Select Players'
             }
+            navTitle={navTitle}
+            navEmoji={navEmoji}
+            onSetup={onSetup}
+            onNewGame={onNewGame}
+            onQuit={onExitSession}
           />
         ) : (
-          <div style={{ marginLeft: 'auto' }}>
-            <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
-          </div>
+          <>
+            <GameTitleMenu
+              navTitle={navTitle}
+              navEmoji={navEmoji}
+              onSetup={onSetup}
+              onNewGame={onNewGame}
+              onQuit={onExitSession}
+              showMenu={!canModifyPlayers}
+            />
+            <div style={{ marginLeft: 'auto' }}>
+              <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
+            </div>
+          </>
         )}
       </div>
 
