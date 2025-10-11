@@ -136,147 +136,146 @@ export function GameContextNav({
     )
   }
 
-  // Normal 2x2 grid layout
+  // Normal layout: Left side (2 rows) | Right side (players spanning full height)
   return (
     <div
       style={{
         display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
+        gap: '16px',
+        alignItems: 'center',
         width: 'auto',
       }}
     >
-      {/* Row 1: Title | Mode + Room */}
+      {/* Left side: Title and Controls in a column */}
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          justifyContent: 'space-between',
+          flexDirection: 'column',
+          gap: '8px',
+          flex: 1,
         }}
       >
-        {/* Left: Title */}
-        <h1
-          style={{
-            fontSize: '18px',
-            fontWeight: 'bold',
-            background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
-            backgroundClip: 'text',
-            color: 'transparent',
-            margin: 0,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {navEmoji && `${navEmoji} `}
-          {navTitle}
-        </h1>
-
-        {/* Right: Mode + Room */}
+        {/* Row 1: Title | Mode + Room */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '16px',
+            justifyContent: 'space-between',
           }}
         >
-          <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
+          {/* Title */}
+          <h1
+            style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
+              backgroundClip: 'text',
+              color: 'transparent',
+              margin: 0,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {navEmoji && `${navEmoji} `}
+            {navTitle}
+          </h1>
 
-          {roomInfo && (
-            <RoomInfo
-              roomName={roomInfo.roomName}
-              gameName={roomInfo.gameName}
-              playerCount={roomInfo.playerCount}
-              joinCode={roomInfo.joinCode}
-              shouldEmphasize={shouldEmphasize}
-            />
-          )}
+          {/* Mode + Room */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
+
+            {roomInfo && (
+              <RoomInfo
+                roomName={roomInfo.roomName}
+                gameName={roomInfo.gameName}
+                playerCount={roomInfo.playerCount}
+                joinCode={roomInfo.joinCode}
+                shouldEmphasize={shouldEmphasize}
+              />
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Row 2: Controls | Players */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          justifyContent: 'space-between',
-          minHeight: '64px', // Accommodate larger avatars
-        }}
-      >
-        {/* Left: Control buttons */}
+        {/* Row 2: Control buttons */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {!canModifyPlayers && (
             <GameControlButtons onSetup={onSetup} onNewGame={onNewGame} onQuit={onExitSession} />
           )}
         </div>
+      </div>
 
-        {/* Right: Network players + Your players */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: shouldEmphasize ? '16px' : '12px',
-          }}
-        >
-          {/* Network Players */}
-          {networkPlayers.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 12px',
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(147, 51, 234, 0.12))',
-                borderRadius: '12px',
-                border: '2px solid rgba(147, 51, 234, 0.25)',
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
-              }}
-            >
-              {networkPlayers.map((player) => (
-                <NetworkPlayerIndicator key={player.id} player={player} shouldEmphasize={shouldEmphasize} />
-              ))}
-            </div>
-          )}
+      {/* Right side: Players spanning full height */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: shouldEmphasize ? '16px' : '12px',
+        }}
+      >
+        {/* Network Players */}
+        {networkPlayers.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 12px',
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(147, 51, 234, 0.12))',
+              borderRadius: '12px',
+              border: '2px solid rgba(147, 51, 234, 0.25)',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)',
+            }}
+          >
+            {networkPlayers.map((player) => (
+              <NetworkPlayerIndicator key={player.id} player={player} shouldEmphasize={shouldEmphasize} />
+            ))}
+          </div>
+        )}
 
-          {/* Active Players + Add Button */}
-          {(activePlayers.length > 0 || (shouldEmphasize && inactivePlayers.length > 0 && canModifyPlayers)) && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: shouldEmphasize ? '12px' : '8px',
-                padding: shouldEmphasize ? '12px 20px' : '6px 12px',
-                background: shouldEmphasize
-                  ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.10))'
-                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05))',
-                borderRadius: shouldEmphasize ? '16px' : '12px',
-                border: shouldEmphasize ? '3px solid rgba(255, 255, 255, 0.3)' : '2px solid rgba(255, 255, 255, 0.15)',
-                boxShadow: shouldEmphasize
-                  ? '0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.3)'
-                  : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)',
-                opacity: canModifyPlayers ? 1 : 0.6,
-                pointerEvents: canModifyPlayers ? 'auto' : 'none',
-              }}
-            >
-              <ActivePlayersList
-                activePlayers={activePlayers}
+        {/* Active Players + Add Button */}
+        {(activePlayers.length > 0 || (shouldEmphasize && inactivePlayers.length > 0 && canModifyPlayers)) && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: shouldEmphasize ? '12px' : '8px',
+              padding: shouldEmphasize ? '12px 20px' : '6px 12px',
+              background: shouldEmphasize
+                ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.10))'
+                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05))',
+              borderRadius: shouldEmphasize ? '16px' : '12px',
+              border: shouldEmphasize ? '3px solid rgba(255, 255, 255, 0.3)' : '2px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: shouldEmphasize
+                ? '0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.3)'
+                : '0 4px 12px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)',
+              opacity: canModifyPlayers ? 1 : 0.6,
+              pointerEvents: canModifyPlayers ? 'auto' : 'none',
+            }}
+          >
+            <ActivePlayersList
+              activePlayers={activePlayers}
+              shouldEmphasize={shouldEmphasize}
+              onRemovePlayer={onRemovePlayer}
+              onConfigurePlayer={onConfigurePlayer}
+            />
+
+            {canModifyPlayers && (
+              <AddPlayerButton
+                inactivePlayers={inactivePlayers}
                 shouldEmphasize={shouldEmphasize}
-                onRemovePlayer={onRemovePlayer}
-                onConfigurePlayer={onConfigurePlayer}
+                onAddPlayer={onAddPlayer}
               />
-
-              {canModifyPlayers && (
-                <AddPlayerButton
-                  inactivePlayers={inactivePlayers}
-                  shouldEmphasize={shouldEmphasize}
-                  onAddPlayer={onAddPlayer}
-                />
-              )}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       <style
