@@ -91,6 +91,33 @@ export function ActivePlayersList({
                 />
               )}
 
+              {/* Turn indicator arrow badge */}
+              {isCurrentPlayer && hasGameState && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '-12px',
+                    left: '-12px',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    border: '3px solid white',
+                    background: `linear-gradient(135deg, ${player.color || '#3b82f6'}, ${player.color || '#3b82f6'}dd)`,
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 4px 12px ${player.color || '#3b82f6'}80`,
+                    zIndex: 3,
+                    animation: 'turnBadgePulse 1.5s ease-in-out infinite',
+                  }}
+                >
+                  ▶
+                </div>
+              )}
+
               {player.emoji}
 
               {/* Score badge - bottom right */}
@@ -266,6 +293,17 @@ export function ActivePlayersList({
               50% {
                 transform: scale(1.2);
                 opacity: 0.8;
+              }
+            }
+
+            @keyframes turnBadgePulse {
+              0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 12px currentColor;
+              }
+              50% {
+                transform: scale(1.15);
+                box-shadow: 0 6px 20px currentColor;
               }
             }
           `,
