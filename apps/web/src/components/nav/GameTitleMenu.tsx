@@ -31,7 +31,11 @@ export function GameTitleMenu({
           backgroundClip: 'text',
           color: 'transparent',
           margin: 0,
+          padding: 0,
           whiteSpace: 'nowrap',
+          lineHeight: 1,
+          display: 'flex',
+          alignItems: 'center',
         }}
       >
         {navEmoji && `${navEmoji} `}
@@ -59,6 +63,7 @@ export function GameTitleMenu({
             borderRadius: '8px',
             background: open ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
             transition: 'all 0.2s ease',
+            lineHeight: 1,
           }}
           onMouseEnter={(e) => {
             if (!open) {
@@ -77,6 +82,7 @@ export function GameTitleMenu({
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               color: 'transparent',
+              lineHeight: 1,
             }}
           >
             {navEmoji && `${navEmoji} `}
@@ -88,7 +94,9 @@ export function GameTitleMenu({
               color: 'rgba(139, 92, 246, 0.5)',
               transition: 'transform 0.2s ease',
               transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-              lineHeight: 0,
+              lineHeight: 1,
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
             ▼

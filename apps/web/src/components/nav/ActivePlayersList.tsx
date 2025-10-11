@@ -38,11 +38,14 @@ export function ActivePlayersList({
           <div
             style={{
               position: 'relative',
-              fontSize: shouldEmphasize ? '56px' : '56px',
+              fontSize: '56px',
               lineHeight: 1,
-              transition: 'font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s ease',
+              transition: 'filter 0.4s ease',
               filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
               cursor: shouldEmphasize ? 'pointer' : 'default',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
             onClick={() => shouldEmphasize && onConfigurePlayer(player.id)}
             onMouseEnter={() => shouldEmphasize && setHoveredPlayerId(player.id)}

@@ -33,10 +33,13 @@ export function NetworkPlayerIndicator({ player, shouldEmphasize }: NetworkPlaye
       <div
         style={{
           position: 'relative',
-          fontSize: shouldEmphasize ? '56px' : '56px',
+          fontSize: '56px',
           lineHeight: 1,
           transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           cursor: 'default',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}

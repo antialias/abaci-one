@@ -40,7 +40,7 @@ export function RoomInfo({
         <Tooltip.Trigger asChild>
           <div
             style={{
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
               padding: '3px 8px',
@@ -53,12 +53,13 @@ export function RoomInfo({
               transition: 'all 0.2s ease',
               whiteSpace: 'nowrap',
               cursor: joinCode ? 'pointer' : 'default',
+              lineHeight: 1,
             }}
             onMouseEnter={() => joinCode && setIsOpen(true)}
             onMouseLeave={() => !copied && setIsOpen(false)}
           >
             {/* Room name only */}
-            <span>{displayName}</span>
+            <span style={{ lineHeight: 1 }}>{displayName}</span>
           </div>
         </Tooltip.Trigger>
 

@@ -49,9 +49,9 @@ export function AddPlayerButton({
         type="button"
         onClick={() => setShowPopover(!showPopover)}
         style={{
-          fontSize: shouldEmphasize ? '36px' : '36px',
-          width: shouldEmphasize ? '56px' : '56px',
-          height: shouldEmphasize ? '56px' : '56px',
+          fontSize: '36px',
+          width: '56px',
+          height: '56px',
           borderRadius: '50%',
           border: '3px solid #10b981',
           background: showPopover
@@ -69,6 +69,7 @@ export function AddPlayerButton({
           boxShadow: showPopover
             ? '0 6px 16px rgba(16, 185, 129, 0.5)'
             : '0 6px 12px rgba(0,0,0,0.3)',
+          flexShrink: 0,
         }}
         onMouseEnter={(e) => {
           if (!showPopover) {

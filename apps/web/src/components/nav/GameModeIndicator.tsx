@@ -23,7 +23,7 @@ export function GameModeIndicator({
   return (
     <div
       style={{
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
         gap: shouldEmphasize ? '10px' : '4px',
         padding: shouldEmphasize ? '12px 24px' : '4px 8px',
@@ -40,17 +40,19 @@ export function GameModeIndicator({
           : 'none',
         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
         transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)',
+        lineHeight: 1,
       }}
     >
       <span
         style={{
           fontSize: shouldEmphasize ? '28px' : '12px',
           transition: 'font-size 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          lineHeight: 1,
         }}
       >
         {modeInfo.emoji}
       </span>
-      <span>{modeInfo.label}</span>
+      <span style={{ lineHeight: 1 }}>{modeInfo.label}</span>
     </div>
   )
 }
