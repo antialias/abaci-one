@@ -1,26 +1,11 @@
 'use client'
 
 import { css } from '../../../../../styled-system/css'
-import { useGameMode } from '../../../../contexts/GameModeContext'
-import { pluralizeWord } from '../../../../utils/pluralization'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { MemoryGrid } from './MemoryGrid'
 
 export function GamePhase() {
-  const { state, resetGame: _resetGame, activePlayers } = useMemoryPairs()
-  const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
-
-  // Convert Map to array and create mapping from numeric index to player
-  const _playersArray = Array.from(playerMap.values())
-  const activePlayersArray = Array.from(activePlayerIds)
-    .map((id) => playerMap.get(id))
-    .filter((p): p is NonNullable<typeof p> => p !== undefined)
-
-  // Map player ID (UUID string) to actual player data using array index
-  const currentPlayerIndex = activePlayers.indexOf(state.currentPlayer)
-  const _currentPlayerData =
-    currentPlayerIndex >= 0 ? activePlayersArray[currentPlayerIndex] : undefined
-  const _activePlayerData = activePlayersArray
+  const { state } = useMemoryPairs()
 
   return (
     <div
@@ -32,51 +17,7 @@ export function GamePhase() {
         flexDirection: 'column',
       })}
     >
-      {/* Minimal Game Header */}
-      <div
-        className={css({
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: { base: '8px 12px', sm: '10px 16px', md: '12px 20px' },
-          background:
-            'linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08))',
-          borderRadius: '12px',
-          marginBottom: { base: '12px', sm: '16px', md: '20px' },
-          border: '1px solid rgba(102, 126, 234, 0.15)',
-          flexShrink: 0,
-        })}
-      >
-        {/* Game Mode Indicator - Compact */}
-        <div
-          className={css({
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: { base: '14px', sm: '15px' },
-            fontWeight: 'bold',
-            color: 'gray.600',
-          })}
-        >
-          <span className={css({ fontSize: { base: '16px', sm: '18px' } })}>
-            {state.gameType === 'abacus-numeral' ? '🧮' : '🤝'}
-          </span>
-          <span className={css({ display: { base: 'none', sm: 'inline' } })}>
-            {state.gameType === 'abacus-numeral' ? 'Abacus Match' : 'Complement Pairs'}
-          </span>
-          {state.gameMode === 'multiplayer' && (
-            <>
-              <span className={css({ color: 'gray.400' })}>•</span>
-              <span>
-                ⚔️ {activePlayers.length}
-                {pluralizeWord(activePlayers.length, 'P')}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Player Status Bar - Removed, now using nav avatars as turn indicator */}
+      {/* Game header removed - game type and player info now shown in nav bar */}
 
       {/* Memory Grid - The main game area */}
       <div

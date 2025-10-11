@@ -23,10 +23,14 @@ export function MemoryPairsGame() {
     }
   }, [setFullscreenElement])
 
+  // Determine nav title and emoji based on game type
+  const navTitle = state.gameType === 'abacus-numeral' ? 'Abacus Match' : 'Complement Pairs'
+  const navEmoji = state.gameType === 'abacus-numeral' ? '🧮' : '🤝'
+
   return (
     <PageWithNav
-      navTitle="Memory Pairs"
-      navEmoji="🧩"
+      navTitle={navTitle}
+      navEmoji={navEmoji}
       emphasizeGameContext={state.gamePhase === 'setup'}
       currentPlayerId={state.currentPlayer}
       playerScores={state.scores}
