@@ -59,20 +59,28 @@ export function NetworkPlayerIndicator({
     >
       <div
         style={{
-          position: 'relative',
-          fontSize: '56px',
-          lineHeight: 1,
-          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-          filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
-          cursor: 'default',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
-          opacity: hasGameState ? (isCurrentPlayer ? 1 : 0.65) : 1,
+          gap: '4px',
         }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
+        <div
+          style={{
+            position: 'relative',
+            fontSize: '56px',
+            lineHeight: 1,
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
+            cursor: 'default',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: hasGameState ? (isCurrentPlayer ? 1 : 0.65) : 1,
+          }}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
         {/* Network frame border - only show when not current player */}
         {!isCurrentPlayer && (
           <div
@@ -268,6 +276,24 @@ export function NetworkPlayerIndicator({
           `,
           }}
         />
+        </div>
+
+        {/* Turn label */}
+        {isCurrentPlayer && hasGameState && (
+          <div
+            style={{
+              fontSize: '11px',
+              fontWeight: 'bold',
+              color: player.color || '#3b82f6',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              marginTop: '-2px',
+            }}
+          >
+            Their turn
+          </div>
+        )}
       </div>
     </PlayerTooltip>
   )

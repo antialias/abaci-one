@@ -59,23 +59,31 @@ export function ActivePlayersList({
           >
             <div
               style={{
-                position: 'relative',
-                fontSize: isCurrentPlayer && hasGameState ? '70px' : '56px',
-                lineHeight: 1,
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
-                cursor: shouldEmphasize ? 'pointer' : 'default',
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                opacity: hasGameState ? (isCurrentPlayer ? 1 : 0.65) : 1,
-                transform: isCurrentPlayer && hasGameState ? 'scale(1.1)' : 'scale(1)',
-                animation: isCurrentPlayer && hasGameState ? 'avatarFloat 3s ease-in-out infinite' : 'none',
+                gap: '4px',
               }}
-              onClick={() => shouldEmphasize && onConfigurePlayer(player.id)}
-              onMouseEnter={() => shouldEmphasize && setHoveredPlayerId(player.id)}
-              onMouseLeave={() => shouldEmphasize && setHoveredPlayerId(null)}
             >
+              <div
+                style={{
+                  position: 'relative',
+                  fontSize: isCurrentPlayer && hasGameState ? '70px' : '56px',
+                  lineHeight: 1,
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
+                  cursor: shouldEmphasize ? 'pointer' : 'default',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: hasGameState ? (isCurrentPlayer ? 1 : 0.65) : 1,
+                  transform: isCurrentPlayer && hasGameState ? 'scale(1.1)' : 'scale(1)',
+                  animation: isCurrentPlayer && hasGameState ? 'avatarFloat 3s ease-in-out infinite' : 'none',
+                }}
+                onClick={() => shouldEmphasize && onConfigurePlayer(player.id)}
+                onMouseEnter={() => shouldEmphasize && setHoveredPlayerId(player.id)}
+                onMouseLeave={() => shouldEmphasize && setHoveredPlayerId(null)}
+              >
               {/* Border ring for current player */}
               {isCurrentPlayer && hasGameState && (
                 <div
@@ -257,7 +265,25 @@ export function ActivePlayersList({
                 </button>
               </>
             )}
-          </div>
+              </div>
+
+              {/* Turn label */}
+              {isCurrentPlayer && hasGameState && (
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    color: player.color || '#3b82f6',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    marginTop: '-2px',
+                  }}
+                >
+                  Your turn
+                </div>
+              )}
+            </div>
         </PlayerTooltip>
       )})}
 
