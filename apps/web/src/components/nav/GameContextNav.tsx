@@ -47,6 +47,10 @@ interface GameContextNavProps {
   // Arcade session info
   networkPlayers?: NetworkPlayer[]
   roomInfo?: ArcadeRoomInfo
+  // Game state for turn indicator
+  currentPlayerId?: string
+  playerScores?: Record<string, number>
+  playerStreaks?: Record<string, number>
 }
 
 export function GameContextNav({
@@ -66,6 +70,9 @@ export function GameContextNav({
   canModifyPlayers = true,
   networkPlayers = [],
   roomInfo,
+  currentPlayerId,
+  playerScores,
+  playerStreaks,
 }: GameContextNavProps) {
   // 2x2 grid layout for normal mode, column for fullscreen
   if (showFullscreenSelection) {
@@ -259,6 +266,9 @@ export function GameContextNav({
             shouldEmphasize={shouldEmphasize}
             onRemovePlayer={onRemovePlayer}
             onConfigurePlayer={onConfigurePlayer}
+            currentPlayerId={currentPlayerId}
+            playerScores={playerScores}
+            playerStreaks={playerStreaks}
           />
 
           {canModifyPlayers && (

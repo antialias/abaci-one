@@ -5,7 +5,6 @@ import { useGameMode } from '../../../../contexts/GameModeContext'
 import { pluralizeWord } from '../../../../utils/pluralization'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
 import { MemoryGrid } from './MemoryGrid'
-import { PlayerStatusBar } from './PlayerStatusBar'
 
 export function GamePhase() {
   const { state, resetGame, activePlayers } = useMemoryPairs()
@@ -119,8 +118,7 @@ export function GamePhase() {
         </div>
       </div>
 
-      {/* Player Status Bar */}
-      <PlayerStatusBar />
+      {/* Player Status Bar - Removed, now using nav avatars as turn indicator */}
 
       {/* Memory Grid - The main game area */}
       <div

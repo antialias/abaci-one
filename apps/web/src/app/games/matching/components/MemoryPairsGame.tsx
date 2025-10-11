@@ -28,6 +28,9 @@ export function MemoryPairsGame() {
       navTitle="Memory Pairs"
       navEmoji="🧩"
       emphasizeGameContext={state.gamePhase === 'setup'}
+      currentPlayerId={state.currentPlayer}
+      playerScores={state.scores}
+      playerStreaks={state.consecutiveMatches}
     >
       <StandardGameLayout>
         <div

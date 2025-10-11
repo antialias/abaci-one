@@ -18,6 +18,10 @@ interface PageWithNavProps {
   onNewGame?: () => void
   canModifyPlayers?: boolean
   children: React.ReactNode
+  // Game state for turn indicator
+  currentPlayerId?: string
+  playerScores?: Record<string, number>
+  playerStreaks?: Record<string, number>
 }
 
 export function PageWithNav({
@@ -29,6 +33,9 @@ export function PageWithNav({
   onNewGame,
   canModifyPlayers = true,
   children,
+  currentPlayerId,
+  playerScores,
+  playerStreaks,
 }: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const { hasActiveSession, activeSession } = useArcadeGuard({
@@ -142,6 +149,9 @@ export function PageWithNav({
       canModifyPlayers={canModifyPlayers}
       roomInfo={roomInfo}
       networkPlayers={networkPlayers}
+      currentPlayerId={currentPlayerId}
+      playerScores={playerScores}
+      playerStreaks={playerStreaks}
     />
   ) : null
 
