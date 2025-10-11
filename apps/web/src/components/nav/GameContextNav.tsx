@@ -165,13 +165,14 @@ export function GameContextNav({
           showMenu={!canModifyPlayers}
         />
 
-        {/* Mode + Room */}
+        {/* Mode + Room stacked vertically */}
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
+            flexDirection: 'column',
+            gap: '4px',
             marginLeft: 'auto',
+            alignItems: 'flex-end',
           }}
         >
           <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
