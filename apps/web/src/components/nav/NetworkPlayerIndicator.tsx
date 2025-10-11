@@ -7,6 +7,7 @@ interface NetworkPlayer {
   name?: string
   color?: string
   memberName?: string
+  isOnline?: boolean
 }
 
 interface NetworkPlayerIndicatorProps {
@@ -22,6 +23,7 @@ export function NetworkPlayerIndicator({ player, shouldEmphasize }: NetworkPlaye
   const [isHovered, setIsHovered] = React.useState(false)
   const playerName = player.name || `Network Player ${player.id.slice(0, 8)}`
   const extraInfo = player.memberName ? `Controlled by ${player.memberName}` : undefined
+  const isOnline = player.isOnline !== false // Default to online if not specified
 
   return (
     <PlayerTooltip
@@ -91,10 +93,26 @@ export function NetworkPlayerIndicator({ player, shouldEmphasize }: NetworkPlaye
             justifyContent: 'center',
             boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
             zIndex: 1,
+            animation: isOnline ? 'none' : 'offlinePulse 2s ease-in-out infinite',
           }}
         >
           📡
         </div>
+
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+            @keyframes offlinePulse {
+              0%, 100% {
+                opacity: 1;
+              }
+              50% {
+                opacity: 0.3;
+              }
+            }
+          `,
+          }}
+        />
       </div>
     </PlayerTooltip>
   )

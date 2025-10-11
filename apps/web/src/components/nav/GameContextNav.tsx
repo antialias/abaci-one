@@ -19,6 +19,7 @@ interface NetworkPlayer {
   id: string
   emoji?: string
   name?: string
+  isOnline?: boolean
 }
 
 interface ArcadeRoomInfo {
