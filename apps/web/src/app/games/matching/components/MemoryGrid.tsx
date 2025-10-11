@@ -122,6 +122,8 @@ export function MemoryGrid() {
         {state.gameCards.map((card) => {
           const isFlipped = state.flippedCards.some((c) => c.id === card.id) || card.matched
           const isMatched = card.matched
+          const shouldShake =
+            state.showMismatchFeedback && state.flippedCards.some((c) => c.id === card.id)
 
           // Smart card filtering for abacus-numeral mode
           let isValidForSelection = true
@@ -172,6 +174,8 @@ export function MemoryGrid() {
                 opacity: isDimmed ? 0.3 : 1,
                 transition: 'opacity 0.3s ease',
                 filter: isDimmed ? 'grayscale(0.7)' : 'none',
+                // Shake animation for mismatched cards
+                animation: shouldShake ? 'cardShake 0.5s ease-in-out' : 'none',
               })}
             >
               <GameCard
@@ -186,37 +190,6 @@ export function MemoryGrid() {
         })}
       </div>
 
-      {/* Mismatch Feedback */}
-      {state.showMismatchFeedback && (
-        <div
-          className={css({
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'linear-gradient(135deg, #ff6b6b, #ee5a24)',
-            color: 'white',
-            padding: '16px 24px',
-            borderRadius: '16px',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            boxShadow: '0 8px 25px rgba(255, 107, 107, 0.4)',
-            zIndex: 1000,
-            animation: 'shake 0.5s ease-in-out',
-          })}
-        >
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            })}
-          >
-            <span>❌</span>
-            <span>Not a match! Try again.</span>
-          </div>
-        </div>
-      )}
 
       {/* Processing Overlay */}
       {state.isProcessingMove && (
@@ -237,12 +210,12 @@ export function MemoryGrid() {
   )
 }
 
-// Add shake animation for mismatch feedback
+// Add shake animation for mismatched cards
 const shakeAnimation = `
-@keyframes shake {
-  0%, 100% { transform: translate(-50%, -50%) translateX(0); }
-  25% { transform: translate(-50%, -50%) translateX(-5px); }
-  75% { transform: translate(-50%, -50%) translateX(5px); }
+@keyframes cardShake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px) rotate(-2deg); }
+  20%, 40%, 60%, 80% { transform: translateX(8px) rotate(2deg); }
 }
 `
 
