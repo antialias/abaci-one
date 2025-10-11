@@ -30,7 +30,6 @@ export function NetworkPlayerIndicator({
   playerScores = {},
   playerStreaks = {},
 }: NetworkPlayerIndicatorProps) {
-  const [isHovered, setIsHovered] = React.useState(false)
   const playerName = player.name || `Network Player ${player.id.slice(0, 8)}`
   const extraInfo = player.memberName ? `Controlled by ${player.memberName}` : undefined
   const isOnline = player.isOnline !== false // Default to online if not specified
@@ -78,30 +77,7 @@ export function NetworkPlayerIndicator({
             justifyContent: 'center',
             opacity: hasGameState ? (isCurrentPlayer ? 1 : 0.65) : 1,
           }}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
         >
-        {/* Network frame border - only show when not current player */}
-        {!isCurrentPlayer && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: '-8px',
-              borderRadius: '12px',
-              background: `
-              linear-gradient(135deg,
-                rgba(59, 130, 246, 0.5),
-                rgba(147, 51, 234, 0.5),
-                rgba(236, 72, 153, 0.5))
-            `,
-              opacity: isHovered ? 1 : 0.8,
-              transition: 'opacity 0.2s ease',
-              boxShadow: '0 6px 16px rgba(59, 130, 246, 0.3)',
-              zIndex: -1,
-            }}
-          />
-        )}
-
         {/* Turn indicator border ring - show when current player */}
         {isCurrentPlayer && hasGameState && (
           <div
