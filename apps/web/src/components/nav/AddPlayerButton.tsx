@@ -46,14 +46,17 @@ export function AddPlayerButton({
   return (
     <div style={{ position: 'relative' }} ref={popoverRef}>
       <button
+        type="button"
         onClick={() => setShowPopover(!showPopover)}
         style={{
-          fontSize: shouldEmphasize ? '32px' : '16px',
-          width: shouldEmphasize ? '48px' : '24px',
-          height: shouldEmphasize ? '48px' : '24px',
+          fontSize: shouldEmphasize ? '36px' : '36px',
+          width: shouldEmphasize ? '56px' : '56px',
+          height: shouldEmphasize ? '56px' : '56px',
           borderRadius: '50%',
-          border: '2px solid #10b981',
-          background: showPopover ? '#10b981' : 'rgba(16, 185, 129, 0.1)',
+          border: '3px solid #10b981',
+          background: showPopover
+            ? 'linear-gradient(135deg, #10b981, #059669)'
+            : 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.1))',
           color: showPopover ? 'white' : '#10b981',
           display: 'flex',
           alignItems: 'center',
@@ -63,20 +66,24 @@ export function AddPlayerButton({
           padding: 0,
           lineHeight: 1,
           fontWeight: 'bold',
-          boxShadow: showPopover ? '0 4px 12px rgba(16, 185, 129, 0.4)' : 'none',
+          boxShadow: showPopover
+            ? '0 6px 16px rgba(16, 185, 129, 0.5)'
+            : '0 6px 12px rgba(0,0,0,0.3)',
         }}
         onMouseEnter={(e) => {
           if (!showPopover) {
-            e.currentTarget.style.background = '#10b981'
+            e.currentTarget.style.background = 'linear-gradient(135deg, #10b981, #059669)'
             e.currentTarget.style.color = 'white'
-            e.currentTarget.style.transform = 'scale(1.1)'
+            e.currentTarget.style.transform = 'scale(1.08)'
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.5)'
           }
         }}
         onMouseLeave={(e) => {
           if (!showPopover) {
-            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.1))'
             e.currentTarget.style.color = '#10b981'
             e.currentTarget.style.transform = 'scale(1)'
+            e.currentTarget.style.boxShadow = '0 6px 12px rgba(0,0,0,0.3)'
           }
         }}
         title="Add player"

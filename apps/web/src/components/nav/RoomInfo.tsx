@@ -1,3 +1,4 @@
+import * as Tooltip from '@radix-ui/react-tooltip'
 import { useState } from 'react'
 
 interface RoomInfoProps {
@@ -9,7 +10,7 @@ interface RoomInfoProps {
 }
 
 /**
- * Displays current arcade room/session information in a compact inline format
+ * Displays current arcade room/session information with tooltip for join code
  */
 export function RoomInfo({
   roomName,
@@ -19,78 +20,176 @@ export function RoomInfo({
   shouldEmphasize,
 }: RoomInfoProps) {
   const [copied, setCopied] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
 
   const handleCodeClick = () => {
     if (!joinCode) return
     navigator.clipboard.writeText(joinCode)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setTimeout(() => {
+      setCopied(false)
+      setIsOpen(false)
+    }, 1500)
   }
 
+  const displayName = roomName || gameName
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '4px 10px',
-        background: 'rgba(59, 130, 246, 0.15)',
-        borderRadius: '8px',
-        border: '1px solid rgba(59, 130, 246, 0.3)',
-        fontSize: '13px',
-        fontWeight: '500',
-        color: 'rgba(255, 255, 255, 0.9)',
-        transition: 'all 0.2s ease',
-        whiteSpace: 'nowrap',
-      }}
-      title="Active Arcade Room"
-    >
-      {/* Room icon and name */}
-      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <span style={{ fontSize: '14px' }}>🎮</span>
-        <span style={{ fontWeight: '600' }}>{roomName || gameName}</span>
-      </span>
-
-      {/* Join code with click-to-copy */}
-      {joinCode && (
-        <>
-          <span style={{ opacity: 0.5 }}>•</span>
-          <button
-            type="button"
-            onClick={handleCodeClick}
+    <Tooltip.Provider delayDuration={200}>
+      <Tooltip.Root open={isOpen} onOpenChange={setIsOpen}>
+        <Tooltip.Trigger asChild>
+          <div
             style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '4px',
-              padding: '2px 6px',
-              fontFamily: 'monospace',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              background: 'rgba(139, 92, 246, 0.2)',
+              borderRadius: '6px',
+              border: '2px solid rgba(139, 92, 246, 0.4)',
               fontSize: '12px',
-              color: 'rgba(255, 255, 255, 0.95)',
-              cursor: 'pointer',
+              fontWeight: 'bold',
+              color: 'rgba(196, 181, 253, 1)',
               transition: 'all 0.2s ease',
-              fontWeight: '600',
+              whiteSpace: 'nowrap',
+              cursor: joinCode ? 'pointer' : 'default',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'
-            }}
-            title={copied ? 'Copied!' : 'Click to copy join code'}
+            onMouseEnter={() => joinCode && setIsOpen(true)}
+            onMouseLeave={() => !copied && setIsOpen(false)}
           >
-            {copied ? '✓ Copied' : joinCode}
-          </button>
-        </>
-      )}
+            {/* Room icon and name */}
+            <span style={{ fontSize: '12px' }}>🎮</span>
+            <span>{displayName}</span>
 
-      {/* Player count */}
-      <span style={{ opacity: 0.5 }}>•</span>
-      <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-        <span style={{ fontSize: '12px' }}>👥</span>
-        <span>{playerCount}</span>
-      </span>
-    </div>
+            {/* Player count */}
+            <span style={{ opacity: 0.6 }}>•</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+              <span style={{ fontSize: '11px' }}>👥</span>
+              <span>{playerCount}</span>
+            </span>
+          </div>
+        </Tooltip.Trigger>
+
+        {joinCode && (
+          <Tooltip.Portal>
+            <Tooltip.Content
+              side="bottom"
+              sideOffset={8}
+              style={{
+                background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))',
+                backdropFilter: 'blur(12px)',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.3)',
+                maxWidth: '280px',
+                zIndex: 9999,
+                animation: 'tooltipFadeIn 0.2s ease-out',
+              }}
+            >
+              {/* Join code label */}
+              <div
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  color: 'rgba(196, 181, 253, 0.8)',
+                  marginBottom: '6px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                Room Join Code
+              </div>
+
+              {/* Click-to-copy button */}
+              <button
+                type="button"
+                onClick={handleCodeClick}
+                style={{
+                  width: '100%',
+                  background: copied
+                    ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.3))'
+                    : 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.3))',
+                  border: copied
+                    ? '2px solid rgba(34, 197, 94, 0.5)'
+                    : '2px solid rgba(139, 92, 246, 0.4)',
+                  borderRadius: '8px',
+                  padding: '10px 16px',
+                  fontFamily: 'monospace',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: copied ? 'rgba(134, 239, 172, 1)' : 'rgba(196, 181, 253, 1)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  letterSpacing: '2px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+                onMouseEnter={(e) => {
+                  if (!copied) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.4))'
+                    e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.6)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!copied) {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.3))'
+                    e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.4)'
+                  }
+                }}
+              >
+                {copied ? (
+                  <>
+                    <span style={{ fontSize: '16px' }}>✓</span>
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{joinCode}</span>
+                    <span style={{ fontSize: '14px', opacity: 0.7 }}>📋</span>
+                  </>
+                )}
+              </button>
+
+              {/* Helper text */}
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: 'rgba(156, 163, 175, 0.8)',
+                  marginTop: '8px',
+                  textAlign: 'center',
+                }}
+              >
+                {copied ? 'Share this code with friends!' : 'Click to copy'}
+              </div>
+
+              <Tooltip.Arrow
+                style={{
+                  fill: 'rgba(17, 24, 39, 0.97)',
+                }}
+              />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        )}
+      </Tooltip.Root>
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes tooltipFadeIn {
+              from {
+                opacity: 0;
+                transform: translateY(-4px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+          `,
+        }}
+      />
+    </Tooltip.Provider>
   )
 }

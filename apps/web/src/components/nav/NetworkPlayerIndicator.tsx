@@ -33,7 +33,7 @@ export function NetworkPlayerIndicator({ player, shouldEmphasize }: NetworkPlaye
       <div
         style={{
           position: 'relative',
-          fontSize: shouldEmphasize ? '48px' : '20px',
+          fontSize: shouldEmphasize ? '56px' : '56px',
           lineHeight: 1,
           transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           cursor: 'default',
@@ -41,35 +41,37 @@ export function NetworkPlayerIndicator({ player, shouldEmphasize }: NetworkPlaye
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Network frame border */}
+        {/* Network frame border - larger and more prominent */}
         <div
           style={{
             position: 'absolute',
-            inset: '-6px',
-            borderRadius: '8px',
+            inset: '-8px',
+            borderRadius: '12px',
             background: `
             linear-gradient(135deg,
-              rgba(59, 130, 246, 0.4),
-              rgba(147, 51, 234, 0.4),
-              rgba(236, 72, 153, 0.4))
+              rgba(59, 130, 246, 0.5),
+              rgba(147, 51, 234, 0.5),
+              rgba(236, 72, 153, 0.5))
           `,
-            opacity: isHovered ? 1 : 0.7,
+            opacity: isHovered ? 1 : 0.8,
             transition: 'opacity 0.2s ease',
+            boxShadow: '0 6px 16px rgba(59, 130, 246, 0.3)',
             zIndex: -1,
           }}
         />
 
-        {/* Animated network signal indicator */}
+        {/* Animated network signal indicator - larger */}
         <div
           style={{
             position: 'absolute',
-            top: '-8px',
-            right: '-8px',
-            width: '12px',
-            height: '12px',
+            top: '-10px',
+            right: '-10px',
+            width: '16px',
+            height: '16px',
             borderRadius: '50%',
-            background: 'rgba(34, 197, 94, 0.9)',
-            boxShadow: '0 0 8px rgba(34, 197, 94, 0.6)',
+            background: 'rgba(34, 197, 94, 0.95)',
+            border: '2px solid rgba(255, 255, 255, 0.8)',
+            boxShadow: '0 0 12px rgba(34, 197, 94, 0.8)',
             animation: 'networkPulse 2s ease-in-out infinite',
             zIndex: 1,
           }}
@@ -79,29 +81,29 @@ export function NetworkPlayerIndicator({ player, shouldEmphasize }: NetworkPlaye
         <div
           style={{
             position: 'relative',
-            filter: shouldEmphasize ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.25))' : 'none',
+            filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
           }}
         >
           {player.emoji || '🌐'}
         </div>
 
-        {/* Network icon badge */}
+        {/* Network icon badge - larger */}
         <div
           style={{
             position: 'absolute',
-            bottom: '-4px',
-            left: '-4px',
-            width: '16px',
-            height: '16px',
+            bottom: '-6px',
+            left: '-6px',
+            width: '22px',
+            height: '22px',
             borderRadius: '50%',
-            border: '2px solid white',
+            border: '3px solid white',
             background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
             color: 'white',
-            fontSize: '8px',
+            fontSize: '11px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.4)',
             zIndex: 1,
           }}
         >
