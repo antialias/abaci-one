@@ -6,80 +6,110 @@ interface GameControlButtonsProps {
   onQuit?: () => void
 }
 
+// Button configurations matching the refined translucent aesthetic
+const buttonConfigs = {
+  setup: {
+    emoji: '⚙️',
+    label: 'Setup',
+    color: '#6b7280', // neutral gray
+  },
+  newGame: {
+    emoji: '🎮',
+    label: 'New Game',
+    color: '#3b82f6', // blue
+  },
+  quit: {
+    emoji: '🏟️',
+    label: 'Quit',
+    color: '#f59e0b', // amber/orange
+  },
+}
+
 export function GameControlButtons({ onSetup, onNewGame, onQuit }: GameControlButtonsProps) {
-  const buttonBaseStyle: React.CSSProperties = {
-    background: 'linear-gradient(135deg, #3498db, #2980b9)',
-    border: 'none',
-    borderRadius: '8px',
-    padding: '6px 12px',
-    fontSize: '13px',
+  const createButtonStyle = (color: string, isHovered = false): React.CSSProperties => ({
+    background: isHovered
+      ? `linear-gradient(135deg, ${color}30, ${color}40)`
+      : `${color}20`,
+    border: `2px solid ${color}${isHovered ? '60' : '40'}`,
+    borderRadius: '6px',
+    padding: '4px 10px',
+    fontSize: '12px',
     fontWeight: 'bold',
-    color: 'white',
+    color: color,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
     transition: 'all 0.2s ease',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    boxShadow: isHovered
+      ? `0 2px 8px ${color}30`
+      : 'none',
+  })
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>, color: string) => {
+    const btn = e.currentTarget
+    btn.style.background = `linear-gradient(135deg, ${color}30, ${color}40)`
+    btn.style.borderColor = `${color}60`
+    btn.style.boxShadow = `0 2px 8px ${color}30`
+    btn.style.transform = 'translateY(-1px)'
   }
 
-  const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = 'linear-gradient(135deg, #2980b9, #1c6ca1)'
-    e.currentTarget.style.transform = 'translateY(-1px)'
-    e.currentTarget.style.boxShadow = '0 3px 6px rgba(0, 0, 0, 0.15)'
-  }
-
-  const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = 'linear-gradient(135deg, #3498db, #2980b9)'
-    e.currentTarget.style.transform = 'translateY(0)'
-    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)'
+  const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>, color: string) => {
+    const btn = e.currentTarget
+    btn.style.background = `${color}20`
+    btn.style.borderColor = `${color}40`
+    btn.style.boxShadow = 'none'
+    btn.style.transform = 'translateY(0)'
   }
 
   return (
     <div
       style={{
         display: 'flex',
-        gap: '8px',
+        gap: '6px',
         alignItems: 'center',
         flexWrap: 'nowrap',
       }}
     >
       {onSetup && (
         <button
+          type="button"
           onClick={onSetup}
-          style={buttonBaseStyle}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+          style={createButtonStyle(buttonConfigs.setup.color)}
+          onMouseEnter={(e) => handleMouseEnter(e, buttonConfigs.setup.color)}
+          onMouseLeave={(e) => handleMouseLeave(e, buttonConfigs.setup.color)}
           aria-label="Setup game"
         >
-          <span>⚙️</span>
-          <span style={{ whiteSpace: 'nowrap' }}>Setup</span>
+          <span style={{ fontSize: '12px' }}>{buttonConfigs.setup.emoji}</span>
+          <span style={{ whiteSpace: 'nowrap' }}>{buttonConfigs.setup.label}</span>
         </button>
       )}
 
       {onNewGame && (
         <button
+          type="button"
           onClick={onNewGame}
-          style={buttonBaseStyle}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+          style={createButtonStyle(buttonConfigs.newGame.color)}
+          onMouseEnter={(e) => handleMouseEnter(e, buttonConfigs.newGame.color)}
+          onMouseLeave={(e) => handleMouseLeave(e, buttonConfigs.newGame.color)}
           aria-label="Start new game"
         >
-          <span>🎮</span>
-          <span style={{ whiteSpace: 'nowrap' }}>New Game</span>
+          <span style={{ fontSize: '12px' }}>{buttonConfigs.newGame.emoji}</span>
+          <span style={{ whiteSpace: 'nowrap' }}>{buttonConfigs.newGame.label}</span>
         </button>
       )}
 
       {onQuit && (
         <button
+          type="button"
           onClick={onQuit}
-          style={buttonBaseStyle}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+          style={createButtonStyle(buttonConfigs.quit.color)}
+          onMouseEnter={(e) => handleMouseEnter(e, buttonConfigs.quit.color)}
+          onMouseLeave={(e) => handleMouseLeave(e, buttonConfigs.quit.color)}
           aria-label="Quit to arcade"
         >
-          <span>🏟️</span>
-          <span style={{ whiteSpace: 'nowrap' }}>Quit</span>
+          <span style={{ fontSize: '12px' }}>{buttonConfigs.quit.emoji}</span>
+          <span style={{ whiteSpace: 'nowrap' }}>{buttonConfigs.quit.label}</span>
         </button>
       )}
     </div>
