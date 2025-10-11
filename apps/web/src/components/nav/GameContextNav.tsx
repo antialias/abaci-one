@@ -2,8 +2,8 @@ import React from 'react'
 import { ActivePlayersList } from './ActivePlayersList'
 import { AddPlayerButton } from './AddPlayerButton'
 import { FullscreenPlayerSelection } from './FullscreenPlayerSelection'
-import { GameControlButtons } from './GameControlButtons'
 import { GameModeIndicator } from './GameModeIndicator'
+import { GameTitleMenu } from './GameTitleMenu'
 import { NetworkPlayerIndicator } from './NetworkPlayerIndicator'
 import { RoomInfo } from './RoomInfo'
 
@@ -146,66 +146,44 @@ export function GameContextNav({
         width: 'auto',
       }}
     >
-      {/* Left side: Title and Controls in a column */}
+      {/* Left side: Title + Mode + Room (single row) */}
       <div
         style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
+          alignItems: 'center',
+          gap: '16px',
           flex: 1,
         }}
       >
-        {/* Row 1: Title | Mode + Room */}
+        {/* Title with dropdown menu */}
+        <GameTitleMenu
+          navTitle={navTitle}
+          navEmoji={navEmoji}
+          onSetup={onSetup}
+          onNewGame={onNewGame}
+          onQuit={onExitSession}
+          showMenu={!canModifyPlayers}
+        />
+
+        {/* Mode + Room */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '16px',
-            justifyContent: 'space-between',
+            gap: '8px',
+            marginLeft: 'auto',
           }}
         >
-          {/* Title */}
-          <h1
-            style={{
-              fontSize: '18px',
-              fontWeight: 'bold',
-              background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6)',
-              backgroundClip: 'text',
-              color: 'transparent',
-              margin: 0,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {navEmoji && `${navEmoji} `}
-            {navTitle}
-          </h1>
+          <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
 
-          {/* Mode + Room */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
-            <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
-
-            {roomInfo && (
-              <RoomInfo
-                roomName={roomInfo.roomName}
-                gameName={roomInfo.gameName}
-                playerCount={roomInfo.playerCount}
-                joinCode={roomInfo.joinCode}
-                shouldEmphasize={shouldEmphasize}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Row 2: Control buttons */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          {!canModifyPlayers && (
-            <GameControlButtons onSetup={onSetup} onNewGame={onNewGame} onQuit={onExitSession} />
+          {roomInfo && (
+            <RoomInfo
+              roomName={roomInfo.roomName}
+              gameName={roomInfo.gameName}
+              playerCount={roomInfo.playerCount}
+              joinCode={roomInfo.joinCode}
+              shouldEmphasize={shouldEmphasize}
+            />
           )}
         </div>
       </div>
