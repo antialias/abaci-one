@@ -251,7 +251,6 @@ export function GameContextNav({
                 : '0 4px 12px rgba(0, 0, 0, 0.1)',
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
               transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)',
-              opacity: canModifyPlayers ? 1 : 0.6,
               pointerEvents: canModifyPlayers ? 'auto' : 'none',
             }}
           >
