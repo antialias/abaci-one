@@ -159,9 +159,9 @@ export function GameContextNav({
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-end',
             gap: '12px',
-            padding: '6px 12px',
+            padding: '6px 12px 12px 12px',
             background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05))',
             borderRadius: '12px',
             border: '2px solid rgba(255, 255, 255, 0.15)',
@@ -252,9 +252,9 @@ export function GameContextNav({
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-end',
             gap: shouldEmphasize ? '12px' : '8px',
-            padding: shouldEmphasize ? '12px 20px' : '6px 12px',
+            padding: shouldEmphasize ? '12px 20px 16px 20px' : '6px 12px 12px 12px',
             background: shouldEmphasize
               ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.10))'
               : 'linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05))',
