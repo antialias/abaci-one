@@ -43,7 +43,8 @@ export function ActivePlayersList({
   return (
     <>
       {activePlayers.map((player) => {
-        const isCurrentPlayer = player.id === currentPlayerId
+        const isCurrentPlayer = currentPlayerId ? player.id === currentPlayerId : false
+        const hasGameState = currentPlayerId !== undefined
         const score = playerScores[player.id] || 0
         const streak = playerStreaks[player.id] || 0
         const celebrationLevel = getCelebrationLevel(streak)
@@ -59,7 +60,7 @@ export function ActivePlayersList({
             <div
               style={{
                 position: 'relative',
-                fontSize: isCurrentPlayer ? '70px' : '56px',
+                fontSize: isCurrentPlayer && hasGameState ? '70px' : '56px',
                 lineHeight: 1,
                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))',
@@ -67,16 +68,16 @@ export function ActivePlayersList({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: isCurrentPlayer ? 1 : 0.65,
-                transform: isCurrentPlayer ? 'scale(1.1)' : 'scale(1)',
-                animation: isCurrentPlayer ? 'avatarFloat 3s ease-in-out infinite' : 'none',
+                opacity: hasGameState ? (isCurrentPlayer ? 1 : 0.65) : 1,
+                transform: isCurrentPlayer && hasGameState ? 'scale(1.1)' : 'scale(1)',
+                animation: isCurrentPlayer && hasGameState ? 'avatarFloat 3s ease-in-out infinite' : 'none',
               }}
               onClick={() => shouldEmphasize && onConfigurePlayer(player.id)}
               onMouseEnter={() => shouldEmphasize && setHoveredPlayerId(player.id)}
               onMouseLeave={() => shouldEmphasize && setHoveredPlayerId(null)}
             >
               {/* Border ring for current player */}
-              {isCurrentPlayer && (
+              {isCurrentPlayer && hasGameState && (
                 <div
                   style={{
                     position: 'absolute',
@@ -93,7 +94,7 @@ export function ActivePlayersList({
               {player.emoji}
 
               {/* Score badge - bottom right */}
-              {score > 0 && (
+              {hasGameState && score > 0 && (
                 <div
                   style={{
                     position: 'absolute',
@@ -120,7 +121,7 @@ export function ActivePlayersList({
               )}
 
               {/* Streak badge - top right */}
-              {streak >= 2 && (
+              {hasGameState && streak >= 2 && (
                 <div
                   style={{
                     position: 'absolute',
