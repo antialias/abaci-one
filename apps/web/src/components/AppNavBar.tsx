@@ -101,6 +101,13 @@ function HamburgerMenu({
           sideOffset={8}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
+          onInteractOutside={(e) => {
+            // Don't close the hamburger menu when clicking inside the nested style dropdown
+            const target = e.target as HTMLElement
+            if (target.closest('[role="dialog"]') || target.closest('[data-radix-popper-content-wrapper]')) {
+              e.preventDefault()
+            }
+          }}
           style={{
             background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.97), rgba(31, 41, 55, 0.97))',
             backdropFilter: 'blur(12px)',
