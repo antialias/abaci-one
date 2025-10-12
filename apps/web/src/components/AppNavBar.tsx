@@ -35,14 +35,13 @@ function HamburgerMenu({
   const [hovered, setHovered] = useState(false)
   const [nestedDropdownOpen, setNestedDropdownOpen] = useState(false)
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  const isCurrentlyHovering = React.useRef(false)
 
   // Open on hover or click OR if nested dropdown is open
   const isOpen = open || hovered || nestedDropdownOpen
 
-  console.log('[HamburgerMenu] State:', { open, hovered, nestedDropdownOpen, isOpen })
-
   const handleMouseEnter = () => {
-    console.log('[HamburgerMenu] Mouse enter')
+    isCurrentlyHovering.current = true
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current)
       hoverTimeoutRef.current = null
@@ -51,23 +50,30 @@ function HamburgerMenu({
   }
 
   const handleMouseLeave = () => {
-    console.log('[HamburgerMenu] Mouse leave, nestedDropdownOpen:', nestedDropdownOpen)
+    isCurrentlyHovering.current = false
     // Don't close if nested dropdown is open
     if (nestedDropdownOpen) {
-      console.log('[HamburgerMenu] Skipping close - nested dropdown is open')
       return
     }
 
     // Delay closing to allow moving from button to menu
     hoverTimeoutRef.current = setTimeout(() => {
-      console.log('[HamburgerMenu] Mouse leave timeout fired')
       setHovered(false)
     }, 150)
   }
 
   const handleOpenChange = (newOpen: boolean) => {
-    console.log('[HamburgerMenu] onOpenChange called with:', newOpen, 'current open:', open)
     setOpen(newOpen)
+  }
+
+  const handleNestedDropdownChange = (isNestedOpen: boolean) => {
+    setNestedDropdownOpen(isNestedOpen)
+
+    // When nested dropdown closes, also close hamburger if mouse is not hovering
+    if (!isNestedOpen && !isCurrentlyHovering.current) {
+      setHovered(false)
+      setOpen(false)
+    }
   }
 
   React.useEffect(() => {
@@ -122,18 +128,8 @@ function HamburgerMenu({
           onInteractOutside={(e) => {
             // Don't close the hamburger menu when clicking inside the nested style dropdown
             const target = e.target as HTMLElement
-            console.log('[HamburgerMenu] onInteractOutside triggered')
-            console.log('[HamburgerMenu] Target element:', target)
-            console.log('[HamburgerMenu] Target tagName:', target.tagName)
-            console.log('[HamburgerMenu] Target className:', target.className)
-            console.log('[HamburgerMenu] Has [role="dialog"]:', !!target.closest('[role="dialog"]'))
-            console.log('[HamburgerMenu] Has [data-radix-popper-content-wrapper]:', !!target.closest('[data-radix-popper-content-wrapper]'))
-
             if (target.closest('[role="dialog"]') || target.closest('[data-radix-popper-content-wrapper]')) {
-              console.log('[HamburgerMenu] Preventing close - nested dropdown interaction')
               e.preventDefault()
-            } else {
-              console.log('[HamburgerMenu] Allowing close - outside interaction')
             }
           }}
           style={{
@@ -385,7 +381,7 @@ function HamburgerMenu({
           <div style={{ padding: '0 6px' }}>
             <AbacusDisplayDropdown
               isFullscreen={isFullscreen}
-              onOpenChange={setNestedDropdownOpen}
+              onOpenChange={handleNestedDropdownChange}
             />
           </div>
         </DropdownMenu.Content>

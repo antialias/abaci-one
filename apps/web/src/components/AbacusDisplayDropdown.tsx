@@ -19,10 +19,7 @@ export function AbacusDisplayDropdown({ isFullscreen = false, onOpenChange: onOp
   const [open, setOpen] = useState(false)
   const { config, updateConfig, resetToDefaults } = useAbacusDisplay()
 
-  console.log('[AbacusDisplayDropdown] State:', { open })
-
   const handleOpenChange = (isOpen: boolean) => {
-    console.log('[AbacusDisplayDropdown] onOpenChange called with:', isOpen, 'current open:', open)
     setOpen(isOpen)
     // Notify parent component
     onOpenChangeProp?.(isOpen)
@@ -81,12 +78,6 @@ export function AbacusDisplayDropdown({ isFullscreen = false, onOpenChange: onOp
 
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          onInteractOutside={(e) => {
-            const target = e.target as HTMLElement
-            console.log('[AbacusDisplayDropdown] onInteractOutside triggered')
-            console.log('[AbacusDisplayDropdown] Target element:', target)
-            console.log('[AbacusDisplayDropdown] Target tagName:', target.tagName)
-          }}
           className={css({
             bg: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
             rounded: 'xl',
