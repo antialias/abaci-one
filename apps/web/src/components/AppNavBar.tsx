@@ -35,13 +35,11 @@ function HamburgerMenu({
   const [hovered, setHovered] = useState(false)
   const [nestedDropdownOpen, setNestedDropdownOpen] = useState(false)
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-  const isCurrentlyHovering = React.useRef(false)
 
   // Open on hover or click OR if nested dropdown is open
   const isOpen = open || hovered || nestedDropdownOpen
 
   const handleMouseEnter = () => {
-    isCurrentlyHovering.current = true
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current)
       hoverTimeoutRef.current = null
@@ -50,7 +48,6 @@ function HamburgerMenu({
   }
 
   const handleMouseLeave = () => {
-    isCurrentlyHovering.current = false
     // Don't close if nested dropdown is open
     if (nestedDropdownOpen) {
       return
@@ -68,12 +65,9 @@ function HamburgerMenu({
 
   const handleNestedDropdownChange = (isNestedOpen: boolean) => {
     setNestedDropdownOpen(isNestedOpen)
-
-    // When nested dropdown closes, also close hamburger if mouse is not hovering
-    if (!isNestedOpen && !isCurrentlyHovering.current) {
-      setHovered(false)
-      setOpen(false)
-    }
+    // Just update the nested dropdown state
+    // The hamburger will stay open if mouse is still hovering or it was clicked open
+    // The existing hover/click logic will handle closing naturally when appropriate
   }
 
   React.useEffect(() => {
@@ -378,7 +372,11 @@ function HamburgerMenu({
             Abacus Style
           </div>
 
-          <div style={{ padding: '0 6px' }}>
+          <div
+            style={{ padding: '0 6px' }}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
             <AbacusDisplayDropdown
               isFullscreen={isFullscreen}
               onOpenChange={handleNestedDropdownChange}
