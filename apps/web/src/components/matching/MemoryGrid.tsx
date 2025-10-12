@@ -1,12 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { css } from '../../../../../styled-system/css'
-import { useMemoryPairs } from '../context/MemoryPairsContext'
-import { getGridConfiguration } from '../utils/cardGeneration'
-import { GameCard } from './GameCard'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { css } from '../../../styled-system/css'
+import { HoverAvatar } from './HoverAvatar'
 
-// Helper function to calculate optimal grid dimensions
+// Grid calculation utilities
 function calculateOptimalGrid(cards: number, aspectRatio: number, config: any) {
   // For consistent grid layout, we need to ensure r×c = totalCards
   // Choose columns based on viewport, then calculate exact rows needed
@@ -80,12 +78,82 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
   return gridDimensions
 }
 
-export function MemoryGrid() {
-  const { state, flipCard } = useMemoryPairs()
+// Type definitions
+export interface MemoryCard {
+  id: string
+  type: string
+  number: number
+  matched: boolean
+  matchedBy?: string
+  targetSum?: number
+  complement?: number
+}
 
-  // Hooks must be called before early return
-  const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])
+export interface MemoryGridState {
+  gameCards: MemoryCard[]
+  flippedCards: MemoryCard[]
+  showMismatchFeedback: boolean
+  isProcessingMove: boolean
+  gameType: string
+  playerMetadata?: Record<string, { emoji: string; name: string; color?: string; userId?: string }>
+  playerHovers?: Record<string, string | null>
+  currentPlayer?: string
+}
+
+export interface MemoryGridProps {
+  // Core game state and actions
+  state: MemoryGridState
+  gridConfig: any
+  flipCard: (cardId: string) => void
+
+  // Multiplayer presence features (optional)
+  enableMultiplayerPresence?: boolean
+  hoverCard?: (cardId: string | null) => void
+  viewerId?: string | null
+  gameMode?: 'single' | 'multiplayer'
+
+  // Card rendering
+  renderCard: (props: {
+    card: MemoryCard
+    isFlipped: boolean
+    isMatched: boolean
+    onClick: () => void
+    disabled: boolean
+  }) => ReactNode
+}
+
+/**
+ * Unified MemoryGrid component that works for both single-player and multiplayer modes.
+ * Conditionally enables multiplayer presence features (hover avatars) when configured.
+ */
+export function MemoryGrid({
+  state,
+  gridConfig,
+  flipCard,
+  renderCard,
+  enableMultiplayerPresence = false,
+  hoverCard,
+  viewerId,
+  gameMode = 'single',
+}: MemoryGridProps) {
+  const cardRefs = useRef<Map<string, HTMLElement>>(new Map())
   const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length)
+
+  // Check if it's the local player's turn (for multiplayer mode)
+  const isMyTurn = useMemo(() => {
+    if (!enableMultiplayerPresence || gameMode === 'single') return true
+
+    // In local games, all players belong to current user, so always their turn
+    // In room games, check if current player belongs to this user
+    const currentPlayerMetadata = state.playerMetadata?.[state.currentPlayer || '']
+    return currentPlayerMetadata?.userId === viewerId
+  }, [
+    enableMultiplayerPresence,
+    gameMode,
+    state.currentPlayer,
+    state.playerMetadata,
+    viewerId,
+  ])
 
   if (!state.gameCards.length) {
     return null
@@ -93,6 +161,27 @@ export function MemoryGrid() {
 
   const handleCardClick = (cardId: string) => {
     flipCard(cardId)
+  }
+
+  // Get player metadata for hover avatars
+  const getPlayerHoverInfo = (playerId: string) => {
+    const player = state.playerMetadata?.[playerId]
+    return player
+      ? {
+          emoji: player.emoji,
+          name: player.name,
+          color: player.color,
+        }
+      : null
+  }
+
+  // Set card ref callback
+  const setCardRef = (cardId: string) => (element: HTMLDivElement | null) => {
+    if (element) {
+      cardRefs.current.set(cardId, element)
+    } else {
+      cardRefs.current.delete(cardId)
+    }
   }
 
   return (
@@ -164,6 +253,7 @@ export function MemoryGrid() {
           return (
             <div
               key={card.id}
+              ref={enableMultiplayerPresence ? setCardRef(card.id) : undefined}
               className={css({
                 aspectRatio: '3/4',
                 // Fully responsive card sizing - no fixed pixel sizes
@@ -174,22 +264,42 @@ export function MemoryGrid() {
                 opacity: isDimmed ? 0.3 : 1,
                 transition: 'opacity 0.3s ease',
                 filter: isDimmed ? 'grayscale(0.7)' : 'none',
+                position: 'relative',
                 // Shake animation for mismatched cards
                 animation: shouldShake ? 'cardShake 0.5s ease-in-out' : 'none',
               })}
+              onMouseEnter={
+                enableMultiplayerPresence && hoverCard
+                  ? () => {
+                      // Only send hover if it's your turn and card is not matched
+                      if (!isMatched && isMyTurn) {
+                        hoverCard(card.id)
+                      }
+                    }
+                  : undefined
+              }
+              onMouseLeave={
+                enableMultiplayerPresence && hoverCard
+                  ? () => {
+                      // Clear hover state when mouse leaves card
+                      if (!isMatched && isMyTurn) {
+                        hoverCard(null)
+                      }
+                    }
+                  : undefined
+              }
             >
-              <GameCard
-                card={card}
-                isFlipped={isFlipped}
-                isMatched={isMatched}
-                onClick={() => (isValidForSelection ? handleCardClick(card.id) : undefined)}
-                disabled={state.isProcessingMove || !isValidForSelection}
-              />
+              {renderCard({
+                card,
+                isFlipped,
+                isMatched,
+                onClick: () => (isValidForSelection ? handleCardClick(card.id) : undefined),
+                disabled: state.isProcessingMove || !isValidForSelection,
+              })}
             </div>
           )
         })}
       </div>
-
 
       {/* Processing Overlay */}
       {state.isProcessingMove && (
@@ -206,12 +316,52 @@ export function MemoryGrid() {
           })}
         />
       )}
+
+      {/* Animated Hover Avatars (multiplayer only) */}
+      {enableMultiplayerPresence &&
+        state.playerHovers &&
+        Object.entries(state.playerHovers)
+          .filter(([playerId]) => {
+            // Only show hover avatars for REMOTE players (not the current user's own players)
+            // This provides "presence" for opponents without cluttering your own view
+            const playerMetadata = state.playerMetadata?.[playerId]
+            const isRemotePlayer = playerMetadata?.userId !== viewerId
+            // Also ensure it's the current player's turn (so we only show active hovers)
+            const isCurrentPlayer = playerId === state.currentPlayer
+            return isRemotePlayer && isCurrentPlayer
+          })
+          .map(([playerId, cardId]) => {
+            const playerInfo = getPlayerHoverInfo(playerId)
+            // Get card element if player is hovering (cardId might be null)
+            const cardElement = cardId ? cardRefs.current.get(cardId) : null
+            // Check if it's this player's turn
+            const isPlayersTurn = state.currentPlayer === playerId
+            // Check if the card being hovered is flipped
+            const hoveredCard = cardId ? state.gameCards.find((c) => c.id === cardId) : null
+            const isCardFlipped = hoveredCard
+              ? state.flippedCards.some((c) => c.id === hoveredCard.id) || hoveredCard.matched
+              : false
+
+            if (!playerInfo) return null
+
+            // Render avatar even if no cardElement (it will handle hiding itself)
+            return (
+              <HoverAvatar
+                key={playerId} // Key by playerId keeps component alive across card changes!
+                playerId={playerId}
+                playerInfo={playerInfo}
+                cardElement={cardElement}
+                isPlayersTurn={isPlayersTurn}
+                isCardFlipped={isCardFlipped}
+              />
+            )
+          })}
     </div>
   )
 }
 
 // Add shake animation for mismatched cards
-const shakeAnimation = `
+const cardShakeAnimation = `
 @keyframes cardShake {
   0%, 100% { transform: translateX(0) rotate(0deg); }
   10%, 30%, 50%, 70%, 90% { transform: translateX(-8px) rotate(-2deg); }
@@ -223,6 +373,6 @@ const shakeAnimation = `
 if (typeof document !== 'undefined' && !document.getElementById('memory-grid-animations')) {
   const style = document.createElement('style')
   style.id = 'memory-grid-animations'
-  style.textContent = shakeAnimation
+  style.textContent = cardShakeAnimation
   document.head.appendChild(style)
 }

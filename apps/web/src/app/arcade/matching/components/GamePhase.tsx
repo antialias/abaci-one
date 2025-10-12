@@ -1,11 +1,18 @@
 'use client'
 
+import { useMemo } from 'react'
+import { useViewerId } from '@/hooks/useViewerId'
+import { MemoryGrid } from '@/components/matching/MemoryGrid'
 import { css } from '../../../../../styled-system/css'
 import { useMemoryPairs } from '../context/MemoryPairsContext'
-import { MemoryGrid } from './MemoryGrid'
+import { getGridConfiguration } from '../utils/cardGeneration'
+import { GameCard } from './GameCard'
 
 export function GamePhase() {
-  const { state } = useMemoryPairs()
+  const { state, flipCard, hoverCard, gameMode } = useMemoryPairs()
+  const { data: viewerId } = useViewerId()
+
+  const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])
 
   return (
     <div
@@ -29,7 +36,24 @@ export function GamePhase() {
           overflow: 'hidden',
         })}
       >
-        <MemoryGrid />
+        <MemoryGrid
+          state={state}
+          gridConfig={gridConfig}
+          flipCard={flipCard}
+          enableMultiplayerPresence={true}
+          hoverCard={hoverCard}
+          viewerId={viewerId}
+          gameMode={gameMode}
+          renderCard={({ card, isFlipped, isMatched, onClick, disabled }) => (
+            <GameCard
+              card={card}
+              isFlipped={isFlipped}
+              isMatched={isMatched}
+              onClick={onClick}
+              disabled={disabled}
+            />
+          )}
+        />
       </div>
 
       {/* Quick Tip - Only show when game is starting and on larger screens */}
