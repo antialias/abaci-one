@@ -26,6 +26,7 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
     <DropdownMenu.Root open={open} onOpenChange={handleOpenChange}>
       <DropdownMenu.Trigger asChild>
         <button
+          onClick={(e) => e.stopPropagation()} // Prevent parent dropdown from closing
           className={css({
             display: 'flex',
             alignItems: 'center',
@@ -75,6 +76,7 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
 
       <DropdownMenu.Portal>
         <DropdownMenu.Content
+          onClick={(e) => e.stopPropagation()} // Prevent clicks inside from closing parent
           className={css({
             bg: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
             rounded: 'xl',
