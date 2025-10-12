@@ -6,20 +6,26 @@ import * as RadioGroup from '@radix-ui/react-radio-group'
 import * as Switch from '@radix-ui/react-switch'
 import { type BeadShape, type ColorScheme, useAbacusDisplay } from '@soroban/abacus-react'
 import { useState } from 'react'
+import { Z_INDEX } from '../constants/zIndex'
 import { css } from '../../styled-system/css'
 import { hstack, stack } from '../../styled-system/patterns'
 
 interface AbacusDisplayDropdownProps {
   isFullscreen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDropdownProps) {
+export function AbacusDisplayDropdown({ isFullscreen = false, onOpenChange: onOpenChangeProp }: AbacusDisplayDropdownProps) {
   const [open, setOpen] = useState(false)
   const { config, updateConfig, resetToDefaults } = useAbacusDisplay()
 
+  console.log('[AbacusDisplayDropdown] State:', { open })
+
   const handleOpenChange = (isOpen: boolean) => {
-    console.log('Dropdown open change:', isOpen)
+    console.log('[AbacusDisplayDropdown] onOpenChange called with:', isOpen, 'current open:', open)
     setOpen(isOpen)
+    // Notify parent component
+    onOpenChangeProp?.(isOpen)
   }
 
   return (
@@ -75,6 +81,12 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
 
       <DropdownMenu.Portal>
         <DropdownMenu.Content
+          onInteractOutside={(e) => {
+            const target = e.target as HTMLElement
+            console.log('[AbacusDisplayDropdown] onInteractOutside triggered')
+            console.log('[AbacusDisplayDropdown] Target element:', target)
+            console.log('[AbacusDisplayDropdown] Target tagName:', target.tagName)
+          }}
           className={css({
             bg: isFullscreen ? 'rgba(0, 0, 0, 0.85)' : 'white',
             rounded: 'xl',
@@ -88,10 +100,13 @@ export function AbacusDisplayDropdown({ isFullscreen = false }: AbacusDisplayDro
             maxH: '80vh',
             overflowY: 'auto',
             position: 'relative',
-            zIndex: 50,
           })}
+          style={{
+            zIndex: Z_INDEX.GAME_NAV.HAMBURGER_NESTED_DROPDOWN,
+          }}
+          side="right"
           sideOffset={8}
-          align="end"
+          align="start"
         >
           <div className={stack({ gap: '6' })}>
             {/* Header */}

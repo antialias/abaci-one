@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import React, { useState } from 'react'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
+import { Z_INDEX } from '../constants/zIndex'
 import { useFullscreen } from '../contexts/FullscreenContext'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 
@@ -32,12 +33,16 @@ function HamburgerMenu({
 }) {
   const [open, setOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
+  const [nestedDropdownOpen, setNestedDropdownOpen] = useState(false)
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
-  // Open on hover or click
-  const isOpen = open || hovered
+  // Open on hover or click OR if nested dropdown is open
+  const isOpen = open || hovered || nestedDropdownOpen
+
+  console.log('[HamburgerMenu] State:', { open, hovered, nestedDropdownOpen, isOpen })
 
   const handleMouseEnter = () => {
+    console.log('[HamburgerMenu] Mouse enter')
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current)
       hoverTimeoutRef.current = null
@@ -46,10 +51,23 @@ function HamburgerMenu({
   }
 
   const handleMouseLeave = () => {
+    console.log('[HamburgerMenu] Mouse leave, nestedDropdownOpen:', nestedDropdownOpen)
+    // Don't close if nested dropdown is open
+    if (nestedDropdownOpen) {
+      console.log('[HamburgerMenu] Skipping close - nested dropdown is open')
+      return
+    }
+
     // Delay closing to allow moving from button to menu
     hoverTimeoutRef.current = setTimeout(() => {
+      console.log('[HamburgerMenu] Mouse leave timeout fired')
       setHovered(false)
     }, 150)
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    console.log('[HamburgerMenu] onOpenChange called with:', newOpen, 'current open:', open)
+    setOpen(newOpen)
   }
 
   React.useEffect(() => {
@@ -61,7 +79,7 @@ function HamburgerMenu({
   }, [])
 
   return (
-    <DropdownMenu.Root open={isOpen} onOpenChange={setOpen}>
+    <DropdownMenu.Root open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
@@ -104,8 +122,18 @@ function HamburgerMenu({
           onInteractOutside={(e) => {
             // Don't close the hamburger menu when clicking inside the nested style dropdown
             const target = e.target as HTMLElement
+            console.log('[HamburgerMenu] onInteractOutside triggered')
+            console.log('[HamburgerMenu] Target element:', target)
+            console.log('[HamburgerMenu] Target tagName:', target.tagName)
+            console.log('[HamburgerMenu] Target className:', target.className)
+            console.log('[HamburgerMenu] Has [role="dialog"]:', !!target.closest('[role="dialog"]'))
+            console.log('[HamburgerMenu] Has [data-radix-popper-content-wrapper]:', !!target.closest('[data-radix-popper-content-wrapper]'))
+
             if (target.closest('[role="dialog"]') || target.closest('[data-radix-popper-content-wrapper]')) {
+              console.log('[HamburgerMenu] Preventing close - nested dropdown interaction')
               e.preventDefault()
+            } else {
+              console.log('[HamburgerMenu] Allowing close - outside interaction')
             }
           }}
           style={{
@@ -115,7 +143,7 @@ function HamburgerMenu({
             padding: '8px',
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.3)',
             minWidth: '220px',
-            zIndex: 9999,
+            zIndex: Z_INDEX.GAME_NAV.HAMBURGER_MENU,
             animation: 'dropdownFadeIn 0.2s ease-out',
           }}
         >
@@ -355,7 +383,10 @@ function HamburgerMenu({
           </div>
 
           <div style={{ padding: '0 6px' }}>
-            <AbacusDisplayDropdown isFullscreen={isFullscreen} />
+            <AbacusDisplayDropdown
+              isFullscreen={isFullscreen}
+              onOpenChange={setNestedDropdownOpen}
+            />
           </div>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -407,7 +438,7 @@ function MinimalNav({
         top: '16px',
         left: '16px',
         right: '16px',
-        zIndex: 100,
+        zIndex: Z_INDEX.NAV_BAR,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'flex-start',
