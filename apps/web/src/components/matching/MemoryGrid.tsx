@@ -79,19 +79,9 @@ function useGridDimensions(gridConfig: any, totalCards: number) {
 }
 
 // Type definitions
-export interface MemoryCard {
-  id: string
-  type: string
-  number: number
-  matched: boolean
-  matchedBy?: string
-  targetSum?: number
-  complement?: number
-}
-
-export interface MemoryGridState {
-  gameCards: MemoryCard[]
-  flippedCards: MemoryCard[]
+export interface MemoryGridState<TCard = any> {
+  gameCards: TCard[]
+  flippedCards: TCard[]
   showMismatchFeedback: boolean
   isProcessingMove: boolean
   gameType: string
@@ -100,9 +90,9 @@ export interface MemoryGridState {
   currentPlayer?: string
 }
 
-export interface MemoryGridProps {
+export interface MemoryGridProps<TCard = any> {
   // Core game state and actions
-  state: MemoryGridState
+  state: MemoryGridState<TCard>
   gridConfig: any
   flipCard: (cardId: string) => void
 
@@ -114,7 +104,7 @@ export interface MemoryGridProps {
 
   // Card rendering
   renderCard: (props: {
-    card: MemoryCard
+    card: TCard
     isFlipped: boolean
     isMatched: boolean
     onClick: () => void
@@ -126,7 +116,7 @@ export interface MemoryGridProps {
  * Unified MemoryGrid component that works for both single-player and multiplayer modes.
  * Conditionally enables multiplayer presence features (hover avatars) when configured.
  */
-export function MemoryGrid({
+export function MemoryGrid<TCard extends { id: string; matched: boolean; type: string; number: number }>({
   state,
   gridConfig,
   flipCard,
@@ -135,7 +125,7 @@ export function MemoryGrid({
   hoverCard,
   viewerId,
   gameMode = 'single',
-}: MemoryGridProps) {
+}: MemoryGridProps<TCard>) {
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map())
   const gridDimensions = useGridDimensions(gridConfig, state.gameCards.length)
 
