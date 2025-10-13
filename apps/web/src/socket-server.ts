@@ -359,6 +359,18 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
+    // User Channel: Join (for moderation events)
+    socket.on('join-user-channel', async ({ userId }: { userId: string }) => {
+      console.log(`👤 User ${userId} joining user-specific channel`)
+      try {
+        // Join user-specific channel for moderation notifications
+        socket.join(`user:${userId}`)
+        console.log(`✅ User ${userId} joined user channel`)
+      } catch (error) {
+        console.error('Error joining user channel:', error)
+      }
+    })
+
     // Room: Leave
     socket.on('leave-room', async ({ roomId, userId }: { roomId: string; userId: string }) => {
       console.log(`🚪 User ${userId} leaving room ${roomId}`)
