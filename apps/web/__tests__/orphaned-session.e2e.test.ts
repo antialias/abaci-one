@@ -98,7 +98,7 @@ describe('E2E: Orphaned Session Cleanup on Navigation', () => {
 
     // === USER NAVIGATION PHASE ===
     // User navigates to /arcade (arcade lobby)
-    // The useArcadeRedirect hook calls getArcadeSession to check for active session
+    // Client checks for active session
     const activeSession = await getArcadeSession(testGuestId)
 
     // === ASSERTION PHASE ===

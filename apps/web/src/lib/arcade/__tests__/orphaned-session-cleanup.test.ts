@@ -167,8 +167,8 @@ describe('Orphaned Session Cleanup', () => {
      * - Room gets TTL deleted
      * - Session persists with null/invalid roomId
      * - User visits /arcade
-     * - useArcadeRedirect finds the orphaned session
-     * - User gets redirected to /arcade/matching
+     * - Client checks for active session
+     * - Without cleanup, user would be directed to /arcade/matching
      * - But there's no valid game to play
      *
      * Fix: getArcadeSession should auto-delete orphaned sessions
@@ -187,7 +187,7 @@ describe('Orphaned Session Cleanup', () => {
     // 2. Room gets TTL deleted
     await deleteRoom(testRoomId)
 
-    // 3. User's client checks for active session (like useArcadeRedirect does)
+    // 3. User's client checks for active session
     const activeSession = await getArcadeSession(testGuestId)
 
     // 4. Should return undefined, preventing redirect
