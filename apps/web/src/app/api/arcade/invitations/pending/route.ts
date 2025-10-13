@@ -1,11 +1,12 @@
+import { and, eq, isNull } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { eq } from 'drizzle-orm'
 import { getViewerId } from '@/lib/viewer'
 
 /**
  * GET /api/arcade/invitations/pending
  * Get all pending invitations for the current user with room details
+ * Excludes invitations for rooms where the user is currently banned
  */
 export async function GET(req: NextRequest) {
   try {
@@ -33,8 +34,18 @@ export async function GET(req: NextRequest) {
       .where(eq(schema.roomInvitations.userId, viewerId))
       .orderBy(schema.roomInvitations.createdAt)
 
-    // Filter to only pending invitations
-    const pendingInvitations = invitations.filter((inv) => inv.status === 'pending')
+    // Get all active bans for this user
+    const activeBans = await db
+      .select({ roomId: schema.roomBans.roomId })
+      .from(schema.roomBans)
+      .where(and(eq(schema.roomBans.userId, viewerId), isNull(schema.roomBans.unbannedAt)))
+
+    const bannedRoomIds = new Set(activeBans.map((ban) => ban.roomId))
+
+    // Filter to only pending invitations, excluding banned rooms
+    const pendingInvitations = invitations.filter(
+      (inv) => inv.status === 'pending' && !bannedRoomIds.has(inv.roomId)
+    )
 
     return NextResponse.json({ invitations: pendingInvitations }, { status: 200 })
   } catch (error: any) {

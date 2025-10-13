@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { useJoinRoom } from '@/hooks/useRoomData'
 
 interface PendingInvitation {
@@ -20,12 +20,17 @@ export interface PendingInvitationsProps {
    * Called when invitations change (for refreshing)
    */
   onInvitationChange?: () => void
+  /**
+   * Optional: Room ID to exclude (if user is already in this room)
+   */
+  currentRoomId?: string
 }
 
 /**
  * Displays a list of pending room invitations for the current user
+ * Excludes invitations for the room the user is currently in
  */
-export function PendingInvitations({ onInvitationChange }: PendingInvitationsProps) {
+export function PendingInvitations({ onInvitationChange, currentRoomId }: PendingInvitationsProps) {
   const router = useRouter()
   const [invitations, setInvitations] = useState<PendingInvitation[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -126,7 +131,12 @@ export function PendingInvitations({ onInvitationChange }: PendingInvitationsPro
     )
   }
 
-  if (invitations.length === 0) {
+  // Filter out invitations for the current room
+  const filteredInvitations = currentRoomId
+    ? invitations.filter((inv) => inv.roomId !== currentRoomId)
+    : invitations
+
+  if (filteredInvitations.length === 0) {
     return null // Don't show anything if no invitations
   }
 
@@ -157,12 +167,12 @@ export function PendingInvitations({ onInvitationChange }: PendingInvitationsPro
             margin: 0,
           }}
         >
-          Room Invitations ({invitations.length})
+          Room Invitations ({filteredInvitations.length})
         </h3>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {invitations.map((invitation) => {
+        {filteredInvitations.map((invitation) => {
           const isAutoUnban = invitation.invitationType === 'auto-unban'
           const timeSince = Math.floor(
             (Date.now() - new Date(invitation.createdAt).getTime()) / 1000 / 60
