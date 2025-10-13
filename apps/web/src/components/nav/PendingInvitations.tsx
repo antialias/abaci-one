@@ -45,11 +45,12 @@ export function PendingInvitations({ onInvitationChange, currentRoomId }: Pendin
         const data = await res.json()
         setInvitations(data.invitations || [])
       } else {
-        throw new Error('Failed to fetch invitations')
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to fetch invitations')
       }
     } catch (err) {
       console.error('Failed to fetch invitations:', err)
-      setError('Failed to load invitations')
+      setError(err instanceof Error ? err.message : 'Failed to load invitations')
     } finally {
       setIsLoading(false)
     }
@@ -87,7 +88,8 @@ export function PendingInvitations({ onInvitationChange, currentRoomId }: Pendin
       })
 
       if (!res.ok) {
-        throw new Error('Failed to decline invitation')
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to decline invitation')
       }
 
       // Refresh invitations

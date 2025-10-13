@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
-import { createInvitation, getRoomInvitations } from '@/lib/arcade/room-invitations'
+import {
+  createInvitation,
+  declineInvitation,
+  getInvitation,
+  getRoomInvitations,
+} from '@/lib/arcade/room-invitations'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
@@ -121,5 +126,35 @@ export async function GET(req: NextRequest, context: RouteContext) {
   } catch (error: any) {
     console.error('Failed to get invitations:', error)
     return NextResponse.json({ error: 'Failed to get invitations' }, { status: 500 })
+  }
+}
+
+/**
+ * DELETE /api/arcade/rooms/:roomId/invite
+ * Decline an invitation (invited user only)
+ */
+export async function DELETE(req: NextRequest, context: RouteContext) {
+  try {
+    const { roomId } = await context.params
+    const viewerId = await getViewerId()
+
+    // Check if there's an invitation for this user
+    const invitation = await getInvitation(roomId, viewerId)
+
+    if (!invitation) {
+      return NextResponse.json({ error: 'No invitation found for this room' }, { status: 404 })
+    }
+
+    if (invitation.status !== 'pending') {
+      return NextResponse.json({ error: 'Invitation is not pending' }, { status: 400 })
+    }
+
+    // Decline the invitation
+    await declineInvitation(invitation.id)
+
+    return NextResponse.json({ success: true }, { status: 200 })
+  } catch (error: any) {
+    console.error('Failed to decline invitation:', error)
+    return NextResponse.json({ error: 'Failed to decline invitation' }, { status: 500 })
   }
 }

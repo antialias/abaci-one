@@ -121,6 +121,9 @@ export function ModerationPanel({
         if (reportsRes.ok) {
           const data = await reportsRes.json()
           setReports(data.reports || [])
+        } else {
+          const errorData = await reportsRes.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to load reports')
         }
 
         // Load bans
@@ -128,6 +131,9 @@ export function ModerationPanel({
         if (bansRes.ok) {
           const data = await bansRes.json()
           setBans(data.bans || [])
+        } else {
+          const errorData = await bansRes.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to load bans')
         }
 
         // Load historical members
@@ -135,10 +141,13 @@ export function ModerationPanel({
         if (historyRes.ok) {
           const data = await historyRes.json()
           setHistoricalMembers(data.historicalMembers || [])
+        } else {
+          const errorData = await historyRes.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Failed to load history')
         }
       } catch (err) {
         console.error('Failed to load moderation data:', err)
-        setError('Failed to load data')
+        setError(err instanceof Error ? err.message : 'Failed to load data')
       } finally {
         setIsLoading(false)
       }
@@ -159,7 +168,8 @@ export function ModerationPanel({
       })
 
       if (!res.ok) {
-        throw new Error('Failed to kick player')
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to kick player')
       }
 
       // Success - member will be removed via socket update
@@ -191,7 +201,8 @@ export function ModerationPanel({
       })
 
       if (!res.ok) {
-        throw new Error('Failed to ban player')
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to ban player')
       }
 
       // Reload bans
@@ -221,7 +232,8 @@ export function ModerationPanel({
       })
 
       if (!res.ok) {
-        throw new Error('Failed to unban player')
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to unban player')
       }
 
       // Reload bans and history
@@ -256,7 +268,8 @@ export function ModerationPanel({
       })
 
       if (!res.ok) {
-        throw new Error('Failed to unban player')
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to unban player')
       }
 
       // Reload bans and history

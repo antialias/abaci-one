@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
@@ -34,11 +34,11 @@ export async function GET(req: NextRequest) {
       .where(eq(schema.roomInvitations.userId, viewerId))
       .orderBy(schema.roomInvitations.createdAt)
 
-    // Get all active bans for this user
+    // Get all active bans for this user (bans are deleted when unbanned, so any existing ban is active)
     const activeBans = await db
       .select({ roomId: schema.roomBans.roomId })
       .from(schema.roomBans)
-      .where(and(eq(schema.roomBans.userId, viewerId), isNull(schema.roomBans.unbannedAt)))
+      .where(eq(schema.roomBans.userId, viewerId))
 
     const bannedRoomIds = new Set(activeBans.map((ban) => ban.roomId))
 
