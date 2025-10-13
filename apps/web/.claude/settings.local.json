@@ -31,7 +31,19 @@
       "Bash(timeout 15 pnpm run dev:*)",
       "Bash(npx tsc:*)",
       "Bash(npx biome format:*)",
-      "Bash(npx biome check:*)"
+      "Bash(npx biome check:*)",
+      "Bash(npx @biomejs/biome lint:*)",
+      "Bash(test -f /Users/antialias/projects/soroban-abacus-flashcards/apps/web/src/hooks/__tests__/useArcadeGuard.test.ts)",
+      "Bash(timeout 30 npm test -- AddPlayerButton.popover-persistence.test.tsx --run)",
+      "Bash(timeout 30 npm test:*)",
+      "Bash(xargs:*)",
+      "Bash(for file in page.tsx practice/page.tsx sprint/page.tsx survival/page.tsx)",
+      "Bash(do)",
+      "Bash(done)",
+      "Bash(npx playwright test:*)",
+      "Bash(npm run:*)",
+      "Bash(\"\")",
+      "Bash(npx @biomejs/biome check:*)"
     ],
     "deny": [],
     "ask": []
