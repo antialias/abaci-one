@@ -5,6 +5,7 @@
 
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { recordRoomMemberHistory } from './room-member-history'
 
 export interface AddMemberOptions {
   roomId: string
@@ -82,6 +83,14 @@ export async function addRoomMember(
   try {
     const [member] = await db.insert(schema.roomMembers).values(newMember).returning()
     console.log('[Room Membership] Added member:', member.userId, 'to room:', member.roomId)
+
+    // Record in history
+    await recordRoomMemberHistory({
+      roomId: options.roomId,
+      userId: options.userId,
+      displayName: options.displayName,
+      action: 'active',
+    })
 
     return {
       member,
@@ -165,12 +174,28 @@ export async function touchMember(roomId: string, userId: string): Promise<void>
 
 /**
  * Remove a member from a room
+ * Note: This only removes from active members. History is preserved.
+ * Use updateRoomMemberAction from room-member-history to set the reason (left/kicked/banned)
  */
 export async function removeMember(roomId: string, userId: string): Promise<void> {
+  // Get member info before deleting
+  const member = await getRoomMember(roomId, userId)
+
   await db
     .delete(schema.roomMembers)
     .where(and(eq(schema.roomMembers.roomId, roomId), eq(schema.roomMembers.userId, userId)))
   console.log('[Room Membership] Removed member:', userId, 'from room:', roomId)
+
+  // Update history to show they left (default action)
+  // This can be overridden by kick/ban functions
+  if (member) {
+    await recordRoomMemberHistory({
+      roomId,
+      userId,
+      displayName: member.displayName,
+      action: 'left',
+    })
+  }
 }
 
 /**
