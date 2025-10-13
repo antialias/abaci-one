@@ -1989,7 +1989,7 @@ export default function MemoryQuizPage() {
   }, [state.prefixAcceptanceTimeout])
 
   return (
-    <PageWithNav navTitle="Memory Lightning" navEmoji="🧠">
+    <PageWithNav navTitle="Memory Lightning" navEmoji="🧠" gameName="memory-quiz">
       <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
 
       <div

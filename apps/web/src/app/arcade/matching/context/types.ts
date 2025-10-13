@@ -124,7 +124,6 @@ export interface MemoryPairsContextValue {
   currentGameStatistics: GameStatistics
   gameMode: GameMode // Derived from global context
   activePlayers: Player[] // Active player IDs from arena
-  canModifyPlayers: boolean // Whether players can be added/removed (controls button visibility)
 
   // PAUSE/RESUME: Computed pause/resume values
   hasConfigChanged?: boolean

@@ -31,6 +31,7 @@ export function MemoryPairsGame() {
     <PageWithNav
       navTitle={navTitle}
       navEmoji={navEmoji}
+      gameName="matching"
       emphasizeGameContext={state.gamePhase === 'setup'}
       currentPlayerId={state.currentPlayer}
       playerScores={state.scores}

@@ -568,7 +568,6 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     currentGameStatistics,
     hasConfigChanged,
     canResumeGame,
-    canModifyPlayers: false, // Room-based games: always show buttons (false = show buttons)
     startGame,
     resumeGame,
     flipCard,

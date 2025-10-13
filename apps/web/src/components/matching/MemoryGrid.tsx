@@ -116,7 +116,9 @@ export interface MemoryGridProps<TCard = any> {
  * Unified MemoryGrid component that works for both single-player and multiplayer modes.
  * Conditionally enables multiplayer presence features (hover avatars) when configured.
  */
-export function MemoryGrid<TCard extends { id: string; matched: boolean; type: string; number: number }>({
+export function MemoryGrid<
+  TCard extends { id: string; matched: boolean; type: string; number: number },
+>({
   state,
   gridConfig,
   flipCard,
@@ -137,13 +139,7 @@ export function MemoryGrid<TCard extends { id: string; matched: boolean; type: s
     // In room games, check if current player belongs to this user
     const currentPlayerMetadata = state.playerMetadata?.[state.currentPlayer || '']
     return currentPlayerMetadata?.userId === viewerId
-  }, [
-    enableMultiplayerPresence,
-    gameMode,
-    state.currentPlayer,
-    state.playerMetadata,
-    viewerId,
-  ])
+  }, [enableMultiplayerPresence, gameMode, state.currentPlayer, state.playerMetadata, viewerId])
 
   if (!state.gameCards.length) {
     return null

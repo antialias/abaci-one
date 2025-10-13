@@ -89,7 +89,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const players = useMemo(() => {
     const map = new Map<string, Player>(localPlayers)
 
-    if (roomData) {
+    if (roomData?.memberPlayers) {
       // Add players from other room members (marked as remote)
       Object.entries(roomData.memberPlayers).forEach(([userId, memberPlayers]) => {
         // Skip the current user's players (already in localPlayers)
@@ -116,7 +116,7 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const activePlayers = useMemo(() => {
     const set = new Set<string>()
 
-    if (roomData) {
+    if (roomData?.memberPlayers) {
       // In room mode: all players from all members are active
       Object.values(roomData.memberPlayers).forEach((memberPlayers) => {
         memberPlayers.forEach((player) => {

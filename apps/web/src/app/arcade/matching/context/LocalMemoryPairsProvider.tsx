@@ -2,7 +2,6 @@
 
 import { type ReactNode, useCallback, useEffect, useMemo, useReducer } from 'react'
 import { useRouter } from 'next/navigation'
-import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
 import { useViewerId } from '@/hooks/useViewerId'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { generateGameCards } from '../utils/cardGeneration'
@@ -310,9 +309,6 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
   // LOCAL-ONLY: Get only the current user's players (no room members)
   const { data: userPlayers = [] } = useUserPlayers()
 
-  // Use arcade redirect to determine button visibility
-  const { canModifyPlayers } = useArcadeRedirect({ currentGame: 'matching' })
-
   // Build players map from current user's players only
   const players = useMemo(() => {
     const map = new Map()
@@ -573,7 +569,6 @@ export function LocalMemoryPairsProvider({ children }: { children: ReactNode }) 
     currentGameStatistics,
     hasConfigChanged,
     canResumeGame,
-    canModifyPlayers,
     startGame,
     resumeGame,
     flipCard,

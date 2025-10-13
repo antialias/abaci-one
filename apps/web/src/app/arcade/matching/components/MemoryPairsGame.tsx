@@ -13,7 +13,7 @@ import { SetupPhase } from './SetupPhase'
 
 export function MemoryPairsGame() {
   const router = useRouter()
-  const { state, exitSession, resetGame, goToSetup, canModifyPlayers } = useMemoryPairs()
+  const { state, exitSession, resetGame, goToSetup } = useMemoryPairs()
   const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
 
@@ -34,7 +34,6 @@ export function MemoryPairsGame() {
       navTitle={navTitle}
       navEmoji={navEmoji}
       emphasizeGameContext={state.gamePhase === 'setup'}
-      canModifyPlayers={canModifyPlayers}
       onExitSession={() => {
         exitSession()
         router.push('/arcade')
