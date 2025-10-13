@@ -1,4 +1,3 @@
-import React from 'react'
 import { ActivePlayersList } from './ActivePlayersList'
 import { AddPlayerButton } from './AddPlayerButton'
 import { FullscreenPlayerSelection } from './FullscreenPlayerSelection'
@@ -6,6 +5,8 @@ import { GameModeIndicator } from './GameModeIndicator'
 import { GameTitleMenu } from './GameTitleMenu'
 import { NetworkPlayerIndicator } from './NetworkPlayerIndicator'
 import { RoomInfo } from './RoomInfo'
+import { useViewerId } from '@/hooks/useViewerId'
+import { useRoomData } from '@/hooks/useRoomData'
 
 type GameMode = 'none' | 'single' | 'battle' | 'tournament'
 
@@ -20,9 +21,11 @@ interface NetworkPlayer {
   emoji?: string
   name?: string
   isOnline?: boolean
+  userId?: string // The user ID controlling this player
 }
 
 interface ArcadeRoomInfo {
+  roomId?: string
   roomName?: string
   gameName: string
   playerCount: number
@@ -32,6 +35,7 @@ interface ArcadeRoomInfo {
 interface GameContextNavProps {
   navTitle: string
   navEmoji?: string
+  gameName?: 'matching' | 'memory-quiz' | 'complement-race'
   gameMode: GameMode
   activePlayers: Player[]
   inactivePlayers: Player[]
@@ -43,7 +47,6 @@ interface GameContextNavProps {
   onExitSession?: () => void
   onSetup?: () => void
   onNewGame?: () => void
-  canModifyPlayers?: boolean
   // Arcade session info
   networkPlayers?: NetworkPlayer[]
   roomInfo?: ArcadeRoomInfo
@@ -51,11 +54,17 @@ interface GameContextNavProps {
   currentPlayerId?: string
   playerScores?: Record<string, number>
   playerStreaks?: Record<string, number>
+  // Lifted popover state from PageWithNav
+  showPopover?: boolean
+  setShowPopover?: (show: boolean) => void
+  activeTab?: 'add' | 'invite'
+  setActiveTab?: (tab: 'add' | 'invite') => void
 }
 
 export function GameContextNav({
   navTitle,
   navEmoji,
+  gameName,
   gameMode,
   activePlayers,
   inactivePlayers,
@@ -67,13 +76,24 @@ export function GameContextNav({
   onExitSession,
   onSetup,
   onNewGame,
-  canModifyPlayers = true,
   networkPlayers = [],
   roomInfo,
   currentPlayerId,
   playerScores,
   playerStreaks,
+  showPopover,
+  setShowPopover,
+  activeTab,
+  setActiveTab,
 }: GameContextNavProps) {
+  // Get current user info for moderation
+  const { data: currentUserId } = useViewerId()
+  const { roomData } = useRoomData()
+
+  // Check if current user is the host
+  const currentMember = roomData?.members.find((m) => m.userId === currentUserId)
+  const isCurrentUserHost = currentMember?.isCreator ?? false
+
   // 2x2 grid layout for normal mode, column for fullscreen
   if (showFullscreenSelection) {
     return (
@@ -144,7 +164,10 @@ export function GameContextNav({
     )
   }
 
-  // Normal layout: Left side | Right side (players spanning full height)
+  // Completely flat layout: ALL components always mounted, shown/hidden via display
+  // This ensures AddPlayerButton never unmounts, preserving its state
+  const showPlayers = activePlayers.length > 0 || (shouldEmphasize && inactivePlayers.length > 0)
+
   return (
     <div
       style={{
@@ -154,138 +177,159 @@ export function GameContextNav({
         width: 'auto',
       }}
     >
-      {/* Left side: Room info + Network players in same pane */}
-      {roomInfo ? (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: '12px',
-            padding: '6px 12px 12px 12px',
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05))',
-            borderRadius: '12px',
-            border: '2px solid rgba(255, 255, 255, 0.15)',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-          }}
-        >
-          <RoomInfo
-            roomName={roomInfo.roomName}
-            gameName={roomInfo.gameName}
-            playerCount={roomInfo.playerCount}
-            joinCode={roomInfo.joinCode}
-            shouldEmphasize={shouldEmphasize}
+      {/* Game Title Section - Always mounted, hidden when in room */}
+      <div
+        style={{
+          display: roomInfo ? 'none' : 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          flex: 1,
+        }}
+      >
+        <GameTitleMenu
+          navTitle={navTitle}
+          navEmoji={navEmoji}
+          onSetup={onSetup}
+          onNewGame={onNewGame}
+          onQuit={onExitSession}
+        />
+        <div style={{ marginLeft: 'auto' }}>
+          <GameModeIndicator
             gameMode={gameMode}
-            modeColor={
-              gameMode === 'battle' ? '#8b5cf6' :
-              gameMode === 'single' ? '#3b82f6' :
-              gameMode === 'tournament' ? '#f59e0b' :
-              '#6b7280'
-            }
-            modeEmoji={
-              gameMode === 'battle' ? '⚔️' :
-              gameMode === 'single' ? '🎯' :
-              gameMode === 'tournament' ? '🏆' :
-              '👥'
-            }
-            modeLabel={
-              gameMode === 'battle' ? 'Battle' :
-              gameMode === 'single' ? 'Solo' :
-              gameMode === 'tournament' ? 'Tournament' :
-              'Select Players'
-            }
-            navTitle={navTitle}
-            navEmoji={navEmoji}
-            onSetup={onSetup}
-            onNewGame={onNewGame}
-            onQuit={onExitSession}
-          />
-
-          {/* Network Players - inside same pane as room info */}
-          {networkPlayers.length > 0 && (
-            <>
-              <div
-                style={{
-                  width: '1px',
-                  height: '48px',
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  margin: '0 4px',
-                }}
-              />
-              {networkPlayers.map((player) => (
-                <NetworkPlayerIndicator
-                  key={player.id}
-                  player={player}
-                  shouldEmphasize={shouldEmphasize}
-                  currentPlayerId={currentPlayerId}
-                  playerScores={playerScores}
-                  playerStreaks={playerStreaks}
-                />
-              ))}
-            </>
-          )}
-        </div>
-      ) : (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            flex: 1,
-          }}
-        >
-          <GameTitleMenu
-            navTitle={navTitle}
-            navEmoji={navEmoji}
-            onSetup={onSetup}
-            onNewGame={onNewGame}
-            onQuit={onExitSession}
-            showMenu={!canModifyPlayers}
-          />
-          <div style={{ marginLeft: 'auto' }}>
-            <GameModeIndicator gameMode={gameMode} shouldEmphasize={shouldEmphasize} showFullscreenSelection={false} />
-          </div>
-        </div>
-      )}
-
-      {/* Right side: Active Players + Add Button */}
-      {(activePlayers.length > 0 || (shouldEmphasize && inactivePlayers.length > 0 && canModifyPlayers)) && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: shouldEmphasize ? '12px' : '8px',
-            padding: shouldEmphasize ? '12px 20px 16px 20px' : '6px 12px 12px 12px',
-            background: shouldEmphasize
-              ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.10))'
-              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05))',
-            borderRadius: shouldEmphasize ? '16px' : '12px',
-            border: shouldEmphasize ? '3px solid rgba(255, 255, 255, 0.3)' : '2px solid rgba(255, 255, 255, 0.15)',
-            boxShadow: shouldEmphasize
-              ? '0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.3)'
-              : '0 4px 12px rgba(0, 0, 0, 0.1)',
-            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)',
-          }}
-        >
-          <ActivePlayersList
-            activePlayers={activePlayers}
             shouldEmphasize={shouldEmphasize}
-            onRemovePlayer={onRemovePlayer}
-            onConfigurePlayer={onConfigurePlayer}
-            currentPlayerId={currentPlayerId}
-            playerScores={playerScores}
-            playerStreaks={playerStreaks}
+            showFullscreenSelection={false}
           />
-
-          {canModifyPlayers && (
-            <AddPlayerButton
-              inactivePlayers={inactivePlayers}
-              shouldEmphasize={shouldEmphasize}
-              onAddPlayer={onAddPlayer}
-            />
-          )}
         </div>
-      )}
+      </div>
+
+      {/* Room Info Section - Always mounted, hidden when not in room */}
+      <div
+        style={{
+          display: roomInfo ? 'flex' : 'none',
+          alignItems: 'flex-end',
+          gap: '12px',
+          padding: '6px 12px 12px 12px',
+          background:
+            'linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05))',
+          borderRadius: '12px',
+          border: '2px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          transition: 'all 0.3s ease',
+        }}
+      >
+        <RoomInfo
+          roomId={roomInfo?.roomId}
+          roomName={roomInfo?.roomName}
+          gameName={roomInfo?.gameName ?? ''}
+          playerCount={roomInfo?.playerCount ?? 0}
+          joinCode={roomInfo?.joinCode}
+          shouldEmphasize={shouldEmphasize}
+          gameMode={gameMode}
+          modeColor={
+            gameMode === 'battle'
+              ? '#8b5cf6'
+              : gameMode === 'single'
+                ? '#3b82f6'
+                : gameMode === 'tournament'
+                  ? '#f59e0b'
+                  : '#6b7280'
+          }
+          modeEmoji={
+            gameMode === 'battle'
+              ? '⚔️'
+              : gameMode === 'single'
+                ? '🎯'
+                : gameMode === 'tournament'
+                  ? '🏆'
+                  : '👥'
+          }
+          modeLabel={
+            gameMode === 'battle'
+              ? 'Battle'
+              : gameMode === 'single'
+                ? 'Solo'
+                : gameMode === 'tournament'
+                  ? 'Tournament'
+                  : 'Select Players'
+          }
+          navTitle={navTitle}
+          navEmoji={navEmoji}
+          onSetup={onSetup}
+          onNewGame={onNewGame}
+          onQuit={onExitSession}
+        />
+
+        {/* Network Players - inside same pane as room info */}
+        {networkPlayers.length > 0 && (
+          <>
+            <div
+              style={{
+                width: '1px',
+                height: '48px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                margin: '0 4px',
+              }}
+            />
+            {networkPlayers.map((player) => (
+              <NetworkPlayerIndicator
+                key={player.id}
+                player={player}
+                shouldEmphasize={shouldEmphasize}
+                currentPlayerId={currentPlayerId}
+                playerScores={playerScores}
+                playerStreaks={playerStreaks}
+                roomId={roomInfo?.roomId}
+                currentUserId={currentUserId}
+                isCurrentUserHost={isCurrentUserHost}
+              />
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Player Section - Always mounted, hidden when no players */}
+      <div
+        style={{
+          display: showPlayers ? 'flex' : 'none',
+          alignItems: 'flex-end',
+          gap: shouldEmphasize ? '12px' : '8px',
+          padding: shouldEmphasize ? '12px 20px 16px 20px' : '6px 12px 12px 12px',
+          background: shouldEmphasize
+            ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.10))'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05))',
+          borderRadius: shouldEmphasize ? '16px' : '12px',
+          border: shouldEmphasize
+            ? '3px solid rgba(255, 255, 255, 0.3)'
+            : '2px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: shouldEmphasize
+            ? '0 8px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.3)'
+            : '0 4px 12px rgba(0, 0, 0, 0.1)',
+          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: shouldEmphasize ? 'scale(1.05)' : 'scale(1)',
+        }}
+      >
+        <ActivePlayersList
+          activePlayers={activePlayers}
+          shouldEmphasize={shouldEmphasize}
+          onRemovePlayer={onRemovePlayer}
+          onConfigurePlayer={onConfigurePlayer}
+          currentPlayerId={currentPlayerId}
+          playerScores={playerScores}
+          playerStreaks={playerStreaks}
+        />
+
+        <AddPlayerButton
+          inactivePlayers={inactivePlayers}
+          shouldEmphasize={shouldEmphasize}
+          onAddPlayer={onAddPlayer}
+          showPopover={showPopover}
+          setShowPopover={setShowPopover}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isInRoom={!!roomInfo}
+          gameName={gameName || 'matching'}
+        />
+      </div>
 
       <style
         dangerouslySetInnerHTML={{

@@ -1,4 +1,5 @@
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { useState } from 'react'
 import type React from 'react'
 
 interface PlayerTooltipProps {
@@ -8,6 +9,8 @@ interface PlayerTooltipProps {
   isLocal?: boolean
   createdAt?: Date | number
   extraInfo?: string
+  canReport?: boolean
+  onReport?: () => void
 }
 
 /**
@@ -21,7 +24,10 @@ export function PlayerTooltip({
   isLocal = true,
   createdAt,
   extraInfo,
+  canReport = false,
+  onReport,
 }: PlayerTooltipProps) {
+  const [open, setOpen] = useState(false)
   // Format creation time
   const getCreatedTimeAgo = () => {
     if (!createdAt) return null
@@ -47,7 +53,7 @@ export function PlayerTooltip({
 
   return (
     <Tooltip.Provider delayDuration={200}>
-      <Tooltip.Root>
+      <Tooltip.Root open={open} onOpenChange={setOpen}>
         <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content
@@ -132,6 +138,48 @@ export function PlayerTooltip({
                 {extraInfo && <div>{extraInfo}</div>}
                 {createdAt && <div style={{ opacity: 0.7 }}>Joined {getCreatedTimeAgo()}</div>}
               </div>
+            )}
+
+            {/* Report button */}
+            {canReport && onReport && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setOpen(false)
+                  onReport()
+                }}
+                style={{
+                  width: '100%',
+                  marginTop: '12px',
+                  padding: '8px 12px',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: 'rgba(248, 113, 113, 1)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)'
+                  e.currentTarget.style.color = 'rgba(252, 165, 165, 1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'
+                  e.currentTarget.style.color = 'rgba(248, 113, 113, 1)'
+                }}
+              >
+                <span>🚩</span>
+                <span>Report Player</span>
+              </button>
             )}
 
             <Tooltip.Arrow

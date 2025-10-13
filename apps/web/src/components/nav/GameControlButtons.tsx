@@ -27,9 +27,7 @@ const buttonConfigs = {
 
 export function GameControlButtons({ onSetup, onNewGame, onQuit }: GameControlButtonsProps) {
   const createButtonStyle = (color: string, isHovered = false): React.CSSProperties => ({
-    background: isHovered
-      ? `linear-gradient(135deg, ${color}30, ${color}40)`
-      : `${color}20`,
+    background: isHovered ? `linear-gradient(135deg, ${color}30, ${color}40)` : `${color}20`,
     border: `2px solid ${color}${isHovered ? '60' : '40'}`,
     borderRadius: '6px',
     padding: '4px 10px',
@@ -41,9 +39,7 @@ export function GameControlButtons({ onSetup, onNewGame, onQuit }: GameControlBu
     alignItems: 'center',
     gap: '4px',
     transition: 'all 0.2s ease',
-    boxShadow: isHovered
-      ? `0 2px 8px ${color}30`
-      : 'none',
+    boxShadow: isHovered ? `0 2px 8px ${color}30` : 'none',
   })
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>, color: string) => {
