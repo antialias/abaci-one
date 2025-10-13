@@ -2,14 +2,16 @@
 
 import { useEffect, useRef } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
-import { useArcadeRedirect } from '@/hooks/useArcadeRedirect'
 import { css } from '../../../styled-system/css'
 import { EnhancedChampionArena } from '../../components/EnhancedChampionArena'
 import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
+import { PendingInvitations } from '@/components/nav/PendingInvitations'
+import { useRoomData } from '@/hooks/useRoomData'
 
 function ArcadeContent() {
   const { setFullscreenElement } = useFullscreen()
   const arcadeRef = useRef<HTMLDivElement>(null)
+  const { refetch: refetchRoomData } = useRoomData()
 
   useEffect(() => {
     // Register this component's main div as the fullscreen element
@@ -48,6 +50,17 @@ function ArcadeContent() {
         })}
       />
 
+      {/* Pending Invitations */}
+      <div
+        className={css({
+          px: { base: '4', md: '6' },
+          position: 'relative',
+          zIndex: 1,
+        })}
+      >
+        <PendingInvitations onInvitationChange={() => refetchRoomData()} />
+      </div>
+
       {/* Main Champion Arena - takes remaining space */}
       <div
         className={css({
@@ -78,15 +91,8 @@ function ArcadeContent() {
 }
 
 function ArcadePageWithRedirect() {
-  const { canModifyPlayers } = useArcadeRedirect({ currentGame: null })
-
   return (
-    <PageWithNav
-      navTitle="Champion Arena"
-      navEmoji="🏟️"
-      emphasizeGameContext={true}
-      canModifyPlayers={canModifyPlayers}
-    >
+    <PageWithNav navTitle="Champion Arena" navEmoji="🏟️" emphasizeGameContext={true}>
       <ArcadeContent />
     </PageWithNav>
   )

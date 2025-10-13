@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { getRoomById, touchRoom } from '@/lib/arcade/room-manager'
 import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
 import { getActivePlayers, getRoomActivePlayers } from '@/lib/arcade/player-manager'
+import { isUserBanned } from '@/lib/arcade/room-moderation'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
 
@@ -30,6 +31,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
     // Check if room is locked
     if (room.isLocked) {
       return NextResponse.json({ error: 'Room is locked' }, { status: 403 })
+    }
+
+    // Check if user is banned
+    const banned = await isUserBanned(roomId, viewerId)
+    if (banned) {
+      return NextResponse.json({ error: 'You are banned from this room' }, { status: 403 })
     }
 
     // Get or generate display name
