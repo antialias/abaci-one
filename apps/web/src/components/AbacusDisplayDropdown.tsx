@@ -15,7 +15,10 @@ interface AbacusDisplayDropdownProps {
   onOpenChange?: (open: boolean) => void
 }
 
-export function AbacusDisplayDropdown({ isFullscreen = false, onOpenChange: onOpenChangeProp }: AbacusDisplayDropdownProps) {
+export function AbacusDisplayDropdown({
+  isFullscreen = false,
+  onOpenChange: onOpenChangeProp,
+}: AbacusDisplayDropdownProps) {
   const [open, setOpen] = useState(false)
   const { config, updateConfig, resetToDefaults } = useAbacusDisplay()
 

@@ -2,21 +2,21 @@
 
 import React from 'react'
 import { useGameMode } from '../contexts/GameModeContext'
-import { useArcadeGuard } from '../hooks/useArcadeGuard'
 import { useRoomData } from '../hooks/useRoomData'
 import { useViewerId } from '../hooks/useViewerId'
 import { AppNavBar } from './AppNavBar'
 import { GameContextNav } from './nav/GameContextNav'
 import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
+import { ModerationNotifications } from './nav/ModerationNotifications'
 
 interface PageWithNavProps {
   navTitle?: string
   navEmoji?: string
+  gameName?: 'matching' | 'memory-quiz' | 'complement-race' // Internal game name for API
   emphasizeGameContext?: boolean
   onExitSession?: () => void
   onSetup?: () => void
   onNewGame?: () => void
-  canModifyPlayers?: boolean
   children: React.ReactNode
   // Game state for turn indicator
   currentPlayerId?: string
@@ -27,24 +27,25 @@ interface PageWithNavProps {
 export function PageWithNav({
   navTitle,
   navEmoji,
+  gameName,
   emphasizeGameContext = false,
   onExitSession,
   onSetup,
   onNewGame,
-  canModifyPlayers = true,
   children,
   currentPlayerId,
   playerScores,
   playerStreaks,
 }: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
-  const { hasActiveSession, activeSession } = useArcadeGuard({
-    enabled: false,
-  }) // Don't redirect, just get info
-  const { roomData, isInRoom } = useRoomData()
+  const { roomData, isInRoom, moderationEvent, clearModerationEvent } = useRoomData()
   const { data: viewerId } = useViewerId()
   const [mounted, setMounted] = React.useState(false)
   const [configurePlayerId, setConfigurePlayerId] = React.useState<string | null>(null)
+
+  // Lift AddPlayerButton popover state here to survive GameContextNav remounts
+  const [showPopover, setShowPopover] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState<'add' | 'invite'>('add')
 
   // Delay mounting animation slightly for smooth transition
   React.useEffect(() => {
@@ -52,29 +53,43 @@ export function PageWithNav({
     return () => clearTimeout(timer)
   }, [])
 
-  const handleRemovePlayer = (playerId: string) => {
-    if (!canModifyPlayers) return
-    setActive(playerId, false)
-  }
+  const handleRemovePlayer = React.useCallback(
+    (playerId: string) => {
+      setActive(playerId, false)
+    },
+    [setActive]
+  )
 
-  const handleAddPlayer = (playerId: string) => {
-    if (!canModifyPlayers) return
-    setActive(playerId, true)
-  }
+  const handleAddPlayer = React.useCallback(
+    (playerId: string) => {
+      setActive(playerId, true)
+    },
+    [setActive]
+  )
 
-  const handleConfigurePlayer = (playerId: string) => {
-    setConfigurePlayerId(playerId)
-  }
+  const handleConfigurePlayer = React.useCallback(
+    (playerId: string) => {
+      setConfigurePlayerId(playerId)
+    },
+    [setConfigurePlayerId]
+  )
 
   // Get active and inactive players as arrays
   // Only show LOCAL players in the active/inactive lists (remote players shown separately in networkPlayers)
-  const activePlayerList = Array.from(activePlayers)
-    .map((id) => players.get(id))
-    .filter((p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false) // Filter out remote players
+  // Memoized to prevent unnecessary re-renders
+  const activePlayerList = React.useMemo(
+    () =>
+      Array.from(activePlayers)
+        .map((id) => players.get(id))
+        .filter((p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false),
+    [activePlayers, players]
+  )
 
-  const inactivePlayerList = Array.from(players.values()).filter(
-    (p) => !activePlayers.has(p.id) && p.isLocal !== false
-  ) // Filter out remote players
+  const inactivePlayerList = React.useMemo(
+    () =>
+      Array.from(players.values()).filter((p) => !activePlayers.has(p.id) && p.isLocal !== false),
+    [players, activePlayers]
+  )
 
   // Compute game mode from active player count
   const gameMode =
@@ -92,49 +107,51 @@ export function PageWithNav({
   const showFullscreenSelection = shouldEmphasize && activePlayerCount === 0
 
   // Compute arcade session info for display
-  const roomInfo =
-    isInRoom && roomData
-      ? {
-          roomName: roomData.name,
-          gameName: roomData.gameName,
-          playerCount: roomData.members.length,
-          joinCode: roomData.code,
-        }
-      : hasActiveSession && activeSession
+  // Memoized to prevent unnecessary re-renders
+  const roomInfo = React.useMemo(
+    () =>
+      isInRoom && roomData
         ? {
-            gameName: activeSession.currentGame,
-            playerCount: activePlayerCount,
+            roomId: roomData.id,
+            roomName: roomData.name,
+            gameName: roomData.gameName,
+            playerCount: roomData.members?.length ?? 0,
+            joinCode: roomData.code,
           }
-        : undefined
+        : undefined,
+    [isInRoom, roomData]
+  )
 
   // Compute network players (other players in the room, excluding current user)
-  const networkPlayers: Array<{
-    id: string
-    emoji?: string
-    name?: string
-    color?: string
-    memberName?: string
-  }> =
-    isInRoom && roomData
-      ? roomData.members
-          .filter((member) => member.userId !== viewerId)
-          .flatMap((member) => {
-            const memberPlayerList = roomData.memberPlayers[member.userId] || []
-            return memberPlayerList.map((player) => ({
-              id: player.id,
-              emoji: player.emoji,
-              name: player.name,
-              color: player.color,
-              memberName: member.displayName,
-            }))
-          })
-      : []
+  // Memoized to prevent unnecessary re-renders
+  const networkPlayers = React.useMemo(() => {
+    if (!isInRoom || !roomData?.members || !roomData?.memberPlayers) {
+      return []
+    }
+
+    return roomData.members
+      .filter((member) => member.userId !== viewerId)
+      .flatMap((member) => {
+        const memberPlayerList = roomData.memberPlayers[member.userId] || []
+        return memberPlayerList.map((player) => ({
+          id: player.id,
+          emoji: player.emoji,
+          name: player.name,
+          color: player.color,
+          memberName: member.displayName,
+          userId: member.userId, // Add userId for moderation
+          isOnline: member.isOnline,
+        }))
+      })
+  }, [isInRoom, roomData, viewerId])
 
   // Create nav content if title is provided
+  // Pass lifted state to preserve popover state across remounts
   const navContent = navTitle ? (
     <GameContextNav
       navTitle={navTitle}
       navEmoji={navEmoji}
+      gameName={gameName}
       gameMode={gameMode}
       activePlayers={activePlayerList}
       inactivePlayers={inactivePlayerList}
@@ -146,12 +163,15 @@ export function PageWithNav({
       onExitSession={onExitSession}
       onSetup={onSetup}
       onNewGame={onNewGame}
-      canModifyPlayers={canModifyPlayers}
       roomInfo={roomInfo}
       networkPlayers={networkPlayers}
       currentPlayerId={currentPlayerId}
       playerScores={playerScores}
       playerStreaks={playerStreaks}
+      showPopover={showPopover}
+      setShowPopover={setShowPopover}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
     />
   ) : null
 
@@ -165,6 +185,7 @@ export function PageWithNav({
           onClose={() => setConfigurePlayerId(null)}
         />
       )}
+      <ModerationNotifications moderationEvent={moderationEvent} onClose={clearModerationEvent} />
     </>
   )
 }

@@ -122,7 +122,10 @@ function HamburgerMenu({
           onInteractOutside={(e) => {
             // Don't close the hamburger menu when clicking inside the nested style dropdown
             const target = e.target as HTMLElement
-            if (target.closest('[role="dialog"]') || target.closest('[data-radix-popper-content-wrapper]')) {
+            if (
+              target.closest('[role="dialog"]') ||
+              target.closest('[data-radix-popper-content-wrapper]')
+            ) {
               e.preventDefault()
             }
           }}
@@ -619,4 +622,3 @@ function NavLink({
     </Link>
   )
 }
-
