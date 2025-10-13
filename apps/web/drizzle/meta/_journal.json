@@ -36,6 +36,20 @@
       "when": 1759930182541,
       "tag": "0004_shiny_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1760362058906,
+      "tag": "0005_flimsy_squadron_sinister",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1760365860888,
+      "tag": "0006_pretty_invaders",
+      "breakpoints": true
     }
   ]
 }
