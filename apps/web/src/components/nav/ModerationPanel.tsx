@@ -913,7 +913,8 @@ export function ModerationPanel({
                                         {new Date(member.firstJoinedAt).toLocaleDateString()}
                                       </div>
                                       {member.invitationStatus === 'pending' &&
-                                        !member.isBanned && (
+                                        !member.isBanned &&
+                                        !member.isCurrentlyInRoom && (
                                           <div
                                             style={{
                                               fontSize: '11px',
