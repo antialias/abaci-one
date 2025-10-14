@@ -129,6 +129,8 @@ export function ModerationNotifications({
 
   // Kicked modal
   if (moderationEvent?.type === 'kicked') {
+    const isRetired = moderationEvent.data.reason?.includes('retired')
+
     return (
       <Modal isOpen={true} onClose={() => {}}>
         <div
@@ -139,7 +141,7 @@ export function ModerationNotifications({
             minWidth: '400px',
           }}
         >
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>{isRetired ? '🏁' : '⚠️'}</div>
           <h2
             style={{
               fontSize: '24px',
@@ -148,7 +150,7 @@ export function ModerationNotifications({
               color: 'rgba(253, 186, 116, 1)',
             }}
           >
-            Kicked from Room
+            {isRetired ? 'Room Retired' : 'Kicked from Room'}
           </h2>
           <p
             style={{
@@ -157,10 +159,16 @@ export function ModerationNotifications({
               marginBottom: '8px',
             }}
           >
-            You were kicked from the room by{' '}
-            <strong style={{ color: 'rgba(253, 186, 116, 1)' }}>
-              {moderationEvent.data.kickedBy}
-            </strong>
+            {isRetired ? (
+              <>The room owner has retired this room and access has been closed</>
+            ) : (
+              <>
+                You were kicked from the room by{' '}
+                <strong style={{ color: 'rgba(253, 186, 116, 1)' }}>
+                  {moderationEvent.data.kickedBy}
+                </strong>
+              </>
+            )}
           </p>
           <p
             style={{
@@ -169,7 +177,9 @@ export function ModerationNotifications({
               marginBottom: '24px',
             }}
           >
-            You can rejoin if the host sends you a new invite
+            {isRetired
+              ? 'Only the room owner can access retired rooms'
+              : 'You can rejoin if the host sends you a new invite'}
           </p>
 
           <button

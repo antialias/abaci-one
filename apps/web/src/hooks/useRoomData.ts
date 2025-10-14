@@ -347,13 +347,14 @@ export function useRoomData() {
     }
 
     // Moderation event handlers
-    const handleKickedFromRoom = (data: { roomId: string; kickedBy: string }) => {
+    const handleKickedFromRoom = (data: { roomId: string; kickedBy: string; reason?: string }) => {
       console.log('[useRoomData] User was kicked from room:', data)
       setModerationEvent({
         type: 'kicked',
         data: {
           roomId: data.roomId,
           kickedBy: data.kickedBy,
+          reason: data.reason,
         },
       })
       // Clear room data since user was kicked
