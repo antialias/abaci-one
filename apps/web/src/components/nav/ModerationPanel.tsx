@@ -47,7 +47,7 @@ export interface ModerationPanelProps {
   focusedUserId?: string
 }
 
-type Tab = 'members' | 'bans' | 'history'
+type Tab = 'members' | 'bans' | 'history' | 'settings'
 
 export interface HistoricalMemberWithStatus {
   userId: string
@@ -85,6 +85,13 @@ export function ModerationPanel({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  // Settings state
+  const [accessMode, setAccessMode] = useState<string>('open')
+  const [roomPassword, setRoomPassword] = useState('')
+  const [showPasswordInput, setShowPasswordInput] = useState(false)
+  const [selectedNewOwner, setSelectedNewOwner] = useState<string>('')
+  const [joinRequests, setJoinRequests] = useState<any[]>([])
 
   // Ban modal state
   const [showBanModal, setShowBanModal] = useState(false)
@@ -323,6 +330,146 @@ export function ModerationPanel({
     }
   }
 
+  // Load room settings and join requests when Settings tab is opened
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'settings') return
+
+    const loadSettings = async () => {
+      try {
+        // Fetch current room data to get access mode
+        const roomRes = await fetch(`/api/arcade/rooms/${roomId}`)
+        if (roomRes.ok) {
+          const data = await roomRes.json()
+          setAccessMode(data.room?.accessMode || 'open')
+        }
+
+        // Fetch join requests if any
+        const requestsRes = await fetch(`/api/arcade/rooms/${roomId}/join-requests`)
+        if (requestsRes.ok) {
+          const data = await requestsRes.json()
+          setJoinRequests(data.requests || [])
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+      }
+    }
+
+    loadSettings()
+  }, [isOpen, activeTab, roomId])
+
+  // Handlers for Settings tab
+  const handleUpdateAccessMode = async () => {
+    setActionLoading('update-settings')
+    try {
+      const body: any = { accessMode }
+      if (accessMode === 'password' && roomPassword) {
+        body.password = roomPassword
+      }
+
+      const res = await fetch(`/api/arcade/rooms/${roomId}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to update settings')
+      }
+
+      alert('Room settings updated successfully!')
+      setShowPasswordInput(false)
+      setRoomPassword('')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update settings')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleTransferOwnership = async () => {
+    if (!selectedNewOwner) return
+
+    const newOwner = members.find((m) => m.userId === selectedNewOwner)
+    if (!newOwner) return
+
+    if (!confirm(`Transfer ownership to ${newOwner.displayName}? You will no longer be the host.`))
+      return
+
+    setActionLoading('transfer-ownership')
+    try {
+      const res = await fetch(`/api/arcade/rooms/${roomId}/transfer-ownership`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newOwnerId: selectedNewOwner }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to transfer ownership')
+      }
+
+      alert(`Ownership transferred to ${newOwner.displayName}!`)
+      onClose() // Close panel since user is no longer host
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to transfer ownership')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleApproveJoinRequest = async (requestId: string) => {
+    setActionLoading(`approve-request-${requestId}`)
+    try {
+      const res = await fetch(`/api/arcade/rooms/${roomId}/join-requests/${requestId}/approve`, {
+        method: 'POST',
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to approve request')
+      }
+
+      // Reload requests
+      const requestsRes = await fetch(`/api/arcade/rooms/${roomId}/join-requests`)
+      if (requestsRes.ok) {
+        const data = await requestsRes.json()
+        setJoinRequests(data.requests || [])
+      }
+
+      alert('Join request approved!')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to approve request')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDenyJoinRequest = async (requestId: string) => {
+    setActionLoading(`deny-request-${requestId}`)
+    try {
+      const res = await fetch(`/api/arcade/rooms/${roomId}/join-requests/${requestId}/deny`, {
+        method: 'POST',
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to deny request')
+      }
+
+      // Reload requests
+      const requestsRes = await fetch(`/api/arcade/rooms/${roomId}/join-requests`)
+      if (requestsRes.ok) {
+        const data = await requestsRes.json()
+        setJoinRequests(data.requests || [])
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to deny request')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const pendingReports = reports.filter((r) => r.status === 'pending')
   const otherMembers = members.filter((m) => m.userId !== currentUserId)
 
@@ -375,7 +522,7 @@ export function ModerationPanel({
             borderBottom: '1px solid rgba(75, 85, 99, 0.3)',
           }}
         >
-          {(['members', 'bans', 'history'] as Tab[]).map((tab) => (
+          {(['members', 'bans', 'history', 'settings'] as Tab[]).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -415,6 +562,26 @@ export function ModerationPanel({
               )}
               {tab === 'bans' && `Banned (${bans.length})`}
               {tab === 'history' && `History (${historicalMembers.length})`}
+              {tab === 'settings' && (
+                <span>
+                  ⚙️ Settings
+                  {joinRequests.filter((r: any) => r.status === 'pending').length > 0 && (
+                    <span
+                      style={{
+                        marginLeft: '6px',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        background: 'rgba(59, 130, 246, 0.8)',
+                        color: 'white',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                      }}
+                    >
+                      {joinRequests.filter((r: any) => r.status === 'pending').length} pending
+                    </span>
+                  )}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1137,6 +1304,307 @@ export function ModerationPanel({
                     })}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Settings Tab */}
+            {activeTab === 'settings' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Access Mode Section */}
+                <div>
+                  <div
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      color: 'rgba(253, 186, 116, 1)',
+                      marginBottom: '12px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    🔒 Room Access Mode
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '16px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(75, 85, 99, 0.3)',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <select
+                      value={accessMode}
+                      onChange={(e) => {
+                        setAccessMode(e.target.value)
+                        setShowPasswordInput(e.target.value === 'password')
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(75, 85, 99, 0.5)',
+                        borderRadius: '6px',
+                        color: 'rgba(209, 213, 219, 1)',
+                        fontSize: '14px',
+                        marginBottom: '12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="open">🌐 Open - Anyone can join</option>
+                      <option value="password">🔑 Password Protected</option>
+                      <option value="approval-only">✋ Approval Required</option>
+                      <option value="restricted">🚫 Restricted - Invitation only</option>
+                      <option value="locked">🔒 Locked - No new members</option>
+                      <option value="retired">🏁 Retired - Room closed</option>
+                    </select>
+
+                    {/* Password input (conditional) */}
+                    {(accessMode === 'password' || showPasswordInput) && (
+                      <input
+                        type="text"
+                        value={roomPassword}
+                        onChange={(e) => setRoomPassword(e.target.value)}
+                        placeholder="Enter room password"
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(75, 85, 99, 0.5)',
+                          borderRadius: '6px',
+                          color: 'rgba(209, 213, 219, 1)',
+                          fontSize: '14px',
+                          marginBottom: '12px',
+                        }}
+                      />
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleUpdateAccessMode}
+                      disabled={actionLoading === 'update-settings'}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        background:
+                          actionLoading === 'update-settings'
+                            ? 'rgba(75, 85, 99, 0.3)'
+                            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))',
+                        color: 'white',
+                        border:
+                          actionLoading === 'update-settings'
+                            ? '1px solid rgba(75, 85, 99, 0.5)'
+                            : '1px solid rgba(59, 130, 246, 0.6)',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: actionLoading === 'update-settings' ? 'not-allowed' : 'pointer',
+                        opacity: actionLoading === 'update-settings' ? 0.5 : 1,
+                      }}
+                    >
+                      {actionLoading === 'update-settings' ? 'Updating...' : 'Update Access Mode'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Join Requests Section (for approval-only mode) */}
+                {joinRequests.filter((r: any) => r.status === 'pending').length > 0 && (
+                  <div>
+                    <div
+                      style={{
+                        fontSize: '14px',
+                        fontWeight: '700',
+                        color: 'rgba(59, 130, 246, 1)',
+                        marginBottom: '12px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      🙋 Pending Join Requests
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {joinRequests
+                        .filter((r: any) => r.status === 'pending')
+                        .map((request: any) => (
+                          <div
+                            key={request.id}
+                            style={{
+                              padding: '12px',
+                              background: 'rgba(59, 130, 246, 0.08)',
+                              border: '1px solid rgba(59, 130, 246, 0.3)',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            <div>
+                              <div
+                                style={{
+                                  fontSize: '14px',
+                                  fontWeight: '600',
+                                  color: 'rgba(209, 213, 219, 1)',
+                                }}
+                              >
+                                {request.userName || 'Anonymous User'}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: '12px',
+                                  color: 'rgba(156, 163, 175, 1)',
+                                  marginTop: '2px',
+                                }}
+                              >
+                                Requested {new Date(request.createdAt).toLocaleString()}
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleDenyJoinRequest(request.id)}
+                                disabled={actionLoading === `deny-request-${request.id}`}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: 'rgba(239, 68, 68, 0.2)',
+                                  color: 'rgba(239, 68, 68, 1)',
+                                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                                  borderRadius: '6px',
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  cursor:
+                                    actionLoading === `deny-request-${request.id}`
+                                      ? 'not-allowed'
+                                      : 'pointer',
+                                  opacity: actionLoading === `deny-request-${request.id}` ? 0.5 : 1,
+                                }}
+                              >
+                                {actionLoading === `deny-request-${request.id}`
+                                  ? 'Denying...'
+                                  : 'Deny'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleApproveJoinRequest(request.id)}
+                                disabled={actionLoading === `approve-request-${request.id}`}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: 'rgba(34, 197, 94, 0.2)',
+                                  color: 'rgba(34, 197, 94, 1)',
+                                  border: '1px solid rgba(34, 197, 94, 0.4)',
+                                  borderRadius: '6px',
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  cursor:
+                                    actionLoading === `approve-request-${request.id}`
+                                      ? 'not-allowed'
+                                      : 'pointer',
+                                  opacity:
+                                    actionLoading === `approve-request-${request.id}` ? 0.5 : 1,
+                                }}
+                              >
+                                {actionLoading === `approve-request-${request.id}`
+                                  ? 'Approving...'
+                                  : 'Approve'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Transfer Ownership Section */}
+                <div>
+                  <div
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      color: 'rgba(251, 146, 60, 1)',
+                      marginBottom: '12px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                    }}
+                  >
+                    👑 Transfer Ownership
+                  </div>
+
+                  <div
+                    style={{
+                      padding: '16px',
+                      background: 'rgba(251, 146, 60, 0.08)',
+                      border: '1px solid rgba(251, 146, 60, 0.3)',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: '13px',
+                        color: 'rgba(209, 213, 219, 0.8)',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      Transfer host privileges to another member. You will no longer be the host.
+                    </p>
+
+                    <select
+                      value={selectedNewOwner}
+                      onChange={(e) => setSelectedNewOwner(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(75, 85, 99, 0.5)',
+                        borderRadius: '6px',
+                        color: 'rgba(209, 213, 219, 1)',
+                        fontSize: '14px',
+                        marginBottom: '12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="">Select new owner...</option>
+                      {otherMembers.map((member) => (
+                        <option key={member.userId} value={member.userId}>
+                          {member.displayName}
+                          {member.isOnline ? ' (Online)' : ' (Offline)'}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={handleTransferOwnership}
+                      disabled={!selectedNewOwner || actionLoading === 'transfer-ownership'}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        background:
+                          !selectedNewOwner || actionLoading === 'transfer-ownership'
+                            ? 'rgba(75, 85, 99, 0.3)'
+                            : 'linear-gradient(135deg, rgba(251, 146, 60, 0.8), rgba(249, 115, 22, 0.8))',
+                        color: 'white',
+                        border:
+                          !selectedNewOwner || actionLoading === 'transfer-ownership'
+                            ? '1px solid rgba(75, 85, 99, 0.5)'
+                            : '1px solid rgba(251, 146, 60, 0.6)',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor:
+                          !selectedNewOwner || actionLoading === 'transfer-ownership'
+                            ? 'not-allowed'
+                            : 'pointer',
+                        opacity:
+                          !selectedNewOwner || actionLoading === 'transfer-ownership' ? 0.5 : 1,
+                      }}
+                    >
+                      {actionLoading === 'transfer-ownership'
+                        ? 'Transferring...'
+                        : 'Transfer Ownership'}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

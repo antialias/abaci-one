@@ -1,8 +1,9 @@
 import React from 'react'
+import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
 interface RecentRoom {
   code: string
-  name: string
+  name: string | null
   gameName: string
   joinedAt: number
 }
@@ -100,7 +101,13 @@ export function RecentRoomsList({ onSelectRoom }: RecentRoomsListProps) {
               }}
             >
               <span>🏟️</span>
-              <span>{room.name}</span>
+              <span>
+                {getRoomDisplayWithEmoji({
+                  name: room.name,
+                  code: room.code,
+                  gameName: room.gameName,
+                })}
+              </span>
             </div>
             <div
               style={{
@@ -123,7 +130,11 @@ export function RecentRoomsList({ onSelectRoom }: RecentRoomsListProps) {
 }
 
 // Helper function to add a room to recent rooms
-export function addToRecentRooms(room: { code: string; name: string; gameName: string }): void {
+export function addToRecentRooms(room: {
+  code: string
+  name: string | null
+  gameName: string
+}): void {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     const rooms: RecentRoom[] = stored ? JSON.parse(stored) : []

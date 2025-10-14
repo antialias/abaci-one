@@ -9,12 +9,14 @@ import { generateRoomCode } from './room-code'
 import type { GameName } from './validation'
 
 export interface CreateRoomOptions {
-  name: string
+  name: string | null
   createdBy: string // User/guest ID
   creatorName: string
   gameName: GameName
   gameConfig: unknown
   ttlMinutes?: number // Default: 60
+  accessMode?: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
+  password?: string
 }
 
 export interface UpdateRoomOptions {
@@ -55,7 +57,8 @@ export async function createRoom(options: CreateRoomOptions): Promise<schema.Arc
     createdAt: now,
     lastActivity: now,
     ttlMinutes: options.ttlMinutes || 60,
-    accessMode: 'open', // Default to open access
+    accessMode: options.accessMode || 'open', // Default to open access
+    password: options.password || null,
     gameName: options.gameName,
     gameConfig: options.gameConfig as any,
     status: 'lobby',

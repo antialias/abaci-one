@@ -62,18 +62,17 @@ export async function GET(req: NextRequest) {
  *   - gameName: string
  *   - gameConfig?: object
  *   - ttlMinutes?: number
+ *   - accessMode?: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
+ *   - password?: string
  */
 export async function POST(req: NextRequest) {
   try {
     const viewerId = await getViewerId()
     const body = await req.json()
 
-    // Validate required fields
-    if (!body.name || !body.gameName) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, gameName' },
-        { status: 400 }
-      )
+    // Validate required fields (name is optional, gameName is required)
+    if (!body.gameName) {
+      return NextResponse.json({ error: 'Missing required field: gameName' }, { status: 400 })
     }
 
     // Validate game name
@@ -82,9 +81,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid game name' }, { status: 400 })
     }
 
-    // Validate name length
-    if (body.name.length > 50) {
+    // Validate name length (if provided)
+    if (body.name && body.name.length > 50) {
       return NextResponse.json({ error: 'Room name too long (max 50 characters)' }, { status: 400 })
+    }
+
+    // Normalize empty name to null
+    const roomName = body.name?.trim() || null
+
+    // Validate access mode
+    if (body.accessMode) {
+      const validAccessModes = [
+        'open',
+        'password',
+        'approval-only',
+        'restricted',
+        'locked',
+        'retired',
+      ]
+      if (!validAccessModes.includes(body.accessMode)) {
+        return NextResponse.json({ error: 'Invalid access mode' }, { status: 400 })
+      }
+    }
+
+    // Validate password if provided
+    if (body.accessMode === 'password' && !body.password) {
+      return NextResponse.json(
+        { error: 'Password is required for password-protected rooms' },
+        { status: 400 }
+      )
     }
 
     // Get display name from body or generate from viewerId
@@ -92,12 +117,14 @@ export async function POST(req: NextRequest) {
 
     // Create room
     const room = await createRoom({
-      name: body.name,
+      name: roomName,
       createdBy: viewerId,
       creatorName: displayName,
       gameName: body.gameName,
       gameConfig: body.gameConfig || {},
       ttlMinutes: body.ttlMinutes,
+      accessMode: body.accessMode,
+      password: body.password,
     })
 
     // Add creator as first member

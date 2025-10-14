@@ -8,7 +8,7 @@ export const arcadeRooms = sqliteTable('arcade_rooms', {
 
   // Room identity
   code: text('code', { length: 6 }).notNull().unique(), // e.g., "ABC123"
-  name: text('name', { length: 50 }).notNull(),
+  name: text('name', { length: 50 }), // Optional: auto-generates from code and game if null
 
   // Creator info
   createdBy: text('created_by').notNull(), // User/guest ID

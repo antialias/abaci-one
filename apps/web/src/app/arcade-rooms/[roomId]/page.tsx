@@ -6,11 +6,12 @@ import { io, type Socket } from 'socket.io-client'
 import { css } from '../../../../styled-system/css'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useViewerId } from '@/hooks/useViewerId'
+import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
 interface Room {
   id: string
   code: string
-  name: string
+  name: string | null
   gameName: string
   status: 'lobby' | 'playing' | 'finished'
   createdBy: string
@@ -357,7 +358,11 @@ export default function RoomDetailPage() {
                     mb: '2',
                   })}
                 >
-                  {room.name}
+                  {getRoomDisplayWithEmoji({
+                    name: room.name,
+                    code: room.code,
+                    gameName: room.gameName,
+                  })}
                 </h1>
                 <div
                   className={css({

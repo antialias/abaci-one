@@ -46,7 +46,18 @@
       "Bash(npx @biomejs/biome check:*)",
       "Bash(printf '\\n')",
       "Bash(npm install bcryptjs)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(sqlite3:*)",
+      "Bash(shasum:*)",
+      "Bash(awk:*)",
+      "Bash(if npx tsc --noEmit)",
+      "Bash(then echo \"TypeScript errors found in our files\")",
+      "Bash(else echo \"✓ No TypeScript errors in our modified files\")",
+      "Bash(fi)",
+      "Bash(then echo \"TypeScript errors found\")",
+      "Bash(else echo \"✓ No TypeScript errors in join page\")",
+      "Bash(npx @biomejs/biome format:*)"
     ],
     "deny": [],
     "ask": []

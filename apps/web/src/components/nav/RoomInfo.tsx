@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useLeaveRoom, useRoomData } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
+import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 import { CreateRoomModal } from './CreateRoomModal'
 import { JoinRoomModal } from './JoinRoomModal'
 import { ModerationPanel } from './ModerationPanel'
@@ -11,7 +12,7 @@ import { RoomShareButtons } from './RoomShareButtons'
 type GameMode = 'none' | 'single' | 'battle' | 'tournament'
 
 interface RoomInfoProps {
-  roomName?: string
+  roomName?: string | null
   gameName: string
   playerCount: number
   joinCode?: string
@@ -57,11 +58,15 @@ export function RoomInfo({
   const [showModerationPanel, setShowModerationPanel] = useState(false)
   const [focusedUserId, setFocusedUserId] = useState<string | undefined>(undefined)
   const [pendingReportsCount, setPendingReportsCount] = useState(0)
+  const [pendingJoinRequestsCount, setPendingJoinRequestsCount] = useState(0)
   const { getRoomShareUrl, roomData } = useRoomData()
   const { data: currentUserId } = useViewerId()
   const { mutateAsync: leaveRoom } = useLeaveRoom()
 
-  const displayName = roomName || gameName
+  // Use room display utility for consistent naming
+  const displayName = joinCode
+    ? getRoomDisplayWithEmoji({ name: roomName || null, code: joinCode, gameName })
+    : roomName || gameName
   const shareUrl = joinCode ? getRoomShareUrl(joinCode) : ''
 
   // Determine ownership status
@@ -90,6 +95,29 @@ export function RoomInfo({
     fetchPendingReports()
     // Poll every 30 seconds
     const interval = setInterval(fetchPendingReports, 30000)
+    return () => clearInterval(interval)
+  }, [isCurrentUserCreator, roomId])
+
+  // Fetch pending join requests count if user is host
+  useEffect(() => {
+    if (!isCurrentUserCreator || !roomId) return
+
+    const fetchPendingJoinRequests = async () => {
+      try {
+        const res = await fetch(`/api/arcade/rooms/${roomId}/join-requests`)
+        if (res.ok) {
+          const data = await res.json()
+          const pending = data.requests?.filter((r: any) => r.status === 'pending') || []
+          setPendingJoinRequestsCount(pending.length)
+        }
+      } catch (error) {
+        console.error('[RoomInfo] Failed to fetch join requests:', error)
+      }
+    }
+
+    fetchPendingJoinRequests()
+    // Poll every 30 seconds
+    const interval = setInterval(fetchPendingJoinRequests, 30000)
     return () => clearInterval(interval)
   }, [isCurrentUserCreator, roomId])
 
@@ -235,8 +263,8 @@ export function RoomInfo({
                 >
                   <span style={{ fontSize: '10px', lineHeight: 1 }}>👑</span>
                   <span style={{ lineHeight: 1 }}>You are host</span>
-                  {/* Pending reports badge */}
-                  {pendingReportsCount > 0 && (
+                  {/* Pending items badge (reports + join requests) */}
+                  {(pendingReportsCount > 0 || pendingJoinRequestsCount > 0) && (
                     <span
                       style={{
                         display: 'inline-flex',
@@ -245,15 +273,24 @@ export function RoomInfo({
                         width: '16px',
                         height: '16px',
                         borderRadius: '50%',
-                        background: 'rgba(239, 68, 68, 1)',
+                        background:
+                          pendingJoinRequestsCount > 0
+                            ? 'rgba(59, 130, 246, 1)'
+                            : 'rgba(239, 68, 68, 1)',
                         color: 'white',
                         fontSize: '8px',
                         fontWeight: '700',
                         marginLeft: '2px',
                       }}
-                      title={`${pendingReportsCount} pending report${pendingReportsCount > 1 ? 's' : ''}`}
+                      title={
+                        pendingJoinRequestsCount > 0 && pendingReportsCount > 0
+                          ? `${pendingJoinRequestsCount} join request${pendingJoinRequestsCount > 1 ? 's' : ''}, ${pendingReportsCount} report${pendingReportsCount > 1 ? 's' : ''}`
+                          : pendingJoinRequestsCount > 0
+                            ? `${pendingJoinRequestsCount} join request${pendingJoinRequestsCount > 1 ? 's' : ''}`
+                            : `${pendingReportsCount} report${pendingReportsCount > 1 ? 's' : ''}`
+                      }
                     >
-                      {pendingReportsCount}
+                      {pendingReportsCount + pendingJoinRequestsCount}
                     </span>
                   )}
                 </div>

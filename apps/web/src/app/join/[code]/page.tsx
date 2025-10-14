@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
 import { useGetRoomByCode, useJoinRoom, useRoomData } from '@/hooks/useRoomData'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
@@ -211,6 +211,8 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
   } | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false)
+  const [showApprovalPrompt, setShowApprovalPrompt] = useState(false)
+  const [approvalRequested, setApprovalRequested] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isJoining, setIsJoining] = useState(false)
@@ -280,7 +282,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
         }
 
         if (room.accessMode === 'approval-only') {
-          setError('This room requires host approval. Please join via the room browser.')
+          setShowApprovalPrompt(true)
           return
         }
 
@@ -323,8 +325,34 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
     }
   }
 
-  // Only show error page for non-password errors (password errors are shown in the password prompt UI)
-  if (error && !showPasswordPrompt) {
+  const handleRequestApproval = async () => {
+    if (!targetRoomData) return
+
+    setIsJoining(true)
+    setError(null)
+
+    try {
+      const res = await fetch(`/api/arcade/rooms/${targetRoomData.id}/join-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || 'Failed to request approval')
+      }
+
+      // Request sent successfully - show waiting state
+      setApprovalRequested(true)
+      setIsJoining(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to request approval')
+      setIsJoining(false)
+    }
+  }
+
+  // Only show error page for non-password and non-approval errors
+  if (error && !showPasswordPrompt && !showApprovalPrompt) {
     return (
       <div
         style={{
@@ -541,6 +569,261 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
               {isJoining ? 'Joining...' : 'Join Room'}
             </button>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (showApprovalPrompt && targetRoomData) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
+        }}
+      >
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(31, 41, 55, 0.98))',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '450px',
+            width: '90%',
+            border: '2px solid rgba(59, 130, 246, 0.3)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+          }}
+        >
+          {approvalRequested ? (
+            // Waiting for approval state
+            <>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+                <h2
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    marginBottom: '8px',
+                    color: 'rgba(96, 165, 250, 1)',
+                  }}
+                >
+                  Waiting for Approval
+                </h2>
+                <p
+                  style={{
+                    fontSize: '14px',
+                    color: 'rgba(209, 213, 219, 0.8)',
+                  }}
+                >
+                  Your request has been sent to the room moderator.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '20px',
+                }}
+              >
+                <div
+                  style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(96, 165, 250, 1)' }}
+                >
+                  {getRoomDisplayWithEmoji({
+                    name: targetRoomData.name,
+                    code: targetRoomData.code,
+                    gameName: targetRoomData.gameName,
+                  })}
+                </div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    color: 'rgba(209, 213, 219, 0.7)',
+                    fontFamily: 'monospace',
+                    marginTop: '4px',
+                  }}
+                >
+                  Code: {targetRoomData.code}
+                </div>
+              </div>
+
+              <p
+                style={{
+                  fontSize: '13px',
+                  color: 'rgba(156, 163, 175, 1)',
+                  textAlign: 'center',
+                  marginBottom: '20px',
+                }}
+              >
+                You'll be able to join once the host approves your request. You can close this page
+                and check back later.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => router.push('/arcade')}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(75, 85, 99, 0.3)',
+                  color: 'rgba(209, 213, 219, 1)',
+                  border: '2px solid rgba(75, 85, 99, 0.5)',
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(75, 85, 99, 0.4)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(75, 85, 99, 0.3)'
+                }}
+              >
+                Go to Champion Arena
+              </button>
+            </>
+          ) : (
+            // Request approval prompt
+            <>
+              <h2
+                style={{
+                  fontSize: '24px',
+                  fontWeight: 'bold',
+                  marginBottom: '8px',
+                  color: 'rgba(96, 165, 250, 1)',
+                }}
+              >
+                ✋ Approval Required
+              </h2>
+              <p
+                style={{
+                  fontSize: '14px',
+                  color: 'rgba(209, 213, 219, 0.8)',
+                  marginBottom: '20px',
+                }}
+              >
+                This room requires host approval to join. Send a request?
+              </p>
+
+              <div
+                style={{
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '20px',
+                }}
+              >
+                <div
+                  style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(96, 165, 250, 1)' }}
+                >
+                  {getRoomDisplayWithEmoji({
+                    name: targetRoomData.name,
+                    code: targetRoomData.code,
+                    gameName: targetRoomData.gameName,
+                  })}
+                </div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    color: 'rgba(209, 213, 219, 0.7)',
+                    fontFamily: 'monospace',
+                    marginTop: '4px',
+                  }}
+                >
+                  Code: {targetRoomData.code}
+                </div>
+              </div>
+
+              {error && (
+                <p
+                  style={{
+                    fontSize: '13px',
+                    color: 'rgba(248, 113, 113, 1)',
+                    marginBottom: '16px',
+                    textAlign: 'center',
+                  }}
+                >
+                  {error}
+                </p>
+              )}
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => router.push('/arcade')}
+                  disabled={isJoining}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: 'rgba(75, 85, 99, 0.3)',
+                    color: 'rgba(209, 213, 219, 1)',
+                    border: '2px solid rgba(75, 85, 99, 0.5)',
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    cursor: isJoining ? 'not-allowed' : 'pointer',
+                    opacity: isJoining ? 0.5 : 1,
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isJoining) {
+                      e.currentTarget.style.background = 'rgba(75, 85, 99, 0.4)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isJoining) {
+                      e.currentTarget.style.background = 'rgba(75, 85, 99, 0.3)'
+                    }
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRequestApproval}
+                  disabled={isJoining}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: isJoining
+                      ? 'rgba(75, 85, 99, 0.3)'
+                      : 'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))',
+                    color: isJoining ? 'rgba(156, 163, 175, 1)' : 'rgba(255, 255, 255, 1)',
+                    border: isJoining
+                      ? '2px solid rgba(75, 85, 99, 0.5)'
+                      : '2px solid rgba(59, 130, 246, 0.6)',
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    cursor: isJoining ? 'not-allowed' : 'pointer',
+                    opacity: isJoining ? 0.5 : 1,
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isJoining) {
+                      e.currentTarget.style.background =
+                        'linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.9))'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isJoining) {
+                      e.currentTarget.style.background =
+                        'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))'
+                    }
+                  }}
+                >
+                  {isJoining ? 'Sending...' : 'Request to Join'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     )
