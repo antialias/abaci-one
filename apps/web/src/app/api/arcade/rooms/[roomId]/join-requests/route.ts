@@ -88,11 +88,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
       `[Join Requests] Created request for user ${viewerId} (${displayName}) to join room ${roomId}`
     )
 
-    // Broadcast to all members in the room (particularly the host) via socket
+    // Broadcast to the room host (creator) only via socket
     const io = await getSocketIO()
     if (io) {
       try {
-        io.to(`room:${roomId}`).emit('join-request-submitted', {
+        // Send notification only to the room creator's user channel
+        io.to(`user:${room.createdBy}`).emit('join-request-submitted', {
           roomId,
           request: {
             id: request.id,
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         })
 
         console.log(
-          `[Join Requests] Broadcasted join-request-submitted for user ${viewerId} to room ${roomId}`
+          `[Join Requests] Broadcasted join-request-submitted to room creator ${room.createdBy}`
         )
       } catch (socketError) {
         // Log but don't fail the request if socket broadcast fails
