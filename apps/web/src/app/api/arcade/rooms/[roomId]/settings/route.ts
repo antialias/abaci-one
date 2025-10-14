@@ -18,6 +18,8 @@ type RouteContext = {
  * Body:
  *   - accessMode?: 'open' | 'locked' | 'retired' | 'password' | 'restricted' | 'approval-only'
  *   - password?: string (plain text, will be hashed)
+ *   - gameName?: 'matching' | 'memory-quiz' | 'complement-race' | null (select game for room)
+ *   - gameConfig?: object (game-specific settings)
  */
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
@@ -58,6 +60,14 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       )
     }
 
+    // Validate gameName if provided
+    if (body.gameName !== undefined && body.gameName !== null) {
+      const validGames = ['matching', 'memory-quiz', 'complement-race']
+      if (!validGames.includes(body.gameName)) {
+        return NextResponse.json({ error: 'Invalid game name' }, { status: 400 })
+      }
+    }
+
     // Prepare update data
     const updateData: Record<string, any> = {}
 
@@ -75,6 +85,16 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         updateData.password = hashedPassword
         updateData.displayPassword = body.password // Store plain text for display
       }
+    }
+
+    // Update game selection if provided
+    if (body.gameName !== undefined) {
+      updateData.gameName = body.gameName
+    }
+
+    // Update game config if provided
+    if (body.gameConfig !== undefined) {
+      updateData.gameConfig = body.gameConfig
     }
 
     // Update room settings

@@ -1,12 +1,18 @@
 'use client'
 
-import { useRoomData } from '@/hooks/useRoomData'
+import { useRoomData, useSetRoomGame } from '@/hooks/useRoomData'
 import { MemoryPairsGame } from '../matching/components/MemoryPairsGame'
 import { RoomMemoryPairsProvider } from '../matching/context/RoomMemoryPairsProvider'
+import { GameSelector, GAMES_CONFIG } from '@/components/GameSelector'
+import type { GameType } from '@/components/GameSelector'
+import { css } from '../../../../styled-system/css'
 
 /**
  * /arcade/room - Renders the game for the user's current room
  * Since users can only be in one room at a time, this is a simple singular route
+ *
+ * Shows game selection when no game is set, then shows the game itself once selected.
+ * URL never changes - it's always /arcade/room regardless of selection, setup, or gameplay.
  *
  * Note: We don't redirect to /arcade if no room exists to avoid navigation loops.
  * Instead, we show a friendly message with a link back to the Champion Arena.
@@ -16,6 +22,7 @@ import { RoomMemoryPairsProvider } from '../matching/context/RoomMemoryPairsProv
  */
 export default function RoomPage() {
   const { roomData, isLoading } = useRoomData()
+  const { mutate: setRoomGame } = useSetRoomGame()
 
   // Show loading state
   if (isLoading) {
@@ -60,6 +67,110 @@ export default function RoomPage() {
         >
           Go to Champion Arena
         </a>
+      </div>
+    )
+  }
+
+  // Show game selection if no game is set
+  if (!roomData.gameName) {
+    const handleGameSelect = (gameName: GameType) => {
+      const gameConfig = GAMES_CONFIG[gameName]
+      if (gameConfig.available === false) {
+        return // Don't allow selecting unavailable games
+      }
+
+      setRoomGame({
+        roomId: roomData.id,
+        gameName,
+        gameConfig: {},
+      })
+    }
+
+    return (
+      <div
+        className={css({
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4',
+        })}
+      >
+        <h1
+          className={css({
+            fontSize: { base: '2xl', md: '3xl' },
+            fontWeight: 'bold',
+            color: 'white',
+            mb: '8',
+            textAlign: 'center',
+          })}
+        >
+          Choose a Game
+        </h1>
+
+        <div
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: { base: '1fr', md: 'repeat(2, 1fr)' },
+            gap: '4',
+            maxWidth: '800px',
+            width: '100%',
+          })}
+        >
+          {Object.entries(GAMES_CONFIG).map(([gameType, config]) => (
+            <button
+              key={gameType}
+              onClick={() => handleGameSelect(gameType as GameType)}
+              disabled={config.available === false}
+              className={css({
+                background: config.gradient,
+                border: '2px solid',
+                borderColor: config.borderColor || 'blue.200',
+                borderRadius: '2xl',
+                padding: '6',
+                cursor: config.available === false ? 'not-allowed' : 'pointer',
+                opacity: config.available === false ? 0.5 : 1,
+                transition: 'all 0.3s ease',
+                _hover:
+                  config.available === false
+                    ? {}
+                    : {
+                        transform: 'translateY(-4px) scale(1.02)',
+                        boxShadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
+                      },
+              })}
+            >
+              <div
+                className={css({
+                  fontSize: '4xl',
+                  mb: '2',
+                })}
+              >
+                {config.icon}
+              </div>
+              <h3
+                className={css({
+                  fontSize: 'xl',
+                  fontWeight: 'bold',
+                  color: 'gray.900',
+                  mb: '2',
+                })}
+              >
+                {config.name}
+              </h3>
+              <p
+                className={css({
+                  fontSize: 'sm',
+                  color: 'gray.600',
+                })}
+              >
+                {config.description}
+              </p>
+            </button>
+          ))}
+        </div>
       </div>
     )
   }

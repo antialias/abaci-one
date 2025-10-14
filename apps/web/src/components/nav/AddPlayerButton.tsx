@@ -62,12 +62,12 @@ export function AddPlayerButton({
   const { mutate: joinRoom } = useJoinRoom()
   const { mutateAsync: getRoomByCode } = useGetRoomByCode()
 
-  // Handler for creating a new room
+  // Handler for creating a new room (without a game - game will be selected in room)
   const handleCreateRoom = () => {
     createRoom(
       {
-        name: `${gameName} Room`,
-        gameName: gameName,
+        name: null, // Auto-generated from code
+        gameName: null, // No game selected yet - will be chosen in room
         creatorName: 'Player',
       },
       {
@@ -78,8 +78,9 @@ export function AddPlayerButton({
             name: data.name,
             gameName: data.gameName,
           })
-          // Popover stays open, switch to invite tab to share room code
-          setActiveTab('invite')
+          // Close popover and navigate to room to choose game
+          setShowPopover(false)
+          router.push('/arcade/room')
         },
         onError: (error) => {
           console.error('Failed to create room:', error)
@@ -108,8 +109,9 @@ export function AddPlayerButton({
                 gameName: data.room.gameName,
               })
             }
-            // Close popover
+            // Close popover and navigate to room
             setShowPopover(false)
+            router.push('/arcade/room')
           },
         }
       )

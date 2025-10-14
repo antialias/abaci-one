@@ -558,3 +558,49 @@ export function useGetRoomByCode() {
     mutationFn: getRoomByCodeApi,
   })
 }
+
+/**
+ * Set game for a room
+ */
+async function setRoomGameApi(params: {
+  roomId: string
+  gameName: string
+  gameConfig?: Record<string, unknown>
+}): Promise<void> {
+  const response = await fetch(`/api/arcade/rooms/${params.roomId}/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      gameName: params.gameName,
+      gameConfig: params.gameConfig || {},
+    }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Failed to set room game')
+  }
+}
+
+/**
+ * Hook: Set game for a room
+ */
+export function useSetRoomGame() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: setRoomGameApi,
+    onSuccess: (_, variables) => {
+      // Update the cache with the new game
+      queryClient.setQueryData<RoomData | null>(roomKeys.current(), (prev) => {
+        if (!prev) return null
+        return {
+          ...prev,
+          gameName: variables.gameName,
+        }
+      })
+      // Refetch to get the full updated room data
+      queryClient.invalidateQueries({ queryKey: roomKeys.current() })
+    },
+  })
+}
