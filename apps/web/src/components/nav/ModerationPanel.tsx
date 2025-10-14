@@ -93,6 +93,7 @@ export function ModerationPanel({
   const [showPasswordInput, setShowPasswordInput] = useState(false)
   const [selectedNewOwner, setSelectedNewOwner] = useState<string>('')
   const [joinRequests, setJoinRequests] = useState<any[]>([])
+  const [passwordCopied, setPasswordCopied] = useState(false)
 
   // Ban modal state
   const [showBanModal, setShowBanModal] = useState(false)
@@ -471,6 +472,19 @@ export function ModerationPanel({
       alert(err instanceof Error ? err.message : 'Failed to deny request')
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  const handleCopyPassword = async () => {
+    if (!roomPassword) return
+
+    try {
+      await navigator.clipboard.writeText(roomPassword)
+      setPasswordCopied(true)
+      setTimeout(() => setPasswordCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy password:', err)
+      alert('Failed to copy password to clipboard')
     }
   }
 
@@ -1418,22 +1432,96 @@ export function ModerationPanel({
 
                     {/* Password input (conditional) */}
                     {(accessMode === 'password' || showPasswordInput) && (
-                      <input
-                        type="text"
-                        value={roomPassword}
-                        onChange={(e) => setRoomPassword(e.target.value)}
-                        placeholder="Enter room password"
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          border: '1px solid rgba(75, 85, 99, 0.5)',
-                          borderRadius: '6px',
-                          color: 'rgba(209, 213, 219, 1)',
-                          fontSize: '14px',
-                          marginBottom: '12px',
-                        }}
-                      />
+                      <div style={{ marginBottom: '12px' }}>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: 'rgba(209, 213, 219, 0.8)',
+                            marginBottom: '6px',
+                          }}
+                        >
+                          Room Password
+                        </label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <input
+                            type="text"
+                            value={roomPassword}
+                            onChange={(e) => setRoomPassword(e.target.value)}
+                            placeholder="Enter password to share with guests"
+                            style={{
+                              flex: 1,
+                              padding: '10px 12px',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(75, 85, 99, 0.5)',
+                              borderRadius: '6px',
+                              color: 'rgba(209, 213, 219, 1)',
+                              fontSize: '14px',
+                              outline: 'none',
+                              transition: 'border-color 0.2s ease',
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = 'rgba(253, 186, 116, 0.6)'
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = 'rgba(75, 85, 99, 0.5)'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleCopyPassword}
+                            disabled={!roomPassword}
+                            title="Copy password to clipboard"
+                            style={{
+                              padding: '10px 16px',
+                              background: passwordCopied
+                                ? 'rgba(34, 197, 94, 0.2)'
+                                : roomPassword
+                                  ? 'rgba(59, 130, 246, 0.2)'
+                                  : 'rgba(75, 85, 99, 0.2)',
+                              color: passwordCopied
+                                ? 'rgba(34, 197, 94, 1)'
+                                : roomPassword
+                                  ? 'rgba(59, 130, 246, 1)'
+                                  : 'rgba(156, 163, 175, 1)',
+                              border: passwordCopied
+                                ? '1px solid rgba(34, 197, 94, 0.4)'
+                                : roomPassword
+                                  ? '1px solid rgba(59, 130, 246, 0.4)'
+                                  : '1px solid rgba(75, 85, 99, 0.3)',
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: roomPassword ? 'pointer' : 'not-allowed',
+                              opacity: roomPassword ? 1 : 0.5,
+                              transition: 'all 0.2s ease',
+                              whiteSpace: 'nowrap',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (roomPassword && !passwordCopied) {
+                                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.3)'
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (roomPassword && !passwordCopied) {
+                                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)'
+                              }
+                            }}
+                          >
+                            {passwordCopied ? '✓ Copied!' : '📋 Copy'}
+                          </button>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: 'rgba(156, 163, 175, 1)',
+                            marginTop: '4px',
+                          }}
+                        >
+                          Share this password with guests to allow them to join
+                        </div>
+                      </div>
                     )}
 
                     {hasUnsavedAccessModeChanges && (
