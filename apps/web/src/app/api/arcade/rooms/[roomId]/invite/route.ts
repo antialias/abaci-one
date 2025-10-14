@@ -1,13 +1,14 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { getRoomMembers } from '@/lib/arcade/room-membership'
 import {
   createInvitation,
   declineInvitation,
   getInvitation,
   getRoomInvitations,
 } from '@/lib/arcade/room-invitations'
-import { getViewerId } from '@/lib/viewer'
+import { getRoomById } from '@/lib/arcade/room-manager'
+import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getSocketIO } from '@/lib/socket-io'
+import { getViewerId } from '@/lib/viewer'
 
 type RouteContext = {
   params: Promise<{ roomId: string }>
@@ -32,6 +33,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json(
         { error: 'Missing required fields: userId, userName' },
         { status: 400 }
+      )
+    }
+
+    // Get room to check access mode
+    const room = await getRoomById(roomId)
+    if (!room) {
+      return NextResponse.json({ error: 'Room not found' }, { status: 404 })
+    }
+
+    // Cannot invite to retired rooms
+    if (room.accessMode === 'retired') {
+      return NextResponse.json(
+        { error: 'Cannot send invitations to retired rooms' },
+        { status: 403 }
       )
     }
 
