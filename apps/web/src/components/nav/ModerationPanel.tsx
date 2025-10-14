@@ -1352,7 +1352,7 @@ export function ModerationPanel({
                           label: 'Restricted',
                           desc: 'Invite only',
                         },
-                        { value: 'locked', emoji: '🔒', label: 'Locked', desc: 'No members' },
+                        { value: 'locked', emoji: '🔒', label: 'Locked', desc: 'No new members' },
                         { value: 'retired', emoji: '🏁', label: 'Retired', desc: 'Closed' },
                       ].map((mode) => (
                         <button

@@ -1,13 +1,13 @@
+import bcrypt from 'bcryptjs'
 import { type NextRequest, NextResponse } from 'next/server'
-import { getRoomById, touchRoom } from '@/lib/arcade/room-manager'
-import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
 import { getActivePlayers, getRoomActivePlayers } from '@/lib/arcade/player-manager'
-import { isUserBanned } from '@/lib/arcade/room-moderation'
 import { getInvitation } from '@/lib/arcade/room-invitations'
 import { getJoinRequest } from '@/lib/arcade/room-join-requests'
-import { getViewerId } from '@/lib/viewer'
+import { getRoomById, touchRoom } from '@/lib/arcade/room-manager'
+import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
+import { isUserBanned } from '@/lib/arcade/room-moderation'
 import { getSocketIO } from '@/lib/socket-io'
-import bcrypt from 'bcryptjs'
+import { getViewerId } from '@/lib/viewer'
 
 type RouteContext = {
   params: Promise<{ roomId: string }>
@@ -38,10 +38,21 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'You are banned from this room' }, { status: 403 })
     }
 
+    // Check if user is already a member (for locked room access)
+    const members = await getRoomMembers(roomId)
+    const isExistingMember = members.some((m) => m.userId === viewerId)
+
     // Validate access mode
     switch (room.accessMode) {
       case 'locked':
-        return NextResponse.json({ error: 'This room is locked' }, { status: 403 })
+        // Allow existing members to continue using the room, but block new members
+        if (!isExistingMember) {
+          return NextResponse.json(
+            { error: 'This room is locked and not accepting new members' },
+            { status: 403 }
+          )
+        }
+        break
 
       case 'retired':
         return NextResponse.json({ error: 'This room has been retired' }, { status: 410 })
@@ -86,8 +97,6 @@ export async function POST(req: NextRequest, context: RouteContext) {
         }
         break
       }
-
-      case 'open':
       default:
         // No additional checks needed
         break
