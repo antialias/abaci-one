@@ -65,7 +65,7 @@ describe('Arcade Rooms API', () => {
       expect(room.createdBy).toBe(testGuestId1)
       expect(room.gameName).toBe('matching')
       expect(room.status).toBe('lobby')
-      expect(room.isLocked).toBe(false)
+      expect(room.accessMode).toBe('open')
       expect(room.ttlMinutes).toBe(60)
       expect(room.code).toMatch(/^[A-Z0-9]{6}$/)
     })
@@ -180,11 +180,11 @@ describe('Arcade Rooms API', () => {
     it('locks room', async () => {
       const [updated] = await db
         .update(schema.arcadeRooms)
-        .set({ isLocked: true })
+        .set({ accessMode: 'locked' })
         .where(eq(schema.arcadeRooms.id, testRoomId))
         .returning()
 
-      expect(updated.isLocked).toBe(true)
+      expect(updated.accessMode).toBe('locked')
     })
 
     it('updates room status', async () => {
@@ -442,14 +442,14 @@ describe('Arcade Rooms API', () => {
       // Lock one room
       await db
         .update(schema.arcadeRooms)
-        .set({ isLocked: true })
+        .set({ accessMode: 'locked' })
         .where(eq(schema.arcadeRooms.id, testRoomId))
 
-      const unlockedRooms = await db.query.arcadeRooms.findMany({
-        where: eq(schema.arcadeRooms.isLocked, false),
+      const openRooms = await db.query.arcadeRooms.findMany({
+        where: eq(schema.arcadeRooms.accessMode, 'open'),
       })
 
-      expect(unlockedRooms.every((r) => !r.isLocked)).toBe(true)
+      expect(openRooms.every((r) => r.accessMode === 'open')).toBe(true)
     })
   })
 })

@@ -19,7 +19,6 @@ export interface CreateRoomOptions {
 
 export interface UpdateRoomOptions {
   name?: string
-  isLocked?: boolean
   status?: 'lobby' | 'playing' | 'finished'
   currentSessionId?: string | null
   totalGamesPlayed?: number
@@ -56,7 +55,7 @@ export async function createRoom(options: CreateRoomOptions): Promise<schema.Arc
     createdAt: now,
     lastActivity: now,
     ttlMinutes: options.ttlMinutes || 60,
-    isLocked: false,
+    accessMode: 'open', // Default to open access
     gameName: options.gameName,
     gameConfig: options.gameConfig as any,
     status: 'lobby',
@@ -134,6 +133,7 @@ export async function deleteRoom(roomId: string): Promise<void> {
 /**
  * List active rooms
  * Returns rooms ordered by most recently active
+ * Only returns openly accessible rooms (accessMode: 'open' or 'password')
  */
 export async function listActiveRooms(gameName?: GameName): Promise<schema.ArcadeRoom[]> {
   const whereConditions = []
@@ -143,9 +143,10 @@ export async function listActiveRooms(gameName?: GameName): Promise<schema.Arcad
     whereConditions.push(eq(schema.arcadeRooms.gameName, gameName))
   }
 
-  // Only return non-locked rooms in lobby or playing status
+  // Only return accessible rooms in lobby or playing status
+  // Exclude locked, retired, restricted, and approval-only rooms
   whereConditions.push(
-    eq(schema.arcadeRooms.isLocked, false),
+    or(eq(schema.arcadeRooms.accessMode, 'open'), eq(schema.arcadeRooms.accessMode, 'password')),
     or(eq(schema.arcadeRooms.status, 'lobby'), eq(schema.arcadeRooms.status, 'playing'))
   )
 

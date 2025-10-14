@@ -33,7 +33,8 @@ vi.mock('@/db', () => ({
       code: 'code',
       name: 'name',
       gameName: 'gameName',
-      isLocked: 'isLocked',
+      accessMode: 'accessMode',
+      password: 'password',
       status: 'status',
       lastActivity: 'lastActivity',
     },
@@ -59,7 +60,8 @@ describe('Room Manager', () => {
     createdAt: new Date(),
     lastActivity: new Date(),
     ttlMinutes: 60,
-    isLocked: false,
+    accessMode: 'open',
+    password: null,
     gameName: 'matching',
     gameConfig: { difficulty: 6 },
     status: 'lobby',
@@ -245,7 +247,7 @@ describe('Room Manager', () => {
 
   describe('updateRoom', () => {
     it('updates room and returns updated data', async () => {
-      const updates = { name: 'Updated Room', isLocked: true }
+      const updates = { name: 'Updated Room', status: 'playing' as const }
 
       const mockUpdate = {
         set: vi.fn().mockReturnThis(),
@@ -257,7 +259,7 @@ describe('Room Manager', () => {
       const room = await updateRoom('room-123', updates)
 
       expect(room?.name).toBe('Updated Room')
-      expect(room?.isLocked).toBe(true)
+      expect(room?.status).toBe('playing')
       expect(db.update).toHaveBeenCalled()
     })
 
@@ -328,12 +330,12 @@ describe('Room Manager', () => {
       expect(db.query.arcadeRooms.findMany).toHaveBeenCalled()
     })
 
-    it('excludes locked rooms', async () => {
+    it('only includes open and password-protected rooms', async () => {
       vi.mocked(db.query.arcadeRooms.findMany).mockResolvedValue(activeRooms)
 
       await listActiveRooms()
 
-      // Verify the where clause excludes locked rooms
+      // Verify the where clause filters by accessMode
       const call = vi.mocked(db.query.arcadeRooms.findMany).mock.calls[0][0]
       expect(call).toBeDefined()
     })
