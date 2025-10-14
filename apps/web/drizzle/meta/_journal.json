@@ -71,6 +71,13 @@
       "when": 1760600000000,
       "tag": "0009_add_display_password",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1760700000000,
+      "tag": "0010_make_game_name_nullable",
+      "breakpoints": true
     }
   ]
 }

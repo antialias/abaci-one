@@ -70,15 +70,12 @@ export async function POST(req: NextRequest) {
     const viewerId = await getViewerId()
     const body = await req.json()
 
-    // Validate required fields (name is optional, gameName is required)
-    if (!body.gameName) {
-      return NextResponse.json({ error: 'Missing required field: gameName' }, { status: 400 })
-    }
-
-    // Validate game name
-    const validGames: GameName[] = ['matching', 'memory-quiz', 'complement-race']
-    if (!validGames.includes(body.gameName)) {
-      return NextResponse.json({ error: 'Invalid game name' }, { status: 400 })
+    // Validate game name if provided (gameName is now optional)
+    if (body.gameName) {
+      const validGames: GameName[] = ['matching', 'memory-quiz', 'complement-race']
+      if (!validGames.includes(body.gameName)) {
+        return NextResponse.json({ error: 'Invalid game name' }, { status: 400 })
+      }
     }
 
     // Validate name length (if provided)
@@ -120,8 +117,8 @@ export async function POST(req: NextRequest) {
       name: roomName,
       createdBy: viewerId,
       creatorName: displayName,
-      gameName: body.gameName,
-      gameConfig: body.gameConfig || {},
+      gameName: body.gameName || null,
+      gameConfig: body.gameConfig || null,
       ttlMinutes: body.ttlMinutes,
       accessMode: body.accessMode,
       password: body.password,

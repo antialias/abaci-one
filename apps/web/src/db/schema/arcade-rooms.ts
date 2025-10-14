@@ -32,11 +32,11 @@ export const arcadeRooms = sqliteTable('arcade_rooms', {
   password: text('password', { length: 255 }), // Hashed password for password-protected rooms
   displayPassword: text('display_password', { length: 100 }), // Plain text password for display to room owner
 
-  // Game configuration
+  // Game configuration (nullable to support game selection in room)
   gameName: text('game_name', {
     enum: ['matching', 'memory-quiz', 'complement-race'],
-  }).notNull(),
-  gameConfig: text('game_config', { mode: 'json' }).notNull(), // Game-specific settings
+  }),
+  gameConfig: text('game_config', { mode: 'json' }), // Game-specific settings (nullable when no game selected)
 
   // Current state
   status: text('status', {

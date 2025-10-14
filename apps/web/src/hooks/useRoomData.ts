@@ -22,7 +22,7 @@ export interface RoomData {
   id: string
   name: string
   code: string
-  gameName: string
+  gameName: string | null // Nullable to support game selection in room
   accessMode: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
   members: RoomMember[]
   memberPlayers: Record<string, RoomPlayer[]> // userId -> players
@@ -30,7 +30,7 @@ export interface RoomData {
 
 export interface CreateRoomParams {
   name: string | null
-  gameName: string
+  gameName?: string | null // Optional - rooms can be created without a game
   creatorName?: string
   gameConfig?: Record<string, unknown>
   accessMode?: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
@@ -86,9 +86,9 @@ async function createRoomApi(params: CreateRoomParams): Promise<RoomData> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: params.name,
-      gameName: params.gameName,
+      gameName: params.gameName || null,
       creatorName: params.creatorName || 'Player',
-      gameConfig: params.gameConfig || { difficulty: 6 },
+      gameConfig: params.gameConfig || null,
       accessMode: params.accessMode,
       password: params.password,
     }),
