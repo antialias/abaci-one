@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useRoomData, useSetRoomGame } from '@/hooks/useRoomData'
 import { MemoryPairsGame } from '../matching/components/MemoryPairsGame'
 import { RoomMemoryPairsProvider } from '../matching/context/RoomMemoryPairsProvider'
+import { MemoryQuizGame } from '../memory-quiz/components/MemoryQuizGame'
+import { RoomMemoryQuizProvider } from '../memory-quiz/context/RoomMemoryQuizProvider'
 import { GAMES_CONFIG } from '@/components/GameSelector'
 import type { GameType } from '@/components/GameSelector'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -205,7 +207,14 @@ export default function RoomPage() {
         </RoomMemoryPairsProvider>
       )
 
-    // TODO: Add other games (complement-race, memory-quiz, etc.)
+    case 'memory-quiz':
+      return (
+        <RoomMemoryQuizProvider>
+          <MemoryQuizGame />
+        </RoomMemoryQuizProvider>
+      )
+
+    // TODO: Add other games (complement-race, etc.)
     default:
       return (
         <PageWithNav

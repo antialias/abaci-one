@@ -6,7 +6,7 @@ import { GameCard } from './GameCard'
 
 // Game configuration defining player limits
 export const GAMES_CONFIG = {
-  'memory-lightning': {
+  'memory-quiz': {
     name: 'Memory Lightning',
     fullName: 'Memory Lightning ⚡',
     maxPlayers: 1,

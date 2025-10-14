@@ -836,7 +836,10 @@ export function ModerationNotifications({
                   router.push('/arcade/room')
                 } catch (error) {
                   console.error('Failed to join room:', error)
-                  showError('Failed to join room', error instanceof Error ? error.message : undefined)
+                  showError(
+                    'Failed to join room',
+                    error instanceof Error ? error.message : undefined
+                  )
                   setIsAcceptingInvitation(false)
                 }
               }}

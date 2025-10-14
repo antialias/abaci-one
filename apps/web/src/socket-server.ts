@@ -14,7 +14,7 @@ import { createRoom, getRoomById } from './lib/arcade/room-manager'
 import { getRoomMembers, getUserRooms, setMemberOnline } from './lib/arcade/room-membership'
 import { getRoomActivePlayers, getRoomPlayerIds } from './lib/arcade/player-manager'
 import type { GameMove, GameName } from './lib/arcade/validation'
-import { matchingGameValidator } from './lib/arcade/validation/MatchingGameValidator'
+import { getValidator } from './lib/arcade/validation'
 
 // Use globalThis to store socket.io instance to avoid module isolation issues
 // This ensures the same instance is accessible across dynamic imports
@@ -76,12 +76,29 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               const roomPlayerIds = await getRoomPlayerIds(roomId)
               console.log('[join-arcade-session] Room active players:', roomPlayerIds)
 
-              // Get initial state from validator (starts in "setup" phase)
-              const initialState = matchingGameValidator.getInitialState({
-                difficulty: (room.gameConfig as any)?.difficulty || 6,
-                gameType: (room.gameConfig as any)?.gameType || 'abacus-numeral',
-                turnTimer: (room.gameConfig as any)?.turnTimer || 30,
-              })
+              // Get initial state from the correct validator based on game type
+              console.log('[join-arcade-session] Room game name:', room.gameName)
+              const validator = getValidator(room.gameName as GameName)
+              console.log('[join-arcade-session] Got validator for:', room.gameName)
+
+              // Different games have different initial configs
+              let initialState: any
+              if (room.gameName === 'matching') {
+                initialState = validator.getInitialState({
+                  difficulty: (room.gameConfig as any)?.difficulty || 6,
+                  gameType: (room.gameConfig as any)?.gameType || 'abacus-numeral',
+                  turnTimer: (room.gameConfig as any)?.turnTimer || 30,
+                })
+              } else if (room.gameName === 'memory-quiz') {
+                initialState = validator.getInitialState({
+                  selectedCount: (room.gameConfig as any)?.selectedCount || 5,
+                  displayTime: (room.gameConfig as any)?.displayTime || 2.0,
+                  selectedDifficulty: (room.gameConfig as any)?.selectedDifficulty || 'easy',
+                })
+              } else {
+                // Fallback for other games
+                initialState = validator.getInitialState(room.gameConfig || {})
+              }
 
               session = await createArcadeSession({
                 userId,
@@ -162,8 +179,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               return
             }
 
-            // Get initial state from validator
-            const initialState = matchingGameValidator.getInitialState({
+            // Get initial state from validator (this code path is matching-game specific)
+            const matchingValidator = getValidator('matching')
+            const initialState = matchingValidator.getInitialState({
               difficulty: 6,
               gameType: 'abacus-numeral',
               turnTimer: 30,

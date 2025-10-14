@@ -48,9 +48,26 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
   })
 
   it('should return 403 when trying to change isActive with active arcade session', async () => {
+    // Create an arcade room first
+    const [room] = await db
+      .insert(schema.arcadeRooms)
+      .values({
+        code: 'TEST01',
+        createdBy: testGuestId,
+        creatorName: 'Test User',
+        gameName: 'matching',
+        gameConfig: JSON.stringify({
+          difficulty: 6,
+          gameType: 'abacus-numeral',
+          turnTimer: 30,
+        }),
+      })
+      .returning()
+
     // Create an active arcade session
     const now = new Date()
     await db.insert(schema.arcadeSessions).values({
+      roomId: room.id,
       userId: testGuestId,
       currentGame: 'matching',
       gameUrl: '/arcade/matching',
@@ -117,9 +134,26 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
   })
 
   it('should allow non-isActive changes even with active arcade session', async () => {
+    // Create an arcade room first
+    const [room] = await db
+      .insert(schema.arcadeRooms)
+      .values({
+        code: 'TEST02',
+        createdBy: testGuestId,
+        creatorName: 'Test User',
+        gameName: 'matching',
+        gameConfig: JSON.stringify({
+          difficulty: 6,
+          gameType: 'abacus-numeral',
+          turnTimer: 30,
+        }),
+      })
+      .returning()
+
     // Create an active arcade session
     const now = new Date()
     await db.insert(schema.arcadeSessions).values({
+      roomId: room.id,
       userId: testGuestId,
       currentGame: 'matching',
       gameUrl: '/arcade/matching',
@@ -164,9 +198,26 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
   })
 
   it('should allow isActive change after arcade session ends', async () => {
+    // Create an arcade room first
+    const [room] = await db
+      .insert(schema.arcadeRooms)
+      .values({
+        code: 'TEST03',
+        createdBy: testGuestId,
+        creatorName: 'Test User',
+        gameName: 'matching',
+        gameConfig: JSON.stringify({
+          difficulty: 6,
+          gameType: 'abacus-numeral',
+          turnTimer: 30,
+        }),
+      })
+      .returning()
+
     // Create an active arcade session
     const now = new Date()
     await db.insert(schema.arcadeSessions).values({
+      roomId: room.id,
       userId: testGuestId,
       currentGame: 'matching',
       gameUrl: '/arcade/matching',
@@ -179,7 +230,7 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
     })
 
     // End the session
-    await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.userId, testGuestId))
+    await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.roomId, room.id))
 
     // Mock request to change isActive
     const mockRequest = new NextRequest(`http://localhost:3000/api/players/${testPlayerId}`, {
@@ -212,9 +263,26 @@ describe('PATCH /api/players/[id] - Arcade Session Validation', () => {
       })
       .returning()
 
+    // Create an arcade room first
+    const [room] = await db
+      .insert(schema.arcadeRooms)
+      .values({
+        code: 'TEST04',
+        createdBy: testGuestId,
+        creatorName: 'Test User',
+        gameName: 'matching',
+        gameConfig: JSON.stringify({
+          difficulty: 6,
+          gameType: 'abacus-numeral',
+          turnTimer: 30,
+        }),
+      })
+      .returning()
+
     // Create arcade session
     const now2 = new Date()
     await db.insert(schema.arcadeSessions).values({
+      roomId: room.id,
       userId: testGuestId,
       currentGame: 'matching',
       gameUrl: '/arcade/matching',

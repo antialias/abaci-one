@@ -52,38 +52,12 @@ describe('Orphaned Session Cleanup', () => {
     await db.delete(schema.users).where(eq(schema.users.id, testUserId))
   })
 
-  it('should return undefined when session has no roomId', async () => {
-    // Create a session with a valid room
-    const session = await createArcadeSession({
-      userId: testGuestId,
-      gameName: 'matching',
-      gameUrl: '/arcade/matching',
-      initialState: { gamePhase: 'setup' },
-      activePlayers: ['player-1'],
-      roomId: testRoomId,
-    })
-
-    expect(session).toBeDefined()
-    expect(session.roomId).toBe(testRoomId)
-
-    // Manually set roomId to null to simulate orphaned session
-    await db
-      .update(schema.arcadeSessions)
-      .set({ roomId: null })
-      .where(eq(schema.arcadeSessions.userId, testUserId))
-
-    // Getting the session should auto-delete it and return undefined
-    const result = await getArcadeSession(testGuestId)
-    expect(result).toBeUndefined()
-
-    // Verify session was actually deleted
-    const [directCheck] = await db
-      .select()
-      .from(schema.arcadeSessions)
-      .where(eq(schema.arcadeSessions.userId, testUserId))
-      .limit(1)
-
-    expect(directCheck).toBeUndefined()
+  // NOTE: This test is no longer valid with roomId as primary key
+  // roomId cannot be null since it's the primary key with a foreign key constraint
+  // Orphaned sessions are now automatically cleaned up via CASCADE delete when room is deleted
+  it.skip('should return undefined when session has no roomId', async () => {
+    // This test scenario is impossible with the new schema where roomId is the primary key
+    // and has a foreign key constraint with CASCADE delete
   })
 
   it('should return undefined when session room has been deleted', async () => {

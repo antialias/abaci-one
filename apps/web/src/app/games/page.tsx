@@ -21,7 +21,7 @@ function GamesPageContent() {
   const _handleGameClick = (gameType: string) => {
     // Navigate directly to games using the centralized game mode with Next.js router
     console.log('🔄 GamesPage: Navigating with Next.js router (no page reload)')
-    if (gameType === 'memory-lightning') {
+    if (gameType === 'memory-quiz') {
       router.push('/games/memory-quiz')
     } else if (gameType === 'battle-arena') {
       router.push('/games/matching')

@@ -4,6 +4,7 @@
  */
 
 import type { MemoryPairsState } from '@/app/games/matching/context/types'
+import type { SorobanQuizState } from '@/app/arcade/memory-quiz/types'
 
 export type GameName = 'matching' | 'memory-quiz' | 'complement-race'
 
@@ -77,8 +78,74 @@ export type MatchingGameMove =
   | MatchingResumeGameMove
   | MatchingHoverCardMove
 
+// Memory Quiz game specific moves
+export interface MemoryQuizStartQuizMove extends GameMove {
+  type: 'START_QUIZ'
+  data: {
+    quizCards: any[] // QuizCard type from memory-quiz types
+  }
+}
+
+export interface MemoryQuizNextCardMove extends GameMove {
+  type: 'NEXT_CARD'
+  data: Record<string, never>
+}
+
+export interface MemoryQuizShowInputPhaseMove extends GameMove {
+  type: 'SHOW_INPUT_PHASE'
+  data: Record<string, never>
+}
+
+export interface MemoryQuizAcceptNumberMove extends GameMove {
+  type: 'ACCEPT_NUMBER'
+  data: {
+    number: number
+  }
+}
+
+export interface MemoryQuizRejectNumberMove extends GameMove {
+  type: 'REJECT_NUMBER'
+  data: Record<string, never>
+}
+
+export interface MemoryQuizSetInputMove extends GameMove {
+  type: 'SET_INPUT'
+  data: {
+    input: string
+  }
+}
+
+export interface MemoryQuizShowResultsMove extends GameMove {
+  type: 'SHOW_RESULTS'
+  data: Record<string, never>
+}
+
+export interface MemoryQuizResetQuizMove extends GameMove {
+  type: 'RESET_QUIZ'
+  data: Record<string, never>
+}
+
+export interface MemoryQuizSetConfigMove extends GameMove {
+  type: 'SET_CONFIG'
+  data: {
+    field: 'selectedCount' | 'displayTime' | 'selectedDifficulty'
+    value: any
+  }
+}
+
+export type MemoryQuizGameMove =
+  | MemoryQuizStartQuizMove
+  | MemoryQuizNextCardMove
+  | MemoryQuizShowInputPhaseMove
+  | MemoryQuizAcceptNumberMove
+  | MemoryQuizRejectNumberMove
+  | MemoryQuizSetInputMove
+  | MemoryQuizShowResultsMove
+  | MemoryQuizResetQuizMove
+  | MemoryQuizSetConfigMove
+
 // Generic game state union
-export type GameState = MemoryPairsState // Add other game states as union later
+export type GameState = MemoryPairsState | SorobanQuizState // Add other game states as union later
 
 /**
  * Validation context for authorization checks

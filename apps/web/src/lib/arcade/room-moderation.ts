@@ -5,13 +5,7 @@
 
 import { and, desc, eq } from 'drizzle-orm'
 import { db } from '@/db'
-import {
-  roomBans,
-  roomMembers,
-  roomReports,
-  type NewRoomBan,
-  type NewRoomReport,
-} from '@/db/schema'
+import { roomBans, roomMembers, roomReports } from '@/db/schema'
 import { recordRoomMemberHistory } from './room-member-history'
 
 /**

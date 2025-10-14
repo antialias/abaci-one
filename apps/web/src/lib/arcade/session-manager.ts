@@ -220,8 +220,10 @@ export async function applyGameMove(
   const validator = getValidator(session.currentGame as GameName)
 
   console.log('[SessionManager] About to validate move:', {
+    gameName: session.currentGame,
     moveType: move.type,
     playerId: move.playerId,
+    moveData: move.type === 'SET_CONFIG' ? (move as any).data : undefined,
     gameStateCurrentPlayer: (session.gameState as any)?.currentPlayer,
     gameStateActivePlayers: (session.gameState as any)?.activePlayers,
     gameStatePhase: (session.gameState as any)?.gamePhase,

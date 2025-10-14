@@ -109,7 +109,10 @@ export default function RoomBrowserPage() {
       }
 
       if (room.accessMode === 'restricted') {
-        showInfo('Invitation Only', 'This room is invitation-only. Please ask the host for an invitation.')
+        showInfo(
+          'Invitation Only',
+          'This room is invitation-only. Please ask the host for an invitation.'
+        )
         return
       }
 

@@ -60,7 +60,15 @@
       "Bash(npx @biomejs/biome format:*)",
       "Bash(npx drizzle-kit generate:*)",
       "Bash(ssh nas.home.network \"docker ps | grep -E ''soroban|abaci|web''\")",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "Bash(printf \"\\n\\n\")",
+      "Bash(timeout 10 npx drizzle-kit generate:*)",
+      "Bash(git checkout:*)",
+      "Bash(git log:*)",
+      "Bash(python3:*)",
+      "Bash(git reset:*)",
+      "Bash(lsof:*)",
+      "Bash(killall:*)"
     ],
     "deny": [],
     "ask": []

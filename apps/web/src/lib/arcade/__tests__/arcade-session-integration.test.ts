@@ -67,6 +67,7 @@ describe('Arcade Session Integration', () => {
       moves: 0,
       scores: {},
       activePlayers: ['1'],
+      playerMetadata: {},
       consecutiveMatches: {},
       gameStartTime: null,
       gameEndTime: null,
@@ -76,6 +77,7 @@ describe('Arcade Session Integration', () => {
       isProcessingMove: false,
       showMismatchFeedback: false,
       lastMatchedPair: null,
+      playerHovers: {},
     }
 
     const session = await createArcadeSession({
@@ -170,6 +172,7 @@ describe('Arcade Session Integration', () => {
       moves: 0,
       scores: { 1: 0 },
       activePlayers: ['1'],
+      playerMetadata: {},
       consecutiveMatches: { 1: 0 },
       gameStartTime: Date.now(),
       gameEndTime: null,
@@ -179,6 +182,7 @@ describe('Arcade Session Integration', () => {
       isProcessingMove: false,
       showMismatchFeedback: false,
       lastMatchedPair: null,
+      playerHovers: {},
     }
 
     await createArcadeSession({
