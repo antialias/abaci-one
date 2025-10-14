@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/common/Modal'
-import { useRoomData } from '@/hooks/useRoomData'
 import type { schema } from '@/db'
+import { useRoomData } from '@/hooks/useRoomData'
 
 export interface JoinRoomModalProps {
   /**
@@ -32,6 +32,7 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
   const [roomInfo, setRoomInfo] = useState<schema.ArcadeRoom | null>(null)
   const [needsPassword, setNeedsPassword] = useState(false)
   const [needsApproval, setNeedsApproval] = useState(false)
+  const [approvalRequested, setApprovalRequested] = useState(false)
 
   const handleClose = () => {
     setCode('')
@@ -41,6 +42,7 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
     setRoomInfo(null)
     setNeedsPassword(false)
     setNeedsApproval(false)
+    setApprovalRequested(false)
     onClose()
   }
 
@@ -118,6 +120,8 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
     if (!roomInfo) return
 
     setIsLoading(true)
+    setError('')
+
     try {
       const res = await fetch(`/api/arcade/rooms/${roomInfo.id}/join-requests`, {
         method: 'POST',
@@ -129,12 +133,11 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
         throw new Error(errorData.error || 'Failed to request access')
       }
 
-      // Success!
-      alert('Access request sent! The host will review your request.')
-      handleClose()
+      // Success! Show waiting state
+      setApprovalRequested(true)
+      setIsLoading(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to request access')
-    } finally {
       setIsLoading(false)
     }
   }
@@ -165,7 +168,9 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
           }}
         >
           {needsApproval
-            ? 'This room requires host approval. Send a request to join?'
+            ? approvalRequested
+              ? 'Your request has been sent to the room moderator.'
+              : 'This room requires host approval. Send a request to join?'
             : needsPassword
               ? 'This room is password protected'
               : 'Enter the 6-character room code'}
@@ -174,110 +179,192 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
         {needsApproval ? (
           // Approval request UI
           <div>
-            <div
-              style={{
-                padding: '16px',
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                borderRadius: '8px',
-                marginBottom: '20px',
-              }}
-            >
-              <p
-                style={{
-                  fontSize: '14px',
-                  color: 'rgba(209, 213, 219, 1)',
-                  marginBottom: '8px',
-                }}
-              >
-                <strong>{roomInfo?.name}</strong>
-              </p>
-              <p style={{ fontSize: '13px', color: 'rgba(156, 163, 175, 1)' }}>
-                Code: {roomInfo?.code}
-              </p>
-            </div>
+            {approvalRequested ? (
+              // Waiting for approval state
+              <>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+                  <h3
+                    style={{
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      marginBottom: '8px',
+                      color: 'rgba(96, 165, 250, 1)',
+                    }}
+                  >
+                    Waiting for Approval
+                  </h3>
+                </div>
 
-            {error && (
-              <p
-                style={{
-                  fontSize: '13px',
-                  color: 'rgba(248, 113, 113, 1)',
-                  marginBottom: '16px',
-                  textAlign: 'center',
-                }}
-              >
-                {error}
-              </p>
-            )}
+                <div
+                  style={{
+                    padding: '16px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: '8px',
+                    marginBottom: '20px',
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: '14px',
+                      color: 'rgba(209, 213, 219, 1)',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <strong>{roomInfo?.name}</strong>
+                  </p>
+                  <p style={{ fontSize: '13px', color: 'rgba(156, 163, 175, 1)' }}>
+                    Code: {roomInfo?.code}
+                  </p>
+                </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={isLoading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: 'rgba(75, 85, 99, 0.3)',
-                  color: 'rgba(209, 213, 219, 1)',
-                  border: '2px solid rgba(75, 85, 99, 0.5)',
-                  borderRadius: '10px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  opacity: isLoading ? 0.5 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
+                <p
+                  style={{
+                    fontSize: '13px',
+                    color: 'rgba(156, 163, 175, 1)',
+                    textAlign: 'center',
+                    marginBottom: '20px',
+                  }}
+                >
+                  You'll be able to join once the host approves your request. You can close this
+                  dialog and check back later.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: 'rgba(75, 85, 99, 0.3)',
+                    color: 'rgba(209, 213, 219, 1)',
+                    border: '2px solid rgba(75, 85, 99, 0.5)',
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'rgba(75, 85, 99, 0.4)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading) {
+                  }}
+                  onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'rgba(75, 85, 99, 0.3)'
-                  }
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleRequestAccess}
-                disabled={isLoading}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: isLoading
-                    ? 'rgba(75, 85, 99, 0.3)'
-                    : 'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))',
-                  color: isLoading ? 'rgba(156, 163, 175, 1)' : 'rgba(255, 255, 255, 1)',
-                  border: isLoading
-                    ? '2px solid rgba(75, 85, 99, 0.5)'
-                    : '2px solid rgba(59, 130, 246, 0.6)',
-                  borderRadius: '10px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  opacity: isLoading ? 0.5 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.background =
-                      'linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.9))'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.background =
-                      'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))'
-                  }
-                }}
-              >
-                {isLoading ? 'Sending...' : 'Send Request'}
-              </button>
-            </div>
+                  }}
+                >
+                  Close
+                </button>
+              </>
+            ) : (
+              // Initial request prompt
+              <>
+                <div
+                  style={{
+                    padding: '16px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: '8px',
+                    marginBottom: '20px',
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: '14px',
+                      color: 'rgba(209, 213, 219, 1)',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <strong>{roomInfo?.name}</strong>
+                  </p>
+                  <p style={{ fontSize: '13px', color: 'rgba(156, 163, 175, 1)' }}>
+                    Code: {roomInfo?.code}
+                  </p>
+                </div>
+
+                {error && (
+                  <p
+                    style={{
+                      fontSize: '13px',
+                      color: 'rgba(248, 113, 113, 1)',
+                      marginBottom: '16px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {error}
+                  </p>
+                )}
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    disabled={isLoading}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: 'rgba(75, 85, 99, 0.3)',
+                      color: 'rgba(209, 213, 219, 1)',
+                      border: '2px solid rgba(75, 85, 99, 0.5)',
+                      borderRadius: '10px',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      opacity: isLoading ? 0.5 : 1,
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isLoading) {
+                        e.currentTarget.style.background = 'rgba(75, 85, 99, 0.4)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isLoading) {
+                        e.currentTarget.style.background = 'rgba(75, 85, 99, 0.3)'
+                      }
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRequestAccess}
+                    disabled={isLoading}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: isLoading
+                        ? 'rgba(75, 85, 99, 0.3)'
+                        : 'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))',
+                      color: isLoading ? 'rgba(156, 163, 175, 1)' : 'rgba(255, 255, 255, 1)',
+                      border: isLoading
+                        ? '2px solid rgba(75, 85, 99, 0.5)'
+                        : '2px solid rgba(59, 130, 246, 0.6)',
+                      borderRadius: '10px',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      opacity: isLoading ? 0.5 : 1,
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isLoading) {
+                        e.currentTarget.style.background =
+                          'linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.9))'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isLoading) {
+                        e.currentTarget.style.background =
+                          'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))'
+                      }
+                    }}
+                  >
+                    {isLoading ? 'Sending...' : 'Send Request'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         ) : (
           // Standard join form
@@ -323,7 +410,6 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
                 }}
                 placeholder="Enter password"
                 disabled={isLoading}
-                autoFocus
                 style={{
                   width: '100%',
                   padding: '14px',
