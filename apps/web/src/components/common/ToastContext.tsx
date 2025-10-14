@@ -179,7 +179,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <style
           dangerouslySetInnerHTML={{
             __html: `
-              @keyframes slideIn {
+              @keyframes toastSlideIn {
                 from {
                   transform: translateX(calc(100% + 25px));
                 }
@@ -188,7 +188,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 }
               }
 
-              @keyframes slideOut {
+              @keyframes toastSlideOut {
                 from {
                   transform: translateX(0);
                 }
@@ -197,7 +197,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 }
               }
 
-              @keyframes hide {
+              @keyframes toastHide {
                 from {
                   opacity: 1;
                 }
@@ -206,25 +206,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 }
               }
 
-              [data-state='open'] {
-                animation: slideIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+              [data-radix-toast-viewport] [data-state='open'] {
+                animation: toastSlideIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
               }
 
-              [data-state='closed'] {
-                animation: hide 100ms ease-in, slideOut 200ms cubic-bezier(0.32, 0, 0.67, 0);
+              [data-radix-toast-viewport] [data-state='closed'] {
+                animation: toastHide 100ms ease-in, toastSlideOut 200ms cubic-bezier(0.32, 0, 0.67, 0);
               }
 
-              [data-swipe='move'] {
+              [data-radix-toast-viewport] [data-swipe='move'] {
                 transform: translateX(var(--radix-toast-swipe-move-x));
               }
 
-              [data-swipe='cancel'] {
+              [data-radix-toast-viewport] [data-swipe='cancel'] {
                 transform: translateX(0);
                 transition: transform 200ms ease-out;
               }
 
-              [data-swipe='end'] {
-                animation: slideOut 100ms ease-out;
+              [data-radix-toast-viewport] [data-swipe='end'] {
+                animation: toastSlideOut 100ms ease-out;
               }
             `,
           }}
