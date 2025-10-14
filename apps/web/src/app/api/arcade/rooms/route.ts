@@ -135,6 +135,16 @@ export async function POST(req: NextRequest) {
       isCreator: true,
     })
 
+    // Get members and active players for the response
+    const members = await getRoomMembers(room.id)
+    const memberPlayers = await getRoomActivePlayers(room.id)
+
+    // Convert Map to object for JSON serialization
+    const memberPlayersObj: Record<string, any[]> = {}
+    for (const [uid, players] of memberPlayers.entries()) {
+      memberPlayersObj[uid] = players
+    }
+
     // Generate join URL
     const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'
     const joinUrl = `${baseUrl}/arcade/rooms/${room.id}`
@@ -142,6 +152,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         room,
+        members,
+        memberPlayers: memberPlayersObj,
         joinUrl,
       },
       { status: 201 }
