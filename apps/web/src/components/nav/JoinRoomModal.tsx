@@ -143,11 +143,11 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
     }
   }
 
-  // Socket listener and polling for approval notifications
+  // Socket listener for approval notifications
   useEffect(() => {
     if (!approvalRequested || !roomInfo) return
 
-    console.log('[JoinRoomModal] Setting up approval listeners for room:', roomInfo.id)
+    console.log('[JoinRoomModal] Setting up approval listener for room:', roomInfo.id)
 
     // Socket listener for real-time approval notification
     const socket = io({ path: '/api/socket' })
@@ -175,40 +175,9 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
       console.error('[JoinRoomModal] Socket connection error:', error)
     })
 
-    // Polling fallback - check every 5 seconds
-    const pollInterval = setInterval(async () => {
-      try {
-        console.log('[JoinRoomModal] Polling for approval status...')
-        const res = await fetch(`/api/arcade/rooms/${roomInfo.id}/join-requests`)
-        if (res.ok) {
-          const data = await res.json()
-          // Check if any request for this user was approved
-          const approvedRequest = data.requests?.find(
-            (r: { status: string }) => r.status === 'approved'
-          )
-          if (approvedRequest) {
-            console.log('[JoinRoomModal] Request approved via polling! Joining room...')
-            clearInterval(pollInterval)
-            socket.disconnect()
-            try {
-              await joinRoom(roomInfo.id)
-              handleClose()
-              onSuccess?.()
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'Failed to join room')
-              setIsLoading(false)
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[JoinRoomModal] Failed to poll join requests:', err)
-      }
-    }, 5000)
-
     return () => {
-      console.log('[JoinRoomModal] Cleaning up approval listeners')
+      console.log('[JoinRoomModal] Cleaning up approval listener')
       socket.disconnect()
-      clearInterval(pollInterval)
     }
   }, [approvalRequested, roomInfo, joinRoom, handleClose, onSuccess])
 

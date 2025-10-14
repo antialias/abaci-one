@@ -352,11 +352,11 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
     }
   }
 
-  // Socket listener and polling for approval notifications
+  // Socket listener for approval notifications
   useEffect(() => {
     if (!approvalRequested || !targetRoomData) return
 
-    console.log('[Join Page] Setting up approval listeners for room:', targetRoomData.id)
+    console.log('[Join Page] Setting up approval listener for room:', targetRoomData.id)
 
     // Socket listener for real-time approval notification
     const socket = io({ path: '/api/socket' })
@@ -377,33 +377,9 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
       console.error('[Join Page] Socket connection error:', error)
     })
 
-    // Polling fallback - check every 5 seconds
-    const pollInterval = setInterval(async () => {
-      try {
-        console.log('[Join Page] Polling for approval status...')
-        const res = await fetch(`/api/arcade/rooms/${targetRoomData.id}/join-requests`)
-        if (res.ok) {
-          const data = await res.json()
-          // Check if any request for this user was approved
-          const approvedRequest = data.requests?.find(
-            (r: { status: string }) => r.status === 'approved'
-          )
-          if (approvedRequest) {
-            console.log('[Join Page] Request approved via polling! Joining room...')
-            clearInterval(pollInterval)
-            socket.disconnect()
-            handleJoin(targetRoomData.id)
-          }
-        }
-      } catch (err) {
-        console.error('[Join Page] Failed to poll join requests:', err)
-      }
-    }, 5000)
-
     return () => {
-      console.log('[Join Page] Cleaning up approval listeners')
+      console.log('[Join Page] Cleaning up approval listener')
       socket.disconnect()
-      clearInterval(pollInterval)
     }
   }, [approvalRequested, targetRoomData, handleJoin])
 
