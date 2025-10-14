@@ -1,7 +1,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { useLeaveRoom, useRoomData } from '@/hooks/useRoomData'
+import { useClearRoomGame, useLeaveRoom, useRoomData } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 import { CreateRoomModal } from './CreateRoomModal'
@@ -62,6 +62,7 @@ export function RoomInfo({
   const { getRoomShareUrl, roomData } = useRoomData()
   const { data: currentUserId } = useViewerId()
   const { mutateAsync: leaveRoom } = useLeaveRoom()
+  const { mutate: clearRoomGame } = useClearRoomGame()
 
   // Use room display utility for consistent naming
   const displayName = joinCode
@@ -400,6 +401,43 @@ export function RoomInfo({
               >
                 <span style={{ fontSize: '16px' }}>🎮</span>
                 <span>New Game</span>
+              </DropdownMenu.Item>
+            )}
+
+            {/* Change Game - only show for host and only when a game is selected */}
+            {isCurrentUserCreator && roomId && roomData?.gameName && (
+              <DropdownMenu.Item
+                onSelect={() => {
+                  if (roomId) {
+                    clearRoomGame(roomId)
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'rgba(209, 213, 219, 1)',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(236, 72, 153, 0.2)'
+                  e.currentTarget.style.color = 'rgba(249, 168, 212, 1)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'rgba(209, 213, 219, 1)'
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>🔄</span>
+                <span>Change Game</span>
               </DropdownMenu.Item>
             )}
 

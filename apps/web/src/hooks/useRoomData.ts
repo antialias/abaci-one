@@ -604,3 +604,45 @@ export function useSetRoomGame() {
     },
   })
 }
+
+/**
+ * Clear/reset game for a room (host only)
+ */
+async function clearRoomGameApi(roomId: string): Promise<void> {
+  const response = await fetch(`/api/arcade/rooms/${roomId}/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      gameName: null,
+      gameConfig: null,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Failed to clear room game')
+  }
+}
+
+/**
+ * Hook: Clear/reset game for a room (returns to game selection screen)
+ */
+export function useClearRoomGame() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: clearRoomGameApi,
+    onSuccess: () => {
+      // Update the cache to clear the game
+      queryClient.setQueryData<RoomData | null>(roomKeys.current(), (prev) => {
+        if (!prev) return null
+        return {
+          ...prev,
+          gameName: null,
+        }
+      })
+      // Refetch to get the full updated room data
+      queryClient.invalidateQueries({ queryKey: roomKeys.current() })
+    },
+  })
+}
