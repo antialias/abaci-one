@@ -149,35 +149,58 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
 
     console.log('[JoinRoomModal] Setting up approval listener for room:', roomInfo.id)
 
-    // Socket listener for real-time approval notification
-    const socket = io({ path: '/api/socket' })
+    let socket: ReturnType<typeof io> | null = null
 
-    socket.on('connect', () => {
-      console.log('[JoinRoomModal] Socket connected')
-    })
-
-    socket.on('join-request-approved', async (data: { roomId: string; requestId: string }) => {
-      console.log('[JoinRoomModal] Request approved via socket!', data)
-      if (data.roomId === roomInfo.id) {
-        console.log('[JoinRoomModal] Joining room automatically...')
-        try {
-          await joinRoom(roomInfo.id)
-          handleClose()
-          onSuccess?.()
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to join room')
-          setIsLoading(false)
+    // Fetch viewer ID and set up socket
+    const setupSocket = async () => {
+      try {
+        // Get current user's viewer ID
+        const res = await fetch('/api/viewer')
+        if (!res.ok) {
+          console.error('[JoinRoomModal] Failed to get viewer ID')
+          return
         }
-      }
-    })
 
-    socket.on('connect_error', (error) => {
-      console.error('[JoinRoomModal] Socket connection error:', error)
-    })
+        const { viewerId } = await res.json()
+        console.log('[JoinRoomModal] Got viewer ID:', viewerId)
+
+        // Connect socket
+        socket = io({ path: '/api/socket' })
+
+        socket.on('connect', () => {
+          console.log('[JoinRoomModal] Socket connected, joining user channel')
+          // Join user-specific channel to receive moderation events
+          socket?.emit('join-user-channel', { userId: viewerId })
+        })
+
+        socket.on('join-request-approved', async (data: { roomId: string; requestId: string }) => {
+          console.log('[JoinRoomModal] Request approved via socket!', data)
+          if (data.roomId === roomInfo.id) {
+            console.log('[JoinRoomModal] Joining room automatically...')
+            try {
+              await joinRoom(roomInfo.id)
+              handleClose()
+              onSuccess?.()
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Failed to join room')
+              setIsLoading(false)
+            }
+          }
+        })
+
+        socket.on('connect_error', (error) => {
+          console.error('[JoinRoomModal] Socket connection error:', error)
+        })
+      } catch (error) {
+        console.error('[JoinRoomModal] Error setting up socket:', error)
+      }
+    }
+
+    setupSocket()
 
     return () => {
       console.log('[JoinRoomModal] Cleaning up approval listener')
-      socket.disconnect()
+      socket?.disconnect()
     }
   }, [approvalRequested, roomInfo, joinRoom, handleClose, onSuccess])
 

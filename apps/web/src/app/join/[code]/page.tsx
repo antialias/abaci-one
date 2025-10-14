@@ -358,28 +358,51 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
 
     console.log('[Join Page] Setting up approval listener for room:', targetRoomData.id)
 
-    // Socket listener for real-time approval notification
-    const socket = io({ path: '/api/socket' })
+    let socket: ReturnType<typeof io> | null = null
 
-    socket.on('connect', () => {
-      console.log('[Join Page] Socket connected')
-    })
+    // Fetch viewer ID and set up socket
+    const setupSocket = async () => {
+      try {
+        // Get current user's viewer ID
+        const res = await fetch('/api/viewer')
+        if (!res.ok) {
+          console.error('[Join Page] Failed to get viewer ID')
+          return
+        }
 
-    socket.on('join-request-approved', (data: { roomId: string; requestId: string }) => {
-      console.log('[Join Page] Request approved via socket!', data)
-      if (data.roomId === targetRoomData.id) {
-        console.log('[Join Page] Joining room automatically...')
-        handleJoin(targetRoomData.id)
+        const { viewerId } = await res.json()
+        console.log('[Join Page] Got viewer ID:', viewerId)
+
+        // Connect socket
+        socket = io({ path: '/api/socket' })
+
+        socket.on('connect', () => {
+          console.log('[Join Page] Socket connected, joining user channel')
+          // Join user-specific channel to receive moderation events
+          socket?.emit('join-user-channel', { userId: viewerId })
+        })
+
+        socket.on('join-request-approved', (data: { roomId: string; requestId: string }) => {
+          console.log('[Join Page] Request approved via socket!', data)
+          if (data.roomId === targetRoomData.id) {
+            console.log('[Join Page] Joining room automatically...')
+            handleJoin(targetRoomData.id)
+          }
+        })
+
+        socket.on('connect_error', (error) => {
+          console.error('[Join Page] Socket connection error:', error)
+        })
+      } catch (error) {
+        console.error('[Join Page] Error setting up socket:', error)
       }
-    })
+    }
 
-    socket.on('connect_error', (error) => {
-      console.error('[Join Page] Socket connection error:', error)
-    })
+    setupSocket()
 
     return () => {
       console.log('[Join Page] Cleaning up approval listener')
-      socket.disconnect()
+      socket?.disconnect()
     }
   }, [approvalRequested, targetRoomData, handleJoin])
 
