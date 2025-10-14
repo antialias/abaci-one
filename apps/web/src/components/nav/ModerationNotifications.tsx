@@ -52,6 +52,10 @@ export function ModerationNotifications({
     if (moderationEvent?.type === 'join-request') {
       setShowJoinRequestToast(true)
       setRequestError(null) // Clear any previous errors
+    } else {
+      // Reset toast state when event is cleared or changes type
+      setShowJoinRequestToast(false)
+      setRequestError(null)
     }
   }, [moderationEvent])
 
