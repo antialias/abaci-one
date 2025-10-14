@@ -50,6 +50,13 @@
       "when": 1760365860888,
       "tag": "0006_pretty_invaders",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1760527200000,
+      "tag": "0007_access_modes",
+      "breakpoints": true
     }
   ]
 }

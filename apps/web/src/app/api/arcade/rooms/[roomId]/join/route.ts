@@ -3,8 +3,11 @@ import { getRoomById, touchRoom } from '@/lib/arcade/room-manager'
 import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
 import { getActivePlayers, getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { isUserBanned } from '@/lib/arcade/room-moderation'
+import { getInvitation } from '@/lib/arcade/room-invitations'
+import { getJoinRequest } from '@/lib/arcade/room-join-requests'
 import { getViewerId } from '@/lib/viewer'
 import { getSocketIO } from '@/lib/socket-io'
+import bcrypt from 'bcryptjs'
 
 type RouteContext = {
   params: Promise<{ roomId: string }>
@@ -15,6 +18,7 @@ type RouteContext = {
  * Join a room
  * Body:
  *   - displayName?: string (optional, will generate from viewerId if not provided)
+ *   - password?: string (required for password-protected rooms)
  */
 export async function POST(req: NextRequest, context: RouteContext) {
   try {
@@ -28,15 +32,65 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
-    // Check if room is locked
-    if (room.isLocked) {
-      return NextResponse.json({ error: 'Room is locked' }, { status: 403 })
-    }
-
     // Check if user is banned
     const banned = await isUserBanned(roomId, viewerId)
     if (banned) {
       return NextResponse.json({ error: 'You are banned from this room' }, { status: 403 })
+    }
+
+    // Validate access mode
+    switch (room.accessMode) {
+      case 'locked':
+        return NextResponse.json({ error: 'This room is locked' }, { status: 403 })
+
+      case 'retired':
+        return NextResponse.json({ error: 'This room has been retired' }, { status: 410 })
+
+      case 'password': {
+        if (!body.password) {
+          return NextResponse.json(
+            { error: 'Password required to join this room' },
+            { status: 401 }
+          )
+        }
+        if (!room.password) {
+          return NextResponse.json({ error: 'Room password not configured' }, { status: 500 })
+        }
+        const passwordMatch = await bcrypt.compare(body.password, room.password)
+        if (!passwordMatch) {
+          return NextResponse.json({ error: 'Incorrect password' }, { status: 401 })
+        }
+        break
+      }
+
+      case 'restricted': {
+        // Check for valid pending invitation
+        const invitation = await getInvitation(roomId, viewerId)
+        if (!invitation || invitation.status !== 'pending') {
+          return NextResponse.json(
+            { error: 'You need a valid invitation to join this room' },
+            { status: 403 }
+          )
+        }
+        break
+      }
+
+      case 'approval-only': {
+        // Check for approved join request
+        const joinRequest = await getJoinRequest(roomId, viewerId)
+        if (!joinRequest || joinRequest.status !== 'approved') {
+          return NextResponse.json(
+            { error: 'Your join request must be approved by the host' },
+            { status: 403 }
+          )
+        }
+        break
+      }
+
+      case 'open':
+      default:
+        // No additional checks needed
+        break
     }
 
     // Get or generate display name

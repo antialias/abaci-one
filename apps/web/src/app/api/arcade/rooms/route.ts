@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
           status: room.status,
           createdAt: room.createdAt,
           creatorName: room.creatorName,
-          isLocked: room.isLocked,
+          accessMode: room.accessMode,
           memberCount: members.length,
           playerCount: totalPlayers,
           isMember: userIsMember,

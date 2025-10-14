@@ -22,7 +22,14 @@ export const arcadeRooms = sqliteTable('arcade_rooms', {
     .notNull()
     .$defaultFn(() => new Date()),
   ttlMinutes: integer('ttl_minutes').notNull().default(60), // Time to live
-  isLocked: integer('is_locked', { mode: 'boolean' }).notNull().default(false),
+
+  // Access control
+  accessMode: text('access_mode', {
+    enum: ['open', 'locked', 'retired', 'password', 'restricted', 'approval-only'],
+  })
+    .notNull()
+    .default('open'),
+  password: text('password', { length: 255 }), // Hashed password for password-protected rooms
 
   // Game configuration
   gameName: text('game_name', {

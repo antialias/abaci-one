@@ -59,8 +59,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
  * Update room (creator only)
  * Body:
  *   - name?: string
- *   - isLocked?: boolean
  *   - status?: 'lobby' | 'playing' | 'finished'
+ *
+ * Note: For access control (accessMode, password), use PATCH /api/arcade/rooms/:roomId/settings
  */
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
@@ -86,12 +87,10 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     const updates: {
       name?: string
-      isLocked?: boolean
       status?: 'lobby' | 'playing' | 'finished'
     } = {}
 
     if (body.name !== undefined) updates.name = body.name
-    if (body.isLocked !== undefined) updates.isLocked = body.isLocked
     if (body.status !== undefined) updates.status = body.status
 
     const room = await updateRoom(roomId, updates)

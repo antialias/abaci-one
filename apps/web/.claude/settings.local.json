@@ -43,7 +43,10 @@
       "Bash(npx playwright test:*)",
       "Bash(npm run:*)",
       "Bash(\"\")",
-      "Bash(npx @biomejs/biome check:*)"
+      "Bash(npx @biomejs/biome check:*)",
+      "Bash(printf '\\n')",
+      "Bash(npm install bcryptjs)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
