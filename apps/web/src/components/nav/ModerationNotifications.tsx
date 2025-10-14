@@ -31,6 +31,7 @@ export function ModerationNotifications({
   const [showJoinRequestToast, setShowJoinRequestToast] = useState(false)
   const [isAcceptingInvitation, setIsAcceptingInvitation] = useState(false)
   const [isProcessingRequest, setIsProcessingRequest] = useState(false)
+  const [requestError, setRequestError] = useState<string | null>(null)
   const { mutateAsync: joinRoom } = useJoinRoom()
 
   // Handle report toast (for hosts)
@@ -50,6 +51,7 @@ export function ModerationNotifications({
   useEffect(() => {
     if (moderationEvent?.type === 'join-request') {
       setShowJoinRequestToast(true)
+      setRequestError(null) // Clear any previous errors
     }
   }, [moderationEvent])
 
@@ -58,6 +60,8 @@ export function ModerationNotifications({
     if (!moderationEvent?.data.requestId || !moderationEvent?.data.roomId) return
 
     setIsProcessingRequest(true)
+    setRequestError(null) // Clear any previous errors
+
     try {
       const response = await fetch(
         `/api/arcade/rooms/${moderationEvent.data.roomId}/join-requests/${moderationEvent.data.requestId}/approve`,
@@ -68,10 +72,11 @@ export function ModerationNotifications({
       )
 
       if (!response.ok) {
-        throw new Error('Failed to approve join request')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to approve join request')
       }
 
-      // Close toast and event
+      // Close toast and event on success
       setShowJoinRequestToast(false)
       onClose()
 
@@ -79,7 +84,8 @@ export function ModerationNotifications({
       queryClient.invalidateQueries({ queryKey: ['join-requests'] })
     } catch (error) {
       console.error('Failed to approve join request:', error)
-      alert(error instanceof Error ? error.message : 'Failed to approve request')
+      // Keep toast visible and show error message
+      setRequestError(error instanceof Error ? error.message : 'Failed to approve request')
     } finally {
       setIsProcessingRequest(false)
     }
@@ -90,6 +96,8 @@ export function ModerationNotifications({
     if (!moderationEvent?.data.requestId || !moderationEvent?.data.roomId) return
 
     setIsProcessingRequest(true)
+    setRequestError(null) // Clear any previous errors
+
     try {
       const response = await fetch(
         `/api/arcade/rooms/${moderationEvent.data.roomId}/join-requests/${moderationEvent.data.requestId}/deny`,
@@ -100,10 +108,11 @@ export function ModerationNotifications({
       )
 
       if (!response.ok) {
-        throw new Error('Failed to deny join request')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to deny join request')
       }
 
-      // Close toast and event
+      // Close toast and event on success
       setShowJoinRequestToast(false)
       onClose()
 
@@ -111,7 +120,8 @@ export function ModerationNotifications({
       queryClient.invalidateQueries({ queryKey: ['join-requests'] })
     } catch (error) {
       console.error('Failed to deny join request:', error)
-      alert(error instanceof Error ? error.message : 'Failed to deny request')
+      // Keep toast visible and show error message
+      setRequestError(error instanceof Error ? error.message : 'Failed to deny request')
     } finally {
       setIsProcessingRequest(false)
     }
@@ -514,6 +524,38 @@ export function ModerationNotifications({
             >
               <strong>{moderationEvent.data.requesterName}</strong> wants to join your room
             </Toast.Description>
+
+            {/* Error message */}
+            {requestError && (
+              <div
+                style={{
+                  padding: '8px 10px',
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  borderRadius: '6px',
+                  marginBottom: '12px',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: 'rgba(254, 202, 202, 1)',
+                    fontWeight: '600',
+                    marginBottom: '2px',
+                  }}
+                >
+                  ⚠️ Error
+                </div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                  }}
+                >
+                  {requestError}
+                </div>
+              </div>
+            )}
 
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: '8px' }}>
