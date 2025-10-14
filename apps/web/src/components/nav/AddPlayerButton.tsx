@@ -72,8 +72,16 @@ export function AddPlayerButton({
       },
       {
         onSuccess: (data) => {
-          // Popover stays open, switch to invite tab to share room code
-          setActiveTab('invite')
+          // Add to recent rooms
+          addToRecentRooms({
+            code: data.code,
+            name: data.name,
+            gameName: data.gameName,
+          })
+          // Close popover
+          setShowPopover(false)
+          // Navigate to the room page
+          router.push(`/arcade/rooms/${data.id}`)
         },
         onError: (error) => {
           console.error('Failed to create room:', error)
