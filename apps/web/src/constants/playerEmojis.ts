@@ -1,5 +1,8 @@
 // Available character emojis for players
 export const PLAYER_EMOJIS = [
+  // Abacus
+  '🧮',
+
   // People & Characters
   '😀',
   '😃',

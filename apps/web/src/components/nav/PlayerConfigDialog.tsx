@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { EmojiPicker } from '../../app/games/matching/components/EmojiPicker'
 import { useGameMode } from '../../contexts/GameModeContext'
+import { generateUniquePlayerName } from '../../utils/playerNames'
 
 interface PlayerConfigDialogProps {
   playerId: string
@@ -46,6 +47,15 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
   const handleEmojiSelect = (emoji: string) => {
     updatePlayer(playerId, { emoji })
     setShowEmojiPicker(false)
+  }
+
+  const handleGenerateNewName = () => {
+    const allPlayers = Array.from(players.values())
+    const existingNames = allPlayers.filter((p) => p.id !== playerId).map((p) => p.name)
+    const newName = generateUniquePlayerName(existingNames)
+
+    setLocalName(newName)
+    updatePlayer(playerId, { name: newName })
   }
 
   // Get player number for UI theming (first 4 players get special colors)
@@ -256,40 +266,79 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
           >
             Name
           </label>
-          <input
-            type="text"
-            value={localName}
-            onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="Player Name"
-            maxLength={20}
+          <div
             style={{
-              width: '100%',
-              padding: '12px 16px',
-              fontSize: '16px',
-              border: '2px solid #e5e7eb',
-              borderRadius: '12px',
-              outline: 'none',
-              transition: 'all 0.2s ease',
-              fontWeight: '500',
+              display: 'flex',
+              gap: '8px',
             }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = gradientColor
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${gradientColor}20`
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#e5e7eb'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          />
+          >
+            <input
+              type="text"
+              value={localName}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="Player Name"
+              maxLength={20}
+              style={{
+                flex: 1,
+                padding: '12px 16px',
+                fontSize: '16px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '12px',
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                fontWeight: '500',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = gradientColor
+                e.currentTarget.style.boxShadow = `0 0 0 3px ${gradientColor}20`
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleGenerateNewName}
+              style={{
+                padding: '12px 16px',
+                background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
+                border: 'none',
+                borderRadius: '12px',
+                color: 'white',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)'
+                e.currentTarget.style.boxShadow = `0 4px 12px ${gradientColor}40`
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+              title="Generate random name"
+            >
+              🎲
+            </button>
+          </div>
           <div
             style={{
               fontSize: '12px',
               color: '#6b7280',
               marginTop: '4px',
-              textAlign: 'right',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
             }}
           >
-            {localName.length}/20 characters
+            <span>Click dice to generate a random name</span>
+            <span>{localName.length}/20 characters</span>
           </div>
         </div>
       </div>
