@@ -152,7 +152,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                 color: 'rgba(209, 213, 219, 1)',
                 fontSize: '15px',
                 outline: 'none',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
+                cursor: isPending ? 'not-allowed' : 'pointer',
               }}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.6)'
