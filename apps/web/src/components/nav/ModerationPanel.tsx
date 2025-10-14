@@ -88,6 +88,7 @@ export function ModerationPanel({
 
   // Settings state
   const [accessMode, setAccessMode] = useState<string>('open')
+  const [originalAccessMode, setOriginalAccessMode] = useState<string>('open')
   const [roomPassword, setRoomPassword] = useState('')
   const [showPasswordInput, setShowPasswordInput] = useState(false)
   const [selectedNewOwner, setSelectedNewOwner] = useState<string>('')
@@ -340,7 +341,9 @@ export function ModerationPanel({
         const roomRes = await fetch(`/api/arcade/rooms/${roomId}`)
         if (roomRes.ok) {
           const data = await roomRes.json()
-          setAccessMode(data.room?.accessMode || 'open')
+          const currentAccessMode = data.room?.accessMode || 'open'
+          setAccessMode(currentAccessMode)
+          setOriginalAccessMode(currentAccessMode)
         }
 
         // Fetch join requests if any
@@ -378,6 +381,7 @@ export function ModerationPanel({
       }
 
       alert('Room settings updated successfully!')
+      setOriginalAccessMode(accessMode) // Update original to current
       setShowPasswordInput(false)
       setRoomPassword('')
     } catch (err) {
@@ -472,6 +476,9 @@ export function ModerationPanel({
 
   const pendingReports = reports.filter((r) => r.status === 'pending')
   const otherMembers = members.filter((m) => m.userId !== currentUserId)
+
+  // Check if there are unsaved changes in settings
+  const hasUnsavedAccessModeChanges = accessMode !== originalAccessMode
 
   // Group reports by reported user ID
   const reportsByUser = pendingReports.reduce(
@@ -1429,31 +1436,33 @@ export function ModerationPanel({
                       />
                     )}
 
-                    <button
-                      type="button"
-                      onClick={handleUpdateAccessMode}
-                      disabled={actionLoading === 'update-settings'}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        background:
-                          actionLoading === 'update-settings'
-                            ? 'rgba(75, 85, 99, 0.3)'
-                            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))',
-                        color: 'white',
-                        border:
-                          actionLoading === 'update-settings'
-                            ? '1px solid rgba(75, 85, 99, 0.5)'
-                            : '1px solid rgba(59, 130, 246, 0.6)',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: actionLoading === 'update-settings' ? 'not-allowed' : 'pointer',
-                        opacity: actionLoading === 'update-settings' ? 0.5 : 1,
-                      }}
-                    >
-                      {actionLoading === 'update-settings' ? 'Updating...' : 'Update Access Mode'}
-                    </button>
+                    {hasUnsavedAccessModeChanges && (
+                      <button
+                        type="button"
+                        onClick={handleUpdateAccessMode}
+                        disabled={actionLoading === 'update-settings'}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          background:
+                            actionLoading === 'update-settings'
+                              ? 'rgba(75, 85, 99, 0.3)'
+                              : 'linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.8))',
+                          color: 'white',
+                          border:
+                            actionLoading === 'update-settings'
+                              ? '1px solid rgba(75, 85, 99, 0.5)'
+                              : '1px solid rgba(59, 130, 246, 0.6)',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: actionLoading === 'update-settings' ? 'not-allowed' : 'pointer',
+                          opacity: actionLoading === 'update-settings' ? 0.5 : 1,
+                        }}
+                      >
+                        {actionLoading === 'update-settings' ? 'Updating...' : 'Update Access Mode'}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1663,23 +1672,44 @@ export function ModerationPanel({
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
           <button
             type="button"
-            onClick={onClose}
+            onClick={hasUnsavedAccessModeChanges ? undefined : onClose}
+            disabled={hasUnsavedAccessModeChanges}
+            title={
+              hasUnsavedAccessModeChanges
+                ? 'Please update access mode settings before closing'
+                : undefined
+            }
             style={{
               padding: '10px 20px',
-              background: 'rgba(75, 85, 99, 0.3)',
-              color: 'rgba(209, 213, 219, 1)',
-              border: '1px solid rgba(75, 85, 99, 0.5)',
+              background: hasUnsavedAccessModeChanges
+                ? 'rgba(75, 85, 99, 0.2)'
+                : 'rgba(75, 85, 99, 0.3)',
+              color: hasUnsavedAccessModeChanges
+                ? 'rgba(156, 163, 175, 1)'
+                : 'rgba(209, 213, 219, 1)',
+              border: hasUnsavedAccessModeChanges
+                ? '1px solid rgba(251, 146, 60, 0.4)'
+                : '1px solid rgba(75, 85, 99, 0.5)',
               borderRadius: '10px',
               fontSize: '14px',
               fontWeight: '600',
-              cursor: 'pointer',
+              cursor: hasUnsavedAccessModeChanges ? 'not-allowed' : 'pointer',
+              opacity: hasUnsavedAccessModeChanges ? 0.6 : 1,
               transition: 'all 0.2s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(75, 85, 99, 0.4)'
+              if (!hasUnsavedAccessModeChanges) {
+                e.currentTarget.style.background = 'rgba(75, 85, 99, 0.4)'
+              } else {
+                e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.8)'
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(75, 85, 99, 0.3)'
+              if (!hasUnsavedAccessModeChanges) {
+                e.currentTarget.style.background = 'rgba(75, 85, 99, 0.3)'
+              } else {
+                e.currentTarget.style.borderColor = 'rgba(251, 146, 60, 0.4)'
+              }
             }}
           >
             Close
