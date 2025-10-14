@@ -78,10 +78,8 @@ export function AddPlayerButton({
             name: data.name,
             gameName: data.gameName,
           })
-          // Close popover
-          setShowPopover(false)
-          // Navigate to the room page (singular - fetches current room)
-          router.push('/arcade/room')
+          // Popover stays open, switch to invite tab to share room code
+          setActiveTab('invite')
         },
         onError: (error) => {
           console.error('Failed to create room:', error)
@@ -112,8 +110,6 @@ export function AddPlayerButton({
             }
             // Close popover
             setShowPopover(false)
-            // Navigate to the room page (singular - fetches current room)
-            router.push('/arcade/room')
           },
         }
       )
