@@ -270,75 +270,85 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
             style={{
               display: 'flex',
               gap: '8px',
+              alignItems: 'flex-start',
             }}
           >
-            <input
-              type="text"
-              value={localName}
-              onChange={(e) => handleNameChange(e.target.value)}
-              placeholder="Player Name"
-              maxLength={20}
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                fontSize: '16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '12px',
-                outline: 'none',
-                transition: 'all 0.2s ease',
-                fontWeight: '500',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = gradientColor
-                e.currentTarget.style.boxShadow = `0 0 0 3px ${gradientColor}20`
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb'
-                e.currentTarget.style.boxShadow = 'none'
-              }}
-            />
-            <button
-              type="button"
-              onClick={handleGenerateNewName}
-              style={{
-                padding: '12px 16px',
-                background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
-                border: 'none',
-                borderRadius: '12px',
-                color: 'white',
-                fontSize: '20px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)'
-                e.currentTarget.style.boxShadow = `0 4px 12px ${gradientColor}40`
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)'
-                e.currentTarget.style.boxShadow = 'none'
-              }}
-              title="Generate random name"
-            >
-              🎲
-            </button>
-          </div>
-          <div
-            style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              marginTop: '4px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>Click dice to generate a random name</span>
-            <span>{localName.length}/20 characters</span>
+            <div style={{ flex: 1 }}>
+              <input
+                type="text"
+                value={localName}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder="Player Name"
+                maxLength={20}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '12px',
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                  fontWeight: '500',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = gradientColor
+                  e.currentTarget.style.boxShadow = `0 0 0 3px ${gradientColor}20`
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#e5e7eb'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              />
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  marginTop: '6px',
+                }}
+              >
+                {localName.length}/20 characters
+              </div>
+            </div>
+            <div style={{ flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={handleGenerateNewName}
+                style={{
+                  padding: '12px 16px',
+                  background: `linear-gradient(135deg, ${gradientColor}, ${gradientColor}dd)`,
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: 'white',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)'
+                  e.currentTarget.style.boxShadow = `0 4px 12px ${gradientColor}40`
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+                title="Generate random name"
+              >
+                🎲
+              </button>
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  marginTop: '6px',
+                  textAlign: 'center',
+                }}
+              >
+                Random name
+              </div>
+            </div>
           </div>
         </div>
       </div>
