@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { io } from 'socket.io-client'
 import { useGetRoomByCode, useJoinRoom, useRoomData } from '@/hooks/useRoomData'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
@@ -350,6 +351,61 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
       setIsJoining(false)
     }
   }
+
+  // Socket listener and polling for approval notifications
+  useEffect(() => {
+    if (!approvalRequested || !targetRoomData) return
+
+    console.log('[Join Page] Setting up approval listeners for room:', targetRoomData.id)
+
+    // Socket listener for real-time approval notification
+    const socket = io({ path: '/api/socket' })
+
+    socket.on('connect', () => {
+      console.log('[Join Page] Socket connected')
+    })
+
+    socket.on('join-request-approved', (data: { roomId: string; requestId: string }) => {
+      console.log('[Join Page] Request approved via socket!', data)
+      if (data.roomId === targetRoomData.id) {
+        console.log('[Join Page] Joining room automatically...')
+        handleJoin(targetRoomData.id)
+      }
+    })
+
+    socket.on('connect_error', (error) => {
+      console.error('[Join Page] Socket connection error:', error)
+    })
+
+    // Polling fallback - check every 5 seconds
+    const pollInterval = setInterval(async () => {
+      try {
+        console.log('[Join Page] Polling for approval status...')
+        const res = await fetch(`/api/arcade/rooms/${targetRoomData.id}/join-requests`)
+        if (res.ok) {
+          const data = await res.json()
+          // Check if any request for this user was approved
+          const approvedRequest = data.requests?.find(
+            (r: { status: string }) => r.status === 'approved'
+          )
+          if (approvedRequest) {
+            console.log('[Join Page] Request approved via polling! Joining room...')
+            clearInterval(pollInterval)
+            socket.disconnect()
+            handleJoin(targetRoomData.id)
+          }
+        }
+      } catch (err) {
+        console.error('[Join Page] Failed to poll join requests:', err)
+      }
+    }, 5000)
+
+    return () => {
+      console.log('[Join Page] Cleaning up approval listeners')
+      socket.disconnect()
+      clearInterval(pollInterval)
+    }
+  }, [approvalRequested, targetRoomData, handleJoin])
 
   // Only show error page for non-password and non-approval errors
   if (error && !showPasswordPrompt && !showApprovalPrompt) {
