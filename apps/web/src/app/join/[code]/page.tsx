@@ -323,7 +323,8 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
     }
   }
 
-  if (error) {
+  // Only show error page for non-password errors (password errors are shown in the password prompt UI)
+  if (error && !showPasswordPrompt) {
     return (
       <div
         style={{
@@ -455,7 +456,10 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              setError(null) // Clear error when user starts typing
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && password) {
                 handlePasswordSubmit()
