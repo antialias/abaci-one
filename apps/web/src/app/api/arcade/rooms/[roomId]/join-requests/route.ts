@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createJoinRequest, getPendingJoinRequests } from '@/lib/arcade/room-join-requests'
 import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
+import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
 
 type RouteContext = {
@@ -86,6 +87,29 @@ export async function POST(req: NextRequest, context: RouteContext) {
     console.log(
       `[Join Requests] Created request for user ${viewerId} (${displayName}) to join room ${roomId}`
     )
+
+    // Broadcast to all members in the room (particularly the host) via socket
+    const io = await getSocketIO()
+    if (io) {
+      try {
+        io.to(`room:${roomId}`).emit('join-request-submitted', {
+          roomId,
+          request: {
+            id: request.id,
+            userId: request.userId,
+            userName: request.userName,
+            createdAt: request.requestedAt,
+          },
+        })
+
+        console.log(
+          `[Join Requests] Broadcasted join-request-submitted for user ${viewerId} to room ${roomId}`
+        )
+      } catch (socketError) {
+        // Log but don't fail the request if socket broadcast fails
+        console.error('[Join Requests] Failed to broadcast join-request-submitted:', socketError)
+      }
+    }
 
     return NextResponse.json({ request }, { status: 201 })
   } catch (error: any) {

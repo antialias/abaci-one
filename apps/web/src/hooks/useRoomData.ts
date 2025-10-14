@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { useViewerId } from './useViewerId'
 
@@ -190,7 +190,7 @@ async function getRoomByCodeApi(code: string): Promise<RoomData> {
 }
 
 export interface ModerationEvent {
-  type: 'kicked' | 'banned' | 'report' | 'invitation'
+  type: 'kicked' | 'banned' | 'report' | 'invitation' | 'join-request'
   data: {
     roomId?: string
     kickedBy?: string
@@ -206,6 +206,10 @@ export interface ModerationEvent {
     invitedByName?: string
     invitationType?: 'manual' | 'auto-unban' | 'auto-create'
     message?: string
+    // Join request fields
+    requestId?: string
+    requesterId?: string
+    requesterName?: string
   }
 }
 
@@ -420,6 +424,27 @@ export function useRoomData() {
       })
     }
 
+    const handleJoinRequestSubmitted = (data: {
+      roomId: string
+      request: {
+        id: string
+        userId: string
+        userName: string
+        createdAt: Date
+      }
+    }) => {
+      console.log('[useRoomData] New join request submitted:', data)
+      setModerationEvent({
+        type: 'join-request',
+        data: {
+          roomId: data.roomId,
+          requestId: data.request.id,
+          requesterId: data.request.userId,
+          requesterName: data.request.userName,
+        },
+      })
+    }
+
     socket.on('room-joined', handleRoomJoined)
     socket.on('member-joined', handleMemberJoined)
     socket.on('member-left', handleMemberLeft)
@@ -428,6 +453,7 @@ export function useRoomData() {
     socket.on('banned-from-room', handleBannedFromRoom)
     socket.on('report-submitted', handleReportSubmitted)
     socket.on('room-invitation-received', handleInvitationReceived)
+    socket.on('join-request-submitted', handleJoinRequestSubmitted)
 
     return () => {
       socket.off('room-joined', handleRoomJoined)
@@ -438,6 +464,7 @@ export function useRoomData() {
       socket.off('banned-from-room', handleBannedFromRoom)
       socket.off('report-submitted', handleReportSubmitted)
       socket.off('room-invitation-received', handleInvitationReceived)
+      socket.off('join-request-submitted', handleJoinRequestSubmitted)
     }
   }, [socket, roomData?.id, queryClient])
 

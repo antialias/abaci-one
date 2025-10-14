@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import * as Toast from '@radix-ui/react-toast'
+import { useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { Modal } from '@/components/common/Modal'
 import type { ModerationEvent } from '@/hooks/useRoomData'
 import { useJoinRoom } from '@/hooks/useRoomData'
@@ -25,8 +26,11 @@ export function ModerationNotifications({
   onClose,
 }: ModerationNotificationsProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [showToast, setShowToast] = useState(false)
+  const [showJoinRequestToast, setShowJoinRequestToast] = useState(false)
   const [isAcceptingInvitation, setIsAcceptingInvitation] = useState(false)
+  const [isProcessingRequest, setIsProcessingRequest] = useState(false)
   const { mutateAsync: joinRoom } = useJoinRoom()
 
   // Handle report toast (for hosts)
@@ -41,6 +45,77 @@ export function ModerationNotifications({
       return () => clearTimeout(timer)
     }
   }, [moderationEvent, onClose])
+
+  // Handle join request toast (for hosts)
+  useEffect(() => {
+    if (moderationEvent?.type === 'join-request') {
+      setShowJoinRequestToast(true)
+    }
+  }, [moderationEvent])
+
+  // Handle approve join request
+  const handleApprove = async () => {
+    if (!moderationEvent?.data.requestId || !moderationEvent?.data.roomId) return
+
+    setIsProcessingRequest(true)
+    try {
+      const response = await fetch(
+        `/api/arcade/rooms/${moderationEvent.data.roomId}/join-requests/${moderationEvent.data.requestId}/approve`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to approve join request')
+      }
+
+      // Close toast and event
+      setShowJoinRequestToast(false)
+      onClose()
+
+      // Invalidate join requests query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['join-requests'] })
+    } catch (error) {
+      console.error('Failed to approve join request:', error)
+      alert(error instanceof Error ? error.message : 'Failed to approve request')
+    } finally {
+      setIsProcessingRequest(false)
+    }
+  }
+
+  // Handle deny join request
+  const handleDeny = async () => {
+    if (!moderationEvent?.data.requestId || !moderationEvent?.data.roomId) return
+
+    setIsProcessingRequest(true)
+    try {
+      const response = await fetch(
+        `/api/arcade/rooms/${moderationEvent.data.roomId}/join-requests/${moderationEvent.data.requestId}/deny`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to deny join request')
+      }
+
+      // Close toast and event
+      setShowJoinRequestToast(false)
+      onClose()
+
+      // Invalidate join requests query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['join-requests'] })
+    } catch (error) {
+      console.error('Failed to deny join request:', error)
+      alert(error instanceof Error ? error.message : 'Failed to deny request')
+    } finally {
+      setIsProcessingRequest(false)
+    }
+  }
 
   // Kicked modal
   if (moderationEvent?.type === 'kicked') {
@@ -296,6 +371,223 @@ export function ModerationNotifications({
             >
               👆 Click to view in moderation panel
             </Toast.Description>
+          </div>
+          <Toast.Close
+            style={{
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'white',
+              fontSize: '16px',
+              lineHeight: 1,
+              flexShrink: 0,
+            }}
+          >
+            ×
+          </Toast.Close>
+        </Toast.Root>
+
+        <Toast.Viewport
+          style={{
+            position: 'fixed',
+            top: '80px',
+            right: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            zIndex: 10001,
+            maxWidth: '100vw',
+            margin: 0,
+            listStyle: 'none',
+            outline: 'none',
+          }}
+        />
+
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              @keyframes slideIn {
+                from {
+                  transform: translateX(calc(100% + 25px));
+                }
+                to {
+                  transform: translateX(0);
+                }
+              }
+
+              @keyframes slideOut {
+                from {
+                  transform: translateX(0);
+                }
+                to {
+                  transform: translateX(calc(100% + 25px));
+                }
+              }
+
+              @keyframes hide {
+                from {
+                  opacity: 1;
+                }
+                to {
+                  opacity: 0;
+                }
+              }
+
+              [data-state='open'] {
+                animation: slideIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+              }
+
+              [data-state='closed'] {
+                animation: hide 100ms ease-in, slideOut 200ms cubic-bezier(0.32, 0, 0.67, 0);
+              }
+
+              [data-swipe='move'] {
+                transform: translateX(var(--radix-toast-swipe-move-x));
+              }
+
+              [data-swipe='cancel'] {
+                transform: translateX(0);
+                transition: transform 200ms ease-out;
+              }
+
+              [data-swipe='end'] {
+                animation: slideOut 100ms ease-out;
+              }
+            `,
+          }}
+        />
+      </Toast.Provider>
+    )
+  }
+
+  // Join request toast (for hosts)
+  if (moderationEvent?.type === 'join-request') {
+    return (
+      <Toast.Provider swipeDirection="right" duration={Infinity}>
+        <Toast.Root
+          open={showJoinRequestToast}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowJoinRequestToast(false)
+              onClose()
+            }
+          }}
+          style={{
+            background:
+              'linear-gradient(135deg, rgba(59, 130, 246, 0.97), rgba(37, 99, 235, 0.97))',
+            border: '2px solid rgba(59, 130, 246, 0.6)',
+            borderRadius: '12px',
+            padding: '16px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-start',
+            minWidth: '350px',
+            maxWidth: '450px',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <div style={{ fontSize: '24px', flexShrink: 0 }}>✋</div>
+          <div style={{ flex: 1 }}>
+            <Toast.Title
+              style={{
+                fontSize: '15px',
+                fontWeight: 'bold',
+                color: 'white',
+                marginBottom: '4px',
+              }}
+            >
+              Join Request
+            </Toast.Title>
+            <Toast.Description
+              style={{
+                fontSize: '13px',
+                color: 'rgba(255, 255, 255, 0.9)',
+                marginBottom: '12px',
+              }}
+            >
+              <strong>{moderationEvent.data.requesterName}</strong> wants to join your room
+            </Toast.Description>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                disabled={isProcessingRequest}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeny()
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  background: isProcessingRequest
+                    ? 'rgba(75, 85, 99, 0.3)'
+                    : 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: isProcessingRequest ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isProcessingRequest ? 0.5 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (!isProcessingRequest) {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isProcessingRequest) {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
+                  }
+                }}
+              >
+                Deny
+              </button>
+              <button
+                type="button"
+                disabled={isProcessingRequest}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleApprove()
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  background: isProcessingRequest
+                    ? 'rgba(75, 85, 99, 0.3)'
+                    : 'rgba(34, 197, 94, 0.9)',
+                  color: 'white',
+                  border: '1px solid rgba(34, 197, 94, 0.8)',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: isProcessingRequest ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isProcessingRequest ? 0.5 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (!isProcessingRequest) {
+                    e.currentTarget.style.background = 'rgba(34, 197, 94, 1)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isProcessingRequest) {
+                    e.currentTarget.style.background = 'rgba(34, 197, 94, 0.9)'
+                  }
+                }}
+              >
+                {isProcessingRequest ? 'Processing...' : 'Approve'}
+              </button>
+            </div>
           </div>
           <Toast.Close
             style={{
