@@ -277,21 +277,17 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
           return
         }
 
-        if (room.accessMode === 'restricted') {
-          setError('This room is invitation-only')
-          return
-        }
-
         if (room.accessMode === 'approval-only') {
           setShowApprovalPrompt(true)
           return
         }
 
+        // For restricted rooms, try to join - the API will check for invitation
         // If user is in a different room, show confirmation
         if (roomData) {
           setShowConfirmation(true)
         } else {
-          // Otherwise, auto-join (for open rooms)
+          // Otherwise, auto-join (for open rooms and restricted rooms with invitation)
           handleJoin(room.id)
         }
       })

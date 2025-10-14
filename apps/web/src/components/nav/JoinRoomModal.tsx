@@ -77,17 +77,13 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
         return
       }
 
-      if (room.accessMode === 'restricted') {
-        setError('This room is invitation-only. Please ask the host for an invitation.')
-        setIsLoading(false)
-        return
-      }
-
       if (room.accessMode === 'approval-only') {
         setNeedsApproval(true)
         setIsLoading(false)
         return
       }
+
+      // For restricted rooms, try to join - the API will check for invitation
 
       if (room.accessMode === 'password') {
         // Check if password is provided
