@@ -1333,31 +1333,81 @@ export function ModerationPanel({
                       borderRadius: '8px',
                     }}
                   >
-                    <select
-                      value={accessMode}
-                      onChange={(e) => {
-                        setAccessMode(e.target.value)
-                        setShowPasswordInput(e.target.value === 'password')
-                      }}
+                    {/* Access mode button grid */}
+                    <div
                       style={{
-                        width: '100%',
-                        padding: '10px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(75, 85, 99, 0.5)',
-                        borderRadius: '6px',
-                        color: 'rgba(209, 213, 219, 1)',
-                        fontSize: '14px',
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '8px',
                         marginBottom: '12px',
-                        cursor: 'pointer',
                       }}
                     >
-                      <option value="open">🌐 Open - Anyone can join</option>
-                      <option value="password">🔑 Password Protected</option>
-                      <option value="approval-only">✋ Approval Required</option>
-                      <option value="restricted">🚫 Restricted - Invitation only</option>
-                      <option value="locked">🔒 Locked - No new members</option>
-                      <option value="retired">🏁 Retired - Room closed</option>
-                    </select>
+                      {[
+                        { value: 'open', emoji: '🌐', label: 'Open', desc: 'Anyone' },
+                        { value: 'password', emoji: '🔑', label: 'Password', desc: 'With key' },
+                        { value: 'approval-only', emoji: '✋', label: 'Approval', desc: 'Request' },
+                        {
+                          value: 'restricted',
+                          emoji: '🚫',
+                          label: 'Restricted',
+                          desc: 'Invite only',
+                        },
+                        { value: 'locked', emoji: '🔒', label: 'Locked', desc: 'No members' },
+                        { value: 'retired', emoji: '🏁', label: 'Retired', desc: 'Closed' },
+                      ].map((mode) => (
+                        <button
+                          key={mode.value}
+                          type="button"
+                          disabled={actionLoading === 'update-settings'}
+                          onClick={() => {
+                            setAccessMode(mode.value)
+                            setShowPasswordInput(mode.value === 'password')
+                          }}
+                          style={{
+                            padding: '10px 12px',
+                            background:
+                              accessMode === mode.value
+                                ? 'rgba(253, 186, 116, 0.15)'
+                                : 'rgba(255, 255, 255, 0.05)',
+                            border:
+                              accessMode === mode.value
+                                ? '2px solid rgba(253, 186, 116, 0.6)'
+                                : '2px solid rgba(75, 85, 99, 0.5)',
+                            borderRadius: '8px',
+                            color:
+                              accessMode === mode.value
+                                ? 'rgba(253, 186, 116, 1)'
+                                : 'rgba(209, 213, 219, 0.8)',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            cursor: actionLoading === 'update-settings' ? 'not-allowed' : 'pointer',
+                            opacity: actionLoading === 'update-settings' ? 0.5 : 1,
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (actionLoading !== 'update-settings' && accessMode !== mode.value) {
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                              e.currentTarget.style.borderColor = 'rgba(253, 186, 116, 0.4)'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (accessMode !== mode.value) {
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                              e.currentTarget.style.borderColor = 'rgba(75, 85, 99, 0.5)'
+                            }
+                          }}
+                        >
+                          <span style={{ fontSize: '18px' }}>{mode.emoji}</span>
+                          <div style={{ textAlign: 'left', flex: 1, lineHeight: '1.2' }}>
+                            <div style={{ fontSize: '13px', fontWeight: '600' }}>{mode.label}</div>
+                            <div style={{ fontSize: '11px', opacity: 0.7 }}>{mode.desc}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
 
                     {/* Password input (conditional) */}
                     {(accessMode === 'password' || showPasswordInput) && (
