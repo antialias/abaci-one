@@ -64,6 +64,13 @@
       "when": 1760548800000,
       "tag": "0008_make_room_name_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1760600000000,
+      "tag": "0009_add_display_password",
+      "breakpoints": true
     }
   ]
 }
