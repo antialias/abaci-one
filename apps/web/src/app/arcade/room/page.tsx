@@ -1,11 +1,21 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useRoomData, useSetRoomGame } from '@/hooks/useRoomData'
 import { MemoryPairsGame } from '../matching/components/MemoryPairsGame'
 import { RoomMemoryPairsProvider } from '../matching/context/RoomMemoryPairsProvider'
-import { GameSelector, GAMES_CONFIG } from '@/components/GameSelector'
+import { GAMES_CONFIG } from '@/components/GameSelector'
 import type { GameType } from '@/components/GameSelector'
+import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../../styled-system/css'
+
+// Map GameType keys to internal game names
+const GAME_TYPE_TO_NAME: Record<GameType, string> = {
+  'battle-arena': 'matching',
+  'memory-lightning': 'memory-quiz',
+  'complement-race': 'complement-race',
+  'master-organizer': 'master-organizer',
+}
 
 /**
  * /arcade/room - Renders the game for the user's current room
@@ -21,6 +31,7 @@ import { css } from '../../../../styled-system/css'
  * so we don't need to render it here.
  */
 export default function RoomPage() {
+  const router = useRouter()
   const { roomData, isLoading } = useRoomData()
   const { mutate: setRoomGame } = useSetRoomGame()
 
@@ -73,105 +84,115 @@ export default function RoomPage() {
 
   // Show game selection if no game is set
   if (!roomData.gameName) {
-    const handleGameSelect = (gameName: GameType) => {
-      const gameConfig = GAMES_CONFIG[gameName]
+    const handleGameSelect = (gameType: GameType) => {
+      const gameConfig = GAMES_CONFIG[gameType]
       if (gameConfig.available === false) {
         return // Don't allow selecting unavailable games
       }
 
+      // Map GameType to internal game name
+      const internalGameName = GAME_TYPE_TO_NAME[gameType]
+
       setRoomGame({
         roomId: roomData.id,
-        gameName,
+        gameName: internalGameName,
         gameConfig: {},
       })
     }
 
     return (
-      <div
-        className={css({
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '4',
-        })}
+      <PageWithNav
+        navTitle="Choose Game"
+        navEmoji="🎮"
+        emphasizePlayerSelection={true}
+        onExitSession={() => router.push('/arcade')}
       >
-        <h1
-          className={css({
-            fontSize: { base: '2xl', md: '3xl' },
-            fontWeight: 'bold',
-            color: 'white',
-            mb: '8',
-            textAlign: 'center',
-          })}
-        >
-          Choose a Game
-        </h1>
-
         <div
           className={css({
-            display: 'grid',
-            gridTemplateColumns: { base: '1fr', md: 'repeat(2, 1fr)' },
-            gap: '4',
-            maxWidth: '800px',
-            width: '100%',
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '4',
           })}
         >
-          {Object.entries(GAMES_CONFIG).map(([gameType, config]) => (
-            <button
-              key={gameType}
-              onClick={() => handleGameSelect(gameType as GameType)}
-              disabled={config.available === false}
-              className={css({
-                background: config.gradient,
-                border: '2px solid',
-                borderColor: config.borderColor || 'blue.200',
-                borderRadius: '2xl',
-                padding: '6',
-                cursor: config.available === false ? 'not-allowed' : 'pointer',
-                opacity: config.available === false ? 0.5 : 1,
-                transition: 'all 0.3s ease',
-                _hover:
-                  config.available === false
-                    ? {}
-                    : {
-                        transform: 'translateY(-4px) scale(1.02)',
-                        boxShadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
-                      },
-              })}
-            >
-              <div
+          <h1
+            className={css({
+              fontSize: { base: '2xl', md: '3xl' },
+              fontWeight: 'bold',
+              color: 'white',
+              mb: '8',
+              textAlign: 'center',
+            })}
+          >
+            Choose a Game
+          </h1>
+
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: { base: '1fr', md: 'repeat(2, 1fr)' },
+              gap: '4',
+              maxWidth: '800px',
+              width: '100%',
+            })}
+          >
+            {Object.entries(GAMES_CONFIG).map(([gameType, config]) => (
+              <button
+                key={gameType}
+                onClick={() => handleGameSelect(gameType as GameType)}
+                disabled={config.available === false}
                 className={css({
-                  fontSize: '4xl',
-                  mb: '2',
+                  background: config.gradient,
+                  border: '2px solid',
+                  borderColor: config.borderColor || 'blue.200',
+                  borderRadius: '2xl',
+                  padding: '6',
+                  cursor: config.available === false ? 'not-allowed' : 'pointer',
+                  opacity: config.available === false ? 0.5 : 1,
+                  transition: 'all 0.3s ease',
+                  _hover:
+                    config.available === false
+                      ? {}
+                      : {
+                          transform: 'translateY(-4px) scale(1.02)',
+                          boxShadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
+                        },
                 })}
               >
-                {config.icon}
-              </div>
-              <h3
-                className={css({
-                  fontSize: 'xl',
-                  fontWeight: 'bold',
-                  color: 'gray.900',
-                  mb: '2',
-                })}
-              >
-                {config.name}
-              </h3>
-              <p
-                className={css({
-                  fontSize: 'sm',
-                  color: 'gray.600',
-                })}
-              >
-                {config.description}
-              </p>
-            </button>
-          ))}
+                <div
+                  className={css({
+                    fontSize: '4xl',
+                    mb: '2',
+                  })}
+                >
+                  {config.icon}
+                </div>
+                <h3
+                  className={css({
+                    fontSize: 'xl',
+                    fontWeight: 'bold',
+                    color: 'gray.900',
+                    mb: '2',
+                  })}
+                >
+                  {config.name}
+                </h3>
+                <p
+                  className={css({
+                    fontSize: 'sm',
+                    color: 'gray.600',
+                  })}
+                >
+                  {config.description}
+                </p>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      </PageWithNav>
     )
   }
 
@@ -187,18 +208,25 @@ export default function RoomPage() {
     // TODO: Add other games (complement-race, memory-quiz, etc.)
     default:
       return (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100vh',
-            fontSize: '18px',
-            color: '#666',
-          }}
+        <PageWithNav
+          navTitle="Game Not Available"
+          navEmoji="⚠️"
+          emphasizePlayerSelection={true}
+          onExitSession={() => router.push('/arcade')}
         >
-          Game "{roomData.gameName}" not yet supported
-        </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100vh',
+              fontSize: '18px',
+              color: '#666',
+            }}
+          >
+            Game "{roomData.gameName}" not yet supported
+          </div>
+        </PageWithNav>
       )
   }
 }
