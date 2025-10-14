@@ -32,7 +32,7 @@ export function MemoryPairsGame() {
       navTitle={navTitle}
       navEmoji={navEmoji}
       gameName="matching"
-      emphasizeGameContext={state.gamePhase === 'setup'}
+      emphasizePlayerSelection={state.gamePhase === 'setup'}
       currentPlayerId={state.currentPlayer}
       playerScores={state.scores}
       playerStreaks={state.consecutiveMatches}

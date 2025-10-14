@@ -33,7 +33,7 @@ export function MemoryPairsGame() {
     <PageWithNav
       navTitle={navTitle}
       navEmoji={navEmoji}
-      emphasizeGameContext={state.gamePhase === 'setup'}
+      emphasizePlayerSelection={state.gamePhase === 'setup'}
       onExitSession={() => {
         exitSession()
         router.push('/arcade')

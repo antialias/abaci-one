@@ -13,7 +13,7 @@ interface PageWithNavProps {
   navTitle?: string
   navEmoji?: string
   gameName?: 'matching' | 'memory-quiz' | 'complement-race' // Internal game name for API
-  emphasizeGameContext?: boolean
+  emphasizePlayerSelection?: boolean
   onExitSession?: () => void
   onSetup?: () => void
   onNewGame?: () => void
@@ -28,7 +28,7 @@ export function PageWithNav({
   navTitle,
   navEmoji,
   gameName,
-  emphasizeGameContext = false,
+  emphasizePlayerSelection = false,
   onExitSession,
   onSetup,
   onNewGame,
@@ -103,7 +103,7 @@ export function PageWithNav({
             ? 'tournament'
             : 'none'
 
-  const shouldEmphasize = emphasizeGameContext && mounted
+  const shouldEmphasize = emphasizePlayerSelection && mounted
   const showFullscreenSelection = shouldEmphasize && activePlayerCount === 0
 
   // Compute arcade session info for display

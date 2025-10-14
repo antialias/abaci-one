@@ -78,7 +78,7 @@ function ArcadeContent() {
 
 function ArcadePageWithRedirect() {
   return (
-    <PageWithNav navTitle="Champion Arena" navEmoji="🏟️" emphasizeGameContext={true}>
+    <PageWithNav navTitle="Champion Arena" navEmoji="🏟️" emphasizePlayerSelection={true}>
       <ArcadeContent />
     </PageWithNav>
   )
