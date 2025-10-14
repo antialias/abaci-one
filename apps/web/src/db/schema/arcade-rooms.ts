@@ -30,6 +30,7 @@ export const arcadeRooms = sqliteTable('arcade_rooms', {
     .notNull()
     .default('open'),
   password: text('password', { length: 255 }), // Hashed password for password-protected rooms
+  displayPassword: text('display_password', { length: 100 }), // Plain text password for display to room owner
 
   // Game configuration
   gameName: text('game_name', {

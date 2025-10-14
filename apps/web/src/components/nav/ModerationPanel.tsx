@@ -95,6 +95,10 @@ export function ModerationPanel({
   const [joinRequests, setJoinRequests] = useState<any[]>([])
   const [passwordCopied, setPasswordCopied] = useState(false)
 
+  // Inline feedback state
+  const [successMessage, setSuccessMessage] = useState<string>('')
+  const [errorMessage, setErrorMessage] = useState<string>('')
+
   // Ban modal state
   const [showBanModal, setShowBanModal] = useState(false)
   const [banTargetUserId, setBanTargetUserId] = useState<string | null>(null)
@@ -182,8 +186,9 @@ export function ModerationPanel({
       }
 
       // Success - member will be removed via socket update
+      showSuccess('Player kicked from room')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to kick player')
+      showError(err instanceof Error ? err.message : 'Failed to kick player')
     } finally {
       setActionLoading(null)
     }
@@ -220,8 +225,10 @@ export function ModerationPanel({
         const data = await bansRes.json()
         setBans(data.bans || [])
       }
+
+      showSuccess('Player banned from room')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to ban player')
+      showError(err instanceof Error ? err.message : 'Failed to ban player')
     } finally {
       setActionLoading(null)
       setBanTargetUserId(null)
@@ -257,8 +264,10 @@ export function ModerationPanel({
         const data = await historyRes.json()
         setHistoricalMembers(data.historicalMembers || [])
       }
+
+      showSuccess('Player unbanned')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to unban player')
+      showError(err instanceof Error ? err.message : 'Failed to unban player')
     } finally {
       setActionLoading(null)
     }
@@ -294,9 +303,9 @@ export function ModerationPanel({
         setHistoricalMembers(data.historicalMembers || [])
       }
 
-      alert(`${userName} has been unbanned and invited back to the room!`)
+      showSuccess(`${userName} has been unbanned and invited back to the room`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to unban player')
+      showError(err instanceof Error ? err.message : 'Failed to unban player')
     } finally {
       setActionLoading(null)
     }
@@ -324,9 +333,9 @@ export function ModerationPanel({
         setHistoricalMembers(data.historicalMembers || [])
       }
 
-      alert(`Invitation sent to ${userName}!`)
+      showSuccess(`Invitation sent to ${userName}`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to send invitation')
+      showError(err instanceof Error ? err.message : 'Failed to send invitation')
     } finally {
       setActionLoading(null)
     }
@@ -338,13 +347,19 @@ export function ModerationPanel({
 
     const loadSettings = async () => {
       try {
-        // Fetch current room data to get access mode
+        // Fetch current room data to get access mode and password
         const roomRes = await fetch(`/api/arcade/rooms/${roomId}`)
         if (roomRes.ok) {
           const data = await roomRes.json()
           const currentAccessMode = data.room?.accessMode || 'open'
           setAccessMode(currentAccessMode)
           setOriginalAccessMode(currentAccessMode)
+
+          // Set password field if room has a password and user is the creator
+          if (currentAccessMode === 'password' && data.room?.displayPassword) {
+            setRoomPassword(data.room.displayPassword)
+            setShowPasswordInput(true)
+          }
         }
 
         // Fetch join requests if any
@@ -381,12 +396,12 @@ export function ModerationPanel({
         throw new Error(errorData.error || 'Failed to update settings')
       }
 
-      alert('Room settings updated successfully!')
+      showSuccess('Room settings updated successfully')
       setOriginalAccessMode(accessMode) // Update original to current
       setShowPasswordInput(false)
       setRoomPassword('')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update settings')
+      showError(err instanceof Error ? err.message : 'Failed to update settings')
     } finally {
       setActionLoading(null)
     }
@@ -414,10 +429,10 @@ export function ModerationPanel({
         throw new Error(errorData.error || 'Failed to transfer ownership')
       }
 
-      alert(`Ownership transferred to ${newOwner.displayName}!`)
-      onClose() // Close panel since user is no longer host
+      showSuccess(`Ownership transferred to ${newOwner.displayName}`)
+      setTimeout(() => onClose(), 2000) // Close panel after showing message
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to transfer ownership')
+      showError(err instanceof Error ? err.message : 'Failed to transfer ownership')
     } finally {
       setActionLoading(null)
     }
@@ -442,9 +457,9 @@ export function ModerationPanel({
         setJoinRequests(data.requests || [])
       }
 
-      alert('Join request approved!')
+      showSuccess('Join request approved')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to approve request')
+      showError(err instanceof Error ? err.message : 'Failed to approve request')
     } finally {
       setActionLoading(null)
     }
@@ -468,8 +483,10 @@ export function ModerationPanel({
         const data = await requestsRes.json()
         setJoinRequests(data.requests || [])
       }
+
+      showSuccess('Join request denied')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to deny request')
+      showError(err instanceof Error ? err.message : 'Failed to deny request')
     } finally {
       setActionLoading(null)
     }
@@ -484,8 +501,21 @@ export function ModerationPanel({
       setTimeout(() => setPasswordCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy password:', err)
-      alert('Failed to copy password to clipboard')
+      showError('Failed to copy password to clipboard')
     }
+  }
+
+  // Utility functions for showing feedback
+  const showSuccess = (message: string) => {
+    setSuccessMessage(message)
+    setErrorMessage('')
+    setTimeout(() => setSuccessMessage(''), 5000)
+  }
+
+  const showError = (message: string) => {
+    setErrorMessage(message)
+    setSuccessMessage('')
+    setTimeout(() => setErrorMessage(''), 5000)
   }
 
   const pendingReports = reports.filter((r) => r.status === 'pending')
@@ -533,6 +563,69 @@ export function ModerationPanel({
         >
           Manage members, reports, and bans
         </p>
+
+        {/* Success/Error Messages */}
+        {(successMessage || errorMessage) && (
+          <div
+            style={{
+              padding: '12px 16px',
+              background: successMessage ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              border: successMessage
+                ? '1px solid rgba(34, 197, 94, 0.4)'
+                : '1px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              animation: 'fadeIn 0.2s ease',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flex: 1,
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>{successMessage ? '✓' : '⚠'}</span>
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: successMessage ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)',
+                }}
+              >
+                {successMessage || errorMessage}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSuccessMessage('')
+                setErrorMessage('')
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: successMessage ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)',
+                fontSize: '18px',
+                cursor: 'pointer',
+                padding: '0 4px',
+                lineHeight: 1,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '1'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '0.8'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div

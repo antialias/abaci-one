@@ -57,7 +57,10 @@
       "Bash(fi)",
       "Bash(then echo \"TypeScript errors found\")",
       "Bash(else echo \"✓ No TypeScript errors in join page\")",
-      "Bash(npx @biomejs/biome format:*)"
+      "Bash(npx @biomejs/biome format:*)",
+      "Bash(npx drizzle-kit generate:*)",
+      "Bash(ssh nas.home.network \"docker ps | grep -E ''soroban|abaci|web''\")",
+      "Bash(ssh:*)"
     ],
     "deny": [],
     "ask": []

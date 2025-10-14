@@ -42,8 +42,13 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     // Update room activity when viewing (keeps active rooms fresh)
     await touchRoom(roomId)
 
+    // Prepare room data - include displayPassword only for room creator
+    const roomData = canModerate
+      ? room // Creator gets full room data including displayPassword
+      : { ...room, displayPassword: undefined } // Others don't see displayPassword
+
     return NextResponse.json({
-      room,
+      room: roomData,
       members,
       memberPlayers, // Map of userId -> active Player[] for each member
       canModerate,

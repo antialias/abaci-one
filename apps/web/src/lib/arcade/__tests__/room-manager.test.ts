@@ -62,6 +62,7 @@ describe('Room Manager', () => {
     ttlMinutes: 60,
     accessMode: 'open',
     password: null,
+    displayPassword: null,
     gameName: 'matching',
     gameConfig: { difficulty: 6 },
     status: 'lobby',

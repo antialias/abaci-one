@@ -69,9 +69,11 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     if (body.password !== undefined) {
       if (body.password === null || body.password === '') {
         updateData.password = null // Clear password
+        updateData.displayPassword = null // Also clear display password
       } else {
         const hashedPassword = await bcrypt.hash(body.password, 10)
         updateData.password = hashedPassword
+        updateData.displayPassword = body.password // Store plain text for display
       }
     }
 
