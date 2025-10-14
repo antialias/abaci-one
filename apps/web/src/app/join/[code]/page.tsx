@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useGetRoomByCode, useJoinRoom, useRoomData } from '@/hooks/useRoomData'
+import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
 interface RoomSwitchConfirmationProps {
-  currentRoom: { name: string; code: string }
-  targetRoom: { name: string; code: string }
+  currentRoom: { name: string | null; code: string; gameName: string }
+  targetRoom: { name: string | null; code: string; gameName: string }
   onConfirm: () => void
   onCancel: () => void
 }
@@ -84,7 +85,11 @@ function RoomSwitchConfirmation({
               Current Room
             </div>
             <div style={{ color: 'rgba(253, 186, 116, 1)', fontWeight: '600' }}>
-              {currentRoom.name}
+              {getRoomDisplayWithEmoji({
+                name: currentRoom.name,
+                code: currentRoom.code,
+                gameName: currentRoom.gameName,
+              })}
             </div>
             <div
               style={{
@@ -116,7 +121,11 @@ function RoomSwitchConfirmation({
               New Room
             </div>
             <div style={{ color: 'rgba(134, 239, 172, 1)', fontWeight: '600' }}>
-              {targetRoom.name}
+              {getRoomDisplayWithEmoji({
+                name: targetRoom.name,
+                code: targetRoom.code,
+                gameName: targetRoom.gameName,
+              })}
             </div>
             <div
               style={{
@@ -195,26 +204,33 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
   const { mutateAsync: joinRoom } = useJoinRoom()
   const [targetRoomData, setTargetRoomData] = useState<{
     id: string
-    name: string
+    name: string | null
     code: string
+    gameName: string
+    accessMode: string
   } | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false)
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isJoining, setIsJoining] = useState(false)
   const code = params.code.toUpperCase()
 
   const handleJoin = useCallback(
-    async (targetRoomId: string) => {
+    async (targetRoomId: string, roomPassword?: string) => {
       setIsJoining(true)
       setError(null)
 
       try {
-        await joinRoom({ roomId: targetRoomId, displayName: 'Player' })
+        await joinRoom({
+          roomId: targetRoomId,
+          displayName: 'Player',
+          password: roomPassword,
+        })
         // Navigate to the game
         router.push('/arcade/room')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to join room')
-      } finally {
         setIsJoining(false)
       }
     },
@@ -236,6 +252,8 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
           id: room.id,
           name: room.name,
           code: room.code,
+          gameName: room.gameName,
+          accessMode: room.accessMode,
         })
 
         // If user is already in this exact room, just navigate to game
@@ -244,11 +262,33 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
           return
         }
 
+        // Check if room needs password
+        if (room.accessMode === 'password') {
+          setShowPasswordPrompt(true)
+          return
+        }
+
+        // Check for other access modes
+        if (room.accessMode === 'locked' || room.accessMode === 'retired') {
+          setError('This room is no longer accepting new members')
+          return
+        }
+
+        if (room.accessMode === 'restricted') {
+          setError('This room is invitation-only')
+          return
+        }
+
+        if (room.accessMode === 'approval-only') {
+          setError('This room requires host approval. Please join via the room browser.')
+          return
+        }
+
         // If user is in a different room, show confirmation
         if (roomData) {
           setShowConfirmation(true)
         } else {
-          // Otherwise, auto-join
+          // Otherwise, auto-join (for open rooms)
           handleJoin(room.id)
         }
       })
@@ -264,12 +304,23 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
 
   const handleConfirm = () => {
     if (targetRoomData) {
-      handleJoin(targetRoomData.id)
+      if (targetRoomData.accessMode === 'password') {
+        setShowConfirmation(false)
+        setShowPasswordPrompt(true)
+      } else {
+        handleJoin(targetRoomData.id)
+      }
     }
   }
 
   const handleCancel = () => {
     router.push('/arcade/room') // Stay in current room
+  }
+
+  const handlePasswordSubmit = () => {
+    if (targetRoomData && password) {
+      handleJoin(targetRoomData.id, password)
+    }
   }
 
   if (error) {
@@ -316,14 +367,178 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
     )
   }
 
-  if (showConfirmation && roomData) {
+  if (showConfirmation && roomData && targetRoomData) {
     return (
       <RoomSwitchConfirmation
-        currentRoom={{ name: roomData.name, code: roomData.code }}
-        targetRoom={{ name: targetRoomData.name, code: targetRoomData.code }}
+        currentRoom={{ name: roomData.name, code: roomData.code, gameName: roomData.gameName }}
+        targetRoom={{
+          name: targetRoomData.name,
+          code: targetRoomData.code,
+          gameName: targetRoomData.gameName,
+        }}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
       />
+    )
+  }
+
+  if (showPasswordPrompt && targetRoomData) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
+        }}
+      >
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(31, 41, 55, 0.98))',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '450px',
+            width: '90%',
+            border: '2px solid rgba(251, 191, 36, 0.3)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+          }}
+        >
+          <h2
+            style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              marginBottom: '8px',
+              color: 'rgba(251, 191, 36, 1)',
+            }}
+          >
+            🔑 Password Required
+          </h2>
+          <p
+            style={{
+              fontSize: '14px',
+              color: 'rgba(209, 213, 219, 0.8)',
+              marginBottom: '20px',
+            }}
+          >
+            This room is password protected. Enter the password to join.
+          </p>
+
+          <div
+            style={{
+              background: 'rgba(251, 191, 36, 0.1)',
+              border: '1px solid rgba(251, 191, 36, 0.3)',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '20px',
+            }}
+          >
+            <div style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(251, 191, 36, 1)' }}>
+              {getRoomDisplayWithEmoji({
+                name: targetRoomData.name,
+                code: targetRoomData.code,
+                gameName: targetRoomData.gameName,
+              })}
+            </div>
+            <div
+              style={{
+                fontSize: '13px',
+                color: 'rgba(209, 213, 219, 0.7)',
+                fontFamily: 'monospace',
+                marginTop: '4px',
+              }}
+            >
+              Code: {targetRoomData.code}
+            </div>
+          </div>
+
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && password) {
+                handlePasswordSubmit()
+              }
+            }}
+            placeholder="Enter password"
+            disabled={isJoining}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              border: '2px solid rgba(251, 191, 36, 0.4)',
+              borderRadius: '10px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: 'rgba(251, 191, 36, 1)',
+              fontSize: '16px',
+              outline: 'none',
+              marginBottom: '8px',
+            }}
+          />
+
+          {error && (
+            <p
+              style={{
+                fontSize: '13px',
+                color: 'rgba(248, 113, 113, 1)',
+                marginBottom: '16px',
+                textAlign: 'center',
+              }}
+            >
+              {error}
+            </p>
+          )}
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+            <button
+              type="button"
+              onClick={() => router.push('/arcade')}
+              disabled={isJoining}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: 'rgba(75, 85, 99, 0.3)',
+                color: 'rgba(209, 213, 219, 1)',
+                border: '2px solid rgba(75, 85, 99, 0.5)',
+                borderRadius: '10px',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: isJoining ? 'not-allowed' : 'pointer',
+                opacity: isJoining ? 0.5 : 1,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handlePasswordSubmit}
+              disabled={!password || isJoining}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background:
+                  password && !isJoining
+                    ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.8), rgba(245, 158, 11, 0.8))'
+                    : 'rgba(75, 85, 99, 0.3)',
+                color: password && !isJoining ? 'rgba(255, 255, 255, 1)' : 'rgba(156, 163, 175, 1)',
+                border:
+                  password && !isJoining
+                    ? '2px solid rgba(251, 191, 36, 0.6)'
+                    : '2px solid rgba(75, 85, 99, 0.5)',
+                borderRadius: '10px',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: password && !isJoining ? 'pointer' : 'not-allowed',
+                opacity: password && !isJoining ? 1 : 0.5,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {isJoining ? 'Joining...' : 'Join Room'}
+            </button>
+          </div>
+        </div>
+      </div>
     )
   }
 

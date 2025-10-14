@@ -4,16 +4,18 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { css } from '../../../styled-system/css'
 import { PageWithNav } from '@/components/PageWithNav'
+import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
 interface Room {
   id: string
   code: string
-  name: string
+  name: string | null
   gameName: string
   status: 'lobby' | 'playing' | 'finished'
   createdAt: Date
   creatorName: string
   isLocked: boolean
+  accessMode: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
   memberCount?: number
   playerCount?: number
   isMember?: boolean
@@ -48,7 +50,7 @@ export default function RoomBrowserPage() {
     }
   }
 
-  const createRoom = async (name: string, gameName: string) => {
+  const createRoom = async (name: string | null, gameName: string) => {
     try {
       const response = await fetch('/api/arcade/rooms', {
         method: 'POST',
@@ -73,9 +75,41 @@ export default function RoomBrowserPage() {
     }
   }
 
-  const joinRoom = async (roomId: string) => {
+  const joinRoom = async (room: Room) => {
     try {
-      const response = await fetch(`/api/arcade/rooms/${roomId}/join`, {
+      // Check access mode
+      if (room.accessMode === 'password') {
+        const password = prompt(`Enter password for ${room.name || `Room ${room.code}`}:`)
+        if (!password) return // User cancelled
+
+        const response = await fetch(`/api/arcade/rooms/${room.id}/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: 'Player', password }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          alert(errorData.error || 'Failed to join room')
+          return
+        }
+
+        router.push(`/arcade-rooms/${room.id}`)
+        return
+      }
+
+      if (room.accessMode === 'approval-only') {
+        alert('This room requires host approval. Please use the Join Room modal to request access.')
+        return
+      }
+
+      if (room.accessMode === 'restricted') {
+        alert('This room is invitation-only. Please ask the host for an invitation.')
+        return
+      }
+
+      // For open rooms
+      const response = await fetch(`/api/arcade/rooms/${room.id}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName: 'Player' }),
@@ -103,7 +137,7 @@ export default function RoomBrowserPage() {
         // Could show a toast notification here in the future
       }
 
-      router.push(`/arcade-rooms/${roomId}`)
+      router.push(`/arcade-rooms/${room.id}`)
     } catch (err) {
       console.error('Failed to join room:', err)
       alert('Failed to join room')
@@ -237,7 +271,11 @@ export default function RoomBrowserPage() {
                             color: 'white',
                           })}
                         >
-                          {room.name}
+                          {getRoomDisplayWithEmoji({
+                            name: room.name,
+                            code: room.code,
+                            gameName: room.gameName,
+                          })}
                         </h3>
                         <span
                           className={css({
@@ -325,23 +363,51 @@ export default function RoomBrowserPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          joinRoom(room.id)
+                          joinRoom(room)
                         }}
-                        disabled={room.isLocked}
+                        disabled={
+                          room.isLocked ||
+                          room.accessMode === 'locked' ||
+                          room.accessMode === 'retired'
+                        }
                         className={css({
                           px: '6',
                           py: '3',
-                          bg: room.isLocked ? '#6b7280' : '#3b82f6',
+                          bg:
+                            room.isLocked ||
+                            room.accessMode === 'locked' ||
+                            room.accessMode === 'retired'
+                              ? '#6b7280'
+                              : room.accessMode === 'password'
+                                ? '#f59e0b'
+                                : '#3b82f6',
                           color: 'white',
                           rounded: 'lg',
                           fontWeight: '600',
-                          cursor: room.isLocked ? 'not-allowed' : 'pointer',
-                          opacity: room.isLocked ? 0.5 : 1,
-                          _hover: room.isLocked ? {} : { bg: '#2563eb' },
+                          cursor:
+                            room.isLocked ||
+                            room.accessMode === 'locked' ||
+                            room.accessMode === 'retired'
+                              ? 'not-allowed'
+                              : 'pointer',
+                          opacity:
+                            room.isLocked ||
+                            room.accessMode === 'locked' ||
+                            room.accessMode === 'retired'
+                              ? 0.5
+                              : 1,
+                          _hover:
+                            room.isLocked ||
+                            room.accessMode === 'locked' ||
+                            room.accessMode === 'retired'
+                              ? {}
+                              : room.accessMode === 'password'
+                                ? { bg: '#d97706' }
+                                : { bg: '#2563eb' },
                           transition: 'all 0.2s',
                         })}
                       >
-                        Join Room
+                        {room.accessMode === 'password' ? '🔑 Join with Password' : 'Join Room'}
                       </button>
                     )}
                   </div>
@@ -393,9 +459,11 @@ export default function RoomBrowserPage() {
                 onSubmit={(e) => {
                   e.preventDefault()
                   const formData = new FormData(e.currentTarget)
-                  const name = formData.get('name') as string
+                  const nameValue = formData.get('name') as string
                   const gameName = formData.get('gameName') as string
-                  if (name && gameName) {
+                  // Treat empty name as null
+                  const name = nameValue?.trim() || null
+                  if (gameName) {
                     createRoom(name, gameName)
                   }
                 }}
@@ -408,13 +476,13 @@ export default function RoomBrowserPage() {
                       fontWeight: '600',
                     })}
                   >
-                    Room Name
+                    Room Name{' '}
+                    <span className={css({ fontWeight: '400', color: '#9ca3af' })}>(optional)</span>
                   </label>
                   <input
                     name="name"
                     type="text"
-                    required
-                    placeholder="My Awesome Room"
+                    placeholder="e.g., Friday Night Games (defaults to: 🎮 CODE)"
                     className={css({
                       w: 'full',
                       px: '4',

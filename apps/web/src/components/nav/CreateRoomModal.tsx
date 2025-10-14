@@ -25,9 +25,19 @@ export interface CreateRoomModalProps {
 export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalProps) {
   const { mutateAsync: createRoom, isPending } = useCreateRoom()
   const [error, setError] = useState('')
+  const [gameName, setGameName] = useState<'matching' | 'memory-quiz' | 'complement-race'>(
+    'matching'
+  )
+  const [accessMode, setAccessMode] = useState<
+    'open' | 'password' | 'approval-only' | 'restricted'
+  >('open')
+  const [password, setPassword] = useState('')
 
   const handleClose = () => {
     setError('')
+    setGameName('matching')
+    setAccessMode('open')
+    setPassword('')
     onClose()
   }
 
@@ -36,11 +46,14 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
     setError('')
 
     const formData = new FormData(e.currentTarget)
-    const name = formData.get('name') as string
-    const gameName = formData.get('gameName') as string
+    const nameValue = formData.get('name') as string
 
-    if (!name || !gameName) {
-      setError('Please fill in all fields')
+    // Treat empty name as null
+    const name = nameValue?.trim() || null
+
+    // Validate password for password-protected rooms
+    if (accessMode === 'password' && !password) {
+      setError('Password is required for password-protected rooms')
       return
     }
 
@@ -51,6 +64,8 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
         gameName,
         creatorName: 'Player',
         gameConfig: { difficulty: 6 },
+        accessMode,
+        password: accessMode === 'password' ? password : undefined,
       })
 
       // Success! Close modal
@@ -67,6 +82,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
         style={{
           border: '2px solid rgba(34, 197, 94, 0.3)',
           borderRadius: '16px',
+          padding: '24px',
         }}
       >
         <h2
@@ -90,32 +106,37 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
         </p>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '20px' }}>
+          {/* Room Name */}
+          <div style={{ marginBottom: '16px' }}>
             <label
               style={{
                 display: 'block',
-                marginBottom: '8px',
+                marginBottom: '6px',
                 fontWeight: '600',
                 color: 'rgba(209, 213, 219, 1)',
-                fontSize: '14px',
+                fontSize: '13px',
               }}
             >
-              Room Name
+              Room Name{' '}
+              <span
+                style={{ fontWeight: '400', color: 'rgba(156, 163, 175, 1)', fontSize: '12px' }}
+              >
+                (optional)
+              </span>
             </label>
             <input
               name="name"
               type="text"
-              required
-              placeholder="My Awesome Room"
+              placeholder="e.g., Friday Night Games (defaults to: 🎮 CODE)"
               disabled={isPending}
               style={{
                 width: '100%',
-                padding: '12px',
+                padding: '10px 12px',
                 border: '2px solid rgba(75, 85, 99, 0.5)',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 background: 'rgba(255, 255, 255, 0.05)',
                 color: 'rgba(209, 213, 219, 1)',
-                fontSize: '15px',
+                fontSize: '14px',
                 outline: 'none',
               }}
               onFocus={(e) => {
@@ -127,45 +148,197 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
             />
           </div>
 
-          <div style={{ marginBottom: '24px' }}>
+          {/* Game Selection */}
+          <div style={{ marginBottom: '16px' }}>
             <label
               style={{
                 display: 'block',
                 marginBottom: '8px',
                 fontWeight: '600',
                 color: 'rgba(209, 213, 219, 1)',
-                fontSize: '14px',
+                fontSize: '13px',
               }}
             >
-              Game
+              Choose Game
             </label>
-            <select
-              name="gameName"
-              required
-              disabled={isPending}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+              {[
+                { value: 'matching' as const, emoji: '🃏', label: 'Memory', desc: 'Matching' },
+                { value: 'memory-quiz' as const, emoji: '🧠', label: 'Memory', desc: 'Quiz' },
+                {
+                  value: 'complement-race' as const,
+                  emoji: '⚡',
+                  label: 'Complement',
+                  desc: 'Race',
+                },
+              ].map((game) => (
+                <button
+                  key={game.value}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => setGameName(game.value)}
+                  style={{
+                    padding: '12px 8px',
+                    background:
+                      gameName === game.value
+                        ? 'rgba(34, 197, 94, 0.15)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                    border:
+                      gameName === game.value
+                        ? '2px solid rgba(34, 197, 94, 0.6)'
+                        : '2px solid rgba(75, 85, 99, 0.5)',
+                    borderRadius: '8px',
+                    color:
+                      gameName === game.value
+                        ? 'rgba(134, 239, 172, 1)'
+                        : 'rgba(209, 213, 219, 0.8)',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    cursor: isPending ? 'not-allowed' : 'pointer',
+                    opacity: isPending ? 0.5 : 1,
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isPending && gameName !== game.value) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                      e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (gameName !== game.value) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                      e.currentTarget.style.borderColor = 'rgba(75, 85, 99, 0.5)'
+                    }
+                  }}
+                >
+                  <span style={{ fontSize: '24px' }}>{game.emoji}</span>
+                  <div style={{ lineHeight: '1.2' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600' }}>{game.label}</div>
+                    <div style={{ fontSize: '11px', opacity: 0.7 }}>{game.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Access Mode Selection */}
+          <div style={{ marginBottom: '16px' }}>
+            <label
               style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid rgba(75, 85, 99, 0.5)',
-                borderRadius: '10px',
-                background: 'rgba(255, 255, 255, 0.05)',
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600',
                 color: 'rgba(209, 213, 219, 1)',
-                fontSize: '15px',
-                outline: 'none',
-                cursor: isPending ? 'not-allowed' : 'pointer',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.6)'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(75, 85, 99, 0.5)'
+                fontSize: '13px',
               }}
             >
-              <option value="matching">Memory Matching</option>
-              <option value="memory-quiz">Memory Quiz</option>
-              <option value="complement-race">Complement Race</option>
-            </select>
+              Who Can Join
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {[
+                { value: 'open', emoji: '🌐', label: 'Open', desc: 'Anyone' },
+                { value: 'password', emoji: '🔑', label: 'Password', desc: 'With key' },
+                { value: 'approval-only', emoji: '✋', label: 'Approval', desc: 'Request' },
+                { value: 'restricted', emoji: '🚫', label: 'Restricted', desc: 'Invite only' },
+              ].map((mode) => (
+                <button
+                  key={mode.value}
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => {
+                    setAccessMode(mode.value as typeof accessMode)
+                    if (mode.value !== 'password') setPassword('')
+                  }}
+                  style={{
+                    padding: '10px 12px',
+                    background:
+                      accessMode === mode.value
+                        ? 'rgba(34, 197, 94, 0.15)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                    border:
+                      accessMode === mode.value
+                        ? '2px solid rgba(34, 197, 94, 0.6)'
+                        : '2px solid rgba(75, 85, 99, 0.5)',
+                    borderRadius: '8px',
+                    color:
+                      accessMode === mode.value
+                        ? 'rgba(134, 239, 172, 1)'
+                        : 'rgba(209, 213, 219, 0.8)',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    cursor: isPending ? 'not-allowed' : 'pointer',
+                    opacity: isPending ? 0.5 : 1,
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isPending && accessMode !== mode.value) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                      e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (accessMode !== mode.value) {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                      e.currentTarget.style.borderColor = 'rgba(75, 85, 99, 0.5)'
+                    }
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>{mode.emoji}</span>
+                  <div style={{ textAlign: 'left', flex: 1, lineHeight: '1.2' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600' }}>{mode.label}</div>
+                    <div style={{ fontSize: '11px', opacity: 0.7 }}>{mode.desc}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
+
+          {accessMode === 'password' && (
+            <div style={{ marginBottom: '20px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '600',
+                  color: 'rgba(209, 213, 219, 1)',
+                  fontSize: '14px',
+                }}
+              >
+                Room Password
+              </label>
+              <input
+                type="text"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter a password"
+                disabled={isPending}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid rgba(75, 85, 99, 0.5)',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'rgba(209, 213, 219, 1)',
+                  fontSize: '15px',
+                  outline: 'none',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.6)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(75, 85, 99, 0.5)'
+                }}
+              />
+            </div>
+          )}
 
           {error && (
             <p

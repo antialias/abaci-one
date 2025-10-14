@@ -23,15 +23,18 @@ export interface RoomData {
   name: string
   code: string
   gameName: string
+  accessMode: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
   members: RoomMember[]
   memberPlayers: Record<string, RoomPlayer[]> // userId -> players
 }
 
 export interface CreateRoomParams {
-  name: string
+  name: string | null
   gameName: string
   creatorName?: string
   gameConfig?: Record<string, unknown>
+  accessMode?: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
+  password?: string
 }
 
 export interface JoinRoomResult {
@@ -68,6 +71,7 @@ async function fetchCurrentRoom(): Promise<RoomData | null> {
     name: data.room.name,
     code: data.room.code,
     gameName: data.room.gameName,
+    accessMode: data.room.accessMode || 'open',
     members: data.members || [],
     memberPlayers: data.memberPlayers || {},
   }
@@ -85,6 +89,8 @@ async function createRoomApi(params: CreateRoomParams): Promise<RoomData> {
       gameName: params.gameName,
       creatorName: params.creatorName || 'Player',
       gameConfig: params.gameConfig || { difficulty: 6 },
+      accessMode: params.accessMode,
+      password: params.password,
     }),
   })
 
@@ -99,6 +105,7 @@ async function createRoomApi(params: CreateRoomParams): Promise<RoomData> {
     name: data.room.name,
     code: data.room.code,
     gameName: data.room.gameName,
+    accessMode: data.room.accessMode || 'open',
     members: data.members || [],
     memberPlayers: data.memberPlayers || {},
   }
@@ -110,11 +117,15 @@ async function createRoomApi(params: CreateRoomParams): Promise<RoomData> {
 async function joinRoomApi(params: {
   roomId: string
   displayName?: string
+  password?: string
 }): Promise<JoinRoomResult> {
   const response = await fetch(`/api/arcade/rooms/${params.roomId}/join`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ displayName: params.displayName || 'Player' }),
+    body: JSON.stringify({
+      displayName: params.displayName || 'Player',
+      password: params.password,
+    }),
   })
 
   if (!response.ok) {
@@ -130,6 +141,7 @@ async function joinRoomApi(params: {
       name: data.room.name,
       code: data.room.code,
       gameName: data.room.gameName,
+      accessMode: data.room.accessMode || 'open',
       members: data.members || [],
       memberPlayers: data.memberPlayers || {},
     },
@@ -171,6 +183,7 @@ async function getRoomByCodeApi(code: string): Promise<RoomData> {
     name: data.room.name,
     code: data.room.code,
     gameName: data.room.gameName,
+    accessMode: data.room.accessMode || 'open',
     members: data.members || [],
     memberPlayers: data.memberPlayers || {},
   }
