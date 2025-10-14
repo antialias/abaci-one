@@ -83,25 +83,31 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
 
       case 'restricted': {
-        // Check for valid pending invitation
-        const invitation = await getInvitation(roomId, viewerId)
-        if (!invitation || invitation.status !== 'pending') {
-          return NextResponse.json(
-            { error: 'You need a valid invitation to join this room' },
-            { status: 403 }
-          )
+        // Room creator can always rejoin their own room
+        if (!isRoomCreator) {
+          // Check for valid pending invitation
+          const invitation = await getInvitation(roomId, viewerId)
+          if (!invitation || invitation.status !== 'pending') {
+            return NextResponse.json(
+              { error: 'You need a valid invitation to join this room' },
+              { status: 403 }
+            )
+          }
         }
         break
       }
 
       case 'approval-only': {
-        // Check for approved join request
-        const joinRequest = await getJoinRequest(roomId, viewerId)
-        if (!joinRequest || joinRequest.status !== 'approved') {
-          return NextResponse.json(
-            { error: 'Your join request must be approved by the host' },
-            { status: 403 }
-          )
+        // Room creator can always rejoin their own room without approval
+        if (!isRoomCreator) {
+          // Check for approved join request
+          const joinRequest = await getJoinRequest(roomId, viewerId)
+          if (!joinRequest || joinRequest.status !== 'approved') {
+            return NextResponse.json(
+              { error: 'Your join request must be approved by the host' },
+              { status: 403 }
+            )
+          }
         }
         break
       }
