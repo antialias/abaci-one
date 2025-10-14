@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Modal } from '@/components/common/Modal'
-import { useRoomData } from '@/hooks/useRoomData'
+import { useCreateRoom } from '@/hooks/useRoomData'
 
 export interface CreateRoomModalProps {
   /**
@@ -23,13 +23,11 @@ export interface CreateRoomModalProps {
  * Modal for creating a new multiplayer room
  */
 export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalProps) {
-  const { createRoom } = useRoomData()
+  const { mutateAsync: createRoom, isPending } = useCreateRoom()
   const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
 
   const handleClose = () => {
     setError('')
-    setIsLoading(false)
     onClose()
   }
 
@@ -46,8 +44,6 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
       return
     }
 
-    setIsLoading(true)
-
     try {
       // Create the room (creator is auto-added as first member)
       await createRoom({
@@ -62,8 +58,6 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
       onSuccess?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create room')
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -113,7 +107,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
               type="text"
               required
               placeholder="My Awesome Room"
-              disabled={isLoading}
+              disabled={isPending}
               style={{
                 width: '100%',
                 padding: '12px',
@@ -148,7 +142,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
             <select
               name="gameName"
               required
-              disabled={isLoading}
+              disabled={isPending}
               style={{
                 width: '100%',
                 padding: '12px',
@@ -190,7 +184,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
             <button
               type="button"
               onClick={handleClose}
-              disabled={isLoading}
+              disabled={isPending}
               style={{
                 flex: 1,
                 padding: '12px',
@@ -200,17 +194,17 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
                 borderRadius: '10px',
                 fontSize: '15px',
                 fontWeight: '600',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                opacity: isLoading ? 0.5 : 1,
+                cursor: isPending ? 'not-allowed' : 'pointer',
+                opacity: isPending ? 0.5 : 1,
                 transition: 'all 0.2s ease',
               }}
               onMouseEnter={(e) => {
-                if (!isLoading) {
+                if (!isPending) {
                   e.currentTarget.style.background = 'rgba(75, 85, 99, 0.4)'
                 }
               }}
               onMouseLeave={(e) => {
-                if (!isLoading) {
+                if (!isPending) {
                   e.currentTarget.style.background = 'rgba(75, 85, 99, 0.3)'
                 }
               }}
@@ -219,38 +213,38 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isPending}
               style={{
                 flex: 1,
                 padding: '12px',
-                background: isLoading
+                background: isPending
                   ? 'rgba(75, 85, 99, 0.3)'
                   : 'linear-gradient(135deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))',
                 color: 'rgba(255, 255, 255, 1)',
-                border: isLoading
+                border: isPending
                   ? '2px solid rgba(75, 85, 99, 0.5)'
                   : '2px solid rgba(34, 197, 94, 0.6)',
                 borderRadius: '10px',
                 fontSize: '15px',
                 fontWeight: '600',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                opacity: isLoading ? 0.5 : 1,
+                cursor: isPending ? 'not-allowed' : 'pointer',
+                opacity: isPending ? 0.5 : 1,
                 transition: 'all 0.2s ease',
               }}
               onMouseEnter={(e) => {
-                if (!isLoading) {
+                if (!isPending) {
                   e.currentTarget.style.background =
                     'linear-gradient(135deg, rgba(34, 197, 94, 0.9), rgba(22, 163, 74, 0.9))'
                 }
               }}
               onMouseLeave={(e) => {
-                if (!isLoading) {
+                if (!isPending) {
                   e.currentTarget.style.background =
                     'linear-gradient(135deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
                 }
               }}
             >
-              {isLoading ? 'Creating...' : 'Create Room'}
+              {isPending ? 'Creating...' : 'Create Room'}
             </button>
           </div>
         </form>
