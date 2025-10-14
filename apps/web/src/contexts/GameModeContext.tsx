@@ -2,15 +2,16 @@
 
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 import type { Player as DBPlayer } from '@/db/schema/players'
+import { useRoomData } from '@/hooks/useRoomData'
 import {
   useCreatePlayer,
   useDeletePlayer,
   useUpdatePlayer,
   useUserPlayers,
 } from '@/hooks/useUserPlayers'
-import { useRoomData } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
 import { getNextPlayerColor } from '../types/player'
+import { generateUniquePlayerName, generateUniquePlayerNames } from '../utils/playerNames'
 
 // Client-side Player type (compatible with old type)
 export interface Player {
@@ -44,11 +45,12 @@ export interface GameModeContextType {
 const GameModeContext = createContext<GameModeContextType | null>(null)
 
 // Default players to create if none exist
-const DEFAULT_PLAYERS = [
-  { name: 'Player 1', emoji: '😀', color: '#3b82f6' },
-  { name: 'Player 2', emoji: '😎', color: '#8b5cf6' },
-  { name: 'Player 3', emoji: '🤠', color: '#10b981' },
-  { name: 'Player 4', emoji: '🚀', color: '#f59e0b' },
+// Names are generated randomly on first initialization
+const DEFAULT_PLAYER_CONFIGS = [
+  { emoji: '😀', color: '#3b82f6' },
+  { emoji: '😎', color: '#8b5cf6' },
+  { emoji: '🤠', color: '#10b981' },
+  { emoji: '🚀', color: '#f59e0b' },
 ]
 
 // Convert DB player to client Player type
@@ -139,14 +141,19 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading && !isInitialized) {
       if (dbPlayers.length === 0) {
-        // Create default players
-        DEFAULT_PLAYERS.forEach((data, index) => {
+        // Generate unique names for default players
+        const generatedNames = generateUniquePlayerNames(DEFAULT_PLAYER_CONFIGS.length)
+
+        // Create default players with generated names
+        DEFAULT_PLAYER_CONFIGS.forEach((config, index) => {
           createPlayer({
-            ...data,
+            name: generatedNames[index],
+            emoji: config.emoji,
+            color: config.color,
             isActive: index === 0, // First player active by default
           })
         })
-        console.log('✅ Created default players via API')
+        console.log('✅ Created default players via API with auto-generated names:', generatedNames)
       } else {
         console.log('✅ Loaded players from API', {
           playerCount: dbPlayers.length,
@@ -159,9 +166,10 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
 
   const addPlayer = (playerData?: Partial<Player>) => {
     const playerList = Array.from(players.values())
+    const existingNames = playerList.map((p) => p.name)
 
     const newPlayer = {
-      name: playerData?.name ?? `Player ${players.size + 1}`,
+      name: playerData?.name ?? generateUniquePlayerName(existingNames),
       emoji: playerData?.emoji ?? '🎮',
       color: playerData?.color ?? getNextPlayerColor(playerList),
       isActive: playerData?.isActive ?? false,
@@ -246,10 +254,15 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       deletePlayer(player.id)
     })
 
-    // Create default players
-    DEFAULT_PLAYERS.forEach((data, index) => {
+    // Generate unique names for default players
+    const generatedNames = generateUniquePlayerNames(DEFAULT_PLAYER_CONFIGS.length)
+
+    // Create default players with generated names
+    DEFAULT_PLAYER_CONFIGS.forEach((config, index) => {
       createPlayer({
-        ...data,
+        name: generatedNames[index],
+        emoji: config.emoji,
+        color: config.color,
         isActive: index === 0,
       })
     })
