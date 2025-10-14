@@ -1,5 +1,6 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useToast } from '@/components/common/ToastContext'
 import { useJoinRoom } from '@/hooks/useRoomData'
 
 interface PendingInvitation {
@@ -32,6 +33,7 @@ export interface PendingInvitationsProps {
  */
 export function PendingInvitations({ onInvitationChange, currentRoomId }: PendingInvitationsProps) {
   const router = useRouter()
+  const { showError } = useToast()
   const [invitations, setInvitations] = useState<PendingInvitation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -72,7 +74,7 @@ export function PendingInvitations({ onInvitationChange, currentRoomId }: Pendin
       onInvitationChange?.()
     } catch (error) {
       console.error('Failed to join room:', error)
-      alert(error instanceof Error ? error.message : 'Failed to join room')
+      showError('Failed to join room', error instanceof Error ? error.message : undefined)
     } finally {
       setActionLoading(null)
     }
@@ -97,7 +99,7 @@ export function PendingInvitations({ onInvitationChange, currentRoomId }: Pendin
       onInvitationChange?.()
     } catch (error) {
       console.error('Failed to decline invitation:', error)
-      alert(error instanceof Error ? error.message : 'Failed to decline invitation')
+      showError('Failed to decline invitation', error instanceof Error ? error.message : undefined)
     } finally {
       setActionLoading(null)
     }

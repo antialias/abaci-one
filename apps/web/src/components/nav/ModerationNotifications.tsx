@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/common/Modal'
+import { useToast } from '@/components/common/ToastContext'
 import type { ModerationEvent } from '@/hooks/useRoomData'
 import { useJoinRoom } from '@/hooks/useRoomData'
 
@@ -27,6 +28,7 @@ export function ModerationNotifications({
 }: ModerationNotificationsProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { showError } = useToast()
   const [showToast, setShowToast] = useState(false)
   const [showJoinRequestToast, setShowJoinRequestToast] = useState(false)
   const [isAcceptingInvitation, setIsAcceptingInvitation] = useState(false)
@@ -834,7 +836,7 @@ export function ModerationNotifications({
                   router.push('/arcade/room')
                 } catch (error) {
                   console.error('Failed to join room:', error)
-                  alert(error instanceof Error ? error.message : 'Failed to join room')
+                  showError('Failed to join room', error instanceof Error ? error.message : undefined)
                   setIsAcceptingInvitation(false)
                 }
               }}

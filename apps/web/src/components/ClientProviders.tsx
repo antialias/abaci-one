@@ -3,6 +3,7 @@
 import { AbacusDisplayProvider } from '@soroban/abacus-react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { type ReactNode, useState } from 'react'
+import { ToastProvider } from '@/components/common/ToastContext'
 import { FullscreenProvider } from '@/contexts/FullscreenContext'
 import { GameModeProvider } from '@/contexts/GameModeContext'
 import { UserProfileProvider } from '@/contexts/UserProfileContext'
@@ -20,17 +21,19 @@ export function ClientProviders({ children }: ClientProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AbacusDisplayProvider>
-        <AbacusSettingsSync />
-        <UserProfileProvider>
-          <GameModeProvider>
-            <FullscreenProvider>
-              {children}
-              <DeploymentInfo />
-            </FullscreenProvider>
-          </GameModeProvider>
-        </UserProfileProvider>
-      </AbacusDisplayProvider>
+      <ToastProvider>
+        <AbacusDisplayProvider>
+          <AbacusSettingsSync />
+          <UserProfileProvider>
+            <GameModeProvider>
+              <FullscreenProvider>
+                {children}
+                <DeploymentInfo />
+              </FullscreenProvider>
+            </GameModeProvider>
+          </UserProfileProvider>
+        </AbacusDisplayProvider>
+      </ToastProvider>
     </QueryClientProvider>
   )
 }

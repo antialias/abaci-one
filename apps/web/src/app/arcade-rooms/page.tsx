@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { css } from '../../../styled-system/css'
+import { useToast } from '@/components/common/ToastContext'
 import { PageWithNav } from '@/components/PageWithNav'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
@@ -23,6 +24,7 @@ interface Room {
 
 export default function RoomBrowserPage() {
   const router = useRouter()
+  const { showError, showInfo } = useToast()
   const [rooms, setRooms] = useState<Room[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -71,7 +73,7 @@ export default function RoomBrowserPage() {
       router.push(`/arcade-rooms/${data.room.id}`)
     } catch (err) {
       console.error('Failed to create room:', err)
-      alert('Failed to create room')
+      showError('Failed to create room', err instanceof Error ? err.message : undefined)
     }
   }
 
@@ -90,7 +92,7 @@ export default function RoomBrowserPage() {
 
         if (!response.ok) {
           const errorData = await response.json()
-          alert(errorData.error || 'Failed to join room')
+          showError('Failed to join room', errorData.error)
           return
         }
 
@@ -99,12 +101,15 @@ export default function RoomBrowserPage() {
       }
 
       if (room.accessMode === 'approval-only') {
-        alert('This room requires host approval. Please use the Join Room modal to request access.')
+        showInfo(
+          'Approval Required',
+          'This room requires host approval. Please use the Join Room modal to request access.'
+        )
         return
       }
 
       if (room.accessMode === 'restricted') {
-        alert('This room is invitation-only. Please ask the host for an invitation.')
+        showInfo('Invitation Only', 'This room is invitation-only. Please ask the host for an invitation.')
         return
       }
 
@@ -120,7 +125,7 @@ export default function RoomBrowserPage() {
 
         // Handle specific room membership conflict
         if (errorData.code === 'ROOM_MEMBERSHIP_CONFLICT') {
-          alert(errorData.userMessage || errorData.message)
+          showError('Already in Another Room', errorData.userMessage || errorData.message)
           // Refresh the page to update room list state
           await fetchRooms()
           return
@@ -140,7 +145,7 @@ export default function RoomBrowserPage() {
       router.push(`/arcade-rooms/${room.id}`)
     } catch (err) {
       console.error('Failed to join room:', err)
-      alert('Failed to join room')
+      showError('Failed to join room', err instanceof Error ? err.message : undefined)
     }
   }
 

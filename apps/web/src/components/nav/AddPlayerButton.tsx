@@ -1,5 +1,6 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/components/common/ToastContext'
 import { InvitePlayersTab } from './InvitePlayersTab'
 import { PlayOnlineTab } from './PlayOnlineTab'
 import { addToRecentRooms } from './RecentRoomsList'
@@ -41,6 +42,7 @@ export function AddPlayerButton({
 }: AddPlayerButtonProps) {
   const popoverRef = React.useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const { showError } = useToast()
 
   // Use lifted state if provided, otherwise fallback to internal state
   const [internalShowPopover, setInternalShowPopover] = React.useState(false)
@@ -75,7 +77,7 @@ export function AddPlayerButton({
         },
         onError: (error) => {
           console.error('Failed to create room:', error)
-          alert(`Failed to create room: ${error.message}`)
+          showError('Failed to create room', error.message)
         },
       }
     )

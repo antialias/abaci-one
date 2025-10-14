@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { io, type Socket } from 'socket.io-client'
 import { css } from '../../../../styled-system/css'
+import { useToast } from '@/components/common/ToastContext'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useViewerId } from '@/hooks/useViewerId'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
@@ -40,6 +41,7 @@ interface Player {
 export default function RoomDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { showError } = useToast()
   const roomId = params.roomId as string
   const { data: guestId } = useViewerId()
 
@@ -172,7 +174,7 @@ export default function RoomDetailPage() {
 
         // Handle specific room membership conflict
         if (errorData.code === 'ROOM_MEMBERSHIP_CONFLICT') {
-          alert(errorData.userMessage || errorData.message)
+          showError('Already in Another Room', errorData.userMessage || errorData.message)
           // Refresh the page to update room state
           await fetchRoom()
           return
@@ -193,7 +195,7 @@ export default function RoomDetailPage() {
       await fetchRoom()
     } catch (err) {
       console.error('Failed to join room:', err)
-      alert('Failed to join room')
+      showError('Failed to join room', err instanceof Error ? err.message : undefined)
     }
   }
 
@@ -213,7 +215,7 @@ export default function RoomDetailPage() {
       router.push('/arcade')
     } catch (err) {
       console.error('Failed to leave room:', err)
-      alert('Failed to leave room')
+      showError('Failed to leave room', err instanceof Error ? err.message : undefined)
     }
   }
 
