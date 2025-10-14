@@ -1,9 +1,12 @@
-import { eq } from 'drizzle-orm'
+import bcrypt from 'bcryptjs'
+import { and, eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
+import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
+import { recordRoomMemberHistory } from '@/lib/arcade/room-member-history'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
+import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
-import bcrypt from 'bcryptjs'
 
 type RouteContext = {
   params: Promise<{ roomId: string }>
@@ -78,6 +81,72 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       .set(updateData)
       .where(eq(schema.arcadeRooms.id, roomId))
       .returning()
+
+    // If setting to retired, expel all non-owner members
+    if (body.accessMode === 'retired') {
+      const nonOwnerMembers = members.filter((m) => !m.isCreator)
+
+      if (nonOwnerMembers.length > 0) {
+        // Remove all non-owner members from the room
+        await db.delete(schema.roomMembers).where(
+          and(
+            eq(schema.roomMembers.roomId, roomId),
+            // Delete all members except the creator
+            eq(schema.roomMembers.isCreator, false)
+          )
+        )
+
+        // Record in history for each expelled member
+        for (const member of nonOwnerMembers) {
+          await recordRoomMemberHistory({
+            roomId,
+            userId: member.userId,
+            displayName: member.displayName,
+            action: 'left',
+          })
+        }
+
+        // Broadcast updates via socket
+        const io = await getSocketIO()
+        if (io) {
+          try {
+            // Get updated member list (should only be the owner now)
+            const updatedMembers = await getRoomMembers(roomId)
+            const memberPlayers = await getRoomActivePlayers(roomId)
+
+            // Convert memberPlayers Map to object for JSON serialization
+            const memberPlayersObj: Record<string, any[]> = {}
+            for (const [uid, players] of memberPlayers.entries()) {
+              memberPlayersObj[uid] = players
+            }
+
+            // Notify each expelled member
+            for (const member of nonOwnerMembers) {
+              io.to(`user:${member.userId}`).emit('kicked-from-room', {
+                roomId,
+                kickedBy: currentMember.displayName,
+                reason: 'Room has been retired',
+              })
+            }
+
+            // Notify the owner that members were expelled
+            io.to(`room:${roomId}`).emit('member-left', {
+              roomId,
+              userId: nonOwnerMembers.map((m) => m.userId),
+              members: updatedMembers,
+              memberPlayers: memberPlayersObj,
+              reason: 'room-retired',
+            })
+
+            console.log(
+              `[Settings API] Expelled ${nonOwnerMembers.length} members from retired room ${roomId}`
+            )
+          } catch (socketError) {
+            console.error('[Settings API] Failed to broadcast member expulsion:', socketError)
+          }
+        }
+      }
+    }
 
     return NextResponse.json({ room: updatedRoom }, { status: 200 })
   } catch (error: any) {

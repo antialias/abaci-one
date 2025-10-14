@@ -38,9 +38,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'You are banned from this room' }, { status: 403 })
     }
 
-    // Check if user is already a member (for locked room access)
+    // Check if user is already a member (for locked/retired room access)
     const members = await getRoomMembers(roomId)
     const isExistingMember = members.some((m) => m.userId === viewerId)
+    const isRoomCreator = room.createdBy === viewerId
 
     // Validate access mode
     switch (room.accessMode) {
@@ -55,7 +56,14 @@ export async function POST(req: NextRequest, context: RouteContext) {
         break
 
       case 'retired':
-        return NextResponse.json({ error: 'This room has been retired' }, { status: 410 })
+        // Only the room creator can access retired rooms
+        if (!isRoomCreator) {
+          return NextResponse.json(
+            { error: 'This room has been retired and is only accessible to the owner' },
+            { status: 410 }
+          )
+        }
+        break
 
       case 'password': {
         if (!body.password) {
