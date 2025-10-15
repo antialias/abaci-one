@@ -148,12 +148,15 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.roomId, roomId))
     }
 
-    // Update room settings
-    const [updatedRoom] = await db
-      .update(schema.arcadeRooms)
-      .set(updateData)
-      .where(eq(schema.arcadeRooms.id, roomId))
-      .returning()
+    // Update room settings (only if there's something to update)
+    let updatedRoom = currentRoom
+    if (Object.keys(updateData).length > 0) {
+      ;[updatedRoom] = await db
+        .update(schema.arcadeRooms)
+        .set(updateData)
+        .where(eq(schema.arcadeRooms.id, roomId))
+        .returning()
+    }
 
     // Get aggregated game configs from new table
     const gameConfig = await getAllGameConfigs(roomId)
