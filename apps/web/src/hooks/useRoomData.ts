@@ -634,6 +634,8 @@ export function useSetRoomGame() {
 
 /**
  * Clear/reset game for a room (host only)
+ * This only clears gameName (returns to game selection) but preserves gameConfig
+ * so settings persist when the user selects a game again.
  */
 async function clearRoomGameApi(roomId: string): Promise<void> {
   const response = await fetch(`/api/arcade/rooms/${roomId}/settings`, {
@@ -641,7 +643,7 @@ async function clearRoomGameApi(roomId: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       gameName: null,
-      gameConfig: null,
+      // DO NOT send gameConfig: null - we want to preserve settings!
     }),
   })
 
