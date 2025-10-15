@@ -248,11 +248,16 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
   const [localCurrentInput, setLocalCurrentInput] = useState('')
 
   // Merge saved game config from room with initialState
+  // Settings are scoped by game name to preserve settings when switching games
   const mergedInitialState = useMemo(() => {
-    const savedConfig = roomData?.gameConfig as Record<string, any> | null | undefined
+    const gameConfig = roomData?.gameConfig as Record<string, any> | null | undefined
+    if (!gameConfig) return initialState
+
+    // Get settings for this specific game (memory-quiz)
+    const savedConfig = gameConfig['memory-quiz'] as Record<string, any> | null | undefined
     if (!savedConfig) return initialState
 
-    console.log('[RoomMemoryQuizProvider] Loading saved game config:', savedConfig)
+    console.log('[RoomMemoryQuizProvider] Loading saved game config for memory-quiz:', savedConfig)
 
     return {
       ...initialState,
@@ -441,12 +446,20 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
       })
 
       // Save setting to room's gameConfig for persistence
+      // Settings are scoped by game name to preserve settings when switching games
       if (roomData?.id) {
+        const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
+        const currentMemoryQuizConfig =
+          (currentGameConfig['memory-quiz'] as Record<string, any>) || {}
+
         const updatedConfig = {
-          ...(roomData.gameConfig as Record<string, any>),
-          [field]: value,
+          ...currentGameConfig,
+          'memory-quiz': {
+            ...currentMemoryQuizConfig,
+            [field]: value,
+          },
         }
-        console.log('[RoomMemoryQuizProvider] Saving game config:', updatedConfig)
+        console.log('[RoomMemoryQuizProvider] Saving game config for memory-quiz:', updatedConfig)
         updateGameConfig({
           roomId: roomData.id,
           gameConfig: updatedConfig,
