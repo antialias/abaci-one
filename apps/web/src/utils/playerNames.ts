@@ -10,7 +10,6 @@ import {
   EMOJI_SPECIFIC_WORDS,
   EMOJI_TO_THEME,
   THEMED_WORD_LISTS,
-  type ThemedWordList,
 } from './themedWords'
 
 // Generic abacus-themed words (used as ultimate fallback)
@@ -125,18 +124,17 @@ const NOUNS = [
 ]
 
 /**
- * Get themed word list for an emoji avatar using probabilistic tier selection
+ * Select a word list tier using weighted random selection
  * Strongly prefers emoji-specific (70%), then category (20%), then global (10%)
- * This adds variety while maintaining personality-matched theming
  */
-function getThemedWordsForEmoji(emoji: string): ThemedWordList {
+function selectWordListTier(emoji: string, wordType: 'adjectives' | 'nouns'): string[] {
   // Collect available tiers
-  const availableTiers: Array<{ weight: number; words: ThemedWordList }> = []
+  const availableTiers: Array<{ weight: number; words: string[] }> = []
 
   // Emoji-specific tier (70% preference)
   const emojiSpecific = EMOJI_SPECIFIC_WORDS[emoji]
   if (emojiSpecific) {
-    availableTiers.push({ weight: 70, words: emojiSpecific })
+    availableTiers.push({ weight: 70, words: emojiSpecific[wordType] })
   }
 
   // Category tier (20% preference)
@@ -144,12 +142,12 @@ function getThemedWordsForEmoji(emoji: string): ThemedWordList {
   if (category) {
     const categoryTheme = THEMED_WORD_LISTS[category]
     if (categoryTheme) {
-      availableTiers.push({ weight: 20, words: categoryTheme })
+      availableTiers.push({ weight: 20, words: categoryTheme[wordType] })
     }
   }
 
   // Global abacus tier (10% preference)
-  availableTiers.push({ weight: 10, words: { adjectives: ADJECTIVES, nouns: NOUNS } })
+  availableTiers.push({ weight: 10, words: wordType === 'adjectives' ? ADJECTIVES : NOUNS })
 
   // Weighted random selection
   const totalWeight = availableTiers.reduce((sum, tier) => sum + tier.weight, 0)
@@ -163,16 +161,16 @@ function getThemedWordsForEmoji(emoji: string): ThemedWordList {
   }
 
   // Fallback (should never reach here)
-  return { adjectives: ADJECTIVES, nouns: NOUNS }
+  return wordType === 'adjectives' ? ADJECTIVES : NOUNS
 }
 
 /**
  * Generate a random player name by combining an adjective and noun
  * Optionally themed based on avatar emoji for ultra-personalized names!
- * Uses probabilistic tier selection and cross-tier mixing for abacus flavor
+ * Uses per-word-type probabilistic tier selection for natural variety
  *
  * @param emoji - Optional emoji avatar to theme the name around
- * @returns A creative player name like "Grinning Calculator" or "Lightning Abacist"
+ * @returns A creative player name like "Grinning Calculator" or "Lightning Smiler"
  */
 export function generatePlayerName(emoji?: string): string {
   if (!emoji) {
@@ -182,31 +180,13 @@ export function generatePlayerName(emoji?: string): string {
     return `${adjective} ${noun}`
   }
 
-  // Get themed words using probabilistic tier selection
-  const themedWords = getThemedWordsForEmoji(emoji)
-  const abacusWords = { adjectives: ADJECTIVES, nouns: NOUNS }
+  // Select tier independently for each word type
+  // This creates natural mixing: adjective might be emoji-specific while noun is global
+  const adjectiveList = selectWordListTier(emoji, 'adjectives')
+  const nounList = selectWordListTier(emoji, 'nouns')
 
-  // 60% chance: Use themed words for both adjective and noun
-  // 30% chance: Mix themed adjective with abacus noun (infuses abacus flavor)
-  // 10% chance: Mix abacus adjective with themed noun (infuses abacus flavor)
-  const mixStrategy = Math.random()
-
-  let adjective: string
-  let noun: string
-
-  if (mixStrategy < 0.6) {
-    // Pure themed
-    adjective = themedWords.adjectives[Math.floor(Math.random() * themedWords.adjectives.length)]
-    noun = themedWords.nouns[Math.floor(Math.random() * themedWords.nouns.length)]
-  } else if (mixStrategy < 0.9) {
-    // Themed adjective + abacus noun
-    adjective = themedWords.adjectives[Math.floor(Math.random() * themedWords.adjectives.length)]
-    noun = abacusWords.nouns[Math.floor(Math.random() * abacusWords.nouns.length)]
-  } else {
-    // Abacus adjective + themed noun
-    adjective = abacusWords.adjectives[Math.floor(Math.random() * abacusWords.adjectives.length)]
-    noun = themedWords.nouns[Math.floor(Math.random() * themedWords.nouns.length)]
-  }
+  const adjective = adjectiveList[Math.floor(Math.random() * adjectiveList.length)]
+  const noun = nounList[Math.floor(Math.random() * nounList.length)]
 
   return `${adjective} ${noun}`
 }
