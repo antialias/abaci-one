@@ -665,3 +665,34 @@ export function useClearRoomGame() {
     },
   })
 }
+
+/**
+ * Update game config for current room (game-specific settings)
+ */
+async function updateGameConfigApi(params: {
+  roomId: string
+  gameConfig: Record<string, unknown>
+}): Promise<void> {
+  const response = await fetch(`/api/arcade/rooms/${params.roomId}/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      gameConfig: params.gameConfig,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Failed to update game config')
+  }
+}
+
+/**
+ * Hook: Update game config for current room
+ * This allows games to persist their settings (e.g., difficulty, card count)
+ */
+export function useUpdateGameConfig() {
+  return useMutation({
+    mutationFn: updateGameConfigApi,
+  })
+}

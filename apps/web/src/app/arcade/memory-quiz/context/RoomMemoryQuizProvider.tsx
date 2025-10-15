@@ -1,10 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { useRoomData } from '@/hooks/useRoomData'
+import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
 import type { GameMove } from '@/lib/arcade/validation'
 import { TEAM_MOVE } from '@/lib/arcade/validation/types'
@@ -238,6 +238,7 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useViewerId()
   const { roomData } = useRoomData()
   const { activePlayers: activePlayerIds, players } = useGameMode()
+  const { mutate: updateGameConfig } = useUpdateGameConfig()
 
   // Get active player IDs as array
   const activePlayers = Array.from(activePlayerIds)
@@ -245,6 +246,23 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
   // LOCAL-ONLY state for current input (not synced over network)
   // This prevents sending a network request for every keystroke
   const [localCurrentInput, setLocalCurrentInput] = useState('')
+
+  // Merge saved game config from room with initialState
+  const mergedInitialState = useMemo(() => {
+    const savedConfig = roomData?.gameConfig as Record<string, any> | null | undefined
+    if (!savedConfig) return initialState
+
+    console.log('[RoomMemoryQuizProvider] Loading saved game config:', savedConfig)
+
+    return {
+      ...initialState,
+      // Restore settings from saved config
+      selectedCount: savedConfig.selectedCount ?? initialState.selectedCount,
+      displayTime: savedConfig.displayTime ?? initialState.displayTime,
+      selectedDifficulty: savedConfig.selectedDifficulty ?? initialState.selectedDifficulty,
+      playMode: savedConfig.playMode ?? initialState.playMode,
+    }
+  }, [roomData?.gameConfig])
 
   // Arcade session integration WITH room sync
   const {
@@ -255,7 +273,7 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
   } = useArcadeSession<SorobanQuizState>({
     userId: viewerId || '',
     roomId: roomData?.id, // CRITICAL: Pass roomId for network sync across room members
-    initialState,
+    initialState: mergedInitialState,
     applyMove: applyMoveOptimistically,
   })
 
@@ -421,8 +439,21 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
         userId: viewerId || '',
         data: { field, value },
       })
+
+      // Save setting to room's gameConfig for persistence
+      if (roomData?.id) {
+        const updatedConfig = {
+          ...(roomData.gameConfig as Record<string, any>),
+          [field]: value,
+        }
+        console.log('[RoomMemoryQuizProvider] Saving game config:', updatedConfig)
+        updateGameConfig({
+          roomId: roomData.id,
+          gameConfig: updatedConfig,
+        })
+      }
     },
-    [viewerId, sendMove]
+    [viewerId, sendMove, roomData?.id, roomData?.gameConfig, updateGameConfig]
   )
 
   // Merge network state with local input state
