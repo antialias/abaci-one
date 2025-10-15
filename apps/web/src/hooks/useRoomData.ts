@@ -449,7 +449,7 @@ export function useRoomData() {
     const handleRoomGameChanged = (data: {
       roomId: string
       gameName: string | null
-      gameConfig: Record<string, unknown>
+      gameConfig?: Record<string, unknown>
     }) => {
       console.log('[useRoomData] Room game changed:', data)
       if (data.roomId === roomData?.id) {
@@ -458,6 +458,8 @@ export function useRoomData() {
           return {
             ...prev,
             gameName: data.gameName,
+            // Only update gameConfig if it was provided in the broadcast
+            ...(data.gameConfig !== undefined ? { gameConfig: data.gameConfig } : {}),
           }
         })
       }
@@ -585,13 +587,20 @@ async function setRoomGameApi(params: {
   gameName: string
   gameConfig?: Record<string, unknown>
 }): Promise<void> {
+  // Only include gameConfig in the request if it was explicitly provided
+  // Otherwise, we preserve the existing gameConfig in the database
+  const body: { gameName: string; gameConfig?: Record<string, unknown> } = {
+    gameName: params.gameName,
+  }
+
+  if (params.gameConfig !== undefined) {
+    body.gameConfig = params.gameConfig
+  }
+
   const response = await fetch(`/api/arcade/rooms/${params.roomId}/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      gameName: params.gameName,
-      gameConfig: params.gameConfig || {},
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {

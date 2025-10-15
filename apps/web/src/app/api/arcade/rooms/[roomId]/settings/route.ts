@@ -117,11 +117,21 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       if (io) {
         try {
           console.log(`[Settings API] Broadcasting game change to room ${roomId}: ${body.gameName}`)
-          io.to(`room:${roomId}`).emit('room-game-changed', {
+          const broadcastData: {
+            roomId: string
+            gameName: string | null
+            gameConfig?: Record<string, unknown>
+          } = {
             roomId,
             gameName: body.gameName,
-            gameConfig: body.gameConfig || {},
-          })
+          }
+
+          // Only include gameConfig if it was explicitly provided
+          if (body.gameConfig !== undefined) {
+            broadcastData.gameConfig = body.gameConfig
+          }
+
+          io.to(`room:${roomId}`).emit('room-game-changed', broadcastData)
         } catch (socketError) {
           console.error('[Settings API] Failed to broadcast game change:', socketError)
         }
