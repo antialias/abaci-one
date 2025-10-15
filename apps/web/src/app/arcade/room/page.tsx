@@ -111,13 +111,13 @@ export default function RoomPage() {
       console.log('[RoomPage] Calling setRoomGame with:', {
         roomId: roomData.id,
         gameName: internalGameName,
-        gameConfig: {},
+        preservingGameConfig: true,
       })
 
+      // Don't pass gameConfig - we want to preserve existing settings for all games
       setRoomGame({
         roomId: roomData.id,
         gameName: internalGameName,
-        gameConfig: {},
       })
     }
 
