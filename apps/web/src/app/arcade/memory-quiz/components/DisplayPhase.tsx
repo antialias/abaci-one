@@ -12,12 +12,16 @@ function calculateMaxColumns(numbers: number[]): number {
 }
 
 export function DisplayPhase() {
-  const { state, nextCard, showInputPhase, resetGame } = useMemoryQuiz()
+  const { state, nextCard, showInputPhase, resetGame, isRoomCreator } = useMemoryQuiz()
   const [currentCard, setCurrentCard] = useState<QuizCard | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const isDisplayPhaseActive = state.currentCardIndex < state.quizCards.length
   const isProcessingRef = useRef(false)
   const appConfig = useAbacusConfig()
+
+  // In multiplayer room mode, only the room creator controls card timing
+  // In local mode (isRoomCreator === undefined), allow timing control
+  const shouldControlTiming = isRoomCreator === undefined || isRoomCreator === true
 
   // Calculate maximum columns needed for this quiz set
   const maxColumns = useMemo(() => {
@@ -35,7 +39,10 @@ export function DisplayPhase() {
 
   useEffect(() => {
     if (state.currentCardIndex >= state.quizCards.length) {
-      showInputPhase?.()
+      // Only the room creator (or local mode) triggers phase transitions
+      if (shouldControlTiming) {
+        showInputPhase?.()
+      }
       return
     }
 
@@ -48,7 +55,7 @@ export function DisplayPhase() {
       isProcessingRef.current = true
       const card = state.quizCards[state.currentCardIndex]
       console.log(
-        `DisplayPhase: Showing card ${state.currentCardIndex + 1}/${state.quizCards.length}, number: ${card.number}`
+        `DisplayPhase: Showing card ${state.currentCardIndex + 1}/${state.quizCards.length}, number: ${card.number} (isRoomCreator: ${isRoomCreator}, shouldControlTiming: ${shouldControlTiming})`
       )
 
       // Calculate adaptive timing based on display speed
@@ -67,15 +74,26 @@ export function DisplayPhase() {
         `DisplayPhase: Card ${state.currentCardIndex + 1} now visible (flash: ${flashDuration}ms, pause: ${transitionPause}ms)`
       )
 
-      // Display card for specified time with adaptive transition pause
-      await new Promise((resolve) => setTimeout(resolve, displayTimeMs - transitionPause))
+      // Only the room creator (or local mode) controls the timing
+      if (shouldControlTiming) {
+        // Display card for specified time with adaptive transition pause
+        await new Promise((resolve) => setTimeout(resolve, displayTimeMs - transitionPause))
 
-      // Don't hide the abacus - just advance to next card for smooth transition
-      console.log(`DisplayPhase: Card ${state.currentCardIndex + 1} transitioning to next`)
-      await new Promise((resolve) => setTimeout(resolve, transitionPause)) // Adaptive pause for visual transition
+        // Don't hide the abacus - just advance to next card for smooth transition
+        console.log(
+          `DisplayPhase: Card ${state.currentCardIndex + 1} transitioning to next (controlled by ${isRoomCreator === undefined ? 'local mode' : 'room creator'})`
+        )
+        await new Promise((resolve) => setTimeout(resolve, transitionPause)) // Adaptive pause for visual transition
 
-      isProcessingRef.current = false
-      nextCard?.()
+        isProcessingRef.current = false
+        nextCard?.()
+      } else {
+        // Non-creator players just display the card, don't control timing
+        console.log(
+          `DisplayPhase: Non-creator player displaying card ${state.currentCardIndex + 1}, waiting for creator to advance`
+        )
+        isProcessingRef.current = false
+      }
     }
 
     showNextCard()
@@ -86,6 +104,8 @@ export function DisplayPhase() {
     nextCard,
     showInputPhase,
     state.quizCards[state.currentCardIndex],
+    shouldControlTiming,
+    isRoomCreator,
   ])
 
   return (

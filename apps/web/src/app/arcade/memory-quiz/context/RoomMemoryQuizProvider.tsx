@@ -525,6 +525,10 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
     )
   }
 
+  // Determine if current user is the room creator (controls card timing)
+  const isRoomCreator =
+    roomData?.members.find((member) => member.userId === viewerId)?.isCreator || false
+
   const contextValue: MemoryQuizContextValue = {
     state: mergedState,
     dispatch: () => {
@@ -534,6 +538,7 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
     isGameActive,
     resetGame,
     exitSession,
+    isRoomCreator, // Pass room creator flag to components
     // Expose action creators for components to use
     startQuiz,
     nextCard,

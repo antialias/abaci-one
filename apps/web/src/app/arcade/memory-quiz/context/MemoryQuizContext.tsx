@@ -10,6 +10,7 @@ export interface MemoryQuizContextValue {
 
   // Computed values
   isGameActive: boolean
+  isRoomCreator?: boolean // True if current user is room creator (controls timing in multiplayer)
 
   // Action creators (to be implemented by providers)
   // Local mode uses dispatch, room mode uses these action creators
