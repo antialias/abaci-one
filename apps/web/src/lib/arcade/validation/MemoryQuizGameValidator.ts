@@ -405,8 +405,14 @@ export class MemoryQuizGameValidator
     selectedCount: number
     displayTime: number
     selectedDifficulty: DifficultyLevel
+    playMode?: 'cooperative' | 'competitive'
   }): SorobanQuizState {
-    return {
+    console.log(
+      '[MemoryQuizValidator] getInitialState called with config:',
+      JSON.stringify(config, null, 2)
+    )
+
+    const initialState: SorobanQuizState = {
       cards: [],
       quizCards: [],
       correctAnswers: [],
@@ -422,7 +428,7 @@ export class MemoryQuizGameValidator
       activePlayers: [],
       playerMetadata: {},
       playerScores: {},
-      playMode: 'cooperative',
+      playMode: config.playMode || 'cooperative',
       numberFoundBy: {},
       // UI state
       gamePhase: 'setup',
@@ -433,6 +439,9 @@ export class MemoryQuizGameValidator
       testingMode: false,
       showOnScreenKeyboard: false,
     }
+
+    console.log('[MemoryQuizValidator] getInitialState returning playMode:', initialState.playMode)
+    return initialState
   }
 }
 
