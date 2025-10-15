@@ -108,3 +108,31 @@ npm run check          # Biome check (format + lint + organize imports)
 - Lint checks
 
 **Status:** Known issue, does not block development or deployment.
+
+## Game Settings Persistence
+
+When working on arcade room game settings, refer to:
+
+- **`.claude/GAME_SETTINGS_PERSISTENCE.md`** - Complete architecture documentation
+  - How settings are stored (nested by game name)
+  - Three critical systems that must stay in sync
+  - Common bugs and their solutions
+  - Debugging checklist
+  - Step-by-step guide for adding new settings
+
+- **`.claude/GAME_SETTINGS_REFACTORING.md`** - Recommended improvements
+  - Shared config types to prevent inconsistencies
+  - Helper functions to reduce duplication
+  - Type-safe validation
+  - Migration strategy
+
+**Quick Reference:**
+
+Settings are stored as: `gameConfig[gameName][setting]`
+
+Three places must handle settings correctly:
+1. **Provider** (`Room{Game}Provider.tsx`) - Merges saved config with defaults
+2. **Socket Server** (`socket-server.ts`) - Creates session from saved config
+3. **Validator** (`{Game}Validator.ts`) - `getInitialState()` must accept ALL settings
+
+If a setting doesn't persist, check all three locations.
