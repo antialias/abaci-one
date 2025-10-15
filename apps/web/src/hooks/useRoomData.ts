@@ -353,7 +353,6 @@ export function useRoomData() {
 
     // Moderation event handlers
     const handleKickedFromRoom = (data: { roomId: string; kickedBy: string; reason?: string }) => {
-      console.log('[useRoomData] User was kicked from room:', data)
       setModerationEvent({
         type: 'kicked',
         data: {
@@ -367,7 +366,6 @@ export function useRoomData() {
     }
 
     const handleBannedFromRoom = (data: { roomId: string; bannedBy: string; reason: string }) => {
-      console.log('[useRoomData] User was banned from room:', data)
       setModerationEvent({
         type: 'banned',
         data: {
@@ -391,7 +389,6 @@ export function useRoomData() {
         createdAt: Date
       }
     }) => {
-      console.log('[useRoomData] New report submitted:', data)
       setModerationEvent({
         type: 'report',
         data: {
@@ -416,7 +413,6 @@ export function useRoomData() {
         createdAt: Date
       }
     }) => {
-      console.log('[useRoomData] Room invitation received:', data)
       setModerationEvent({
         type: 'invitation',
         data: {
@@ -439,7 +435,6 @@ export function useRoomData() {
         createdAt: Date
       }
     }) => {
-      console.log('[useRoomData] New join request submitted:', data)
       setModerationEvent({
         type: 'join-request',
         data: {
@@ -496,7 +491,6 @@ export function useRoomData() {
   // Function to notify room members of player updates
   const notifyRoomOfPlayerUpdate = useCallback(() => {
     if (socket && roomData?.id && userId) {
-      console.log('[useRoomData] Notifying room of player update')
       socket.emit('players-updated', { roomId: roomData.id, userId })
     }
   }, [socket, roomData?.id, userId])

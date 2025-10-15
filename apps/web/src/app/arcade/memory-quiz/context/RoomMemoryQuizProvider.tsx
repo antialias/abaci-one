@@ -55,34 +55,20 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
       const activePlayers = move.data.activePlayers || []
       const playerMetadata = move.data.playerMetadata || {}
 
-      console.log('🎯 [START_QUIZ] Initializing player scores:', {
-        activePlayers,
-        playerMetadata,
-      })
-
       // Extract unique userIds from playerMetadata
       const uniqueUserIds = new Set<string>()
       for (const playerId of activePlayers) {
         const metadata = playerMetadata[playerId]
-        console.log('🎯 [START_QUIZ] Processing player:', {
-          playerId,
-          metadata,
-          hasUserId: !!metadata?.userId,
-        })
         if (metadata?.userId) {
           uniqueUserIds.add(metadata.userId)
         }
       }
-
-      console.log('🎯 [START_QUIZ] Unique userIds found:', Array.from(uniqueUserIds))
 
       // Initialize scores for each userId
       const playerScores = Array.from(uniqueUserIds).reduce((acc: any, userId: string) => {
         acc[userId] = { correct: 0, incorrect: 0 }
         return acc
       }, {})
-
-      console.log('🎯 [START_QUIZ] Initialized playerScores:', playerScores)
 
       return {
         ...state,
@@ -122,12 +108,6 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
       const foundNumbers = state.foundNumbers || []
       const numberFoundBy = state.numberFoundBy || {}
 
-      console.log('✅ [ACCEPT_NUMBER] Before update:', {
-        moveUserId: move.userId,
-        currentPlayerScores: playerScores,
-        number: move.data.number,
-      })
-
       const newPlayerScores = { ...playerScores }
       const newNumberFoundBy = { ...numberFoundBy }
 
@@ -139,15 +119,6 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
         }
         // Track who found this number
         newNumberFoundBy[move.data.number] = move.userId
-
-        console.log('✅ [ACCEPT_NUMBER] After update:', {
-          userId: move.userId,
-          newScore: newPlayerScores[move.userId],
-          allScores: newPlayerScores,
-          numberFoundBy: move.data.number,
-        })
-      } else {
-        console.warn('⚠️ [ACCEPT_NUMBER] No userId in move!')
       }
       return {
         ...state,
@@ -162,11 +133,6 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
       // Defensive check: ensure state properties exist
       const playerScores = state.playerScores || {}
 
-      console.log('❌ [REJECT_NUMBER] Before update:', {
-        moveUserId: move.userId,
-        currentPlayerScores: playerScores,
-      })
-
       const newPlayerScores = { ...playerScores }
       if (move.userId) {
         const currentScore = newPlayerScores[move.userId] || { correct: 0, incorrect: 0 }
@@ -174,13 +140,6 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
           ...currentScore,
           incorrect: currentScore.incorrect + 1,
         }
-        console.log('❌ [REJECT_NUMBER] After update:', {
-          userId: move.userId,
-          newScore: newPlayerScores[move.userId],
-          allScores: newPlayerScores,
-        })
-      } else {
-        console.warn('⚠️ [REJECT_NUMBER] No userId in move!')
       }
       return {
         ...state,
@@ -310,19 +269,8 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
 
   // Build player metadata from room data and player map
   const buildPlayerMetadata = useCallback(() => {
-    console.log('🔍 [buildPlayerMetadata] Starting:', {
-      roomData: roomData?.id,
-      activePlayers,
-      viewerId,
-      playersMapSize: players.size,
-    })
-
     const playerOwnership = buildPlayerOwnershipFromRoomData(roomData)
-    console.log('🔍 [buildPlayerMetadata] Player ownership:', playerOwnership)
-
     const metadata = buildPlayerMetadataUtil(activePlayers, playerOwnership, players, viewerId)
-    console.log('🔍 [buildPlayerMetadata] Built metadata:', metadata)
-
     return metadata
   }, [activePlayers, players, roomData, viewerId])
 
@@ -335,13 +283,6 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
 
       // Build player metadata for multiplayer
       const playerMetadata = buildPlayerMetadata()
-
-      console.log('🚀 [startQuiz] Sending START_QUIZ move:', {
-        viewerId,
-        activePlayers,
-        playerMetadata,
-        numbers,
-      })
 
       sendMove({
         type: 'START_QUIZ',
@@ -381,11 +322,6 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
       // Clear local input immediately
       setLocalCurrentInput('')
 
-      console.log('🚀 [acceptNumber] Sending ACCEPT_NUMBER move:', {
-        viewerId,
-        number,
-      })
-
       sendMove({
         type: 'ACCEPT_NUMBER',
         playerId: TEAM_MOVE, // Team move - can't identify specific player
@@ -399,10 +335,6 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
   const rejectNumber = useCallback(() => {
     // Clear local input immediately
     setLocalCurrentInput('')
-
-    console.log('🚀 [rejectNumber] Sending REJECT_NUMBER move:', {
-      viewerId,
-    })
 
     sendMove({
       type: 'REJECT_NUMBER',
