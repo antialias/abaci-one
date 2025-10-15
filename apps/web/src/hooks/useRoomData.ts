@@ -672,10 +672,17 @@ async function updateGameConfigApi(params: {
   roomId: string
   gameConfig: Record<string, unknown>
 }): Promise<void> {
-  console.log('[updateGameConfigApi] Sending PATCH to server:', {
-    url: `/api/arcade/rooms/${params.roomId}/settings`,
-    gameConfig: params.gameConfig,
-  })
+  console.log(
+    '[updateGameConfigApi] Sending PATCH to server:',
+    JSON.stringify(
+      {
+        url: `/api/arcade/rooms/${params.roomId}/settings`,
+        gameConfig: params.gameConfig,
+      },
+      null,
+      2
+    )
+  )
 
   const response = await fetch(`/api/arcade/rooms/${params.roomId}/settings`, {
     method: 'PATCH',
@@ -687,7 +694,7 @@ async function updateGameConfigApi(params: {
 
   if (!response.ok) {
     const errorData = await response.json()
-    console.error('[updateGameConfigApi] Server error:', errorData)
+    console.error('[updateGameConfigApi] Server error:', JSON.stringify(errorData, null, 2))
     throw new Error(errorData.error || 'Failed to update game config')
   }
 
@@ -712,7 +719,10 @@ export function useUpdateGameConfig() {
           gameConfig: variables.gameConfig,
         }
       })
-      console.log('[useUpdateGameConfig] Updated cache with new gameConfig:', variables.gameConfig)
+      console.log(
+        '[useUpdateGameConfig] Updated cache with new gameConfig:',
+        JSON.stringify(variables.gameConfig, null, 2)
+      )
     },
   })
 }

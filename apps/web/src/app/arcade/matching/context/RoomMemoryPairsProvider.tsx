@@ -252,10 +252,17 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   // Settings are scoped by game name to preserve settings when switching games
   const mergedInitialState = useMemo(() => {
     const gameConfig = roomData?.gameConfig as Record<string, any> | null | undefined
-    console.log('[RoomMemoryPairsProvider] Loading settings from database:', {
-      gameConfig,
-      roomId: roomData?.id,
-    })
+    console.log(
+      '[RoomMemoryPairsProvider] Loading settings from database:',
+      JSON.stringify(
+        {
+          gameConfig,
+          roomId: roomData?.id,
+        },
+        null,
+        2
+      )
+    )
 
     if (!gameConfig) {
       console.log('[RoomMemoryPairsProvider] No gameConfig, using initialState')
@@ -264,7 +271,10 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
 
     // Get settings for this specific game (matching)
     const savedConfig = gameConfig.matching as Record<string, any> | null | undefined
-    console.log('[RoomMemoryPairsProvider] Saved config for matching:', savedConfig)
+    console.log(
+      '[RoomMemoryPairsProvider] Saved config for matching:',
+      JSON.stringify(savedConfig, null, 2)
+    )
 
     if (!savedConfig) {
       console.log('[RoomMemoryPairsProvider] No saved config for matching, using initialState')
@@ -278,11 +288,18 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       difficulty: savedConfig.difficulty ?? initialState.difficulty,
       turnTimer: savedConfig.turnTimer ?? initialState.turnTimer,
     }
-    console.log('[RoomMemoryPairsProvider] Merged state:', {
-      gameType: merged.gameType,
-      difficulty: merged.difficulty,
-      turnTimer: merged.turnTimer,
-    })
+    console.log(
+      '[RoomMemoryPairsProvider] Merged state:',
+      JSON.stringify(
+        {
+          gameType: merged.gameType,
+          difficulty: merged.difficulty,
+          turnTimer: merged.turnTimer,
+        },
+        null,
+        2
+      )
+    )
 
     return merged
   }, [roomData?.gameConfig])
@@ -558,10 +575,17 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
             gameType,
           },
         }
-        console.log('[RoomMemoryPairsProvider] Saving gameType to database:', {
-          roomId: roomData.id,
-          updatedConfig,
-        })
+        console.log(
+          '[RoomMemoryPairsProvider] Saving gameType to database:',
+          JSON.stringify(
+            {
+              roomId: roomData.id,
+              updatedConfig,
+            },
+            null,
+            2
+          )
+        )
         updateGameConfig({
           roomId: roomData.id,
           gameConfig: updatedConfig,
@@ -597,10 +621,17 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
             difficulty,
           },
         }
-        console.log('[RoomMemoryPairsProvider] Saving difficulty to database:', {
-          roomId: roomData.id,
-          updatedConfig,
-        })
+        console.log(
+          '[RoomMemoryPairsProvider] Saving difficulty to database:',
+          JSON.stringify(
+            {
+              roomId: roomData.id,
+              updatedConfig,
+            },
+            null,
+            2
+          )
+        )
         updateGameConfig({
           roomId: roomData.id,
           gameConfig: updatedConfig,
@@ -636,10 +667,17 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
             turnTimer,
           },
         }
-        console.log('[RoomMemoryPairsProvider] Saving turnTimer to database:', {
-          roomId: roomData.id,
-          updatedConfig,
-        })
+        console.log(
+          '[RoomMemoryPairsProvider] Saving turnTimer to database:',
+          JSON.stringify(
+            {
+              roomId: roomData.id,
+              updatedConfig,
+            },
+            null,
+            2
+          )
+        )
         updateGameConfig({
           roomId: roomData.id,
           gameConfig: updatedConfig,
