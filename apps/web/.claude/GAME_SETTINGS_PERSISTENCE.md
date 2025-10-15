@@ -370,22 +370,28 @@ Manual test procedure:
 
 **Old Schema:**
 - Settings stored in `arcade_rooms.game_config` JSON column
-- Structure: `{ matching: {...}, memory-quiz: {...} }`
+- Config stored directly for currently selected game only
+- Config lost when switching games
 
 **New Schema:**
 - Settings stored in `room_game_configs` table
 - One row per game per room
-- Old column preserved temporarily for safety
+- Unique constraint on (room_id, game_name)
+- Configs persist when switching between games
 
-**Migration SQL:** `drizzle/0011_add_room_game_configs.sql`
-- Extracts matching configs from old column
-- Extracts memory-quiz configs from old column
-- Uses `json_extract()` to parse nested structure
+**Migration:** See `.claude/MANUAL_MIGRATION_0011.md` for complete details
+
+**Summary:**
+- Manual migration applied on 2025-10-15
+- Created `room_game_configs` table via sqlite3 CLI
+- Migrated 6000 existing configs (5991 matching, 9 memory-quiz)
+- Table created directly instead of through drizzle migration system
 
 **Rollback Plan:**
-- Old `gameConfig` column still exists
-- Can revert to reading from it if needed
-- Will be dropped in future release after validation
+- Old `game_config` column still exists in `arcade_rooms` table
+- Old data preserved (was only read, not deleted)
+- Can revert to reading from old column if needed
+- New table can be dropped: `DROP TABLE room_game_configs`
 
 ## Architecture Benefits
 
