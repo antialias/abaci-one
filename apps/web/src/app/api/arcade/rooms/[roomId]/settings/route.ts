@@ -97,6 +97,13 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       updateData.gameConfig = body.gameConfig
     }
 
+    // If game is being changed (or cleared), delete the existing arcade session
+    // This ensures a fresh session will be created with the new game settings
+    if (body.gameName !== undefined) {
+      console.log(`[Settings API] Deleting existing arcade session for room ${roomId}`)
+      await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.roomId, roomId))
+    }
+
     // Update room settings
     const [updatedRoom] = await db
       .update(schema.arcadeRooms)

@@ -87,13 +87,32 @@ export default function RoomPage() {
   // Show game selection if no game is set
   if (!roomData.gameName) {
     const handleGameSelect = (gameType: GameType) => {
+      console.log('[RoomPage] handleGameSelect called with gameType:', gameType)
+
       const gameConfig = GAMES_CONFIG[gameType]
+      console.log('[RoomPage] Game config:', {
+        name: gameConfig.name,
+        available: gameConfig.available,
+      })
+
       if (gameConfig.available === false) {
+        console.log('[RoomPage] Game not available, blocking selection')
         return // Don't allow selecting unavailable games
       }
 
       // Map GameType to internal game name
       const internalGameName = GAME_TYPE_TO_NAME[gameType]
+      console.log('[RoomPage] Mapping:', {
+        gameType,
+        internalGameName,
+        mappingExists: !!internalGameName,
+      })
+
+      console.log('[RoomPage] Calling setRoomGame with:', {
+        roomId: roomData.id,
+        gameName: internalGameName,
+        gameConfig: {},
+      })
 
       setRoomGame({
         roomId: roomData.id,
