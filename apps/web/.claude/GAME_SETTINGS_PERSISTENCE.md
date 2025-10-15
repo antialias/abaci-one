@@ -2,115 +2,279 @@
 
 ## Overview
 
-Game settings in room mode persist across game switches using a nested gameConfig structure. This document describes the architecture and common pitfalls.
+Game settings in room mode persist across game switches using a normalized database schema. Settings for each game are stored in a dedicated `room_game_configs` table with one row per game per room.
 
-## Data Structure
+## Database Schema
 
-Settings are stored in the `arcadeRooms` table's `gameConfig` column with this structure:
+Settings are stored in the `room_game_configs` table:
 
-```typescript
+```sql
+CREATE TABLE room_game_configs (
+  id TEXT PRIMARY KEY,
+  room_id TEXT NOT NULL REFERENCES arcade_rooms(id) ON DELETE CASCADE,
+  game_name TEXT NOT NULL CHECK(game_name IN ('matching', 'memory-quiz', 'complement-race')),
+  config TEXT NOT NULL,  -- JSON
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  UNIQUE(room_id, game_name)
+);
+```
+
+**Benefits:**
+- ✅ Type-safe config access with shared types
+- ✅ Smaller rows (only configs for games that have been used)
+- ✅ Easier updates (single row vs entire JSON blob)
+- ✅ Better concurrency (no lock contention between games)
+- ✅ Foundation for per-game audit trail
+- ✅ Can query/index individual game settings
+
+**Example Row:**
+```json
 {
-  "matching": {
-    "gameType": "complement-pairs",
-    "difficulty": 15,
-    "turnTimer": 60
-  },
-  "memory-quiz": {
+  "id": "clxyz123",
+  "room_id": "room_abc",
+  "game_name": "memory-quiz",
+  "config": {
     "selectedCount": 8,
     "displayTime": 3.0,
     "selectedDifficulty": "medium",
     "playMode": "competitive"
+  },
+  "created_at": 1234567890,
+  "updated_at": 1234567890
+}
+```
+
+## Shared Type System
+
+All game configs are defined in `src/lib/arcade/game-configs.ts`:
+
+```typescript
+// Shared config types (single source of truth)
+export interface MatchingGameConfig {
+  gameType: 'abacus-numeral' | 'complement-pairs'
+  difficulty: number
+  turnTimer: number
+}
+
+export interface MemoryQuizGameConfig {
+  selectedCount: 2 | 5 | 8 | 12 | 15
+  displayTime: number
+  selectedDifficulty: DifficultyLevel
+  playMode: 'cooperative' | 'competitive'
+}
+
+// Default configs
+export const DEFAULT_MATCHING_CONFIG: MatchingGameConfig = {
+  gameType: 'abacus-numeral',
+  difficulty: 6,
+  turnTimer: 30,
+}
+
+export const DEFAULT_MEMORY_QUIZ_CONFIG: MemoryQuizGameConfig = {
+  selectedCount: 5,
+  displayTime: 2.0,
+  selectedDifficulty: 'easy',
+  playMode: 'cooperative',
+}
+```
+
+**Why This Matters:**
+- TypeScript enforces that validators, helpers, and API routes all use the same types
+- Adding a new setting requires changes in only ONE place (the type definition)
+- Impossible to forget a setting or use wrong type
+
+## Critical Components
+
+Settings persistence requires coordination between FOUR systems:
+
+### 1. Helper Functions
+**Location:** `src/lib/arcade/game-config-helpers.ts`
+
+**Responsibilities:**
+- Read/write game configs from `room_game_configs` table
+- Provide type-safe access with automatic defaults
+- Validate configs at runtime
+
+**Key Functions:**
+```typescript
+// Get config with defaults (type-safe)
+const config = await getGameConfig(roomId, 'memory-quiz')
+// Returns: MemoryQuizGameConfig
+
+// Set/update config (upsert)
+await setGameConfig(roomId, 'memory-quiz', {
+  playMode: 'competitive',
+  selectedCount: 8,
+})
+
+// Get all game configs for a room
+const allConfigs = await getAllGameConfigs(roomId)
+// Returns: { matching?: MatchingGameConfig, 'memory-quiz'?: MemoryQuizGameConfig }
+```
+
+### 2. API Routes
+**Location:**
+- `src/app/api/arcade/rooms/current/route.ts` (read)
+- `src/app/api/arcade/rooms/[roomId]/settings/route.ts` (write)
+
+**Responsibilities:**
+- Aggregate game configs from database
+- Return them to client in `room.gameConfig`
+- Write config updates to `room_game_configs` table
+
+**Read Example:** `GET /api/arcade/rooms/current`
+```typescript
+const gameConfig = await getAllGameConfigs(roomId)
+
+return NextResponse.json({
+  room: {
+    ...room,
+    gameConfig, // Aggregated from room_game_configs table
+  },
+  members,
+  memberPlayers,
+})
+```
+
+**Write Example:** `PATCH /api/arcade/rooms/[roomId]/settings`
+```typescript
+if (body.gameConfig !== undefined) {
+  // body.gameConfig: { matching: {...}, memory-quiz: {...} }
+  for (const [gameName, config] of Object.entries(body.gameConfig)) {
+    await setGameConfig(roomId, gameName, config)
   }
 }
 ```
 
-**Key Points:**
-- Settings are **nested by game name** (`matching`, `memory-quiz`, etc.)
-- Each game has its own isolated settings object
-- This allows switching games without losing settings
+### 3. Socket Server (Session Creation)
+**Location:** `src/socket-server.ts:70-90`
 
-## Critical Components
+**Responsibilities:**
+- Create initial arcade session when user joins room
+- Read saved settings using `getGameConfig()` helper
+- Pass settings to validator's `getInitialState()`
 
-Settings persistence requires coordination between THREE systems:
+**Example:**
+```typescript
+const room = await getRoomById(roomId)
+const validator = getValidator(room.gameName as GameName)
 
-### 1. Client-Side Provider
+// Get config from database (type-safe, includes defaults)
+const gameConfig = await getGameConfig(roomId, room.gameName as GameName)
+
+// Pass to validator (types match automatically)
+const initialState = validator.getInitialState(gameConfig)
+
+await createArcadeSession({ userId, gameName, initialState, roomId })
+```
+
+**Key Point:** No more manual config extraction or default fallbacks!
+
+### 4. Game Validators
+**Location:** `src/lib/arcade/validation/*Validator.ts`
+
+**Responsibilities:**
+- Define `getInitialState()` method with shared config type
+- Create initial game state from config
+- TypeScript enforces all settings are handled
+
+**Example:** `MemoryQuizGameValidator.ts`
+```typescript
+import type { MemoryQuizGameConfig } from '@/lib/arcade/game-configs'
+
+class MemoryQuizGameValidator {
+  getInitialState(config: MemoryQuizGameConfig): SorobanQuizState {
+    return {
+      selectedCount: config.selectedCount,
+      displayTime: config.displayTime,
+      selectedDifficulty: config.selectedDifficulty,
+      playMode: config.playMode,  // TypeScript ensures this field exists!
+      // ...other state
+    }
+  }
+}
+```
+
+### 5. Client Providers (Unchanged)
 **Location:** `src/app/arcade/{game}/context/Room{Game}Provider.tsx`
 
 **Responsibilities:**
-- Load saved settings from `roomData.gameConfig[gameName]`
-- Merge saved settings with `initialState` defaults
-- Save settings changes to database via `updateGameConfig`
+- Read settings from `roomData.gameConfig[gameName]`
+- Merge with `initialState` defaults
+- Works transparently with new backend structure
 
-**Example:** `RoomMemoryQuizProvider.tsx:211-247`
+**Example:** `RoomMemoryQuizProvider.tsx:211-233`
 ```typescript
 const mergedInitialState = useMemo(() => {
   const gameConfig = roomData?.gameConfig as Record<string, any>
   const savedConfig = gameConfig?.['memory-quiz']
 
+  if (!savedConfig) {
+    return initialState
+  }
+
   return {
     ...initialState,
-    selectedCount: savedConfig?.selectedCount ?? initialState.selectedCount,
-    displayTime: savedConfig?.displayTime ?? initialState.displayTime,
-    selectedDifficulty: savedConfig?.selectedDifficulty ?? initialState.selectedDifficulty,
-    playMode: savedConfig?.playMode ?? initialState.playMode,
+    selectedCount: savedConfig.selectedCount ?? initialState.selectedCount,
+    displayTime: savedConfig.displayTime ?? initialState.displayTime,
+    selectedDifficulty: savedConfig.selectedDifficulty ?? initialState.selectedDifficulty,
+    playMode: savedConfig.playMode ?? initialState.playMode,
   }
 }, [roomData?.gameConfig])
 ```
 
-### 2. Socket Server (Session Creation)
-**Location:** `src/socket-server.ts:86-125`
+## Common Bugs and Solutions
 
-**Responsibilities:**
-- Create initial arcade session when user joins room
-- Read saved settings from `room.gameConfig[gameName]`
-- Pass settings to validator's `getInitialState()`
+### Bug #1: Settings Not Persisting
+**Symptom:** Settings reset to defaults after game switch
 
-**Example:** `socket-server.ts:94-110`
-```typescript
-const memoryQuizConfig = (room.gameConfig as any)?.['memory-quiz'] || {}
-initialState = validator.getInitialState({
-  selectedCount: memoryQuizConfig.selectedCount || 5,
-  displayTime: memoryQuizConfig.displayTime || 2.0,
-  selectedDifficulty: memoryQuizConfig.selectedDifficulty || 'easy',
-  playMode: memoryQuizConfig.playMode || 'cooperative',
-})
+**Root Cause:** One of the following:
+1. API route not writing to `room_game_configs` table
+2. Helper function not being used correctly
+3. Validator not using shared config type
+
+**Solution:** Verify the data flow:
+```bash
+# 1. Check database write
+SELECT * FROM room_game_configs WHERE room_id = '...';
+
+# 2. Check API logs for setGameConfig() calls
+# Look for: [GameConfig] Updated {game} config for room {roomId}
+
+# 3. Check socket server logs for getGameConfig() calls
+# Look for: [join-arcade-session] Got validator for: {game}
+
+# 4. Check validator signature matches shared type
+# MemoryQuizGameValidator.getInitialState(config: MemoryQuizGameConfig)
 ```
 
-### 3. Game Validator
-**Location:** `src/lib/arcade/validation/{Game}Validator.ts`
+### Bug #2: TypeScript Errors About Missing Fields
+**Symptom:** `Property '{field}' is missing in type ...`
 
-**Responsibilities:**
-- Define `getInitialState()` method that creates initial game state
-- Accept ALL game settings as parameters
-- Use provided values or fall back to defaults
+**Root Cause:** Validator's `getInitialState()` signature doesn't match shared config type
 
-**Example:** `MemoryQuizGameValidator.ts:404-442`
+**Solution:** Import and use the shared config type:
 ```typescript
+// ❌ WRONG
 getInitialState(config: {
   selectedCount: number
   displayTime: number
-  selectedDifficulty: DifficultyLevel
-  playMode?: 'cooperative' | 'competitive'  // ← Must include ALL settings!
-}): SorobanQuizState {
-  return {
-    // ...
-    selectedCount: config.selectedCount,
-    displayTime: config.displayTime,
-    selectedDifficulty: config.selectedDifficulty,
-    playMode: config.playMode || 'cooperative',  // ← Use config value!
-  }
-}
+  // Missing playMode!
+}): SorobanQuizState
+
+// ✅ CORRECT
+import type { MemoryQuizGameConfig } from '@/lib/arcade/game-configs'
+
+getInitialState(config: MemoryQuizGameConfig): SorobanQuizState
 ```
 
-## Common Bugs and Solutions
+### Bug #3: Settings Wiped When Returning to Game Selection
+**Symptom:** Settings reset when going back to game selection
 
-### Bug #1: Settings Wiped When Returning to Game Selection
+**Root Cause:** Sending `gameConfig: null` in PATCH request
 
-**Symptom:** Settings reset to defaults after going back to game selection
-
-**Root Cause:** `clearRoomGameApi` was sending `gameConfig: null`
-
-**Solution:** Only send `gameName: null`, don't send `gameConfig` at all
+**Solution:** Only send `gameName: null`, don't touch gameConfig:
 ```typescript
 // ❌ WRONG
 body: JSON.stringify({ gameName: null, gameConfig: null })
@@ -119,106 +283,76 @@ body: JSON.stringify({ gameName: null, gameConfig: null })
 body: JSON.stringify({ gameName: null })
 ```
 
-**Fixed in:** `useRoomData.ts:638-654`
-
-### Bug #2: Settings Not Loaded from Database
-
-**Symptom:** Session always uses default settings, ignoring saved values
-
-**Root Cause:** Socket server reading from wrong level of nesting
-
-**Example Problem:**
-```typescript
-// ❌ WRONG - reads from root level
-const gameType = room.gameConfig.gameType  // undefined!
-
-// ✅ CORRECT - reads from nested game config
-const matchingConfig = room.gameConfig.matching
-const gameType = matchingConfig.gameType
-```
-
-**Fixed in:** `socket-server.ts:86-125`
-
-### Bug #3: Validator Ignores Setting
-
-**Symptom:** Specific setting always resets to default (e.g., playMode always "cooperative")
-
-**Root Cause:** Validator's `getInitialState()` config parameter missing the setting
-
-**How to Diagnose:**
-1. Check validator's `getInitialState()` TypeScript signature
-2. Ensure ALL game settings are included as parameters
-3. Ensure settings use `config.{setting}` not hardcoded values
-
-**Example Problem:**
-```typescript
-// ❌ WRONG - playMode not in config type
-getInitialState(config: {
-  selectedCount: number
-  displayTime: number
-  selectedDifficulty: DifficultyLevel
-}): SorobanQuizState {
-  return {
-    playMode: 'cooperative',  // ← Hardcoded!
-  }
-}
-
-// ✅ CORRECT - playMode in config type and used
-getInitialState(config: {
-  selectedCount: number
-  displayTime: number
-  selectedDifficulty: DifficultyLevel
-  playMode?: 'cooperative' | 'competitive'
-}): SorobanQuizState {
-  return {
-    playMode: config.playMode || 'cooperative',  // ← Uses config!
-  }
-}
-```
-
-**Fixed in:** `MemoryQuizGameValidator.ts:404-442`
-
 ## Debugging Checklist
 
 When a setting doesn't persist:
 
 1. **Check database:**
-   - Add logging in `/api/arcade/rooms/[roomId]/settings/route.ts`
-   - Verify setting is saved to `gameConfig[gameName]`
+   - Query `room_game_configs` table
+   - Verify row exists for room + game
+   - Verify JSON config has correct structure
 
-2. **Check socket server:**
-   - Add logging in `socket-server.ts` join-arcade-session handler
-   - Verify `room.gameConfig[gameName].{setting}` is read correctly
-   - Verify setting is passed to `validator.getInitialState()`
-   - Verify `initialState.{setting}` has correct value after getInitialState()
+2. **Check API write path:**
+   - `/api/arcade/rooms/[roomId]/settings` logs
+   - Verify `setGameConfig()` is called
+   - Check for errors in console
 
-3. **Check validator:**
-   - Verify `getInitialState()` config parameter includes the setting
-   - Verify setting uses `config.{setting}` not a hardcoded value
-   - Add logging to see what config is received and what state is returned
+3. **Check API read path:**
+   - `/api/arcade/rooms/current` logs
+   - Verify `getAllGameConfigs()` returns data
+   - Check `room.gameConfig` in response
 
-4. **Check client provider:**
-   - Add logging in `Room{Game}Provider.tsx` mergedInitialState useMemo
-   - Verify `roomData.gameConfig[gameName].{setting}` is read correctly
-   - Verify merged state includes the saved value
+4. **Check socket server:**
+   - `socket-server.ts` logs for `getGameConfig()`
+   - Verify config passed to validator
+   - Check `initialState` has correct values
+
+5. **Check validator:**
+   - Signature uses shared config type
+   - All config fields used (not hardcoded)
+   - Add logging to see received config
 
 ## Adding a New Setting
 
 To add a new setting to an existing game:
 
-1. **Update the game's state type** (`types.ts`)
-2. **Update the Provider** (`Room{Game}Provider.tsx`):
-   - Add to `mergedInitialState` useMemo
-   - Add to `setConfig` function
-   - Add to `updateGameConfig` call
-3. **Update the Validator** (`{Game}Validator.ts`):
-   - Add to `getInitialState()` config parameter type
-   - Add to returned state object, using `config.{setting}`
-   - Add validation case in `validateSetConfig()`
-4. **Update Socket Server** (`socket-server.ts`):
-   - Add to `{game}Config` extraction
-   - Add to `getInitialState()` call
-5. **Update the UI component** to expose the setting
+1. **Update the shared config type** (`game-configs.ts`):
+```typescript
+export interface MemoryQuizGameConfig {
+  selectedCount: 2 | 5 | 8 | 12 | 15
+  displayTime: number
+  selectedDifficulty: DifficultyLevel
+  playMode: 'cooperative' | 'competitive'
+  newSetting: string  // ← Add here
+}
+
+export const DEFAULT_MEMORY_QUIZ_CONFIG: MemoryQuizGameConfig = {
+  selectedCount: 5,
+  displayTime: 2.0,
+  selectedDifficulty: 'easy',
+  playMode: 'cooperative',
+  newSetting: 'default',  // ← Add default
+}
+```
+
+2. **TypeScript will now enforce:**
+   - ✅ Validator must accept `newSetting` (compile error if missing)
+   - ✅ Helper functions will include it automatically
+   - ✅ Client providers will need to handle it
+
+3. **Update the validator** (`*Validator.ts`):
+```typescript
+getInitialState(config: MemoryQuizGameConfig): SorobanQuizState {
+  return {
+    // ...
+    newSetting: config.newSetting,  // TypeScript enforces this
+  }
+}
+```
+
+4. **Update the UI** to expose the new setting
+   - No changes needed to API routes or helper functions!
+   - They automatically handle any field in the config type
 
 ## Testing Settings Persistence
 
@@ -228,10 +362,54 @@ Manual test procedure:
 2. Change each setting to a non-default value
 3. Go back to game selection (gameName becomes null)
 4. Select the same game again
-5. Verify ALL settings retained their values
+5. **Verify ALL settings retained their values**
 
 **Expected behavior:** All settings should be exactly as you left them.
 
-## Refactoring Recommendations
+## Migration Notes
 
-See next section for suggested improvements to prevent these bugs.
+**Old Schema:**
+- Settings stored in `arcade_rooms.game_config` JSON column
+- Structure: `{ matching: {...}, memory-quiz: {...} }`
+
+**New Schema:**
+- Settings stored in `room_game_configs` table
+- One row per game per room
+- Old column preserved temporarily for safety
+
+**Migration SQL:** `drizzle/0011_add_room_game_configs.sql`
+- Extracts matching configs from old column
+- Extracts memory-quiz configs from old column
+- Uses `json_extract()` to parse nested structure
+
+**Rollback Plan:**
+- Old `gameConfig` column still exists
+- Can revert to reading from it if needed
+- Will be dropped in future release after validation
+
+## Architecture Benefits
+
+**Type Safety:**
+- Single source of truth for config types
+- TypeScript enforces consistency everywhere
+- Impossible to forget a setting
+
+**DRY (Don't Repeat Yourself):**
+- No duplicated default values
+- No manual config extraction
+- No manual merging with defaults
+
+**Maintainability:**
+- Adding a setting touches fewer places
+- Clear separation of concerns
+- Easier to trace data flow
+
+**Performance:**
+- Smaller database rows
+- Better query performance
+- Less network payload
+
+**Correctness:**
+- Runtime validation available
+- Database constraints (unique index)
+- Impossible to create duplicate configs
