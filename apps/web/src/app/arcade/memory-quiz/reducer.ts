@@ -12,6 +12,13 @@ export const initialState: SorobanQuizState = {
   guessesRemaining: 0,
   currentInput: '',
   incorrectGuesses: 0,
+  // Multiplayer state
+  activePlayers: [],
+  playerMetadata: {},
+  playerScores: {},
+  playMode: 'cooperative', // Default to cooperative
+  numberFoundBy: {},
+  // UI state
   gamePhase: 'setup',
   prefixAcceptanceTimeout: null,
   finishButtonsBound: false,
@@ -32,6 +39,8 @@ export function quizReducer(state: SorobanQuizState, action: QuizAction): Soroba
       return { ...state, selectedCount: action.count }
     case 'SET_DIFFICULTY':
       return { ...state, selectedDifficulty: action.difficulty }
+    case 'SET_PLAY_MODE':
+      return { ...state, playMode: action.playMode }
     case 'START_QUIZ':
       return {
         ...state,
@@ -46,19 +55,41 @@ export function quizReducer(state: SorobanQuizState, action: QuizAction): Soroba
       return { ...state, currentCardIndex: state.currentCardIndex + 1 }
     case 'SHOW_INPUT_PHASE':
       return { ...state, gamePhase: 'input' }
-    case 'ACCEPT_NUMBER':
+    case 'ACCEPT_NUMBER': {
+      // In competitive mode, track which player guessed correctly
+      const newPlayerScores = { ...state.playerScores }
+      if (state.playMode === 'competitive' && action.playerId) {
+        const currentScore = newPlayerScores[action.playerId] || { correct: 0, incorrect: 0 }
+        newPlayerScores[action.playerId] = {
+          ...currentScore,
+          correct: currentScore.correct + 1,
+        }
+      }
       return {
         ...state,
         foundNumbers: [...state.foundNumbers, action.number],
         currentInput: '',
+        playerScores: newPlayerScores,
       }
-    case 'REJECT_NUMBER':
+    }
+    case 'REJECT_NUMBER': {
+      // In competitive mode, track which player guessed incorrectly
+      const newPlayerScores = { ...state.playerScores }
+      if (state.playMode === 'competitive' && action.playerId) {
+        const currentScore = newPlayerScores[action.playerId] || { correct: 0, incorrect: 0 }
+        newPlayerScores[action.playerId] = {
+          ...currentScore,
+          incorrect: currentScore.incorrect + 1,
+        }
+      }
       return {
         ...state,
         guessesRemaining: state.guessesRemaining - 1,
         incorrectGuesses: state.incorrectGuesses + 1,
         currentInput: '',
+        playerScores: newPlayerScores,
       }
+    }
     case 'SET_INPUT':
       return { ...state, currentInput: action.input }
     case 'SET_PREFIX_TIMEOUT':
@@ -89,6 +120,7 @@ export function quizReducer(state: SorobanQuizState, action: QuizAction): Soroba
         displayTime: state.displayTime,
         selectedCount: state.selectedCount,
         selectedDifficulty: state.selectedDifficulty,
+        playMode: state.playMode, // Preserve play mode
         // Preserve keyboard state across resets
         hasPhysicalKeyboard: state.hasPhysicalKeyboard,
         testingMode: state.testingMode,

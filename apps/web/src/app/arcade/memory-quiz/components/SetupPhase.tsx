@@ -69,6 +69,10 @@ export function SetupPhase() {
     setConfig?.('selectedDifficulty', difficulty)
   }
 
+  const handlePlayModeSelect = (playMode: 'cooperative' | 'competitive') => {
+    setConfig?.('playMode', playMode)
+  }
+
   const handleStartQuiz = () => {
     const quizCards = generateQuizCards(
       state.selectedCount ?? 5,
@@ -147,6 +151,75 @@ export function SetupPhase() {
                 <div style={{ fontSize: '10px', opacity: 0.8 }}>{level.description}</div>
               </button>
             ))}
+          </div>
+        </div>
+
+        <div style={{ margin: '12px 0' }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 'bold',
+              marginBottom: '8px',
+              color: '#6b7280',
+              fontSize: '14px',
+            }}
+          >
+            Play Mode:
+          </label>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '8px',
+              justifyContent: 'center',
+            }}
+          >
+            <button
+              key="cooperative"
+              type="button"
+              style={{
+                background: state.playMode === 'cooperative' ? '#10b981' : 'white',
+                color: state.playMode === 'cooperative' ? 'white' : '#1f2937',
+                border: '2px solid',
+                borderColor: state.playMode === 'cooperative' ? '#10b981' : '#d1d5db',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                fontSize: '12px',
+              }}
+              onClick={() => handlePlayModeSelect('cooperative')}
+              title="Work together as a team to find all numbers"
+            >
+              <div style={{ fontWeight: 'bold', fontSize: '13px' }}>🤝 Cooperative</div>
+              <div style={{ fontSize: '10px', opacity: 0.8 }}>Work together</div>
+            </button>
+            <button
+              key="competitive"
+              type="button"
+              style={{
+                background: state.playMode === 'competitive' ? '#ef4444' : 'white',
+                color: state.playMode === 'competitive' ? 'white' : '#1f2937',
+                border: '2px solid',
+                borderColor: state.playMode === 'competitive' ? '#ef4444' : '#d1d5db',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+                fontSize: '12px',
+              }}
+              onClick={() => handlePlayModeSelect('competitive')}
+              title="Compete for the highest score"
+            >
+              <div style={{ fontWeight: 'bold', fontSize: '13px' }}>🏆 Competitive</div>
+              <div style={{ fontSize: '10px', opacity: 0.8 }}>Battle for score</div>
+            </button>
           </div>
         </div>
 

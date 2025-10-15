@@ -25,7 +25,10 @@ export interface MemoryQuizContextValue {
   rejectNumber?: () => void
   setInput?: (input: string) => void
   showResults?: () => void
-  setConfig?: (field: 'selectedCount' | 'displayTime' | 'selectedDifficulty', value: any) => void
+  setConfig?: (
+    field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode',
+    value: any
+  ) => void
 }
 
 // Create context

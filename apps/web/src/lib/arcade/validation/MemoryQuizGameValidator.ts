@@ -30,10 +30,10 @@ export class MemoryQuizGameValidator
         return this.validateShowInputPhase(state)
 
       case 'ACCEPT_NUMBER':
-        return this.validateAcceptNumber(state, move.data.number)
+        return this.validateAcceptNumber(state, move.data.number, move.userId)
 
       case 'REJECT_NUMBER':
-        return this.validateRejectNumber(state)
+        return this.validateRejectNumber(state, move.userId)
 
       case 'SET_INPUT':
         return this.validateSetInput(state, move.data.input)
@@ -83,6 +83,24 @@ export class MemoryQuizGameValidator
       element: null,
     }))
 
+    // Extract multiplayer data from move
+    const activePlayers = data.activePlayers || state.activePlayers || []
+    const playerMetadata = data.playerMetadata || state.playerMetadata || {}
+
+    // Initialize player scores for all active players (by userId)
+    const uniqueUserIds = new Set<string>()
+    for (const playerId of activePlayers) {
+      const metadata = playerMetadata[playerId]
+      if (metadata?.userId) {
+        uniqueUserIds.add(metadata.userId)
+      }
+    }
+
+    const playerScores = Array.from(uniqueUserIds).reduce((acc: any, userId: string) => {
+      acc[userId] = { correct: 0, incorrect: 0 }
+      return acc
+    }, {})
+
     const newState: SorobanQuizState = {
       ...state,
       quizCards,
@@ -95,6 +113,11 @@ export class MemoryQuizGameValidator
       currentInput: '',
       wrongGuessAnimations: [],
       prefixAcceptanceTimeout: null,
+      // Multiplayer state
+      activePlayers,
+      playerMetadata,
+      playerScores,
+      numberFoundBy: {},
     }
 
     return {
@@ -143,7 +166,11 @@ export class MemoryQuizGameValidator
     }
   }
 
-  private validateAcceptNumber(state: SorobanQuizState, number: number): ValidationResult {
+  private validateAcceptNumber(
+    state: SorobanQuizState,
+    number: number,
+    userId?: string
+  ): ValidationResult {
     // Must be in input phase
     if (state.gamePhase !== 'input') {
       return {
@@ -174,10 +201,28 @@ export class MemoryQuizGameValidator
       }
     }
 
+    // Update player scores (track by userId)
+    const playerScores = state.playerScores || {}
+    const newPlayerScores = { ...playerScores }
+    const numberFoundBy = state.numberFoundBy || {}
+    const newNumberFoundBy = { ...numberFoundBy }
+
+    if (userId) {
+      const currentScore = newPlayerScores[userId] || { correct: 0, incorrect: 0 }
+      newPlayerScores[userId] = {
+        ...currentScore,
+        correct: currentScore.correct + 1,
+      }
+      // Track who found this number
+      newNumberFoundBy[number] = userId
+    }
+
     const newState: SorobanQuizState = {
       ...state,
       foundNumbers: [...state.foundNumbers, number],
       currentInput: '',
+      playerScores: newPlayerScores,
+      numberFoundBy: newNumberFoundBy,
     }
 
     return {
@@ -186,7 +231,7 @@ export class MemoryQuizGameValidator
     }
   }
 
-  private validateRejectNumber(state: SorobanQuizState): ValidationResult {
+  private validateRejectNumber(state: SorobanQuizState, userId?: string): ValidationResult {
     // Must be in input phase
     if (state.gamePhase !== 'input') {
       return {
@@ -203,11 +248,23 @@ export class MemoryQuizGameValidator
       }
     }
 
+    // Update player scores (track by userId)
+    const playerScores = state.playerScores || {}
+    const newPlayerScores = { ...playerScores }
+    if (userId) {
+      const currentScore = newPlayerScores[userId] || { correct: 0, incorrect: 0 }
+      newPlayerScores[userId] = {
+        ...currentScore,
+        incorrect: currentScore.incorrect + 1,
+      }
+    }
+
     const newState: SorobanQuizState = {
       ...state,
       guessesRemaining: state.guessesRemaining - 1,
       incorrectGuesses: state.incorrectGuesses + 1,
       currentInput: '',
+      playerScores: newPlayerScores,
     }
 
     return {
@@ -289,7 +346,7 @@ export class MemoryQuizGameValidator
 
   private validateSetConfig(
     state: SorobanQuizState,
-    field: 'selectedCount' | 'displayTime' | 'selectedDifficulty',
+    field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode',
     value: any
   ): ValidationResult {
     // Can only change config during setup phase
@@ -317,6 +374,12 @@ export class MemoryQuizGameValidator
       case 'selectedDifficulty':
         if (!['beginner', 'easy', 'medium', 'hard', 'expert'].includes(value)) {
           return { valid: false, error: `Invalid selectedDifficulty: ${value}` }
+        }
+        break
+
+      case 'playMode':
+        if (!['cooperative', 'competitive'].includes(value)) {
+          return { valid: false, error: `Invalid playMode: ${value}` }
         }
         break
 
@@ -355,6 +418,13 @@ export class MemoryQuizGameValidator
       guessesRemaining: 0,
       currentInput: '',
       incorrectGuesses: 0,
+      // Multiplayer state
+      activePlayers: [],
+      playerMetadata: {},
+      playerScores: {},
+      playMode: 'cooperative',
+      numberFoundBy: {},
+      // UI state
       gamePhase: 'setup',
       prefixAcceptanceTimeout: null,
       finishButtonsBound: false,

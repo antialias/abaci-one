@@ -80,78 +80,78 @@ export function MemoryQuizGame() {
     >
       <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
 
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto',
+          padding: '20px 8px',
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+        }}
+      >
         <div
           style={{
+            maxWidth: '100%',
+            margin: '0 auto',
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            overflow: 'auto',
-            padding: '20px 8px',
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
           }}
         >
           <div
-            style={{
-              maxWidth: '100%',
-              margin: '0 auto',
+            className={css({
+              textAlign: 'center',
+              mb: '4',
+              flexShrink: 0,
+            })}
+          >
+            <Link
+              href="/arcade"
+              className={css({
+                display: 'inline-flex',
+                alignItems: 'center',
+                color: 'gray.600',
+                textDecoration: 'none',
+                mb: '4',
+                _hover: { color: 'gray.800' },
+              })}
+            >
+              ← Back to Champion Arena
+            </Link>
+          </div>
+
+          <div
+            className={css({
+              bg: 'white',
+              rounded: 'xl',
+              shadow: 'xl',
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: 'gray.200',
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-            }}
+              maxHeight: '100%',
+            })}
           >
             <div
               className={css({
-                textAlign: 'center',
-                mb: '4',
-                flexShrink: 0,
-              })}
-            >
-              <Link
-                href="/arcade"
-                className={css({
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  color: 'gray.600',
-                  textDecoration: 'none',
-                  mb: '4',
-                  _hover: { color: 'gray.800' },
-                })}
-              >
-                ← Back to Champion Arena
-              </Link>
-            </div>
-
-            <div
-              className={css({
-                bg: 'white',
-                rounded: 'xl',
-                shadow: 'xl',
-                overflow: 'hidden',
-                border: '1px solid',
-                borderColor: 'gray.200',
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
-                maxHeight: '100%',
+                overflow: 'auto',
               })}
             >
-              <div
-                className={css({
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  overflow: 'auto',
-                })}
-              >
-                {state.gamePhase === 'setup' && <SetupPhase />}
-                {state.gamePhase === 'display' && <DisplayPhase />}
-                {state.gamePhase === 'input' && <InputPhase key="input-phase" />}
-                {state.gamePhase === 'results' && <ResultsPhase />}
-              </div>
+              {state.gamePhase === 'setup' && <SetupPhase />}
+              {state.gamePhase === 'display' && <DisplayPhase />}
+              {state.gamePhase === 'input' && <InputPhase key="input-phase" />}
+              {state.gamePhase === 'results' && <ResultsPhase />}
             </div>
           </div>
         </div>
+      </div>
     </PageWithNav>
   )
 }

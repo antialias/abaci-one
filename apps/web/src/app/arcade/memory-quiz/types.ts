@@ -1,7 +1,14 @@
+import type { PlayerMetadata } from '@/lib/arcade/player-ownership.client'
+
 export interface QuizCard {
   number: number
-  svgComponent: JSX.Element
+  svgComponent: JSX.Element | null
   element: HTMLElement | null
+}
+
+export interface PlayerScore {
+  correct: number
+  incorrect: number
 }
 
 export interface SorobanQuizState {
@@ -21,6 +28,13 @@ export interface SorobanQuizState {
   guessesRemaining: number
   currentInput: string
   incorrectGuesses: number
+
+  // Multiplayer state
+  activePlayers: string[]
+  playerMetadata: Record<string, PlayerMetadata>
+  playerScores: Record<string, PlayerScore>
+  playMode: 'cooperative' | 'competitive'
+  numberFoundBy: Record<number, string> // Maps number to userId who found it
 
   // UI state
   gamePhase: 'setup' | 'display' | 'input' | 'results'
@@ -43,11 +57,12 @@ export type QuizAction =
   | { type: 'SET_DISPLAY_TIME'; time: number }
   | { type: 'SET_SELECTED_COUNT'; count: number }
   | { type: 'SET_DIFFICULTY'; difficulty: DifficultyLevel }
+  | { type: 'SET_PLAY_MODE'; playMode: 'cooperative' | 'competitive' }
   | { type: 'START_QUIZ'; quizCards: QuizCard[] }
   | { type: 'NEXT_CARD' }
   | { type: 'SHOW_INPUT_PHASE' }
-  | { type: 'ACCEPT_NUMBER'; number: number }
-  | { type: 'REJECT_NUMBER' }
+  | { type: 'ACCEPT_NUMBER'; number: number; playerId?: string }
+  | { type: 'REJECT_NUMBER'; playerId?: string }
   | { type: 'ADD_WRONG_GUESS_ANIMATION'; number: number }
   | { type: 'CLEAR_WRONG_GUESS_ANIMATIONS' }
   | { type: 'SET_INPUT'; input: string }

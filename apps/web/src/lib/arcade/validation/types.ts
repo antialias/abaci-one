@@ -14,9 +14,17 @@ export interface ValidationResult {
   newState?: unknown
 }
 
+/**
+ * Sentinel value for team moves where no specific player can be identified
+ * Used in free-for-all games where all of a user's players act as a team
+ */
+export const TEAM_MOVE = '__TEAM__' as const
+export type TeamMoveSentinel = typeof TEAM_MOVE
+
 export interface GameMove {
   type: string
-  playerId: string
+  playerId: string | TeamMoveSentinel // Individual player (turn-based) or __TEAM__ (free-for-all)
+  userId: string // Room member/viewer who made the move
   timestamp: number
   data: unknown
 }
@@ -128,7 +136,7 @@ export interface MemoryQuizResetQuizMove extends GameMove {
 export interface MemoryQuizSetConfigMove extends GameMove {
   type: 'SET_CONFIG'
   data: {
-    field: 'selectedCount' | 'displayTime' | 'selectedDifficulty'
+    field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode'
     value: any
   }
 }

@@ -9,13 +9,13 @@ export const GAMES_CONFIG = {
   'memory-quiz': {
     name: 'Memory Lightning',
     fullName: 'Memory Lightning ⚡',
-    maxPlayers: 1,
+    maxPlayers: 4,
     description: 'Test your memory speed with rapid-fire abacus calculations',
     longDescription:
-      'Challenge yourself with lightning-fast memory tests. Perfect your mental math skills with this intense solo experience.',
+      'Challenge yourself or compete with friends in lightning-fast memory tests. Work together cooperatively or compete for the highest score!',
     url: '/arcade/memory-quiz',
     icon: '⚡',
-    chips: ['⭐ Beginner Friendly', '🔥 Speed Challenge', '🧮 Abacus Focus'],
+    chips: ['👥 Multiplayer', '🔥 Speed Challenge', '🧮 Abacus Focus'],
     color: 'green',
     gradient: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
     borderColor: 'green.200',

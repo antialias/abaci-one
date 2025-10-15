@@ -1,23 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { isPrefix } from '@/lib/memory-quiz-utils'
 import { useMemoryQuiz } from '../context/MemoryQuizContext'
 import { CardGrid } from './CardGrid'
 
 export function InputPhase() {
   const { state, dispatch, acceptNumber, rejectNumber, setInput, showResults } = useMemoryQuiz()
-  const _containerRef = useRef<HTMLDivElement>(null)
   const [displayFeedback, setDisplayFeedback] = useState<'neutral' | 'correct' | 'incorrect'>(
     'neutral'
   )
-
-  // Use a ref to track the current input to avoid stale reads during rapid typing
-  // This prevents the "type 8 times" issue where state.currentInput hasn't updated yet
-  const currentInputRef = useRef(state.currentInput)
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    currentInputRef.current = state.currentInput
-  }, [state.currentInput])
 
   // Use keyboard state from parent state instead of local state
   const { hasPhysicalKeyboard, testingMode, showOnScreenKeyboard } = state
@@ -116,8 +106,7 @@ export function InputPhase() {
   const acceptCorrectNumber = useCallback(
     (number: number) => {
       acceptNumber?.(number)
-      currentInputRef.current = '' // Clear ref immediately
-      setInput?.('')
+      // setInput('') is called inside acceptNumber action creator
       setDisplayFeedback('correct')
 
       setTimeout(() => setDisplayFeedback('neutral'), 500)
@@ -127,11 +116,11 @@ export function InputPhase() {
         setTimeout(() => showResults?.(), 1000)
       }
     },
-    [acceptNumber, setInput, showResults, state.foundNumbers.length, state.correctAnswers.length]
+    [acceptNumber, showResults, state.foundNumbers.length, state.correctAnswers.length]
   )
 
   const handleIncorrectGuess = useCallback(() => {
-    const wrongNumber = parseInt(currentInputRef.current, 10)
+    const wrongNumber = parseInt(state.currentInput, 10)
     if (!Number.isNaN(wrongNumber)) {
       dispatch({ type: 'ADD_WRONG_GUESS_ANIMATION', number: wrongNumber })
       // Clear wrong guess animations after explosion
@@ -141,8 +130,7 @@ export function InputPhase() {
     }
 
     rejectNumber?.()
-    currentInputRef.current = '' // Clear ref immediately
-    setInput?.('')
+    // setInput('') is called inside rejectNumber action creator
     setDisplayFeedback('incorrect')
 
     setTimeout(() => setDisplayFeedback('neutral'), 500)
@@ -151,7 +139,7 @@ export function InputPhase() {
     if (state.guessesRemaining - 1 === 0) {
       setTimeout(() => showResults?.(), 1000)
     }
-  }, [dispatch, rejectNumber, setInput, showResults, state.guessesRemaining])
+  }, [state.currentInput, dispatch, rejectNumber, showResults, state.guessesRemaining])
 
   // Simple keyboard event handlers that will be defined after callbacks
   const handleKeyboardInput = useCallback(
@@ -161,9 +149,8 @@ export function InputPhase() {
         // Only handle if input phase is active and guesses remain
         if (state.guessesRemaining === 0) return
 
-        // Use ref for immediate value, update ref right away to prevent stale reads
-        const newInput = currentInputRef.current + key
-        currentInputRef.current = newInput // Update ref immediately for next keypress
+        // Update input with new key
+        const newInput = state.currentInput + key
         setInput?.(newInput)
 
         // Clear any existing timeout
@@ -215,9 +202,8 @@ export function InputPhase() {
   )
 
   const handleKeyboardBackspace = useCallback(() => {
-    if (currentInputRef.current.length > 0) {
-      const newInput = currentInputRef.current.slice(0, -1)
-      currentInputRef.current = newInput // Update ref immediately
+    if (state.currentInput.length > 0) {
+      const newInput = state.currentInput.slice(0, -1)
       setInput?.(newInput)
 
       // Clear any existing timeout
@@ -228,7 +214,7 @@ export function InputPhase() {
 
       setDisplayFeedback('neutral')
     }
-  }, [state.prefixAcceptanceTimeout, dispatch, setInput])
+  }, [state.currentInput, state.prefixAcceptanceTimeout, dispatch, setInput])
 
   // Set up global keyboard listeners
   useEffect(() => {
@@ -382,6 +368,172 @@ export function InputPhase() {
           </span>
         </div>
       </div>
+
+      {/* Live Scoreboard - Competitive Mode Only */}
+      {state.playMode === 'competitive' &&
+        state.activePlayers &&
+        state.activePlayers.length > 1 && (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px',
+              background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+              borderRadius: '8px',
+              border: '2px solid #f59e0b',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '12px',
+                fontWeight: 'bold',
+                color: '#92400e',
+                marginBottom: '8px',
+                textAlign: 'center',
+              }}
+            >
+              🏆 LIVE SCOREBOARD
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+              }}
+            >
+              {(() => {
+                // Group players by userId
+                const userTeams = new Map<
+                  string,
+                  { userId: string; players: any[]; score: { correct: number; incorrect: number } }
+                >()
+
+                console.log('📊 [InputPhase] Building scoreboard:', {
+                  activePlayers: state.activePlayers,
+                  playerMetadata: state.playerMetadata,
+                  playerScores: state.playerScores,
+                })
+
+                for (const playerId of state.activePlayers) {
+                  const metadata = state.playerMetadata?.[playerId]
+                  const userId = metadata?.userId
+                  console.log('📊 [InputPhase] Processing player for scoreboard:', {
+                    playerId,
+                    metadata,
+                    userId,
+                  })
+                  if (!userId) continue
+
+                  if (!userTeams.has(userId)) {
+                    userTeams.set(userId, {
+                      userId,
+                      players: [],
+                      score: state.playerScores?.[userId] || { correct: 0, incorrect: 0 },
+                    })
+                  }
+                  userTeams.get(userId)!.players.push(metadata)
+                }
+
+                console.log('📊 [InputPhase] UserTeams created:', {
+                  count: userTeams.size,
+                  teams: Array.from(userTeams.entries()),
+                })
+
+                // Sort teams by score
+                return Array.from(userTeams.values())
+                  .sort((a, b) => {
+                    const aScore = a.score.correct - a.score.incorrect * 0.5
+                    const bScore = b.score.correct - b.score.incorrect * 0.5
+                    return bScore - aScore
+                  })
+                  .map((team, index) => {
+                    const netScore = team.score.correct - team.score.incorrect * 0.5
+                    return (
+                      <div
+                        key={team.userId}
+                        style={{
+                          padding: '10px 12px',
+                          background: index === 0 ? '#fef3c7' : 'white',
+                          borderRadius: '8px',
+                          border: index === 0 ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+                        }}
+                      >
+                        {/* Team header with rank and stats */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: '8px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '18px' }}>
+                              {index === 0 ? '👑' : `${index + 1}.`}
+                            </span>
+                            <span
+                              style={{
+                                fontWeight: 'bold',
+                                fontSize: '16px',
+                                color: '#1f2937',
+                              }}
+                            >
+                              Score: {netScore.toFixed(1)}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              fontSize: '14px',
+                            }}
+                          >
+                            <span style={{ color: '#10b981', fontWeight: 'bold' }}>
+                              ✓{team.score.correct}
+                            </span>
+                            <span style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                              ✗{team.score.incorrect}
+                            </span>
+                          </div>
+                        </div>
+                        {/* Players list */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                            paddingLeft: '26px',
+                          }}
+                        >
+                          {team.players.map((player, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '13px',
+                              }}
+                            >
+                              <span style={{ fontSize: '16px' }}>{player?.emoji || '🎮'}</span>
+                              <span
+                                style={{
+                                  color: '#1f2937',
+                                  fontWeight: '500',
+                                }}
+                              >
+                                {player?.name || `Player ${i + 1}`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })
+              })()}
+            </div>
+          </div>
+        )}
 
       <div
         style={{
