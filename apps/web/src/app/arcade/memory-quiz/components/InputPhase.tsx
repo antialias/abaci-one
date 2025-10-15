@@ -10,6 +10,15 @@ export function InputPhase() {
     'neutral'
   )
 
+  // Use a ref to track the current input to avoid stale reads during rapid typing
+  // This prevents the "type 8 times" issue where state.currentInput hasn't updated yet
+  const currentInputRef = useRef(state.currentInput)
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    currentInputRef.current = state.currentInput
+  }, [state.currentInput])
+
   // Use keyboard state from parent state instead of local state
   const { hasPhysicalKeyboard, testingMode, showOnScreenKeyboard } = state
 
@@ -107,6 +116,7 @@ export function InputPhase() {
   const acceptCorrectNumber = useCallback(
     (number: number) => {
       acceptNumber?.(number)
+      currentInputRef.current = '' // Clear ref immediately
       setInput?.('')
       setDisplayFeedback('correct')
 
@@ -121,7 +131,7 @@ export function InputPhase() {
   )
 
   const handleIncorrectGuess = useCallback(() => {
-    const wrongNumber = parseInt(state.currentInput, 10)
+    const wrongNumber = parseInt(currentInputRef.current, 10)
     if (!Number.isNaN(wrongNumber)) {
       dispatch({ type: 'ADD_WRONG_GUESS_ANIMATION', number: wrongNumber })
       // Clear wrong guess animations after explosion
@@ -131,6 +141,7 @@ export function InputPhase() {
     }
 
     rejectNumber?.()
+    currentInputRef.current = '' // Clear ref immediately
     setInput?.('')
     setDisplayFeedback('incorrect')
 
@@ -140,7 +151,7 @@ export function InputPhase() {
     if (state.guessesRemaining - 1 === 0) {
       setTimeout(() => showResults?.(), 1000)
     }
-  }, [dispatch, rejectNumber, setInput, showResults, state.guessesRemaining, state.currentInput])
+  }, [dispatch, rejectNumber, setInput, showResults, state.guessesRemaining])
 
   // Simple keyboard event handlers that will be defined after callbacks
   const handleKeyboardInput = useCallback(
@@ -150,7 +161,9 @@ export function InputPhase() {
         // Only handle if input phase is active and guesses remain
         if (state.guessesRemaining === 0) return
 
-        const newInput = state.currentInput + key
+        // Use ref for immediate value, update ref right away to prevent stale reads
+        const newInput = currentInputRef.current + key
+        currentInputRef.current = newInput // Update ref immediately for next keypress
         setInput?.(newInput)
 
         // Clear any existing timeout
@@ -202,8 +215,9 @@ export function InputPhase() {
   )
 
   const handleKeyboardBackspace = useCallback(() => {
-    if (state.currentInput.length > 0) {
-      const newInput = state.currentInput.slice(0, -1)
+    if (currentInputRef.current.length > 0) {
+      const newInput = currentInputRef.current.slice(0, -1)
+      currentInputRef.current = newInput // Update ref immediately
       setInput?.(newInput)
 
       // Clear any existing timeout
@@ -214,7 +228,7 @@ export function InputPhase() {
 
       setDisplayFeedback('neutral')
     }
-  }, [state.currentInput, state.prefixAcceptanceTimeout, dispatch, setInput])
+  }, [state.prefixAcceptanceTimeout, dispatch, setInput])
 
   // Set up global keyboard listeners
   useEffect(() => {
