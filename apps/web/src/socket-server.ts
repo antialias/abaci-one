@@ -84,16 +84,20 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               // Different games have different initial configs
               let initialState: any
               if (room.gameName === 'matching') {
+                // Access nested gameConfig: { matching: { gameType, difficulty, turnTimer } }
+                const matchingConfig = (room.gameConfig as any)?.matching || {}
                 initialState = validator.getInitialState({
-                  difficulty: (room.gameConfig as any)?.difficulty || 6,
-                  gameType: (room.gameConfig as any)?.gameType || 'abacus-numeral',
-                  turnTimer: (room.gameConfig as any)?.turnTimer || 30,
+                  difficulty: matchingConfig.difficulty || 6,
+                  gameType: matchingConfig.gameType || 'abacus-numeral',
+                  turnTimer: matchingConfig.turnTimer || 30,
                 })
               } else if (room.gameName === 'memory-quiz') {
+                // Access nested gameConfig: { 'memory-quiz': { selectedCount, displayTime, selectedDifficulty } }
+                const memoryQuizConfig = (room.gameConfig as any)?.['memory-quiz'] || {}
                 initialState = validator.getInitialState({
-                  selectedCount: (room.gameConfig as any)?.selectedCount || 5,
-                  displayTime: (room.gameConfig as any)?.displayTime || 2.0,
-                  selectedDifficulty: (room.gameConfig as any)?.selectedDifficulty || 'easy',
+                  selectedCount: memoryQuizConfig.selectedCount || 5,
+                  displayTime: memoryQuizConfig.displayTime || 2.0,
+                  selectedDifficulty: memoryQuizConfig.selectedDifficulty || 'easy',
                 })
               } else {
                 // Fallback for other games
