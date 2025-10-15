@@ -42,6 +42,7 @@ describe('useOptimisticGameState', () => {
     const move: GameMove = {
       type: 'INCREMENT',
       playerId: 'test',
+      userId: 'test-user',
       timestamp: Date.now(),
       data: {},
     }
@@ -65,6 +66,7 @@ describe('useOptimisticGameState', () => {
     const move: GameMove = {
       type: 'INCREMENT',
       playerId: 'test',
+      userId: 'test-user',
       timestamp: 123,
       data: {},
     }
@@ -100,6 +102,7 @@ describe('useOptimisticGameState', () => {
     const move: GameMove = {
       type: 'INCREMENT',
       playerId: 'test',
+      userId: 'test-user',
       timestamp: 123,
       data: {},
     }
@@ -133,6 +136,7 @@ describe('useOptimisticGameState', () => {
     const move1: GameMove = {
       type: 'INCREMENT',
       playerId: 'test',
+      userId: 'test-user',
       timestamp: 123,
       data: {},
     }
@@ -140,6 +144,7 @@ describe('useOptimisticGameState', () => {
     const move2: GameMove = {
       type: 'INCREMENT',
       playerId: 'test',
+      userId: 'test-user',
       timestamp: 124,
       data: {},
     }
@@ -184,6 +189,7 @@ describe('useOptimisticGameState', () => {
       result.current.applyOptimisticMove({
         type: 'INCREMENT',
         playerId: 'test',
+        userId: 'test-user',
         timestamp: 123,
         data: {},
       })
@@ -215,6 +221,7 @@ describe('useOptimisticGameState', () => {
       result.current.applyOptimisticMove({
         type: 'INCREMENT',
         playerId: 'test',
+        userId: 'test-user',
         timestamp: 123,
         data: {},
       })
@@ -245,6 +252,7 @@ describe('useOptimisticGameState', () => {
     const move: GameMove = {
       type: 'INCREMENT',
       playerId: 'test',
+      userId: 'test-user',
       timestamp: 123,
       data: {},
     }

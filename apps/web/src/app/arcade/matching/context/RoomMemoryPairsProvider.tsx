@@ -90,16 +90,19 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
 
     case 'FLIP_CARD': {
       // Optimistically flip the card
-      const card = state.gameCards.find((c) => c.id === move.data.cardId)
+      // Defensive check: ensure arrays exist
+      const gameCards = state.gameCards || []
+      const flippedCards = state.flippedCards || []
+
+      const card = gameCards.find((c) => c.id === move.data.cardId)
       if (!card) return state
 
-      const newFlippedCards = [...state.flippedCards, card]
+      const newFlippedCards = [...flippedCards, card]
 
       return {
         ...state,
         flippedCards: newFlippedCards,
-        currentMoveStartTime:
-          state.flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime,
+        currentMoveStartTime: flippedCards.length === 0 ? Date.now() : state.currentMoveStartTime,
         isProcessingMove: newFlippedCards.length === 2, // Processing if 2 cards flipped
         showMismatchFeedback: false,
       }
@@ -260,35 +263,51 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     applyMove: applyMoveOptimistically,
   })
 
+  // Detect state corruption/mismatch (e.g., game type mismatch between sessions)
+  const hasStateCorruption =
+    !state.gameCards || !state.flippedCards || !Array.isArray(state.gameCards)
+
   // Handle mismatch feedback timeout
   useEffect(() => {
-    if (state.showMismatchFeedback && state.flippedCards.length === 2) {
+    // Defensive check: ensure flippedCards exists
+    if (state.showMismatchFeedback && state.flippedCards?.length === 2) {
       // After 1.5 seconds, send CLEAR_MISMATCH
       // Server will validate that cards are still in mismatch state before clearing
       const timeout = setTimeout(() => {
         sendMove({
           type: 'CLEAR_MISMATCH',
           playerId: state.currentPlayer,
+          userId: viewerId || '',
           data: {},
         })
       }, 1500)
 
       return () => clearTimeout(timeout)
     }
-  }, [state.showMismatchFeedback, state.flippedCards.length, sendMove, state.currentPlayer])
+  }, [
+    state.showMismatchFeedback,
+    state.flippedCards?.length,
+    sendMove,
+    state.currentPlayer,
+    viewerId,
+  ])
 
   // Computed values
   const isGameActive = state.gamePhase === 'playing'
 
   const canFlipCard = useCallback(
     (cardId: string): boolean => {
+      // Defensive check: ensure required state exists
+      const flippedCards = state.flippedCards || []
+      const gameCards = state.gameCards || []
+
       console.log('[RoomProvider][canFlipCard] Checking card:', {
         cardId,
         isGameActive,
         isProcessingMove: state.isProcessingMove,
         currentPlayer: state.currentPlayer,
         hasRoomData: !!roomData,
-        flippedCardsCount: state.flippedCards.length,
+        flippedCardsCount: flippedCards.length,
       })
 
       if (!isGameActive || state.isProcessingMove) {
@@ -296,20 +315,20 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
         return false
       }
 
-      const card = state.gameCards.find((c) => c.id === cardId)
+      const card = gameCards.find((c) => c.id === cardId)
       if (!card || card.matched) {
         console.log('[RoomProvider][canFlipCard] Blocked: card not found or already matched')
         return false
       }
 
       // Can't flip if already flipped
-      if (state.flippedCards.some((c) => c.id === cardId)) {
+      if (flippedCards.some((c) => c.id === cardId)) {
         console.log('[RoomProvider][canFlipCard] Blocked: card already flipped')
         return false
       }
 
       // Can't flip more than 2 cards
-      if (state.flippedCards.length >= 2) {
+      if (flippedCards.length >= 2) {
         console.log('[RoomProvider][canFlipCard] Blocked: 2 cards already flipped')
         return false
       }
@@ -414,13 +433,14 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     sendMove({
       type: 'START_GAME',
       playerId: firstPlayer,
+      userId: viewerId || '',
       data: {
         cards,
         activePlayers,
         playerMetadata,
       },
     })
-  }, [state.gameType, state.difficulty, activePlayers, buildPlayerMetadata, sendMove])
+  }, [state.gameType, state.difficulty, activePlayers, buildPlayerMetadata, sendMove, viewerId])
 
   const flipCard = useCallback(
     (cardId: string) => {
@@ -441,6 +461,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       const move = {
         type: 'FLIP_CARD' as const,
         playerId: state.currentPlayer, // Use the current player ID from game state (database player ID)
+        userId: viewerId || '',
         data: { cardId },
       }
       console.log('[RoomProvider] Sending FLIP_CARD move via sendMove:', move)
@@ -466,13 +487,14 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     sendMove({
       type: 'START_GAME',
       playerId: firstPlayer,
+      userId: viewerId || '',
       data: {
         cards,
         activePlayers,
         playerMetadata,
       },
     })
-  }, [state.gameType, state.difficulty, activePlayers, buildPlayerMetadata, sendMove])
+  }, [state.gameType, state.difficulty, activePlayers, buildPlayerMetadata, sendMove, viewerId])
 
   const setGameType = useCallback(
     (gameType: typeof state.gameType) => {
@@ -481,10 +503,11 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       sendMove({
         type: 'SET_CONFIG',
         playerId,
+        userId: viewerId || '',
         data: { field: 'gameType', value: gameType },
       })
     },
-    [activePlayers, sendMove]
+    [activePlayers, sendMove, viewerId]
   )
 
   const setDifficulty = useCallback(
@@ -493,10 +516,11 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       sendMove({
         type: 'SET_CONFIG',
         playerId,
+        userId: viewerId || '',
         data: { field: 'difficulty', value: difficulty },
       })
     },
-    [activePlayers, sendMove]
+    [activePlayers, sendMove, viewerId]
   )
 
   const setTurnTimer = useCallback(
@@ -505,10 +529,11 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       sendMove({
         type: 'SET_CONFIG',
         playerId,
+        userId: viewerId || '',
         data: { field: 'turnTimer', value: turnTimer },
       })
     },
-    [activePlayers, sendMove]
+    [activePlayers, sendMove, viewerId]
   )
 
   const goToSetup = useCallback(() => {
@@ -517,9 +542,10 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     sendMove({
       type: 'GO_TO_SETUP',
       playerId,
+      userId: viewerId || '',
       data: {},
     })
-  }, [activePlayers, state.currentPlayer, sendMove])
+  }, [activePlayers, state.currentPlayer, sendMove, viewerId])
 
   const resumeGame = useCallback(() => {
     // PAUSE/RESUME: Resume paused game if config unchanged
@@ -532,9 +558,10 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     sendMove({
       type: 'RESUME_GAME',
       playerId,
+      userId: viewerId || '',
       data: {},
     })
-  }, [canResumeGame, activePlayers, state.currentPlayer, sendMove])
+  }, [canResumeGame, activePlayers, state.currentPlayer, sendMove, viewerId])
 
   const hoverCard = useCallback(
     (cardId: string | null) => {
@@ -546,15 +573,110 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       sendMove({
         type: 'HOVER_CARD',
         playerId,
+        userId: viewerId || '',
         data: { cardId },
       })
     },
-    [state.currentPlayer, activePlayers, sendMove]
+    [state.currentPlayer, activePlayers, sendMove, viewerId]
   )
 
   // NO MORE effectiveState merging! Just use session state directly with gameMode added
   const effectiveState = { ...state, gameMode } as MemoryPairsState & {
     gameMode: GameMode
+  }
+
+  // If state is corrupted, show error message instead of crashing
+  if (hasStateCorruption) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px',
+          textAlign: 'center',
+          minHeight: '400px',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '48px',
+            marginBottom: '20px',
+          }}
+        >
+          ⚠️
+        </div>
+        <h2
+          style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            marginBottom: '12px',
+            color: '#dc2626',
+          }}
+        >
+          Game State Mismatch
+        </h2>
+        <p
+          style={{
+            fontSize: '16px',
+            color: '#6b7280',
+            marginBottom: '24px',
+            maxWidth: '500px',
+          }}
+        >
+          There's a mismatch between game types in this room. This usually happens when room members
+          are playing different games.
+        </p>
+        <div
+          style={{
+            background: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '24px',
+            maxWidth: '500px',
+          }}
+        >
+          <p
+            style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              marginBottom: '8px',
+            }}
+          >
+            To fix this:
+          </p>
+          <ol
+            style={{
+              fontSize: '14px',
+              textAlign: 'left',
+              paddingLeft: '20px',
+              lineHeight: '1.6',
+            }}
+          >
+            <li>Make sure all room members are on the same game page</li>
+            <li>Try refreshing the page</li>
+            <li>If the issue persists, leave and rejoin the room</li>
+          </ol>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '10px 20px',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+          }}
+        >
+          Refresh Page
+        </button>
+      </div>
+    )
   }
 
   const contextValue: MemoryPairsContextValue = {

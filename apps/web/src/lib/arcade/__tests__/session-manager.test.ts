@@ -260,6 +260,7 @@ describe('session-manager', () => {
         type: 'FLIP_CARD',
         data: { cardId: '1' },
         playerId: '1',
+        userId: mockUserId,
         timestamp: Date.now(),
       }
 
