@@ -70,7 +70,7 @@ export default function RoomBrowserPage() {
       }
 
       const data = await response.json()
-      router.push(`/arcade-rooms/${data.room.id}`)
+      router.push(`/join/${data.room.code}`)
     } catch (err) {
       console.error('Failed to create room:', err)
       showError('Failed to create room', err instanceof Error ? err.message : undefined)
