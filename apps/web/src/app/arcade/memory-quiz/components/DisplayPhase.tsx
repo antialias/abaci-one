@@ -17,6 +17,7 @@ export function DisplayPhase() {
   const [isTransitioning, setIsTransitioning] = useState(false)
   const isDisplayPhaseActive = state.currentCardIndex < state.quizCards.length
   const isProcessingRef = useRef(false)
+  const lastProcessedIndexRef = useRef(-1)
   const appConfig = useAbacusConfig()
 
   // In multiplayer room mode, only the room creator controls card timing
@@ -38,9 +39,21 @@ export function DisplayPhase() {
   const progressPercentage = (state.currentCardIndex / state.quizCards.length) * 100
 
   useEffect(() => {
+    // Prevent processing the same card index multiple times
+    // This prevents race conditions from optimistic updates
+    if (state.currentCardIndex === lastProcessedIndexRef.current) {
+      console.log(
+        `DisplayPhase: Skipping duplicate processing of index ${state.currentCardIndex} (lastProcessed: ${lastProcessedIndexRef.current})`
+      )
+      return
+    }
+
     if (state.currentCardIndex >= state.quizCards.length) {
       // Only the room creator (or local mode) triggers phase transitions
       if (shouldControlTiming) {
+        console.log(
+          `DisplayPhase: All cards shown (${state.quizCards.length}), transitioning to input phase`
+        )
         showInputPhase?.()
       }
       return
@@ -48,8 +61,14 @@ export function DisplayPhase() {
 
     // Prevent multiple concurrent executions
     if (isProcessingRef.current) {
+      console.log(
+        `DisplayPhase: Already processing, skipping (index: ${state.currentCardIndex}, lastProcessed: ${lastProcessedIndexRef.current})`
+      )
       return
     }
+
+    // Mark this index as being processed
+    lastProcessedIndexRef.current = state.currentCardIndex
 
     const showNextCard = async () => {
       isProcessingRef.current = true
@@ -103,7 +122,6 @@ export function DisplayPhase() {
     state.quizCards.length,
     nextCard,
     showInputPhase,
-    state.quizCards[state.currentCardIndex],
     shouldControlTiming,
     isRoomCreator,
   ])
