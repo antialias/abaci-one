@@ -28,6 +28,19 @@ export async function GET() {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
+    console.log(
+      '[Current Room API] Room data READ from database:',
+      JSON.stringify(
+        {
+          roomId,
+          gameName: room.gameName,
+          gameConfig: room.gameConfig,
+        },
+        null,
+        2
+      )
+    )
+
     // Get members
     const members = await getRoomMembers(roomId)
 

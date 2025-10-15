@@ -248,6 +248,22 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   // Derive game mode from active player count
   const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'
 
+  // Track roomData.gameConfig changes
+  useEffect(() => {
+    console.log(
+      '[RoomMemoryPairsProvider] roomData.gameConfig changed:',
+      JSON.stringify(
+        {
+          gameConfig: roomData?.gameConfig,
+          roomId: roomData?.id,
+          gameName: roomData?.gameName,
+        },
+        null,
+        2
+      )
+    )
+  }, [roomData?.gameConfig, roomData?.id, roomData?.gameName])
+
   // Merge saved game config from room with initialState
   // Settings are scoped by game name to preserve settings when switching games
   const mergedInitialState = useMemo(() => {

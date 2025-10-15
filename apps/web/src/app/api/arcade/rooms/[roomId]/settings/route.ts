@@ -27,6 +27,36 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const viewerId = await getViewerId()
     const body = await req.json()
 
+    console.log(
+      '[Settings API] PATCH request received:',
+      JSON.stringify(
+        {
+          roomId,
+          body,
+        },
+        null,
+        2
+      )
+    )
+
+    // Read current room state from database BEFORE any changes
+    const [currentRoom] = await db
+      .select()
+      .from(schema.arcadeRooms)
+      .where(eq(schema.arcadeRooms.id, roomId))
+
+    console.log(
+      '[Settings API] Current room state in database BEFORE update:',
+      JSON.stringify(
+        {
+          gameName: currentRoom?.gameName,
+          gameConfig: currentRoom?.gameConfig,
+        },
+        null,
+        2
+      )
+    )
+
     // Check if user is the host
     const members = await getRoomMembers(roomId)
     const currentMember = members.find((m) => m.userId === viewerId)
@@ -97,6 +127,11 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       updateData.gameConfig = body.gameConfig
     }
 
+    console.log(
+      '[Settings API] Update data to be written to database:',
+      JSON.stringify(updateData, null, 2)
+    )
+
     // If game is being changed (or cleared), delete the existing arcade session
     // This ensures a fresh session will be created with the new game settings
     if (body.gameName !== undefined) {
@@ -110,6 +145,18 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       .set(updateData)
       .where(eq(schema.arcadeRooms.id, roomId))
       .returning()
+
+    console.log(
+      '[Settings API] Room state in database AFTER update:',
+      JSON.stringify(
+        {
+          gameName: updatedRoom.gameName,
+          gameConfig: updatedRoom.gameConfig,
+        },
+        null,
+        2
+      )
+    )
 
     // Broadcast game change to all room members
     if (body.gameName !== undefined) {
