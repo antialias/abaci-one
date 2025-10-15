@@ -111,6 +111,23 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       .where(eq(schema.arcadeRooms.id, roomId))
       .returning()
 
+    // Broadcast game change to all room members
+    if (body.gameName !== undefined) {
+      const io = await getSocketIO()
+      if (io) {
+        try {
+          console.log(`[Settings API] Broadcasting game change to room ${roomId}: ${body.gameName}`)
+          io.to(`room:${roomId}`).emit('room-game-changed', {
+            roomId,
+            gameName: body.gameName,
+            gameConfig: body.gameConfig || {},
+          })
+        } catch (socketError) {
+          console.error('[Settings API] Failed to broadcast game change:', socketError)
+        }
+      }
+    }
+
     // If setting to retired, expel all non-owner members
     if (body.accessMode === 'retired') {
       const nonOwnerMembers = members.filter((m) => !m.isCreator)
