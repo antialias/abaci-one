@@ -147,26 +147,61 @@ export function ResultsCardGrid({ state }: ResultsCardGridProps) {
                     </div>
                   </div>
 
-                  {/* Right/Wrong indicator overlay */}
+                  {/* Player indicator overlay */}
                   <div
                     style={{
                       position: 'absolute',
                       top: '4px',
                       right: '4px',
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
+                      minWidth: wasFound ? '24px' : '20px',
+                      minHeight: '20px',
+                      maxHeight: '48px',
+                      borderRadius: wasFound ? '8px' : '50%',
                       background: wasFound ? '#10b981' : '#ef4444',
                       color: 'white',
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '12px',
+                      fontSize: wasFound ? '14px' : '12px',
                       fontWeight: 'bold',
                       boxShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+                      padding: wasFound ? '2px' : '0',
+                      gap: '1px',
+                      overflow: 'hidden',
                     }}
                   >
-                    {wasFound ? '✓' : '✗'}
+                    {wasFound
+                      ? (() => {
+                          // Get the userId who found this number
+                          const foundByUserId = state.numberFoundBy?.[card.number]
+                          if (!foundByUserId) return '✓'
+
+                          // Get all players on that team
+                          const teamPlayers = state.activePlayers
+                            ?.filter((playerId) => {
+                              const metadata = state.playerMetadata?.[playerId]
+                              return metadata?.userId === foundByUserId
+                            })
+                            .map((playerId) => state.playerMetadata?.[playerId])
+                            .filter(Boolean)
+
+                          if (!teamPlayers || teamPlayers.length === 0) return '✓'
+
+                          // Display emojis (stacked vertically if multiple)
+                          return teamPlayers.map((player, idx) => (
+                            <span
+                              key={idx}
+                              style={{
+                                lineHeight: '1',
+                                fontSize: '14px',
+                              }}
+                            >
+                              {player?.emoji || '🎮'}
+                            </span>
+                          ))
+                        })()
+                      : '✗'}
                   </div>
 
                   {/* Number label overlay */}
