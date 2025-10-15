@@ -23,6 +23,7 @@ export interface RoomData {
   name: string
   code: string
   gameName: string | null // Nullable to support game selection in room
+  gameConfig?: Record<string, unknown> | null // Game-specific settings
   accessMode: 'open' | 'password' | 'approval-only' | 'restricted' | 'locked' | 'retired'
   members: RoomMember[]
   memberPlayers: Record<string, RoomPlayer[]> // userId -> players
@@ -71,6 +72,7 @@ async function fetchCurrentRoom(): Promise<RoomData | null> {
     name: data.room.name,
     code: data.room.code,
     gameName: data.room.gameName,
+    gameConfig: data.room.gameConfig || null,
     accessMode: data.room.accessMode || 'open',
     members: data.members || [],
     memberPlayers: data.memberPlayers || {},
@@ -105,6 +107,7 @@ async function createRoomApi(params: CreateRoomParams): Promise<RoomData> {
     name: data.room.name,
     code: data.room.code,
     gameName: data.room.gameName,
+    gameConfig: data.room.gameConfig || null,
     accessMode: data.room.accessMode || 'open',
     members: data.members || [],
     memberPlayers: data.memberPlayers || {},
@@ -141,6 +144,7 @@ async function joinRoomApi(params: {
       name: data.room.name,
       code: data.room.code,
       gameName: data.room.gameName,
+      gameConfig: data.room.gameConfig || null,
       accessMode: data.room.accessMode || 'open',
       members: data.members || [],
       memberPlayers: data.memberPlayers || {},
@@ -183,6 +187,7 @@ async function getRoomByCodeApi(code: string): Promise<RoomData> {
     name: data.room.name,
     code: data.room.code,
     gameName: data.room.gameName,
+    gameConfig: data.room.gameConfig || null,
     accessMode: data.room.accessMode || 'open',
     members: data.members || [],
     memberPlayers: data.memberPlayers || {},
@@ -692,7 +697,20 @@ async function updateGameConfigApi(params: {
  * This allows games to persist their settings (e.g., difficulty, card count)
  */
 export function useUpdateGameConfig() {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: updateGameConfigApi,
+    onSuccess: (_, variables) => {
+      // Update the cache with the new gameConfig
+      queryClient.setQueryData<RoomData | null>(roomKeys.current(), (prev) => {
+        if (!prev) return null
+        return {
+          ...prev,
+          gameConfig: variables.gameConfig,
+        }
+      })
+      console.log('[useUpdateGameConfig] Updated cache with new gameConfig:', variables.gameConfig)
+    },
   })
 }
