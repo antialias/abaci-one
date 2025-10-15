@@ -3,15 +3,10 @@
  * Validates all game moves and state transitions
  */
 
-import type {
-  Difficulty,
-  GameCard,
-  GameType,
-  MemoryPairsState,
-  Player,
-} from '@/app/games/matching/context/types'
+import type { GameCard, MemoryPairsState, Player } from '@/app/games/matching/context/types'
 import { generateGameCards } from '@/app/games/matching/utils/cardGeneration'
 import { canFlipCard, validateMatch } from '@/app/games/matching/utils/matchValidation'
+import type { MatchingGameConfig } from '@/lib/arcade/game-configs'
 import type { GameValidator, MatchingGameMove, ValidationResult } from './types'
 
 export class MatchingGameValidator implements GameValidator<MemoryPairsState, MatchingGameMove> {
@@ -536,11 +531,7 @@ export class MatchingGameValidator implements GameValidator<MemoryPairsState, Ma
     return state.gamePhase === 'results' || state.matchedPairs === state.totalPairs
   }
 
-  getInitialState(config: {
-    difficulty: Difficulty
-    gameType: GameType
-    turnTimer: number
-  }): MemoryPairsState {
+  getInitialState(config: MatchingGameConfig): MemoryPairsState {
     return {
       cards: [],
       gameCards: [],

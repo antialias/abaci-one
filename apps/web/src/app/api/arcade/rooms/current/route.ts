@@ -4,6 +4,7 @@ import { getRoomById } from '@/lib/arcade/room-manager'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
+import { getAllGameConfigs } from '@/lib/arcade/game-config-helpers'
 
 /**
  * GET /api/arcade/rooms/current
@@ -28,13 +29,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
 
+    // Get game configs from new room_game_configs table
+    const gameConfig = await getAllGameConfigs(roomId)
+
     console.log(
       '[Current Room API] Room data READ from database:',
       JSON.stringify(
         {
           roomId,
           gameName: room.gameName,
-          gameConfig: room.gameConfig,
+          gameConfig,
         },
         null,
         2
@@ -54,7 +58,10 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      room,
+      room: {
+        ...room,
+        gameConfig, // Override with configs from new table
+      },
       members,
       memberPlayers: memberPlayersObj,
     })

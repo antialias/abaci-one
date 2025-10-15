@@ -7,6 +7,8 @@ import { recordRoomMemberHistory } from '@/lib/arcade/room-member-history'
 import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
+import { getAllGameConfigs, setGameConfig } from '@/lib/arcade/game-config-helpers'
+import type { GameName } from '@/lib/arcade/validation'
 
 type RouteContext = {
   params: Promise<{ roomId: string }>
@@ -122,9 +124,16 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       updateData.gameName = body.gameName
     }
 
-    // Update game config if provided
-    if (body.gameConfig !== undefined) {
-      updateData.gameConfig = body.gameConfig
+    // Handle game config updates - write to new room_game_configs table
+    if (body.gameConfig !== undefined && body.gameConfig !== null) {
+      // body.gameConfig is expected to be nested by game name: { matching: {...}, memory-quiz: {...} }
+      // Extract each game's config and write to the new table
+      for (const [gameName, config] of Object.entries(body.gameConfig)) {
+        if (config && typeof config === 'object') {
+          await setGameConfig(roomId, gameName as GameName, config)
+          console.log(`[Settings API] Wrote ${gameName} config to room_game_configs table`)
+        }
+      }
     }
 
     console.log(
@@ -146,12 +155,15 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       .where(eq(schema.arcadeRooms.id, roomId))
       .returning()
 
+    // Get aggregated game configs from new table
+    const gameConfig = await getAllGameConfigs(roomId)
+
     console.log(
       '[Settings API] Room state in database AFTER update:',
       JSON.stringify(
         {
           gameName: updatedRoom.gameName,
-          gameConfig: updatedRoom.gameConfig,
+          gameConfig,
         },
         null,
         2
@@ -171,11 +183,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
           } = {
             roomId,
             gameName: body.gameName,
-          }
-
-          // Only include gameConfig if it was explicitly provided
-          if (body.gameConfig !== undefined) {
-            broadcastData.gameConfig = body.gameConfig
+            gameConfig, // Include aggregated configs from new table
           }
 
           io.to(`room:${roomId}`).emit('room-game-changed', broadcastData)
@@ -251,7 +259,15 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       }
     }
 
-    return NextResponse.json({ room: updatedRoom }, { status: 200 })
+    return NextResponse.json(
+      {
+        room: {
+          ...updatedRoom,
+          gameConfig, // Include aggregated configs from new table
+        },
+      },
+      { status: 200 }
+    )
   } catch (error: any) {
     console.error('Failed to update room settings:', error)
     return NextResponse.json({ error: 'Failed to update room settings' }, { status: 500 })

@@ -3,7 +3,8 @@
  * Validates all game moves and state transitions
  */
 
-import type { DifficultyLevel, SorobanQuizState } from '@/app/arcade/memory-quiz/types'
+import type { SorobanQuizState } from '@/app/arcade/memory-quiz/types'
+import type { MemoryQuizGameConfig } from '@/lib/arcade/game-configs'
 import type {
   GameValidator,
   MemoryQuizGameMove,
@@ -395,12 +396,7 @@ export class MemoryQuizGameValidator
     return state.gamePhase === 'results'
   }
 
-  getInitialState(config: {
-    selectedCount: number
-    displayTime: number
-    selectedDifficulty: DifficultyLevel
-    playMode?: 'cooperative' | 'competitive'
-  }): SorobanQuizState {
+  getInitialState(config: MemoryQuizGameConfig): SorobanQuizState {
     return {
       cards: [],
       quizCards: [],

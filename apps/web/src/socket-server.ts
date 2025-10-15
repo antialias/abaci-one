@@ -15,6 +15,7 @@ import { getRoomMembers, getUserRooms, setMemberOnline } from './lib/arcade/room
 import { getRoomActivePlayers, getRoomPlayerIds } from './lib/arcade/player-manager'
 import type { GameMove, GameName } from './lib/arcade/validation'
 import { getValidator } from './lib/arcade/validation'
+import { getGameConfig } from './lib/arcade/game-config-helpers'
 
 // Use globalThis to store socket.io instance to avoid module isolation issues
 // This ensures the same instance is accessible across dynamic imports
@@ -81,29 +82,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               const validator = getValidator(room.gameName as GameName)
               console.log('[join-arcade-session] Got validator for:', room.gameName)
 
-              // Different games have different initial configs
-              let initialState: any
-              if (room.gameName === 'matching') {
-                // Access nested gameConfig: { matching: { gameType, difficulty, turnTimer } }
-                const matchingConfig = (room.gameConfig as any)?.matching || {}
-                initialState = validator.getInitialState({
-                  difficulty: matchingConfig.difficulty || 6,
-                  gameType: matchingConfig.gameType || 'abacus-numeral',
-                  turnTimer: matchingConfig.turnTimer || 30,
-                })
-              } else if (room.gameName === 'memory-quiz') {
-                // Access nested gameConfig: { 'memory-quiz': { selectedCount, displayTime, selectedDifficulty, playMode } }
-                const memoryQuizConfig = (room.gameConfig as any)?.['memory-quiz'] || {}
-                initialState = validator.getInitialState({
-                  selectedCount: memoryQuizConfig.selectedCount || 5,
-                  displayTime: memoryQuizConfig.displayTime || 2.0,
-                  selectedDifficulty: memoryQuizConfig.selectedDifficulty || 'easy',
-                  playMode: memoryQuizConfig.playMode || 'cooperative',
-                })
-              } else {
-                // Fallback for other games
-                initialState = validator.getInitialState(room.gameConfig || {})
-              }
+              // Get game-specific config from database (type-safe)
+              const gameConfig = await getGameConfig(roomId, room.gameName as GameName)
+              const initialState = validator.getInitialState(gameConfig)
 
               session = await createArcadeSession({
                 userId,
