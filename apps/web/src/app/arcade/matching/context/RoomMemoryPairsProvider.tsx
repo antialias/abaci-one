@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useMemo } from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
-import { useRoomData } from '@/hooks/useRoomData'
+import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
@@ -255,7 +255,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     if (!gameConfig) return initialState
 
     // Get settings for this specific game (matching)
-    const savedConfig = gameConfig['matching'] as Record<string, any> | null | undefined
+    const savedConfig = gameConfig.matching as Record<string, any> | null | undefined
     if (!savedConfig) return initialState
 
     return {
@@ -527,7 +527,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       // Save setting to room's gameConfig for persistence
       if (roomData?.id) {
         const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
-        const currentMatchingConfig = (currentGameConfig['matching'] as Record<string, any>) || {}
+        const currentMatchingConfig = (currentGameConfig.matching as Record<string, any>) || {}
 
         const updatedConfig = {
           ...currentGameConfig,
@@ -558,7 +558,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       // Save setting to room's gameConfig for persistence
       if (roomData?.id) {
         const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
-        const currentMatchingConfig = (currentGameConfig['matching'] as Record<string, any>) || {}
+        const currentMatchingConfig = (currentGameConfig.matching as Record<string, any>) || {}
 
         const updatedConfig = {
           ...currentGameConfig,
@@ -589,7 +589,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       // Save setting to room's gameConfig for persistence
       if (roomData?.id) {
         const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
-        const currentMatchingConfig = (currentGameConfig['matching'] as Record<string, any>) || {}
+        const currentMatchingConfig = (currentGameConfig.matching as Record<string, any>) || {}
 
         const updatedConfig = {
           ...currentGameConfig,
