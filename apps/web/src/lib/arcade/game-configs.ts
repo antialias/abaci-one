@@ -10,13 +10,14 @@
  */
 
 import type { DifficultyLevel } from '@/app/arcade/memory-quiz/types'
+import type { Difficulty, GameType } from '@/app/games/matching/context/types'
 
 /**
  * Configuration for matching (memory pairs) game
  */
 export interface MatchingGameConfig {
-  gameType: 'abacus-numeral' | 'complement-pairs'
-  difficulty: number
+  gameType: GameType
+  difficulty: Difficulty
   turnTimer: number
 }
 

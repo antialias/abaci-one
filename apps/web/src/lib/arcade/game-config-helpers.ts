@@ -79,7 +79,7 @@ export async function setGameConfig<T extends GameName>(
 
   if (existing) {
     // Update existing config (merge with existing values)
-    const mergedConfig = { ...existing.config, ...config }
+    const mergedConfig = { ...(existing.config as object), ...config }
     await db
       .update(schema.roomGameConfigs)
       .set({
@@ -113,7 +113,10 @@ export async function updateGameConfigField<
   T extends GameName,
   K extends keyof GameConfigByName[T],
 >(roomId: string, gameName: T, field: K, value: GameConfigByName[T][K]): Promise<void> {
-  await setGameConfig(roomId, gameName, { [field]: value } as Partial<GameConfigByName[T]>)
+  // Create a partial config with just the field being updated
+  const partialConfig: Partial<GameConfigByName[T]> = {} as any
+  ;(partialConfig as any)[field] = value
+  await setGameConfig(roomId, gameName, partialConfig)
 }
 
 /**
