@@ -52,7 +52,7 @@ export function PlayerConfigDialog({ playerId, onClose }: PlayerConfigDialogProp
   const handleGenerateNewName = () => {
     const allPlayers = Array.from(players.values())
     const existingNames = allPlayers.filter((p) => p.id !== playerId).map((p) => p.name)
-    const newName = generateUniquePlayerName(existingNames)
+    const newName = generateUniquePlayerName(existingNames, player.emoji)
 
     setLocalName(newName)
     updatePlayer(playerId, { name: newName })

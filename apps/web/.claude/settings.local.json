@@ -70,7 +70,10 @@
       "Bash(lsof:*)",
       "Bash(killall:*)",
       "Bash(echo:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(timeout 30 npm run dev)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []

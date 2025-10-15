@@ -11,7 +11,7 @@ import {
 } from '@/hooks/useUserPlayers'
 import { useViewerId } from '@/hooks/useViewerId'
 import { getNextPlayerColor } from '../types/player'
-import { generateUniquePlayerName, generateUniquePlayerNames } from '../utils/playerNames'
+import { generateUniquePlayerName } from '../utils/playerNames'
 
 // Client-side Player type (compatible with old type)
 export interface Player {
@@ -141,8 +141,13 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading && !isInitialized) {
       if (dbPlayers.length === 0) {
-        // Generate unique names for default players
-        const generatedNames = generateUniquePlayerNames(DEFAULT_PLAYER_CONFIGS.length)
+        // Generate unique names for default players, themed by their emoji
+        const existingNames: string[] = []
+        const generatedNames = DEFAULT_PLAYER_CONFIGS.map((config) => {
+          const name = generateUniquePlayerName(existingNames, config.emoji)
+          existingNames.push(name)
+          return name
+        })
 
         // Create default players with generated names
         DEFAULT_PLAYER_CONFIGS.forEach((config, index) => {
@@ -167,10 +172,11 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
   const addPlayer = (playerData?: Partial<Player>) => {
     const playerList = Array.from(players.values())
     const existingNames = playerList.map((p) => p.name)
+    const emoji = playerData?.emoji ?? '🎮'
 
     const newPlayer = {
-      name: playerData?.name ?? generateUniquePlayerName(existingNames),
-      emoji: playerData?.emoji ?? '🎮',
+      name: playerData?.name ?? generateUniquePlayerName(existingNames, emoji),
+      emoji,
       color: playerData?.color ?? getNextPlayerColor(playerList),
       isActive: playerData?.isActive ?? false,
     }
@@ -254,8 +260,13 @@ export function GameModeProvider({ children }: { children: ReactNode }) {
       deletePlayer(player.id)
     })
 
-    // Generate unique names for default players
-    const generatedNames = generateUniquePlayerNames(DEFAULT_PLAYER_CONFIGS.length)
+    // Generate unique names for default players, themed by their emoji
+    const existingNames: string[] = []
+    const generatedNames = DEFAULT_PLAYER_CONFIGS.map((config) => {
+      const name = generateUniquePlayerName(existingNames, config.emoji)
+      existingNames.push(name)
+      return name
+    })
 
     // Create default players with generated names
     DEFAULT_PLAYER_CONFIGS.forEach((config, index) => {

@@ -1,8 +1,19 @@
 /**
  * Fun automatic player name generation system
  * Generates creative names by combining adjectives with nouns/roles
+ *
+ * Supports avatar-specific theming! Each emoji can have its own personality-matched words.
+ * Falls back gracefully: emoji-specific → category → generic abacus theme
  */
 
+import {
+  EMOJI_SPECIFIC_WORDS,
+  EMOJI_TO_THEME,
+  THEMED_WORD_LISTS,
+  type ThemedWordList,
+} from './themedWords'
+
+// Generic abacus-themed words (used as ultimate fallback)
 const ADJECTIVES = [
   // Abacus-themed adjectives
   'Ancient',
@@ -114,32 +125,115 @@ const NOUNS = [
 ]
 
 /**
- * Generate a random player name by combining an adjective and noun
+ * Get themed word list for an emoji avatar using probabilistic tier selection
+ * Strongly prefers emoji-specific (70%), then category (20%), then global (10%)
+ * This adds variety while maintaining personality-matched theming
  */
-export function generatePlayerName(): string {
-  const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
+function getThemedWordsForEmoji(emoji: string): ThemedWordList {
+  // Collect available tiers
+  const availableTiers: Array<{ weight: number; words: ThemedWordList }> = []
+
+  // Emoji-specific tier (70% preference)
+  const emojiSpecific = EMOJI_SPECIFIC_WORDS[emoji]
+  if (emojiSpecific) {
+    availableTiers.push({ weight: 70, words: emojiSpecific })
+  }
+
+  // Category tier (20% preference)
+  const category = EMOJI_TO_THEME[emoji]
+  if (category) {
+    const categoryTheme = THEMED_WORD_LISTS[category]
+    if (categoryTheme) {
+      availableTiers.push({ weight: 20, words: categoryTheme })
+    }
+  }
+
+  // Global abacus tier (10% preference)
+  availableTiers.push({ weight: 10, words: { adjectives: ADJECTIVES, nouns: NOUNS } })
+
+  // Weighted random selection
+  const totalWeight = availableTiers.reduce((sum, tier) => sum + tier.weight, 0)
+  let random = Math.random() * totalWeight
+
+  for (const tier of availableTiers) {
+    random -= tier.weight
+    if (random <= 0) {
+      return tier.words
+    }
+  }
+
+  // Fallback (should never reach here)
+  return { adjectives: ADJECTIVES, nouns: NOUNS }
+}
+
+/**
+ * Generate a random player name by combining an adjective and noun
+ * Optionally themed based on avatar emoji for ultra-personalized names!
+ * Uses probabilistic tier selection and cross-tier mixing for abacus flavor
+ *
+ * @param emoji - Optional emoji avatar to theme the name around
+ * @returns A creative player name like "Grinning Calculator" or "Lightning Abacist"
+ */
+export function generatePlayerName(emoji?: string): string {
+  if (!emoji) {
+    // No emoji provided, use pure abacus theme
+    const adjective = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+    const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
+    return `${adjective} ${noun}`
+  }
+
+  // Get themed words using probabilistic tier selection
+  const themedWords = getThemedWordsForEmoji(emoji)
+  const abacusWords = { adjectives: ADJECTIVES, nouns: NOUNS }
+
+  // 60% chance: Use themed words for both adjective and noun
+  // 30% chance: Mix themed adjective with abacus noun (infuses abacus flavor)
+  // 10% chance: Mix abacus adjective with themed noun (infuses abacus flavor)
+  const mixStrategy = Math.random()
+
+  let adjective: string
+  let noun: string
+
+  if (mixStrategy < 0.6) {
+    // Pure themed
+    adjective = themedWords.adjectives[Math.floor(Math.random() * themedWords.adjectives.length)]
+    noun = themedWords.nouns[Math.floor(Math.random() * themedWords.nouns.length)]
+  } else if (mixStrategy < 0.9) {
+    // Themed adjective + abacus noun
+    adjective = themedWords.adjectives[Math.floor(Math.random() * themedWords.adjectives.length)]
+    noun = abacusWords.nouns[Math.floor(Math.random() * abacusWords.nouns.length)]
+  } else {
+    // Abacus adjective + themed noun
+    adjective = abacusWords.adjectives[Math.floor(Math.random() * abacusWords.adjectives.length)]
+    noun = themedWords.nouns[Math.floor(Math.random() * themedWords.nouns.length)]
+  }
+
   return `${adjective} ${noun}`
 }
 
 /**
  * Generate a unique player name that doesn't conflict with existing players
  * @param existingNames - Array of names already in use
+ * @param emoji - Optional emoji avatar to theme the name around
  * @param maxAttempts - Maximum attempts to find a unique name (default: 50)
  * @returns A unique player name
  */
-export function generateUniquePlayerName(existingNames: string[], maxAttempts = 50): string {
+export function generateUniquePlayerName(
+  existingNames: string[],
+  emoji?: string,
+  maxAttempts = 50
+): string {
   const existingNamesSet = new Set(existingNames.map((name) => name.toLowerCase()))
 
   for (let i = 0; i < maxAttempts; i++) {
-    const name = generatePlayerName()
+    const name = generatePlayerName(emoji)
     if (!existingNamesSet.has(name.toLowerCase())) {
       return name
     }
   }
 
   // Fallback: if we can't find a unique name, append a number
-  const baseName = generatePlayerName()
+  const baseName = generatePlayerName(emoji)
   let counter = 1
   while (existingNamesSet.has(`${baseName} ${counter}`.toLowerCase())) {
     counter++
@@ -150,12 +244,13 @@ export function generateUniquePlayerName(existingNames: string[], maxAttempts = 
 /**
  * Generate a batch of unique player names
  * @param count - Number of names to generate
+ * @param emoji - Optional emoji avatar to theme the names around
  * @returns Array of unique player names
  */
-export function generateUniquePlayerNames(count: number): string[] {
+export function generateUniquePlayerNames(count: number, emoji?: string): string[] {
   const names: string[] = []
   for (let i = 0; i < count; i++) {
-    const name = generateUniquePlayerName(names)
+    const name = generateUniquePlayerName(names, emoji)
     names.push(name)
   }
   return names

@@ -47,7 +47,7 @@ describe('playerNames', () => {
     it('should append number if all combinations are exhausted', () => {
       // Create a mock with limited attempts
       const existingNames = ['Swift Ninja']
-      const name = generateUniquePlayerName(existingNames, 1)
+      const name = generateUniquePlayerName(existingNames, undefined, 1)
 
       // Should either be unique or have a number appended
       expect(name).toBeTruthy()
