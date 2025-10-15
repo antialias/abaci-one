@@ -252,19 +252,39 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   // Settings are scoped by game name to preserve settings when switching games
   const mergedInitialState = useMemo(() => {
     const gameConfig = roomData?.gameConfig as Record<string, any> | null | undefined
-    if (!gameConfig) return initialState
+    console.log('[RoomMemoryPairsProvider] Loading settings from database:', {
+      gameConfig,
+      roomId: roomData?.id,
+    })
+
+    if (!gameConfig) {
+      console.log('[RoomMemoryPairsProvider] No gameConfig, using initialState')
+      return initialState
+    }
 
     // Get settings for this specific game (matching)
     const savedConfig = gameConfig.matching as Record<string, any> | null | undefined
-    if (!savedConfig) return initialState
+    console.log('[RoomMemoryPairsProvider] Saved config for matching:', savedConfig)
 
-    return {
+    if (!savedConfig) {
+      console.log('[RoomMemoryPairsProvider] No saved config for matching, using initialState')
+      return initialState
+    }
+
+    const merged = {
       ...initialState,
       // Restore settings from saved config
       gameType: savedConfig.gameType ?? initialState.gameType,
       difficulty: savedConfig.difficulty ?? initialState.difficulty,
       turnTimer: savedConfig.turnTimer ?? initialState.turnTimer,
     }
+    console.log('[RoomMemoryPairsProvider] Merged state:', {
+      gameType: merged.gameType,
+      difficulty: merged.difficulty,
+      turnTimer: merged.turnTimer,
+    })
+
+    return merged
   }, [roomData?.gameConfig])
 
   // Arcade session integration WITH room sync
@@ -515,6 +535,8 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
 
   const setGameType = useCallback(
     (gameType: typeof state.gameType) => {
+      console.log('[RoomMemoryPairsProvider] setGameType called:', gameType)
+
       // Use first active player as playerId, or empty string if none
       const playerId = activePlayers[0] || ''
       sendMove({
@@ -536,10 +558,16 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
             gameType,
           },
         }
+        console.log('[RoomMemoryPairsProvider] Saving gameType to database:', {
+          roomId: roomData.id,
+          updatedConfig,
+        })
         updateGameConfig({
           roomId: roomData.id,
           gameConfig: updatedConfig,
         })
+      } else {
+        console.warn('[RoomMemoryPairsProvider] Cannot save gameType - no roomData.id')
       }
     },
     [activePlayers, sendMove, viewerId, roomData?.id, roomData?.gameConfig, updateGameConfig]
@@ -547,6 +575,8 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
 
   const setDifficulty = useCallback(
     (difficulty: typeof state.difficulty) => {
+      console.log('[RoomMemoryPairsProvider] setDifficulty called:', difficulty)
+
       const playerId = activePlayers[0] || ''
       sendMove({
         type: 'SET_CONFIG',
@@ -567,10 +597,16 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
             difficulty,
           },
         }
+        console.log('[RoomMemoryPairsProvider] Saving difficulty to database:', {
+          roomId: roomData.id,
+          updatedConfig,
+        })
         updateGameConfig({
           roomId: roomData.id,
           gameConfig: updatedConfig,
         })
+      } else {
+        console.warn('[RoomMemoryPairsProvider] Cannot save difficulty - no roomData.id')
       }
     },
     [activePlayers, sendMove, viewerId, roomData?.id, roomData?.gameConfig, updateGameConfig]
@@ -578,6 +614,8 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
 
   const setTurnTimer = useCallback(
     (turnTimer: typeof state.turnTimer) => {
+      console.log('[RoomMemoryPairsProvider] setTurnTimer called:', turnTimer)
+
       const playerId = activePlayers[0] || ''
       sendMove({
         type: 'SET_CONFIG',
@@ -598,10 +636,16 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
             turnTimer,
           },
         }
+        console.log('[RoomMemoryPairsProvider] Saving turnTimer to database:', {
+          roomId: roomData.id,
+          updatedConfig,
+        })
         updateGameConfig({
           roomId: roomData.id,
           gameConfig: updatedConfig,
         })
+      } else {
+        console.warn('[RoomMemoryPairsProvider] Cannot save turnTimer - no roomData.id')
       }
     },
     [activePlayers, sendMove, viewerId, roomData?.id, roomData?.gameConfig, updateGameConfig]
