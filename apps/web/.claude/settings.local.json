@@ -68,7 +68,8 @@
       "Bash(python3:*)",
       "Bash(git reset:*)",
       "Bash(lsof:*)",
-      "Bash(killall:*)"
+      "Bash(killall:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []

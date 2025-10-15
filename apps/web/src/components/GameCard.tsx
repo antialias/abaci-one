@@ -23,10 +23,23 @@ export function GameCard({ gameType, config, variant = 'detailed', className }: 
   }
 
   const handleGameClick = () => {
+    console.log(`[GameCard] Clicked on ${config.name}:`, {
+      activePlayerCount,
+      maxPlayers: config.maxPlayers,
+      isGameAvailable: isGameAvailable(),
+      configAvailable: config.available,
+      willNavigate: isGameAvailable() && config.available !== false,
+      url: config.url,
+    })
+
     if (isGameAvailable() && config.available !== false) {
       console.log('🔄 GameCard: Navigating with Next.js router (no page reload)')
       // Use Next.js router for client-side navigation - this preserves fullscreen!
       router.push(config.url)
+    } else {
+      console.warn('❌ GameCard: Navigation blocked', {
+        reason: !isGameAvailable() ? 'Player count mismatch' : 'Game not available',
+      })
     }
   }
 

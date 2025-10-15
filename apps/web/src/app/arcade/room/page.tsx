@@ -14,7 +14,7 @@ import { css } from '../../../../styled-system/css'
 // Map GameType keys to internal game names
 const GAME_TYPE_TO_NAME: Record<GameType, string> = {
   'battle-arena': 'matching',
-  'memory-lightning': 'memory-quiz',
+  'memory-quiz': 'memory-quiz',
   'complement-race': 'complement-race',
   'master-organizer': 'master-organizer',
 }
