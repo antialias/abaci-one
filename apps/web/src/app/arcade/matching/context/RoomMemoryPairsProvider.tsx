@@ -240,6 +240,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useViewerId()
   const { roomData } = useRoomData() // Fetch room data for room-based play
   const { activePlayerCount, activePlayers: activePlayerIds, players } = useGameMode()
+  const { mutate: updateGameConfig } = useUpdateGameConfig()
 
   // Get active player IDs directly as strings (UUIDs)
   const activePlayers = Array.from(activePlayerIds)
@@ -247,8 +248,24 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   // Derive game mode from active player count
   const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'
 
-  // NO LOCAL STATE - Configuration lives in session state
-  // Changes are sent as moves and synchronized across all room members
+  // Merge saved game config from room with initialState
+  // Settings are scoped by game name to preserve settings when switching games
+  const mergedInitialState = useMemo(() => {
+    const gameConfig = roomData?.gameConfig as Record<string, any> | null | undefined
+    if (!gameConfig) return initialState
+
+    // Get settings for this specific game (matching)
+    const savedConfig = gameConfig['matching'] as Record<string, any> | null | undefined
+    if (!savedConfig) return initialState
+
+    return {
+      ...initialState,
+      // Restore settings from saved config
+      gameType: savedConfig.gameType ?? initialState.gameType,
+      difficulty: savedConfig.difficulty ?? initialState.difficulty,
+      turnTimer: savedConfig.turnTimer ?? initialState.turnTimer,
+    }
+  }, [roomData?.gameConfig])
 
   // Arcade session integration WITH room sync
   const {
@@ -259,7 +276,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   } = useArcadeSession<MemoryPairsState>({
     userId: viewerId || '',
     roomId: roomData?.id, // CRITICAL: Pass roomId for network sync across room members
-    initialState,
+    initialState: mergedInitialState,
     applyMove: applyMoveOptimistically,
   })
 
@@ -506,8 +523,26 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
         userId: viewerId || '',
         data: { field: 'gameType', value: gameType },
       })
+
+      // Save setting to room's gameConfig for persistence
+      if (roomData?.id) {
+        const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
+        const currentMatchingConfig = (currentGameConfig['matching'] as Record<string, any>) || {}
+
+        const updatedConfig = {
+          ...currentGameConfig,
+          matching: {
+            ...currentMatchingConfig,
+            gameType,
+          },
+        }
+        updateGameConfig({
+          roomId: roomData.id,
+          gameConfig: updatedConfig,
+        })
+      }
     },
-    [activePlayers, sendMove, viewerId]
+    [activePlayers, sendMove, viewerId, roomData?.id, roomData?.gameConfig, updateGameConfig]
   )
 
   const setDifficulty = useCallback(
@@ -519,8 +554,26 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
         userId: viewerId || '',
         data: { field: 'difficulty', value: difficulty },
       })
+
+      // Save setting to room's gameConfig for persistence
+      if (roomData?.id) {
+        const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
+        const currentMatchingConfig = (currentGameConfig['matching'] as Record<string, any>) || {}
+
+        const updatedConfig = {
+          ...currentGameConfig,
+          matching: {
+            ...currentMatchingConfig,
+            difficulty,
+          },
+        }
+        updateGameConfig({
+          roomId: roomData.id,
+          gameConfig: updatedConfig,
+        })
+      }
     },
-    [activePlayers, sendMove, viewerId]
+    [activePlayers, sendMove, viewerId, roomData?.id, roomData?.gameConfig, updateGameConfig]
   )
 
   const setTurnTimer = useCallback(
@@ -532,8 +585,26 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
         userId: viewerId || '',
         data: { field: 'turnTimer', value: turnTimer },
       })
+
+      // Save setting to room's gameConfig for persistence
+      if (roomData?.id) {
+        const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
+        const currentMatchingConfig = (currentGameConfig['matching'] as Record<string, any>) || {}
+
+        const updatedConfig = {
+          ...currentGameConfig,
+          matching: {
+            ...currentMatchingConfig,
+            turnTimer,
+          },
+        }
+        updateGameConfig({
+          roomId: roomData.id,
+          gameConfig: updatedConfig,
+        })
+      }
     },
-    [activePlayers, sendMove, viewerId]
+    [activePlayers, sendMove, viewerId, roomData?.id, roomData?.gameConfig, updateGameConfig]
   )
 
   const goToSetup = useCallback(() => {
