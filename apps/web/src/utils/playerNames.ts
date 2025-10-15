@@ -6,11 +6,7 @@
  * Falls back gracefully: emoji-specific → category → generic abacus theme
  */
 
-import {
-  EMOJI_SPECIFIC_WORDS,
-  EMOJI_TO_THEME,
-  THEMED_WORD_LISTS,
-} from './themedWords'
+import { EMOJI_SPECIFIC_WORDS, EMOJI_TO_THEME, THEMED_WORD_LISTS } from './themedWords'
 
 // Generic abacus-themed words (used as ultimate fallback)
 const ADJECTIVES = [
@@ -125,29 +121,29 @@ const NOUNS = [
 
 /**
  * Select a word list tier using weighted random selection
- * Strongly prefers emoji-specific (70%), then category (20%), then global (10%)
+ * Balanced mix: emoji-specific (50%), category (25%), global abacus (25%)
  */
 function selectWordListTier(emoji: string, wordType: 'adjectives' | 'nouns'): string[] {
   // Collect available tiers
   const availableTiers: Array<{ weight: number; words: string[] }> = []
 
-  // Emoji-specific tier (70% preference)
+  // Emoji-specific tier (50% preference)
   const emojiSpecific = EMOJI_SPECIFIC_WORDS[emoji]
   if (emojiSpecific) {
-    availableTiers.push({ weight: 70, words: emojiSpecific[wordType] })
+    availableTiers.push({ weight: 50, words: emojiSpecific[wordType] })
   }
 
-  // Category tier (20% preference)
+  // Category tier (25% preference)
   const category = EMOJI_TO_THEME[emoji]
   if (category) {
     const categoryTheme = THEMED_WORD_LISTS[category]
     if (categoryTheme) {
-      availableTiers.push({ weight: 20, words: categoryTheme[wordType] })
+      availableTiers.push({ weight: 25, words: categoryTheme[wordType] })
     }
   }
 
-  // Global abacus tier (10% preference)
-  availableTiers.push({ weight: 10, words: wordType === 'adjectives' ? ADJECTIVES : NOUNS })
+  // Global abacus tier (25% preference)
+  availableTiers.push({ weight: 25, words: wordType === 'adjectives' ? ADJECTIVES : NOUNS })
 
   // Weighted random selection
   const totalWeight = availableTiers.reduce((sum, tier) => sum + tier.weight, 0)
