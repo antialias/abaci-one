@@ -92,12 +92,13 @@ export function initializeSocketServer(httpServer: HTTPServer) {
                   turnTimer: matchingConfig.turnTimer || 30,
                 })
               } else if (room.gameName === 'memory-quiz') {
-                // Access nested gameConfig: { 'memory-quiz': { selectedCount, displayTime, selectedDifficulty } }
+                // Access nested gameConfig: { 'memory-quiz': { selectedCount, displayTime, selectedDifficulty, playMode } }
                 const memoryQuizConfig = (room.gameConfig as any)?.['memory-quiz'] || {}
                 initialState = validator.getInitialState({
                   selectedCount: memoryQuizConfig.selectedCount || 5,
                   displayTime: memoryQuizConfig.displayTime || 2.0,
                   selectedDifficulty: memoryQuizConfig.selectedDifficulty || 'easy',
+                  playMode: memoryQuizConfig.playMode || 'cooperative',
                 })
               } else {
                 // Fallback for other games
