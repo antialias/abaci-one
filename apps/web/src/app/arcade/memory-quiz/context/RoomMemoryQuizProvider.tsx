@@ -210,36 +210,19 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
   // Settings are scoped by game name to preserve settings when switching games
   const mergedInitialState = useMemo(() => {
     const gameConfig = roomData?.gameConfig as Record<string, any> | null | undefined
-    console.log(
-      '[RoomMemoryQuizProvider] Initializing - Full roomData.gameConfig:',
-      JSON.stringify(gameConfig, null, 2)
-    )
 
     if (!gameConfig) {
-      console.log(
-        '[RoomMemoryQuizProvider] No gameConfig, using initialState with playMode:',
-        initialState.playMode
-      )
       return initialState
     }
 
     // Get settings for this specific game (memory-quiz)
     const savedConfig = gameConfig['memory-quiz'] as Record<string, any> | null | undefined
-    console.log(
-      '[RoomMemoryQuizProvider] Extracted memory-quiz config:',
-      JSON.stringify(savedConfig, null, 2)
-    )
-    console.log('[RoomMemoryQuizProvider] savedConfig.playMode value:', savedConfig?.playMode)
 
     if (!savedConfig) {
-      console.log(
-        '[RoomMemoryQuizProvider] No saved config for memory-quiz, using initialState with playMode:',
-        initialState.playMode
-      )
       return initialState
     }
 
-    const merged = {
+    return {
       ...initialState,
       // Restore settings from saved config
       selectedCount: savedConfig.selectedCount ?? initialState.selectedCount,
@@ -247,22 +230,6 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
       selectedDifficulty: savedConfig.selectedDifficulty ?? initialState.selectedDifficulty,
       playMode: savedConfig.playMode ?? initialState.playMode,
     }
-    console.log(
-      '[RoomMemoryQuizProvider] Merged state:',
-      JSON.stringify(
-        {
-          selectedCount: merged.selectedCount,
-          displayTime: merged.displayTime,
-          selectedDifficulty: merged.selectedDifficulty,
-          playMode: merged.playMode,
-        },
-        null,
-        2
-      )
-    )
-    console.log('[RoomMemoryQuizProvider] Final merged.playMode:', merged.playMode)
-
-    return merged
   }, [roomData?.gameConfig])
 
   // Arcade session integration WITH room sync
@@ -420,26 +387,19 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
       // Settings are scoped by game name to preserve settings when switching games
       if (roomData?.id) {
         const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
-        console.log('[RoomMemoryQuizProvider] Current gameConfig:', currentGameConfig)
-
         const currentMemoryQuizConfig =
           (currentGameConfig['memory-quiz'] as Record<string, any>) || {}
-        console.log('[RoomMemoryQuizProvider] Current memory-quiz config:', currentMemoryQuizConfig)
 
-        const updatedConfig = {
-          ...currentGameConfig,
-          'memory-quiz': {
-            ...currentMemoryQuizConfig,
-            [field]: value,
-          },
-        }
-        console.log('[RoomMemoryQuizProvider] Saving updated gameConfig:', updatedConfig)
         updateGameConfig({
           roomId: roomData.id,
-          gameConfig: updatedConfig,
+          gameConfig: {
+            ...currentGameConfig,
+            'memory-quiz': {
+              ...currentMemoryQuizConfig,
+              [field]: value,
+            },
+          },
         })
-      } else {
-        console.warn('[RoomMemoryQuizProvider] No roomData.id, cannot save config')
       }
     },
     [viewerId, sendMove, roomData?.id, roomData?.gameConfig, updateGameConfig]

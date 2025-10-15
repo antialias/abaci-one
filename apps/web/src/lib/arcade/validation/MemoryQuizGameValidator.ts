@@ -180,12 +180,6 @@ export class MemoryQuizGameValidator
     }
 
     // Number must be in correct answers
-    console.log('[MemoryQuizValidator] Checking number:', {
-      number,
-      correctAnswers: state.correctAnswers,
-      includes: state.correctAnswers.includes(number),
-    })
-
     if (!state.correctAnswers.includes(number)) {
       return {
         valid: false,
@@ -407,12 +401,7 @@ export class MemoryQuizGameValidator
     selectedDifficulty: DifficultyLevel
     playMode?: 'cooperative' | 'competitive'
   }): SorobanQuizState {
-    console.log(
-      '[MemoryQuizValidator] getInitialState called with config:',
-      JSON.stringify(config, null, 2)
-    )
-
-    const initialState: SorobanQuizState = {
+    return {
       cards: [],
       quizCards: [],
       correctAnswers: [],
@@ -439,9 +428,6 @@ export class MemoryQuizGameValidator
       testingMode: false,
       showOnScreenKeyboard: false,
     }
-
-    console.log('[MemoryQuizValidator] getInitialState returning playMode:', initialState.playMode)
-    return initialState
   }
 }
 

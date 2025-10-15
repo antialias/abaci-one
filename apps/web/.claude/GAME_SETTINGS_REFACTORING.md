@@ -303,23 +303,171 @@ if (body.gameConfig !== undefined) {
 }
 ```
 
+## Schema Refactoring: Separate Table for Game Configs
+
+### Current Problem
+
+All game configs are stored in a single JSON column in `arcade_rooms.gameConfig`:
+
+```json
+{
+  "matching": { "gameType": "...", "difficulty": 15 },
+  "memory-quiz": { "selectedCount": 8, "playMode": "competitive" }
+}
+```
+
+**Issues:**
+- No schema validation
+- Inefficient updates (read/parse/modify/serialize entire blob)
+- Grows without bounds as more games added
+- Can't query or index individual game settings
+- No audit trail
+- Potential concurrent update race conditions
+
+### Recommended: Separate Table
+
+Create `room_game_configs` table with one row per game per room:
+
+```typescript
+// src/db/schema/room-game-configs.ts
+
+export const roomGameConfigs = sqliteTable('room_game_configs', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  roomId: text('room_id')
+    .notNull()
+    .references(() => arcadeRooms.id, { onDelete: 'cascade' }),
+  gameName: text('game_name', {
+    enum: ['matching', 'memory-quiz', 'complement-race'],
+  }).notNull(),
+  config: text('config', { mode: 'json' }).notNull(), // Game-specific JSON
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => ({
+  uniqueRoomGame: uniqueIndex('room_game_idx').on(table.roomId, table.gameName),
+}))
+```
+
+**Benefits:**
+- ✅ Smaller rows (only configs for games that have been used)
+- ✅ Easier updates (single row, not entire JSON blob)
+- ✅ Can track updatedAt per game
+- ✅ Better concurrency (no lock contention between games)
+- ✅ Foundation for future audit trail
+
+**Migration Strategy:**
+1. Create new table
+2. Migrate existing data from `arcade_rooms.gameConfig`
+3. Update all config read/write code
+4. Deploy and test
+5. Drop old `gameConfig` column from `arcade_rooms`
+
+See migration SQL below.
+
 ## Implementation Priority
 
-1. **HIGH:** Create shared config types (`game-configs.ts`) - Prevents type mismatches
-2. **HIGH:** Create helper functions (`game-config-helpers.ts`) - Reduces duplication
-3. **MEDIUM:** Update validators to use shared types - Enforces consistency
-4. **MEDIUM:** Add exhaustiveness checking - Catches missing fields at compile time
-5. **LOW:** Add runtime validation - Prevents invalid data from being saved
+### Phase 1: Schema Migration (HIGHEST PRIORITY)
+1. **Create new table** - Add `room_game_configs` schema
+2. **Create migration** - SQL to migrate existing data
+3. **Update helper functions** - Adapt to new table structure
+4. **Update all read/write code** - Use new table
+5. **Test thoroughly** - Verify all settings persist correctly
+6. **Drop old column** - Remove `gameConfig` from `arcade_rooms`
+
+### Phase 2: Type Safety (HIGH)
+1. **Create shared config types** (`game-configs.ts`) - Prevents type mismatches
+2. **Create helper functions** (`game-config-helpers.ts`) - Now queries new table
+3. **Update validators** to use shared types - Enforces consistency
+
+### Phase 3: Compile-Time Safety (MEDIUM)
+1. **Add exhaustiveness checking** - Catches missing fields at compile time
+2. **Enforce validator config types** - Use shared types
+
+### Phase 4: Runtime Safety (LOW)
+1. **Add runtime validation** - Prevents invalid data from being saved
+
+## Detailed Migration SQL
+
+```sql
+-- drizzle/migrations/XXXX_split_game_configs.sql
+
+-- Create new table
+CREATE TABLE room_game_configs (
+  id TEXT PRIMARY KEY,
+  room_id TEXT NOT NULL REFERENCES arcade_rooms(id) ON DELETE CASCADE,
+  game_name TEXT NOT NULL CHECK(game_name IN ('matching', 'memory-quiz', 'complement-race')),
+  config TEXT NOT NULL,  -- JSON
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX room_game_idx ON room_game_configs(room_id, game_name);
+
+-- Migrate existing 'matching' configs
+INSERT INTO room_game_configs (id, room_id, game_name, config, created_at, updated_at)
+SELECT
+  lower(hex(randomblob(16))),
+  id,
+  'matching',
+  json_extract(game_config, '$.matching'),
+  created_at,
+  last_activity
+FROM arcade_rooms
+WHERE json_extract(game_config, '$.matching') IS NOT NULL;
+
+-- Migrate existing 'memory-quiz' configs
+INSERT INTO room_game_configs (id, room_id, game_name, config, created_at, updated_at)
+SELECT
+  lower(hex(randomblob(16))),
+  id,
+  'memory-quiz',
+  json_extract(game_config, '$."memory-quiz"'),
+  created_at,
+  last_activity
+FROM arcade_rooms
+WHERE json_extract(game_config, '$."memory-quiz"') IS NOT NULL;
+
+-- After testing and verifying all works:
+-- ALTER TABLE arcade_rooms DROP COLUMN game_config;
+```
 
 ## Migration Strategy
 
-1. Create new files without modifying existing code
-2. Add shared types and helpers
-3. Migrate validators one at a time
-4. Migrate providers one at a time
-5. Migrate socket server
-6. Remove old inline config reading logic
-7. Add runtime validation last (optional)
+### Step-by-Step with Checkpoints
+
+**Checkpoint 1: Schema & Migration**
+1. Create `src/db/schema/room-game-configs.ts`
+2. Export from `src/db/schema/index.ts`
+3. Generate and apply migration
+4. Verify data migrated correctly
+
+**Checkpoint 2: Helper Functions**
+1. Create shared config types in `src/lib/arcade/game-configs.ts`
+2. Create helper functions in `src/lib/arcade/game-config-helpers.ts`
+3. Add unit tests for helpers
+
+**Checkpoint 3: Update Config Reads**
+1. Update socket-server.ts to read from new table
+2. Update RoomMemoryQuizProvider to read from new table
+3. Update RoomMemoryPairsProvider to read from new table
+4. Test: Load room and verify settings appear
+
+**Checkpoint 4: Update Config Writes**
+1. Update useRoomData.ts updateGameConfig to write to new table
+2. Update settings API to write to new table
+3. Test: Change settings and verify they persist
+
+**Checkpoint 5: Update Validators**
+1. Update validators to use shared config types
+2. Test: All games work correctly
+
+**Checkpoint 6: Cleanup**
+1. Remove old gameConfig column references
+2. Drop gameConfig column from arcade_rooms table
+3. Final testing of all games
 
 ## Benefits Summary
 

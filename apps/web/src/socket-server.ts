@@ -94,35 +94,12 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               } else if (room.gameName === 'memory-quiz') {
                 // Access nested gameConfig: { 'memory-quiz': { selectedCount, displayTime, selectedDifficulty, playMode } }
                 const memoryQuizConfig = (room.gameConfig as any)?.['memory-quiz'] || {}
-                console.log(
-                  '[join-arcade-session] memory-quiz - Full room.gameConfig:',
-                  JSON.stringify(room.gameConfig, null, 2)
-                )
-                console.log(
-                  '[join-arcade-session] memory-quiz - Extracted memoryQuizConfig:',
-                  JSON.stringify(memoryQuizConfig, null, 2)
-                )
-                console.log(
-                  '[join-arcade-session] memory-quiz - playMode from config:',
-                  memoryQuizConfig.playMode
-                )
-
-                const configToPass = {
+                initialState = validator.getInitialState({
                   selectedCount: memoryQuizConfig.selectedCount || 5,
                   displayTime: memoryQuizConfig.displayTime || 2.0,
                   selectedDifficulty: memoryQuizConfig.selectedDifficulty || 'easy',
                   playMode: memoryQuizConfig.playMode || 'cooperative',
-                }
-                console.log(
-                  '[join-arcade-session] memory-quiz - Config being passed to getInitialState:',
-                  JSON.stringify(configToPass, null, 2)
-                )
-
-                initialState = validator.getInitialState(configToPass)
-                console.log(
-                  '[join-arcade-session] memory-quiz - initialState.playMode after getInitialState:',
-                  initialState.playMode
-                )
+                })
               } else {
                 // Fallback for other games
                 initialState = validator.getInitialState(room.gameConfig || {})
@@ -152,17 +129,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               roomId,
               version: session.version,
               sessionUserId: session.userId,
-              gameName: session.currentGame,
             })
-
-            // Log playMode specifically for memory-quiz
-            if (session.currentGame === 'memory-quiz') {
-              console.log(
-                '[join-arcade-session] memory-quiz session - gameState.playMode:',
-                (session.gameState as any).playMode
-              )
-            }
-
             socket.emit('session-state', {
               gameState: session.gameState,
               currentGame: session.currentGame,
