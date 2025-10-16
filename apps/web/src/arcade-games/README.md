@@ -38,12 +38,44 @@ A modular, plugin-based architecture for building multiplayer arcade games with 
 
 ## Architecture
 
+### Key Improvements
+
+**✨ Phase 3: Type Inference (January 2025)**
+
+Config types are now **automatically inferred** from game definitions for modern games. No more manual type definitions!
+
+```typescript
+// Before Phase 3: Manual type definition
+export interface NumberGuesserGameConfig {
+  minNumber: number
+  maxNumber: number
+  roundsToWin: number
+}
+
+// After Phase 3: Inferred from game definition
+export type NumberGuesserGameConfig = InferGameConfig<typeof numberGuesserGame>
+```
+
+**Benefits**:
+- Add a game → Config types automatically available system-wide
+- Single source of truth (the game definition)
+- Eliminates 10-15 lines of boilerplate per game
+
 ### System Components
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│                  Validator Registry                          │
+│  - Server-side validators (isomorphic)                      │
+│  - Single source of truth for game names                    │
+│  - Auto-derived GameName type                               │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
 │                     Game Registry                            │
-│  - Registers all available games                            │
+│  - Client-side game definitions                             │
+│  - React components (Provider, GameComponent)               │
 │  - Provides game discovery                                  │
 └─────────────────────────────────────────────────────────────┘
                             │
@@ -53,18 +85,27 @@ A modular, plugin-based architecture for building multiplayer arcade games with 
 │  - Stable API surface for games                             │
 │  - React hooks (useArcadeSession, useRoomData, etc.)        │
 │  - Type definitions and utilities                           │
+│  - defineGame() helper                                      │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   Individual Games                           │
 │  number-guesser/                                            │
-│    ├── index.ts          (Game definition)                  │
-│    ├── Validator.ts      (Server validation)                │
+│    ├── index.ts          (Game definition + validation)     │
+│    ├── Validator.ts      (Server validation logic)          │
 │    ├── Provider.tsx      (Client state management)          │
 │    ├── GameComponent.tsx (Main UI)                          │
 │    ├── types.ts          (TypeScript types)                 │
 │    └── components/       (Phase UIs)                        │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Type System (NEW)                          │
+│  - Config types inferred from game definitions              │
+│  - GameConfigByName auto-derived                            │
+│  - RoomGameConfig auto-derived                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -130,8 +171,11 @@ interface GameDefinition<TConfig, TState, TMove> {
   GameComponent: GameComponent    // Main UI component
   validator: GameValidator        // Server-side validation
   defaultConfig: TConfig          // Default game settings
+  validateConfig?: (config: unknown) => config is TConfig  // Runtime config validation
 }
 ```
+
+**Key Concept**: The `defaultConfig` property serves as the source of truth for config types. TypeScript can infer the config type from `typeof game.defaultConfig`, eliminating the need for manual type definitions in `game-configs.ts`.
 
 #### GameState
 
@@ -430,14 +474,31 @@ const defaultConfig: MyGameConfig = {
   timer: 30,
 }
 
+// Runtime config validation (optional but recommended)
+function validateMyGameConfig(config: unknown): config is MyGameConfig {
+  return (
+    typeof config === 'object' &&
+    config !== null &&
+    'difficulty' in config &&
+    'timer' in config &&
+    typeof config.difficulty === 'number' &&
+    typeof config.timer === 'number' &&
+    config.difficulty >= 1 &&
+    config.timer >= 10
+  )
+}
+
 export const myGame = defineGame<MyGameConfig, MyGameState, MyGameMove>({
   manifest,
   Provider: MyGameProvider,
   GameComponent,
   validator: myGameValidator,
   defaultConfig,
+  validateConfig: validateMyGameConfig, // Self-contained validation
 })
 ```
+
+**Phase 3 Benefit**: After defining your game, the config type will be automatically inferred in `game-configs.ts`. You don't need to manually add type definitions - just add a type-only import and use `InferGameConfig<typeof myGame>`.
 
 ### Step 7: Register Game
 
@@ -479,6 +540,46 @@ registerGame(myGame)
 - ⚠️  The validator instance doesn't match (different imports)
 
 **Important**: Both steps are required for a working game. The validator registry handles server logic, while the game registry handles client UI.
+
+#### 7c. Add Config Type Inference (Optional but Recommended)
+
+Update `src/lib/arcade/game-configs.ts` to infer your game's config type:
+
+```typescript
+// Add type-only import (won't load React components)
+import type { myGame } from '@/arcade-games/my-game'
+
+// Utility type (already defined)
+type InferGameConfig<T> = T extends { defaultConfig: infer Config } ? Config : never
+
+// Infer your config type
+export type MyGameConfig = InferGameConfig<typeof myGame>
+
+// Add to GameConfigByName
+export type GameConfigByName = {
+  // ... other games
+  'my-game': MyGameConfig  // TypeScript infers the type automatically!
+}
+
+// RoomGameConfig is auto-derived from GameConfigByName
+export type RoomGameConfig = {
+  [K in keyof GameConfigByName]?: GameConfigByName[K]
+}
+
+// Add default config constant
+export const DEFAULT_MY_GAME_CONFIG: MyGameConfig = {
+  difficulty: 1,
+  timer: 30,
+}
+```
+
+**Benefits**:
+- Config type automatically matches your game definition
+- No manual type definition needed
+- Single source of truth (your game's `defaultConfig`)
+- TypeScript will error if you reference undefined properties
+
+**Note**: You still need to manually add the default config constant. This is a small amount of duplication but necessary for server-side code that can't import the full game definition.
 
 ---
 
