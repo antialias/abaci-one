@@ -86,7 +86,10 @@
       "Bash(do sed -i '' \"s|from ''../context/MemoryPairsContext''|from ''../Provider''|g\" \"$file\")",
       "Bash(do sed -i '' \"s|from ''../../../../../styled-system/css''|from ''@/styled-system/css''|g\" \"$file\")",
       "Bash(tee:*)",
-      "Bash(do sed -i '' \"s|from ''@/styled-system/css''|from ''../../../../styled-system/css''|g\" \"$file\")"
+      "Bash(do sed -i '' \"s|from ''@/styled-system/css''|from ''../../../../styled-system/css''|g\" \"$file\")",
+      "Bash(do echo \"=== $game ===\" echo \"Required files:\" ls -1 src/arcade-games/$game/)",
+      "Bash(do echo \"=== $game%/ ===\")",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

@@ -7,15 +7,18 @@ import type { ReactNode } from 'react'
 import type { GameManifest } from '../manifest-schema'
 import type {
   GameMove as BaseGameMove,
-  GameValidator as BaseGameValidator,
-  ValidationContext,
-  ValidationResult,
+  GameValidator,
 } from '../validation/types'
 
 /**
  * Re-export base validation types from arcade system
  */
-export type { GameMove, ValidationContext, ValidationResult } from '../validation/types'
+export type {
+  GameMove,
+  GameValidator,
+  ValidationContext,
+  ValidationResult,
+} from '../validation/types'
 export { TEAM_MOVE } from '../validation/types'
 export type { TeamMoveSentinel } from '../validation/types'
 
@@ -30,17 +33,6 @@ export type GameConfig = Record<string, unknown>
  * Each game defines its own specific state type
  */
 export type GameState = Record<string, unknown>
-
-/**
- * Game validator interface
- * Games must implement this to validate moves server-side
- */
-export interface GameValidator<TState = GameState, TMove extends BaseGameMove = BaseGameMove>
-  extends BaseGameValidator<TState, TMove> {
-  validateMove(state: TState, move: TMove, context?: ValidationContext): ValidationResult
-  isGameComplete(state: TState): boolean
-  getInitialState(config: unknown): TState
-}
 
 /**
  * Provider component interface

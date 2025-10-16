@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, afterAll, beforeAll } from
 import { db, schema } from '../src/db'
 import { createRoom } from '../src/lib/arcade/room-manager'
 import { addRoomMember } from '../src/lib/arcade/room-membership'
-import { initializeSocketServer } from '../socket-server'
+import { initializeSocketServer } from '../src/socket-server'
 import type { Server as SocketIOServerType } from 'socket.io'
 
 /**
