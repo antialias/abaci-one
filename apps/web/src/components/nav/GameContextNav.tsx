@@ -28,7 +28,7 @@ interface NetworkPlayer {
 interface ArcadeRoomInfo {
   roomId?: string
   roomName?: string
-  gameName: string
+  gameName: string | null
   playerCount: number
   joinCode?: string
 }
@@ -200,6 +200,7 @@ export function GameContextNav({
             onSetup={onSetup}
             onNewGame={onNewGame}
             onQuit={onExitSession}
+            showMenu={true}
           />
           <div style={{ marginLeft: 'auto' }}>
             <GameModeIndicator
@@ -287,7 +288,7 @@ export function GameContextNav({
                   playerScores={playerScores}
                   playerStreaks={playerStreaks}
                   roomId={roomInfo?.roomId}
-                  currentUserId={currentUserId}
+                  currentUserId={currentUserId ?? undefined}
                   isCurrentUserHost={isCurrentUserHost}
                 />
               ))}

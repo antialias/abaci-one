@@ -27,5 +27,16 @@
     "src/app/arcade/memory-quiz/types.ts",
     "src/socket-server.ts"
   ],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/components/**/*",
+    "src/contexts/**/*",
+    "src/hooks/**/*",
+    "src/stories/**/*",
+    "src/utils/**/*",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts"
+  ]
 }

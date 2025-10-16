@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { io } from 'socket.io-client'
 import { Modal } from '@/components/common/Modal'
 import type { schema } from '@/db'
-import { useRoomData } from '@/hooks/useRoomData'
+import { useGetRoomByCode, useJoinRoom } from '@/hooks/useRoomData'
 
 export interface JoinRoomModalProps {
   /**
@@ -25,7 +25,8 @@ export interface JoinRoomModalProps {
  * Modal for joining a room by entering a 6-character code
  */
 export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps) {
-  const { getRoomByCode, joinRoom } = useRoomData()
+  const { mutateAsync: getRoomByCode } = useGetRoomByCode()
+  const { mutate: joinRoom } = useJoinRoom()
   const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')

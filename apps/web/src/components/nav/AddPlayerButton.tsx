@@ -26,7 +26,7 @@ interface AddPlayerButtonProps {
   // Context-aware: show different content based on room state
   isInRoom?: boolean
   // Game info for room creation
-  gameName?: 'matching' | 'memory-quiz' | 'complement-race'
+  gameName?: string | null
 }
 
 export function AddPlayerButton({
@@ -38,7 +38,7 @@ export function AddPlayerButton({
   activeTab: activeTabProp,
   setActiveTab: setActiveTabProp,
   isInRoom = false,
-  gameName = 'Arcade',
+  gameName = null,
 }: AddPlayerButtonProps) {
   const popoverRef = React.useRef<HTMLDivElement>(null)
   const router = useRouter()

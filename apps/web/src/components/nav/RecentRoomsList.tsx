@@ -4,7 +4,7 @@ import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 interface RecentRoom {
   code: string
   name: string | null
-  gameName: string
+  gameName: string | null
   joinedAt: number
 }
 
@@ -105,7 +105,7 @@ export function RecentRoomsList({ onSelectRoom }: RecentRoomsListProps) {
                 {getRoomDisplayWithEmoji({
                   name: room.name,
                   code: room.code,
-                  gameName: room.gameName,
+                  gameName: room.gameName ?? undefined,
                 })}
               </span>
             </div>
@@ -133,7 +133,7 @@ export function RecentRoomsList({ onSelectRoom }: RecentRoomsListProps) {
 export function addToRecentRooms(room: {
   code: string
   name: string | null
-  gameName: string
+  gameName: string | null
 }): void {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
