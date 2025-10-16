@@ -22,12 +22,14 @@ import type { NumberGuesserState } from './types'
  */
 interface NumberGuesserContextValue {
   state: NumberGuesserState
+  lastError: string | null
   startGame: () => void
   chooseNumber: (number: number) => void
   makeGuess: (guess: number) => void
   nextRound: () => void
   goToSetup: () => void
   setConfig: (field: 'minNumber' | 'maxNumber' | 'roundsToWin', value: number) => void
+  clearError: () => void
   exitSession: () => void
 }
 
@@ -62,7 +64,7 @@ export function NumberGuesserProvider({ children }: { children: ReactNode }) {
   const { activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
 
-  // Get active players as array
+  // Get active players as array (keep Set iteration order to match UI display)
   const activePlayers = Array.from(activePlayerIds)
 
   // Merge saved config from room
@@ -90,12 +92,13 @@ export function NumberGuesserProvider({ children }: { children: ReactNode }) {
   }, [roomData?.gameConfig])
 
   // Arcade session integration
-  const { state, sendMove, exitSession } = useArcadeSession<NumberGuesserState>({
-    userId: viewerId || '',
-    roomId: roomData?.id,
-    initialState,
-    applyMove: applyMoveOptimistically,
-  })
+  const { state, sendMove, exitSession, lastError, clearError } =
+    useArcadeSession<NumberGuesserState>({
+      userId: viewerId || '',
+      roomId: roomData?.id,
+      initialState,
+      applyMove: applyMoveOptimistically,
+    })
 
   // Action creators
   const startGame = useCallback(() => {
@@ -195,12 +198,14 @@ export function NumberGuesserProvider({ children }: { children: ReactNode }) {
 
   const contextValue: NumberGuesserContextValue = {
     state,
+    lastError,
     startGame,
     chooseNumber,
     makeGuess,
     nextRound,
     goToSetup,
     setConfig,
+    clearError,
     exitSession,
   }
 

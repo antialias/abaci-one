@@ -47,6 +47,11 @@ export interface UseOptimisticGameStateReturn<TState> {
   hasPendingMoves: boolean
 
   /**
+   * Last error from server (move rejection)
+   */
+  lastError: string | null
+
+  /**
    * Apply a move optimistically and send to server
    */
   applyOptimisticMove: (move: GameMove) => void
@@ -65,6 +70,11 @@ export interface UseOptimisticGameStateReturn<TState> {
    * Sync state with server (on reconnect or initial load)
    */
   syncWithServer: (serverState: TState, serverVersion: number) => void
+
+  /**
+   * Clear the last error
+   */
+  clearError: () => void
 
   /**
    * Reset to initial state
@@ -93,6 +103,9 @@ export function useOptimisticGameState<TState>(
 
   // Pending moves that haven't been confirmed by server yet
   const [pendingMoves, setPendingMoves] = useState<PendingMove<TState>[]>([])
+
+  // Last error from move rejection
+  const [lastError, setLastError] = useState<string | null>(null)
 
   // Ref for callbacks to avoid stale closures
   const callbacksRef = useRef({ onMoveAccepted, onMoveRejected })
@@ -152,6 +165,9 @@ export function useOptimisticGameState<TState>(
   )
 
   const handleMoveRejected = useCallback((error: string, rejectedMove: GameMove) => {
+    // Set the error for UI display
+    setLastError(error)
+
     // Remove the rejected move and all subsequent moves from pending queue
     setPendingMoves((prev) => {
       const index = prev.findIndex(
@@ -176,20 +192,27 @@ export function useOptimisticGameState<TState>(
     setPendingMoves([])
   }, [])
 
+  const clearError = useCallback(() => {
+    setLastError(null)
+  }, [])
+
   const reset = useCallback(() => {
     setServerState(initialState)
     setServerVersion(1)
     setPendingMoves([])
+    setLastError(null)
   }, [initialState])
 
   return {
     state: currentState,
     version: serverVersion,
     hasPendingMoves: pendingMoves.length > 0,
+    lastError,
     applyOptimisticMove,
     handleMoveAccepted,
     handleMoveRejected,
     syncWithServer,
+    clearError,
     reset,
   }
 }

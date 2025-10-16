@@ -14,10 +14,17 @@ export class NumberGuesserValidator
         return this.validateStartGame(state, move.data.activePlayers, move.data.playerMetadata)
 
       case 'CHOOSE_NUMBER':
-        return this.validateChooseNumber(state, move.data.secretNumber, move.playerId)
+        // Ensure secretNumber is a number (JSON deserialization can make it a string)
+        return this.validateChooseNumber(state, Number(move.data.secretNumber), move.playerId)
 
       case 'MAKE_GUESS':
-        return this.validateMakeGuess(state, move.data.guess, move.playerId, move.data.playerName)
+        // Ensure guess is a number (JSON deserialization can make it a string)
+        return this.validateMakeGuess(
+          state,
+          Number(move.data.guess),
+          move.playerId,
+          move.data.playerName
+        )
 
       case 'NEXT_ROUND':
         return this.validateNextRound(state)
@@ -26,7 +33,8 @@ export class NumberGuesserValidator
         return this.validateGoToSetup(state)
 
       case 'SET_CONFIG':
-        return this.validateSetConfig(state, move.data.field, move.data.value)
+        // Ensure value is a number (JSON deserialization can make it a string)
+        return this.validateSetConfig(state, move.data.field, Number(move.data.value))
 
       default:
         return {
@@ -88,6 +96,12 @@ export class NumberGuesserValidator
       }
     }
 
+    // Debug logging
+    console.log('[NumberGuesser] Setting secret number:', {
+      secretNumber,
+      secretNumberType: typeof secretNumber,
+    })
+
     // First guesser is the next player after chooser
     const chooserIndex = state.activePlayers.indexOf(state.chooser)
     const firstGuesserIndex = (chooserIndex + 1) % state.activePlayers.length
@@ -128,7 +142,17 @@ export class NumberGuesserValidator
       return { valid: false, error: 'No secret number set' }
     }
 
+    // Debug logging
+    console.log('[NumberGuesser] Validating guess:', {
+      guess,
+      guessType: typeof guess,
+      secretNumber: state.secretNumber,
+      secretNumberType: typeof state.secretNumber,
+    })
+
     const distance = Math.abs(guess - state.secretNumber)
+
+    console.log('[NumberGuesser] Calculated distance:', distance)
     const newGuess = {
       playerId,
       playerName,
@@ -181,8 +205,16 @@ export class NumberGuesserValidator
   }
 
   private validateNextRound(state: NumberGuesserState): ValidationResult {
-    if (state.gamePhase !== 'guessing' || !state.winner) {
-      return { valid: false, error: 'Cannot start next round yet' }
+    if (state.gamePhase !== 'guessing') {
+      return { valid: false, error: 'Not in guessing phase' }
+    }
+
+    // Check if the round is complete (someone guessed correctly)
+    const roundComplete =
+      state.guesses.length > 0 && state.guesses[state.guesses.length - 1].distance === 0
+
+    if (!roundComplete) {
+      return { valid: false, error: 'Round not complete yet - no one has guessed the number' }
     }
 
     // Rotate chooser to next player

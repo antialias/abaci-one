@@ -47,6 +47,11 @@ export interface UseArcadeSessionReturn<TState> {
   hasPendingMoves: boolean
 
   /**
+   * Last error from server (move rejection)
+   */
+  lastError: string | null
+
+  /**
    * Send a game move (applies optimistically and sends to server)
    * Note: playerId must be provided by caller (not omitted)
    */
@@ -56,6 +61,11 @@ export interface UseArcadeSessionReturn<TState> {
    * Exit the arcade session
    */
   exitSession: () => void
+
+  /**
+   * Clear the last error
+   */
+  clearError: () => void
 
   /**
    * Manually sync with server (useful after reconnect)
@@ -172,8 +182,10 @@ export function useArcadeSession<TState>(
     version: optimistic.version,
     connected,
     hasPendingMoves: optimistic.hasPendingMoves,
+    lastError: optimistic.lastError,
     sendMove,
     exitSession,
+    clearError: optimistic.clearError,
     refresh,
   }
 }

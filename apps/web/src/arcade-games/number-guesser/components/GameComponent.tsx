@@ -17,11 +17,21 @@ export function GameComponent() {
   const router = useRouter()
   const { state, exitSession, goToSetup } = useNumberGuesser()
 
+  // Determine whose turn it is based on game phase
+  const currentPlayerId =
+    state.gamePhase === 'choosing'
+      ? state.chooser
+      : state.gamePhase === 'guessing'
+        ? state.currentGuesser
+        : undefined
+
   return (
     <PageWithNav
       navTitle="Number Guesser"
       navEmoji="🎯"
       emphasizePlayerSelection={state.gamePhase === 'setup'}
+      currentPlayerId={currentPlayerId}
+      playerScores={state.scores}
       onExitSession={() => {
         exitSession?.()
         router.push('/arcade')

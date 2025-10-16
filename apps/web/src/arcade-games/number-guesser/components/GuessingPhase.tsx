@@ -4,13 +4,13 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useViewerId } from '@/lib/arcade/game-sdk'
 import { css } from '../../../../styled-system/css'
 import { useNumberGuesser } from '../Provider'
 
 export function GuessingPhase() {
-  const { state, makeGuess, nextRound } = useNumberGuesser()
+  const { state, makeGuess, nextRound, lastError, clearError } = useNumberGuesser()
   const { data: viewerId } = useViewerId()
   const [inputValue, setInputValue] = useState('')
 
@@ -20,6 +20,14 @@ export function GuessingPhase() {
   // Check if someone just won the round
   const lastGuess = state.guesses[state.guesses.length - 1]
   const roundJustEnded = lastGuess?.distance === 0
+
+  // Auto-clear error after 5 seconds
+  useEffect(() => {
+    if (lastError) {
+      const timeout = setTimeout(() => clearError(), 5000)
+      return () => clearTimeout(timeout)
+    }
+  }, [lastError, clearError])
 
   const handleSubmit = () => {
     const guess = Number.parseInt(inputValue, 10)
@@ -83,6 +91,81 @@ export function GuessingPhase() {
           Round {state.roundNumber} • Range: {state.minNumber} - {state.maxNumber}
         </p>
       </div>
+
+      {/* Error Banner */}
+      {lastError && (
+        <div
+          className={css({
+            background: 'linear-gradient(135deg, #fef2f2, #fee2e2)',
+            border: '2px solid',
+            borderColor: 'red.300',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            animation: 'slideIn 0.3s ease',
+          })}
+        >
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '24px',
+              })}
+            >
+              ⚠️
+            </div>
+            <div>
+              <div
+                className={css({
+                  fontSize: 'md',
+                  fontWeight: 'bold',
+                  color: 'red.700',
+                  marginBottom: '4px',
+                })}
+              >
+                Move Rejected
+              </div>
+              <div
+                className={css({
+                  fontSize: 'sm',
+                  color: 'red.600',
+                })}
+              >
+                {lastError}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={clearError}
+            className={css({
+              padding: '8px 12px',
+              background: 'white',
+              border: '1px solid',
+              borderColor: 'red.300',
+              borderRadius: '6px',
+              fontSize: 'sm',
+              fontWeight: '600',
+              color: 'red.700',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              _hover: {
+                background: 'red.50',
+              },
+            })}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Round ended - show next round button */}
       {roundJustEnded && (
