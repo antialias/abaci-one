@@ -92,13 +92,14 @@ export function MathSprintProvider({ children }: { children: ReactNode }) {
   )
 
   // Arcade session integration
-  const { state, sendMove, exitSession, lastError, clearError } =
-    useArcadeSession<MathSprintState>({
+  const { state, sendMove, exitSession, lastError, clearError } = useArcadeSession<MathSprintState>(
+    {
       userId: viewerId || '',
       roomId: roomData?.id,
       initialState,
       applyMove: (state) => state, // Server handles all state updates
-    })
+    }
+  )
 
   // Action: Start game
   const startGame = useCallback(() => {

@@ -137,7 +137,9 @@ export function SetupPhase() {
               width: '100%',
             })}
           />
-          <div className={css({ display: 'flex', justifyContent: 'space-between', fontSize: 'xs' })}>
+          <div
+            className={css({ display: 'flex', justifyContent: 'space-between', fontSize: 'xs' })}
+          >
             <span>5</span>
             <span>10</span>
             <span>15</span>
