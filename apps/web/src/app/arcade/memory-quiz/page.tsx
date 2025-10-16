@@ -1,157 +1,70 @@
 'use client'
 
-import Link from 'next/link'
-import { PageWithNav } from '@/components/PageWithNav'
-import { css } from '../../../../styled-system/css'
-import { DisplayPhase } from './components/DisplayPhase'
-import { InputPhase } from './components/InputPhase'
-import { ResultsPhase } from './components/ResultsPhase'
-import { SetupPhase } from './components/SetupPhase'
-import { LocalMemoryQuizProvider } from './context/LocalMemoryQuizProvider'
-import { useMemoryQuiz } from './context/MemoryQuizContext'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
-// CSS animations that need to be global
-const globalAnimations = `
-@keyframes pulse {
-  0% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-  50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); }
-  100% { transform: scale(1); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-}
+/**
+ * Memory Quiz redirect page
+ *
+ * Local mode has been deprecated. Memory Quiz is now only available
+ * through the Champion Arena (arcade) in room mode.
+ *
+ * This page redirects users to the arcade where they can:
+ * 1. Create or join a room
+ * 2. Select Memory Lightning from the game selector
+ * 3. Play in multiplayer or solo (single-player room)
+ */
+export default function MemoryQuizRedirectPage() {
+  const router = useRouter()
 
-@keyframes subtlePageFlash {
-  0% { background: linear-gradient(to bottom right, #f0fdf4, #ecfdf5); }
-  50% { background: linear-gradient(to bottom right, #dcfce7, #d1fae5); }
-  100% { background: linear-gradient(to bottom right, #f0fdf4, #ecfdf5); }
-}
-
-@keyframes fadeInScale {
-  from { opacity: 0; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes explode {
-  0% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.5);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(2) rotate(180deg);
-  }
-}
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-`
-
-// Inner component that uses the context
-function MemoryQuizGame() {
-  const { state } = useMemoryQuiz()
+  useEffect(() => {
+    // Redirect to arcade
+    router.replace('/arcade')
+  }, [router])
 
   return (
-    <>
-      <style dangerouslySetInnerHTML={{ __html: globalAnimations }} />
-
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+      }}
+    >
       <div
         style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'auto',
-          padding: '20px 8px',
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+          fontSize: '48px',
+          marginBottom: '20px',
         }}
       >
-        <div
-          style={{
-            maxWidth: '100%',
-            margin: '0 auto',
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div
-            className={css({
-              textAlign: 'center',
-              mb: '4',
-              flexShrink: 0,
-            })}
-          >
-            <Link
-              href="/games"
-              className={css({
-                display: 'inline-flex',
-                alignItems: 'center',
-                color: 'gray.600',
-                textDecoration: 'none',
-                mb: '4',
-                _hover: { color: 'gray.800' },
-              })}
-            >
-              ← Back to Games
-            </Link>
-          </div>
-
-          <div
-            className={css({
-              bg: 'white',
-              rounded: 'xl',
-              shadow: 'xl',
-              overflow: 'hidden',
-              border: '1px solid',
-              borderColor: 'gray.200',
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              maxHeight: '100%',
-            })}
-          >
-            <div
-              className={css({
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'auto',
-              })}
-            >
-              {state.gamePhase === 'setup' && <SetupPhase />}
-              {state.gamePhase === 'display' && <DisplayPhase />}
-              {state.gamePhase === 'input' && <InputPhase key="input-phase" />}
-              {state.gamePhase === 'results' && <ResultsPhase />}
-            </div>
-          </div>
-        </div>
+        🧠
       </div>
-    </>
-  )
-}
-
-// Main page component that provides the context
-export default function MemoryQuizPage() {
-  return (
-    <PageWithNav navTitle="Memory Lightning" navEmoji="🧠">
-      <LocalMemoryQuizProvider>
-        <MemoryQuizGame />
-      </LocalMemoryQuizProvider>
-    </PageWithNav>
+      <h1
+        style={{
+          fontSize: '24px',
+          fontWeight: 'bold',
+          marginBottom: '12px',
+          color: '#1f2937',
+          textAlign: 'center',
+        }}
+      >
+        Redirecting to Champion Arena...
+      </h1>
+      <p
+        style={{
+          fontSize: '16px',
+          color: '#6b7280',
+          textAlign: 'center',
+          maxWidth: '500px',
+        }}
+      >
+        Memory Lightning is now part of the Champion Arena.
+        <br />
+        You'll be able to play solo or with friends in multiplayer mode!
+      </p>
+    </div>
   )
 }

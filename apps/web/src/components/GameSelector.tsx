@@ -8,21 +8,6 @@ import { GameCard } from './GameCard'
 
 // Game configuration defining player limits
 export const GAMES_CONFIG = {
-  'memory-quiz': {
-    name: 'Memory Lightning',
-    fullName: 'Memory Lightning ⚡',
-    maxPlayers: 4,
-    description: 'Test your memory speed with rapid-fire abacus calculations',
-    longDescription:
-      'Challenge yourself or compete with friends in lightning-fast memory tests. Work together cooperatively or compete for the highest score!',
-    url: '/arcade/memory-quiz',
-    icon: '⚡',
-    chips: ['👥 Multiplayer', '🔥 Speed Challenge', '🧮 Abacus Focus'],
-    color: 'green',
-    gradient: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
-    borderColor: 'green.200',
-    difficulty: 'Beginner',
-  },
   'battle-arena': {
     name: 'Matching Pairs Battle',
     fullName: 'Matching Pairs Battle ⚔️',
