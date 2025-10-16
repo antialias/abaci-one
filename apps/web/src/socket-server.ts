@@ -13,8 +13,8 @@ import {
 import { createRoom, getRoomById } from './lib/arcade/room-manager'
 import { getRoomMembers, getUserRooms, setMemberOnline } from './lib/arcade/room-membership'
 import { getRoomActivePlayers, getRoomPlayerIds } from './lib/arcade/player-manager'
-import type { GameMove, GameName } from './lib/arcade/validation'
-import { getValidator } from './lib/arcade/validation'
+import { getValidator, type GameName } from './lib/arcade/validators'
+import type { GameMove } from './lib/arcade/validation/types'
 import { getGameConfig } from './lib/arcade/game-config-helpers'
 
 // Use globalThis to store socket.io instance to avoid module isolation issues

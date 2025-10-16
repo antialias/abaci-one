@@ -3,7 +3,7 @@ import { createRoom, listActiveRooms } from '@/lib/arcade/room-manager'
 import { addRoomMember, getRoomMembers, isMember } from '@/lib/arcade/room-membership'
 import { getRoomActivePlayers } from '@/lib/arcade/player-manager'
 import { getViewerId } from '@/lib/viewer'
-import type { GameName } from '@/lib/arcade/validation'
+import { hasValidator, type GameName } from '@/lib/arcade/validators'
 
 /**
  * GET /api/arcade/rooms
@@ -72,8 +72,7 @@ export async function POST(req: NextRequest) {
 
     // Validate game name if provided (gameName is now optional)
     if (body.gameName) {
-      const validGames: GameName[] = ['matching', 'memory-quiz', 'complement-race']
-      if (!validGames.includes(body.gameName)) {
+      if (!hasValidator(body.gameName)) {
         return NextResponse.json({ error: 'Invalid game name' }, { status: 400 })
       }
     }

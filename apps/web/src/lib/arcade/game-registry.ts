@@ -31,6 +31,28 @@ export function registerGame<
     throw new Error(`Game "${name}" is already registered`)
   }
 
+  // Verify validator is also registered server-side
+  try {
+    const { hasValidator, getValidator } = require('./validators')
+    if (!hasValidator(name)) {
+      console.error(
+        `⚠️  Game "${name}" registered but validator not found in server registry!` +
+          `\n   Add to src/lib/arcade/validators.ts to enable multiplayer.`
+      )
+    } else {
+      const serverValidator = getValidator(name)
+      if (serverValidator !== game.validator) {
+        console.warn(
+          `⚠️  Game "${name}" has different validator instances (client vs server).` +
+            `\n   This may cause issues. Ensure both use the same import.`
+        )
+      }
+    }
+  } catch (error) {
+    // If validators.ts can't be imported (e.g., in browser), skip check
+    // This is expected - validator registry is isomorphic but check only runs server-side
+  }
+
   registry.set(name, game)
   console.log(`✅ Registered game: ${name}`)
 }

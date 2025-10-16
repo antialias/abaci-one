@@ -8,7 +8,7 @@
 import { and, eq } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
 import { db, schema } from '@/db'
-import type { GameName } from './validation'
+import type { GameName } from './validators'
 import type { GameConfigByName } from './game-configs'
 import {
   DEFAULT_MATCHING_CONFIG,
@@ -18,9 +18,15 @@ import {
 } from './game-configs'
 
 /**
+ * Extended game name type that includes both registered validators and legacy games
+ * TODO: Remove 'complement-race' once migrated to the new modular system
+ */
+type ExtendedGameName = GameName | 'complement-race'
+
+/**
  * Get default config for a game
  */
-function getDefaultGameConfig(gameName: GameName): GameConfigByName[GameName] {
+function getDefaultGameConfig(gameName: ExtendedGameName): GameConfigByName[ExtendedGameName] {
   switch (gameName) {
     case 'matching':
       return DEFAULT_MATCHING_CONFIG
@@ -39,7 +45,7 @@ function getDefaultGameConfig(gameName: GameName): GameConfigByName[GameName] {
  * Get game-specific config from database with defaults
  * Type-safe: returns the correct config type based on gameName
  */
-export async function getGameConfig<T extends GameName>(
+export async function getGameConfig<T extends ExtendedGameName>(
   roomId: string,
   gameName: T
 ): Promise<GameConfigByName[T]> {
@@ -65,7 +71,7 @@ export async function getGameConfig<T extends GameName>(
  * Set (upsert) a game's config in the database
  * Creates a new row if it doesn't exist, updates if it does
  */
-export async function setGameConfig<T extends GameName>(
+export async function setGameConfig<T extends ExtendedGameName>(
   roomId: string,
   gameName: T,
   config: Partial<GameConfigByName[T]>
@@ -113,7 +119,7 @@ export async function setGameConfig<T extends GameName>(
  * Convenience wrapper around setGameConfig
  */
 export async function updateGameConfigField<
-  T extends GameName,
+  T extends ExtendedGameName,
   K extends keyof GameConfigByName[T],
 >(roomId: string, gameName: T, field: K, value: GameConfigByName[T][K]): Promise<void> {
   // Create a partial config with just the field being updated
@@ -126,7 +132,7 @@ export async function updateGameConfigField<
  * Delete a game's config from the database
  * Useful when clearing game selection or cleaning up
  */
-export async function deleteGameConfig(roomId: string, gameName: GameName): Promise<void> {
+export async function deleteGameConfig(roomId: string, gameName: ExtendedGameName): Promise<void> {
   await db
     .delete(schema.roomGameConfigs)
     .where(
@@ -142,14 +148,14 @@ export async function deleteGameConfig(roomId: string, gameName: GameName): Prom
  */
 export async function getAllGameConfigs(
   roomId: string
-): Promise<Partial<Record<GameName, unknown>>> {
+): Promise<Partial<Record<ExtendedGameName, unknown>>> {
   const configs = await db.query.roomGameConfigs.findMany({
     where: eq(schema.roomGameConfigs.roomId, roomId),
   })
 
-  const result: Partial<Record<GameName, unknown>> = {}
+  const result: Partial<Record<ExtendedGameName, unknown>> = {}
   for (const config of configs) {
-    result[config.gameName as GameName] = config.config
+    result[config.gameName as ExtendedGameName] = config.config
   }
 
   return result
@@ -168,7 +174,7 @@ export async function deleteAllGameConfigs(roomId: string): Promise<void> {
  * Validate a game config at runtime
  * Returns true if the config is valid for the given game
  */
-export function validateGameConfig(gameName: GameName, config: any): boolean {
+export function validateGameConfig(gameName: ExtendedGameName, config: any): boolean {
   switch (gameName) {
     case 'matching':
       return (

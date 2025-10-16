@@ -6,7 +6,8 @@
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { buildPlayerOwnershipMap, type PlayerOwnershipMap } from './player-ownership'
-import { type GameMove, type GameName, getValidator } from './validation'
+import { getValidator, type GameName } from './validators'
+import type { GameMove } from './validation/types'
 
 export interface CreateSessionOptions {
   userId: string // User who owns/created the session (typically room creator)
