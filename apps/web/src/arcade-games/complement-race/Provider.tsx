@@ -16,6 +16,7 @@ import {
   useViewerId,
 } from '@/lib/arcade/game-sdk'
 import { DEFAULT_COMPLEMENT_RACE_CONFIG } from '@/lib/arcade/game-configs'
+import type { DifficultyTracker } from '@/app/arcade/complement-race/lib/gameTypes'
 import type { ComplementRaceConfig, ComplementRaceMove, ComplementRaceState } from './types'
 
 /**
@@ -43,7 +44,7 @@ interface CompatibleGameState {
   // Game status
   isGameActive: boolean
   isPaused: boolean
-  gamePhase: string
+  gamePhase: 'intro' | 'controls' | 'countdown' | 'playing' | 'results'
 
   // Timing
   gameStartTime: number | null
@@ -79,8 +80,8 @@ interface CompatibleGameState {
   // UI state
   showScoreModal: boolean
   activeSpeechBubbles: Map<string, string>
-  adaptiveFeedback: any | null
-  difficultyTracker: any
+  adaptiveFeedback: { message: string; type: string } | null
+  difficultyTracker: DifficultyTracker
 }
 
 /**
@@ -244,8 +245,16 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     const localPlayer = localPlayerId ? multiplayerState.players[localPlayerId] : null
 
     // Map gamePhase: setup/lobby -> controls
-    let gamePhase = multiplayerState.gamePhase
-    if (gamePhase === 'setup' || gamePhase === 'lobby') {
+    let gamePhase: 'intro' | 'controls' | 'countdown' | 'playing' | 'results'
+    if (multiplayerState.gamePhase === 'setup' || multiplayerState.gamePhase === 'lobby') {
+      gamePhase = 'controls'
+    } else if (multiplayerState.gamePhase === 'countdown') {
+      gamePhase = 'countdown'
+    } else if (multiplayerState.gamePhase === 'playing') {
+      gamePhase = 'playing'
+    } else if (multiplayerState.gamePhase === 'results') {
+      gamePhase = 'results'
+    } else {
       gamePhase = 'controls'
     }
 
@@ -280,7 +289,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
 
       // Race mechanics
       raceGoal: multiplayerState.config.raceGoal,
-      timeLimit: multiplayerState.config.timeLimit,
+      timeLimit: multiplayerState.config.timeLimit ?? null,
       speedMultiplier: 1.0,
       aiRacers: multiplayerState.aiOpponents.map((ai) => ({
         id: ai.id,

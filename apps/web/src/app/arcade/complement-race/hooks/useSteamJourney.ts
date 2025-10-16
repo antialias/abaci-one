@@ -78,7 +78,9 @@ export function useSteamJourney() {
       // Steam Sprint is infinite - no time limit
 
       // Get decay rate based on timeout setting (skill level)
-      const decayRate = MOMENTUM_DECAY_RATES[state.timeoutSetting] || MOMENTUM_DECAY_RATES.normal
+      const decayRate =
+        MOMENTUM_DECAY_RATES[state.timeoutSetting as keyof typeof MOMENTUM_DECAY_RATES] ||
+        MOMENTUM_DECAY_RATES.normal
 
       // Calculate momentum decay for this frame
       const momentumLoss = (decayRate * deltaTime) / 1000
