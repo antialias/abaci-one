@@ -2,8 +2,8 @@
  * Shared game configuration types
  *
  * ARCHITECTURE: Phase 3 - Type Inference
- * - Modern games (number-guesser, math-sprint, memory-quiz): Types inferred from game definitions
- * - Legacy games (matching, complement-race): Manual types until migrated
+ * - Modern games (number-guesser, math-sprint, memory-quiz, matching): Types inferred from game definitions
+ * - Legacy games (complement-race): Manual types until migrated
  *
  * These types are used across:
  * - Database storage (room_game_configs table)
@@ -12,12 +12,11 @@
  * - Helper functions (reading/writing configs)
  */
 
-import type { Difficulty, GameType } from '@/app/games/matching/context/types'
-
 // Type-only imports (won't load React components at runtime)
 import type { numberGuesserGame } from '@/arcade-games/number-guesser'
 import type { mathSprintGame } from '@/arcade-games/math-sprint'
 import type { memoryQuizGame } from '@/arcade-games/memory-quiz'
+import type { matchingGame } from '@/arcade-games/matching'
 
 /**
  * Utility type: Extract config type from a game definition
@@ -47,19 +46,16 @@ export type MathSprintGameConfig = InferGameConfig<typeof mathSprintGame>
  */
 export type MemoryQuizGameConfig = InferGameConfig<typeof memoryQuizGame>
 
+/**
+ * Configuration for matching (memory pairs battle) game
+ * INFERRED from matchingGame.defaultConfig
+ */
+export type MatchingGameConfig = InferGameConfig<typeof matchingGame>
+
 // ============================================================================
 // Legacy Games (Manual Type Definitions)
 // TODO: Migrate these games to the modular system for type inference
 // ============================================================================
-
-/**
- * Configuration for matching (memory pairs) game
- */
-export interface MatchingGameConfig {
-  gameType: GameType
-  difficulty: Difficulty
-  turnTimer: number
-}
 
 /**
  * Configuration for complement-race game
@@ -83,9 +79,9 @@ export type GameConfigByName = {
   'number-guesser': NumberGuesserGameConfig
   'math-sprint': MathSprintGameConfig
   'memory-quiz': MemoryQuizGameConfig
+  matching: MatchingGameConfig
 
   // Legacy games (manual types)
-  matching: MatchingGameConfig
   'complement-race': ComplementRaceGameConfig
 }
 
