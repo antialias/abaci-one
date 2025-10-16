@@ -10,7 +10,7 @@
  * 3. GameName type will auto-update
  */
 
-import { matchingGameValidator } from './validation/MatchingGameValidator'
+import { matchingGameValidator } from '@/arcade-games/matching/Validator'
 import { memoryQuizGameValidator } from '@/arcade-games/memory-quiz/Validator'
 import { numberGuesserValidator } from '@/arcade-games/number-guesser/Validator'
 import { mathSprintValidator } from '@/arcade-games/math-sprint/Validator'
