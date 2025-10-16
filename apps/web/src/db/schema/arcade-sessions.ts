@@ -16,9 +16,8 @@ export const arcadeSessions = sqliteTable('arcade_sessions', {
     .references(() => users.id, { onDelete: 'cascade' }),
 
   // Session metadata
-  currentGame: text('current_game', {
-    enum: ['matching', 'memory-quiz', 'complement-race', 'number-guesser', 'math-sprint'],
-  }).notNull(),
+  // Accepts any string - validation happens at runtime against validator registry
+  currentGame: text('current_game').notNull(),
 
   gameUrl: text('game_url').notNull(), // e.g., '/arcade/matching'
 

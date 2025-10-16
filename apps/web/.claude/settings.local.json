@@ -75,7 +75,10 @@
       "Bash(timeout 30 npm run dev)",
       "Bash(pkill:*)",
       "Bash(for i in {1..30})",
-      "Bash(do gh run list --limit 1 --json conclusion,status,name,databaseId --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\") - Run ID: \\(.databaseId)\"\"')"
+      "Bash(do gh run list --limit 1 --json conclusion,status,name,databaseId --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\") - Run ID: \\(.databaseId)\"\"')",
+      "Bash(tsc:*)",
+      "Bash(tsc-alias:*)",
+      "Bash(npx tsc-alias:*)"
     ],
     "deny": [],
     "ask": []

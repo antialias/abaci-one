@@ -1,7 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/common/Modal'
-import type { RoomBan, RoomMember, RoomReport } from '@/db/schema'
+import type { RoomBan, RoomReport } from '@/db/schema'
+import type { RoomMember } from '@/hooks/useRoomData'
 
 export interface RoomPlayer {
   id: string

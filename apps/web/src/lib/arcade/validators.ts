@@ -65,6 +65,31 @@ export function getRegisteredGameNames(): GameName[] {
 }
 
 /**
+ * Validate a game name at runtime
+ * Use this instead of TypeScript enums to check if a game is valid
+ *
+ * @param gameName - Game name to validate
+ * @returns true if game has a registered validator
+ */
+export function isValidGameName(gameName: unknown): gameName is GameName {
+  return typeof gameName === 'string' && hasValidator(gameName)
+}
+
+/**
+ * Assert that a game name is valid, throw if not
+ *
+ * @param gameName - Game name to validate
+ * @throws Error if game name is invalid
+ */
+export function assertValidGameName(gameName: unknown): asserts gameName is GameName {
+  if (!isValidGameName(gameName)) {
+    throw new Error(
+      `Invalid game name: ${gameName}. Must be one of: ${getRegisteredGameNames().join(', ')}`
+    )
+  }
+}
+
+/**
  * Re-export validators for backwards compatibility
  */
 export {

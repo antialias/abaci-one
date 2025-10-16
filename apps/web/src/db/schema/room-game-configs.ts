@@ -19,9 +19,8 @@ export const roomGameConfigs = sqliteTable(
       .references(() => arcadeRooms.id, { onDelete: 'cascade' }),
 
     // Game identifier
-    gameName: text('game_name', {
-      enum: ['matching', 'memory-quiz', 'complement-race', 'number-guesser', 'math-sprint'],
-    }).notNull(),
+    // Accepts any string - validation happens at runtime against validator registry
+    gameName: text('game_name').notNull(),
 
     // Game-specific configuration JSON
     // Structure depends on gameName:

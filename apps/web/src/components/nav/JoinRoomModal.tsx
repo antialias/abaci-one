@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { io } from 'socket.io-client'
 import { Modal } from '@/components/common/Modal'
-import type { schema } from '@/db'
+import type { RoomData } from '@/hooks/useRoomData'
 import { useGetRoomByCode, useJoinRoom } from '@/hooks/useRoomData'
 
 export interface JoinRoomModalProps {
@@ -26,12 +26,12 @@ export interface JoinRoomModalProps {
  */
 export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps) {
   const { mutateAsync: getRoomByCode } = useGetRoomByCode()
-  const { mutate: joinRoom } = useJoinRoom()
+  const { mutateAsync: joinRoom } = useJoinRoom()
   const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [roomInfo, setRoomInfo] = useState<schema.ArcadeRoom | null>(null)
+  const [roomInfo, setRoomInfo] = useState<RoomData | null>(null)
   const [needsPassword, setNeedsPassword] = useState(false)
   const [needsApproval, setNeedsApproval] = useState(false)
   const [approvalRequested, setApprovalRequested] = useState(false)
@@ -102,7 +102,7 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
       }
 
       // Join the room (with password if needed)
-      await joinRoom(room.id, password || undefined)
+      await joinRoom({ roomId: room.id, password: password || undefined })
 
       // Success! Close modal
       handleClose()
@@ -175,7 +175,7 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
           if (data.roomId === roomInfo.id) {
             console.log('[JoinRoomModal] Joining room automatically...')
             try {
-              await joinRoom(roomInfo.id)
+              await joinRoom({ roomId: roomInfo.id })
               handleClose()
               onSuccess?.()
             } catch (err) {

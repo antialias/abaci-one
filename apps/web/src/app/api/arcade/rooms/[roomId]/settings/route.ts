@@ -8,7 +8,8 @@ import { getRoomMembers } from '@/lib/arcade/room-membership'
 import { getSocketIO } from '@/lib/socket-io'
 import { getViewerId } from '@/lib/viewer'
 import { getAllGameConfigs, setGameConfig } from '@/lib/arcade/game-config-helpers'
-import type { GameName } from '@/lib/arcade/validation'
+import { isValidGameName } from '@/lib/arcade/validators'
+import type { GameName } from '@/lib/arcade/validators'
 
 type RouteContext = {
   params: Promise<{ roomId: string }>
@@ -20,8 +21,11 @@ type RouteContext = {
  * Body:
  *   - accessMode?: 'open' | 'locked' | 'retired' | 'password' | 'restricted' | 'approval-only'
  *   - password?: string (plain text, will be hashed)
- *   - gameName?: 'matching' | 'memory-quiz' | 'complement-race' | 'number-guesser' | 'math-sprint' | null (select game for room)
+ *   - gameName?: string | null (any game with a registered validator)
  *   - gameConfig?: object (game-specific settings)
+ *
+ * Note: gameName is validated at runtime against the validator registry.
+ * No need to update this file when adding new games!
  */
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
@@ -92,12 +96,15 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       )
     }
 
-    // Validate gameName if provided
+    // Validate gameName if provided - check against validator registry at runtime
     if (body.gameName !== undefined && body.gameName !== null) {
-      // Legacy games + registry games (TODO: make this dynamic when we refactor to lazy-load registry)
-      const validGames = ['matching', 'memory-quiz', 'complement-race', 'number-guesser', 'math-sprint']
-      if (!validGames.includes(body.gameName)) {
-        return NextResponse.json({ error: 'Invalid game name' }, { status: 400 })
+      if (!isValidGameName(body.gameName)) {
+        return NextResponse.json(
+          {
+            error: `Invalid game name: ${body.gameName}. Game must have a registered validator.`,
+          },
+          { status: 400 }
+        )
       }
     }
 
