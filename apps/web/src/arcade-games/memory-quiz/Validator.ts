@@ -3,21 +3,18 @@
  * Validates all game moves and state transitions
  */
 
-import type { SorobanQuizState } from '@/app/arcade/memory-quiz/types'
-import type { MemoryQuizGameConfig } from '@/lib/arcade/game-configs'
+import type { GameValidator, ValidationResult } from '@/lib/arcade/game-sdk'
 import type {
-  GameValidator,
-  MemoryQuizGameMove,
+  MemoryQuizConfig,
+  MemoryQuizState,
+  MemoryQuizMove,
   MemoryQuizSetConfigMove,
-  ValidationResult,
 } from './types'
 
-export class MemoryQuizGameValidator
-  implements GameValidator<SorobanQuizState, MemoryQuizGameMove>
-{
+export class MemoryQuizGameValidator implements GameValidator<MemoryQuizState, MemoryQuizMove> {
   validateMove(
-    state: SorobanQuizState,
-    move: MemoryQuizGameMove,
+    state: MemoryQuizState,
+    move: MemoryQuizMove,
     context?: { userId?: string; playerOwnership?: Record<string, string> }
   ): ValidationResult {
     switch (move.type) {
@@ -58,7 +55,7 @@ export class MemoryQuizGameValidator
     }
   }
 
-  private validateStartQuiz(state: SorobanQuizState, data: any): ValidationResult {
+  private validateStartQuiz(state: MemoryQuizState, data: any): ValidationResult {
     // Can start quiz from setup or results phase
     if (state.gamePhase !== 'setup' && state.gamePhase !== 'results') {
       return {
@@ -102,7 +99,7 @@ export class MemoryQuizGameValidator
       return acc
     }, {})
 
-    const newState: SorobanQuizState = {
+    const newState: MemoryQuizState = {
       ...state,
       quizCards,
       correctAnswers: numbers,
@@ -127,7 +124,7 @@ export class MemoryQuizGameValidator
     }
   }
 
-  private validateNextCard(state: SorobanQuizState): ValidationResult {
+  private validateNextCard(state: MemoryQuizState): ValidationResult {
     // Must be in display phase
     if (state.gamePhase !== 'display') {
       return {
@@ -136,7 +133,7 @@ export class MemoryQuizGameValidator
       }
     }
 
-    const newState: SorobanQuizState = {
+    const newState: MemoryQuizState = {
       ...state,
       currentCardIndex: state.currentCardIndex + 1,
     }
@@ -147,7 +144,7 @@ export class MemoryQuizGameValidator
     }
   }
 
-  private validateShowInputPhase(state: SorobanQuizState): ValidationResult {
+  private validateShowInputPhase(state: MemoryQuizState): ValidationResult {
     // Must have shown all cards
     if (state.currentCardIndex < state.quizCards.length) {
       return {
@@ -156,7 +153,7 @@ export class MemoryQuizGameValidator
       }
     }
 
-    const newState: SorobanQuizState = {
+    const newState: MemoryQuizState = {
       ...state,
       gamePhase: 'input',
     }
@@ -168,7 +165,7 @@ export class MemoryQuizGameValidator
   }
 
   private validateAcceptNumber(
-    state: SorobanQuizState,
+    state: MemoryQuizState,
     number: number,
     userId?: string
   ): ValidationResult {
@@ -212,7 +209,7 @@ export class MemoryQuizGameValidator
       newNumberFoundBy[number] = userId
     }
 
-    const newState: SorobanQuizState = {
+    const newState: MemoryQuizState = {
       ...state,
       foundNumbers: [...state.foundNumbers, number],
       currentInput: '',
@@ -226,7 +223,7 @@ export class MemoryQuizGameValidator
     }
   }
 
-  private validateRejectNumber(state: SorobanQuizState, userId?: string): ValidationResult {
+  private validateRejectNumber(state: MemoryQuizState, userId?: string): ValidationResult {
     // Must be in input phase
     if (state.gamePhase !== 'input') {
       return {
@@ -254,7 +251,7 @@ export class MemoryQuizGameValidator
       }
     }
 
-    const newState: SorobanQuizState = {
+    const newState: MemoryQuizState = {
       ...state,
       guessesRemaining: state.guessesRemaining - 1,
       incorrectGuesses: state.incorrectGuesses + 1,
@@ -268,7 +265,7 @@ export class MemoryQuizGameValidator
     }
   }
 
-  private validateSetInput(state: SorobanQuizState, input: string): ValidationResult {
+  private validateSetInput(state: MemoryQuizState, input: string): ValidationResult {
     // Must be in input phase
     if (state.gamePhase !== 'input') {
       return {
@@ -285,7 +282,7 @@ export class MemoryQuizGameValidator
       }
     }
 
-    const newState: SorobanQuizState = {
+    const newState: MemoryQuizState = {
       ...state,
       currentInput: input,
     }
@@ -296,7 +293,7 @@ export class MemoryQuizGameValidator
     }
   }
 
-  private validateShowResults(state: SorobanQuizState): ValidationResult {
+  private validateShowResults(state: MemoryQuizState): ValidationResult {
     // Can show results from input phase
     if (state.gamePhase !== 'input') {
       return {
@@ -305,7 +302,7 @@ export class MemoryQuizGameValidator
       }
     }
 
-    const newState: SorobanQuizState = {
+    const newState: MemoryQuizState = {
       ...state,
       gamePhase: 'results',
     }
@@ -316,9 +313,9 @@ export class MemoryQuizGameValidator
     }
   }
 
-  private validateResetQuiz(state: SorobanQuizState): ValidationResult {
+  private validateResetQuiz(state: MemoryQuizState): ValidationResult {
     // Can reset from any phase
-    const newState: SorobanQuizState = {
+    const newState: MemoryQuizState = {
       ...state,
       gamePhase: 'setup',
       quizCards: [],
@@ -340,7 +337,7 @@ export class MemoryQuizGameValidator
   }
 
   private validateSetConfig(
-    state: SorobanQuizState,
+    state: MemoryQuizState,
     field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode',
     value: any
   ): ValidationResult {
@@ -392,11 +389,11 @@ export class MemoryQuizGameValidator
     }
   }
 
-  isGameComplete(state: SorobanQuizState): boolean {
+  isGameComplete(state: MemoryQuizState): boolean {
     return state.gamePhase === 'results'
   }
 
-  getInitialState(config: MemoryQuizGameConfig): SorobanQuizState {
+  getInitialState(config: MemoryQuizConfig): MemoryQuizState {
     return {
       cards: [],
       quizCards: [],

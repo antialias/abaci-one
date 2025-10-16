@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isPrefix } from '@/lib/memory-quiz-utils'
-import { useMemoryQuiz } from '../context/MemoryQuizContext'
+import { useMemoryQuiz } from '../Provider'
 import { CardGrid } from './CardGrid'
 
 export function InputPhase() {

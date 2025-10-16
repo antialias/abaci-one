@@ -201,7 +201,7 @@ export function validateGameConfig(gameName: ExtendedGameName, config: any): boo
   const game = getGame(gameName)
 
   // If game has a validateConfig function, use it
-  if (game?.validateConfig) {
+  if (game && game.validateConfig) {
     return game.validateConfig(config)
   }
 

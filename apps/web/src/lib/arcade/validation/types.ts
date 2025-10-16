@@ -4,7 +4,7 @@
  */
 
 import type { MemoryPairsState } from '@/app/games/matching/context/types'
-import type { SorobanQuizState } from '@/app/arcade/memory-quiz/types'
+import type { MemoryQuizState as SorobanQuizState } from '@/arcade-games/memory-quiz/types'
 
 /**
  * Game name type - auto-derived from validator registry

@@ -1,3 +1,4 @@
+import type { GameConfig, GameState } from '@/lib/arcade/game-sdk'
 import type { PlayerMetadata } from '@/lib/arcade/player-ownership.client'
 
 export interface QuizCard {
@@ -11,7 +12,16 @@ export interface PlayerScore {
   incorrect: number
 }
 
-export interface SorobanQuizState {
+// Memory Quiz Configuration
+export interface MemoryQuizConfig extends GameConfig {
+  selectedCount: 2 | 5 | 8 | 12 | 15
+  displayTime: number
+  selectedDifficulty: DifficultyLevel
+  playMode: 'cooperative' | 'competitive'
+}
+
+// Memory Quiz State
+export interface MemoryQuizState extends GameState {
   // Core game data
   cards: QuizCard[]
   quizCards: QuizCard[]
@@ -52,6 +62,7 @@ export interface SorobanQuizState {
   showOnScreenKeyboard: boolean
 }
 
+// Legacy reducer actions (deprecated - will be removed)
 export type QuizAction =
   | { type: 'SET_CARDS'; cards: QuizCard[] }
   | { type: 'SET_DISPLAY_TIME'; time: number }
@@ -103,3 +114,79 @@ export const DIFFICULTY_LEVELS = {
 } as const
 
 export type DifficultyLevel = keyof typeof DIFFICULTY_LEVELS
+
+// Memory Quiz Move Types (SDK-compatible)
+export type MemoryQuizMove =
+  | {
+      type: 'START_QUIZ'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        numbers: number[]
+        quizCards?: QuizCard[]
+        activePlayers: string[]
+        playerMetadata: Record<string, PlayerMetadata>
+      }
+    }
+  | {
+      type: 'NEXT_CARD'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: Record<string, never>
+    }
+  | {
+      type: 'SHOW_INPUT_PHASE'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: Record<string, never>
+    }
+  | {
+      type: 'ACCEPT_NUMBER'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: { number: number }
+    }
+  | {
+      type: 'REJECT_NUMBER'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: Record<string, never>
+    }
+  | {
+      type: 'SET_INPUT'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: { input: string }
+    }
+  | {
+      type: 'SHOW_RESULTS'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: Record<string, never>
+    }
+  | {
+      type: 'RESET_QUIZ'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: Record<string, never>
+    }
+  | {
+      type: 'SET_CONFIG'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode'
+        value: any
+      }
+    }
+
+export type MemoryQuizSetConfigMove = Extract<MemoryQuizMove, { type: 'SET_CONFIG' }>

@@ -11,7 +11,7 @@
  */
 
 import { matchingGameValidator } from './validation/MatchingGameValidator'
-import { memoryQuizGameValidator } from './validation/MemoryQuizGameValidator'
+import { memoryQuizGameValidator } from '@/arcade-games/memory-quiz/Validator'
 import { numberGuesserValidator } from '@/arcade-games/number-guesser/Validator'
 import { mathSprintValidator } from '@/arcade-games/math-sprint/Validator'
 import type { GameValidator } from './validation/types'

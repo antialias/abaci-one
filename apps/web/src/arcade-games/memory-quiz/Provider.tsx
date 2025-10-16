@@ -1,32 +1,31 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
-import type { GameMove } from '@/lib/arcade/validation'
-import { TEAM_MOVE } from '@/lib/arcade/validation/types'
 import {
   buildPlayerMetadata as buildPlayerMetadataUtil,
   buildPlayerOwnershipFromRoomData,
 } from '@/lib/arcade/player-ownership.client'
-import { initialState } from '../reducer'
-import type { QuizCard, SorobanQuizState } from '../types'
-import { MemoryQuizContext, type MemoryQuizContextValue } from './MemoryQuizContext'
+import { TEAM_MOVE } from '@/lib/arcade/validation/types'
+import type { QuizCard, MemoryQuizState, MemoryQuizMove } from './types'
+
+import type { GameMove } from '@/lib/arcade/validation'
 
 /**
  * Optimistic move application (client-side prediction)
  * The server will validate and send back the authoritative state
  */
-function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): SorobanQuizState {
-  switch (move.type) {
+function applyMoveOptimistically(state: MemoryQuizState, move: GameMove): MemoryQuizState {
+  const typedMove = move as MemoryQuizMove
+  switch (typedMove.type) {
     case 'START_QUIZ': {
       // Handle both client-generated moves (with quizCards) and server-generated moves (with numbers only)
-      // Server can't serialize React components, so it only sends numbers
-      const clientQuizCards = move.data.quizCards
-      const serverNumbers = move.data.numbers
+      const clientQuizCards = typedMove.data.quizCards
+      const serverNumbers = typedMove.data.numbers
 
       let quizCards: QuizCard[]
       let correctAnswers: number[]
@@ -36,7 +35,7 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
         quizCards = clientQuizCards
         correctAnswers = clientQuizCards.map((card: QuizCard) => card.number)
       } else if (serverNumbers) {
-        // Server update: create minimal quizCards from numbers (no React components needed for validation)
+        // Server update: create minimal quizCards from numbers
         quizCards = serverNumbers.map((number: number) => ({
           number,
           svgComponent: null,
@@ -44,18 +43,16 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
         }))
         correctAnswers = serverNumbers
       } else {
-        // Fallback: preserve existing state
         quizCards = state.quizCards
         correctAnswers = state.correctAnswers
       }
 
       const cardCount = quizCards.length
 
-      // Initialize player scores for all active players (by userId, not playerId)
-      const activePlayers = move.data.activePlayers || []
-      const playerMetadata = move.data.playerMetadata || {}
+      // Initialize player scores for all active players (by userId)
+      const activePlayers = typedMove.data.activePlayers || []
+      const playerMetadata = typedMove.data.playerMetadata || {}
 
-      // Extract unique userIds from playerMetadata
       const uniqueUserIds = new Set<string>()
       for (const playerId of activePlayers) {
         const metadata = playerMetadata[playerId]
@@ -64,11 +61,13 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
         }
       }
 
-      // Initialize scores for each userId
-      const playerScores = Array.from(uniqueUserIds).reduce((acc: any, userId: string) => {
-        acc[userId] = { correct: 0, incorrect: 0 }
-        return acc
-      }, {})
+      const playerScores = Array.from(uniqueUserIds).reduce(
+        (acc: Record<string, { correct: number; incorrect: number }>, userId: string) => {
+          acc[userId] = { correct: 0, incorrect: 0 }
+          return acc
+        },
+        {}
+      )
 
       return {
         ...state,
@@ -82,10 +81,10 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
         currentInput: '',
         wrongGuessAnimations: [],
         prefixAcceptanceTimeout: null,
-        // Multiplayer state
         activePlayers,
         playerMetadata,
         playerScores,
+        numberFoundBy: {},
       }
     }
 
@@ -102,8 +101,6 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
       }
 
     case 'ACCEPT_NUMBER': {
-      // Track scores by userId (not playerId) since we can't determine which player typed
-      // Defensive check: ensure state properties exist
       const playerScores = state.playerScores || {}
       const foundNumbers = state.foundNumbers || []
       const numberFoundBy = state.numberFoundBy || {}
@@ -111,43 +108,50 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
       const newPlayerScores = { ...playerScores }
       const newNumberFoundBy = { ...numberFoundBy }
 
-      if (move.userId) {
-        const currentScore = newPlayerScores[move.userId] || { correct: 0, incorrect: 0 }
-        newPlayerScores[move.userId] = {
+      if (typedMove.userId) {
+        const currentScore = newPlayerScores[typedMove.userId] || { correct: 0, incorrect: 0 }
+        newPlayerScores[typedMove.userId] = {
           ...currentScore,
           correct: currentScore.correct + 1,
         }
-        // Track who found this number
-        newNumberFoundBy[move.data.number] = move.userId
+        newNumberFoundBy[typedMove.data.number] = typedMove.userId
       }
+
       return {
         ...state,
-        foundNumbers: [...foundNumbers, move.data.number],
+        foundNumbers: [...foundNumbers, typedMove.data.number],
+        currentInput: '',
         playerScores: newPlayerScores,
         numberFoundBy: newNumberFoundBy,
       }
     }
 
     case 'REJECT_NUMBER': {
-      // Track scores by userId (not playerId) since we can't determine which player typed
-      // Defensive check: ensure state properties exist
       const playerScores = state.playerScores || {}
-
       const newPlayerScores = { ...playerScores }
-      if (move.userId) {
-        const currentScore = newPlayerScores[move.userId] || { correct: 0, incorrect: 0 }
-        newPlayerScores[move.userId] = {
+
+      if (typedMove.userId) {
+        const currentScore = newPlayerScores[typedMove.userId] || { correct: 0, incorrect: 0 }
+        newPlayerScores[typedMove.userId] = {
           ...currentScore,
           incorrect: currentScore.incorrect + 1,
         }
       }
+
       return {
         ...state,
         guessesRemaining: state.guessesRemaining - 1,
         incorrectGuesses: state.incorrectGuesses + 1,
+        currentInput: '',
         playerScores: newPlayerScores,
       }
     }
+
+    case 'SET_INPUT':
+      return {
+        ...state,
+        currentInput: typedMove.data.input,
+      }
 
     case 'SHOW_RESULTS':
       return {
@@ -172,10 +176,7 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
       }
 
     case 'SET_CONFIG': {
-      const { field, value } = move.data as {
-        field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode'
-        value: any
-      }
+      const { field, value } = typedMove.data
       return {
         ...state,
         [field]: value,
@@ -187,65 +188,115 @@ function applyMoveOptimistically(state: SorobanQuizState, move: GameMove): Sorob
   }
 }
 
+// Context interface
+export interface MemoryQuizContextValue {
+  state: MemoryQuizState
+  isGameActive: boolean
+  isRoomCreator: boolean
+  resetGame: () => void
+  exitSession?: () => void
+  startQuiz: (quizCards: QuizCard[]) => void
+  nextCard: () => void
+  showInputPhase: () => void
+  acceptNumber: (number: number) => void
+  rejectNumber: () => void
+  setInput: (input: string) => void
+  showResults: () => void
+  setConfig: (
+    field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode',
+    value: unknown
+  ) => void
+  // Legacy dispatch for UI-only actions (to be migrated to local state)
+  dispatch: (action: unknown) => void
+}
+
+// Create context
+const MemoryQuizContext = createContext<MemoryQuizContextValue | null>(null)
+
+// Hook to use the context
+export function useMemoryQuiz(): MemoryQuizContextValue {
+  const context = useContext(MemoryQuizContext)
+  if (!context) {
+    throw new Error('useMemoryQuiz must be used within MemoryQuizProvider')
+  }
+  return context
+}
+
 /**
- * RoomMemoryQuizProvider - Provides context for room-based multiplayer mode
+ * MemoryQuizProvider - Unified provider for room-based multiplayer
  *
  * This provider uses useArcadeSession for network-synchronized gameplay.
  * All state changes are sent as moves and validated on the server.
  */
-export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
+export function MemoryQuizProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useViewerId()
   const { roomData } = useRoomData()
   const { activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
 
-  // Get active player IDs as array
   const activePlayers = Array.from(activePlayerIds)
 
   // LOCAL-ONLY state for current input (not synced over network)
-  // This prevents sending a network request for every keystroke
   const [localCurrentInput, setLocalCurrentInput] = useState('')
 
-  // Merge saved game config from room with initialState
-  // Settings are scoped by game name to preserve settings when switching games
+  // Merge saved game config from room with default initial state
   const mergedInitialState = useMemo(() => {
-    const gameConfig = roomData?.gameConfig as Record<string, any> | null | undefined
+    const gameConfig = roomData?.gameConfig as Record<string, unknown> | null | undefined
 
-    if (!gameConfig) {
-      return initialState
+    const savedConfig = gameConfig?.['memory-quiz'] as Record<string, unknown> | null | undefined
+
+    // Default initial state
+    const defaultState: MemoryQuizState = {
+      cards: [],
+      quizCards: [],
+      correctAnswers: [],
+      currentCardIndex: 0,
+      displayTime: 2.0,
+      selectedCount: 5,
+      selectedDifficulty: 'easy',
+      foundNumbers: [],
+      guessesRemaining: 0,
+      currentInput: '',
+      incorrectGuesses: 0,
+      activePlayers: [],
+      playerMetadata: {},
+      playerScores: {},
+      playMode: 'cooperative',
+      numberFoundBy: {},
+      gamePhase: 'setup',
+      prefixAcceptanceTimeout: null,
+      finishButtonsBound: false,
+      wrongGuessAnimations: [],
+      hasPhysicalKeyboard: null,
+      testingMode: false,
+      showOnScreenKeyboard: false,
     }
 
-    // Get settings for this specific game (memory-quiz)
-    const savedConfig = gameConfig['memory-quiz'] as Record<string, any> | null | undefined
-
     if (!savedConfig) {
-      return initialState
+      return defaultState
     }
 
     return {
-      ...initialState,
-      // Restore settings from saved config
-      selectedCount: savedConfig.selectedCount ?? initialState.selectedCount,
-      displayTime: savedConfig.displayTime ?? initialState.displayTime,
-      selectedDifficulty: savedConfig.selectedDifficulty ?? initialState.selectedDifficulty,
-      playMode: savedConfig.playMode ?? initialState.playMode,
+      ...defaultState,
+      selectedCount:
+        (savedConfig.selectedCount as 2 | 5 | 8 | 12 | 15) ?? defaultState.selectedCount,
+      displayTime: (savedConfig.displayTime as number) ?? defaultState.displayTime,
+      selectedDifficulty:
+        (savedConfig.selectedDifficulty as MemoryQuizState['selectedDifficulty']) ??
+        defaultState.selectedDifficulty,
+      playMode: (savedConfig.playMode as 'cooperative' | 'competitive') ?? defaultState.playMode,
     }
   }, [roomData?.gameConfig])
 
-  // Arcade session integration WITH room sync
-  const {
-    state,
-    sendMove,
-    connected: _connected,
-    exitSession,
-  } = useArcadeSession<SorobanQuizState>({
+  // Arcade session integration
+  const { state, sendMove, exitSession } = useArcadeSession<MemoryQuizState>({
     userId: viewerId || '',
-    roomId: roomData?.id, // CRITICAL: Pass roomId for network sync across room members
+    roomId: roomData?.id || undefined,
     initialState: mergedInitialState,
     applyMove: applyMoveOptimistically,
   })
 
-  // Clear local input when game phase changes or when game resets
+  // Clear local input when game phase changes
   useEffect(() => {
     if (state.gamePhase !== 'input') {
       setLocalCurrentInput('')
@@ -261,7 +312,7 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
     }
   }, [state.prefixAcceptanceTimeout])
 
-  // Detect state corruption/mismatch (e.g., game type mismatch between sessions)
+  // Detect state corruption
   const hasStateCorruption =
     !state.quizCards ||
     !state.correctAnswers ||
@@ -271,32 +322,33 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
   // Computed values
   const isGameActive = state.gamePhase === 'display' || state.gamePhase === 'input'
 
-  // Build player metadata from room data and player map
+  // Build player metadata
   const buildPlayerMetadata = useCallback(() => {
     const playerOwnership = buildPlayerOwnershipFromRoomData(roomData)
-    const metadata = buildPlayerMetadataUtil(activePlayers, playerOwnership, players, viewerId)
+    const metadata = buildPlayerMetadataUtil(
+      activePlayers,
+      playerOwnership,
+      players,
+      viewerId || undefined
+    )
     return metadata
   }, [activePlayers, players, roomData, viewerId])
 
-  // Action creators - send moves to arcade session
+  // Action creators
   const startQuiz = useCallback(
     (quizCards: QuizCard[]) => {
-      // Extract only serializable data (numbers) for server
-      // React components can't be sent over Socket.IO
       const numbers = quizCards.map((card) => card.number)
-
-      // Build player metadata for multiplayer
       const playerMetadata = buildPlayerMetadata()
 
       sendMove({
         type: 'START_QUIZ',
-        playerId: TEAM_MOVE, // Team move - all players act together
-        userId: viewerId || '', // User who initiated
+        playerId: TEAM_MOVE,
+        userId: viewerId || '',
         data: {
-          numbers, // Send to server
-          quizCards, // Keep for optimistic local update
-          activePlayers, // Send active players list
-          playerMetadata, // Send player display info
+          numbers,
+          quizCards,
+          activePlayers,
+          playerMetadata,
         },
       })
     },
@@ -323,13 +375,11 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
 
   const acceptNumber = useCallback(
     (number: number) => {
-      // Clear local input immediately
       setLocalCurrentInput('')
-
       sendMove({
         type: 'ACCEPT_NUMBER',
-        playerId: TEAM_MOVE, // Team move - can't identify specific player
-        userId: viewerId || '', // User who guessed correctly
+        playerId: TEAM_MOVE,
+        userId: viewerId || '',
         data: { number },
       })
     },
@@ -337,20 +387,17 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
   )
 
   const rejectNumber = useCallback(() => {
-    // Clear local input immediately
     setLocalCurrentInput('')
-
     sendMove({
       type: 'REJECT_NUMBER',
-      playerId: TEAM_MOVE, // Team move - can't identify specific player
-      userId: viewerId || '', // User who guessed incorrectly
+      playerId: TEAM_MOVE,
+      userId: viewerId || '',
       data: {},
     })
   }, [viewerId, sendMove])
 
   const setInput = useCallback((input: string) => {
-    // LOCAL ONLY - no network sync!
-    // This makes typing instant with zero network lag
+    // LOCAL ONLY - no network sync for instant typing
     setLocalCurrentInput(input)
   }, [])
 
@@ -373,9 +420,10 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
   }, [viewerId, sendMove])
 
   const setConfig = useCallback(
-    (field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode', value: any) => {
-      console.log(`[RoomMemoryQuizProvider] setConfig called: ${field} = ${value}`)
-
+    (
+      field: 'selectedCount' | 'displayTime' | 'selectedDifficulty' | 'playMode',
+      value: unknown
+    ) => {
       sendMove({
         type: 'SET_CONFIG',
         playerId: TEAM_MOVE,
@@ -383,12 +431,11 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
         data: { field, value },
       })
 
-      // Save setting to room's gameConfig for persistence
-      // Settings are scoped by game name to preserve settings when switching games
+      // Save to room config for persistence
       if (roomData?.id) {
-        const currentGameConfig = (roomData.gameConfig as Record<string, any>) || {}
+        const currentGameConfig = (roomData.gameConfig as Record<string, unknown>) || {}
         const currentMemoryQuizConfig =
-          (currentGameConfig['memory-quiz'] as Record<string, any>) || {}
+          (currentGameConfig['memory-quiz'] as Record<string, unknown>) || {}
 
         updateGameConfig({
           roomId: roomData.id,
@@ -405,13 +452,27 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
     [viewerId, sendMove, roomData?.id, roomData?.gameConfig, updateGameConfig]
   )
 
-  // Merge network state with local input state
+  // Legacy dispatch stub for UI-only actions
+  // TODO: Migrate these to local component state
+  const dispatch = useCallback((action: unknown) => {
+    console.warn(
+      '[MemoryQuizProvider] dispatch() is deprecated for UI-only actions. These should be migrated to local component state:',
+      action
+    )
+    // No-op - UI-only state changes should be handled locally
+  }, [])
+
+  // Merge network state with local input
   const mergedState = {
     ...state,
-    currentInput: localCurrentInput, // Override network state with local input
+    currentInput: localCurrentInput,
   }
 
-  // If state is corrupted, show error message instead of crashing
+  // Determine if current user is room creator
+  const isRoomCreator =
+    roomData?.members.find((member) => member.userId === viewerId)?.isCreator || false
+
+  // Handle state corruption
   if (hasStateCorruption) {
     return (
       <div
@@ -425,68 +486,18 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
           minHeight: '400px',
         }}
       >
-        <div
-          style={{
-            fontSize: '48px',
-            marginBottom: '20px',
-          }}
-        >
-          ⚠️
-        </div>
+        <div style={{ fontSize: '48px', marginBottom: '20px' }}>⚠️</div>
         <h2
-          style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            marginBottom: '12px',
-            color: '#dc2626',
-          }}
+          style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '12px', color: '#dc2626' }}
         >
           Game State Mismatch
         </h2>
-        <p
-          style={{
-            fontSize: '16px',
-            color: '#6b7280',
-            marginBottom: '24px',
-            maxWidth: '500px',
-          }}
-        >
+        <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '24px', maxWidth: '500px' }}>
           There's a mismatch between game types in this room. This usually happens when room members
           are playing different games.
         </p>
-        <div
-          style={{
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '24px',
-            maxWidth: '500px',
-          }}
-        >
-          <p
-            style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              marginBottom: '8px',
-            }}
-          >
-            To fix this:
-          </p>
-          <ol
-            style={{
-              fontSize: '14px',
-              textAlign: 'left',
-              paddingLeft: '20px',
-              lineHeight: '1.6',
-            }}
-          >
-            <li>Make sure all room members are on the same game page</li>
-            <li>Try refreshing the page</li>
-            <li>If the issue persists, leave and rejoin the room</li>
-          </ol>
-        </div>
         <button
+          type="button"
           onClick={() => window.location.reload()}
           style={{
             padding: '10px 20px',
@@ -505,21 +516,12 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  // Determine if current user is the room creator (controls card timing)
-  const isRoomCreator =
-    roomData?.members.find((member) => member.userId === viewerId)?.isCreator || false
-
   const contextValue: MemoryQuizContextValue = {
     state: mergedState,
-    dispatch: () => {
-      // No-op - replaced with action creators
-      console.warn('dispatch() is deprecated in room mode, use action creators instead')
-    },
     isGameActive,
     resetGame,
     exitSession,
-    isRoomCreator, // Pass room creator flag to components
-    // Expose action creators for components to use
+    isRoomCreator,
     startQuiz,
     nextCard,
     showInputPhase,
@@ -528,10 +530,8 @@ export function RoomMemoryQuizProvider({ children }: { children: ReactNode }) {
     setInput,
     showResults,
     setConfig,
+    dispatch,
   }
 
   return <MemoryQuizContext.Provider value={contextValue}>{children}</MemoryQuizContext.Provider>
 }
-
-// Export the hook for this provider
-export { useMemoryQuiz } from './MemoryQuizContext'

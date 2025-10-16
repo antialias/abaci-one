@@ -1,5 +1,5 @@
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
-import { useMemoryQuiz } from '../context/MemoryQuizContext'
+import { useMemoryQuiz } from '../Provider'
 import { DIFFICULTY_LEVELS, type DifficultyLevel, type QuizCard } from '../types'
 
 // Generate quiz cards with difficulty-based number ranges

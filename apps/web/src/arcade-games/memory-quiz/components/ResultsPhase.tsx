@@ -1,5 +1,5 @@
 import { useAbacusConfig } from '@soroban/abacus-react'
-import { useMemoryQuiz } from '../context/MemoryQuizContext'
+import { useMemoryQuiz } from '../Provider'
 import { DIFFICULTY_LEVELS, type DifficultyLevel, type QuizCard } from '../types'
 import { ResultsCardGrid } from './ResultsCardGrid'
 
@@ -384,7 +384,7 @@ export function ResultsPhase() {
                 // Group players by userId
                 const userTeams = new Map<
                   string,
-                  { userId: string; players: any[]; score: { correct: number; incorrect: 0 } }
+                  { userId: string; players: any[]; score: { correct: number; incorrect: number } }
                 >()
 
                 console.log('🤝 [ResultsPhase] Building team contributions:', {

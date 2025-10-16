@@ -1,8 +1,8 @@
 import { AbacusReact } from '@soroban/abacus-react'
-import type { SorobanQuizState } from '../types'
+import type { MemoryQuizState } from '../types'
 
 interface ResultsCardGridProps {
-  state: SorobanQuizState
+  state: MemoryQuizState
 }
 
 export function ResultsCardGrid({ state }: ResultsCardGridProps) {

@@ -1,6 +1,6 @@
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useMemoryQuiz } from '../context/MemoryQuizContext'
+import { useMemoryQuiz } from '../Provider'
 import type { QuizCard } from '../types'
 
 // Calculate maximum columns needed for a set of numbers
