@@ -113,7 +113,9 @@ var SorobanGenerator = class {
       });
       childProcess.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(`Python process failed with code ${code}: ${stderr}`));
+          reject(
+            new Error(`Python process failed with code ${code}: ${stderr}`)
+          );
         } else {
           resolve();
         }
@@ -169,16 +171,13 @@ var SorobanGenerator2 = class {
   async initialize() {
     if (this.pythonShell)
       return;
-    this.pythonShell = new PythonShell(
-      path2.join("src", "bridge.py"),
-      {
-        mode: "json",
-        pythonPath: "python3",
-        pythonOptions: ["-u"],
-        // Unbuffered
-        scriptPath: this.projectRoot
-      }
-    );
+    this.pythonShell = new PythonShell(path2.join("src", "bridge.py"), {
+      mode: "json",
+      pythonPath: "python3",
+      pythonOptions: ["-u"],
+      // Unbuffered
+      scriptPath: this.projectRoot
+    });
   }
   /**
    * Generate flashcards - clean function interface
@@ -186,14 +185,11 @@ var SorobanGenerator2 = class {
   async generate(config) {
     if (!this.pythonShell) {
       return new Promise((resolve, reject) => {
-        const shell = new PythonShell(
-          path2.join("src", "bridge.py"),
-          {
-            mode: "json",
-            pythonPath: "python3",
-            scriptPath: this.projectRoot
-          }
-        );
+        const shell = new PythonShell(path2.join("src", "bridge.py"), {
+          mode: "json",
+          pythonPath: "python3",
+          scriptPath: this.projectRoot
+        });
         shell.on("message", (message) => {
           if (message.error) {
             reject(new Error(message.error));

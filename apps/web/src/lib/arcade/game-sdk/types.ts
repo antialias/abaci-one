@@ -5,10 +5,7 @@
 
 import type { ReactNode } from 'react'
 import type { GameManifest } from '../manifest-schema'
-import type {
-  GameMove as BaseGameMove,
-  GameValidator,
-} from '../validation/types'
+import type { GameMove as BaseGameMove, GameValidator } from '../validation/types'
 
 /**
  * Re-export base validation types from arcade system

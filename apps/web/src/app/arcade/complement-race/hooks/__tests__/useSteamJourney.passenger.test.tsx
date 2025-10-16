@@ -46,9 +46,9 @@ const createPassenger = (
 
 // Test stations
 const _testStations: Station[] = [
-  { id: 'station-0', name: 'Start', position: 0, icon: '🏁' },
-  { id: 'station-1', name: 'Middle', position: 50, icon: '🏢' },
-  { id: 'station-2', name: 'End', position: 100, icon: '🏁' },
+  { id: 'station-0', name: 'Start', position: 0, icon: '🏁', emoji: '🏁' },
+  { id: 'station-1', name: 'Middle', position: 50, icon: '🏢', emoji: '🏢' },
+  { id: 'station-2', name: 'End', position: 100, icon: '🏁', emoji: '🏁' },
 ]
 
 describe('useSteamJourney - Passenger Boarding', () => {

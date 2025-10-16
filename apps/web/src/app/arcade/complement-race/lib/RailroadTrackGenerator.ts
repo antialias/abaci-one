@@ -19,6 +19,9 @@ export interface TrackElements {
 }
 
 export class RailroadTrackGenerator {
+  private viewWidth: number
+  private viewHeight: number
+
   constructor(viewWidth = 800, viewHeight = 600) {
     this.viewWidth = viewWidth
     this.viewHeight = viewHeight
@@ -35,8 +38,8 @@ export class RailroadTrackGenerator {
       ballastPath: pathData,
       referencePath: pathData,
       ties: [],
-      leftRailPoints: [],
-      rightRailPoints: [],
+      leftRailPath: '',
+      rightRailPath: '',
     }
   }
 

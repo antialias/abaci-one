@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useComplementRace } from '../context/ComplementRaceContext'
+import { useComplementRace } from '@/arcade-games/complement-race/Provider'
 import { useSoundEffects } from '../hooks/useSoundEffects'
 
 export function GameCountdown() {

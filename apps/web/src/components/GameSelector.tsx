@@ -7,24 +7,9 @@ import { getAllGames } from '../lib/arcade/game-registry'
 import { GameCard } from './GameCard'
 
 // Game configuration defining player limits
-// Note: "matching" (formerly "battle-arena") has been migrated to the modular game system
+// Note: Most games have been migrated to the modular game system (see game-registry.ts)
+// Only games not yet migrated remain here
 export const GAMES_CONFIG = {
-  'complement-race': {
-    name: 'Speed Complement Race',
-    fullName: 'Speed Complement Race 🏁',
-    maxPlayers: 1,
-    description: 'Race against AI opponents while solving complement problems',
-    longDescription:
-      'Battle Swift AI and Math Bot in an epic race! Find complement numbers to speed ahead. Choose your mode and difficulty to begin the ultimate math challenge.',
-    url: '/arcade/complement-race',
-    icon: '🏁',
-    chips: ['🤖 AI Opponents', '🔥 Speed Challenge', '🏆 Three Game Modes'],
-    color: 'blue',
-    gradient: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-    borderColor: 'blue.200',
-    difficulty: 'Intermediate',
-    available: true,
-  },
   'master-organizer': {
     name: 'Master Organizer',
     fullName: 'Master Organizer 🎴',

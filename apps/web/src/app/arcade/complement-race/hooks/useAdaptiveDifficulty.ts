@@ -1,4 +1,4 @@
-import { useComplementRace } from '../context/ComplementRaceContext'
+import { useComplementRace } from '@/arcade-games/complement-race/Provider'
 import type { PairPerformance } from '../lib/gameTypes'
 
 export function useAdaptiveDifficulty() {

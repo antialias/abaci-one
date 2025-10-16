@@ -52,6 +52,7 @@ export interface Station {
   name: string
   position: number // 0-100% along track
   icon: string
+  emoji: string // Alias for icon (for backward compatibility)
 }
 
 export interface Passenger {

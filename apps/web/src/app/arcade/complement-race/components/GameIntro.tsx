@@ -1,6 +1,6 @@
 'use client'
 
-import { useComplementRace } from '../context/ComplementRaceContext'
+import { useComplementRace } from '@/arcade-games/complement-race/Provider'
 
 export function GameIntro() {
   const { dispatch } = useComplementRace()

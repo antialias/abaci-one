@@ -132,11 +132,14 @@ async function example() {
     coloredNumerals: true,
     showCutMarks: true
   });
-  await client.generateAndDownload({
-    range: "0-100",
-    step: 5,
-    cardsPerPage: 6
-  }, "counting-by-5s.pdf");
+  await client.generateAndDownload(
+    {
+      range: "0-100",
+      step: 5,
+      cardsPerPage: 6
+    },
+    "counting-by-5s.pdf"
+  );
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

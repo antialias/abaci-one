@@ -1,6 +1,7 @@
 'use client'
 
-import { useComplementRace } from '../context/ComplementRaceContext'
+// Use modular game provider for multiplayer support
+import { useComplementRace } from '@/arcade-games/complement-race/Provider'
 import { GameControls } from './GameControls'
 import { GameCountdown } from './GameCountdown'
 import { GameDisplay } from './GameDisplay'

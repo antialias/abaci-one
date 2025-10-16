@@ -41,12 +41,12 @@ const initialAIRacers: AIRacer[] = [
 ]
 
 const initialStations: Station[] = [
-  { id: 'station-0', name: 'Depot', position: 0, icon: '🏭' },
-  { id: 'station-1', name: 'Riverside', position: 20, icon: '🌊' },
-  { id: 'station-2', name: 'Hillside', position: 40, icon: '⛰️' },
-  { id: 'station-3', name: 'Canyon View', position: 60, icon: '🏜️' },
-  { id: 'station-4', name: 'Meadows', position: 80, icon: '🌾' },
-  { id: 'station-5', name: 'Grand Central', position: 100, icon: '🏛️' },
+  { id: 'station-0', name: 'Depot', position: 0, icon: '🏭', emoji: '🏭' },
+  { id: 'station-1', name: 'Riverside', position: 20, icon: '🌊', emoji: '🌊' },
+  { id: 'station-2', name: 'Hillside', position: 40, icon: '⛰️', emoji: '⛰️' },
+  { id: 'station-3', name: 'Canyon View', position: 60, icon: '🏜️', emoji: '🏜️' },
+  { id: 'station-4', name: 'Meadows', position: 80, icon: '🌾', emoji: '🌾' },
+  { id: 'station-5', name: 'Grand Central', position: 100, icon: '🏛️', emoji: '🏛️' },
 ]
 
 const initialState: GameState = {
@@ -457,3 +457,10 @@ export function useComplementRace() {
   }
   return context
 }
+
+// Re-export modular game provider for arcade room play
+// This allows existing components to work with the new multiplayer provider
+export {
+  ComplementRaceProvider as RoomComplementRaceProvider,
+  useComplementRace as useRoomComplementRace,
+} from '@/arcade-games/complement-race/Provider'

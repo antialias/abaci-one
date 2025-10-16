@@ -1,6 +1,6 @@
 'use client'
 
-import { useComplementRace } from '../context/ComplementRaceContext'
+import { useComplementRace } from '@/arcade-games/complement-race/Provider'
 import type { ComplementDisplay, GameMode, GameStyle, TimeoutSetting } from '../lib/gameTypes'
 import { AbacusTarget } from './AbacusTarget'
 

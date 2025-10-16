@@ -49,8 +49,8 @@ describe('useTrackManagement', () => {
     } as unknown as RailroadTrackGenerator
 
     mockStations = [
-      { id: 'station-1', name: 'Station 1', position: 20, icon: '🏭' },
-      { id: 'station-2', name: 'Station 2', position: 60, icon: '🏛️' },
+      { id: 'station-1', name: 'Station 1', position: 20, icon: '🏭', emoji: '🏭' },
+      { id: 'station-2', name: 'Station 2', position: 60, icon: '🏛️', emoji: '🏛️' },
     ]
 
     mockPassengers = [

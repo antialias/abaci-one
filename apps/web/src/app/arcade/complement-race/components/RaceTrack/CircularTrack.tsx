@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useUserProfile } from '@/contexts/UserProfileContext'
-import { useComplementRace } from '../../context/ComplementRaceContext'
+import { useComplementRace } from '@/arcade-games/complement-race/Provider'
 import { useSoundEffects } from '../../hooks/useSoundEffects'
 import type { AIRacer } from '../../lib/gameTypes'
 import { SpeechBubble } from '../AISystem/SpeechBubble'

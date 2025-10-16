@@ -42,6 +42,7 @@ export type { MatchingMove } from '@/arcade-games/matching/types'
 export type { MemoryQuizMove } from '@/arcade-games/memory-quiz/types'
 export type { NumberGuesserMove } from '@/arcade-games/number-guesser/types'
 export type { MathSprintMove } from '@/arcade-games/math-sprint/types'
+export type { ComplementRaceMove } from '@/arcade-games/complement-race/types'
 
 /**
  * Re-export game-specific state types from their respective modules
@@ -50,6 +51,7 @@ export type { MatchingState } from '@/arcade-games/matching/types'
 export type { MemoryQuizState } from '@/arcade-games/memory-quiz/types'
 export type { NumberGuesserState } from '@/arcade-games/number-guesser/types'
 export type { MathSprintState } from '@/arcade-games/math-sprint/types'
+export type { ComplementRaceState } from '@/arcade-games/complement-race/types'
 
 // Generic game state union (for backwards compatibility)
 export type GameState = MemoryPairsState | SorobanQuizState // Add other game states as union later

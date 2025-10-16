@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { type CommentaryContext, getAICommentary } from '../components/AISystem/aiCommentary'
-import { useComplementRace } from '../context/ComplementRaceContext'
+import { useComplementRace } from '@/arcade-games/complement-race/Provider'
 import { useSoundEffects } from './useSoundEffects'
 
 export function useAIRacers() {

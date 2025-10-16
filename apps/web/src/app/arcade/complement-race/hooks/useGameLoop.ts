@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react'
-import { useComplementRace } from '../context/ComplementRaceContext'
+import { useComplementRace } from '@/arcade-games/complement-race/Provider'
 
 export function useGameLoop() {
   const { state, dispatch } = useComplementRace()

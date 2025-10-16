@@ -3,13 +3,7 @@
  * Validates all game moves and state transitions
  */
 
-import type {
-  GameCard,
-  MatchingConfig,
-  MatchingMove,
-  MatchingState,
-  Player,
-} from './types'
+import type { GameCard, MatchingConfig, MatchingMove, MatchingState, Player } from './types'
 import { generateGameCards } from './utils/cardGeneration'
 import { canFlipCard, validateMatch } from './utils/matchValidation'
 import type { GameValidator, ValidationResult } from '@/lib/arcade/validation/types'

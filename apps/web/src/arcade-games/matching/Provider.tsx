@@ -11,7 +11,13 @@ import {
 import type { GameMove } from '@/lib/arcade/validation'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { generateGameCards } from './utils/cardGeneration'
-import type { GameMode, GameStatistics, MatchingContextValue, MatchingState, MatchingMove } from './types'
+import type {
+  GameMode,
+  GameStatistics,
+  MatchingContextValue,
+  MatchingState,
+  MatchingMove,
+} from './types'
 
 // Create context for Matching game
 const MatchingContext = createContext<MatchingContextValue | null>(null)
@@ -66,7 +72,10 @@ function applyMoveOptimistically(state: MatchingState, move: GameMove): Matching
         flippedCards: [],
         matchedPairs: 0,
         moves: 0,
-        scores: typedMove.data.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
+        scores: typedMove.data.activePlayers.reduce(
+          (acc: any, p: string) => ({ ...acc, [p]: 0 }),
+          {}
+        ),
         consecutiveMatches: typedMove.data.activePlayers.reduce(
           (acc: any, p: string) => ({ ...acc, [p]: 0 }),
           {}

@@ -89,7 +89,10 @@
       "Bash(do sed -i '' \"s|from ''@/styled-system/css''|from ''../../../../styled-system/css''|g\" \"$file\")",
       "Bash(do echo \"=== $game ===\" echo \"Required files:\" ls -1 src/arcade-games/$game/)",
       "Bash(do echo \"=== $game%/ ===\")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(do if [ -f \"$file\" ])",
+      "Bash(! echo \"$file\")",
+      "Bash(then sed -i '' \"s|from ''''../context/ComplementRaceContext''''|from ''''@/arcade-games/complement-race/Provider''''|g\" \"$file\" sed -i '' \"s|from ''''../../context/ComplementRaceContext''''|from ''''@/arcade-games/complement-race/Provider''''|g\" \"$file\" fi done)"
     ],
     "deny": [],
     "ask": []

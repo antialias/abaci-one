@@ -59,11 +59,43 @@ export type MatchingGameConfig = InferGameConfig<typeof matchingGame>
 
 /**
  * Configuration for complement-race game
- * TODO: Define when implementing complement-race settings
+ * Supports multiplayer racing with AI opponents
  */
 export interface ComplementRaceGameConfig {
-  // Future settings will go here
-  placeholder?: never
+  // Game Style (which mode)
+  style: 'practice' | 'sprint' | 'survival'
+
+  // Question Settings
+  mode: 'friends5' | 'friends10' | 'mixed'
+  complementDisplay: 'number' | 'abacus' | 'random'
+
+  // Difficulty
+  timeoutSetting: 'preschool' | 'kindergarten' | 'relaxed' | 'slow' | 'normal' | 'fast' | 'expert'
+
+  // AI Settings
+  enableAI: boolean
+  aiOpponentCount: number // 0-2 for multiplayer, 2 for single-player
+
+  // Multiplayer Settings
+  maxPlayers: number // 1-4
+
+  // Sprint Mode Specific
+  routeDuration: number // seconds per route (default 60)
+  enablePassengers: boolean
+  passengerCount: number // 6-8 passengers per route
+  maxConcurrentPassengers: number // 3 per train
+
+  // Practice/Survival Mode Specific
+  raceGoal: number // questions to win practice mode (default 20)
+
+  // Win Conditions
+  winCondition: 'route-based' | 'score-based' | 'time-based'
+  targetScore?: number // for score-based (e.g., 100)
+  timeLimit?: number // for time-based (e.g., 300 seconds)
+  routeCount?: number // for route-based (e.g., 3 routes)
+
+  // Index signature to satisfy GameConfig constraint
+  [key: string]: unknown
 }
 
 // ============================================================================
@@ -112,7 +144,37 @@ export const DEFAULT_MEMORY_QUIZ_CONFIG: MemoryQuizGameConfig = {
 }
 
 export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {
-  // Future defaults will go here
+  // Game style
+  style: 'practice',
+
+  // Question settings
+  mode: 'mixed',
+  complementDisplay: 'random',
+
+  // Difficulty
+  timeoutSetting: 'normal',
+
+  // AI settings
+  enableAI: true,
+  aiOpponentCount: 2,
+
+  // Multiplayer
+  maxPlayers: 4,
+
+  // Sprint mode
+  routeDuration: 60,
+  enablePassengers: true,
+  passengerCount: 6,
+  maxConcurrentPassengers: 3,
+
+  // Practice/Survival
+  raceGoal: 20,
+
+  // Win conditions
+  winCondition: 'route-based',
+  routeCount: 3,
+  targetScore: 100,
+  timeLimit: 300,
 }
 
 export const DEFAULT_NUMBER_GUESSER_CONFIG: NumberGuesserGameConfig = {

@@ -32,6 +32,7 @@ describe('usePassengerAnimations', () => {
       name: 'Station 1',
       position: 20,
       icon: '🏭',
+      emoji: '🏭',
     }
 
     mockStation2 = {
@@ -39,6 +40,7 @@ describe('usePassengerAnimations', () => {
       name: 'Station 2',
       position: 60,
       icon: '🏛️',
+      emoji: '🏛️',
     }
 
     // Create mock passengers
