@@ -80,7 +80,9 @@ export function PlayingPhase() {
             marginBottom: '8px',
           })}
         >
-          <span className={css({ fontSize: 'sm', fontWeight: 'semibold' })}>Question {progress}</span>
+          <span className={css({ fontSize: 'sm', fontWeight: 'semibold' })}>
+            Question {progress}
+          </span>
           <span className={css({ fontSize: 'sm', color: 'gray.600' })}>
             {state.difficulty.charAt(0).toUpperCase() + state.difficulty.slice(1)}
           </span>
@@ -211,7 +213,6 @@ export function PlayingPhase() {
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type your answer..."
-                  autoFocus
                   className={css({
                     flex: 1,
                     padding: '12px 16px',
@@ -334,7 +335,9 @@ export function PlayingPhase() {
                       {player?.name}
                     </span>
                   </div>
-                  <span className={css({ fontSize: 'sm', fontWeight: 'bold', color: 'purple.600' })}>
+                  <span
+                    className={css({ fontSize: 'sm', fontWeight: 'bold', color: 'purple.600' })}
+                  >
                     {score} pts
                   </span>
                 </div>

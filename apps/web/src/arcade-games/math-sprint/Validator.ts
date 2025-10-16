@@ -6,7 +6,6 @@
  */
 
 import type { GameValidator, ValidationResult } from '@/lib/arcade/game-sdk'
-import { TEAM_MOVE } from '@/lib/arcade/validation/types'
 import type {
   Difficulty,
   MathSprintConfig,
@@ -16,9 +15,7 @@ import type {
   Question,
 } from './types'
 
-export class MathSprintValidator
-  implements GameValidator<MathSprintState, MathSprintMove>
-{
+export class MathSprintValidator implements GameValidator<MathSprintState, MathSprintMove> {
   /**
    * Validate a game move
    */
@@ -222,11 +219,7 @@ export class MathSprintValidator
     return { valid: true, newState }
   }
 
-  private validateSetConfig(
-    state: MathSprintState,
-    field: string,
-    value: any
-  ): ValidationResult {
+  private validateSetConfig(state: MathSprintState, field: string, value: any): ValidationResult {
     if (state.gamePhase !== 'setup') {
       return { valid: false, error: 'Cannot change config during game' }
     }
@@ -255,11 +248,7 @@ export class MathSprintValidator
     return questions
   }
 
-  private generateQuestion(
-    difficulty: Difficulty,
-    operation: Operation,
-    id: string
-  ): Question {
+  private generateQuestion(difficulty: Difficulty, operation: Operation, id: string): Question {
     let operand1: number
     let operand2: number
     let correctAnswer: number
