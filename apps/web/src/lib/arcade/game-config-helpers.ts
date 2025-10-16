@@ -17,6 +17,7 @@ import {
   DEFAULT_NUMBER_GUESSER_CONFIG,
   DEFAULT_MATH_SPRINT_CONFIG,
 } from './game-configs'
+import { getGame } from './game-registry'
 
 /**
  * Extended game name type that includes both registered validators and legacy games
@@ -176,8 +177,20 @@ export async function deleteAllGameConfigs(roomId: string): Promise<void> {
 /**
  * Validate a game config at runtime
  * Returns true if the config is valid for the given game
+ *
+ * NEW: Uses game registry validation functions instead of switch statements.
+ * Games now own their own validation logic!
  */
 export function validateGameConfig(gameName: ExtendedGameName, config: any): boolean {
+  // Try to get game from registry
+  const game = getGame(gameName)
+
+  // If game has a validateConfig function, use it
+  if (game?.validateConfig) {
+    return game.validateConfig(config)
+  }
+
+  // Fallback for legacy games without registry (e.g., complement-race, matching, memory-quiz)
   switch (gameName) {
     case 'matching':
       return (
@@ -206,31 +219,8 @@ export function validateGameConfig(gameName: ExtendedGameName, config: any): boo
       // TODO: Add validation when complement-race settings are defined
       return typeof config === 'object' && config !== null
 
-    case 'number-guesser':
-      return (
-        typeof config === 'object' &&
-        config !== null &&
-        typeof config.minNumber === 'number' &&
-        typeof config.maxNumber === 'number' &&
-        typeof config.roundsToWin === 'number' &&
-        config.minNumber >= 1 &&
-        config.maxNumber > config.minNumber &&
-        config.roundsToWin >= 1
-      )
-
-    case 'math-sprint':
-      return (
-        typeof config === 'object' &&
-        config !== null &&
-        ['easy', 'medium', 'hard'].includes(config.difficulty) &&
-        typeof config.questionsPerRound === 'number' &&
-        typeof config.timePerQuestion === 'number' &&
-        config.questionsPerRound >= 5 &&
-        config.questionsPerRound <= 20 &&
-        config.timePerQuestion >= 10
-      )
-
     default:
-      return false
+      // If no validator found, accept any object
+      return typeof config === 'object' && config !== null
   }
 }

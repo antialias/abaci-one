@@ -77,4 +77,13 @@ export interface GameDefinition<
 
   /** Default configuration */
   defaultConfig: TConfig
+
+  /**
+   * Validate a config object at runtime
+   * Returns true if config is valid for this game
+   *
+   * @param config - Configuration object to validate
+   * @returns true if valid, false otherwise
+   */
+  validateConfig?: (config: unknown) => config is TConfig
 }

@@ -34,10 +34,28 @@ const defaultConfig: MathSprintConfig = {
   timePerQuestion: 30,
 }
 
+// Config validation function
+function validateMathSprintConfig(config: unknown): config is MathSprintConfig {
+  return (
+    typeof config === 'object' &&
+    config !== null &&
+    'difficulty' in config &&
+    'questionsPerRound' in config &&
+    'timePerQuestion' in config &&
+    ['easy', 'medium', 'hard'].includes((config as any).difficulty) &&
+    typeof (config as any).questionsPerRound === 'number' &&
+    typeof (config as any).timePerQuestion === 'number' &&
+    (config as any).questionsPerRound >= 5 &&
+    (config as any).questionsPerRound <= 20 &&
+    (config as any).timePerQuestion >= 10
+  )
+}
+
 export const mathSprintGame = defineGame<MathSprintConfig, MathSprintState, MathSprintMove>({
   manifest,
   Provider: MathSprintProvider,
   GameComponent,
   validator: mathSprintValidator,
   defaultConfig,
+  validateConfig: validateMathSprintConfig,
 })

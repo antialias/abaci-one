@@ -36,6 +36,9 @@ export interface DefineGameOptions<
 
   /** Default configuration for the game */
   defaultConfig: TConfig
+
+  /** Optional: Runtime config validation function */
+  validateConfig?: (config: unknown) => config is TConfig
 }
 
 /**
@@ -63,7 +66,7 @@ export function defineGame<
   TState extends GameState,
   TMove extends GameMove,
 >(options: DefineGameOptions<TConfig, TState, TMove>): GameDefinition<TConfig, TState, TMove> {
-  const { manifest, Provider, GameComponent, validator, defaultConfig } = options
+  const { manifest, Provider, GameComponent, validator, defaultConfig, validateConfig } = options
 
   // Validate that manifest.name matches the game identifier
   if (!manifest.name) {
@@ -76,5 +79,6 @@ export function defineGame<
     GameComponent,
     validator,
     defaultConfig,
+    validateConfig,
   }
 }

@@ -34,6 +34,23 @@ const defaultConfig: NumberGuesserConfig = {
   roundsToWin: 3,
 }
 
+// Config validation function
+function validateNumberGuesserConfig(config: unknown): config is NumberGuesserConfig {
+  return (
+    typeof config === 'object' &&
+    config !== null &&
+    'minNumber' in config &&
+    'maxNumber' in config &&
+    'roundsToWin' in config &&
+    typeof config.minNumber === 'number' &&
+    typeof config.maxNumber === 'number' &&
+    typeof config.roundsToWin === 'number' &&
+    config.minNumber >= 1 &&
+    config.maxNumber > config.minNumber &&
+    config.roundsToWin >= 1
+  )
+}
+
 // Export game definition
 export const numberGuesserGame = defineGame<
   NumberGuesserConfig,
@@ -45,4 +62,5 @@ export const numberGuesserGame = defineGame<
   GameComponent,
   validator: numberGuesserValidator,
   defaultConfig,
+  validateConfig: validateNumberGuesserConfig,
 })
