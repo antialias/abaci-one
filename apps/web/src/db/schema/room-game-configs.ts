@@ -20,7 +20,7 @@ export const roomGameConfigs = sqliteTable(
 
     // Game identifier
     gameName: text('game_name', {
-      enum: ['matching', 'memory-quiz', 'complement-race', 'number-guesser'],
+      enum: ['matching', 'memory-quiz', 'complement-race', 'number-guesser', 'math-sprint'],
     }).notNull(),
 
     // Game-specific configuration JSON
@@ -28,6 +28,8 @@ export const roomGameConfigs = sqliteTable(
     // - matching: { gameType, difficulty, turnTimer }
     // - memory-quiz: { selectedCount, displayTime, selectedDifficulty, playMode }
     // - complement-race: TBD
+    // - number-guesser: { minNumber, maxNumber, roundsToWin }
+    // - math-sprint: { difficulty, questionsPerRound, timePerQuestion }
     config: text('config', { mode: 'json' }).notNull(),
 
     // Timestamps

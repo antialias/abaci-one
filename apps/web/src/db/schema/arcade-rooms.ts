@@ -34,7 +34,7 @@ export const arcadeRooms = sqliteTable('arcade_rooms', {
 
   // Game configuration (nullable to support game selection in room)
   gameName: text('game_name', {
-    enum: ['matching', 'memory-quiz', 'complement-race', 'number-guesser'],
+    enum: ['matching', 'memory-quiz', 'complement-race', 'number-guesser', 'math-sprint'],
   }),
   gameConfig: text('game_config', { mode: 'json' }), // Game-specific settings (nullable when no game selected)
 

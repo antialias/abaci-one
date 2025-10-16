@@ -17,7 +17,7 @@ export const arcadeSessions = sqliteTable('arcade_sessions', {
 
   // Session metadata
   currentGame: text('current_game', {
-    enum: ['matching', 'memory-quiz', 'complement-race', 'number-guesser'],
+    enum: ['matching', 'memory-quiz', 'complement-race', 'number-guesser', 'math-sprint'],
   }).notNull(),
 
   gameUrl: text('game_url').notNull(), // e.g., '/arcade/matching'
