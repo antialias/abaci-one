@@ -319,7 +319,7 @@ export function MemoryGrid<
           .map(([playerId, cardId]) => {
             const playerInfo = getPlayerHoverInfo(playerId)
             // Get card element if player is hovering (cardId might be null)
-            const cardElement = cardId ? cardRefs.current.get(cardId) : null
+            const cardElement = cardId ? (cardRefs.current.get(cardId) ?? null) : null
             // Check if it's this player's turn
             const isPlayersTurn = state.currentPlayer === playerId
             // Check if the card being hovered is flipped
