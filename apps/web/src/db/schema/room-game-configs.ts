@@ -20,7 +20,7 @@ export const roomGameConfigs = sqliteTable(
 
     // Game identifier
     gameName: text('game_name', {
-      enum: ['matching', 'memory-quiz', 'complement-race'],
+      enum: ['matching', 'memory-quiz', 'complement-race', 'number-guesser'],
     }).notNull(),
 
     // Game-specific configuration JSON

@@ -41,12 +41,22 @@ export interface ComplementRaceGameConfig {
 }
 
 /**
+ * Configuration for number-guesser game
+ */
+export interface NumberGuesserGameConfig {
+  minNumber: number
+  maxNumber: number
+  roundsToWin: number
+}
+
+/**
  * Union type of all game configs for type-safe access
  */
 export type GameConfigByName = {
   matching: MatchingGameConfig
   'memory-quiz': MemoryQuizGameConfig
   'complement-race': ComplementRaceGameConfig
+  'number-guesser': NumberGuesserGameConfig
 }
 
 /**
@@ -57,6 +67,7 @@ export interface RoomGameConfig {
   matching?: MatchingGameConfig
   'memory-quiz'?: MemoryQuizGameConfig
   'complement-race'?: ComplementRaceGameConfig
+  'number-guesser'?: NumberGuesserGameConfig
 }
 
 /**
@@ -77,4 +88,10 @@ export const DEFAULT_MEMORY_QUIZ_CONFIG: MemoryQuizGameConfig = {
 
 export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {
   // Future defaults will go here
+}
+
+export const DEFAULT_NUMBER_GUESSER_CONFIG: NumberGuesserGameConfig = {
+  minNumber: 1,
+  maxNumber: 100,
+  roundsToWin: 3,
 }

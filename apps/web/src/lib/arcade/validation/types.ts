@@ -6,7 +6,7 @@
 import type { MemoryPairsState } from '@/app/games/matching/context/types'
 import type { SorobanQuizState } from '@/app/arcade/memory-quiz/types'
 
-export type GameName = 'matching' | 'memory-quiz' | 'complement-race'
+export type GameName = 'matching' | 'memory-quiz' | 'complement-race' | 'number-guesser'
 
 export interface ValidationResult {
   valid: boolean

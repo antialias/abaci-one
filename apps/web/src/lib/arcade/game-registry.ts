@@ -5,13 +5,14 @@
  * Games are explicitly registered here after being defined.
  */
 
-import type { GameDefinition } from './game-sdk/types'
+import type { GameConfig, GameDefinition, GameMove, GameState } from './game-sdk/types'
 
 /**
  * Global game registry
  * Maps game name to game definition
+ * Using `any` for generics to allow different game types
  */
-const registry = new Map<string, GameDefinition>()
+const registry = new Map<string, GameDefinition<any, any, any>>()
 
 /**
  * Register a game in the registry
@@ -19,7 +20,11 @@ const registry = new Map<string, GameDefinition>()
  * @param game - Game definition to register
  * @throws Error if game with same name already registered
  */
-export function registerGame(game: GameDefinition): void {
+export function registerGame<
+  TConfig extends GameConfig,
+  TState extends GameState,
+  TMove extends GameMove,
+>(game: GameDefinition<TConfig, TState, TMove>): void {
   const { name } = game.manifest
 
   if (registry.has(name)) {
@@ -36,7 +41,7 @@ export function registerGame(game: GameDefinition): void {
  * @param gameName - Internal game identifier
  * @returns Game definition or undefined if not found
  */
-export function getGame(gameName: string): GameDefinition | undefined {
+export function getGame(gameName: string): GameDefinition<any, any, any> | undefined {
   return registry.get(gameName)
 }
 
@@ -45,7 +50,7 @@ export function getGame(gameName: string): GameDefinition | undefined {
  *
  * @returns Array of all game definitions
  */
-export function getAllGames(): GameDefinition[] {
+export function getAllGames(): GameDefinition<any, any, any>[] {
   return Array.from(registry.values())
 }
 
@@ -54,7 +59,7 @@ export function getAllGames(): GameDefinition[] {
  *
  * @returns Array of available game definitions
  */
-export function getAvailableGames(): GameDefinition[] {
+export function getAvailableGames(): GameDefinition<any, any, any>[] {
   return getAllGames().filter((game) => game.manifest.available)
 }
 
@@ -74,3 +79,11 @@ export function hasGame(gameName: string): boolean {
 export function clearRegistry(): void {
   registry.clear()
 }
+
+// ============================================================================
+// Game Registrations
+// ============================================================================
+
+import { numberGuesserGame } from '@/arcade-games/number-guesser'
+
+registerGame(numberGuesserGame)

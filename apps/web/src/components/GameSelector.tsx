@@ -1,7 +1,9 @@
 'use client'
 
+import { useMemo } from 'react'
 import { css } from '../../styled-system/css'
 import { useGameMode } from '../contexts/GameModeContext'
+import { getAllGames } from '../lib/arcade/game-registry'
 import { GameCard } from './GameCard'
 
 // Game configuration defining player limits
@@ -70,7 +72,39 @@ export const GAMES_CONFIG = {
   },
 } as const
 
-export type GameType = keyof typeof GAMES_CONFIG
+export type GameType = keyof typeof GAMES_CONFIG | string
+
+/**
+ * Get all games from both legacy config and new registry
+ */
+function getAllGameConfigs() {
+  const legacyGames = Object.entries(GAMES_CONFIG).map(([gameType, config]) => ({
+    gameType,
+    config,
+  }))
+
+  // Get games from registry and transform to legacy format
+  const registryGames = getAllGames().map((gameDef) => ({
+    gameType: gameDef.manifest.name,
+    config: {
+      name: gameDef.manifest.displayName,
+      fullName: gameDef.manifest.displayName,
+      maxPlayers: gameDef.manifest.maxPlayers,
+      description: gameDef.manifest.description,
+      longDescription: gameDef.manifest.longDescription,
+      url: `/arcade/room?game=${gameDef.manifest.name}`, // Registry games load in room
+      icon: gameDef.manifest.icon,
+      chips: gameDef.manifest.chips,
+      color: gameDef.manifest.color,
+      gradient: gameDef.manifest.gradient,
+      borderColor: gameDef.manifest.borderColor,
+      difficulty: gameDef.manifest.difficulty,
+      available: gameDef.manifest.available,
+    },
+  }))
+
+  return [...legacyGames, ...registryGames]
+}
 
 interface GameSelectorProps {
   variant?: 'compact' | 'detailed'
@@ -87,17 +121,17 @@ export function GameSelector({
 }: GameSelectorProps) {
   const { activePlayerCount } = useGameMode()
 
+  // Memoize the combined games list
+  const allGames = useMemo(() => getAllGameConfigs(), [])
+
   return (
     <div
-      className={css(
-        {
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        },
-        className
-      )}
+      className={`${css({
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      })} ${className || ''}`}
     >
       {showHeader && (
         <h3
@@ -125,7 +159,7 @@ export function GameSelector({
           overflow: 'hidden',
         })}
       >
-        {Object.entries(GAMES_CONFIG).map(([gameType, config]) => (
+        {allGames.map(({ gameType, config }) => (
           <GameCard
             key={gameType}
             gameType={gameType as GameType}

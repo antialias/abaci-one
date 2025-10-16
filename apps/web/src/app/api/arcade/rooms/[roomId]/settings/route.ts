@@ -20,7 +20,7 @@ type RouteContext = {
  * Body:
  *   - accessMode?: 'open' | 'locked' | 'retired' | 'password' | 'restricted' | 'approval-only'
  *   - password?: string (plain text, will be hashed)
- *   - gameName?: 'matching' | 'memory-quiz' | 'complement-race' | null (select game for room)
+ *   - gameName?: 'matching' | 'memory-quiz' | 'complement-race' | 'number-guesser' | null (select game for room)
  *   - gameConfig?: object (game-specific settings)
  */
 export async function PATCH(req: NextRequest, context: RouteContext) {
@@ -94,7 +94,8 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     // Validate gameName if provided
     if (body.gameName !== undefined && body.gameName !== null) {
-      const validGames = ['matching', 'memory-quiz', 'complement-race']
+      // Legacy games + registry games (TODO: make this dynamic when we refactor to lazy-load registry)
+      const validGames = ['matching', 'memory-quiz', 'complement-race', 'number-guesser']
       if (!validGames.includes(body.gameName)) {
         return NextResponse.json({ error: 'Invalid game name' }, { status: 400 })
       }

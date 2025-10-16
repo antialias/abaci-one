@@ -10,6 +10,7 @@ import { GAMES_CONFIG } from '@/components/GameSelector'
 import type { GameType } from '@/components/GameSelector'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../../styled-system/css'
+import { getAllGames, getGame, hasGame } from '@/lib/arcade/game-registry'
 
 // Map GameType keys to internal game names
 const GAME_TYPE_TO_NAME: Record<GameType, string> = {
@@ -89,13 +90,35 @@ export default function RoomPage() {
     const handleGameSelect = (gameType: GameType) => {
       console.log('[RoomPage] handleGameSelect called with gameType:', gameType)
 
-      const gameConfig = GAMES_CONFIG[gameType]
+      // Check if it's a registry game first
+      if (hasGame(gameType)) {
+        const gameDef = getGame(gameType)
+        if (!gameDef?.manifest.available) {
+          console.log('[RoomPage] Registry game not available, blocking selection')
+          return
+        }
+
+        console.log('[RoomPage] Selecting registry game:', gameType)
+        setRoomGame({
+          roomId: roomData.id,
+          gameName: gameType, // Use the game name directly for registry games
+        })
+        return
+      }
+
+      // Legacy game handling
+      const gameConfig = GAMES_CONFIG[gameType as keyof typeof GAMES_CONFIG]
+      if (!gameConfig) {
+        console.log('[RoomPage] Unknown game type:', gameType)
+        return
+      }
+
       console.log('[RoomPage] Game config:', {
         name: gameConfig.name,
-        available: gameConfig.available,
+        available: 'available' in gameConfig ? gameConfig.available : true,
       })
 
-      if (gameConfig.available === false) {
+      if ('available' in gameConfig && gameConfig.available === false) {
         console.log('[RoomPage] Game not available, blocking selection')
         return // Don't allow selecting unavailable games
       }
@@ -160,64 +183,158 @@ export default function RoomPage() {
               width: '100%',
             })}
           >
-            {Object.entries(GAMES_CONFIG).map(([gameType, config]) => (
-              <button
-                key={gameType}
-                onClick={() => handleGameSelect(gameType as GameType)}
-                disabled={config.available === false}
-                className={css({
-                  background: config.gradient,
-                  border: '2px solid',
-                  borderColor: config.borderColor || 'blue.200',
-                  borderRadius: '2xl',
-                  padding: '6',
-                  cursor: config.available === false ? 'not-allowed' : 'pointer',
-                  opacity: config.available === false ? 0.5 : 1,
-                  transition: 'all 0.3s ease',
-                  _hover:
-                    config.available === false
+            {/* Legacy games */}
+            {Object.entries(GAMES_CONFIG).map(([gameType, config]) => {
+              const isAvailable = !('available' in config) || config.available !== false
+              return (
+                <button
+                  key={gameType}
+                  onClick={() => handleGameSelect(gameType as GameType)}
+                  disabled={!isAvailable}
+                  className={css({
+                    background: config.gradient,
+                    border: '2px solid',
+                    borderColor: config.borderColor || 'blue.200',
+                    borderRadius: '2xl',
+                    padding: '6',
+                    cursor: !isAvailable ? 'not-allowed' : 'pointer',
+                    opacity: !isAvailable ? 0.5 : 1,
+                    transition: 'all 0.3s ease',
+                    _hover: !isAvailable
                       ? {}
                       : {
                           transform: 'translateY(-4px) scale(1.02)',
                           boxShadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
                         },
-                })}
-              >
-                <div
-                  className={css({
-                    fontSize: '4xl',
-                    mb: '2',
                   })}
                 >
-                  {config.icon}
-                </div>
-                <h3
+                  <div
+                    className={css({
+                      fontSize: '4xl',
+                      mb: '2',
+                    })}
+                  >
+                    {config.icon}
+                  </div>
+                  <h3
+                    className={css({
+                      fontSize: 'xl',
+                      fontWeight: 'bold',
+                      color: 'gray.900',
+                      mb: '2',
+                    })}
+                  >
+                    {config.name}
+                  </h3>
+                  <p
+                    className={css({
+                      fontSize: 'sm',
+                      color: 'gray.600',
+                    })}
+                  >
+                    {config.description}
+                  </p>
+                </button>
+              )
+            })}
+
+            {/* Registry games */}
+            {getAllGames().map((gameDef) => {
+              const isAvailable = gameDef.manifest.available
+              return (
+                <button
+                  key={gameDef.manifest.name}
+                  onClick={() => handleGameSelect(gameDef.manifest.name)}
+                  disabled={!isAvailable}
                   className={css({
-                    fontSize: 'xl',
-                    fontWeight: 'bold',
-                    color: 'gray.900',
-                    mb: '2',
+                    background: gameDef.manifest.gradient,
+                    border: '2px solid',
+                    borderColor: gameDef.manifest.borderColor,
+                    borderRadius: '2xl',
+                    padding: '6',
+                    cursor: !isAvailable ? 'not-allowed' : 'pointer',
+                    opacity: !isAvailable ? 0.5 : 1,
+                    transition: 'all 0.3s ease',
+                    _hover: !isAvailable
+                      ? {}
+                      : {
+                          transform: 'translateY(-4px) scale(1.02)',
+                          boxShadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
+                        },
                   })}
                 >
-                  {config.name}
-                </h3>
-                <p
-                  className={css({
-                    fontSize: 'sm',
-                    color: 'gray.600',
-                  })}
-                >
-                  {config.description}
-                </p>
-              </button>
-            ))}
+                  <div
+                    className={css({
+                      fontSize: '4xl',
+                      mb: '2',
+                    })}
+                  >
+                    {gameDef.manifest.icon}
+                  </div>
+                  <h3
+                    className={css({
+                      fontSize: 'xl',
+                      fontWeight: 'bold',
+                      color: 'gray.900',
+                      mb: '2',
+                    })}
+                  >
+                    {gameDef.manifest.displayName}
+                  </h3>
+                  <p
+                    className={css({
+                      fontSize: 'sm',
+                      color: 'gray.600',
+                    })}
+                  >
+                    {gameDef.manifest.description}
+                  </p>
+                </button>
+              )
+            })}
           </div>
         </div>
       </PageWithNav>
     )
   }
 
-  // Render the appropriate game based on room's gameName
+  // Check if this is a registry game first
+  if (hasGame(roomData.gameName)) {
+    const gameDef = getGame(roomData.gameName)
+    if (!gameDef) {
+      return (
+        <PageWithNav
+          navTitle="Game Not Found"
+          navEmoji="⚠️"
+          emphasizePlayerSelection={true}
+          onExitSession={() => router.push('/arcade')}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100vh',
+              fontSize: '18px',
+              color: '#666',
+            }}
+          >
+            Game "{roomData.gameName}" not found in registry
+          </div>
+        </PageWithNav>
+      )
+    }
+
+    // Render registry game dynamically
+    const { Provider, GameComponent } = gameDef
+    return (
+      <Provider>
+        <GameComponent />
+      </Provider>
+    )
+  }
+
+  // Render legacy games based on room's gameName
   switch (roomData.gameName) {
     case 'matching':
       return (
