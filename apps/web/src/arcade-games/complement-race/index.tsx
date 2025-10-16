@@ -7,7 +7,7 @@ import { defineGame } from '@/lib/arcade/game-sdk'
 import type { GameManifest } from '@/lib/arcade/game-sdk'
 import { complementRaceValidator } from './Validator'
 import { ComplementRaceProvider } from './Provider'
-import { ComplementRaceGame } from '@/app/arcade/complement-race/components/ComplementRaceGame'
+import { GameComponent } from './components/GameComponent'
 import type { ComplementRaceConfig, ComplementRaceState, ComplementRaceMove } from './types'
 
 // Game manifest
@@ -69,7 +69,7 @@ export const complementRaceGame = defineGame<
 >({
   manifest,
   Provider: ComplementRaceProvider,
-  GameComponent: ComplementRaceGame,
+  GameComponent,
   validator: complementRaceValidator,
   defaultConfig,
   validateConfig: validateComplementRaceConfig,
