@@ -15,6 +15,7 @@ import {
   DEFAULT_MEMORY_QUIZ_CONFIG,
   DEFAULT_COMPLEMENT_RACE_CONFIG,
   DEFAULT_NUMBER_GUESSER_CONFIG,
+  DEFAULT_MATH_SPRINT_CONFIG,
 } from './game-configs'
 
 /**
@@ -36,6 +37,8 @@ function getDefaultGameConfig(gameName: ExtendedGameName): GameConfigByName[Exte
       return DEFAULT_COMPLEMENT_RACE_CONFIG
     case 'number-guesser':
       return DEFAULT_NUMBER_GUESSER_CONFIG
+    case 'math-sprint':
+      return DEFAULT_MATH_SPRINT_CONFIG
     default:
       throw new Error(`Unknown game: ${gameName}`)
   }
@@ -213,6 +216,18 @@ export function validateGameConfig(gameName: ExtendedGameName, config: any): boo
         config.minNumber >= 1 &&
         config.maxNumber > config.minNumber &&
         config.roundsToWin >= 1
+      )
+
+    case 'math-sprint':
+      return (
+        typeof config === 'object' &&
+        config !== null &&
+        ['easy', 'medium', 'hard'].includes(config.difficulty) &&
+        typeof config.questionsPerRound === 'number' &&
+        typeof config.timePerQuestion === 'number' &&
+        config.questionsPerRound >= 5 &&
+        config.questionsPerRound <= 20 &&
+        config.timePerQuestion >= 10
       )
 
     default:

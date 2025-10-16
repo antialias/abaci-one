@@ -107,5 +107,7 @@ export function clearRegistry(): void {
 // ============================================================================
 
 import { numberGuesserGame } from '@/arcade-games/number-guesser'
+import { mathSprintGame } from '@/arcade-games/math-sprint'
 
 registerGame(numberGuesserGame)
+registerGame(mathSprintGame)

@@ -11,6 +11,7 @@
 
 import type { DifficultyLevel } from '@/app/arcade/memory-quiz/types'
 import type { Difficulty, GameType } from '@/app/games/matching/context/types'
+import type { Difficulty as MathSprintDifficulty } from '@/arcade-games/math-sprint/types'
 
 /**
  * Configuration for matching (memory pairs) game
@@ -50,6 +51,15 @@ export interface NumberGuesserGameConfig {
 }
 
 /**
+ * Configuration for math-sprint game
+ */
+export interface MathSprintGameConfig {
+  difficulty: MathSprintDifficulty
+  questionsPerRound: number
+  timePerQuestion: number
+}
+
+/**
  * Union type of all game configs for type-safe access
  */
 export type GameConfigByName = {
@@ -57,6 +67,7 @@ export type GameConfigByName = {
   'memory-quiz': MemoryQuizGameConfig
   'complement-race': ComplementRaceGameConfig
   'number-guesser': NumberGuesserGameConfig
+  'math-sprint': MathSprintGameConfig
 }
 
 /**
@@ -68,6 +79,7 @@ export interface RoomGameConfig {
   'memory-quiz'?: MemoryQuizGameConfig
   'complement-race'?: ComplementRaceGameConfig
   'number-guesser'?: NumberGuesserGameConfig
+  'math-sprint'?: MathSprintGameConfig
 }
 
 /**
@@ -94,4 +106,10 @@ export const DEFAULT_NUMBER_GUESSER_CONFIG: NumberGuesserGameConfig = {
   minNumber: 1,
   maxNumber: 100,
   roundsToWin: 3,
+}
+
+export const DEFAULT_MATH_SPRINT_CONFIG: MathSprintGameConfig = {
+  difficulty: 'medium',
+  questionsPerRound: 10,
+  timePerQuestion: 30,
 }

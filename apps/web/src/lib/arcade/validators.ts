@@ -13,6 +13,7 @@
 import { matchingGameValidator } from './validation/MatchingGameValidator'
 import { memoryQuizGameValidator } from './validation/MemoryQuizGameValidator'
 import { numberGuesserValidator } from '@/arcade-games/number-guesser/Validator'
+import { mathSprintValidator } from '@/arcade-games/math-sprint/Validator'
 import type { GameValidator } from './validation/types'
 
 /**
@@ -24,6 +25,7 @@ export const validatorRegistry = {
   matching: matchingGameValidator,
   'memory-quiz': memoryQuizGameValidator,
   'number-guesser': numberGuesserValidator,
+  'math-sprint': mathSprintValidator,
   // Add new games here - GameName type will auto-update
 } as const
 
@@ -65,4 +67,9 @@ export function getRegisteredGameNames(): GameName[] {
 /**
  * Re-export validators for backwards compatibility
  */
-export { matchingGameValidator, memoryQuizGameValidator, numberGuesserValidator }
+export {
+  matchingGameValidator,
+  memoryQuizGameValidator,
+  numberGuesserValidator,
+  mathSprintValidator,
+}
