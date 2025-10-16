@@ -23,7 +23,7 @@ export async function getSocketIO(): Promise<SocketIOServerType | null> {
   if (!socketServerModule) {
     try {
       // Dynamic import to avoid bundling issues
-      socketServerModule = await import('../../socket-server')
+      socketServerModule = await import('../socket-server')
     } catch (error) {
       console.error('[Socket IO] Failed to load socket server:', error)
       return null
