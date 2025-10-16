@@ -17,7 +17,22 @@ import {
   DEFAULT_NUMBER_GUESSER_CONFIG,
   DEFAULT_MATH_SPRINT_CONFIG,
 } from './game-configs'
-import { getGame } from './game-registry'
+
+// Lazy-load game registry to avoid loading React components on server
+function getGame(gameName: string) {
+  // Only load game registry in browser environment
+  // On server, we fall back to switch statement validation
+  if (typeof window !== 'undefined') {
+    try {
+      const { getGame: registryGetGame } = require('./game-registry')
+      return registryGetGame(gameName)
+    } catch (error) {
+      console.warn('[GameConfig] Failed to load game registry:', error)
+      return undefined
+    }
+  }
+  return undefined
+}
 
 /**
  * Extended game name type that includes both registered validators and legacy games
