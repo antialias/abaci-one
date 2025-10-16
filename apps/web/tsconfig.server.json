@@ -19,9 +19,12 @@
     "src/db/schema/**/*.ts",
     "src/db/migrate.ts",
     "src/lib/arcade/**/*.ts",
+    "src/arcade-games/**/Validator.ts",
+    "src/arcade-games/**/types.ts",
     "src/app/games/matching/context/types.ts",
     "src/app/games/matching/utils/cardGeneration.ts",
     "src/app/games/matching/utils/matchValidation.ts",
+    "src/app/arcade/memory-quiz/types.ts",
     "src/socket-server.ts"
   ],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"]

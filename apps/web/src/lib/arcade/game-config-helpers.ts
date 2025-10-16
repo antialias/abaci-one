@@ -14,6 +14,7 @@ import {
   DEFAULT_MATCHING_CONFIG,
   DEFAULT_MEMORY_QUIZ_CONFIG,
   DEFAULT_COMPLEMENT_RACE_CONFIG,
+  DEFAULT_NUMBER_GUESSER_CONFIG,
 } from './game-configs'
 
 /**
@@ -27,6 +28,8 @@ function getDefaultGameConfig(gameName: GameName): GameConfigByName[GameName] {
       return DEFAULT_MEMORY_QUIZ_CONFIG
     case 'complement-race':
       return DEFAULT_COMPLEMENT_RACE_CONFIG
+    case 'number-guesser':
+      return DEFAULT_NUMBER_GUESSER_CONFIG
     default:
       throw new Error(`Unknown game: ${gameName}`)
   }
@@ -193,6 +196,18 @@ export function validateGameConfig(gameName: GameName, config: any): boolean {
     case 'complement-race':
       // TODO: Add validation when complement-race settings are defined
       return typeof config === 'object' && config !== null
+
+    case 'number-guesser':
+      return (
+        typeof config === 'object' &&
+        config !== null &&
+        typeof config.minNumber === 'number' &&
+        typeof config.maxNumber === 'number' &&
+        typeof config.roundsToWin === 'number' &&
+        config.minNumber >= 1 &&
+        config.maxNumber > config.minNumber &&
+        config.roundsToWin >= 1
+      )
 
     default:
       return false
