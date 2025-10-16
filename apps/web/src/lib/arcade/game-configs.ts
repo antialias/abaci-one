@@ -1,7 +1,10 @@
 /**
  * Shared game configuration types
  *
- * This is the single source of truth for all game settings.
+ * ARCHITECTURE: Phase 3 - Type Inference
+ * - Modern games (number-guesser, math-sprint): Types inferred from game definitions
+ * - Legacy games (matching, memory-quiz, complement-race): Manual types until migrated
+ *
  * These types are used across:
  * - Database storage (room_game_configs table)
  * - Validators (getInitialState method signatures)
@@ -11,7 +14,37 @@
 
 import type { DifficultyLevel } from '@/app/arcade/memory-quiz/types'
 import type { Difficulty, GameType } from '@/app/games/matching/context/types'
-import type { Difficulty as MathSprintDifficulty } from '@/arcade-games/math-sprint/types'
+
+// Type-only imports (won't load React components at runtime)
+import type { numberGuesserGame } from '@/arcade-games/number-guesser'
+import type { mathSprintGame } from '@/arcade-games/math-sprint'
+
+/**
+ * Utility type: Extract config type from a game definition
+ * Uses TypeScript's infer keyword to extract the TConfig generic
+ */
+type InferGameConfig<T> = T extends { defaultConfig: infer Config } ? Config : never
+
+// ============================================================================
+// Modern Games (Type Inference from Game Definitions)
+// ============================================================================
+
+/**
+ * Configuration for number-guesser game
+ * INFERRED from numberGuesserGame.defaultConfig
+ */
+export type NumberGuesserGameConfig = InferGameConfig<typeof numberGuesserGame>
+
+/**
+ * Configuration for math-sprint game
+ * INFERRED from mathSprintGame.defaultConfig
+ */
+export type MathSprintGameConfig = InferGameConfig<typeof mathSprintGame>
+
+// ============================================================================
+// Legacy Games (Manual Type Definitions)
+// TODO: Migrate these games to the modular system for type inference
+// ============================================================================
 
 /**
  * Configuration for matching (memory pairs) game
@@ -41,31 +74,21 @@ export interface ComplementRaceGameConfig {
   placeholder?: never
 }
 
-/**
- * Configuration for number-guesser game
- */
-export interface NumberGuesserGameConfig {
-  minNumber: number
-  maxNumber: number
-  roundsToWin: number
-}
-
-/**
- * Configuration for math-sprint game
- */
-export interface MathSprintGameConfig {
-  difficulty: MathSprintDifficulty
-  questionsPerRound: number
-  timePerQuestion: number
-}
+// ============================================================================
+// Combined Types
+// ============================================================================
 
 /**
  * Union type of all game configs for type-safe access
+ * Modern games use inferred types, legacy games use manual types
  */
 export type GameConfigByName = {
+  // Legacy games (manual types)
   matching: MatchingGameConfig
   'memory-quiz': MemoryQuizGameConfig
   'complement-race': ComplementRaceGameConfig
+
+  // Modern games (inferred types)
   'number-guesser': NumberGuesserGameConfig
   'math-sprint': MathSprintGameConfig
 }
@@ -73,13 +96,11 @@ export type GameConfigByName = {
 /**
  * Room's game configuration object (nested by game name)
  * This matches the structure stored in room_game_configs table
+ *
+ * AUTO-DERIVED: Adding a game to GameConfigByName automatically adds it here
  */
-export interface RoomGameConfig {
-  matching?: MatchingGameConfig
-  'memory-quiz'?: MemoryQuizGameConfig
-  'complement-race'?: ComplementRaceGameConfig
-  'number-guesser'?: NumberGuesserGameConfig
-  'math-sprint'?: MathSprintGameConfig
+export type RoomGameConfig = {
+  [K in keyof GameConfigByName]?: GameConfigByName[K]
 }
 
 /**
