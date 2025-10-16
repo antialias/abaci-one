@@ -7,22 +7,8 @@ import { getAllGames } from '../lib/arcade/game-registry'
 import { GameCard } from './GameCard'
 
 // Game configuration defining player limits
+// Note: "matching" (formerly "battle-arena") has been migrated to the modular game system
 export const GAMES_CONFIG = {
-  'battle-arena': {
-    name: 'Matching Pairs Battle',
-    fullName: 'Matching Pairs Battle ⚔️',
-    maxPlayers: 4,
-    description: 'Multiplayer memory battle with friends',
-    longDescription:
-      'Battle friends in epic memory challenges. Match pairs faster than your opponents in this exciting multiplayer experience.',
-    url: '/arcade/matching',
-    icon: '⚔️',
-    chips: ['👥 Multiplayer', '🎯 Strategic', '🏆 Competitive'],
-    color: 'purple',
-    gradient: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
-    borderColor: 'purple.200',
-    difficulty: 'Intermediate',
-  },
   'complement-race': {
     name: 'Speed Complement Race',
     fullName: 'Speed Complement Race 🏁',

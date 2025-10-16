@@ -9,8 +9,8 @@ import { css } from '../../../../styled-system/css'
 import { getAllGames, getGame, hasGame } from '@/lib/arcade/game-registry'
 
 // Map GameType keys to internal game names
+// Note: "battle-arena" removed - now handled by game registry as "matching"
 const GAME_TYPE_TO_NAME: Record<GameType, string> = {
-  'battle-arena': 'matching',
   'complement-race': 'complement-race',
   'master-organizer': 'master-organizer',
 }
