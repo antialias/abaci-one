@@ -1,17 +1,19 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
-import { css } from '../../../../../styled-system/css'
-import { StandardGameLayout } from '../../../../components/StandardGameLayout'
-import { useFullscreen } from '../../../../contexts/FullscreenContext'
-import { useMemoryPairs } from '../context/MemoryPairsContext'
+import { css } from '../../../../styled-system/css'
+import { StandardGameLayout } from '@/components/StandardGameLayout'
+import { useFullscreen } from '@/contexts/FullscreenContext'
+import { useMatching } from '../Provider'
 import { GamePhase } from './GamePhase'
 import { ResultsPhase } from './ResultsPhase'
 import { SetupPhase } from './SetupPhase'
 
 export function MemoryPairsGame() {
-  const { state } = useMemoryPairs()
+  const router = useRouter()
+  const { state, exitSession, resetGame, goToSetup } = useMatching()
   const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
 
@@ -31,8 +33,22 @@ export function MemoryPairsGame() {
     <PageWithNav
       navTitle={navTitle}
       navEmoji={navEmoji}
-      gameName="matching"
       emphasizePlayerSelection={state.gamePhase === 'setup'}
+      onExitSession={() => {
+        exitSession()
+        router.push('/arcade')
+      }}
+      onSetup={
+        goToSetup
+          ? () => {
+              // Transition to setup phase (will pause game if active)
+              goToSetup()
+            }
+          : undefined
+      }
+      onNewGame={() => {
+        resetGame()
+      }}
       currentPlayerId={state.currentPlayer}
       playerScores={state.scores}
       playerStreaks={state.consecutiveMatches}

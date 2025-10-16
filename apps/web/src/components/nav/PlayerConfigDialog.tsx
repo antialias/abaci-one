@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { EmojiPicker } from '../../app/games/matching/components/EmojiPicker'
+import { EmojiPicker } from '@/arcade-games/matching/components/EmojiPicker'
 import { useGameMode } from '../../contexts/GameModeContext'
 import { generateUniquePlayerName } from '../../utils/playerNames'
 

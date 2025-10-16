@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { MemoryPairsState } from '@/app/games/matching/context/types'
+import type { MemoryPairsState } from '@/arcade-games/matching/types'
 import { db, schema } from '@/db'
 import {
   applyGameMove,

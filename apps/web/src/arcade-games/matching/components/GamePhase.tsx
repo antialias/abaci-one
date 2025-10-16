@@ -3,13 +3,13 @@
 import { useMemo } from 'react'
 import { useViewerId } from '@/hooks/useViewerId'
 import { MemoryGrid } from '@/components/matching/MemoryGrid'
-import { css } from '../../../../../styled-system/css'
-import { useMemoryPairs } from '../context/MemoryPairsContext'
+import { css } from '../../../../styled-system/css'
+import { useMatching } from '../Provider'
 import { getGridConfiguration } from '../utils/cardGeneration'
 import { GameCard } from './GameCard'
 
 export function GamePhase() {
-  const { state, flipCard, hoverCard, gameMode } = useMemoryPairs()
+  const { state, flipCard, hoverCard, gameMode } = useMatching()
   const { data: viewerId } = useViewerId()
 
   const gridConfig = useMemo(() => getGridConfiguration(state.difficulty), [state.difficulty])

@@ -2,8 +2,8 @@
 
 import emojiData from 'emojibase-data/en/data.json'
 import { useMemo, useState } from 'react'
-import { css } from '../../../../../styled-system/css'
-import { PLAYER_EMOJIS } from '../../../../constants/playerEmojis'
+import { css } from '../../../../styled-system/css'
+import { PLAYER_EMOJIS } from '@/constants/playerEmojis'
 
 // Proper TypeScript interface for emojibase-data structure
 interface EmojibaseEmoji {

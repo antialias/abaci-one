@@ -1,32 +1,39 @@
 'use client'
 
-import { css } from '../../../../../styled-system/css'
-import { useGameMode } from '../../../../contexts/GameModeContext'
-import { gamePlurals } from '../../../../utils/pluralization'
-import { useMemoryPairs } from '../context/MemoryPairsContext'
+import { useViewerId } from '@/hooks/useViewerId'
+import { css } from '../../../../styled-system/css'
+import { gamePlurals } from '@/utils/pluralization'
+import { useMatching } from '../Provider'
 
 interface PlayerStatusBarProps {
   className?: string
 }
 
 export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
-  const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
-  const { state } = useMemoryPairs()
+  const { state } = useMatching()
+  const { data: viewerId } = useViewerId()
 
-  // Get active players array
-  const activePlayersData = Array.from(activePlayerIds)
-    .map((id) => playerMap.get(id))
+  // Get active players from game state (not GameModeContext)
+  // This ensures we only show players actually in this game
+  const activePlayersData = state.activePlayers
+    .map((id) => state.playerMetadata?.[id])
     .filter((p): p is NonNullable<typeof p> => p !== undefined)
 
   // Map active players to display data with scores
-  // State uses UUID player IDs, so we map by player.id
+  // State now uses player IDs (UUIDs) as keys
   const activePlayers = activePlayersData.map((player) => ({
     ...player,
     displayName: player.name,
     displayEmoji: player.emoji,
     score: state.scores[player.id] || 0,
     consecutiveMatches: state.consecutiveMatches?.[player.id] || 0,
+    // Check if this player belongs to the current viewer
+    isLocalPlayer: player.userId === viewerId,
   }))
+
+  // Check if current player is local (your turn) or remote (waiting)
+  const currentPlayer = activePlayers.find((p) => p.id === state.currentPlayer)
+  const isYourTurn = currentPlayer?.isLocalPlayer === true
 
   // Get celebration level based on consecutive matches
   const getCelebrationLevel = (consecutiveMatches: number) => {
@@ -116,7 +123,7 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
           alignItems: 'center',
         })}
       >
-        {activePlayers.map((player, _index) => {
+        {activePlayers.map((player) => {
           const isCurrentPlayer = player.id === state.currentPlayer
           const isLeading =
             player.score === Math.max(...activePlayers.map((p) => p.score)) && player.score > 0
@@ -250,14 +257,16 @@ export function PlayerStatusBar({ className }: PlayerStatusBarProps) {
                   {isCurrentPlayer && (
                     <span
                       className={css({
-                        color: 'red.600',
+                        color: player.isLocalPlayer ? 'red.600' : 'blue.600',
                         fontWeight: 'black',
                         fontSize: isCurrentPlayer ? { base: 'sm', md: 'lg' } : 'inherit',
-                        animation: 'none',
-                        textShadow: '0 0 15px currentColor',
+                        animation: player.isLocalPlayer
+                          ? 'none'
+                          : 'gentle-pulse 2s ease-in-out infinite',
+                        textShadow: player.isLocalPlayer ? '0 0 15px currentColor' : 'none',
                       })}
                     >
-                      {' • Your turn'}
+                      {player.isLocalPlayer ? ' • Your turn' : ' • Their turn'}
                     </span>
                   )}
                   {player.consecutiveMatches > 1 && (

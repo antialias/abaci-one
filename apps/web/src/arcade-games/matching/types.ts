@@ -145,6 +145,42 @@ export interface MatchingState extends GameState {
 export type MemoryPairsState = MatchingState
 
 // ============================================================================
+// Context Value
+// ============================================================================
+
+/**
+ * Context value for the matching game provider
+ * Exposes state and action creators to components
+ */
+export interface MatchingContextValue {
+  state: MatchingState & { gameMode: GameMode }
+  dispatch: React.Dispatch<any> // Deprecated - use action creators instead
+
+  // Computed values
+  isGameActive: boolean
+  canFlipCard: (cardId: string) => boolean
+  currentGameStatistics: GameStatistics
+  gameMode: GameMode
+  activePlayers: Player[]
+
+  // Pause/Resume
+  hasConfigChanged: boolean
+  canResumeGame: boolean
+
+  // Actions
+  startGame: () => void
+  flipCard: (cardId: string) => void
+  resetGame: () => void
+  setGameType: (type: GameType) => void
+  setDifficulty: (difficulty: Difficulty) => void
+  setTurnTimer: (timer: number) => void
+  goToSetup: () => void
+  resumeGame: () => void
+  hoverCard: (cardId: string | null) => void
+  exitSession: () => void
+}
+
+// ============================================================================
 // Game Moves (SDK-compatible)
 // ============================================================================
 

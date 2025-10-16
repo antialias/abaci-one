@@ -3,7 +3,7 @@
  * Used on both client and server for arcade session validation
  */
 
-import type { MemoryPairsState } from '@/app/games/matching/context/types'
+import type { MemoryPairsState } from '@/arcade-games/matching/types'
 import type { MemoryQuizState as SorobanQuizState } from '@/arcade-games/memory-quiz/types'
 
 /**

@@ -2,8 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useRoomData, useSetRoomGame } from '@/hooks/useRoomData'
-import { MemoryPairsGame } from '../matching/components/MemoryPairsGame'
-import { RoomMemoryPairsProvider } from '../matching/context/RoomMemoryPairsProvider'
 import { GAMES_CONFIG } from '@/components/GameSelector'
 import type { GameType } from '@/components/GameSelector'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -333,14 +331,7 @@ export default function RoomPage() {
 
   // Render legacy games based on room's gameName
   switch (roomData.gameName) {
-    case 'matching':
-      return (
-        <RoomMemoryPairsProvider>
-          <MemoryPairsGame />
-        </RoomMemoryPairsProvider>
-      )
-
-    // TODO: Add other games (complement-race, etc.)
+    // TODO: Add other legacy games (complement-race, etc.) once migrated
     default:
       return (
         <PageWithNav

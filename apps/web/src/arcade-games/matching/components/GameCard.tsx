@@ -1,9 +1,9 @@
 'use client'
 
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
-import { css } from '../../../../../styled-system/css'
-import { useGameMode } from '../../../../contexts/GameModeContext'
-import type { GameCardProps } from '../context/types'
+import { css } from '../../../../styled-system/css'
+import { useGameMode } from '@/contexts/GameModeContext'
+import type { GameCardProps } from '../types'
 
 export function GameCard({ card, isFlipped, isMatched, onClick, disabled = false }: GameCardProps) {
   const appConfig = useAbacusConfig()

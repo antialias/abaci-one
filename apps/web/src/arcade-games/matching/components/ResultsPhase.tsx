@@ -1,14 +1,14 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { css } from '../../../../../styled-system/css'
-import { useGameMode } from '../../../../contexts/GameModeContext'
-import { useMemoryPairs } from '../context/MemoryPairsContext'
+import { css } from '../../../../styled-system/css'
+import { useGameMode } from '@/contexts/GameModeContext'
+import { useMatching } from '../Provider'
 import { formatGameTime, getMultiplayerWinner, getPerformanceAnalysis } from '../utils/gameScoring'
 
 export function ResultsPhase() {
   const router = useRouter()
-  const { state, resetGame, activePlayers, gameMode } = useMemoryPairs()
+  const { state, resetGame, activePlayers, gameMode, exitSession } = useMatching()
   const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
 
   // Get active player data array
@@ -32,19 +32,24 @@ export function ResultsPhase() {
     <div
       className={css({
         textAlign: 'center',
-        padding: '40px 20px',
+        padding: { base: '16px', md: '20px' },
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        overflow: 'auto',
       })}
     >
       {/* Celebration Header */}
       <div
         className={css({
-          marginBottom: '40px',
+          marginBottom: { base: '16px', md: '24px' },
         })}
       >
         <h2
           className={css({
-            fontSize: '48px',
-            marginBottom: '16px',
+            fontSize: { base: '32px', md: '48px' },
+            marginBottom: { base: '8px', md: '12px' },
             color: 'green.600',
             fontWeight: 'bold',
           })}
@@ -55,30 +60,30 @@ export function ResultsPhase() {
         {gameMode === 'single' ? (
           <p
             className={css({
-              fontSize: '24px',
+              fontSize: { base: '16px', md: '20px' },
               color: 'gray.700',
-              marginBottom: '20px',
+              marginBottom: { base: '12px', md: '16px' },
             })}
           >
-            Congratulations on completing the memory challenge!
+            Congratulations!
           </p>
         ) : (
           multiplayerResult && (
-            <div className={css({ marginBottom: '20px' })}>
+            <div className={css({ marginBottom: { base: '12px', md: '16px' } })}>
               {multiplayerResult.isTie ? (
                 <p
                   className={css({
-                    fontSize: '24px',
+                    fontSize: { base: '18px', md: '24px' },
                     color: 'purple.600',
                     fontWeight: 'bold',
                   })}
                 >
-                  🤝 It's a tie! All champions are memory masters!
+                  🤝 It's a tie!
                 </p>
               ) : multiplayerResult.winners.length === 1 ? (
                 <p
                   className={css({
-                    fontSize: '24px',
+                    fontSize: { base: '18px', md: '24px' },
                     color: 'blue.600',
                     fontWeight: 'bold',
                   })}
@@ -91,12 +96,12 @@ export function ResultsPhase() {
               ) : (
                 <p
                   className={css({
-                    fontSize: '24px',
+                    fontSize: { base: '18px', md: '24px' },
                     color: 'purple.600',
                     fontWeight: 'bold',
                   })}
                 >
-                  🏆 {multiplayerResult.winners.length} Champions tied for victory!
+                  🏆 {multiplayerResult.winners.length} Champions!
                 </p>
               )}
             </div>
@@ -106,8 +111,8 @@ export function ResultsPhase() {
         {/* Star Rating */}
         <div
           className={css({
-            fontSize: '32px',
-            marginBottom: '20px',
+            fontSize: { base: '24px', md: '32px' },
+            marginBottom: { base: '8px', md: '12px' },
           })}
         >
           {'⭐'.repeat(analysis.starRating)}
@@ -116,7 +121,7 @@ export function ResultsPhase() {
 
         <div
           className={css({
-            fontSize: '24px',
+            fontSize: { base: '20px', md: '24px' },
             fontWeight: 'bold',
             color: 'orange.600',
           })}
@@ -129,67 +134,119 @@ export function ResultsPhase() {
       <div
         className={css({
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '20px',
-          marginBottom: '40px',
+          gridTemplateColumns: { base: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+          gap: { base: '8px', md: '12px' },
+          marginBottom: { base: '16px', md: '24px' },
           maxWidth: '800px',
-          margin: '0 auto 40px auto',
+          margin: '0 auto',
         })}
       >
         <div
           className={css({
             background: 'linear-gradient(135deg, #667eea, #764ba2)',
             color: 'white',
-            padding: '24px',
-            borderRadius: '16px',
+            padding: { base: '12px', md: '16px' },
+            borderRadius: { base: '8px', md: '12px' },
             textAlign: 'center',
           })}
         >
-          <div className={css({ fontSize: '32px', fontWeight: 'bold' })}>{state.matchedPairs}</div>
-          <div className={css({ fontSize: '16px', opacity: 0.9 })}>Pairs Matched</div>
+          <div
+            className={css({
+              fontSize: { base: '20px', md: '28px' },
+              fontWeight: 'bold',
+            })}
+          >
+            {state.matchedPairs}
+          </div>
+          <div
+            className={css({
+              fontSize: { base: '11px', md: '14px' },
+              opacity: 0.9,
+            })}
+          >
+            Pairs
+          </div>
         </div>
 
         <div
           className={css({
             background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
             color: 'white',
-            padding: '24px',
-            borderRadius: '16px',
+            padding: { base: '12px', md: '16px' },
+            borderRadius: { base: '8px', md: '12px' },
             textAlign: 'center',
           })}
         >
-          <div className={css({ fontSize: '32px', fontWeight: 'bold' })}>{state.moves}</div>
-          <div className={css({ fontSize: '16px', opacity: 0.9 })}>Total Moves</div>
+          <div
+            className={css({
+              fontSize: { base: '20px', md: '28px' },
+              fontWeight: 'bold',
+            })}
+          >
+            {state.moves}
+          </div>
+          <div
+            className={css({
+              fontSize: { base: '11px', md: '14px' },
+              opacity: 0.9,
+            })}
+          >
+            Moves
+          </div>
         </div>
 
         <div
           className={css({
             background: 'linear-gradient(135deg, #ff6b6b, #ee5a24)',
             color: 'white',
-            padding: '24px',
-            borderRadius: '16px',
+            padding: { base: '12px', md: '16px' },
+            borderRadius: { base: '8px', md: '12px' },
             textAlign: 'center',
           })}
         >
-          <div className={css({ fontSize: '32px', fontWeight: 'bold' })}>
+          <div
+            className={css({
+              fontSize: { base: '20px', md: '28px' },
+              fontWeight: 'bold',
+            })}
+          >
             {formatGameTime(gameTime)}
           </div>
-          <div className={css({ fontSize: '16px', opacity: 0.9 })}>Game Time</div>
+          <div
+            className={css({
+              fontSize: { base: '11px', md: '14px' },
+              opacity: 0.9,
+            })}
+          >
+            Time
+          </div>
         </div>
 
         <div
           className={css({
             background: 'linear-gradient(135deg, #55a3ff, #003d82)',
             color: 'white',
-            padding: '24px',
-            borderRadius: '16px',
+            padding: { base: '12px', md: '16px' },
+            borderRadius: { base: '8px', md: '12px' },
             textAlign: 'center',
           })}
         >
-          <div className={css({ fontSize: '32px', fontWeight: 'bold' })}>
+          <div
+            className={css({
+              fontSize: { base: '20px', md: '28px' },
+              fontWeight: 'bold',
+            })}
+          >
             {Math.round(analysis.statistics.accuracy)}%
           </div>
-          <div className={css({ fontSize: '16px', opacity: 0.9 })}>Accuracy</div>
+          <div
+            className={css({
+              fontSize: { base: '11px', md: '14px' },
+              opacity: 0.9,
+            })}
+          >
+            Accuracy
+          </div>
         </div>
       </div>
 
@@ -199,8 +256,8 @@ export function ResultsPhase() {
           className={css({
             display: 'flex',
             justifyContent: 'center',
-            gap: '20px',
-            marginBottom: '40px',
+            gap: { base: '12px', md: '16px' },
+            marginBottom: { base: '16px', md: '24px' },
             flexWrap: 'wrap',
           })}
         >
@@ -216,112 +273,54 @@ export function ResultsPhase() {
                     ? 'linear-gradient(135deg, #ffd700, #ff8c00)'
                     : 'linear-gradient(135deg, #c0c0c0, #808080)',
                   color: 'white',
-                  padding: '20px',
-                  borderRadius: '16px',
+                  padding: { base: '12px', md: '16px' },
+                  borderRadius: { base: '8px', md: '12px' },
                   textAlign: 'center',
-                  minWidth: '150px',
+                  minWidth: { base: '100px', md: '120px' },
                 })}
               >
-                <div className={css({ fontSize: '48px', marginBottom: '8px' })}>
+                <div
+                  className={css({
+                    fontSize: { base: '32px', md: '40px' },
+                    marginBottom: '4px',
+                  })}
+                >
                   {player.displayEmoji}
                 </div>
                 <div
                   className={css({
-                    fontSize: '14px',
-                    marginBottom: '4px',
+                    fontSize: { base: '11px', md: '12px' },
+                    marginBottom: '2px',
                     opacity: 0.9,
                   })}
                 >
                   {player.displayName}
                 </div>
-                <div className={css({ fontSize: '36px', fontWeight: 'bold' })}>{score}</div>
-                {isWinner && <div className={css({ fontSize: '24px' })}>👑</div>}
+                <div
+                  className={css({
+                    fontSize: { base: '24px', md: '32px' },
+                    fontWeight: 'bold',
+                  })}
+                >
+                  {score}
+                </div>
+                {isWinner && (
+                  <div className={css({ fontSize: { base: '18px', md: '20px' } })}>👑</div>
+                )}
               </div>
             )
           })}
         </div>
       )}
 
-      {/* Performance Analysis */}
-      <div
-        className={css({
-          background: 'rgba(248, 250, 252, 0.8)',
-          padding: '30px',
-          borderRadius: '16px',
-          marginBottom: '40px',
-          border: '1px solid rgba(226, 232, 240, 0.8)',
-          maxWidth: '600px',
-          margin: '0 auto 40px auto',
-        })}
-      >
-        <h3
-          className={css({
-            fontSize: '24px',
-            marginBottom: '20px',
-            color: 'gray.800',
-          })}
-        >
-          Performance Analysis
-        </h3>
-
-        {analysis.strengths.length > 0 && (
-          <div className={css({ marginBottom: '20px' })}>
-            <h4
-              className={css({
-                fontSize: '18px',
-                color: 'green.600',
-                marginBottom: '8px',
-              })}
-            >
-              ✅ Strengths:
-            </h4>
-            <ul
-              className={css({
-                textAlign: 'left',
-                color: 'gray.700',
-                lineHeight: '1.6',
-              })}
-            >
-              {analysis.strengths.map((strength, index) => (
-                <li key={index}>{strength}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {analysis.improvements.length > 0 && (
-          <div>
-            <h4
-              className={css({
-                fontSize: '18px',
-                color: 'orange.600',
-                marginBottom: '8px',
-              })}
-            >
-              💡 Areas for Improvement:
-            </h4>
-            <ul
-              className={css({
-                textAlign: 'left',
-                color: 'gray.700',
-                lineHeight: '1.6',
-              })}
-            >
-              {analysis.improvements.map((improvement, index) => (
-                <li key={index}>{improvement}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
       {/* Action Buttons */}
       <div
         className={css({
           display: 'flex',
           justifyContent: 'center',
-          gap: '20px',
+          gap: { base: '12px', md: '16px' },
           flexWrap: 'wrap',
+          marginTop: 'auto',
         })}
       >
         <button
@@ -330,15 +329,15 @@ export function ResultsPhase() {
             color: 'white',
             border: 'none',
             borderRadius: '50px',
-            padding: '16px 32px',
-            fontSize: '18px',
+            padding: { base: '12px 24px', md: '14px 28px' },
+            fontSize: { base: '14px', md: '16px' },
             fontWeight: 'bold',
             cursor: 'pointer',
             transition: 'all 0.3s ease',
-            boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
+            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
             _hover: {
               transform: 'translateY(-2px)',
-              boxShadow: '0 8px 25px rgba(102, 126, 234, 0.6)',
+              boxShadow: '0 6px 16px rgba(102, 126, 234, 0.6)',
             },
           })}
           onClick={resetGame}
@@ -352,23 +351,24 @@ export function ResultsPhase() {
             color: 'white',
             border: 'none',
             borderRadius: '50px',
-            padding: '16px 32px',
-            fontSize: '18px',
+            padding: { base: '12px 24px', md: '14px 28px' },
+            fontSize: { base: '14px', md: '16px' },
             fontWeight: 'bold',
             cursor: 'pointer',
             transition: 'all 0.3s ease',
-            boxShadow: '0 6px 20px rgba(167, 139, 250, 0.4)',
+            boxShadow: '0 4px 12px rgba(167, 139, 250, 0.4)',
             _hover: {
               transform: 'translateY(-2px)',
-              boxShadow: '0 8px 25px rgba(167, 139, 250, 0.6)',
+              boxShadow: '0 6px 16px rgba(167, 139, 250, 0.6)',
             },
           })}
           onClick={() => {
-            console.log('🔄 ResultsPhase: Navigating to games with Next.js router (no page reload)')
-            router.push('/games')
+            console.log('🔄 ResultsPhase: Exiting session and navigating to arcade')
+            exitSession()
+            router.push('/arcade')
           }}
         >
-          🏠 Back to Games
+          🏟️ Back to Arcade
         </button>
       </div>
     </div>

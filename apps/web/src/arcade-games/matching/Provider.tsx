@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode, useCallback, useEffect, useMemo } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, createContext, useContext } from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
@@ -9,13 +9,15 @@ import {
   buildPlayerOwnershipFromRoomData,
 } from '@/lib/arcade/player-ownership.client'
 import type { GameMove } from '@/lib/arcade/validation'
-import { useGameMode } from '../../../../contexts/GameModeContext'
-import { generateGameCards } from '../utils/cardGeneration'
-import { MemoryPairsContext } from './MemoryPairsContext'
-import type { GameMode, GameStatistics, MemoryPairsContextValue, MemoryPairsState } from './types'
+import { useGameMode } from '@/contexts/GameModeContext'
+import { generateGameCards } from './utils/cardGeneration'
+import type { GameMode, GameStatistics, MatchingContextValue, MatchingState, MatchingMove } from './types'
+
+// Create context for Matching game
+const MatchingContext = createContext<MatchingContextValue | null>(null)
 
 // Initial state
-const initialState: MemoryPairsState = {
+const initialState: MatchingState = {
   cards: [],
   gameCards: [],
   flippedCards: [],
@@ -51,26 +53,27 @@ const initialState: MemoryPairsState = {
  * Optimistic move application (client-side prediction)
  * The server will validate and send back the authoritative state
  */
-function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): MemoryPairsState {
-  switch (move.type) {
+function applyMoveOptimistically(state: MatchingState, move: GameMove): MatchingState {
+  const typedMove = move as MatchingMove
+  switch (typedMove.type) {
     case 'START_GAME':
       // Generate cards and initialize game
       return {
         ...state,
         gamePhase: 'playing',
-        gameCards: move.data.cards,
-        cards: move.data.cards,
+        gameCards: typedMove.data.cards,
+        cards: typedMove.data.cards,
         flippedCards: [],
         matchedPairs: 0,
         moves: 0,
-        scores: move.data.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
-        consecutiveMatches: move.data.activePlayers.reduce(
+        scores: typedMove.data.activePlayers.reduce((acc: any, p: string) => ({ ...acc, [p]: 0 }), {}),
+        consecutiveMatches: typedMove.data.activePlayers.reduce(
           (acc: any, p: string) => ({ ...acc, [p]: 0 }),
           {}
         ),
-        activePlayers: move.data.activePlayers,
-        playerMetadata: move.data.playerMetadata || {}, // Include player metadata
-        currentPlayer: move.data.activePlayers[0] || '',
+        activePlayers: typedMove.data.activePlayers,
+        playerMetadata: typedMove.data.playerMetadata || {}, // Include player metadata
+        currentPlayer: typedMove.data.activePlayers[0] || '',
         gameStartTime: Date.now(),
         gameEndTime: null,
         currentMoveStartTime: Date.now(),
@@ -94,7 +97,7 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
       const gameCards = state.gameCards || []
       const flippedCards = state.flippedCards || []
 
-      const card = gameCards.find((c) => c.id === move.data.cardId)
+      const card = gameCards.find((c) => c.id === typedMove.data.cardId)
       if (!card) return state
 
       const newFlippedCards = [...flippedCards, card]
@@ -173,7 +176,7 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
 
     case 'SET_CONFIG': {
       // Update configuration field optimistically
-      const { field, value } = move.data as { field: string; value: any }
+      const { field, value } = typedMove.data
       const clearPausedGame = !!state.pausedGamePhase
 
       return {
@@ -223,7 +226,7 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
         ...state,
         playerHovers: {
           ...state.playerHovers,
-          [move.playerId]: move.data.cardId,
+          [typedMove.playerId]: typedMove.data.cardId,
         },
       }
     }
@@ -236,14 +239,14 @@ function applyMoveOptimistically(state: MemoryPairsState, move: GameMove): Memor
 // Provider component for ROOM-BASED play (with network sync)
 // NOTE: This provider should ONLY be used for room-based multiplayer games.
 // For arcade sessions without rooms, use LocalMemoryPairsProvider instead.
-export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
+export function MatchingProvider({ children }: { children: ReactNode }) {
   const { data: viewerId } = useViewerId()
   const { roomData } = useRoomData() // Fetch room data for room-based play
   const { activePlayerCount, activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
 
   // Get active player IDs directly as strings (UUIDs)
-  const activePlayers = Array.from(activePlayerIds)
+  const activePlayers = Array.from(activePlayerIds) as string[]
 
   // Derive game mode from active player count
   const gameMode = activePlayerCount > 1 ? 'multiplayer' : 'single'
@@ -251,7 +254,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   // Track roomData.gameConfig changes
   useEffect(() => {
     console.log(
-      '[RoomMemoryPairsProvider] roomData.gameConfig changed:',
+      '[MatchingProvider] roomData.gameConfig changed:',
       JSON.stringify(
         {
           gameConfig: roomData?.gameConfig,
@@ -269,7 +272,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   const mergedInitialState = useMemo(() => {
     const gameConfig = roomData?.gameConfig as Record<string, any> | null | undefined
     console.log(
-      '[RoomMemoryPairsProvider] Loading settings from database:',
+      '[MatchingProvider] Loading settings from database:',
       JSON.stringify(
         {
           gameConfig,
@@ -281,19 +284,19 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     )
 
     if (!gameConfig) {
-      console.log('[RoomMemoryPairsProvider] No gameConfig, using initialState')
+      console.log('[MatchingProvider] No gameConfig, using initialState')
       return initialState
     }
 
     // Get settings for this specific game (matching)
     const savedConfig = gameConfig.matching as Record<string, any> | null | undefined
     console.log(
-      '[RoomMemoryPairsProvider] Saved config for matching:',
+      '[MatchingProvider] Saved config for matching:',
       JSON.stringify(savedConfig, null, 2)
     )
 
     if (!savedConfig) {
-      console.log('[RoomMemoryPairsProvider] No saved config for matching, using initialState')
+      console.log('[MatchingProvider] No saved config for matching, using initialState')
       return initialState
     }
 
@@ -305,7 +308,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       turnTimer: savedConfig.turnTimer ?? initialState.turnTimer,
     }
     console.log(
-      '[RoomMemoryPairsProvider] Merged state:',
+      '[MatchingProvider] Merged state:',
       JSON.stringify(
         {
           gameType: merged.gameType,
@@ -326,7 +329,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     sendMove,
     connected: _connected,
     exitSession,
-  } = useArcadeSession<MemoryPairsState>({
+  } = useArcadeSession<MatchingState>({
     userId: viewerId || '',
     roomId: roomData?.id, // CRITICAL: Pass roomId for network sync across room members
     initialState: mergedInitialState,
@@ -479,7 +482,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
       const playerOwnership = buildPlayerOwnershipFromRoomData(roomData)
 
       // Use centralized utility to build metadata
-      return buildPlayerMetadataUtil(playerIds, playerOwnership, players, viewerId)
+      return buildPlayerMetadataUtil(playerIds, playerOwnership, players, viewerId ?? undefined)
     },
     [players, roomData, viewerId]
   )
@@ -488,7 +491,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   const startGame = useCallback(() => {
     // Must have at least one active player
     if (activePlayers.length === 0) {
-      console.error('[RoomMemoryPairs] Cannot start game without active players')
+      console.error('[MatchingProvider] Cannot start game without active players')
       return
     }
 
@@ -499,7 +502,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     // Use current session state configuration (no local state!)
     const cards = generateGameCards(state.gameType, state.difficulty)
     // Use first active player as playerId for START_GAME move
-    const firstPlayer = activePlayers[0]
+    const firstPlayer = activePlayers[0] as string
     sendMove({
       type: 'START_GAME',
       playerId: firstPlayer,
@@ -543,7 +546,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   const resetGame = useCallback(() => {
     // Must have at least one active player
     if (activePlayers.length === 0) {
-      console.error('[RoomMemoryPairs] Cannot reset game without active players')
+      console.error('[MatchingProvider] Cannot reset game without active players')
       return
     }
 
@@ -553,7 +556,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     // Use current session state configuration (no local state!)
     const cards = generateGameCards(state.gameType, state.difficulty)
     // Use first active player as playerId for START_GAME move
-    const firstPlayer = activePlayers[0]
+    const firstPlayer = activePlayers[0] as string
     sendMove({
       type: 'START_GAME',
       playerId: firstPlayer,
@@ -568,10 +571,10 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
 
   const setGameType = useCallback(
     (gameType: typeof state.gameType) => {
-      console.log('[RoomMemoryPairsProvider] setGameType called:', gameType)
+      console.log('[MatchingProvider] setGameType called:', gameType)
 
       // Use first active player as playerId, or empty string if none
-      const playerId = activePlayers[0] || ''
+      const playerId = (activePlayers[0] as string) || ''
       sendMove({
         type: 'SET_CONFIG',
         playerId,
@@ -592,7 +595,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
           },
         }
         console.log(
-          '[RoomMemoryPairsProvider] Saving gameType to database:',
+          '[MatchingProvider] Saving gameType to database:',
           JSON.stringify(
             {
               roomId: roomData.id,
@@ -607,7 +610,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
           gameConfig: updatedConfig,
         })
       } else {
-        console.warn('[RoomMemoryPairsProvider] Cannot save gameType - no roomData.id')
+        console.warn('[MatchingProvider] Cannot save gameType - no roomData.id')
       }
     },
     [activePlayers, sendMove, viewerId, roomData?.id, roomData?.gameConfig, updateGameConfig]
@@ -615,9 +618,9 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
 
   const setDifficulty = useCallback(
     (difficulty: typeof state.difficulty) => {
-      console.log('[RoomMemoryPairsProvider] setDifficulty called:', difficulty)
+      console.log('[MatchingProvider] setDifficulty called:', difficulty)
 
-      const playerId = activePlayers[0] || ''
+      const playerId = (activePlayers[0] as string) || ''
       sendMove({
         type: 'SET_CONFIG',
         playerId,
@@ -638,7 +641,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
           },
         }
         console.log(
-          '[RoomMemoryPairsProvider] Saving difficulty to database:',
+          '[MatchingProvider] Saving difficulty to database:',
           JSON.stringify(
             {
               roomId: roomData.id,
@@ -653,7 +656,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
           gameConfig: updatedConfig,
         })
       } else {
-        console.warn('[RoomMemoryPairsProvider] Cannot save difficulty - no roomData.id')
+        console.warn('[MatchingProvider] Cannot save difficulty - no roomData.id')
       }
     },
     [activePlayers, sendMove, viewerId, roomData?.id, roomData?.gameConfig, updateGameConfig]
@@ -661,9 +664,9 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
 
   const setTurnTimer = useCallback(
     (turnTimer: typeof state.turnTimer) => {
-      console.log('[RoomMemoryPairsProvider] setTurnTimer called:', turnTimer)
+      console.log('[MatchingProvider] setTurnTimer called:', turnTimer)
 
-      const playerId = activePlayers[0] || ''
+      const playerId = (activePlayers[0] as string) || ''
       sendMove({
         type: 'SET_CONFIG',
         playerId,
@@ -684,7 +687,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
           },
         }
         console.log(
-          '[RoomMemoryPairsProvider] Saving turnTimer to database:',
+          '[MatchingProvider] Saving turnTimer to database:',
           JSON.stringify(
             {
               roomId: roomData.id,
@@ -699,7 +702,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
           gameConfig: updatedConfig,
         })
       } else {
-        console.warn('[RoomMemoryPairsProvider] Cannot save turnTimer - no roomData.id')
+        console.warn('[MatchingProvider] Cannot save turnTimer - no roomData.id')
       }
     },
     [activePlayers, sendMove, viewerId, roomData?.id, roomData?.gameConfig, updateGameConfig]
@@ -707,7 +710,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
 
   const goToSetup = useCallback(() => {
     // Send GO_TO_SETUP move - synchronized across all room members
-    const playerId = activePlayers[0] || state.currentPlayer || ''
+    const playerId = (activePlayers[0] as string) || state.currentPlayer || ''
     sendMove({
       type: 'GO_TO_SETUP',
       playerId,
@@ -719,11 +722,11 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   const resumeGame = useCallback(() => {
     // PAUSE/RESUME: Resume paused game if config unchanged
     if (!canResumeGame) {
-      console.warn('[RoomMemoryPairs] Cannot resume - no paused game or config changed')
+      console.warn('[MatchingProvider] Cannot resume - no paused game or config changed')
       return
     }
 
-    const playerId = activePlayers[0] || state.currentPlayer || ''
+    const playerId = (activePlayers[0] as string) || state.currentPlayer || ''
     sendMove({
       type: 'RESUME_GAME',
       playerId,
@@ -736,7 +739,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     (cardId: string | null) => {
       // HOVER: Send hover state for networked presence
       // Use current player as the one hovering
-      const playerId = state.currentPlayer || activePlayers[0] || ''
+      const playerId = state.currentPlayer || (activePlayers[0] as string) || ''
       if (!playerId) return // No active player to send hover for
 
       sendMove({
@@ -750,7 +753,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
   )
 
   // NO MORE effectiveState merging! Just use session state directly with gameMode added
-  const effectiveState = { ...state, gameMode } as MemoryPairsState & {
+  const effectiveState = { ...state, gameMode } as MatchingState & {
     gameMode: GameMode
   }
 
@@ -848,7 +851,7 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  const contextValue: MemoryPairsContextValue = {
+  const contextValue: MatchingContextValue = {
     state: effectiveState,
     dispatch: () => {
       // No-op - replaced with sendMove
@@ -873,8 +876,14 @@ export function RoomMemoryPairsProvider({ children }: { children: ReactNode }) {
     activePlayers,
   }
 
-  return <MemoryPairsContext.Provider value={contextValue}>{children}</MemoryPairsContext.Provider>
+  return <MatchingContext.Provider value={contextValue}>{children}</MatchingContext.Provider>
 }
 
 // Export the hook for this provider
-export { useMemoryPairs } from './MemoryPairsContext'
+export function useMatching() {
+  const context = useContext(MatchingContext)
+  if (!context) {
+    throw new Error('useMatching must be used within MatchingProvider')
+  }
+  return context
+}

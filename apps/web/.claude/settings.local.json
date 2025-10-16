@@ -79,7 +79,14 @@
       "Bash(tsc:*)",
       "Bash(tsc-alias:*)",
       "Bash(npx tsc-alias:*)",
-      "Bash(timeout 20 pnpm run:*)"
+      "Bash(timeout 20 pnpm run:*)",
+      "Bash(find:*)",
+      "Bash(for:*)",
+      "Bash(tree:*)",
+      "Bash(do sed -i '' \"s|from ''../context/MemoryPairsContext''|from ''../Provider''|g\" \"$file\")",
+      "Bash(do sed -i '' \"s|from ''../../../../../styled-system/css''|from ''@/styled-system/css''|g\" \"$file\")",
+      "Bash(tee:*)",
+      "Bash(do sed -i '' \"s|from ''@/styled-system/css''|from ''../../../../styled-system/css''|g\" \"$file\")"
     ],
     "deny": [],
     "ask": []

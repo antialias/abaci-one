@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { css } from '../../../../../styled-system/css'
-import { useGameMode } from '../../../../contexts/GameModeContext'
-import { useMemoryPairs } from '../context/MemoryPairsContext'
+import { css } from '../../../../styled-system/css'
+import { useGameMode } from '@/contexts/GameModeContext'
+import { useMatching } from '../Provider'
 
 // Add bounce animation for the start button
 const bounceAnimation = `
@@ -39,7 +39,7 @@ export function SetupPhase() {
     canResumeGame,
     hasConfigChanged,
     activePlayers: _activePlayers,
-  } = useMemoryPairs()
+  } = useMatching()
 
   const { activePlayerCount, gameMode: _globalGameMode } = useGameMode()
 

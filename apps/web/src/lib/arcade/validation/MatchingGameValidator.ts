@@ -3,9 +3,9 @@
  * Validates all game moves and state transitions
  */
 
-import type { GameCard, MemoryPairsState, Player } from '@/app/games/matching/context/types'
-import { generateGameCards } from '@/app/games/matching/utils/cardGeneration'
-import { canFlipCard, validateMatch } from '@/app/games/matching/utils/matchValidation'
+import type { GameCard, MemoryPairsState, Player } from '@/arcade-games/matching/types'
+import { generateGameCards } from '@/arcade-games/matching/utils/cardGeneration'
+import { canFlipCard, validateMatch } from '@/arcade-games/matching/utils/matchValidation'
 import type { MatchingGameConfig } from '@/lib/arcade/game-configs'
 import type { GameValidator, MatchingGameMove, ValidationResult } from './types'
 
