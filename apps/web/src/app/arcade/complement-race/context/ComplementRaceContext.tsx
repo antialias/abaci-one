@@ -113,6 +113,13 @@ const initialState: GameState = {
 }
 
 function gameReducer(state: GameState, action: GameAction): GameState {
+  console.log('🔄 [Reducer] Action dispatched:', {
+    type: action.type,
+    action,
+    currentInput: state.currentInput,
+    currentQuestion: state.currentQuestion?.number,
+  })
+
   switch (action.type) {
     case 'SET_MODE':
       return { ...state, mode: action.mode }
@@ -171,6 +178,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'NEXT_QUESTION': {
+      console.log('➡️ [Reducer] NEXT_QUESTION - clearing input and generating new question')
+
       // Generate new question based on mode
       const generateQuestion = () => {
         let targetSum: number
@@ -212,16 +221,28 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
 
+      const newQuestion = generateQuestion()
+      console.log('📊 [Reducer] NEXT_QUESTION result:', {
+        oldQuestion: state.currentQuestion,
+        newQuestion,
+        oldInput: state.currentInput,
+        newInput: '',
+      })
+
       return {
         ...state,
         previousQuestion: state.currentQuestion,
-        currentQuestion: generateQuestion(),
+        currentQuestion: newQuestion,
         questionStartTime: Date.now(),
         currentInput: '',
       }
     }
 
     case 'UPDATE_INPUT':
+      console.log('✏️ [Reducer] UPDATE_INPUT:', {
+        oldInput: state.currentInput,
+        newInput: action.input,
+      })
       return { ...state, currentInput: action.input }
 
     case 'SUBMIT_ANSWER': {

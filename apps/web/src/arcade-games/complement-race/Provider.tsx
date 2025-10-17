@@ -497,6 +497,8 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
           }
           break
         case 'NEXT_QUESTION':
+          console.log('🧹 [Provider] NEXT_QUESTION - clearing local input state')
+          setLocalUIState((prev) => ({ ...prev, currentInput: '' }))
           nextQuestion()
           break
         case 'END_RACE':

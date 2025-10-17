@@ -70,6 +70,12 @@ export function GameDisplay() {
       // Only process number keys
       if (/^[0-9]$/.test(e.key)) {
         const newInput = state.currentInput + e.key
+        console.log('⌨️ [KeyPress] Number key pressed:', {
+          key: e.key,
+          oldInput: state.currentInput,
+          newInput,
+          currentQuestion: state.currentQuestion?.number,
+        })
         dispatch({ type: 'UPDATE_INPUT', input: newInput })
 
         // Check if answer is complete
@@ -77,11 +83,26 @@ export function GameDisplay() {
           const answer = parseInt(newInput, 10)
           const correctAnswer = state.currentQuestion.correctAnswer
 
+          console.log('🔍 [KeyPress] Checking answer:', {
+            newInput,
+            newInputLength: newInput.length,
+            correctAnswer,
+            correctAnswerLength: correctAnswer.toString().length,
+            willSubmit: newInput.length >= correctAnswer.toString().length,
+          })
+
           // If we have enough digits to match the answer, submit
           if (newInput.length >= correctAnswer.toString().length) {
             const responseTime = Date.now() - state.questionStartTime
             const isCorrect = answer === correctAnswer
             const pairKey = `${state.currentQuestion.number}_${state.currentQuestion.correctAnswer}_${state.currentQuestion.targetSum}`
+
+            console.log('📝 [KeyPress] Submitting answer:', {
+              answer,
+              correctAnswer,
+              isCorrect,
+              responseTime,
+            })
 
             if (isCorrect) {
               // Correct answer
@@ -133,6 +154,7 @@ export function GameDisplay() {
                 dispatch({ type: 'SHOW_ADAPTIVE_FEEDBACK', feedback })
               }
 
+              console.log('➡️ [KeyPress] Dispatching NEXT_QUESTION after correct answer')
               dispatch({ type: 'NEXT_QUESTION' })
             } else {
               // Incorrect answer
@@ -150,11 +172,16 @@ export function GameDisplay() {
                 dispatch({ type: 'SHOW_ADAPTIVE_FEEDBACK', feedback })
               }
 
+              console.log('❌ [KeyPress] Incorrect answer - clearing input')
               dispatch({ type: 'UPDATE_INPUT', input: '' })
             }
           }
         }
       } else if (e.key === 'Backspace') {
+        console.log('⌫ [KeyPress] Backspace pressed:', {
+          oldInput: state.currentInput,
+          newInput: state.currentInput.slice(0, -1),
+        })
         dispatch({
           type: 'UPDATE_INPUT',
           input: state.currentInput.slice(0, -1),
@@ -162,8 +189,16 @@ export function GameDisplay() {
       }
     }
 
+    console.log('🔄 [KeyPress Effect] Setting up keyboard listener with state:', {
+      currentInput: state.currentInput,
+      currentQuestion: state.currentQuestion?.number,
+    })
+
     window.addEventListener('keydown', handleKeyPress)
-    return () => window.removeEventListener('keydown', handleKeyPress)
+    return () => {
+      console.log('🧹 [KeyPress Effect] Cleaning up keyboard listener')
+      window.removeEventListener('keydown', handleKeyPress)
+    }
   }, [
     state.currentInput,
     state.currentQuestion,
@@ -195,6 +230,19 @@ export function GameDisplay() {
   }
 
   if (!state.currentQuestion) return null
+
+  // DEBUG: Log state on every render
+  console.log('🎮 [GameDisplay] Render:', {
+    currentInput: state.currentInput,
+    currentInputLength: state.currentInput?.length,
+    currentInputType: typeof state.currentInput,
+    currentQuestion: state.currentQuestion,
+    questionNumber: state.currentQuestion?.number,
+    correctAnswer: state.currentQuestion?.correctAnswer,
+    targetSum: state.currentQuestion?.targetSum,
+    score: state.score,
+    streak: state.streak,
+  })
 
   return (
     <div
