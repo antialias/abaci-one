@@ -67,7 +67,7 @@ export function useTrackManagement({
 
   // Apply pending track when train resets to beginning
   useEffect(() => {
-    if (pendingTrackData && trainPosition < 0) {
+    if (pendingTrackData && trainPosition <= 0) {
       setTrackData(pendingTrackData)
       previousRouteRef.current = currentRoute
       setPendingTrackData(null)
@@ -77,9 +77,9 @@ export function useTrackManagement({
   // Manage passenger display during route transitions
   useEffect(() => {
     // Only switch to new passengers when:
-    // 1. Train has reset to start position (< 0) - track has changed, OR
+    // 1. Train has reset to start position (<= 0) - track has changed, OR
     // 2. Same route AND (in middle of track OR passengers have changed state)
-    const trainReset = trainPosition < 0
+    const trainReset = trainPosition <= 0
     const sameRoute = currentRoute === displayRouteRef.current
     const inMiddleOfTrack = trainPosition >= 10 && trainPosition < 90 // Avoid start/end transition zones
 
