@@ -254,7 +254,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   const lastLogRef = useState({ key: '', count: 0 })[0]
 
   // Client-side game state (NOT synced to server - purely visual/gameplay)
-  const [clientMomentum, setClientMomentum] = useState(50) // Start at 50
+  const [clientMomentum, setClientMomentum] = useState(10) // Start at 10 for gentle push
   const [clientPosition, setClientPosition] = useState(0)
   const [clientPressure, setClientPressure] = useState(0)
   const lastUpdateRef = useRef(Date.now())
@@ -373,9 +373,9 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
         gameStartTimeRef.current = Date.now()
         lastUpdateRef.current = Date.now()
         // Reset client state for new game
-        setClientMomentum(50)
+        setClientMomentum(10) // Start with gentle push
         setClientPosition(0)
-        setClientPressure((50 / 100) * 150) // Initial pressure from starting momentum
+        setClientPressure((10 / 100) * 150) // Initial pressure from starting momentum
       }
     } else {
       // Reset when game ends
@@ -435,7 +435,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     // When route changes, reset position and give starting momentum
     if (currentRoute > 1 && compatibleState.style === 'sprint') {
       setClientPosition(0)
-      setClientMomentum(50) // Reset to starting momentum
+      setClientMomentum(10) // Reset to starting momentum (gentle push)
     }
   }, [multiplayerState.currentRoute, compatibleState.style])
 
