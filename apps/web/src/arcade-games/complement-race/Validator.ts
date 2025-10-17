@@ -317,12 +317,17 @@ export class ComplementRaceValidator
         updatedPlayer.position = Math.min(100, player.position + 100 / state.config.raceGoal)
       }
     } else if (state.config.style === 'sprint') {
-      // Sprint: Update momentum
+      // Sprint: Update momentum AND position
       if (correct) {
         updatedPlayer.momentum = Math.min(100, player.momentum + 15)
       } else {
         updatedPlayer.momentum = Math.max(0, player.momentum - 10)
       }
+
+      // Move train based on momentum (momentum/20 = position change per answer)
+      // Higher momentum = faster movement
+      const moveDistance = updatedPlayer.momentum / 20
+      updatedPlayer.position = Math.min(100, player.position + moveDistance)
     } else if (state.config.style === 'survival') {
       // Survival: Always move forward, speed based on accuracy
       const moveDistance = correct ? 5 : 2

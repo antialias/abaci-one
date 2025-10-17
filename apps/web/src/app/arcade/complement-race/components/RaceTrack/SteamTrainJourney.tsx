@@ -94,7 +94,9 @@ export function SteamTrainJourney({
   currentInput,
 }: SteamTrainJourneyProps) {
   const { state } = useComplementRace()
-  console.log(`🚂 Train: mom=${momentum} pos=${trainPosition} stations=${state.stations.length} passengers=${state.passengers.length}`)
+  console.log(
+    `🚂 Train: mom=${momentum} pos=${trainPosition} stations=${state.stations.length} passengers=${state.passengers.length}`
+  )
 
   const { getSkyGradient, getTimeOfDayPeriod } = useSteamJourney()
   const _skyGradient = getSkyGradient()
