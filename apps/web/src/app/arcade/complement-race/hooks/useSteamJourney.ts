@@ -121,7 +121,7 @@ export function useSteamJourney() {
       // Debug logging flag - enable when debugging passenger boarding issues
       // TO ENABLE: Change this to true, save, and the logs will appear in the browser console
       // When you see passengers getting left behind, copy the entire console log and paste into Claude Code
-      const DEBUG_PASSENGER_BOARDING = false
+      const DEBUG_PASSENGER_BOARDING = true
 
       if (DEBUG_PASSENGER_BOARDING) {
         console.log('\n'.repeat(3))
