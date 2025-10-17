@@ -114,7 +114,9 @@ export function useSteamJourney() {
       const CAR_SPACING = 7 // Must match SteamTrainJourney component
       const maxPassengers = calculateMaxConcurrentPassengers(state.passengers, state.stations)
       const maxCars = Math.max(1, maxPassengers)
-      const currentBoardedPassengers = state.passengers.filter((p) => p.isBoarded && !p.isDelivered)
+      const currentBoardedPassengers = state.passengers.filter(
+        (p) => p.claimedBy !== null && p.deliveredBy === null
+      )
 
       // Debug logging flag - enable when debugging passenger boarding issues
       // TO ENABLE: Change this to true, save, and the logs will appear in the browser console
@@ -150,7 +152,7 @@ export function useSteamJourney() {
           const dest = state.stations.find((s) => s.id === p.destinationStationId)
           console.log(`  [${idx}] ${p.name} (ID: ${p.id})`)
           console.log(
-            `    Status: ${p.isDelivered ? 'DELIVERED' : p.isBoarded ? 'BOARDED' : 'WAITING'}`
+            `    Status: ${p.deliveredBy !== null ? 'DELIVERED' : p.claimedBy !== null ? 'BOARDED' : 'WAITING'}`
           )
           console.log(
             `    Route: ${origin?.emoji} ${origin?.name} (pos ${origin?.position}) → ${dest?.emoji} ${dest?.name} (pos ${dest?.position})`
@@ -180,7 +182,7 @@ export function useSteamJourney() {
       // FIRST: Identify which passengers will be delivered in this frame
       const passengersToDeliver = new Set<string>()
       currentBoardedPassengers.forEach((passenger, carIndex) => {
-        if (!passenger || passenger.isDelivered) return
+        if (!passenger || passenger.deliveredBy !== null) return
 
         const station = state.stations.find((s) => s.id === passenger.destinationStationId)
         if (!station) return
@@ -232,7 +234,7 @@ export function useSteamJourney() {
 
       // Find waiting passengers whose origin station has an empty car nearby
       state.passengers.forEach((passenger) => {
-        if (passenger.isBoarded || passenger.isDelivered) return
+        if (passenger.claimedBy !== null || passenger.deliveredBy !== null) return
 
         const station = state.stations.find((s) => s.id === passenger.originStationId)
         if (!station) return
@@ -300,7 +302,7 @@ export function useSteamJourney() {
       // Check for deliverable passengers
       // Passengers disembark when THEIR car reaches their destination
       currentBoardedPassengers.forEach((passenger, carIndex) => {
-        if (!passenger || passenger.isDelivered) return
+        if (!passenger || passenger.deliveredBy !== null) return
 
         const station = state.stations.find((s) => s.id === passenger.destinationStationId)
         if (!station) return
@@ -393,7 +395,8 @@ export function useSteamJourney() {
     if (!state.isGameActive || state.style !== 'sprint') return
 
     // Check if all passengers are delivered
-    const allDelivered = state.passengers.length > 0 && state.passengers.every((p) => p.isDelivered)
+    const allDelivered =
+      state.passengers.length > 0 && state.passengers.every((p) => p.deliveredBy !== null)
 
     if (allDelivered) {
       // Generate new passengers after a short delay

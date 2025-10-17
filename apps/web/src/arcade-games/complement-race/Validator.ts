@@ -414,15 +414,19 @@ export class ComplementRaceValidator
       return { valid: false, error: 'Passenger already claimed' }
     }
 
-    // Check if player is at the origin station (within 5% tolerance)
-    const originStation = state.stations.find((s) => s.id === passenger.originStationId)
-    if (!originStation) {
-      return { valid: false, error: 'Origin station not found' }
-    }
+    // Sprint mode: Position is client-side, trust client's spatial checking
+    // (Client checks position in useSteamJourney before sending CLAIM move)
+    // Other modes: Validate position server-side
+    if (state.config.style !== 'sprint') {
+      const originStation = state.stations.find((s) => s.id === passenger.originStationId)
+      if (!originStation) {
+        return { valid: false, error: 'Origin station not found' }
+      }
 
-    const distance = Math.abs(player.position - originStation.position)
-    if (distance > 5) {
-      return { valid: false, error: 'Not at origin station' }
+      const distance = Math.abs(player.position - originStation.position)
+      if (distance > 5) {
+        return { valid: false, error: 'Not at origin station' }
+      }
     }
 
     // Claim passenger
@@ -477,15 +481,19 @@ export class ComplementRaceValidator
       return { valid: false, error: 'Passenger already delivered' }
     }
 
-    // Check if player is at destination station (within 5% tolerance)
-    const destStation = state.stations.find((s) => s.id === passenger.destinationStationId)
-    if (!destStation) {
-      return { valid: false, error: 'Destination station not found' }
-    }
+    // Sprint mode: Position is client-side, trust client's spatial checking
+    // (Client checks position in useSteamJourney before sending DELIVER move)
+    // Other modes: Validate position server-side
+    if (state.config.style !== 'sprint') {
+      const destStation = state.stations.find((s) => s.id === passenger.destinationStationId)
+      if (!destStation) {
+        return { valid: false, error: 'Destination station not found' }
+      }
 
-    const distance = Math.abs(player.position - destStation.position)
-    if (distance > 5) {
-      return { valid: false, error: 'Not at destination station' }
+      const distance = Math.abs(player.position - destStation.position)
+      if (distance > 5) {
+        return { valid: false, error: 'Not at destination station' }
+      }
     }
 
     // Deliver passenger and award points
