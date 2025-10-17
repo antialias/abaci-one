@@ -169,8 +169,7 @@ export class ComplementRaceValidator
         correctAnswers: 0,
         totalQuestions: 0,
         position: 0,
-        momentum: 50, // Start with some momentum in sprint mode
-        pressure: 60, // Start with initial pressure
+        momentum: 50, // Start with some momentum (position/pressure calculated client-side)
         isReady: false,
         isActive: true,
         currentAnswer: null,
@@ -318,25 +317,15 @@ export class ComplementRaceValidator
         updatedPlayer.position = Math.min(100, player.position + 100 / state.config.raceGoal)
       }
     } else if (state.config.style === 'sprint') {
-      // Sprint: Update momentum, pressure, AND position
+      // Sprint: Update momentum only (position calculated client-side for smooth movement)
       if (correct) {
         updatedPlayer.momentum = Math.min(100, player.momentum + 15)
-        // Add pressure on correct answer (add steam to boiler)
-        updatedPlayer.pressure = Math.min(100, player.pressure + 20)
       } else {
         updatedPlayer.momentum = Math.max(0, player.momentum - 10)
-        // Less pressure added on wrong answer
-        updatedPlayer.pressure = Math.min(100, player.pressure + 5)
       }
 
-      // Pressure decay: Every answer causes some steam to escape
-      // Decay rate: 8 points per answer (pressure naturally decreases over time)
-      updatedPlayer.pressure = Math.max(0, updatedPlayer.pressure - 8)
-
-      // Move train based on momentum (momentum/20 = position change per answer)
-      // Higher momentum = faster movement
-      const moveDistance = updatedPlayer.momentum / 20
-      updatedPlayer.position = Math.min(100, player.position + moveDistance)
+      // Position is calculated client-side continuously based on momentum
+      // This allows for smooth 20fps movement instead of discrete jumps per answer
     } else if (state.config.style === 'survival') {
       // Survival: Always move forward, speed based on accuracy
       const moveDistance = correct ? 5 : 2
@@ -543,7 +532,6 @@ export class ComplementRaceValidator
         ...player,
         position: 0,
         momentum: 50, // Reset momentum to starting value
-        pressure: 60, // Reset pressure to starting value
         passengers: [], // Clear any remaining passengers
       }
     }

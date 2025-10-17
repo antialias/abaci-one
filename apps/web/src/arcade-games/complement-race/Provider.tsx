@@ -251,6 +251,11 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   // Debug logging ref (track last logged values)
   const lastLogRef = useState({ key: '', count: 0 })[0]
 
+  // Client-side smooth movement state
+  const [clientPosition, setClientPosition] = useState(0)
+  const [clientPressure, setClientPressure] = useState(0)
+  const lastUpdateRef = useRef(Date.now())
+
   // Transform multiplayer state to look like single-player state
   const compatibleState = useMemo((): CompatibleGameState => {
     const localPlayer = localPlayerId ? multiplayerState.players[localPlayerId] : null
@@ -316,8 +321,8 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
 
       // Sprint mode specific
       momentum: localPlayer?.momentum || 0,
-      trainPosition: localPlayer?.position || 0,
-      pressure: localPlayer?.pressure || 0, // Use actual pressure from server (has decay)
+      trainPosition: clientPosition, // Use client-calculated smooth position
+      pressure: clientPressure, // Use client-calculated smooth pressure
       elapsedTime: multiplayerState.gameStartTime ? Date.now() - multiplayerState.gameStartTime : 0,
       lastCorrectAnswerTime: localPlayer?.lastAnswerTime || Date.now(),
       currentRoute: multiplayerState.currentRoute,
@@ -339,7 +344,46 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       adaptiveFeedback: localUIState.adaptiveFeedback,
       difficultyTracker: localUIState.difficultyTracker,
     }
-  }, [multiplayerState, localPlayerId, localUIState])
+  }, [multiplayerState, localPlayerId, localUIState, clientPosition, clientPressure])
+
+  // Client-side game loop for smooth train movement
+  useEffect(() => {
+    if (compatibleState.style !== 'sprint' || !compatibleState.isGameActive) return
+
+    const UPDATE_INTERVAL = 50 // 50ms = ~20fps
+    const SPEED_MULTIPLIER = 0.15 // speed = momentum * 0.15 (% per second)
+
+    const interval = setInterval(() => {
+      const now = Date.now()
+      const deltaTime = now - lastUpdateRef.current
+      lastUpdateRef.current = now
+
+      // Get server momentum (authoritative)
+      const serverMomentum = compatibleState.momentum
+
+      // Calculate speed from momentum
+      const speed = serverMomentum * SPEED_MULTIPLIER
+
+      // Update position continuously based on momentum
+      const positionDelta = (speed * deltaTime) / 1000
+      setClientPosition((prev) => prev + positionDelta)
+
+      // Calculate pressure from momentum (0-150 PSI)
+      const pressure = Math.min(150, (serverMomentum / 100) * 150)
+      setClientPressure(pressure)
+    }, UPDATE_INTERVAL)
+
+    return () => clearInterval(interval)
+  }, [compatibleState.style, compatibleState.isGameActive, compatibleState.momentum])
+
+  // Sync client position with server position on route changes/resets
+  useEffect(() => {
+    const serverPosition = multiplayerState.players[localPlayerId || '']?.position || 0
+    // Only sync if there's a significant jump (route change)
+    if (Math.abs(serverPosition - clientPosition) > 10) {
+      setClientPosition(serverPosition)
+    }
+  }, [multiplayerState.players, localPlayerId, clientPosition])
 
   // Debug logging: only log on answer submission or significant events
   useEffect(() => {
