@@ -111,6 +111,7 @@ interface ComplementRaceContextValue {
   setConfig: (field: keyof ComplementRaceConfig, value: unknown) => void
   clearError: () => void
   exitSession: () => void
+  boostMomentum: (correct: boolean) => void // Client-side momentum boost/reduce
 }
 
 const ComplementRaceContext = createContext<ComplementRaceContextValue | null>(null)
@@ -252,10 +253,28 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   // Debug logging ref (track last logged values)
   const lastLogRef = useState({ key: '', count: 0 })[0]
 
-  // Client-side smooth movement state
+  // Client-side game state (NOT synced to server - purely visual/gameplay)
+  const [clientMomentum, setClientMomentum] = useState(50) // Start at 50
   const [clientPosition, setClientPosition] = useState(0)
   const [clientPressure, setClientPressure] = useState(0)
   const lastUpdateRef = useRef(Date.now())
+  const gameStartTimeRef = useRef(0)
+
+  // Decay rates based on skill level (momentum lost per second)
+  const MOMENTUM_DECAY_RATES = {
+    preschool: 2.0,
+    kindergarten: 3.5,
+    relaxed: 5.0,
+    slow: 7.0,
+    normal: 9.0,
+    fast: 11.0,
+    expert: 13.0,
+  }
+
+  const MOMENTUM_GAIN_PER_CORRECT = 15
+  const MOMENTUM_LOSS_PER_WRONG = 10
+  const SPEED_MULTIPLIER = 0.15 // momentum * 0.15 = % per second
+  const UPDATE_INTERVAL = 50 // 50ms = ~20fps
 
   // Transform multiplayer state to look like single-player state
   const compatibleState = useMemo((): CompatibleGameState => {
@@ -320,10 +339,10 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
         previousPosition: ai.position,
       })),
 
-      // Sprint mode specific
-      momentum: localPlayer?.momentum || 0,
-      trainPosition: clientPosition, // Use client-calculated smooth position
-      pressure: clientPressure, // Use client-calculated smooth pressure
+      // Sprint mode specific (all client-side for smooth movement)
+      momentum: clientMomentum, // Client-only state with continuous decay
+      trainPosition: clientPosition, // Client-calculated from momentum
+      pressure: clientPressure, // Client-calculated from momentum (0-150 PSI)
       elapsedTime: multiplayerState.gameStartTime ? Date.now() - multiplayerState.gameStartTime : 0,
       lastCorrectAnswerTime: localPlayer?.lastAnswerTime || Date.now(),
       currentRoute: multiplayerState.currentRoute,
@@ -347,44 +366,78 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     }
   }, [multiplayerState, localPlayerId, localUIState, clientPosition, clientPressure])
 
-  // Client-side game loop for smooth train movement
+  // Initialize game start time when game becomes active
   useEffect(() => {
-    if (compatibleState.style !== 'sprint' || !compatibleState.isGameActive) return
+    if (compatibleState.isGameActive && compatibleState.style === 'sprint') {
+      if (gameStartTimeRef.current === 0) {
+        gameStartTimeRef.current = Date.now()
+        lastUpdateRef.current = Date.now()
+        // Reset client state for new game
+        setClientMomentum(50)
+        setClientPosition(0)
+        setClientPressure((50 / 100) * 150) // Initial pressure from starting momentum
+      }
+    } else {
+      // Reset when game ends
+      gameStartTimeRef.current = 0
+    }
+  }, [compatibleState.isGameActive, compatibleState.style])
 
-    const UPDATE_INTERVAL = 50 // 50ms = ~20fps
-    const SPEED_MULTIPLIER = 0.15 // speed = momentum * 0.15 (% per second)
+  // Main client-side game loop: momentum decay and position calculation
+  useEffect(() => {
+    if (!compatibleState.isGameActive || compatibleState.style !== 'sprint') return
 
     const interval = setInterval(() => {
       const now = Date.now()
       const deltaTime = now - lastUpdateRef.current
       lastUpdateRef.current = now
 
-      // Get server momentum (authoritative)
-      const serverMomentum = compatibleState.momentum
+      // Get decay rate based on skill level
+      const decayRate =
+        MOMENTUM_DECAY_RATES[compatibleState.timeoutSetting as keyof typeof MOMENTUM_DECAY_RATES] ||
+        MOMENTUM_DECAY_RATES.normal
 
-      // Calculate speed from momentum
-      const speed = serverMomentum * SPEED_MULTIPLIER
+      setClientMomentum((prevMomentum) => {
+        // Calculate momentum decay for this frame
+        const momentumLoss = (decayRate * deltaTime) / 1000
 
-      // Update position continuously based on momentum
-      const positionDelta = (speed * deltaTime) / 1000
-      setClientPosition((prev) => prev + positionDelta)
+        // Update momentum (don't go below 0)
+        const newMomentum = Math.max(0, prevMomentum - momentumLoss)
 
-      // Calculate pressure from momentum (0-150 PSI)
-      const pressure = Math.min(150, (serverMomentum / 100) * 150)
-      setClientPressure(pressure)
+        // Calculate speed from momentum (% per second)
+        const speed = newMomentum * SPEED_MULTIPLIER
+
+        // Update position (accumulate, never go backward)
+        const positionDelta = (speed * deltaTime) / 1000
+        setClientPosition((prev) => prev + positionDelta)
+
+        // Calculate pressure (0-150 PSI)
+        const pressure = Math.min(150, (newMomentum / 100) * 150)
+        setClientPressure(pressure)
+
+        return newMomentum
+      })
     }, UPDATE_INTERVAL)
 
     return () => clearInterval(interval)
-  }, [compatibleState.style, compatibleState.isGameActive, compatibleState.momentum])
+  }, [
+    compatibleState.isGameActive,
+    compatibleState.style,
+    compatibleState.timeoutSetting,
+    MOMENTUM_DECAY_RATES,
+    SPEED_MULTIPLIER,
+    UPDATE_INTERVAL,
+  ])
 
-  // Sync client position with server position on route changes/resets
+  // Reset client position when route changes
   useEffect(() => {
-    const serverPosition = multiplayerState.players[localPlayerId || '']?.position || 0
-    // Only sync if there's a significant jump (route change)
-    if (Math.abs(serverPosition - clientPosition) > 10) {
-      setClientPosition(serverPosition)
+    const currentRoute = multiplayerState.currentRoute
+    // When route changes, reset position and give starting momentum
+    if (currentRoute > 1 && compatibleState.style === 'sprint') {
+      setClientPosition(0)
+      setClientMomentum(50) // Reset to starting momentum
     }
-  }, [multiplayerState.players, localPlayerId, clientPosition])
+  }, [multiplayerState.currentRoute, compatibleState.style])
 
   // Debug logging: only log on answer submission or significant events
   useEffect(() => {
@@ -679,6 +732,22 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     ]
   )
 
+  // Client-side momentum boost/reduce (sprint mode only)
+  const boostMomentum = useCallback(
+    (correct: boolean) => {
+      if (compatibleState.style !== 'sprint') return
+
+      setClientMomentum((prevMomentum) => {
+        if (correct) {
+          return Math.min(100, prevMomentum + MOMENTUM_GAIN_PER_CORRECT)
+        } else {
+          return Math.max(0, prevMomentum - MOMENTUM_LOSS_PER_WRONG)
+        }
+      })
+    },
+    [compatibleState.style, MOMENTUM_GAIN_PER_CORRECT, MOMENTUM_LOSS_PER_WRONG]
+  )
+
   const contextValue: ComplementRaceContextValue = {
     state: compatibleState, // Use transformed state
     dispatch,
@@ -694,6 +763,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     setConfig,
     clearError,
     exitSession,
+    boostMomentum, // Client-side momentum control
   }
 
   return (

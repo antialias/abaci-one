@@ -61,8 +61,7 @@ export interface PlayerState {
   totalQuestions: number
 
   // Position & Progress
-  position: number // 0-100% for practice/sprint, lap count for survival
-  momentum: number // 0-100 (sprint mode only, position/pressure calculated client-side)
+  position: number // 0-100% for practice/survival only (sprint mode: client-side)
 
   // Current state
   isReady: boolean

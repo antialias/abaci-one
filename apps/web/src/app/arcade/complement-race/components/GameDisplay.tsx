@@ -5,7 +5,6 @@ import { useComplementRace } from '@/arcade-games/complement-race/Provider'
 import { useAdaptiveDifficulty } from '../hooks/useAdaptiveDifficulty'
 import { useAIRacers } from '../hooks/useAIRacers'
 import { useSoundEffects } from '../hooks/useSoundEffects'
-import { useSteamJourney } from '../hooks/useSteamJourney'
 import { generatePassengers } from '../lib/passengerGenerator'
 import { AbacusTarget } from './AbacusTarget'
 import { CircularTrack } from './RaceTrack/CircularTrack'
@@ -16,10 +15,9 @@ import { RouteCelebration } from './RouteCelebration'
 type FeedbackAnimation = 'correct' | 'incorrect' | null
 
 export function GameDisplay() {
-  const { state, dispatch } = useComplementRace()
+  const { state, dispatch, boostMomentum } = useComplementRace()
   useAIRacers() // Activate AI racer updates (not used in sprint mode)
   const { trackPerformance, getAdaptiveFeedbackMessage } = useAdaptiveDifficulty()
-  const { boostMomentum } = useSteamJourney()
   const { playSound } = useSoundEffects()
   const [feedbackAnimation, setFeedbackAnimation] = useState<FeedbackAnimation>(null)
 
@@ -109,7 +107,7 @@ export function GameDisplay() {
 
               // Boost momentum for sprint mode
               if (state.style === 'sprint') {
-                boostMomentum()
+                boostMomentum(true)
 
                 // Play train whistle for milestones in sprint mode (line 13222-13235)
                 if (newStreak >= 5 && newStreak % 3 === 0) {
@@ -143,6 +141,11 @@ export function GameDisplay() {
 
               // Play incorrect sound (from web_generator.py line 11589)
               playSound('incorrect')
+
+              // Reduce momentum for sprint mode
+              if (state.style === 'sprint') {
+                boostMomentum(false)
+              }
 
               // Show adaptive feedback
               const feedback = getAdaptiveFeedbackMessage(pairKey, false, responseTime)

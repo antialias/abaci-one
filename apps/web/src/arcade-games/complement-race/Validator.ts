@@ -168,8 +168,7 @@ export class ComplementRaceValidator
         bestStreak: 0,
         correctAnswers: 0,
         totalQuestions: 0,
-        position: 0,
-        momentum: 50, // Start with some momentum (position/pressure calculated client-side)
+        position: 0, // Only used for practice/survival; sprint mode is client-side
         isReady: false,
         isActive: true,
         currentAnswer: null,
@@ -317,15 +316,9 @@ export class ComplementRaceValidator
         updatedPlayer.position = Math.min(100, player.position + 100 / state.config.raceGoal)
       }
     } else if (state.config.style === 'sprint') {
-      // Sprint: Update momentum only (position calculated client-side for smooth movement)
-      if (correct) {
-        updatedPlayer.momentum = Math.min(100, player.momentum + 15)
-      } else {
-        updatedPlayer.momentum = Math.max(0, player.momentum - 10)
-      }
-
-      // Position is calculated client-side continuously based on momentum
-      // This allows for smooth 20fps movement instead of discrete jumps per answer
+      // Sprint: All momentum/position handled client-side for smooth 20fps movement
+      // Server only tracks scoring, passengers, and game progression
+      // No server-side position updates needed
     } else if (state.config.style === 'survival') {
       // Survival: Always move forward, speed based on accuracy
       const moveDistance = correct ? 5 : 2
@@ -525,13 +518,12 @@ export class ComplementRaceValidator
       return { valid: false, error: 'Routes only available in sprint mode' }
     }
 
-    // Reset all player positions to 0 for new route
+    // Reset all player positions to 0 for new route (client handles momentum reset)
     const resetPlayers: Record<string, PlayerState> = {}
     for (const [playerId, player] of Object.entries(state.players)) {
       resetPlayers[playerId] = {
         ...player,
-        position: 0,
-        momentum: 50, // Reset momentum to starting value
+        position: 0, // Server position not used in sprint; client will reset
         passengers: [], // Clear any remaining passengers
       }
     }
