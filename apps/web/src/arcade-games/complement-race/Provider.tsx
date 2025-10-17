@@ -240,6 +240,9 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     })
   }, [activePlayers, players])
 
+  // Debug logging ref (track last logged values)
+  const lastLogRef = useState({ key: '', count: 0 })[0]
+
   // Transform multiplayer state to look like single-player state
   const compatibleState = useMemo((): CompatibleGameState => {
     const localPlayer = localPlayerId ? multiplayerState.players[localPlayerId] : null
@@ -306,7 +309,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       // Sprint mode specific
       momentum: localPlayer?.momentum || 0,
       trainPosition: localPlayer?.position || 0,
-      pressure: localPlayer?.momentum ? Math.min(100, localPlayer.momentum + 10) : 0,
+      pressure: localPlayer?.pressure || 0, // Use actual pressure from server (has decay)
       elapsedTime: multiplayerState.gameStartTime ? Date.now() - multiplayerState.gameStartTime : 0,
       lastCorrectAnswerTime: localPlayer?.lastAnswerTime || Date.now(),
       currentRoute: multiplayerState.currentRoute,
@@ -330,9 +333,28 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     }
   }, [multiplayerState, localPlayerId, localUIState])
 
-  console.log(
-    `🚂 Sprint: momentum=${compatibleState.momentum} pos=${compatibleState.trainPosition} pressure=${compatibleState.pressure}`
-  )
+  // Debug logging: only log on answer submission or significant events
+  useEffect(() => {
+    if (compatibleState.style === 'sprint' && compatibleState.isGameActive) {
+      const key = `${compatibleState.correctAnswers}`
+
+      // Only log on new answers (not every frame)
+      if (lastLogRef.key !== key) {
+        console.log(
+          `🚂 Answer #${compatibleState.correctAnswers}: momentum=${compatibleState.momentum} pos=${Math.floor(compatibleState.trainPosition)} pressure=${compatibleState.pressure} streak=${compatibleState.streak}`
+        )
+        lastLogRef.key = key
+      }
+    }
+  }, [
+    compatibleState.correctAnswers,
+    compatibleState.momentum,
+    compatibleState.trainPosition,
+    compatibleState.pressure,
+    compatibleState.streak,
+    compatibleState.style,
+    compatibleState.isGameActive,
+  ])
 
   // Action creators
   const startGame = useCallback(() => {

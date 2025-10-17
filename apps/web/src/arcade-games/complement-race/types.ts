@@ -63,6 +63,7 @@ export interface PlayerState {
   // Position & Progress
   position: number // 0-100% for practice/sprint, lap count for survival
   momentum: number // 0-100 (sprint mode only)
+  pressure: number // 0-100 (sprint mode only, decays over time)
 
   // Current state
   isReady: boolean
