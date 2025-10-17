@@ -244,6 +244,14 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   const compatibleState = useMemo((): CompatibleGameState => {
     const localPlayer = localPlayerId ? multiplayerState.players[localPlayerId] : null
 
+    console.log('🔄 [Provider] State transformation:', {
+      localPlayerId,
+      localPlayer,
+      multiplayerGamePhase: multiplayerState.gamePhase,
+      allPlayers: multiplayerState.players,
+      activePlayers: multiplayerState.activePlayers,
+    })
+
     // Map gamePhase: setup/lobby -> controls
     let gamePhase: 'intro' | 'controls' | 'countdown' | 'playing' | 'results'
     if (multiplayerState.gamePhase === 'setup' || multiplayerState.gamePhase === 'lobby') {
@@ -329,6 +337,15 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       difficultyTracker: localUIState.difficultyTracker,
     }
   }, [multiplayerState, localPlayerId, localUIState])
+
+  console.log('🚂 [Provider] Transformed sprint values:', {
+    momentum: compatibleState.momentum,
+    trainPosition: compatibleState.trainPosition,
+    pressure: compatibleState.pressure,
+    stations: compatibleState.stations?.length,
+    passengers: compatibleState.passengers?.length,
+    currentRoute: compatibleState.currentRoute,
+  })
 
   // Action creators
   const startGame = useCallback(() => {
