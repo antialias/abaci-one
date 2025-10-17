@@ -244,14 +244,6 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   const compatibleState = useMemo((): CompatibleGameState => {
     const localPlayer = localPlayerId ? multiplayerState.players[localPlayerId] : null
 
-    console.log('🔄 [Provider] State transformation:', {
-      localPlayerId,
-      localPlayer,
-      multiplayerGamePhase: multiplayerState.gamePhase,
-      allPlayers: multiplayerState.players,
-      activePlayers: multiplayerState.activePlayers,
-    })
-
     // Map gamePhase: setup/lobby -> controls
     let gamePhase: 'intro' | 'controls' | 'countdown' | 'playing' | 'results'
     if (multiplayerState.gamePhase === 'setup' || multiplayerState.gamePhase === 'lobby') {
@@ -499,8 +491,6 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   // Compatibility dispatch function for existing UI components
   const dispatch = useCallback(
     (action: { type: string; [key: string]: any }) => {
-      console.log('[ComplementRaceProvider] dispatch called (compatibility layer):', action.type)
-
       // Map old reducer actions to new action creators
       switch (action.type) {
         case 'START_COUNTDOWN':
@@ -514,7 +504,6 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
           }
           break
         case 'NEXT_QUESTION':
-          console.log('🧹 [Provider] NEXT_QUESTION - clearing local input state')
           setLocalUIState((prev) => ({ ...prev, currentInput: '' }))
           nextQuestion()
           break
