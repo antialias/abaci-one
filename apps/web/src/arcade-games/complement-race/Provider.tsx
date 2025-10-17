@@ -38,6 +38,7 @@ interface CompatibleGameState {
   style: string
   timeoutSetting: string
   complementDisplay: string
+  maxConcurrentPassengers: number
 
   // Current question (extracted from currentQuestions[localPlayerId])
   currentQuestion: any | null
@@ -102,7 +103,7 @@ interface ComplementRaceContextValue {
   lastError: string | null
   startGame: () => void
   submitAnswer: (answer: number, responseTime: number) => void
-  claimPassenger: (passengerId: string) => void
+  claimPassenger: (passengerId: string, carIndex: number) => void
   deliverPassenger: (passengerId: string) => void
   nextQuestion: () => void
   endGame: () => void
@@ -129,12 +130,71 @@ export function useComplementRace() {
 
 /**
  * Optimistic move application (client-side prediction)
- * For now, just return current state - server will validate and send back authoritative state
+ * Apply moves immediately on client for responsive UI, server will confirm or reject
  */
 function applyMoveOptimistically(state: ComplementRaceState, move: GameMove): ComplementRaceState {
-  // Simple optimistic updates can be added here later
-  // For now, rely on server validation
-  return state
+  const typedMove = move as ComplementRaceMove
+
+  switch (typedMove.type) {
+    case 'CLAIM_PASSENGER': {
+      // Optimistically mark passenger as claimed and assign to car
+      const passengerId = typedMove.data.passengerId
+      const carIndex = typedMove.data.carIndex
+      const updatedPassengers = state.passengers.map((p) =>
+        p.id === passengerId ? { ...p, claimedBy: typedMove.playerId, carIndex } : p
+      )
+
+      // Optimistically add to player's passenger list
+      const updatedPlayers = { ...state.players }
+      const player = updatedPlayers[typedMove.playerId]
+      if (player) {
+        updatedPlayers[typedMove.playerId] = {
+          ...player,
+          passengers: [...player.passengers, passengerId],
+        }
+      }
+
+      return {
+        ...state,
+        passengers: updatedPassengers,
+        players: updatedPlayers,
+      }
+    }
+
+    case 'DELIVER_PASSENGER': {
+      // Optimistically mark passenger as delivered and award points
+      const passengerId = typedMove.data.passengerId
+      const passenger = state.passengers.find((p) => p.id === passengerId)
+      if (!passenger) return state
+
+      const points = passenger.isUrgent ? 20 : 10
+      const updatedPassengers = state.passengers.map((p) =>
+        p.id === passengerId ? { ...p, deliveredBy: typedMove.playerId } : p
+      )
+
+      // Optimistically remove from player's passenger list and update score
+      const updatedPlayers = { ...state.players }
+      const player = updatedPlayers[typedMove.playerId]
+      if (player) {
+        updatedPlayers[typedMove.playerId] = {
+          ...player,
+          passengers: player.passengers.filter((id) => id !== passengerId),
+          deliveredPassengers: player.deliveredPassengers + 1,
+          score: player.score + points,
+        }
+      }
+
+      return {
+        ...state,
+        passengers: updatedPassengers,
+        players: updatedPlayers,
+      }
+    }
+
+    default:
+      // For other moves, rely on server validation
+      return state
+  }
 }
 
 /**
@@ -300,6 +360,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       style: multiplayerState.config.style,
       timeoutSetting: multiplayerState.config.timeoutSetting,
       complementDisplay: multiplayerState.config.complementDisplay,
+      maxConcurrentPassengers: multiplayerState.config.maxConcurrentPassengers,
 
       // Current question
       currentQuestion: localPlayerId
@@ -439,28 +500,8 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     }
   }, [multiplayerState.currentRoute, compatibleState.style])
 
-  // Debug logging: only log on answer submission or significant events
-  useEffect(() => {
-    if (compatibleState.style === 'sprint' && compatibleState.isGameActive) {
-      const key = `${compatibleState.correctAnswers}`
-
-      // Only log on new answers (not every frame)
-      if (lastLogRef.key !== key) {
-        console.log(
-          `🚂 Answer #${compatibleState.correctAnswers}: momentum=${compatibleState.momentum} pos=${Math.floor(compatibleState.trainPosition)} pressure=${compatibleState.pressure} streak=${compatibleState.streak}`
-        )
-        lastLogRef.key = key
-      }
-    }
-  }, [
-    compatibleState.correctAnswers,
-    compatibleState.momentum,
-    compatibleState.trainPosition,
-    compatibleState.pressure,
-    compatibleState.streak,
-    compatibleState.style,
-    compatibleState.isGameActive,
-  ])
+  // Keep lastLogRef for future debugging needs
+  // (removed debug logging)
 
   // Action creators
   const startGame = useCallback(() => {
@@ -506,7 +547,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   )
 
   const claimPassenger = useCallback(
-    (passengerId: string) => {
+    (passengerId: string, carIndex: number) => {
       const currentPlayerId = activePlayers.find((id) => {
         const player = players.get(id)
         return player?.isLocal
@@ -518,7 +559,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
         type: 'CLAIM_PASSENGER',
         playerId: currentPlayerId,
         userId: viewerId || '',
-        data: { passengerId },
+        data: { passengerId, carIndex },
       } as ComplementRaceMove)
     },
     [activePlayers, players, viewerId, sendMove]
@@ -660,13 +701,24 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
           break
         case 'BOARD_PASSENGER':
         case 'CLAIM_PASSENGER':
-          if (action.passengerId !== undefined) {
-            claimPassenger(action.passengerId)
+          if (action.passengerId !== undefined && action.carIndex !== undefined) {
+            claimPassenger(action.passengerId, action.carIndex)
           }
           break
         case 'DELIVER_PASSENGER':
           if (action.passengerId !== undefined) {
             deliverPassenger(action.passengerId)
+          }
+          break
+        case 'START_NEW_ROUTE':
+          // Send route progression to server
+          if (action.routeNumber !== undefined) {
+            sendMove({
+              type: 'START_NEW_ROUTE',
+              playerId: activePlayers[0] || '',
+              userId: viewerId || '',
+              data: { routeNumber: action.routeNumber },
+            } as ComplementRaceMove)
           }
           break
         // Local UI state actions
@@ -708,8 +760,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
         case 'UPDATE_STEAM_JOURNEY':
         case 'UPDATE_DIFFICULTY_TRACKER':
         case 'UPDATE_AI_SPEEDS':
-        case 'GENERATE_PASSENGERS':
-        case 'START_NEW_ROUTE':
+        case 'GENERATE_PASSENGERS': // Passengers generated server-side when route starts
         case 'COMPLETE_ROUTE':
         case 'HIDE_ROUTE_CELEBRATION':
         case 'COMPLETE_LAP':
@@ -729,6 +780,9 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       claimPassenger,
       deliverPassenger,
       multiplayerState.questionStartTime,
+      sendMove,
+      activePlayers,
+      viewerId,
     ]
   )
 

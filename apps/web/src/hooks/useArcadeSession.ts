@@ -107,32 +107,28 @@ export function useArcadeSession<TState>(
     exitSession: socketExitSession,
   } = useArcadeSocket({
     onSessionState: (data) => {
-      console.log('[ArcadeSession] Syncing with server state')
       optimistic.syncWithServer(data.gameState as TState, data.version)
     },
 
     onMoveAccepted: (data) => {
-      console.log('[ArcadeSession] Move accepted by server')
       optimistic.handleMoveAccepted(data.gameState as TState, data.version, data.move)
     },
 
     onMoveRejected: (data) => {
-      console.log('[ArcadeSession] Move rejected by server:', data.error)
+      console.log(`[ArcadeSession] Move rejected: ${data.error}`)
       optimistic.handleMoveRejected(data.error, data.move)
     },
 
     onSessionEnded: () => {
-      console.log('[ArcadeSession] Session ended')
       optimistic.reset()
     },
 
     onNoActiveSession: () => {
-      console.log('[ArcadeSession] No active session found')
+      // Silent - normal state
     },
 
     onError: (data) => {
-      console.error('[ArcadeSession] Error:', data.error)
-      // Users can handle errors via the onMoveRejected callback
+      console.error(`[ArcadeSession] Error: ${data.error}`)
     },
   })
 

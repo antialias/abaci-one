@@ -1,7 +1,8 @@
 'use client'
 
 import { memo } from 'react'
-import type { ComplementQuestion, Passenger, Station } from '../../lib/gameTypes'
+import type { ComplementQuestion } from '../../lib/gameTypes'
+import type { Passenger, Station } from '@/arcade-games/complement-race/types'
 import { AbacusTarget } from '../AbacusTarget'
 import { PassengerCard } from '../PassengerCard'
 import { PressureGauge } from '../PressureGauge'

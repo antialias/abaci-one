@@ -41,7 +41,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
   })
 
   io.on('connection', (socket) => {
-    console.log('🔌 Client connected:', socket.id)
     let currentUserId: string | null = null
 
     // Join arcade session room
@@ -50,12 +49,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       async ({ userId, roomId }: { userId: string; roomId?: string }) => {
         currentUserId = userId
         socket.join(`arcade:${userId}`)
-        console.log(`👤 User ${userId} joined arcade room`)
 
         // If this session is part of a room, also join the game room for multi-user sync
         if (roomId) {
           socket.join(`game:${roomId}`)
-          console.log(`🎮 User ${userId} joined game room ${roomId}`)
         }
 
         // Send current session state if exists
@@ -68,19 +65,14 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           // If no session exists for this room, create one in setup phase
           // This allows users to send SET_CONFIG moves before starting the game
           if (!session && roomId) {
-            console.log('[join-arcade-session] Creating initial session for room:', roomId)
-
             // Get the room to determine game type and config
             const room = await getRoomById(roomId)
             if (room) {
               // Fetch all active player IDs from room members (respects isActive flag)
               const roomPlayerIds = await getRoomPlayerIds(roomId)
-              console.log('[join-arcade-session] Room active players:', roomPlayerIds)
 
               // Get initial state from the correct validator based on game type
-              console.log('[join-arcade-session] Room game name:', room.gameName)
               const validator = getValidator(room.gameName as GameName)
-              console.log('[join-arcade-session] Got validator for:', room.gameName)
 
               // Get game-specific config from database (type-safe)
               const gameConfig = await getGameConfig(roomId, room.gameName as GameName)
@@ -94,23 +86,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
                 activePlayers: roomPlayerIds, // Include all room members' active players
                 roomId: room.id,
               })
-
-              console.log('[join-arcade-session] Created initial session:', {
-                roomId,
-                sessionId: session.userId,
-                gamePhase: (session.gameState as any).gamePhase,
-                activePlayersCount: roomPlayerIds.length,
-              })
             }
           }
 
           if (session) {
-            console.log('[join-arcade-session] Found session:', {
-              userId,
-              roomId,
-              version: session.version,
-              sessionUserId: session.userId,
-            })
             socket.emit('session-state', {
               gameState: session.gameState,
               currentGame: session.currentGame,
@@ -119,10 +98,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               version: session.version,
             })
           } else {
-            console.log('[join-arcade-session] No active session found for:', {
-              userId,
-              roomId,
-            })
             socket.emit('no-active-session')
           }
         } catch (error) {
@@ -134,15 +109,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Handle game moves
     socket.on('game-move', async (data: { userId: string; move: GameMove; roomId?: string }) => {
-      console.log('🎮 Game move received:', {
-        userId: data.userId,
-        moveType: data.move.type,
-        playerId: data.move.playerId,
-        timestamp: data.move.timestamp,
-        roomId: data.roomId,
-        fullMove: JSON.stringify(data.move, null, 2),
-      })
-
       try {
         // Special handling for START_GAME - create session if it doesn't exist
         if (data.move.type === 'START_GAME') {
@@ -152,12 +118,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             : await getArcadeSession(data.userId)
 
           if (!existingSession) {
-            console.log('🎯 Creating new session for START_GAME')
-
             // activePlayers must be provided in the START_GAME move data
             const activePlayers = (data.move.data as any)?.activePlayers
             if (!activePlayers || activePlayers.length === 0) {
-              console.error('❌ START_GAME move missing activePlayers')
               socket.emit('move-rejected', {
                 error: 'START_GAME requires at least one active player',
                 move: data.move,
@@ -186,7 +149,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
                 existingRoom.status !== 'finished'
               ) {
                 room = existingRoom
-                console.log('🏠 Using existing room:', room.code)
                 break
               }
             }
@@ -205,7 +167,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
                 },
                 ttlMinutes: 60,
               })
-              console.log('🏠 Created new room:', room.code)
             }
 
             // Now create the session linked to the room
@@ -218,8 +179,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               roomId: room.id,
             })
 
-            console.log('✅ Session created successfully with room association')
-
             // Notify all connected clients about the new session
             const newSession = await getArcadeSession(data.userId)
             if (newSession) {
@@ -230,7 +189,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
                 activePlayers: newSession.activePlayers,
                 version: newSession.version,
               })
-              console.log('📢 Emitted session-state to notify clients of new session')
             }
           }
         }
@@ -251,7 +209,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           // If this is a room-based session, ALSO broadcast to all users in the room
           if (result.session.roomId) {
             io!.to(`game:${result.session.roomId}`).emit('move-accepted', moveAcceptedData)
-            console.log(`📢 Broadcasted move to game room ${result.session.roomId}`)
           }
 
           // Update activity timestamp
@@ -275,8 +232,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Handle session exit
     socket.on('exit-arcade-session', async ({ userId }: { userId: string }) => {
-      console.log('🚪 User exiting arcade session:', userId)
-
       try {
         await deleteArcadeSession(userId)
         io!.to(`arcade:${userId}`).emit('session-ended')
@@ -298,8 +253,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Room: Join
     socket.on('join-room', async ({ roomId, userId }: { roomId: string; userId: string }) => {
-      console.log(`🏠 User ${userId} joining room ${roomId}`)
-
       try {
         // Join the socket room
         socket.join(`room:${roomId}`)
@@ -323,10 +276,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         const sessionUpdated = await updateSessionActivePlayers(roomId, roomPlayerIds)
 
         if (sessionUpdated) {
-          console.log(`🎮 Updated session activePlayers for room ${roomId}:`, {
-            playerCount: roomPlayerIds.length,
-          })
-
           // Broadcast updated session state to all users in the game room
           const updatedSession = await getArcadeSessionByRoom(roomId)
           if (updatedSession) {
@@ -337,7 +286,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               activePlayers: updatedSession.activePlayers,
               version: updatedSession.version,
             })
-            console.log(`📢 Broadcasted updated session state to game room ${roomId}`)
           }
         }
 
@@ -355,8 +303,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           members,
           memberPlayers: memberPlayersObj,
         })
-
-        console.log(`✅ User ${userId} joined room ${roomId}`)
       } catch (error) {
         console.error('Error joining room:', error)
         socket.emit('room-error', { error: 'Failed to join room' })
@@ -365,11 +311,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // User Channel: Join (for moderation events)
     socket.on('join-user-channel', async ({ userId }: { userId: string }) => {
-      console.log(`👤 User ${userId} joining user-specific channel`)
       try {
         // Join user-specific channel for moderation notifications
         socket.join(`user:${userId}`)
-        console.log(`✅ User ${userId} joined user channel`)
       } catch (error) {
         console.error('Error joining user channel:', error)
       }
@@ -377,8 +321,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Room: Leave
     socket.on('leave-room', async ({ roomId, userId }: { roomId: string; userId: string }) => {
-      console.log(`🚪 User ${userId} leaving room ${roomId}`)
-
       try {
         // Leave the socket room
         socket.leave(`room:${roomId}`)
@@ -403,8 +345,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           members,
           memberPlayers: memberPlayersObj,
         })
-
-        console.log(`✅ User ${userId} left room ${roomId}`)
       } catch (error) {
         console.error('Error leaving room:', error)
       }
@@ -412,8 +352,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Room: Players updated
     socket.on('players-updated', async ({ roomId, userId }: { roomId: string; userId: string }) => {
-      console.log(`🎯 Players updated for user ${userId} in room ${roomId}`)
-
       try {
         // Get updated player data
         const memberPlayers = await getRoomActivePlayers(roomId)
@@ -429,11 +367,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         const sessionUpdated = await updateSessionActivePlayers(roomId, roomPlayerIds)
 
         if (sessionUpdated) {
-          console.log(`🎮 Updated session activePlayers after player toggle:`, {
-            roomId,
-            playerCount: roomPlayerIds.length,
-          })
-
           // Broadcast updated session state to all users in the game room
           const updatedSession = await getArcadeSessionByRoom(roomId)
           if (updatedSession) {
@@ -444,7 +377,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               activePlayers: updatedSession.activePlayers,
               version: updatedSession.version,
             })
-            console.log(`📢 Broadcasted updated session state to game room ${roomId}`)
           }
         }
 
@@ -453,8 +385,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           roomId,
           memberPlayers: memberPlayersObj,
         })
-
-        console.log(`✅ Broadcasted player updates for room ${roomId}`)
       } catch (error) {
         console.error('Error updating room players:', error)
         socket.emit('room-error', { error: 'Failed to update players' })
@@ -462,16 +392,11 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     socket.on('disconnect', () => {
-      console.log('🔌 Client disconnected:', socket.id)
-      if (currentUserId) {
-        // Don't delete session on disconnect - it persists across devices
-        console.log(`👤 User ${currentUserId} disconnected but session persists`)
-      }
+      // Don't delete session on disconnect - it persists across devices
     })
   })
 
   // Store in globalThis to make accessible across module boundaries
   globalThis.__socketIO = io
-  console.log('✅ Socket.IO initialized on /api/socket')
   return io
 }

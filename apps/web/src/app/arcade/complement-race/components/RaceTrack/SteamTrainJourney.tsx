@@ -14,7 +14,6 @@ import type { ComplementQuestion } from '../../lib/gameTypes'
 import { useSteamJourney } from '../../hooks/useSteamJourney'
 import { useTrackManagement } from '../../hooks/useTrackManagement'
 import { useTrainTransforms } from '../../hooks/useTrainTransforms'
-import { calculateMaxConcurrentPassengers } from '../../lib/passengerGenerator'
 import { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
 import { getRouteTheme } from '../../lib/routeThemes'
 import { GameHUD } from './GameHUD'
@@ -94,9 +93,6 @@ export function SteamTrainJourney({
   currentInput,
 }: SteamTrainJourneyProps) {
   const { state } = useComplementRace()
-  console.log(
-    `🚂 Train: mom=${momentum} pos=${trainPosition} stations=${state.stations.length} passengers=${state.passengers.length}`
-  )
 
   const { getSkyGradient, getTimeOfDayPeriod } = useSteamJourney()
   const _skyGradient = getSkyGradient()
@@ -113,12 +109,9 @@ export function SteamTrainJourney({
   const pathRef = useRef<SVGPathElement>(null)
   const [trackGenerator] = useState(() => new RailroadTrackGenerator(800, 600))
 
-  // Calculate the number of train cars dynamically based on max concurrent passengers
-  const maxCars = useMemo(() => {
-    const maxPassengers = calculateMaxConcurrentPassengers(state.passengers, state.stations)
-    // Ensure at least 1 car, even if no passengers
-    return Math.max(1, maxPassengers)
-  }, [state.passengers, state.stations])
+  // Use server's authoritative maxConcurrentPassengers calculation
+  // This ensures visual display matches game logic and console logs
+  const maxCars = Math.max(1, state.maxConcurrentPassengers || 3)
 
   const carSpacing = 7 // Distance between cars (in % of track)
 
@@ -170,13 +163,14 @@ export function SteamTrainJourney({
   const routeTheme = getRouteTheme(state.currentRoute)
 
   // Memoize filtered passenger lists to avoid recalculating on every render
+  // Arcade room multiplayer uses claimedBy/deliveredBy instead of isBoarded/isDelivered
   const boardedPassengers = useMemo(
-    () => displayPassengers.filter((p) => p.isBoarded && !p.isDelivered),
+    () => displayPassengers.filter((p) => p.claimedBy !== null && p.deliveredBy === null),
     [displayPassengers]
   )
 
   const nonDeliveredPassengers = useMemo(
-    () => displayPassengers.filter((p) => !p.isDelivered),
+    () => displayPassengers.filter((p) => p.deliveredBy === null),
     [displayPassengers]
   )
 

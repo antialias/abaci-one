@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import type { BoardingAnimation, DisembarkingAnimation } from '../../hooks/usePassengerAnimations'
-import type { Passenger } from '../../lib/gameTypes'
+import type { Passenger } from '@/arcade-games/complement-race/types'
 
 interface TrainCarTransform {
   x: number

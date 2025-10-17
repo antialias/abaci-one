@@ -79,11 +79,6 @@ export async function createArcadeSession(
   // Check if session already exists for this room (roomId is PRIMARY KEY)
   const existingRoomSession = await getArcadeSessionByRoom(options.roomId)
   if (existingRoomSession) {
-    console.log('[Session Manager] Room session already exists, returning existing:', {
-      roomId: options.roomId,
-      sessionUserId: existingRoomSession.userId,
-      version: existingRoomSession.version,
-    })
     return existingRoomSession
   }
 
@@ -93,7 +88,6 @@ export async function createArcadeSession(
   })
 
   if (!user) {
-    console.log('[Session Manager] Creating new user with guestId:', options.userId)
     const [newUser] = await db
       .insert(schema.users)
       .values({
@@ -102,9 +96,6 @@ export async function createArcadeSession(
       })
       .returning()
     user = newUser
-    console.log('[Session Manager] Created user with id:', user.id)
-  } else {
-    console.log('[Session Manager] Found existing user with id:', user.id)
   }
 
   const newSession: schema.NewArcadeSession = {
@@ -121,12 +112,6 @@ export async function createArcadeSession(
     version: 1,
   }
 
-  console.log('[Session Manager] Creating new session:', {
-    roomId: options.roomId,
-    userId: user.id,
-    gameName: options.gameName,
-  })
-
   try {
     const [session] = await db.insert(schema.arcadeSessions).values(newSession).returning()
     return session
@@ -134,10 +119,6 @@ export async function createArcadeSession(
     // Handle PRIMARY KEY constraint violation (UNIQUE constraint on roomId)
     // This can happen if two users try to create a session for the same room simultaneously
     if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
-      console.log(
-        '[Session Manager] Session already exists (race condition), fetching existing session for room:',
-        options.roomId
-      )
       const existingSession = await getArcadeSessionByRoom(options.roomId)
       if (existingSession) {
         return existingSession
@@ -180,7 +161,6 @@ export async function getArcadeSession(guestId: string): Promise<schema.ArcadeSe
   })
 
   if (!room) {
-    console.log('[Session Manager] Deleting session with non-existent room:', session.roomId)
     await deleteArcadeSessionByRoom(session.roomId)
     return undefined
   }
@@ -220,16 +200,6 @@ export async function applyGameMove(
   // Get the validator for this game
   const validator = getValidator(session.currentGame as GameName)
 
-  console.log('[SessionManager] About to validate move:', {
-    gameName: session.currentGame,
-    moveType: move.type,
-    playerId: move.playerId,
-    moveData: move.type === 'SET_CONFIG' ? (move as any).data : undefined,
-    gameStateCurrentPlayer: (session.gameState as any)?.currentPlayer,
-    gameStateActivePlayers: (session.gameState as any)?.activePlayers,
-    gameStatePhase: (session.gameState as any)?.gamePhase,
-  })
-
   // Fetch player ownership for authorization checks (room-based games)
   let playerOwnership: PlayerOwnershipMap | undefined
   let internalUserId: string | undefined
@@ -247,8 +217,6 @@ export async function applyGameMove(
 
       // Use centralized ownership utility
       playerOwnership = await buildPlayerOwnershipMap(session.roomId)
-      console.log('[SessionManager] Player ownership map:', playerOwnership)
-      console.log('[SessionManager] Internal userId for authorization:', internalUserId)
     } catch (error) {
       console.error('[SessionManager] Failed to fetch player ownership:', error)
     }
@@ -258,11 +226,6 @@ export async function applyGameMove(
   const validationResult = validator.validateMove(session.gameState, move, {
     userId: internalUserId || userId, // Use internal userId for room-based games
     playerOwnership,
-  })
-
-  console.log('[SessionManager] Validation result:', {
-    valid: validationResult.valid,
-    error: validationResult.error,
   })
 
   if (!validationResult.valid) {
@@ -373,10 +336,6 @@ export async function updateSessionActivePlayers(
   // Only update if game is in setup phase (not started yet)
   const gameState = session.gameState as any
   if (gameState.gamePhase !== 'setup') {
-    console.log('[Session Manager] Cannot update activePlayers - game already started:', {
-      roomId,
-      gamePhase: gameState.gamePhase,
-    })
     return false
   }
 
@@ -396,12 +355,6 @@ export async function updateSessionActivePlayers(
       version: session.version + 1,
     })
     .where(eq(schema.arcadeSessions.roomId, roomId))
-
-  console.log('[Session Manager] Updated session activePlayers:', {
-    roomId,
-    playerIds,
-    count: playerIds.length,
-  })
 
   return true
 }

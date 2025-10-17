@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import type { Passenger, Station } from '../lib/gameTypes'
+import type { Passenger, Station } from '@/arcade-games/complement-race/types'
 
 interface PassengerCardProps {
   passenger: Passenger
@@ -17,24 +17,27 @@ export const PassengerCard = memo(function PassengerCard({
   if (!destinationStation || !originStation) return null
 
   // Vintage train station colors
-  const bgColor = passenger.isDelivered
+  // Arcade room multiplayer uses claimedBy/deliveredBy instead of isBoarded/isDelivered
+  const isBoarded = passenger.claimedBy !== null
+  const isDelivered = passenger.deliveredBy !== null
+
+  const bgColor = isDelivered
     ? '#1a3a1a' // Dark green for delivered
-    : !passenger.isBoarded
+    : !isBoarded
       ? '#2a2419' // Dark brown/sepia for waiting
       : passenger.isUrgent
         ? '#3a2419' // Dark red-brown for urgent
         : '#1a2a3a' // Dark blue for aboard
 
-  const accentColor = passenger.isDelivered
+  const accentColor = isDelivered
     ? '#4ade80' // Green
-    : !passenger.isBoarded
+    : !isBoarded
       ? '#d4af37' // Gold for waiting
       : passenger.isUrgent
         ? '#ff6b35' // Orange-red for urgent
         : '#60a5fa' // Blue for aboard
 
-  const borderColor =
-    passenger.isUrgent && passenger.isBoarded && !passenger.isDelivered ? '#ff6b35' : '#d4af37'
+  const borderColor = passenger.isUrgent && isBoarded && !isDelivered ? '#ff6b35' : '#d4af37'
 
   return (
     <div
@@ -46,13 +49,13 @@ export const PassengerCard = memo(function PassengerCard({
         minWidth: '220px',
         maxWidth: '280px',
         boxShadow:
-          passenger.isUrgent && !passenger.isDelivered && passenger.isBoarded
+          passenger.isUrgent && !isDelivered && isBoarded
             ? '0 0 16px rgba(255, 107, 53, 0.5)'
             : '0 4px 12px rgba(0, 0, 0, 0.4)',
         position: 'relative',
         fontFamily: '"Courier New", Courier, monospace',
         animation:
-          passenger.isUrgent && !passenger.isDelivered && passenger.isBoarded
+          passenger.isUrgent && !isDelivered && isBoarded
             ? 'urgentFlicker 1.5s ease-in-out infinite'
             : 'none',
         transition: 'all 0.3s ease',
@@ -79,7 +82,7 @@ export const PassengerCard = memo(function PassengerCard({
           }}
         >
           <div style={{ fontSize: '20px', lineHeight: '1' }}>
-            {passenger.isDelivered ? '✅' : passenger.avatar}
+            {isDelivered ? '✅' : passenger.avatar}
           </div>
           <div
             style={{
@@ -109,7 +112,7 @@ export const PassengerCard = memo(function PassengerCard({
             marginTop: '0',
           }}
         >
-          {passenger.isDelivered ? 'DLVRD' : passenger.isBoarded ? 'BOARD' : 'WAIT'}
+          {isDelivered ? 'DLVRD' : isBoarded ? 'BOARD' : 'WAIT'}
         </div>
       </div>
 
@@ -187,7 +190,7 @@ export const PassengerCard = memo(function PassengerCard({
       </div>
 
       {/* Points badge */}
-      {!passenger.isDelivered && (
+      {!isDelivered && (
         <div
           style={{
             position: 'absolute',
@@ -208,7 +211,7 @@ export const PassengerCard = memo(function PassengerCard({
       )}
 
       {/* Urgent indicator */}
-      {passenger.isUrgent && !passenger.isDelivered && passenger.isBoarded && (
+      {passenger.isUrgent && !isDelivered && isBoarded && (
         <div
           style={{
             position: 'absolute',

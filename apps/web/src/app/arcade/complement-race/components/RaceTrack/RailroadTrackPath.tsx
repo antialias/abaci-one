@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import type { Passenger, Station } from '../../lib/gameTypes'
+import type { Passenger, Station } from '@/arcade-games/complement-race/types'
 import type { Landmark } from '../../lib/landmarks'
 
 interface RailroadTrackPathProps {
@@ -100,18 +100,19 @@ export const RailroadTrackPath = memo(
         {stationPositions.map((pos, index) => {
           const station = stations[index]
           // Find passengers waiting at this station (exclude currently boarding)
+          // Arcade room multiplayer uses claimedBy/deliveredBy instead of isBoarded/isDelivered
           const waitingPassengers = passengers.filter(
             (p) =>
               p.originStationId === station?.id &&
-              !p.isBoarded &&
-              !p.isDelivered &&
+              p.claimedBy === null &&
+              p.deliveredBy === null &&
               !boardingAnimations.has(p.id)
           )
           // Find passengers delivered at this station (exclude currently disembarking)
           const deliveredPassengers = passengers.filter(
             (p) =>
               p.destinationStationId === station?.id &&
-              p.isDelivered &&
+              p.deliveredBy !== null &&
               !disembarkingAnimations.has(p.id)
           )
 

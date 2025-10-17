@@ -41,6 +41,7 @@ export interface Passenger {
   isUrgent: boolean // Urgent passengers worth 2x points
   claimedBy: string | null // playerId who picked up this passenger (null = unclaimed)
   deliveredBy: string | null // playerId who delivered (null = not delivered yet)
+  carIndex: number | null // Physical car index (0-N) where passenger is seated (null = not boarded)
   timestamp: number // When passenger spawned
 }
 
@@ -142,7 +143,7 @@ export type ComplementRaceMove = BaseGameMove &
     // Playing phase
     | { type: 'SUBMIT_ANSWER'; data: { answer: number; responseTime: number } }
     | { type: 'UPDATE_INPUT'; data: { input: string } } // Show "thinking" indicator
-    | { type: 'CLAIM_PASSENGER'; data: { passengerId: string } } // Sprint mode: pickup
+    | { type: 'CLAIM_PASSENGER'; data: { passengerId: string; carIndex: number } } // Sprint mode: pickup
     | { type: 'DELIVER_PASSENGER'; data: { passengerId: string } } // Sprint mode: delivery
 
     // Game flow

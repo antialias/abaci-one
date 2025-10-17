@@ -62,22 +62,19 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
     })
 
     socketInstance.on('session-state', (data) => {
-      console.log('[ArcadeSocket] Received session state', data)
       eventsRef.current.onSessionState?.(data)
     })
 
     socketInstance.on('no-active-session', () => {
-      console.log('[ArcadeSocket] No active session')
       eventsRef.current.onNoActiveSession?.()
     })
 
     socketInstance.on('move-accepted', (data) => {
-      console.log('[ArcadeSocket] Move accepted', data)
       eventsRef.current.onMoveAccepted?.(data)
     })
 
     socketInstance.on('move-rejected', (data) => {
-      console.log('[ArcadeSocket] Move rejected', data)
+      console.log(`[ArcadeSocket] Move rejected: ${data.error}`)
       eventsRef.current.onMoveRejected?.(data)
     })
 
@@ -124,12 +121,7 @@ export function useArcadeSocket(events: ArcadeSocketEvents = {}): UseArcadeSocke
         console.warn('[ArcadeSocket] Cannot send move - socket not connected')
         return
       }
-      const payload = { userId, move, roomId }
-      console.log(
-        '[ArcadeSocket] Sending game-move event with payload:',
-        JSON.stringify(payload, null, 2)
-      )
-      socket.emit('game-move', payload)
+      socket.emit('game-move', { userId, move, roomId })
     },
     [socket]
   )

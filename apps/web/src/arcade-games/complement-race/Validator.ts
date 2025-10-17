@@ -76,12 +76,6 @@ export class ComplementRaceValidator
   implements GameValidator<ComplementRaceState, ComplementRaceMove>
 {
   validateMove(state: ComplementRaceState, move: ComplementRaceMove): ValidationResult {
-    console.log('[ComplementRace] Validating move:', {
-      type: move.type,
-      playerId: move.playerId,
-      gamePhase: state.gamePhase,
-    })
-
     switch (move.type) {
       case 'START_GAME':
         return this.validateStartGame(state, move.data.activePlayers, move.data.playerMetadata)
@@ -104,7 +98,12 @@ export class ComplementRaceValidator
         return this.validateUpdateInput(state, move.playerId, move.data.input)
 
       case 'CLAIM_PASSENGER':
-        return this.validateClaimPassenger(state, move.playerId, move.data.passengerId)
+        return this.validateClaimPassenger(
+          state,
+          move.playerId,
+          move.data.passengerId,
+          move.data.carIndex
+        )
 
       case 'DELIVER_PASSENGER':
         return this.validateDeliverPassenger(state, move.playerId, move.data.passengerId)
@@ -190,8 +189,25 @@ export class ComplementRaceValidator
         ? this.generatePassengers(state.config.passengerCount, state.stations)
         : []
 
+    // Calculate maxConcurrentPassengers based on initial passenger layout (sprint mode only)
+    let updatedConfig = state.config
+    if (state.config.style === 'sprint' && passengers.length > 0) {
+      const maxConcurrentPassengers = Math.max(
+        1,
+        this.calculateMaxConcurrentPassengers(passengers, state.stations)
+      )
+      console.log(
+        `[Game Start] Calculated maxConcurrentPassengers: ${maxConcurrentPassengers} for ${passengers.length} passengers`
+      )
+      updatedConfig = {
+        ...state.config,
+        maxConcurrentPassengers,
+      }
+    }
+
     const newState: ComplementRaceState = {
       ...state,
+      config: updatedConfig,
       gamePhase: 'playing', // Go directly to playing (countdown can be added later)
       activePlayers,
       playerMetadata: playerMetadata as typeof state.playerMetadata,
@@ -387,7 +403,8 @@ export class ComplementRaceValidator
   private validateClaimPassenger(
     state: ComplementRaceState,
     playerId: string,
-    passengerId: string
+    passengerId: string,
+    carIndex: number
   ): ValidationResult {
     if (state.config.style !== 'sprint') {
       return { valid: false, error: 'Passengers only available in sprint mode' }
@@ -429,11 +446,12 @@ export class ComplementRaceValidator
       }
     }
 
-    // Claim passenger
+    // Claim passenger and assign to physical car
     const updatedPassengers = [...state.passengers]
     updatedPassengers[passengerIndex] = {
       ...passenger,
       claimedBy: playerId,
+      carIndex, // Store which physical car (0-N) the passenger is seated in
     }
 
     const newState: ComplementRaceState = {
@@ -539,12 +557,26 @@ export class ComplementRaceValidator
     // Generate new passengers
     const newPassengers = this.generatePassengers(state.config.passengerCount, state.stations)
 
+    // Calculate maxConcurrentPassengers based on the new route's passenger layout
+    const maxConcurrentPassengers = Math.max(
+      1,
+      this.calculateMaxConcurrentPassengers(newPassengers, state.stations)
+    )
+
+    console.log(
+      `[Route ${routeNumber}] Calculated maxConcurrentPassengers: ${maxConcurrentPassengers} for ${newPassengers.length} passengers`
+    )
+
     const newState: ComplementRaceState = {
       ...state,
       currentRoute: routeNumber,
       routeStartTime: Date.now(),
       players: resetPlayers,
       passengers: newPassengers,
+      config: {
+        ...state.config,
+        maxConcurrentPassengers, // Update config with calculated value
+      },
     }
 
     return { valid: true, newState }
@@ -665,32 +697,116 @@ export class ComplementRaceValidator
 
   private generatePassengers(count: number, stations: Station[]): Passenger[] {
     const passengers: Passenger[] = []
+    const usedCombos = new Set<string>()
 
     for (let i = 0; i < count; i++) {
-      // Pick random origin and destination (must be different)
-      const originIndex = Math.floor(Math.random() * stations.length)
-      let destIndex = Math.floor(Math.random() * stations.length)
-      while (destIndex === originIndex) {
-        destIndex = Math.floor(Math.random() * stations.length)
+      let name: string
+      let avatar: string
+      let comboKey: string
+
+      // Keep trying until we get a unique name/avatar combo
+      do {
+        const nameIndex = Math.floor(Math.random() * PASSENGER_NAMES.length)
+        const avatarIndex = Math.floor(Math.random() * PASSENGER_AVATARS.length)
+        name = PASSENGER_NAMES[nameIndex]
+        avatar = PASSENGER_AVATARS[avatarIndex]
+        comboKey = `${name}-${avatar}`
+      } while (usedCombos.has(comboKey) && usedCombos.size < 100) // Prevent infinite loop
+
+      usedCombos.add(comboKey)
+
+      // Pick origin and destination stations
+      // KEY: Destination must be AHEAD of origin (higher position on track)
+      // This ensures passengers travel forward, creating better overlap
+      let originStation: Station
+      let destinationStation: Station
+
+      if (Math.random() < 0.4 || stations.length < 3) {
+        // 40% chance to start at depot (first station)
+        originStation = stations[0]
+        // Pick any station ahead as destination
+        const stationsAhead = stations.slice(1)
+        destinationStation = stationsAhead[Math.floor(Math.random() * stationsAhead.length)]
+      } else {
+        // Start at a random non-depot, non-final station
+        const nonDepotStations = stations.slice(1, -1) // Exclude depot and final station
+        originStation = nonDepotStations[Math.floor(Math.random() * nonDepotStations.length)]
+        // Pick a station ahead of origin (higher position)
+        const stationsAhead = stations.filter((s) => s.position > originStation.position)
+        destinationStation = stationsAhead[Math.floor(Math.random() * stationsAhead.length)]
       }
 
-      const nameIndex = Math.floor(Math.random() * PASSENGER_NAMES.length)
-      const avatarIndex = Math.floor(Math.random() * PASSENGER_AVATARS.length)
+      // 30% chance of urgent
+      const isUrgent = Math.random() < 0.3
 
-      passengers.push({
+      const passenger = {
         id: `p-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
-        name: PASSENGER_NAMES[nameIndex],
-        avatar: PASSENGER_AVATARS[avatarIndex],
-        originStationId: stations[originIndex].id,
-        destinationStationId: stations[destIndex].id,
-        isUrgent: Math.random() < 0.3, // 30% chance of urgent
+        name,
+        avatar,
+        originStationId: originStation.id,
+        destinationStationId: destinationStation.id,
+        isUrgent,
         claimedBy: null,
         deliveredBy: null,
+        carIndex: null, // Not boarded yet
         timestamp: Date.now(),
-      })
+      }
+
+      passengers.push(passenger)
+
+      console.log(
+        `[Passenger ${i + 1}/${count}] ${name} waiting at ${originStation.emoji} ${originStation.name} (pos ${originStation.position}) → ${destinationStation.emoji} ${destinationStation.name} (pos ${destinationStation.position}) ${isUrgent ? '⚡ URGENT' : ''}`
+      )
     }
 
+    console.log(`[Generated ${passengers.length} passengers total]`)
     return passengers
+  }
+
+  /**
+   * Calculate the maximum number of passengers that will be on the train
+   * concurrently at any given moment during the route
+   */
+  private calculateMaxConcurrentPassengers(passengers: Passenger[], stations: Station[]): number {
+    // Create events for boarding and delivery
+    interface StationEvent {
+      position: number
+      isBoarding: boolean // true = board, false = delivery
+    }
+
+    const events: StationEvent[] = []
+
+    for (const passenger of passengers) {
+      const originStation = stations.find((s) => s.id === passenger.originStationId)
+      const destStation = stations.find((s) => s.id === passenger.destinationStationId)
+
+      if (originStation && destStation) {
+        events.push({ position: originStation.position, isBoarding: true })
+        events.push({ position: destStation.position, isBoarding: false })
+      }
+    }
+
+    // Sort events by position, with deliveries before boardings at the same position
+    events.sort((a, b) => {
+      if (a.position !== b.position) return a.position - b.position
+      // At same position, deliveries happen before boarding
+      return a.isBoarding ? 1 : -1
+    })
+
+    // Track current passenger count and maximum
+    let currentCount = 0
+    let maxCount = 0
+
+    for (const event of events) {
+      if (event.isBoarding) {
+        currentCount++
+        maxCount = Math.max(maxCount, currentCount)
+      } else {
+        currentCount--
+      }
+    }
+
+    return maxCount
   }
 
   private checkWinCondition(state: ComplementRaceState): string | null {
