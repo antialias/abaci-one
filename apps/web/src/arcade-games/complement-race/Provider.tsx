@@ -330,14 +330,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     }
   }, [multiplayerState, localPlayerId, localUIState])
 
-  console.log('🚂 [Provider] Transformed sprint values:', {
-    momentum: compatibleState.momentum,
-    trainPosition: compatibleState.trainPosition,
-    pressure: compatibleState.pressure,
-    stations: compatibleState.stations?.length,
-    passengers: compatibleState.passengers?.length,
-    currentRoute: compatibleState.currentRoute,
-  })
+  console.log(`🚂 Sprint: momentum=${compatibleState.momentum} pos=${compatibleState.trainPosition} pressure=${compatibleState.pressure}`)
 
   // Action creators
   const startGame = useCallback(() => {
