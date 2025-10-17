@@ -495,10 +495,13 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     const currentRoute = multiplayerState.currentRoute
     // When route changes, reset position and give starting momentum
     if (currentRoute > 1 && compatibleState.style === 'sprint') {
+      console.log(
+        `[Provider] Route changed to ${currentRoute}, resetting position. Passengers: ${multiplayerState.passengers.length}`
+      )
       setClientPosition(0)
       setClientMomentum(10) // Reset to starting momentum (gentle push)
     }
-  }, [multiplayerState.currentRoute, compatibleState.style])
+  }, [multiplayerState.currentRoute, compatibleState.style, multiplayerState.passengers.length])
 
   // Keep lastLogRef for future debugging needs
   // (removed debug logging)
@@ -713,6 +716,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
         case 'START_NEW_ROUTE':
           // Send route progression to server
           if (action.routeNumber !== undefined) {
+            console.log(`[Provider] Dispatching START_NEW_ROUTE for route ${action.routeNumber}`)
             sendMove({
               type: 'START_NEW_ROUTE',
               playerId: activePlayers[0] || '',
