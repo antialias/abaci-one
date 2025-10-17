@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import type { Passenger, Station } from '../../lib/gameTypes'
+import type { Passenger, Station } from '@/arcade-games/complement-race/types'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
 import { useTrackManagement } from '../useTrackManagement'
 
@@ -47,7 +47,7 @@ describe('useTrackManagement - Passenger Display', () => {
       { id: 'station3', name: 'Station 3', icon: '🏪', emoji: '🏪', position: 80 },
     ]
 
-    // Mock passengers - initial set
+    // Mock passengers - initial set (multiplayer format)
     mockPassengers = [
       {
         id: 'p1',
@@ -55,9 +55,11 @@ describe('useTrackManagement - Passenger Display', () => {
         avatar: '👩',
         originStationId: 'station1',
         destinationStationId: 'station2',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
       {
         id: 'p2',
@@ -65,9 +67,11 @@ describe('useTrackManagement - Passenger Display', () => {
         avatar: '👨',
         originStationId: 'station2',
         destinationStationId: 'station3',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 
@@ -111,18 +115,18 @@ describe('useTrackManagement - Passenger Display', () => {
 
     // Initially 2 passengers
     expect(result.current.displayPassengers).toHaveLength(2)
-    expect(result.current.displayPassengers[0].isBoarded).toBe(false)
+    expect(result.current.displayPassengers[0].claimedBy).toBe(null)
 
     // Board first passenger
     const boardedPassengers = mockPassengers.map((p) =>
-      p.id === 'p1' ? { ...p, isBoarded: true } : p
+      p.id === 'p1' ? { ...p, claimedBy: 'player1', carIndex: 0 } : p
     )
 
     rerender({ passengers: boardedPassengers, position: 25 })
 
     // Should show updated passengers
     expect(result.current.displayPassengers).toHaveLength(2)
-    expect(result.current.displayPassengers[0].isBoarded).toBe(true)
+    expect(result.current.displayPassengers[0].claimedBy).toBe('player1')
   })
 
   test('passengers do NOT update during route transition (train moving)', () => {
@@ -153,9 +157,11 @@ describe('useTrackManagement - Passenger Display', () => {
         avatar: '👴',
         originStationId: 'station1',
         destinationStationId: 'station3',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 
@@ -196,9 +202,11 @@ describe('useTrackManagement - Passenger Display', () => {
         avatar: '👴',
         originStationId: 'station1',
         destinationStationId: 'station3',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 
@@ -239,9 +247,11 @@ describe('useTrackManagement - Passenger Display', () => {
         avatar: '👴',
         originStationId: 'station1',
         destinationStationId: 'station3',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 
@@ -316,18 +326,18 @@ describe('useTrackManagement - Passenger Display', () => {
 
     // Initially 2 passengers, neither delivered
     expect(result.current.displayPassengers).toHaveLength(2)
-    expect(result.current.displayPassengers[0].isDelivered).toBe(false)
+    expect(result.current.displayPassengers[0].deliveredBy).toBe(null)
 
     // Deliver first passenger
     const deliveredPassengers = mockPassengers.map((p) =>
-      p.id === 'p1' ? { ...p, isBoarded: true, isDelivered: true } : p
+      p.id === 'p1' ? { ...p, claimedBy: 'player1', carIndex: 0, deliveredBy: 'player1' } : p
     )
 
     rerender({ passengers: deliveredPassengers, position: 55 })
 
     // Should show updated passengers immediately
     expect(result.current.displayPassengers).toHaveLength(2)
-    expect(result.current.displayPassengers[0].isDelivered).toBe(true)
+    expect(result.current.displayPassengers[0].deliveredBy).toBe('player1')
   })
 
   test('multiple rapid passenger updates during same route', () => {
@@ -350,25 +360,27 @@ describe('useTrackManagement - Passenger Display', () => {
     expect(result.current.displayPassengers).toHaveLength(2)
 
     // Board p1
-    let updated = mockPassengers.map((p) => (p.id === 'p1' ? { ...p, isBoarded: true } : p))
+    let updated = mockPassengers.map((p) =>
+      p.id === 'p1' ? { ...p, claimedBy: 'player1', carIndex: 0 } : p
+    )
     rerender({ passengers: updated, position: 26 })
-    expect(result.current.displayPassengers[0].isBoarded).toBe(true)
+    expect(result.current.displayPassengers[0].claimedBy).toBe('player1')
 
     // Board p2
-    updated = updated.map((p) => (p.id === 'p2' ? { ...p, isBoarded: true } : p))
+    updated = updated.map((p) => (p.id === 'p2' ? { ...p, claimedBy: 'player1', carIndex: 1 } : p))
     rerender({ passengers: updated, position: 52 })
-    expect(result.current.displayPassengers[1].isBoarded).toBe(true)
+    expect(result.current.displayPassengers[1].claimedBy).toBe('player1')
 
     // Deliver p1
-    updated = updated.map((p) => (p.id === 'p1' ? { ...p, isDelivered: true } : p))
+    updated = updated.map((p) => (p.id === 'p1' ? { ...p, deliveredBy: 'player1' } : p))
     rerender({ passengers: updated, position: 53 })
-    expect(result.current.displayPassengers[0].isDelivered).toBe(true)
+    expect(result.current.displayPassengers[0].deliveredBy).toBe('player1')
 
     // All updates should have been reflected
-    expect(result.current.displayPassengers[0].isBoarded).toBe(true)
-    expect(result.current.displayPassengers[0].isDelivered).toBe(true)
-    expect(result.current.displayPassengers[1].isBoarded).toBe(true)
-    expect(result.current.displayPassengers[1].isDelivered).toBe(false)
+    expect(result.current.displayPassengers[0].claimedBy).toBe('player1')
+    expect(result.current.displayPassengers[0].deliveredBy).toBe('player1')
+    expect(result.current.displayPassengers[1].claimedBy).toBe('player1')
+    expect(result.current.displayPassengers[1].deliveredBy).toBe(null)
   })
 
   test('EDGE CASE: new passengers at position 0 with old route', () => {
@@ -402,9 +414,11 @@ describe('useTrackManagement - Passenger Display', () => {
         avatar: '👴',
         originStationId: 'station1',
         destinationStationId: 'station3',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 
@@ -445,9 +459,11 @@ describe('useTrackManagement - Passenger Display', () => {
         avatar: '👴',
         originStationId: 'station1',
         destinationStationId: 'station3',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 
@@ -483,9 +499,11 @@ describe('useTrackManagement - Passenger Display', () => {
         avatar: '👴',
         originStationId: 'station1',
         destinationStationId: 'station3',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 

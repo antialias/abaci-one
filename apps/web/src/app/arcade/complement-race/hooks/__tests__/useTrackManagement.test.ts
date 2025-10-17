@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import type { Passenger, Station } from '../../lib/gameTypes'
+import type { Passenger, Station } from '@/arcade-games/complement-race/types'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
 import { useTrackManagement } from '../useTrackManagement'
 
@@ -60,9 +60,11 @@ describe('useTrackManagement', () => {
         avatar: '👨',
         originStationId: 'station-1',
         destinationStationId: 'station-2',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 
@@ -155,6 +157,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -174,6 +178,8 @@ describe('useTrackManagement', () => {
           pathRef: mockPathRef,
           stations: mockStations,
           passengers: mockPassengers,
+          maxCars: 3,
+          carSpacing: 7,
         }),
       {
         initialProps: { route: 1, position: 0 },
@@ -200,6 +206,8 @@ describe('useTrackManagement', () => {
           pathRef: mockPathRef,
           stations: mockStations,
           passengers: mockPassengers,
+          maxCars: 3,
+          carSpacing: 7,
         }),
       {
         initialProps: { route: 1, position: 0 },
@@ -227,6 +235,8 @@ describe('useTrackManagement', () => {
           pathRef: mockPathRef,
           stations: mockStations,
           passengers: mockPassengers,
+          maxCars: 3,
+          carSpacing: 7,
         }),
       {
         initialProps: { route: 1, position: -5 },
@@ -250,9 +260,11 @@ describe('useTrackManagement', () => {
         avatar: '👩',
         originStationId: 'station-1',
         destinationStationId: 'station-2',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 
@@ -287,12 +299,15 @@ describe('useTrackManagement', () => {
     const newPassengers: Passenger[] = [
       {
         id: 'passenger-2',
+        name: 'Passenger 2',
         avatar: '👩',
         originStationId: 'station-1',
         destinationStationId: 'station-2',
-        isBoarded: false,
-        isDelivered: false,
         isUrgent: false,
+        claimedBy: null,
+        deliveredBy: null,
+        carIndex: null,
+        timestamp: Date.now(),
       },
     ]
 
@@ -328,7 +343,9 @@ describe('useTrackManagement', () => {
   })
 
   test('updates passengers immediately during same route', () => {
-    const updatedPassengers: Passenger[] = [{ ...mockPassengers[0], isBoarded: true }]
+    const updatedPassengers: Passenger[] = [
+      { ...mockPassengers[0], claimedBy: 'player1', carIndex: 0 },
+    ]
 
     const { result, rerender } = renderHook(
       ({ passengers, position }) =>
@@ -368,6 +385,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Passenger, Station } from '../lib/gameTypes'
+import type { Passenger, Station } from '@/arcade-games/complement-race/types'
 import { generateLandmarks, type Landmark } from '../lib/landmarks'
 import type { RailroadTrackGenerator } from '../lib/RailroadTrackGenerator'
 
@@ -78,21 +78,33 @@ export function useTrackManagement({
   useEffect(() => {
     // Only switch to new passengers when:
     // 1. Train has reset to start position (< 0) - track has changed, OR
-    // 2. Same route AND train is in middle of track (10-90%) - gameplay updates like boarding/delivering
+    // 2. Same route AND (in middle of track OR passengers have changed state)
     const trainReset = trainPosition < 0
     const sameRoute = currentRoute === displayRouteRef.current
     const inMiddleOfTrack = trainPosition >= 10 && trainPosition < 90 // Avoid start/end transition zones
+
+    // Detect if passenger states have changed (boarding or delivery)
+    // This allows updates even when train is past 90% threshold
+    const passengerStatesChanged =
+      sameRoute &&
+      passengers.some((p) => {
+        const oldPassenger = displayPassengers.find((dp) => dp.id === p.id)
+        return (
+          oldPassenger &&
+          (oldPassenger.claimedBy !== p.claimedBy || oldPassenger.deliveredBy !== p.deliveredBy)
+        )
+      })
 
     if (trainReset) {
       // Train reset - update to new route's passengers
       setDisplayPassengers(passengers)
       displayRouteRef.current = currentRoute
-    } else if (sameRoute && inMiddleOfTrack) {
-      // Same route and train in middle of track - update passengers for gameplay changes (boarding/delivery)
+    } else if (sameRoute && (inMiddleOfTrack || passengerStatesChanged)) {
+      // Same route and either in middle of track OR passenger states changed - update for gameplay
       setDisplayPassengers(passengers)
     }
     // Otherwise, keep displaying old passengers until train resets
-  }, [passengers, trainPosition, currentRoute])
+  }, [passengers, displayPassengers, trainPosition, currentRoute])
 
   // Generate ties and rails when path is ready
   useEffect(() => {

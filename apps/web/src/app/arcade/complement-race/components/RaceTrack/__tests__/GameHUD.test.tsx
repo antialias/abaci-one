@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
-import type { Passenger, Station } from '../../../lib/gameTypes'
+import type { Passenger, Station } from '@/arcade-games/complement-race/types'
 import { GameHUD } from '../GameHUD'
 
 // Mock child components
@@ -33,9 +33,11 @@ describe('GameHUD', () => {
     avatar: '👨',
     originStationId: 'station-1',
     destinationStationId: 'station-2',
-    isBoarded: false,
-    isDelivered: false,
     isUrgent: false,
+    claimedBy: null,
+    deliveredBy: null,
+    carIndex: null,
+    timestamp: Date.now(),
   }
 
   const defaultProps = {
