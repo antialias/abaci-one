@@ -62,8 +62,29 @@ export function useSteamJourney() {
         const maxCars = Math.max(1, maxPassengers)
         routeExitThresholdRef.current = 100 + maxCars * CAR_SPACING
       }
+
+      // Log initial game state once at start
+      console.log('🚂 GAME START - Sprint Mode initialized')
+      console.log(
+        `Stations: ${state.stations.map((s) => `${s.emoji} ${s.name} (${s.position}%)`).join(', ')}`
+      )
+      console.log(`Passengers: ${state.passengers.length}`)
+      state.passengers.forEach((p) => {
+        const origin = state.stations.find((s) => s.id === p.originStationId)
+        const dest = state.stations.find((s) => s.id === p.destinationStationId)
+        console.log(
+          `  - ${p.name}: ${origin?.emoji} ${origin?.name} → ${dest?.emoji} ${dest?.name}${p.isUrgent ? ' [URGENT]' : ''}`
+        )
+      })
     }
-  }, [state.isGameActive, state.style, state.stations, state.passengers.length, dispatch])
+  }, [
+    state.isGameActive,
+    state.style,
+    state.stations,
+    state.passengers.length,
+    dispatch,
+    state.passengers,
+  ])
 
   // Momentum decay and position update loop
   useEffect(() => {
@@ -118,67 +139,6 @@ export function useSteamJourney() {
         (p) => p.claimedBy !== null && p.deliveredBy === null
       )
 
-      // Debug logging flag - enable when debugging passenger boarding issues
-      // TO ENABLE: Change this to true, save, and the logs will appear in the browser console
-      // When you see passengers getting left behind, copy the entire console log and paste into Claude Code
-      const DEBUG_PASSENGER_BOARDING = true
-
-      if (DEBUG_PASSENGER_BOARDING) {
-        console.log('\n'.repeat(3))
-        console.log('='.repeat(80))
-        console.log('🚂 PASSENGER BOARDING DEBUG LOG')
-        console.log('='.repeat(80))
-        console.log('ISSUE: Passengers are getting left behind at stations')
-        console.log('PURPOSE: This log captures all state during boarding/delivery logic')
-        console.log('USAGE: Copy this entire log and paste into Claude Code for debugging')
-        console.log('='.repeat(80))
-        console.log('\n📊 CURRENT FRAME STATE:')
-        console.log(`  Train Position: ${trainPosition.toFixed(2)}`)
-        console.log(`  Speed: ${speed.toFixed(2)}% per second`)
-        console.log(`  Momentum: ${newMomentum.toFixed(2)}`)
-        console.log(`  Max Cars: ${maxCars}`)
-        console.log(`  Car Spacing: ${CAR_SPACING}`)
-        console.log(`  Distance Tolerance: 5`)
-
-        console.log('\n🚉 STATIONS:')
-        state.stations.forEach((station) => {
-          console.log(`  ${station.emoji} ${station.name} (ID: ${station.id})`)
-          console.log(`    Position: ${station.position}`)
-        })
-
-        console.log('\n👥 ALL PASSENGERS:')
-        state.passengers.forEach((p, idx) => {
-          const origin = state.stations.find((s) => s.id === p.originStationId)
-          const dest = state.stations.find((s) => s.id === p.destinationStationId)
-          console.log(`  [${idx}] ${p.name} (ID: ${p.id})`)
-          console.log(
-            `    Status: ${p.deliveredBy !== null ? 'DELIVERED' : p.claimedBy !== null ? 'BOARDED' : 'WAITING'}`
-          )
-          console.log(
-            `    Route: ${origin?.emoji} ${origin?.name} (pos ${origin?.position}) → ${dest?.emoji} ${dest?.name} (pos ${dest?.position})`
-          )
-          console.log(`    Urgent: ${p.isUrgent}`)
-        })
-
-        console.log('\n🚃 CAR POSITIONS:')
-        for (let i = 0; i < maxCars; i++) {
-          const carPos = Math.max(0, trainPosition - (i + 1) * CAR_SPACING)
-          console.log(`  Car ${i}: position ${carPos.toFixed(2)}`)
-        }
-
-        console.log('\n🔍 CURRENTLY BOARDED PASSENGERS:')
-        currentBoardedPassengers.forEach((p, carIndex) => {
-          const carPos = Math.max(0, trainPosition - (carIndex + 1) * CAR_SPACING)
-          const dest = state.stations.find((s) => s.id === p.destinationStationId)
-          const distToDest = Math.abs(carPos - (dest?.position || 0))
-          console.log(`  Car ${carIndex}: ${p.name}`)
-          console.log(`    Car position: ${carPos.toFixed(2)}`)
-          console.log(`    Destination: ${dest?.emoji} ${dest?.name} (pos ${dest?.position})`)
-          console.log(`    Distance to dest: ${distToDest.toFixed(2)}`)
-          console.log(`    Will deliver: ${distToDest < 5 ? 'YES' : 'NO'}`)
-        })
-      }
-
       // FIRST: Identify which passengers will be delivered in this frame
       const passengersToDeliver = new Set<string>()
       currentBoardedPassengers.forEach((passenger, carIndex) => {
@@ -206,29 +166,6 @@ export function useSteamJourney() {
         }
       })
 
-      if (DEBUG_PASSENGER_BOARDING) {
-        console.log('\n📦 PASSENGERS TO DELIVER THIS FRAME:')
-        if (passengersToDeliver.size === 0) {
-          console.log('  None')
-        } else {
-          passengersToDeliver.forEach((id) => {
-            const p = state.passengers.find((passenger) => passenger.id === id)
-            console.log(`  - ${p?.name} (ID: ${id})`)
-          })
-        }
-
-        console.log('\n🚗 OCCUPIED CARS (after excluding deliveries):')
-        if (occupiedCars.size === 0) {
-          console.log('  All cars are empty')
-        } else {
-          occupiedCars.forEach((passenger, carIndex) => {
-            console.log(`  Car ${carIndex}: ${passenger.name}`)
-          })
-        }
-
-        console.log('\n🔄 BOARDING ATTEMPTS:')
-      }
-
       // Track which cars are assigned in THIS frame to prevent double-boarding
       const carsAssignedThisFrame = new Set<number>()
 
@@ -239,65 +176,30 @@ export function useSteamJourney() {
         const station = state.stations.find((s) => s.id === passenger.originStationId)
         if (!station) return
 
-        if (DEBUG_PASSENGER_BOARDING) {
-          console.log(
-            `\n  Passenger: ${passenger.name} waiting at ${station.emoji} ${station.name} (pos ${station.position})`
-          )
-        }
-
         // Check if any empty car is at this station
         // Cars are at positions: trainPosition - 7, trainPosition - 14, etc.
-        let boarded = false
         for (let carIndex = 0; carIndex < maxCars; carIndex++) {
           const carPosition = Math.max(0, trainPosition - (carIndex + 1) * CAR_SPACING)
           const distance = Math.abs(carPosition - station.position)
 
-          if (DEBUG_PASSENGER_BOARDING) {
-            const isOccupied = occupiedCars.has(carIndex)
-            const isAssigned = carsAssignedThisFrame.has(carIndex)
-            const inRange = distance < 5
-            const occupant = occupiedCars.get(carIndex)
-
-            console.log(`    Car ${carIndex} @ pos ${carPosition.toFixed(2)}:`)
-            console.log(`      Distance to station: ${distance.toFixed(2)}`)
-            console.log(`      In range (<5): ${inRange}`)
-            console.log(
-              `      Occupied: ${isOccupied}${isOccupied ? ` (by ${occupant?.name})` : ''}`
-            )
-            console.log(`      Assigned this frame: ${isAssigned}`)
-            console.log(`      Can board: ${!isOccupied && !isAssigned && inRange}`)
-          }
-
           // Skip if this car already has a passenger OR was assigned this frame
           if (occupiedCars.has(carIndex) || carsAssignedThisFrame.has(carIndex)) continue
 
-          const distance2 = Math.abs(carPosition - station.position)
-
           // If car is at or near station (within 5% tolerance for fast trains), board this passenger
-          // Increased tolerance to ensure fast-moving trains don't miss passengers
-          if (distance2 < 5) {
-            if (DEBUG_PASSENGER_BOARDING) {
-              console.log(`    ✅ BOARDING ${passenger.name} onto Car ${carIndex}`)
-            }
+          if (distance < 5) {
+            console.log(
+              `🚂 BOARDING: ${passenger.name} boarding Car ${carIndex} at ${station.emoji} ${station.name} (trainPos=${trainPosition.toFixed(1)}, carPos=${carPosition.toFixed(1)}, stationPos=${station.position})`
+            )
             dispatch({
               type: 'BOARD_PASSENGER',
               passengerId: passenger.id,
             })
             // Mark this car as assigned in this frame
             carsAssignedThisFrame.add(carIndex)
-            boarded = true
             return // Board this passenger and move on
           }
         }
-
-        if (DEBUG_PASSENGER_BOARDING && !boarded) {
-          console.log(`    ❌ ${passenger.name} NOT BOARDED - no suitable car found`)
-        }
       })
-
-      if (DEBUG_PASSENGER_BOARDING) {
-        console.log('\n🎯 DELIVERY ATTEMPTS:')
-      }
 
       // Check for deliverable passengers
       // Passengers disembark when THEIR car reaches their destination
@@ -313,35 +215,17 @@ export function useSteamJourney() {
 
         // If this car is at the destination station (within 5% tolerance), deliver
         if (distance < 5) {
-          if (DEBUG_PASSENGER_BOARDING) {
-            console.log(
-              `  ✅ DELIVERING ${passenger.name} from Car ${carIndex} to ${station.emoji} ${station.name}`
-            )
-            console.log(
-              `    Car position: ${carPosition.toFixed(2)}, Station: ${station.position}, Distance: ${distance.toFixed(2)}`
-            )
-          }
           const points = passenger.isUrgent ? 20 : 10
+          console.log(
+            `🎯 DELIVERY: ${passenger.name} delivered from Car ${carIndex} to ${station.emoji} ${station.name} (+${points} pts) (trainPos=${trainPosition.toFixed(1)}, carPos=${carPosition.toFixed(1)}, stationPos=${station.position})`
+          )
           dispatch({
             type: 'DELIVER_PASSENGER',
             passengerId: passenger.id,
             points,
           })
-        } else if (DEBUG_PASSENGER_BOARDING) {
-          console.log(
-            `  ⏳ ${passenger.name} in Car ${carIndex} heading to ${station.emoji} ${station.name}`
-          )
-          console.log(
-            `    Car position: ${carPosition.toFixed(2)}, Station: ${station.position}, Distance: ${distance.toFixed(2)}`
-          )
         }
       })
-
-      if (DEBUG_PASSENGER_BOARDING) {
-        console.log(`\n${'='.repeat(80)}`)
-        console.log('END OF DEBUG LOG')
-        console.log('='.repeat(80))
-      }
 
       // Check for route completion (entire train exits tunnel)
       // Use stored threshold (stable for entire route)
