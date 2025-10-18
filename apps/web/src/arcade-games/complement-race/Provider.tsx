@@ -800,6 +800,18 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
             newBubbles.set(action.racerId, action.message)
             return { ...prev, activeSpeechBubbles: newBubbles }
           })
+          // Update racer's lastComment time and cooldown to prevent spam
+          setClientAIRacers((prevRacers) =>
+            prevRacers.map((racer) =>
+              racer.id === action.racerId
+                ? {
+                    ...racer,
+                    lastComment: Date.now(),
+                    commentCooldown: Math.random() * 4000 + 2000, // 2-6 seconds
+                  }
+                : racer
+            )
+          )
           break
         }
         case 'CLEAR_AI_COMMENT': {
