@@ -110,7 +110,7 @@ export function LinearTrack({
           position: 'absolute',
           left: `${playerPosition}%`,
           top: '50%',
-          transform: 'translate(-50%, -50%)',
+          transform: 'translate(-50%, -50%) scaleX(-1)',
           fontSize: '32px',
           transition: 'left 0.3s ease-out',
           filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
