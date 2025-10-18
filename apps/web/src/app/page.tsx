@@ -76,7 +76,7 @@ export default function HomePage() {
                   Click the beads to interact!
                 </div>
                 <AbacusReact
-                  defaultValue={1234567}
+                  value={abacusValue}
                   columns={7}
                   beadShape="diamond"
                   colorScheme="place-value"
@@ -87,6 +87,13 @@ export default function HomePage() {
                   soundVolume={0.4}
                   scaleFactor={2.2}
                   showNumbers={true}
+                  customStyles={{
+                    numerals: {
+                      fill: '#fbbf24',
+                      fontWeight: 'bold',
+                      fontSize: '18px',
+                    },
+                  }}
                   callbacks={{
                     onValueChange: (newValue: number) => setAbacusValue(newValue),
                   }}
