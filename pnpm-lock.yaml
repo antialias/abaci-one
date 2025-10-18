@@ -119,9 +119,6 @@ importers:
       '@soroban/abacus-react':
         specifier: workspace:*
         version: link:../../packages/abacus-react
-      '@soroban/client':
-        specifier: workspace:*
-        version: link:../../packages/core/client/typescript
       '@soroban/core':
         specifier: workspace:*
         version: link:../../packages/core/client/node
@@ -380,49 +377,8 @@ importers:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.44.0)
 
-  packages/core/client/browser:
-    dependencies:
-      '@myriaddreamin/typst-ts-renderer':
-        specifier: ^0.6.0
-        version: 0.6.0
-      '@myriaddreamin/typst-ts-web-compiler':
-        specifier: ^0.6.0
-        version: 0.6.0
-    devDependencies:
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
-      vite:
-        specifier: ^5.0.0
-        version: 5.4.20(@types/node@20.19.19)(terser@5.44.0)
-
   packages/core/client/node:
-    dependencies:
-      python-shell:
-        specifier: ^5.0.0
-        version: 5.0.0
     devDependencies:
-      '@types/minimatch':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.19
-      tsup:
-        specifier: ^7.0.0
-        version: 7.3.0(postcss@8.5.6)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
-      vitest:
-        specifier: ^1.0.0
-        version: 1.6.1(@types/node@20.19.19)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.44.0)
-
-  packages/core/client/typescript:
-    devDependencies:
-      '@types/minimatch':
-        specifier: ^6.0.0
-        version: 6.0.0
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.19
@@ -1956,12 +1912,6 @@ packages:
     peerDependencies:
       '@types/react': '>=16'
       react: '>=16'
-
-  '@myriaddreamin/typst-ts-renderer@0.6.0':
-    resolution: {integrity: sha512-56Mids4E5Ob6LeEeXDedvmsVnEWnLmc1qeUOeUSruL/zI3S9QXleF/c3Os1FXwJmLuCFbWTEIq8Quh2cXlnxKw==}
-
-  '@myriaddreamin/typst-ts-web-compiler@0.6.0':
-    resolution: {integrity: sha512-P/eIJ5RnfElj0NYzn5PI296t/IwWtgqUyyTMi5Jm5X3V5kZfskkH+LI7mSQe8tEyxwgCvxbxvFe5adinA3K8Gg==}
 
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
@@ -7773,10 +7723,6 @@ packages:
   python-bridge@1.1.0:
     resolution: {integrity: sha512-qjQ0QB8p9cn/XDeILQH0aP307hV58lrmv0Opjyub68Um7FHdF+ZXlTqyxNkKaXOFk2QSkScoPWwn7U9GGnrkeQ==}
 
-  python-shell@5.0.0:
-    resolution: {integrity: sha512-RUOOOjHLhgR1MIQrCtnEqz/HJ1RMZBIN+REnpSUrfft2bXqXy69fwJASVziWExfFXsR1bCY0TznnHooNsCo0/w==}
-    engines: {node: '>=0.10'}
-
   qs@6.13.0:
     resolution: {integrity: sha512-+38qI9SOr8tfZ4QmJNplMUxqjbe7LKvvZgWdExBOmd+egZTtjLB67Gu0HRX3u/XOq7UU2Nx6nsjvS16Z9uwfpg==}
     engines: {node: '>=0.6'}
@@ -10813,10 +10759,6 @@ snapshots:
       '@types/mdx': 2.0.13
       '@types/react': 18.3.26
       react: 18.3.1
-
-  '@myriaddreamin/typst-ts-renderer@0.6.0': {}
-
-  '@myriaddreamin/typst-ts-web-compiler@0.6.0': {}
 
   '@napi-rs/wasm-runtime@0.2.12':
     dependencies:
@@ -17641,8 +17583,6 @@ snapshots:
   python-bridge@1.1.0:
     dependencies:
       bluebird: 3.7.2
-
-  python-shell@5.0.0: {}
 
   qs@6.13.0:
     dependencies:

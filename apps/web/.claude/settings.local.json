@@ -92,7 +92,9 @@
       "Bash(ls:*)",
       "Bash(do if [ -f \"$file\" ])",
       "Bash(! echo \"$file\")",
-      "Bash(then sed -i '' \"s|from ''''../context/ComplementRaceContext''''|from ''''@/arcade-games/complement-race/Provider''''|g\" \"$file\" sed -i '' \"s|from ''''../../context/ComplementRaceContext''''|from ''''@/arcade-games/complement-race/Provider''''|g\" \"$file\" fi done)"
+      "Bash(then sed -i '' \"s|from ''''../context/ComplementRaceContext''''|from ''''@/arcade-games/complement-race/Provider''''|g\" \"$file\" sed -i '' \"s|from ''''../../context/ComplementRaceContext''''|from ''''@/arcade-games/complement-race/Provider''''|g\" \"$file\" fi done)",
+      "Bash(pnpm install)",
+      "Bash(pnpm exec turbo build --filter=@soroban/web)"
     ],
     "deny": [],
     "ask": []

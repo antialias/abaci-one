@@ -31,7 +31,6 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var src_exports = {};
 __export(src_exports, {
   SorobanGenerator: () => SorobanGenerator,
-  SorobanGeneratorBridge: () => SorobanGenerator2,
   default: () => SorobanGenerator,
   expressExample: () => expressExample
 });
@@ -194,96 +193,8 @@ var SorobanGenerator = class {
 async function expressExample() {
   const generator = new SorobanGenerator();
 }
-
-// src/soroban-generator-bridge.ts
-var import_python_shell = require("python-shell");
-var path2 = __toESM(require("path"));
-var SorobanGenerator2 = class {
-  pythonShell = null;
-  projectRoot;
-  constructor(projectRoot) {
-    this.projectRoot = projectRoot || path2.join(__dirname, "../../");
-  }
-  /**
-   * Initialize persistent Python process for better performance
-   */
-  async initialize() {
-    if (this.pythonShell)
-      return;
-    this.pythonShell = new import_python_shell.PythonShell(path2.join("src", "bridge.py"), {
-      mode: "json",
-      pythonPath: "python3",
-      pythonOptions: ["-u"],
-      // Unbuffered
-      scriptPath: this.projectRoot
-    });
-  }
-  /**
-   * Generate flashcards - clean function interface
-   */
-  async generate(config) {
-    if (!this.pythonShell) {
-      return new Promise((resolve, reject) => {
-        const shell = new import_python_shell.PythonShell(path2.join("src", "bridge.py"), {
-          mode: "json",
-          pythonPath: "python3",
-          scriptPath: this.projectRoot
-        });
-        shell.on("message", (message) => {
-          if (message.error) {
-            reject(new Error(message.error));
-          } else {
-            resolve(message);
-          }
-        });
-        shell.on("error", (err) => {
-          reject(err);
-        });
-        shell.send(config);
-        shell.end((err, code, signal) => {
-          if (err)
-            reject(err);
-        });
-      });
-    }
-    return new Promise((resolve, reject) => {
-      if (!this.pythonShell) {
-        reject(new Error("Not initialized"));
-        return;
-      }
-      const handler = (message) => {
-        if (message.error) {
-          reject(new Error(message.error));
-        } else {
-          resolve(message);
-        }
-        this.pythonShell?.removeListener("message", handler);
-      };
-      this.pythonShell.on("message", handler);
-      this.pythonShell.send(config);
-    });
-  }
-  /**
-   * Generate and return as Buffer
-   */
-  async generateBuffer(config) {
-    const result = await this.generate(config);
-    return Buffer.from(result.pdf, "base64");
-  }
-  /**
-   * Clean up Python process
-   */
-  async close() {
-    if (this.pythonShell) {
-      this.pythonShell.end(() => {
-      });
-      this.pythonShell = null;
-    }
-  }
-};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   SorobanGenerator,
-  SorobanGeneratorBridge,
   expressExample
 });

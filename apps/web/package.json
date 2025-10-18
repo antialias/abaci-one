@@ -48,7 +48,6 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-spring/web": "^10.0.2",
     "@soroban/abacus-react": "workspace:*",
-    "@soroban/client": "workspace:*",
     "@soroban/core": "workspace:*",
     "@soroban/templates": "workspace:*",
     "@tanstack/react-form": "^0.19.0",
