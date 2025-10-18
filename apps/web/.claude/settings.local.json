@@ -94,7 +94,10 @@
       "Bash(! echo \"$file\")",
       "Bash(then sed -i '' \"s|from ''''../context/ComplementRaceContext''''|from ''''@/arcade-games/complement-race/Provider''''|g\" \"$file\" sed -i '' \"s|from ''''../../context/ComplementRaceContext''''|from ''''@/arcade-games/complement-race/Provider''''|g\" \"$file\" fi done)",
       "Bash(pnpm install)",
-      "Bash(pnpm exec turbo build --filter=@soroban/web)"
+      "Bash(pnpm exec turbo build --filter=@soroban/web)",
+      "Bash(do gh run list --limit 1 --json conclusion,status,name,databaseId --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\")\"\"')",
+      "Bash(do gh run list --limit 1 --json conclusion,status,name --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\") - \\(.name)\"\"')",
+      "Bash(do gh run list --limit 1 --workflow=\"Build and Deploy\" --json conclusion,status --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\")\"\"')"
     ],
     "deny": [],
     "ask": []
