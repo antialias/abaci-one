@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { PageWithNav } from '@/components/PageWithNav'
 import { AbacusReact } from '@soroban/abacus-react'
@@ -7,6 +8,7 @@ import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
 
 export default function HomePage() {
+  const [abacusValue, setAbacusValue] = useState(1234567)
   return (
     <PageWithNav navTitle="Soroban Mastery Platform" navEmoji="🧮">
       <div className={css({ bg: 'gray.900', minHeight: '100vh' })}>
@@ -51,7 +53,9 @@ export default function HomePage() {
               <div
                 className={css({
                   display: 'flex',
-                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4',
                   my: '10',
                   p: '8',
                   bg: 'rgba(0, 0, 0, 0.4)',
@@ -61,13 +65,43 @@ export default function HomePage() {
                   boxShadow: '0 25px 50px -12px rgba(139, 92, 246, 0.25)',
                 })}
               >
+                <div
+                  className={css({
+                    fontSize: 'lg',
+                    fontWeight: 'semibold',
+                    color: 'gray.300',
+                    mb: '2',
+                  })}
+                >
+                  Click the beads to interact!
+                </div>
                 <AbacusReact
-                  value={1234567}
+                  value={abacusValue}
                   columns={7}
                   beadShape="diamond"
                   colorScheme="place-value"
                   hideInactiveBeads={false}
+                  interactive={true}
+                  animated={true}
+                  soundEnabled={true}
+                  soundVolume={0.4}
+                  scaleFactor={2.2}
+                  showNumbers={true}
+                  callbacks={{
+                    onValueChange: (newValue: number) => setAbacusValue(newValue),
+                  }}
                 />
+                <div
+                  className={css({
+                    fontSize: '4xl',
+                    fontWeight: 'bold',
+                    color: 'yellow.400',
+                    fontFamily: 'mono',
+                    letterSpacing: 'wide',
+                  })}
+                >
+                  {abacusValue.toLocaleString()}
+                </div>
               </div>
 
               <p

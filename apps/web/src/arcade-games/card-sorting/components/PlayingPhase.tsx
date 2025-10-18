@@ -314,17 +314,16 @@ export function PlayingPhase() {
                 <div
                   dangerouslySetInnerHTML={{ __html: card.svgContent }}
                   className={css({
-                    width: '100%',
-                    height: '100%',
+                    width: '74px',
+                    height: '74px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    overflow: 'hidden',
                     '& svg': {
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      height: 'auto',
+                      width: '100%',
+                      height: '100%',
                       display: 'block',
-                      margin: '0 auto',
                     },
                   })}
                 />
@@ -459,17 +458,17 @@ export function PlayingPhase() {
                             __html: card.svgContent,
                           }}
                           className={css({
-                            width: '100%',
-                            flex: 1,
+                            width: '70px',
+                            height: '70px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            overflow: 'hidden',
+                            margin: '0 auto',
                             '& svg': {
-                              maxWidth: '70px',
-                              maxHeight: '100%',
-                              height: 'auto',
+                              width: '100%',
+                              height: '100%',
                               display: 'block',
-                              margin: '0 auto',
                             },
                           })}
                         />
