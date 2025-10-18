@@ -58,7 +58,7 @@ export default function HomePage() {
                   gap: '4',
                   my: '10',
                   p: '8',
-                  bg: 'rgba(0, 0, 0, 0.4)',
+                  bg: 'white',
                   borderRadius: '2xl',
                   border: '2px solid',
                   borderColor: 'purple.500/30',
@@ -69,7 +69,7 @@ export default function HomePage() {
                   className={css({
                     fontSize: 'lg',
                     fontWeight: 'semibold',
-                    color: 'gray.300',
+                    color: 'gray.700',
                     mb: '2',
                   })}
                 >
@@ -87,34 +87,8 @@ export default function HomePage() {
                   soundVolume={0.4}
                   scaleFactor={2.2}
                   showNumbers={true}
-                  customStyles={{
-                    numerals: {
-                      fill: '#fbbf24',
-                      fontWeight: 'bold',
-                      fontSize: '18px',
-                    },
-                    reckoningBar: {
-                      stroke: '#fbbf24',
-                      strokeWidth: 4,
-                    },
-                    columnPosts: {
-                      stroke: '#a78bfa',
-                      strokeWidth: 3,
-                    },
-                  }}
                   onValueChange={(newValue: number) => setAbacusValue(newValue)}
                 />
-                <div
-                  className={css({
-                    fontSize: '4xl',
-                    fontWeight: 'bold',
-                    color: 'yellow.400',
-                    fontFamily: 'mono',
-                    letterSpacing: 'wide',
-                  })}
-                >
-                  {abacusValue.toLocaleString()}
-                </div>
               </div>
 
               <p
