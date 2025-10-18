@@ -2,7 +2,7 @@
 
 import { PageWithNav } from '@/components/PageWithNav'
 import { ComplementRaceGame } from '../components/ComplementRaceGame'
-import { ComplementRaceProvider } from '../context/ComplementRaceContext'
+import { ComplementRaceProvider } from '@/arcade-games/complement-race/Provider'
 
 export default function SprintModePage() {
   return (
