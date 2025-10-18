@@ -120,6 +120,16 @@ export type CardSortingMove =
       }
     }
   | {
+      type: 'INSERT_CARD'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        cardId: string // Which card to insert
+        insertPosition: number // Where to insert (0-indexed, can be 0 to cardCount)
+      }
+    }
+  | {
       type: 'REMOVE_CARD'
       playerId: string
       userId: string

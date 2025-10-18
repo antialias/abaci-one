@@ -2,6 +2,7 @@
 
 import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
+import { useState, useEffect } from 'react'
 
 export function PlayingPhase() {
   const {
@@ -9,6 +10,7 @@ export function PlayingPhase() {
     selectedCardId,
     selectCard,
     placeCard,
+    insertCard,
     removeCard,
     checkSolution,
     revealNumbers,
@@ -17,6 +19,31 @@ export function PlayingPhase() {
     placedCount,
     elapsedTime,
   } = useCardSorting()
+
+  // Status message (mimics Python updateSortingStatus)
+  const [statusMessage, setStatusMessage] = useState(
+    `Arrange the ${state.cardCount} cards in ascending order (smallest to largest)`
+  )
+
+  // Update status message based on state
+  useEffect(() => {
+    if (state.gamePhase !== 'playing') return
+
+    if (selectedCardId) {
+      const card = state.availableCards.find((c) => c.id === selectedCardId)
+      if (card) {
+        setStatusMessage(
+          `Selected card with value ${card.number}. Click a position or + button to place it.`
+        )
+      }
+    } else if (placedCount === state.cardCount) {
+      setStatusMessage('All cards placed! Click "Check My Solution" to see how you did.')
+    } else {
+      setStatusMessage(
+        `${placedCount}/${state.cardCount} cards placed. Select ${placedCount === 0 ? 'a' : 'another'} card to continue.`
+      )
+    }
+  }, [selectedCardId, placedCount, state.cardCount, state.gamePhase, state.availableCards])
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -32,6 +59,7 @@ export function PlayingPhase() {
     return {
       background: `hsl(220, 8%, ${lightness}%)`,
       color: lightness > 60 ? '#2c3e50' : '#ffffff',
+      borderColor: lightness > 60 ? '#2c5f76' : 'rgba(255,255,255,0.4)',
     }
   }
 
@@ -45,14 +73,27 @@ export function PlayingPhase() {
 
   const handleSlotClick = (position: number) => {
     if (!selectedCardId) {
-      // No card selected - remove card if slot is occupied
+      // No card selected - if slot has a card, move it back and auto-select
       if (state.placedCards[position]) {
+        const cardToMove = state.placedCards[position]!
         removeCard(position)
+        // Auto-select the card that was moved back
+        selectCard(cardToMove.id)
+      } else {
+        setStatusMessage('Select a card first, or click a placed card to move it back.')
       }
     } else {
-      // Card is selected - place it
+      // Card is selected - place it (replaces existing card if any)
       placeCard(selectedCardId, position)
     }
+  }
+
+  const handleInsertClick = (insertPosition: number) => {
+    if (!selectedCardId) {
+      setStatusMessage('Please select a card first, then click where to insert it.')
+      return
+    }
+    insertCard(selectedCardId, insertPosition)
   }
 
   return (
@@ -64,6 +105,22 @@ export function PlayingPhase() {
         height: '100%',
       })}
     >
+      {/* Status message */}
+      <div
+        className={css({
+          padding: '0.75rem 1rem',
+          background: '#e3f2fd',
+          borderLeft: '4px solid #2c5f76',
+          borderRadius: '0.25rem',
+          fontSize: 'sm',
+          fontWeight: '500',
+          color: '#2c3e50',
+          flexShrink: 0,
+        })}
+      >
+        {statusMessage}
+      </div>
+
       {/* Header with timer and actions */}
       <div
         className={css({
@@ -264,7 +321,7 @@ export function PlayingPhase() {
           </div>
         </div>
 
-        {/* Position slots */}
+        {/* Position slots with insert buttons */}
         <div className={css({ flex: 2, minWidth: '300px' })}>
           <h3
             className={css({
@@ -280,88 +337,154 @@ export function PlayingPhase() {
             className={css({
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.5rem',
+              gap: '0.25rem',
             })}
           >
+            {/* Insert button before first position */}
+            <button
+              type="button"
+              onClick={() => handleInsertClick(0)}
+              disabled={!selectedCardId}
+              className={css({
+                width: '32px',
+                height: '50px',
+                background: selectedCardId ? '#1976d2' : '#2c5f76',
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                cursor: selectedCardId ? 'pointer' : 'default',
+                opacity: selectedCardId ? 1 : 0.3,
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                _hover: {
+                  opacity: 1,
+                  background: '#1976d2',
+                  transform: selectedCardId ? 'scale(1.1)' : 'none',
+                },
+              })}
+            >
+              +
+            </button>
+
+            {/* Render each position slot followed by an insert button */}
             {state.placedCards.map((card, index) => {
               const gradientStyle = getSlotGradient(index, state.cardCount)
+              const isEmpty = card === null
 
               return (
-                <div
-                  key={index}
-                  onClick={() => handleSlotClick(index)}
-                  className={css({
-                    padding: '1rem',
-                    borderRadius: '0.5rem',
-                    border: '2px solid',
-                    borderColor:
-                      gradientStyle.color === '#ffffff' ? 'rgba(255,255,255,0.4)' : '#2c5f76',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '1rem',
-                    minHeight: '80px',
-                    _hover: {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    },
-                  })}
-                  style={gradientStyle}
-                >
+                <div key={index}>
+                  {/* Position slot */}
                   <div
+                    onClick={() => handleSlotClick(index)}
                     className={css({
-                      fontSize: 'sm',
-                      fontWeight: 'bold',
-                      opacity: 0.7,
+                      width: '90px',
+                      height: '110px',
+                      padding: '0.5rem',
+                      borderRadius: '8px',
+                      border: '2px solid',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.25rem',
+                      position: 'relative',
+                      _hover: {
+                        transform: selectedCardId && isEmpty ? 'scale(1.05)' : 'none',
+                        boxShadow:
+                          selectedCardId && isEmpty ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                      },
                     })}
+                    style={
+                      isEmpty
+                        ? {
+                            ...gradientStyle,
+                            // Active state: add slight glow when card is selected
+                            boxShadow: selectedCardId
+                              ? '0 0 0 2px #1976d2, 0 2px 8px rgba(25, 118, 210, 0.3)'
+                              : 'none',
+                          }
+                        : {
+                            background: '#fff',
+                            color: '#333',
+                            borderColor: '#2c5f76',
+                          }
+                    }
                   >
-                    #{index + 1}
-                  </div>
-                  {card ? (
-                    <div
-                      className={css({
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '1rem',
-                      })}
-                    >
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: card.svgContent,
-                        }}
-                        className={css({
-                          width: '120px',
-                          '& svg': {
-                            width: '100%',
-                            height: 'auto',
-                          },
-                        })}
-                      />
-                      {state.numbersRevealed && (
+                    {card ? (
+                      <>
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: card.svgContent,
+                          }}
+                          className={css({
+                            width: '70px',
+                            '& svg': {
+                              width: '100%',
+                              height: 'auto',
+                            },
+                          })}
+                        />
                         <div
                           className={css({
-                            fontSize: 'xl',
-                            fontWeight: 'bold',
+                            fontSize: 'xs',
+                            opacity: 0.7,
+                            fontStyle: 'italic',
+                            textAlign: 'center',
                           })}
                         >
-                          {card.number}
+                          ← Click to move back
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div
-                      className={css({
-                        flex: 1,
-                        fontSize: 'sm',
-                        opacity: 0.5,
-                        fontStyle: 'italic',
-                      })}
-                    >
-                      {selectedCardId ? 'Click to place card' : 'Empty'}
-                    </div>
-                  )}
+                      </>
+                    ) : (
+                      <div
+                        className={css({
+                          fontSize: 'sm',
+                          fontStyle: 'italic',
+                          textAlign: 'center',
+                        })}
+                        style={{ color: gradientStyle.color }}
+                      >
+                        {index === 0 ? 'Smallest' : index === state.cardCount - 1 ? 'Largest' : ''}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Insert button after this position */}
+                  <button
+                    type="button"
+                    onClick={() => handleInsertClick(index + 1)}
+                    disabled={!selectedCardId}
+                    className={css({
+                      width: '32px',
+                      height: '50px',
+                      background: selectedCardId ? '#1976d2' : '#2c5f76',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '20px',
+                      fontSize: '24px',
+                      fontWeight: 'bold',
+                      cursor: selectedCardId ? 'pointer' : 'default',
+                      opacity: selectedCardId ? 1 : 0.3,
+                      transition: 'all 0.2s',
+                      marginTop: '0.25rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      _hover: {
+                        opacity: 1,
+                        background: '#1976d2',
+                        transform: selectedCardId ? 'scale(1.1)' : 'none',
+                      },
+                    })}
+                  >
+                    +
+                  </button>
                 </div>
               )
             })}

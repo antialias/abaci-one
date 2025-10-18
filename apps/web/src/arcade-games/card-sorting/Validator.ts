@@ -5,7 +5,7 @@ import type {
 } from '@/lib/arcade/validation/types'
 import type { CardSortingConfig, CardSortingMove, CardSortingState } from './types'
 import { calculateScore } from './utils/scoringAlgorithm'
-import { placeCardAtPosition, removeCardAtPosition } from './utils/validation'
+import { placeCardAtPosition, insertCardAtPosition, removeCardAtPosition } from './utils/validation'
 
 export class CardSortingValidator implements GameValidator<CardSortingState, CardSortingMove> {
   validateMove(
@@ -18,6 +18,8 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         return this.validateStartGame(state, move.data, move.playerId)
       case 'PLACE_CARD':
         return this.validatePlaceCard(state, move.data.cardId, move.data.position)
+      case 'INSERT_CARD':
+        return this.validateInsertCard(state, move.data.cardId, move.data.insertPosition)
       case 'REMOVE_CARD':
         return this.validateRemoveCard(state, move.data.position)
       case 'REVEAL_NUMBERS':
@@ -113,16 +115,70 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       }
     }
 
-    // Place the card using utility function
-    const { placedCards: newPlaced } = placeCardAtPosition(
+    // Place the card using utility function (simple replacement)
+    const { placedCards: newPlaced, replacedCard } = placeCardAtPosition(
       state.placedCards,
       card,
-      position,
+      position
+    )
+
+    // Remove card from available
+    let newAvailable = state.availableCards.filter((c) => c.id !== cardId)
+
+    // If slot was occupied, add replaced card back to available
+    if (replacedCard) {
+      newAvailable = [...newAvailable, replacedCard]
+    }
+
+    return {
+      valid: true,
+      newState: {
+        ...state,
+        availableCards: newAvailable,
+        placedCards: newPlaced,
+      },
+    }
+  }
+
+  private validateInsertCard(
+    state: CardSortingState,
+    cardId: string,
+    insertPosition: number
+  ): ValidationResult {
+    // Must be in playing phase
+    if (state.gamePhase !== 'playing') {
+      return { valid: false, error: 'Can only insert cards during playing phase' }
+    }
+
+    // Card must exist in availableCards
+    const card = state.availableCards.find((c) => c.id === cardId)
+    if (!card) {
+      return { valid: false, error: 'Card not found in available cards' }
+    }
+
+    // Position must be valid (0 to cardCount, inclusive - can insert after last position)
+    if (insertPosition < 0 || insertPosition > state.cardCount) {
+      return {
+        valid: false,
+        error: `Invalid insert position: must be between 0 and ${state.cardCount}`,
+      }
+    }
+
+    // Insert the card using utility function (with shift and compact)
+    const { placedCards: newPlaced, excessCards } = insertCardAtPosition(
+      state.placedCards,
+      card,
+      insertPosition,
       state.cardCount
     )
 
-    // Remove from available
-    const newAvailable = state.availableCards.filter((c) => c.id !== cardId)
+    // Remove card from available
+    let newAvailable = state.availableCards.filter((c) => c.id !== cardId)
+
+    // Add any excess cards back to available (shouldn't normally happen)
+    if (excessCards.length > 0) {
+      newAvailable = [...newAvailable, ...excessCards]
+    }
 
     return {
       valid: true,

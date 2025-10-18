@@ -3,7 +3,6 @@
 import {
   type ReactNode,
   useCallback,
-  useEffect,
   useMemo,
   createContext,
   useContext,
@@ -24,6 +23,7 @@ interface CardSortingContextValue {
   // Actions
   startGame: () => void
   placeCard: (cardId: string, position: number) => void
+  insertCard: (cardId: string, insertPosition: number) => void
   removeCard: (position: number) => void
   checkSolution: () => void
   revealNumbers: () => void
@@ -107,15 +107,77 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
       const card = state.availableCards.find((c) => c.id === cardId)
       if (!card) return state
 
-      // Simple insert logic (server will do proper compaction)
+      // Simple replacement (can leave gaps)
       const newPlaced = [...state.placedCards]
+      const replacedCard = newPlaced[position]
       newPlaced[position] = card
-      const newAvailable = state.availableCards.filter((c) => c.id !== cardId)
+
+      // Remove card from available
+      let newAvailable = state.availableCards.filter((c) => c.id !== cardId)
+
+      // If slot was occupied, add replaced card back to available
+      if (replacedCard) {
+        newAvailable = [...newAvailable, replacedCard]
+      }
 
       return {
         ...state,
         availableCards: newAvailable,
         placedCards: newPlaced,
+      }
+    }
+
+    case 'INSERT_CARD': {
+      const { cardId, insertPosition } = typedMove.data
+      const card = state.availableCards.find((c) => c.id === cardId)
+      if (!card) return state
+
+      // Insert with shift and compact (no gaps)
+      const newPlaced = new Array(state.cardCount).fill(null)
+
+      // Copy existing cards, shifting those at/after insert position
+      for (let i = 0; i < state.placedCards.length; i++) {
+        if (state.placedCards[i] !== null) {
+          if (i < insertPosition) {
+            newPlaced[i] = state.placedCards[i]
+          } else {
+            // Cards at or after insert position shift right by 1
+            // Card will be collected during compaction if it falls off the end
+            newPlaced[i + 1] = state.placedCards[i]
+          }
+        }
+      }
+
+      // Place new card at insert position
+      newPlaced[insertPosition] = card
+
+      // Compact to remove gaps
+      const compacted: SortingCard[] = []
+      for (const c of newPlaced) {
+        if (c !== null) {
+          compacted.push(c)
+        }
+      }
+
+      // Fill final array (no gaps)
+      const finalPlaced = new Array(state.cardCount).fill(null)
+      for (let i = 0; i < Math.min(compacted.length, state.cardCount); i++) {
+        finalPlaced[i] = compacted[i]
+      }
+
+      // Remove from available
+      let newAvailable = state.availableCards.filter((c) => c.id !== cardId)
+
+      // Any excess cards go back to available
+      if (compacted.length > state.cardCount) {
+        const excess = compacted.slice(state.cardCount)
+        newAvailable = [...newAvailable, ...excess]
+      }
+
+      return {
+        ...state,
+        availableCards: newAvailable,
+        placedCards: finalPlaced,
       }
     }
 
@@ -353,6 +415,23 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     [localPlayerId, sendMove, viewerId]
   )
 
+  const insertCard = useCallback(
+    (cardId: string, insertPosition: number) => {
+      if (!localPlayerId) return
+
+      sendMove({
+        type: 'INSERT_CARD',
+        playerId: localPlayerId,
+        userId: viewerId || '',
+        data: { cardId, insertPosition },
+      })
+
+      // Clear selection
+      setSelectedCardId(null)
+    },
+    [localPlayerId, sendMove, viewerId]
+  )
+
   const removeCard = useCallback(
     (position: number) => {
       if (!localPlayerId) return
@@ -457,6 +536,7 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     // Actions
     startGame,
     placeCard,
+    insertCard,
     removeCard,
     checkSolution,
     revealNumbers,

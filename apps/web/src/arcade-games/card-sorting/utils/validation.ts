@@ -1,13 +1,30 @@
 import type { SortingCard } from '../types'
 
 /**
- * Place a card at a specific position, shifting existing cards
- * Returns new placedCards array with no gaps
+ * Place a card at a specific position (simple replacement, can leave gaps)
+ * This is used when clicking directly on a slot
+ * Returns old card if slot was occupied
  */
 export function placeCardAtPosition(
   placedCards: (SortingCard | null)[],
   cardToPlace: SortingCard,
-  position: number,
+  position: number
+): { placedCards: (SortingCard | null)[]; replacedCard: SortingCard | null } {
+  const newPlaced = [...placedCards]
+  const replacedCard = newPlaced[position]
+  newPlaced[position] = cardToPlace
+  return { placedCards: newPlaced, replacedCard }
+}
+
+/**
+ * Insert a card at a specific position, shifting existing cards and compacting
+ * This is used when clicking a + (insert) button
+ * Returns new placedCards array with no gaps
+ */
+export function insertCardAtPosition(
+  placedCards: (SortingCard | null)[],
+  cardToPlace: SortingCard,
+  insertPosition: number,
   totalSlots: number
 ): { placedCards: (SortingCard | null)[]; excessCards: SortingCard[] } {
   // Create working array
@@ -16,20 +33,23 @@ export function placeCardAtPosition(
   // Copy existing cards, shifting those at/after position
   for (let i = 0; i < placedCards.length; i++) {
     if (placedCards[i] !== null) {
-      if (i < position) {
+      if (i < insertPosition) {
         // Before insert position - stays same
         newPlaced[i] = placedCards[i]
       } else {
         // At or after position - shift right
         if (i + 1 < totalSlots) {
           newPlaced[i + 1] = placedCards[i]
+        } else {
+          // Card would fall off, will be handled by compaction
+          newPlaced[i + 1] = placedCards[i]
         }
       }
     }
   }
 
-  // Place new card
-  newPlaced[position] = cardToPlace
+  // Place new card at insert position
+  newPlaced[insertPosition] = cardToPlace
 
   // Compact to remove gaps (shift all cards left)
   const compacted: SortingCard[] = []
@@ -39,13 +59,13 @@ export function placeCardAtPosition(
     }
   }
 
-  // Fill final array
+  // Fill final array with compacted cards (no gaps)
   const result = new Array(totalSlots).fill(null)
   for (let i = 0; i < Math.min(compacted.length, totalSlots); i++) {
     result[i] = compacted[i]
   }
 
-  // Any excess cards are returned (shouldn't happen)
+  // Any excess cards are returned
   const excess = compacted.slice(totalSlots)
 
   return { placedCards: result, excessCards: excess }
