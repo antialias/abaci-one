@@ -76,6 +76,12 @@ export default function HomePage() {
                   soundVolume={0.4}
                   scaleFactor={2.2}
                   showNumbers={true}
+                  customStyles={{
+                    numerals: {
+                      fill: '#1f2937',
+                      fontWeight: 'bold',
+                    },
+                  }}
                   onValueChange={(newValue: number) => setAbacusValue(newValue)}
                 />
               </div>
