@@ -842,12 +842,34 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
           }
           break
         }
+        case 'UPDATE_AI_SPEEDS': {
+          // Update client-side AI speeds (adaptive difficulty)
+          if (action.racers && Array.isArray(action.racers)) {
+            setClientAIRacers((prevRacers) =>
+              prevRacers.map((racer) => {
+                const update = action.racers.find(
+                  (r: { id: string; speed: number }) => r.id === racer.id
+                )
+                return update
+                  ? {
+                      ...racer,
+                      speed: update.speed,
+                    }
+                  : racer
+              })
+            )
+          }
+          break
+        }
+        case 'UPDATE_DIFFICULTY_TRACKER': {
+          // Update local difficulty tracker state
+          setLocalUIState((prev) => ({ ...prev, difficultyTracker: action.tracker }))
+          break
+        }
         // Other local actions that don't affect UI (can be ignored for now)
         case 'UPDATE_MOMENTUM':
         case 'UPDATE_TRAIN_POSITION':
         case 'UPDATE_STEAM_JOURNEY':
-        case 'UPDATE_DIFFICULTY_TRACKER':
-        case 'UPDATE_AI_SPEEDS':
         case 'GENERATE_PASSENGERS': // Passengers generated server-side when route starts
         case 'COMPLETE_ROUTE':
         case 'HIDE_ROUTE_CELEBRATION':
