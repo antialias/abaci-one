@@ -55,6 +55,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/drizzle ./apps/web/drizz
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/node_modules
 
+# Copy core package (needed for Python flashcard generation scripts)
+COPY --from=builder --chown=nextjs:nodejs /app/packages/core ./packages/core
+
 # Copy package.json files for module resolution
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package.json ./apps/web/
