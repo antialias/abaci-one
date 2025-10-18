@@ -17,14 +17,16 @@ interface CircularTrackProps {
 
 export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: CircularTrackProps) {
   const { state, dispatch } = useComplementRace()
-  const { players } = useGameMode()
+  const { players, activePlayers } = useGameMode()
   const { profile: _profile } = useUserProfile()
   const { playSound } = useSoundEffects()
   const [celebrationCooldown, setCelebrationCooldown] = useState<Set<string>>(new Set())
 
-  // Get the local player's emoji
-  const localPlayer = Array.from(players.values()).find((p) => p.isLocal)
-  const playerEmoji = localPlayer?.emoji ?? '👤'
+  // Get the current user's active local players (consistent with navbar pattern)
+  const activeLocalPlayers = Array.from(activePlayers)
+    .map((id) => players.get(id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false)
+  const playerEmoji = activeLocalPlayers[0]?.emoji ?? '👤'
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 })
 
   // Update dimensions on mount and resize

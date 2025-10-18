@@ -20,12 +20,14 @@ export function LinearTrack({
   showFinishLine = true,
 }: LinearTrackProps) {
   const { state, dispatch } = useComplementRace()
-  const { players } = useGameMode()
+  const { players, activePlayers } = useGameMode()
   const { profile: _profile } = useUserProfile()
 
-  // Get the local player's emoji
-  const localPlayer = Array.from(players.values()).find((p) => p.isLocal)
-  const playerEmoji = localPlayer?.emoji ?? '👤'
+  // Get the current user's active local players (consistent with navbar pattern)
+  const activeLocalPlayers = Array.from(activePlayers)
+    .map((id) => players.get(id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined && p.isLocal !== false)
+  const playerEmoji = activeLocalPlayers[0]?.emoji ?? '👤'
 
   // Position calculation: leftPercent = Math.min(98, (progress / raceGoal) * 96 + 2)
   // 2% minimum (start), 98% maximum (near finish), 96% range for race
