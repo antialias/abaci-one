@@ -9,24 +9,7 @@ import { GameCard } from './GameCard'
 // Game configuration defining player limits
 // Note: Most games have been migrated to the modular game system (see game-registry.ts)
 // Only games not yet migrated remain here
-export const GAMES_CONFIG = {
-  'master-organizer': {
-    name: 'Master Organizer',
-    fullName: 'Master Organizer 🎴',
-    maxPlayers: 3,
-    description: 'Sort scattered cards into perfect harmony',
-    longDescription:
-      'Chaos to order! Drag and sort scattered number cards into perfect harmony. Can you organize the mathematical mayhem?',
-    url: '/arcade/master-organizer',
-    icon: '🎴',
-    chips: ['🛠️ In Development', '🧩 Sorting & Logic', '📈 Intermediate'],
-    color: 'indigo',
-    gradient: 'linear-gradient(135deg, #e0e7ff, #c7d2fe)',
-    borderColor: 'indigo.200',
-    difficulty: 'Intermediate',
-    available: false,
-  },
-} as const
+export const GAMES_CONFIG = {} as const
 
 export type GameType = keyof typeof GAMES_CONFIG | string
 
