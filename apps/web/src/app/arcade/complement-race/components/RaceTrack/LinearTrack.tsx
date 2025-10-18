@@ -144,7 +144,11 @@ export function LinearTrack({
             {activeBubble && (
               <div
                 style={{
-                  transform: 'scaleX(-1)', // Counter-flip bubble to make text readable
+                  position: 'absolute',
+                  bottom: '100%', // Position above the AI racer
+                  left: '50%',
+                  transform: 'translate(-50%, -15px) scaleX(-1)', // Offset 15px above, counter-flip bubble
+                  zIndex: 20, // Above player (10) and AI racers (5)
                 }}
               >
                 <SpeechBubble

@@ -401,7 +401,11 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
             {activeBubble && (
               <div
                 style={{
-                  transform: `rotate(${-aiPos.angle}deg)`, // Counter-rotate bubble
+                  position: 'absolute',
+                  bottom: '100%', // Position above the AI racer
+                  left: '50%',
+                  transform: `translate(-50%, -15px) rotate(${-aiPos.angle}deg)`, // Offset 15px above, counter-rotate bubble
+                  zIndex: 20, // Above player (10) and AI racers (5)
                 }}
               >
                 <SpeechBubble
