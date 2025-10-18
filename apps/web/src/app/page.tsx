@@ -93,10 +93,16 @@ export default function HomePage() {
                       fontWeight: 'bold',
                       fontSize: '18px',
                     },
+                    reckoningBar: {
+                      stroke: '#fbbf24',
+                      strokeWidth: 4,
+                    },
+                    columnPosts: {
+                      stroke: '#a78bfa',
+                      strokeWidth: 3,
+                    },
                   }}
-                  callbacks={{
-                    onValueChange: (newValue: number) => setAbacusValue(newValue),
-                  }}
+                  onValueChange={(newValue: number) => setAbacusValue(newValue)}
                 />
                 <div
                   className={css({
