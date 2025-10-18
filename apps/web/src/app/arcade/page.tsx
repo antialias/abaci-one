@@ -5,15 +5,8 @@ import { useRoomData, useSetRoomGame } from '@/hooks/useRoomData'
 import { GAMES_CONFIG } from '@/components/GameSelector'
 import type { GameType } from '@/components/GameSelector'
 import { PageWithNav } from '@/components/PageWithNav'
-import { css } from '../../../../styled-system/css'
+import { css } from '../../../styled-system/css'
 import { getAllGames, getGame, hasGame } from '@/lib/arcade/game-registry'
-
-// Map GameType keys to internal game names
-// Note: "battle-arena" removed - now handled by game registry as "matching"
-const GAME_TYPE_TO_NAME: Record<GameType, string> = {
-  'complement-race': 'complement-race',
-  'master-organizer': 'master-organizer',
-}
 
 /**
  * /arcade - Renders the game for the user's current room
@@ -84,7 +77,7 @@ export default function RoomPage() {
     const handleGameSelect = (gameType: GameType) => {
       console.log('[RoomPage] handleGameSelect called with gameType:', gameType)
 
-      // Check if it's a registry game first
+      // All games are now in the registry
       if (hasGame(gameType)) {
         const gameDef = getGame(gameType)
         if (!gameDef?.manifest.available) {
@@ -95,47 +88,12 @@ export default function RoomPage() {
         console.log('[RoomPage] Selecting registry game:', gameType)
         setRoomGame({
           roomId: roomData.id,
-          gameName: gameType, // Use the game name directly for registry games
+          gameName: gameType,
         })
         return
       }
 
-      // Legacy game handling
-      const gameConfig = GAMES_CONFIG[gameType as keyof typeof GAMES_CONFIG]
-      if (!gameConfig) {
-        console.log('[RoomPage] Unknown game type:', gameType)
-        return
-      }
-
-      console.log('[RoomPage] Game config:', {
-        name: gameConfig.name,
-        available: 'available' in gameConfig ? gameConfig.available : true,
-      })
-
-      if ('available' in gameConfig && gameConfig.available === false) {
-        console.log('[RoomPage] Game not available, blocking selection')
-        return // Don't allow selecting unavailable games
-      }
-
-      // Map GameType to internal game name
-      const internalGameName = GAME_TYPE_TO_NAME[gameType]
-      console.log('[RoomPage] Mapping:', {
-        gameType,
-        internalGameName,
-        mappingExists: !!internalGameName,
-      })
-
-      console.log('[RoomPage] Calling setRoomGame with:', {
-        roomId: roomData.id,
-        gameName: internalGameName,
-        preservingGameConfig: true,
-      })
-
-      // Don't pass gameConfig - we want to preserve existing settings for all games
-      setRoomGame({
-        roomId: roomData.id,
-        gameName: internalGameName,
-      })
+      console.log('[RoomPage] Unknown game type:', gameType)
     }
 
     return (
@@ -178,7 +136,7 @@ export default function RoomPage() {
             })}
           >
             {/* Legacy games */}
-            {Object.entries(GAMES_CONFIG).map(([gameType, config]) => {
+            {Object.entries(GAMES_CONFIG).map(([gameType, config]: [string, any]) => {
               const isAvailable = !('available' in config) || config.available !== false
               return (
                 <button
