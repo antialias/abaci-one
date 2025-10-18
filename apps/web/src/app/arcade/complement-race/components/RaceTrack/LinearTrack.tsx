@@ -142,10 +142,16 @@ export function LinearTrack({
           >
             {racer.icon}
             {activeBubble && (
-              <SpeechBubble
-                message={activeBubble}
-                onHide={() => dispatch({ type: 'CLEAR_AI_COMMENT', racerId: racer.id })}
-              />
+              <div
+                style={{
+                  transform: 'scaleX(-1)', // Counter-flip bubble to make text readable
+                }}
+              >
+                <SpeechBubble
+                  message={activeBubble}
+                  onHide={() => dispatch({ type: 'CLEAR_AI_COMMENT', racerId: racer.id })}
+                />
+              </div>
             )}
           </div>
         )
