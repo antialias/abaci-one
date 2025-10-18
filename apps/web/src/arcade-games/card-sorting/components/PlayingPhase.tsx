@@ -314,8 +314,8 @@ export function PlayingPhase() {
                 <div
                   dangerouslySetInnerHTML={{ __html: card.svgContent }}
                   className={css({
-                    width: '74px',
-                    height: '74px',
+                    width: '100%',
+                    height: '100%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -458,13 +458,12 @@ export function PlayingPhase() {
                             __html: card.svgContent,
                           }}
                           className={css({
-                            width: '70px',
-                            height: '70px',
+                            flex: 1,
+                            width: '100%',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             overflow: 'hidden',
-                            margin: '0 auto',
                             '& svg': {
                               width: '100%',
                               height: '100%',
