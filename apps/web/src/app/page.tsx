@@ -62,6 +62,7 @@ export default function HomePage() {
                   border: '2px solid',
                   borderColor: 'purple.500/30',
                   boxShadow: '0 25px 50px -12px rgba(139, 92, 246, 0.25)',
+                  color: '#1f2937',
                 })}
               >
                 <AbacusReact
@@ -76,12 +77,6 @@ export default function HomePage() {
                   soundVolume={0.4}
                   scaleFactor={2.2}
                   showNumbers={true}
-                  customStyles={{
-                    numerals: {
-                      color: '#1f2937',
-                      fontWeight: 'bold',
-                    },
-                  }}
                   onValueChange={(newValue: number) => setAbacusValue(newValue)}
                 />
               </div>
