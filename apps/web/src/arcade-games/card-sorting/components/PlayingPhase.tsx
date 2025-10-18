@@ -321,7 +321,10 @@ export function PlayingPhase() {
                     justifyContent: 'center',
                     '& svg': {
                       maxWidth: '100%',
+                      maxHeight: '100%',
                       height: 'auto',
+                      display: 'block',
+                      margin: '0 auto',
                     },
                   })}
                 />
@@ -456,10 +459,17 @@ export function PlayingPhase() {
                             __html: card.svgContent,
                           }}
                           className={css({
-                            width: '70px',
+                            width: '100%',
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             '& svg': {
-                              width: '100%',
+                              maxWidth: '70px',
+                              maxHeight: '100%',
                               height: 'auto',
+                              display: 'block',
+                              margin: '0 auto',
                             },
                           })}
                         />
