@@ -132,7 +132,7 @@ export function LinearTrack({
               position: 'absolute',
               left: `${aiPosition}%`,
               top: `${35 + index * 15}%`,
-              transform: 'translate(-50%, -50%)',
+              transform: 'translate(-50%, -50%) scaleX(-1)',
               fontSize: '28px',
               transition: 'left 0.2s linear',
               filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))',
