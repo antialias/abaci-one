@@ -78,7 +78,7 @@ export default function HomePage() {
                   showNumbers={true}
                   customStyles={{
                     numerals: {
-                      fill: '#1f2937',
+                      color: '#1f2937',
                       fontWeight: 'bold',
                     },
                   }}
