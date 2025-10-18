@@ -24,9 +24,9 @@ const manifest: GameManifest = {
   maxPlayers: 1, // Single player only
   difficulty: 'Intermediate',
   chips: ['🧠 Pattern Recognition', '🎯 Solo Challenge', '📊 Smart Scoring'],
-  color: 'teal',
-  gradient: 'linear-gradient(135deg, #ccfbf1, #99f6e4)',
-  borderColor: 'teal.200',
+  color: 'blue',
+  gradient: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+  borderColor: 'blue.200',
   available: true,
 }
 
