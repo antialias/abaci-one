@@ -29,6 +29,7 @@ describe('GameHUD', () => {
 
   const mockPassenger: Passenger = {
     id: 'passenger-1',
+    name: 'Test Passenger',
     avatar: '👨',
     originStationId: 'station-1',
     destinationStationId: 'station-2',

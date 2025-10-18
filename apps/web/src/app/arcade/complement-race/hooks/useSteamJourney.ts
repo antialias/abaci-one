@@ -92,37 +92,9 @@ export function useSteamJourney() {
 
       // Steam Sprint is infinite - no time limit
 
-      // Get decay rate based on timeout setting (skill level)
-      const decayRate =
-        MOMENTUM_DECAY_RATES[state.timeoutSetting as keyof typeof MOMENTUM_DECAY_RATES] ||
-        MOMENTUM_DECAY_RATES.normal
-
-      // Calculate momentum decay for this frame
-      const momentumLoss = (decayRate * deltaTime) / 1000
-
-      // Update momentum (don't go below 0)
-      const newMomentum = Math.max(0, state.momentum - momentumLoss)
-
-      // Calculate speed from momentum (% per second)
-      const speed = newMomentum * SPEED_MULTIPLIER
-
-      // Update train position (accumulate, never go backward)
-      // Allow position to go past 100% so entire train (including cars) can exit tunnel
-      const positionDelta = (speed * deltaTime) / 1000
-      const trainPosition = state.trainPosition + positionDelta
-
-      // Calculate pressure (0-150 PSI) - based on momentum as percentage of max
-      const maxMomentum = 100 // Theoretical max momentum
-      const pressure = Math.min(150, (newMomentum / maxMomentum) * 150)
-
-      // Update state
-      dispatch({
-        type: 'UPDATE_STEAM_JOURNEY',
-        momentum: newMomentum,
-        trainPosition,
-        pressure,
-        elapsedTime: elapsed,
-      })
+      // Train position, momentum, and pressure are all managed by the Provider's game loop
+      // This hook only reads those values and handles game logic (boarding, delivery, route completion)
+      const trainPosition = state.trainPosition
 
       // Check for passengers that should board
       // Passengers board when an EMPTY car reaches their station

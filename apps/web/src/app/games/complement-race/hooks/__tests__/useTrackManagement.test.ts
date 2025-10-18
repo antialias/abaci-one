@@ -52,6 +52,7 @@ describe('useTrackManagement', () => {
     mockPassengers = [
       {
         id: 'passenger-1',
+        name: 'Test Passenger',
         avatar: '👨',
         originStationId: 'station-1',
         destinationStationId: 'station-2',
@@ -73,6 +74,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -90,6 +93,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -107,6 +112,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -123,6 +130,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -142,6 +151,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
@@ -161,6 +172,8 @@ describe('useTrackManagement', () => {
           pathRef: mockPathRef,
           stations: mockStations,
           passengers: mockPassengers,
+          maxCars: 3,
+          carSpacing: 7,
         }),
       {
         initialProps: { route: 1, position: 0 },
@@ -187,6 +200,8 @@ describe('useTrackManagement', () => {
           pathRef: mockPathRef,
           stations: mockStations,
           passengers: mockPassengers,
+          maxCars: 3,
+          carSpacing: 7,
         }),
       {
         initialProps: { route: 1, position: 0 },
@@ -214,6 +229,8 @@ describe('useTrackManagement', () => {
           pathRef: mockPathRef,
           stations: mockStations,
           passengers: mockPassengers,
+          maxCars: 3,
+          carSpacing: 7,
         }),
       {
         initialProps: { route: 1, position: -5 },
@@ -233,6 +250,7 @@ describe('useTrackManagement', () => {
     const newPassengers: Passenger[] = [
       {
         id: 'passenger-2',
+        name: 'New Passenger',
         avatar: '👩',
         originStationId: 'station-1',
         destinationStationId: 'station-2',
@@ -273,6 +291,7 @@ describe('useTrackManagement', () => {
     const newPassengers: Passenger[] = [
       {
         id: 'passenger-2',
+        name: 'New Passenger',
         avatar: '👩',
         originStationId: 'station-1',
         destinationStationId: 'station-2',
@@ -354,6 +373,8 @@ describe('useTrackManagement', () => {
         pathRef: mockPathRef,
         stations: mockStations,
         passengers: mockPassengers,
+        maxCars: 3,
+        carSpacing: 7,
       })
     )
 
