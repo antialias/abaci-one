@@ -205,12 +205,6 @@ export class ComplementRaceValidator
       }
     }
 
-    // Generate AI opponents if enabled
-    const aiOpponents =
-      state.config.enableAI && state.config.aiOpponentCount > 0
-        ? this.generateAIOpponents(state.config.aiOpponentCount)
-        : []
-
     const newState: ComplementRaceState = {
       ...state,
       config: updatedConfig,
@@ -224,7 +218,7 @@ export class ComplementRaceValidator
       routeStartTime: state.config.style === 'sprint' ? Date.now() : null,
       raceStartTime: Date.now(), // Race starts immediately
       gameStartTime: Date.now(),
-      aiOpponents,
+      aiOpponents: [], // AI handled client-side
     }
 
     return { valid: true, newState }
@@ -361,15 +355,6 @@ export class ComplementRaceValidator
         ...state.currentQuestions,
         [playerId]: newQuestion,
       },
-    }
-
-    // Update AI opponents (make them progress at their speed)
-    if (state.config.enableAI && state.aiOpponents.length > 0) {
-      newState.aiOpponents = this.updateAIOpponents(
-        state.aiOpponents,
-        state.config.style,
-        state.config.raceGoal
-      )
     }
 
     // Check win conditions
@@ -779,66 +764,6 @@ export class ComplementRaceValidator
     return passengers
   }
 
-  private generateAIOpponents(count: number): Array<{
-    id: string
-    name: string
-    personality: 'competitive' | 'analytical'
-    position: number
-    speed: number
-    lastComment: string | null
-    lastCommentTime: number
-  }> {
-    const aiNames = ['Robo-Racer', 'Calculator', 'Speed Demon', 'Brain Bot']
-    const personalities: Array<'competitive' | 'analytical'> = ['competitive', 'analytical']
-
-    const opponents = []
-    for (let i = 0; i < Math.min(count, aiNames.length); i++) {
-      opponents.push({
-        id: `ai-${i}`,
-        name: aiNames[i],
-        personality: personalities[i % personalities.length],
-        position: 0,
-        speed: 0.8 + Math.random() * 0.4, // Speed multiplier 0.8-1.2
-        lastComment: null,
-        lastCommentTime: 0,
-      })
-    }
-
-    return opponents
-  }
-
-  private updateAIOpponents(
-    opponents: Array<{
-      id: string
-      name: string
-      personality: 'competitive' | 'analytical'
-      position: number
-      speed: number
-      lastComment: string | null
-      lastCommentTime: number
-    }>,
-    gameStyle: 'practice' | 'sprint' | 'survival',
-    raceGoal: number
-  ) {
-    return opponents.map((opponent) => {
-      let newPosition = opponent.position
-
-      if (gameStyle === 'practice') {
-        // AI moves forward based on their speed (simulates answering questions)
-        newPosition = Math.min(100, opponent.position + (100 / raceGoal) * opponent.speed)
-      } else if (gameStyle === 'survival') {
-        // AI always moves forward
-        newPosition = opponent.position + 4 * opponent.speed
-      }
-      // Sprint mode: AI doesn't participate (train journey is single-player focused)
-
-      return {
-        ...opponent,
-        position: newPosition,
-      }
-    })
-  }
-
   /**
    * Calculate the maximum number of passengers that will be on the train
    * concurrently at any given moment during the route
@@ -895,18 +820,12 @@ export class ComplementRaceValidator
 
     // Practice mode: First to reach goal
     if (config.style === 'practice') {
-      // Check human players
       for (const [playerId, player] of Object.entries(players)) {
         if (player.correctAnswers >= config.raceGoal) {
           return playerId
         }
       }
-      // Check AI opponents
-      for (const ai of state.aiOpponents) {
-        if (ai.position >= 100) {
-          return ai.id
-        }
-      }
+      // AI wins handled client-side via useAIRacers hook
     }
 
     // Sprint mode: Check route-based, score-based, or time-based win conditions
@@ -955,25 +874,17 @@ export class ComplementRaceValidator
     if (config.style === 'survival' && config.timeLimit) {
       const elapsed = state.raceStartTime ? (Date.now() - state.raceStartTime) / 1000 : 0
       if (elapsed >= config.timeLimit) {
-        // Find player or AI with highest position (most laps)
+        // Find player with highest position (most laps)
         let maxPosition = 0
         let winner: string | null = null
 
-        // Check human players
         for (const [playerId, player] of Object.entries(players)) {
           if (player.position > maxPosition) {
             maxPosition = player.position
             winner = playerId
           }
         }
-
-        // Check AI opponents
-        for (const ai of state.aiOpponents) {
-          if (ai.position > maxPosition) {
-            maxPosition = ai.position
-            winner = ai.id
-          }
-        }
+        // AI wins handled client-side via useAIRacers hook
 
         return winner
       }

@@ -317,6 +317,19 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   const [clientMomentum, setClientMomentum] = useState(10) // Start at 10 for gentle push
   const [clientPosition, setClientPosition] = useState(0)
   const [clientPressure, setClientPressure] = useState(0)
+  const [clientAIRacers, setClientAIRacers] = useState<
+    Array<{
+      id: string
+      name: string
+      position: number
+      speed: number
+      personality: 'competitive' | 'analytical'
+      icon: string
+      lastComment: number
+      commentCooldown: number
+      previousPosition: number
+    }>
+  >([])
   const lastUpdateRef = useRef(Date.now())
   const gameStartTimeRef = useRef(0)
 
@@ -388,17 +401,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       raceGoal: multiplayerState.config.raceGoal,
       timeLimit: multiplayerState.config.timeLimit ?? null,
       speedMultiplier: 1.0,
-      aiRacers: multiplayerState.aiOpponents.map((ai) => ({
-        id: ai.id,
-        name: ai.name,
-        position: ai.position,
-        speed: ai.speed,
-        personality: ai.personality,
-        icon: ai.personality === 'competitive' ? '🏃‍♂️' : '🏃',
-        lastComment: ai.lastCommentTime,
-        commentCooldown: 0,
-        previousPosition: ai.position,
-      })),
+      aiRacers: clientAIRacers, // Use client-side AI state
 
       // Sprint mode specific (all client-side for smooth movement)
       momentum: clientMomentum, // Client-only state with continuous decay
@@ -425,7 +428,15 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       adaptiveFeedback: localUIState.adaptiveFeedback,
       difficultyTracker: localUIState.difficultyTracker,
     }
-  }, [multiplayerState, localPlayerId, localUIState, clientPosition, clientPressure])
+  }, [
+    multiplayerState,
+    localPlayerId,
+    localUIState,
+    clientPosition,
+    clientPressure,
+    clientMomentum,
+    clientAIRacers,
+  ])
 
   // Initialize game start time when game becomes active
   useEffect(() => {
@@ -443,6 +454,41 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       gameStartTimeRef.current = 0
     }
   }, [compatibleState.isGameActive, compatibleState.style])
+
+  // Initialize AI racers when game starts
+  useEffect(() => {
+    if (compatibleState.isGameActive && multiplayerState.config.enableAI) {
+      const count = multiplayerState.config.aiOpponentCount
+      if (count > 0 && clientAIRacers.length === 0) {
+        const aiNames = ['Robo-Racer', 'Calculator', 'Speed Demon', 'Brain Bot']
+        const personalities: Array<'competitive' | 'analytical'> = ['competitive', 'analytical']
+
+        const newAI = []
+        for (let i = 0; i < Math.min(count, aiNames.length); i++) {
+          newAI.push({
+            id: `ai-${i}`,
+            name: aiNames[i],
+            personality: personalities[i % personalities.length] as 'competitive' | 'analytical',
+            position: 0,
+            speed: 0.8 + Math.random() * 0.4, // Speed multiplier 0.8-1.2
+            icon: personalities[i % personalities.length] === 'competitive' ? '🏃‍♂️' : '🏃',
+            lastComment: 0,
+            commentCooldown: 0,
+            previousPosition: 0,
+          })
+        }
+        setClientAIRacers(newAI)
+      }
+    } else if (!compatibleState.isGameActive) {
+      // Clear AI when game ends
+      setClientAIRacers([])
+    }
+  }, [
+    compatibleState.isGameActive,
+    multiplayerState.config.enableAI,
+    multiplayerState.config.aiOpponentCount,
+    clientAIRacers.length,
+  ])
 
   // Main client-side game loop: momentum decay and position calculation
   useEffect(() => {
@@ -757,8 +803,27 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
           })
           break
         }
+        case 'UPDATE_AI_POSITIONS': {
+          // Update client-side AI positions
+          if (action.positions && Array.isArray(action.positions)) {
+            setClientAIRacers((prevRacers) =>
+              prevRacers.map((racer) => {
+                const update = action.positions.find(
+                  (p: { id: string; position: number }) => p.id === racer.id
+                )
+                return update
+                  ? {
+                      ...racer,
+                      previousPosition: racer.position,
+                      position: update.position,
+                    }
+                  : racer
+              })
+            )
+          }
+          break
+        }
         // Other local actions that don't affect UI (can be ignored for now)
-        case 'UPDATE_AI_POSITIONS':
         case 'UPDATE_MOMENTUM':
         case 'UPDATE_TRAIN_POSITION':
         case 'UPDATE_STEAM_JOURNEY':
