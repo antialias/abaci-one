@@ -22,10 +22,9 @@ export function CircularTrack({ playerProgress, playerLap, aiRacers, aiLaps }: C
   const { playSound } = useSoundEffects()
   const [celebrationCooldown, setCelebrationCooldown] = useState<Set<string>>(new Set())
 
-  // Get the first active player's emoji
-  const activePlayers = Array.from(players.values()).filter((p) => p.id)
-  const firstActivePlayer = activePlayers[0]
-  const playerEmoji = firstActivePlayer?.emoji ?? '👤'
+  // Get the local player's emoji
+  const localPlayer = Array.from(players.values()).find((p) => p.isLocal)
+  const playerEmoji = localPlayer?.emoji ?? '👤'
   const [dimensions, setDimensions] = useState({ width: 600, height: 400 })
 
   // Update dimensions on mount and resize
