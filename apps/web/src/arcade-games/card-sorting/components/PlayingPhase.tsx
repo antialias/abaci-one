@@ -362,8 +362,14 @@ export function PlayingPhase() {
           <div
             className={css({
               display: 'flex',
-              flexDirection: 'column',
-              gap: '0.25rem',
+              flexWrap: 'wrap',
+              gap: '8px',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '15px',
+              background: 'rgba(255,255,255,0.7)',
+              borderRadius: '8px',
+              border: '2px dashed #2c5f76',
             })}
           >
             {/* Insert button before first position */}
@@ -402,9 +408,10 @@ export function PlayingPhase() {
               const isEmpty = card === null
 
               return (
-                <div key={index}>
+                <>
                   {/* Position slot */}
                   <div
+                    key={`slot-${index}`}
                     onClick={() => handleSlotClick(index)}
                     className={css({
                       width: '90px',
@@ -483,6 +490,7 @@ export function PlayingPhase() {
 
                   {/* Insert button after this position */}
                   <button
+                    key={`insert-${index + 1}`}
                     type="button"
                     onClick={() => handleInsertClick(index + 1)}
                     disabled={!selectedCardId}
@@ -498,7 +506,6 @@ export function PlayingPhase() {
                       cursor: selectedCardId ? 'pointer' : 'default',
                       opacity: selectedCardId ? 1 : 0.3,
                       transition: 'all 0.2s',
-                      marginTop: '0.25rem',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -511,7 +518,7 @@ export function PlayingPhase() {
                   >
                     +
                   </button>
-                </div>
+                </>
               )
             })}
           </div>
