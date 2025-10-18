@@ -18,7 +18,6 @@ function GamesPageContent() {
   // Get all players sorted by creation time
   const allPlayers = getAllPlayers().sort((a, b) => a.createdAt - b.createdAt)
 
-
   return (
     <div
       className={css({
