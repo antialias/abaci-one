@@ -109,7 +109,9 @@ export function clearRegistry(): void {
 import { memoryQuizGame } from '@/arcade-games/memory-quiz'
 import { matchingGame } from '@/arcade-games/matching'
 import { complementRaceGame } from '@/arcade-games/complement-race/index'
+import { cardSortingGame } from '@/arcade-games/card-sorting'
 
 registerGame(memoryQuizGame)
 registerGame(matchingGame)
 registerGame(complementRaceGame)
+registerGame(cardSortingGame)

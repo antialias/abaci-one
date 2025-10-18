@@ -14,8 +14,7 @@ import {
   DEFAULT_MATCHING_CONFIG,
   DEFAULT_MEMORY_QUIZ_CONFIG,
   DEFAULT_COMPLEMENT_RACE_CONFIG,
-  DEFAULT_NUMBER_GUESSER_CONFIG,
-  DEFAULT_MATH_SPRINT_CONFIG,
+  DEFAULT_CARD_SORTING_CONFIG,
 } from './game-configs'
 
 // Lazy-load game registry to avoid loading React components on server
@@ -51,10 +50,8 @@ function getDefaultGameConfig(gameName: ExtendedGameName): GameConfigByName[Exte
       return DEFAULT_MEMORY_QUIZ_CONFIG
     case 'complement-race':
       return DEFAULT_COMPLEMENT_RACE_CONFIG
-    case 'number-guesser':
-      return DEFAULT_NUMBER_GUESSER_CONFIG
-    case 'math-sprint':
-      return DEFAULT_MATH_SPRINT_CONFIG
+    case 'card-sorting':
+      return DEFAULT_CARD_SORTING_CONFIG
     default:
       throw new Error(`Unknown game: ${gameName}`)
   }

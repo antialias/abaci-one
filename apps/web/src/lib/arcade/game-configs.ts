@@ -15,6 +15,7 @@
 // Type-only imports (won't load React components at runtime)
 import type { memoryQuizGame } from '@/arcade-games/memory-quiz'
 import type { matchingGame } from '@/arcade-games/matching'
+import type { cardSortingGame } from '@/arcade-games/card-sorting'
 
 /**
  * Utility type: Extract config type from a game definition
@@ -37,6 +38,12 @@ export type MemoryQuizGameConfig = InferGameConfig<typeof memoryQuizGame>
  * INFERRED from matchingGame.defaultConfig
  */
 export type MatchingGameConfig = InferGameConfig<typeof matchingGame>
+
+/**
+ * Configuration for card-sorting (pattern recognition) game
+ * INFERRED from cardSortingGame.defaultConfig
+ */
+export type CardSortingGameConfig = InferGameConfig<typeof cardSortingGame>
 
 // ============================================================================
 // Legacy Games (Manual Type Definitions)
@@ -96,6 +103,7 @@ export type GameConfigByName = {
   // Modern games (inferred types)
   'memory-quiz': MemoryQuizGameConfig
   matching: MatchingGameConfig
+  'card-sorting': CardSortingGameConfig
 
   // Legacy games (manual types)
   'complement-race': ComplementRaceGameConfig
@@ -125,6 +133,12 @@ export const DEFAULT_MEMORY_QUIZ_CONFIG: MemoryQuizGameConfig = {
   displayTime: 2.0,
   selectedDifficulty: 'easy',
   playMode: 'cooperative',
+}
+
+export const DEFAULT_CARD_SORTING_CONFIG: CardSortingGameConfig = {
+  cardCount: 8,
+  showNumbers: true,
+  timeLimit: null,
 }
 
 export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {

@@ -40,8 +40,7 @@ export interface GameMove {
  */
 export type { MatchingMove } from '@/arcade-games/matching/types'
 export type { MemoryQuizMove } from '@/arcade-games/memory-quiz/types'
-export type { NumberGuesserMove } from '@/arcade-games/number-guesser/types'
-export type { MathSprintMove } from '@/arcade-games/math-sprint/types'
+export type { CardSortingMove } from '@/arcade-games/card-sorting/types'
 export type { ComplementRaceMove } from '@/arcade-games/complement-race/types'
 
 /**
@@ -49,8 +48,7 @@ export type { ComplementRaceMove } from '@/arcade-games/complement-race/types'
  */
 export type { MatchingState } from '@/arcade-games/matching/types'
 export type { MemoryQuizState } from '@/arcade-games/memory-quiz/types'
-export type { NumberGuesserState } from '@/arcade-games/number-guesser/types'
-export type { MathSprintState } from '@/arcade-games/math-sprint/types'
+export type { CardSortingState } from '@/arcade-games/card-sorting/types'
 export type { ComplementRaceState } from '@/arcade-games/complement-race/types'
 
 // Generic game state union (for backwards compatibility)

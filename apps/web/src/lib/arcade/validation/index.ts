@@ -12,7 +12,7 @@ export {
   validatorRegistry,
   matchingGameValidator,
   memoryQuizGameValidator,
-  numberGuesserValidator,
+  cardSortingValidator,
 } from '../validators'
 
 export type { GameName } from '../validators'
