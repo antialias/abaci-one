@@ -158,7 +158,7 @@ export default function RoomDetailPage() {
   const startGame = () => {
     if (!room) return
     // Navigate to the room game page
-    router.push('/arcade/room')
+    router.push('/arcade')
   }
 
   const joinRoom = async () => {

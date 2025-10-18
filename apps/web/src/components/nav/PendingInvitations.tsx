@@ -68,7 +68,7 @@ export function PendingInvitations({ onInvitationChange, currentRoomId }: Pendin
       // Join the room
       await joinRoom({ roomId: invitation.roomId })
       // Navigate to the room
-      router.push('/arcade/room')
+      router.push('/arcade')
       // Refresh invitations
       await fetchInvitations()
       onInvitationChange?.()

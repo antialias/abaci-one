@@ -231,7 +231,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
           password: roomPassword,
         })
         // Navigate to the game
-        router.push('/arcade/room')
+        router.push('/arcade')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to join room')
         setIsJoining(false)
@@ -261,7 +261,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
 
         // If user is already in this exact room, just navigate to game
         if (roomData && roomData.id === room.id) {
-          router.push('/arcade/room')
+          router.push('/arcade')
           return
         }
 
@@ -313,7 +313,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
   }
 
   const handleCancel = () => {
-    router.push('/arcade/room') // Stay in current room
+    router.push('/arcade') // Stay in current room
   }
 
   const handlePasswordSubmit = () => {

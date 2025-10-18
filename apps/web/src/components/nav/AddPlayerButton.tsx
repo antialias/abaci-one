@@ -80,7 +80,7 @@ export function AddPlayerButton({
           })
           // Close popover and navigate to room to choose game
           setShowPopover(false)
-          router.push('/arcade/room')
+          router.push('/arcade')
         },
         onError: (error) => {
           console.error('Failed to create room:', error)
@@ -111,7 +111,7 @@ export function AddPlayerButton({
             }
             // Close popover and navigate to room
             setShowPopover(false)
-            router.push('/arcade/room')
+            router.push('/arcade')
           },
         }
       )

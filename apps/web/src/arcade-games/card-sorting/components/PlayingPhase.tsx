@@ -264,13 +264,15 @@ export function PlayingPhase() {
           </h3>
           <div
             className={css({
-              display: 'grid',
-              gridTemplateColumns: {
-                base: '1',
-                sm: '2',
-                md: '3',
-              },
-              gap: '0.75rem',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '10px',
+              justifyContent: 'center',
+              padding: '15px',
+              background: 'rgba(255,255,255,0.5)',
+              borderRadius: '8px',
+              minHeight: '120px',
+              border: '2px dashed #2c5f76',
             })}
           >
             {state.availableCards.map((card) => (
@@ -278,27 +280,47 @@ export function PlayingPhase() {
                 key={card.id}
                 onClick={() => handleCardClick(card.id)}
                 className={css({
-                  padding: '0.5rem',
+                  width: '90px',
+                  height: '90px',
+                  padding: '8px',
                   border: '2px solid',
-                  borderColor: selectedCardId === card.id ? 'blue.500' : 'gray.300',
-                  borderRadius: '0.5rem',
-                  background: selectedCardId === card.id ? 'blue.50' : 'white',
+                  borderColor: selectedCardId === card.id ? '#1976d2' : 'transparent',
+                  borderRadius: '8px',
+                  background: selectedCardId === card.id ? '#e3f2fd' : 'white',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  transform: selectedCardId === card.id ? 'scale(1.05)' : 'scale(1)',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  position: 'relative',
+                  userSelect: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
                   _hover: {
-                    transform: 'scale(1.05)',
-                    borderColor: 'blue.500',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    transform: 'translateY(-5px)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                    borderColor: '#2c5f76',
                   },
                 })}
+                style={
+                  selectedCardId === card.id
+                    ? {
+                        transform: 'scale(1.1)',
+                        boxShadow: '0 6px 20px rgba(25, 118, 210, 0.3)',
+                      }
+                    : undefined
+                }
               >
                 <div
                   dangerouslySetInnerHTML={{ __html: card.svgContent }}
                   className={css({
                     width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     '& svg': {
-                      width: '100%',
+                      maxWidth: '100%',
                       height: 'auto',
                     },
                   })}
@@ -306,11 +328,15 @@ export function PlayingPhase() {
                 {state.numbersRevealed && (
                   <div
                     className={css({
-                      textAlign: 'center',
-                      marginTop: '0.5rem',
-                      fontSize: 'lg',
+                      position: 'absolute',
+                      top: '5px',
+                      right: '5px',
+                      background: '#ffc107',
+                      color: '#333',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '14px',
                       fontWeight: 'bold',
-                      color: 'gray.700',
                     })}
                   >
                     {card.number}

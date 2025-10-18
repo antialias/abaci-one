@@ -31,7 +31,7 @@ function getAllGameConfigs() {
       maxPlayers: gameDef.manifest.maxPlayers,
       description: gameDef.manifest.description,
       longDescription: gameDef.manifest.longDescription,
-      url: '/arcade/room', // Room page handles game selection through UI
+      url: '/arcade', // Arcade page handles game selection through UI
       icon: gameDef.manifest.icon,
       chips: gameDef.manifest.chips,
       color: gameDef.manifest.color,

@@ -1,128 +1,357 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { useRoomData, useSetRoomGame } from '@/hooks/useRoomData'
+import { GAMES_CONFIG } from '@/components/GameSelector'
+import type { GameType } from '@/components/GameSelector'
 import { PageWithNav } from '@/components/PageWithNav'
-import { css } from '../../../styled-system/css'
-import { EnhancedChampionArena } from '../../components/EnhancedChampionArena'
-import { FullscreenProvider, useFullscreen } from '../../contexts/FullscreenContext'
+import { css } from '../../../../styled-system/css'
+import { getAllGames, getGame, hasGame } from '@/lib/arcade/game-registry'
 
-function ArcadeContent() {
-  const { setFullscreenElement } = useFullscreen()
-  const arcadeRef = useRef<HTMLDivElement>(null)
+// Map GameType keys to internal game names
+// Note: "battle-arena" removed - now handled by game registry as "matching"
+const GAME_TYPE_TO_NAME: Record<GameType, string> = {
+  'complement-race': 'complement-race',
+  'master-organizer': 'master-organizer',
+}
 
-  useEffect(() => {
-    // Register this component's main div as the fullscreen element
-    if (arcadeRef.current) {
-      setFullscreenElement(arcadeRef.current)
-    }
-  }, [setFullscreenElement])
+/**
+ * /arcade - Renders the game for the user's current room
+ * Since users can only be in one room at a time, this is a simple singular route
+ *
+ * Shows game selection when no game is set, then shows the game itself once selected.
+ * URL never changes - it's always /arcade regardless of selection, setup, or gameplay.
+ *
+ * Note: We show a friendly message with a link if no room exists to avoid navigation loops.
+ *
+ * Note: ModerationNotifications is handled by PageWithNav inside each game component,
+ * so we don't need to render it here.
+ */
+export default function RoomPage() {
+  const router = useRouter()
+  const { roomData, isLoading } = useRoomData()
+  const { mutate: setRoomGame } = useSetRoomGame()
 
-  return (
-    <div
-      ref={arcadeRef}
-      className={css({
-        minHeight: 'calc(100vh - 80px)', // Account for mini nav height
-        background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
-        position: 'relative',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        py: { base: '4', md: '6' },
-      })}
-    >
-      {/* Animated background elements */}
+  // Show loading state
+  if (isLoading) {
+    return (
       <div
-        className={css({
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundImage: `
-          radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-          radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-          radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%)
-        `,
-          animation: 'arcadeFloat 20s ease-in-out infinite',
-        })}
-      />
-
-      {/* Main Champion Arena - takes remaining space */}
-      <div
-        className={css({
-          flex: 1,
+        style={{
           display: 'flex',
-          px: { base: '2', md: '4' },
-          position: 'relative',
-          zIndex: 1,
-          minHeight: 0, // Important for flex children
-        })}
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          fontSize: '18px',
+          color: '#666',
+        }}
       >
-        <EnhancedChampionArena
-          onConfigurePlayer={() => {}}
+        Loading room...
+      </div>
+    )
+  }
+
+  // Show error if no room (instead of redirecting)
+  if (!roomData) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          fontSize: '18px',
+          color: '#666',
+          gap: '1rem',
+        }}
+      >
+        <div>No active room found</div>
+        <a
+          href="/arcade"
+          style={{
+            color: '#3b82f6',
+            textDecoration: 'underline',
+          }}
+        >
+          Go to Champion Arena
+        </a>
+      </div>
+    )
+  }
+
+  // Show game selection if no game is set
+  if (!roomData.gameName) {
+    const handleGameSelect = (gameType: GameType) => {
+      console.log('[RoomPage] handleGameSelect called with gameType:', gameType)
+
+      // Check if it's a registry game first
+      if (hasGame(gameType)) {
+        const gameDef = getGame(gameType)
+        if (!gameDef?.manifest.available) {
+          console.log('[RoomPage] Registry game not available, blocking selection')
+          return
+        }
+
+        console.log('[RoomPage] Selecting registry game:', gameType)
+        setRoomGame({
+          roomId: roomData.id,
+          gameName: gameType, // Use the game name directly for registry games
+        })
+        return
+      }
+
+      // Legacy game handling
+      const gameConfig = GAMES_CONFIG[gameType as keyof typeof GAMES_CONFIG]
+      if (!gameConfig) {
+        console.log('[RoomPage] Unknown game type:', gameType)
+        return
+      }
+
+      console.log('[RoomPage] Game config:', {
+        name: gameConfig.name,
+        available: 'available' in gameConfig ? gameConfig.available : true,
+      })
+
+      if ('available' in gameConfig && gameConfig.available === false) {
+        console.log('[RoomPage] Game not available, blocking selection')
+        return // Don't allow selecting unavailable games
+      }
+
+      // Map GameType to internal game name
+      const internalGameName = GAME_TYPE_TO_NAME[gameType]
+      console.log('[RoomPage] Mapping:', {
+        gameType,
+        internalGameName,
+        mappingExists: !!internalGameName,
+      })
+
+      console.log('[RoomPage] Calling setRoomGame with:', {
+        roomId: roomData.id,
+        gameName: internalGameName,
+        preservingGameConfig: true,
+      })
+
+      // Don't pass gameConfig - we want to preserve existing settings for all games
+      setRoomGame({
+        roomId: roomData.id,
+        gameName: internalGameName,
+      })
+    }
+
+    return (
+      <PageWithNav
+        navTitle="Choose Game"
+        navEmoji="🎮"
+        emphasizePlayerSelection={true}
+        onExitSession={() => router.push('/arcade')}
+      >
+        <div
           className={css({
-            width: '100%',
-            height: '100%',
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%)',
             display: 'flex',
             flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '4',
           })}
-        />
-      </div>
-    </div>
-  )
-}
+        >
+          <h1
+            className={css({
+              fontSize: { base: '2xl', md: '3xl' },
+              fontWeight: 'bold',
+              color: 'white',
+              mb: '8',
+              textAlign: 'center',
+            })}
+          >
+            Choose a Game
+          </h1>
 
-function ArcadePageWithRedirect() {
-  return (
-    <PageWithNav navTitle="Champion Arena" navEmoji="🏟️" emphasizePlayerSelection={true}>
-      <ArcadeContent />
-    </PageWithNav>
-  )
-}
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: { base: '1fr', md: 'repeat(2, 1fr)' },
+              gap: '4',
+              maxWidth: '800px',
+              width: '100%',
+            })}
+          >
+            {/* Legacy games */}
+            {Object.entries(GAMES_CONFIG).map(([gameType, config]) => {
+              const isAvailable = !('available' in config) || config.available !== false
+              return (
+                <button
+                  key={gameType}
+                  onClick={() => handleGameSelect(gameType as GameType)}
+                  disabled={!isAvailable}
+                  className={css({
+                    background: config.gradient,
+                    border: '2px solid',
+                    borderColor: config.borderColor || 'blue.200',
+                    borderRadius: '2xl',
+                    padding: '6',
+                    cursor: !isAvailable ? 'not-allowed' : 'pointer',
+                    opacity: !isAvailable ? 0.5 : 1,
+                    transition: 'all 0.3s ease',
+                    _hover: !isAvailable
+                      ? {}
+                      : {
+                          transform: 'translateY(-4px) scale(1.02)',
+                          boxShadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
+                        },
+                  })}
+                >
+                  <div
+                    className={css({
+                      fontSize: '4xl',
+                      mb: '2',
+                    })}
+                  >
+                    {config.icon}
+                  </div>
+                  <h3
+                    className={css({
+                      fontSize: 'xl',
+                      fontWeight: 'bold',
+                      color: 'gray.900',
+                      mb: '2',
+                    })}
+                  >
+                    {config.name}
+                  </h3>
+                  <p
+                    className={css({
+                      fontSize: 'sm',
+                      color: 'gray.600',
+                    })}
+                  >
+                    {config.description}
+                  </p>
+                </button>
+              )
+            })}
 
-export default function ArcadePage() {
-  return (
-    <FullscreenProvider>
-      <ArcadePageWithRedirect />
-    </FullscreenProvider>
-  )
-}
+            {/* Registry games */}
+            {getAllGames().map((gameDef) => {
+              const isAvailable = gameDef.manifest.available
+              return (
+                <button
+                  key={gameDef.manifest.name}
+                  onClick={() => handleGameSelect(gameDef.manifest.name)}
+                  disabled={!isAvailable}
+                  className={css({
+                    background: gameDef.manifest.gradient,
+                    border: '2px solid',
+                    borderColor: gameDef.manifest.borderColor,
+                    borderRadius: '2xl',
+                    padding: '6',
+                    cursor: !isAvailable ? 'not-allowed' : 'pointer',
+                    opacity: !isAvailable ? 0.5 : 1,
+                    transition: 'all 0.3s ease',
+                    _hover: !isAvailable
+                      ? {}
+                      : {
+                          transform: 'translateY(-4px) scale(1.02)',
+                          boxShadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
+                        },
+                  })}
+                >
+                  <div
+                    className={css({
+                      fontSize: '4xl',
+                      mb: '2',
+                    })}
+                  >
+                    {gameDef.manifest.icon}
+                  </div>
+                  <h3
+                    className={css({
+                      fontSize: 'xl',
+                      fontWeight: 'bold',
+                      color: 'gray.900',
+                      mb: '2',
+                    })}
+                  >
+                    {gameDef.manifest.displayName}
+                  </h3>
+                  <p
+                    className={css({
+                      fontSize: 'sm',
+                      color: 'gray.600',
+                    })}
+                  >
+                    {gameDef.manifest.description}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </PageWithNav>
+    )
+  }
 
-// Arcade-specific animations
-const arcadeAnimations = `
-@keyframes arcadeFloat {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-    opacity: 0.7;
-  }
-  33% {
-    transform: translateY(-20px) rotate(1deg);
-    opacity: 1;
-  }
-  66% {
-    transform: translateY(-10px) rotate(-1deg);
-    opacity: 0.8;
-  }
-}
+  // Check if this is a registry game first
+  if (hasGame(roomData.gameName)) {
+    const gameDef = getGame(roomData.gameName)
+    if (!gameDef) {
+      return (
+        <PageWithNav
+          navTitle="Game Not Found"
+          navEmoji="⚠️"
+          emphasizePlayerSelection={true}
+          onExitSession={() => router.push('/arcade')}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100vh',
+              fontSize: '18px',
+              color: '#666',
+            }}
+          >
+            Game "{roomData.gameName}" not found in registry
+          </div>
+        </PageWithNav>
+      )
+    }
 
-@keyframes arcadePulse {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(96, 165, 250, 0.3);
+    // Render registry game dynamically
+    const { Provider, GameComponent } = gameDef
+    return (
+      <Provider>
+        <GameComponent />
+      </Provider>
+    )
   }
-  50% {
-    box-shadow: 0 0 40px rgba(96, 165, 250, 0.6);
-  }
-}
-`
 
-// Inject arcade animations
-if (typeof document !== 'undefined' && !document.getElementById('arcade-animations')) {
-  const style = document.createElement('style')
-  style.id = 'arcade-animations'
-  style.textContent = arcadeAnimations
-  document.head.appendChild(style)
+  // Render legacy games based on room's gameName
+  switch (roomData.gameName) {
+    // TODO: Add other legacy games (complement-race, etc.) once migrated
+    default:
+      return (
+        <PageWithNav
+          navTitle="Game Not Available"
+          navEmoji="⚠️"
+          emphasizePlayerSelection={true}
+          onExitSession={() => router.push('/arcade')}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100vh',
+              fontSize: '18px',
+              color: '#666',
+            }}
+          >
+            Game "{roomData.gameName}" not yet supported
+          </div>
+        </PageWithNav>
+      )
+  }
 }

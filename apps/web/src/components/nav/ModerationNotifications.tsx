@@ -833,7 +833,7 @@ export function ModerationNotifications({
                   // Close the modal
                   onClose()
                   // Navigate to the room
-                  router.push('/arcade/room')
+                  router.push('/arcade')
                 } catch (error) {
                   console.error('Failed to join room:', error)
                   showError(
