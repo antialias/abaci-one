@@ -812,6 +812,11 @@ export class ComplementRaceValidator
   private checkWinCondition(state: ComplementRaceState): string | null {
     const { config, players } = state
 
+    // Infinite mode: Never end the game
+    if (config.winCondition === 'infinite') {
+      return null
+    }
+
     // Practice mode: First to reach goal
     if (config.style === 'practice') {
       for (const [playerId, player] of Object.entries(players)) {

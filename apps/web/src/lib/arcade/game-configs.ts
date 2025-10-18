@@ -89,7 +89,7 @@ export interface ComplementRaceGameConfig {
   raceGoal: number // questions to win practice mode (default 20)
 
   // Win Conditions
-  winCondition: 'route-based' | 'score-based' | 'time-based'
+  winCondition: 'route-based' | 'score-based' | 'time-based' | 'infinite'
   targetScore?: number // for score-based (e.g., 100)
   timeLimit?: number // for time-based (e.g., 300 seconds)
   routeCount?: number // for route-based (e.g., 3 routes)
@@ -171,7 +171,7 @@ export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {
   raceGoal: 20,
 
   // Win conditions
-  winCondition: 'route-based',
+  winCondition: 'infinite', // Sprint mode is infinite by default (Steam Sprint)
   routeCount: 3,
   targetScore: 100,
   timeLimit: 300,

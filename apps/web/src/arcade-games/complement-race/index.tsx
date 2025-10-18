@@ -41,7 +41,7 @@ const defaultConfig: ComplementRaceConfig = {
   passengerCount: 6,
   maxConcurrentPassengers: 3,
   raceGoal: 20,
-  winCondition: 'route-based',
+  winCondition: 'infinite', // Sprint mode is infinite by default (Steam Sprint)
   routeCount: 3,
   targetScore: 100,
   timeLimit: 300,
