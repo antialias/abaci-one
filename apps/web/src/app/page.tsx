@@ -162,57 +162,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Color Scheme Showcase */}
+        {/* Main content container */}
         <div className={container({ maxW: '7xl', px: '4', py: '12' })}>
-          <section className={stack({ gap: '8' })}>
-            <div className={css({ textAlign: 'center' })}>
-              <h2
-                className={css({
-                  fontSize: { base: '2xl', md: '3xl' },
-                  fontWeight: 'bold',
-                  color: 'white',
-                  mb: '3',
-                })}
-              >
-                Beautiful Color Schemes
-              </h2>
-              <p className={css({ color: 'gray.400', fontSize: 'lg' })}>
-                Choose from multiple visual styles to enhance learning
-              </p>
-            </div>
-
-            <div className={grid({ columns: { base: 1, sm: 2, lg: 4 }, gap: '6' })}>
-              <ColorSchemeCard
-                title="Monochrome"
-                description="Classic, minimalist design"
-                colorScheme="monochrome"
-                value={42}
-                beadShape="diamond"
-              />
-              <ColorSchemeCard
-                title="Place Value"
-                description="Each column has its own color"
-                colorScheme="place-value"
-                value={789}
-                beadShape="circle"
-              />
-              <ColorSchemeCard
-                title="Heaven & Earth"
-                description="Distinct heaven and earth beads"
-                colorScheme="heaven-earth"
-                value={156}
-                beadShape="square"
-              />
-              <ColorSchemeCard
-                title="Alternating"
-                description="Alternating column colors"
-                colorScheme="alternating"
-                value={234}
-                beadShape="diamond"
-              />
-            </div>
-          </section>
-
           {/* Arcade Games Section */}
           <section className={stack({ gap: '6', mt: '16' })}>
             <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
@@ -313,36 +264,6 @@ export default function HomePage() {
               accentColor="blue"
             />
           </div>
-
-          {/* Stats Banner */}
-          <section
-            className={css({
-              bg: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%)',
-              rounded: '2xl',
-              p: '10',
-              mt: '16',
-              border: '2px solid',
-              borderColor: 'purple.500/20',
-            })}
-          >
-            <h2
-              className={css({
-                fontSize: { base: 'xl', md: '2xl' },
-                fontWeight: 'bold',
-                mb: '8',
-                textAlign: 'center',
-                color: 'white',
-              })}
-            >
-              Complete Soroban Learning Platform
-            </h2>
-            <div className={grid({ columns: { base: 2, md: 4 }, gap: '8', textAlign: 'center' })}>
-              <StatItem number="4" label="Arcade Games" />
-              <StatItem number="8" label="Max Players" />
-              <StatItem number="3" label="Learning Modes" />
-              <StatItem number="4+" label="Export Formats" />
-            </div>
-          </section>
         </div>
       </div>
     </PageWithNav>
@@ -539,26 +460,6 @@ function FeaturePanel({
       >
         {ctaText}
       </Link>
-    </div>
-  )
-}
-
-function StatItem({ number, label }: { number: string; label: string }) {
-  return (
-    <div>
-      <div
-        className={css({
-          fontSize: { base: '3xl', md: '4xl' },
-          fontWeight: 'bold',
-          mb: '2',
-          background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-          backgroundClip: 'text',
-          color: 'transparent',
-        })}
-      >
-        {number}
-      </div>
-      <div className={css({ fontSize: 'sm', color: 'gray.300' })}>{label}</div>
     </div>
   )
 }
