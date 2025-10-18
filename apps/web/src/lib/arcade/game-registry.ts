@@ -106,14 +106,10 @@ export function clearRegistry(): void {
 // Game Registrations
 // ============================================================================
 
-import { numberGuesserGame } from '@/arcade-games/number-guesser'
-import { mathSprintGame } from '@/arcade-games/math-sprint'
 import { memoryQuizGame } from '@/arcade-games/memory-quiz'
 import { matchingGame } from '@/arcade-games/matching'
 import { complementRaceGame } from '@/arcade-games/complement-race/index'
 
-registerGame(numberGuesserGame)
-registerGame(mathSprintGame)
 registerGame(memoryQuizGame)
 registerGame(matchingGame)
 registerGame(complementRaceGame)

@@ -2,7 +2,7 @@
  * Shared game configuration types
  *
  * ARCHITECTURE: Phase 3 - Type Inference
- * - Modern games (number-guesser, math-sprint, memory-quiz, matching): Types inferred from game definitions
+ * - Modern games (memory-quiz, matching): Types inferred from game definitions
  * - Legacy games (complement-race): Manual types until migrated
  *
  * These types are used across:
@@ -13,8 +13,6 @@
  */
 
 // Type-only imports (won't load React components at runtime)
-import type { numberGuesserGame } from '@/arcade-games/number-guesser'
-import type { mathSprintGame } from '@/arcade-games/math-sprint'
 import type { memoryQuizGame } from '@/arcade-games/memory-quiz'
 import type { matchingGame } from '@/arcade-games/matching'
 
@@ -27,18 +25,6 @@ type InferGameConfig<T> = T extends { defaultConfig: infer Config } ? Config : n
 // ============================================================================
 // Modern Games (Type Inference from Game Definitions)
 // ============================================================================
-
-/**
- * Configuration for number-guesser game
- * INFERRED from numberGuesserGame.defaultConfig
- */
-export type NumberGuesserGameConfig = InferGameConfig<typeof numberGuesserGame>
-
-/**
- * Configuration for math-sprint game
- * INFERRED from mathSprintGame.defaultConfig
- */
-export type MathSprintGameConfig = InferGameConfig<typeof mathSprintGame>
 
 /**
  * Configuration for memory-quiz (soroban lightning) game
@@ -108,8 +94,6 @@ export interface ComplementRaceGameConfig {
  */
 export type GameConfigByName = {
   // Modern games (inferred types)
-  'number-guesser': NumberGuesserGameConfig
-  'math-sprint': MathSprintGameConfig
   'memory-quiz': MemoryQuizGameConfig
   matching: MatchingGameConfig
 
@@ -175,16 +159,4 @@ export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {
   routeCount: 3,
   targetScore: 100,
   timeLimit: 300,
-}
-
-export const DEFAULT_NUMBER_GUESSER_CONFIG: NumberGuesserGameConfig = {
-  minNumber: 1,
-  maxNumber: 100,
-  roundsToWin: 3,
-}
-
-export const DEFAULT_MATH_SPRINT_CONFIG: MathSprintGameConfig = {
-  difficulty: 'medium',
-  questionsPerRound: 10,
-  timePerQuestion: 30,
 }
