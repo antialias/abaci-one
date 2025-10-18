@@ -280,8 +280,8 @@ export function PlayingPhase() {
                 key={card.id}
                 onClick={() => handleCardClick(card.id)}
                 className={css({
-                  width: '90px',
-                  height: '90px',
+                  width: '140px',
+                  height: '140px',
                   padding: '8px',
                   border: '2px solid',
                   borderColor: selectedCardId === card.id ? '#1976d2' : 'transparent',
@@ -416,8 +416,8 @@ export function PlayingPhase() {
                     key={`slot-${index}`}
                     onClick={() => handleSlotClick(index)}
                     className={css({
-                      width: '90px',
-                      height: '110px',
+                      width: '140px',
+                      height: '160px',
                       padding: '0.5rem',
                       borderRadius: '8px',
                       border: '2px solid',
