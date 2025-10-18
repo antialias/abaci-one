@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { PageWithNav } from '@/components/PageWithNav'
-import { AbacusReact } from '@soroban/abacus-react'
+import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
 
 export default function HomePage() {
   const [abacusValue, setAbacusValue] = useState(1234567)
+  const appConfig = useAbacusConfig()
   return (
     <PageWithNav navTitle="Soroban Mastery Platform" navEmoji="🧮">
       <div className={css({ bg: 'gray.900', minHeight: '100vh' })}>
@@ -53,9 +54,7 @@ export default function HomePage() {
               <div
                 className={css({
                   display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '4',
+                  justifyContent: 'center',
                   my: '10',
                   p: '8',
                   bg: 'white',
@@ -65,22 +64,12 @@ export default function HomePage() {
                   boxShadow: '0 25px 50px -12px rgba(139, 92, 246, 0.25)',
                 })}
               >
-                <div
-                  className={css({
-                    fontSize: 'lg',
-                    fontWeight: 'semibold',
-                    color: 'gray.700',
-                    mb: '2',
-                  })}
-                >
-                  Click the beads to interact!
-                </div>
                 <AbacusReact
                   value={abacusValue}
                   columns={7}
-                  beadShape="diamond"
-                  colorScheme="place-value"
-                  hideInactiveBeads={false}
+                  beadShape={appConfig.beadShape}
+                  colorScheme={appConfig.colorScheme}
+                  hideInactiveBeads={appConfig.hideInactiveBeads}
                   interactive={true}
                   animated={true}
                   soundEnabled={true}
