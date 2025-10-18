@@ -76,7 +76,7 @@ export default function HomePage() {
                   Click the beads to interact!
                 </div>
                 <AbacusReact
-                  value={abacusValue}
+                  defaultValue={1234567}
                   columns={7}
                   beadShape="diamond"
                   colorScheme="place-value"
