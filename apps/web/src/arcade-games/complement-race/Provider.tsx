@@ -400,7 +400,12 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       // Race mechanics
       raceGoal: multiplayerState.config.raceGoal,
       timeLimit: multiplayerState.config.timeLimit ?? null,
-      speedMultiplier: 1.0,
+      speedMultiplier:
+        multiplayerState.config.style === 'practice'
+          ? 0.7
+          : multiplayerState.config.style === 'sprint'
+            ? 0.9
+            : 1.0, // Base speed multipliers by mode
       aiRacers: clientAIRacers, // Use client-side AI state
 
       // Sprint mode specific (all client-side for smooth movement)
@@ -460,17 +465,19 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     if (compatibleState.isGameActive && multiplayerState.config.enableAI) {
       const count = multiplayerState.config.aiOpponentCount
       if (count > 0 && clientAIRacers.length === 0) {
-        const aiNames = ['Robo-Racer', 'Calculator', 'Speed Demon', 'Brain Bot']
+        const aiNames = ['Swift AI', 'Math Bot', 'Speed Demon', 'Brain Bot']
         const personalities: Array<'competitive' | 'analytical'> = ['competitive', 'analytical']
 
         const newAI = []
         for (let i = 0; i < Math.min(count, aiNames.length); i++) {
+          // Use original balanced speeds: 0.32 for Swift AI, 0.2 for Math Bot
+          const baseSpeed = i === 0 ? 0.32 : 0.2
           newAI.push({
             id: `ai-${i}`,
             name: aiNames[i],
             personality: personalities[i % personalities.length] as 'competitive' | 'analytical',
             position: 0,
-            speed: 0.8 + Math.random() * 0.4, // Speed multiplier 0.8-1.2
+            speed: baseSpeed, // Balanced speed from original single-player version
             icon: personalities[i % personalities.length] === 'competitive' ? '🏃‍♂️' : '🏃',
             lastComment: 0,
             commentCooldown: 0,
