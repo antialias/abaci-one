@@ -25,7 +25,7 @@ const manifest: GameManifest = {
   difficulty: 'Intermediate',
   chips: ['🧠 Pattern Recognition', '🎯 Solo Challenge', '📊 Smart Scoring'],
   color: 'teal',
-  gradient: 'linear-gradient(135deg, #99f6e4, #5eead4)',
+  gradient: 'linear-gradient(135deg, #ccfbf1, #99f6e4)',
   borderColor: 'teal.200',
   available: true,
 }
