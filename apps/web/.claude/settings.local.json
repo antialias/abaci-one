@@ -100,7 +100,8 @@
       "Bash(do gh run list --limit 1 --workflow=\"Build and Deploy\" --json conclusion,status --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\")\"\"')",
       "WebFetch(domain:abaci.one)",
       "Bash(do gh run list --limit 1 --workflow=\"Build and Deploy\" --json conclusion,status,databaseId --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\") - Run ID: \\(.databaseId)\"\"')",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(do gh run list --limit 1 --workflow=\"Build and Deploy\" --json conclusion,status,databaseId --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\") - Run \\(.databaseId)\"\"')"
     ],
     "deny": [],
     "ask": []
