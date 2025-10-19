@@ -379,7 +379,7 @@ export default function HomePage() {
               >
                 Your Journey
               </h2>
-              <p className={css({ color: 'gray.400', fontSize: 'md' })}>
+              <p className={css({ color: 'gray.200', fontSize: 'md' })}>
                 Progress from beginner to master
               </p>
             </div>
@@ -426,7 +426,7 @@ export default function HomePage() {
                     >
                       {stage.level}
                     </div>
-                    <div className={css({ fontSize: 'sm', color: 'gray.400' })}>{stage.label}</div>
+                    <div className={css({ fontSize: 'sm', color: 'gray.200' })}>{stage.label}</div>
                     {i < 3 && (
                       <div
                         className={css({
@@ -434,7 +434,7 @@ export default function HomePage() {
                           position: 'absolute',
                           right: '-50%',
                           fontSize: 'xl',
-                          color: 'gray.600',
+                          color: 'gray.400',
                         })}
                       >
                         →
@@ -448,7 +448,7 @@ export default function HomePage() {
                   mt: '6',
                   textAlign: 'center',
                   fontSize: 'sm',
-                  color: 'gray.500',
+                  color: 'gray.300',
                   fontStyle: 'italic',
                 })}
               >
