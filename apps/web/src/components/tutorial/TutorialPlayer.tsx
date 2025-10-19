@@ -216,6 +216,8 @@ interface TutorialPlayerProps {
   isDebugMode?: boolean
   showDebugPanel?: boolean
   hideNavigation?: boolean
+  abacusColumns?: number
+  theme?: 'light' | 'dark'
   onStepChange?: (stepIndex: number, step: TutorialStep) => void
   onStepComplete?: (stepIndex: number, step: TutorialStep, success: boolean) => void
   onTutorialComplete?: (score: number, timeSpent: number) => void
@@ -229,6 +231,8 @@ function TutorialPlayerContent({
   isDebugMode = false,
   showDebugPanel = false,
   hideNavigation = false,
+  abacusColumns = 5,
+  theme = 'light',
   onStepChange,
   onStepComplete,
   onTutorialComplete,
@@ -1319,11 +1323,18 @@ function TutorialPlayerContent({
                     fontSize: '2xl',
                     fontWeight: 'bold',
                     mb: 2,
+                    color: theme === 'dark' ? 'gray.200' : 'gray.900',
                   })}
                 >
                   {currentStep.problem}
                 </h2>
-                <p className={css({ fontSize: 'lg', color: 'gray.700', mb: 4 })}>
+                <p
+                  className={css({
+                    fontSize: 'lg',
+                    color: theme === 'dark' ? 'gray.400' : 'gray.700',
+                    mb: 4,
+                  })}
+                >
                   {currentStep.description}
                 </p>
                 {/* Hide action description for multi-step problems since it duplicates pedagogical decomposition */}
@@ -1341,12 +1352,19 @@ function TutorialPlayerContent({
                     className={css({
                       p: 5,
                       background:
-                        'linear-gradient(135deg, rgba(255,248,225,0.95) 0%, rgba(254,252,232,0.95) 50%, rgba(255,245,157,0.15) 100%)',
+                        theme === 'dark'
+                          ? 'linear-gradient(135deg, rgba(40,40,50,0.6) 0%, rgba(50,50,60,0.6) 50%, rgba(60,50,70,0.3) 100%)'
+                          : 'linear-gradient(135deg, rgba(255,248,225,0.95) 0%, rgba(254,252,232,0.95) 50%, rgba(255,245,157,0.15) 100%)',
                       backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(251,191,36,0.3)',
+                      border:
+                        theme === 'dark'
+                          ? '1px solid rgba(255,255,255,0.1)'
+                          : '1px solid rgba(251,191,36,0.3)',
                       borderRadius: 'xl',
                       boxShadow:
-                        '0 8px 32px rgba(251,191,36,0.1), 0 2px 8px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.6)',
+                        theme === 'dark'
+                          ? '0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
+                          : '0 8px 32px rgba(251,191,36,0.1), 0 2px 8px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.6)',
                       position: 'relative',
                       maxW: '600px',
                       w: 'full',
@@ -1356,7 +1374,9 @@ function TutorialPlayerContent({
                         inset: '0',
                         borderRadius: 'xl',
                         background:
-                          'linear-gradient(135deg, rgba(251,191,36,0.1) 0%, rgba(168,85,247,0.05) 100%)',
+                          theme === 'dark'
+                            ? 'linear-gradient(135deg, rgba(100,100,120,0.1) 0%, rgba(80,60,100,0.05) 100%)'
+                            : 'linear-gradient(135deg, rgba(251,191,36,0.1) 0%, rgba(168,85,247,0.05) 100%)',
                         zIndex: -1,
                       },
                     })}
@@ -1365,10 +1385,10 @@ function TutorialPlayerContent({
                       className={css({
                         fontSize: 'base',
                         fontWeight: '600',
-                        color: 'amber.900',
+                        color: theme === 'dark' ? 'gray.300' : 'amber.900',
                         mb: 4,
                         letterSpacing: 'wide',
-                        textShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                        textShadow: theme === 'dark' ? 'none' : '0 1px 2px rgba(0,0,0,0.1)',
                       })}
                     >
                       Guidance
@@ -1381,18 +1401,25 @@ function TutorialPlayerContent({
                           mb: 4,
                           p: 3,
                           background:
-                            'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(248,250,252,0.9) 100%)',
-                          border: '1px solid rgba(203,213,225,0.4)',
+                            theme === 'dark'
+                              ? 'linear-gradient(135deg, rgba(50,50,60,0.4) 0%, rgba(40,40,50,0.5) 100%)'
+                              : 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(248,250,252,0.9) 100%)',
+                          border:
+                            theme === 'dark'
+                              ? '1px solid rgba(255,255,255,0.1)'
+                              : '1px solid rgba(203,213,225,0.4)',
                           borderRadius: 'lg',
                           boxShadow:
-                            '0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7)',
+                            theme === 'dark'
+                              ? '0 1px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
+                              : '0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.7)',
                           backdropFilter: 'blur(4px)',
                         })}
                       >
                         <div
                           className={css({
                             fontSize: 'base',
-                            color: 'slate.800',
+                            color: theme === 'dark' ? 'gray.300' : 'slate.800',
                             fontFamily: 'mono',
                             fontWeight: '500',
                             letterSpacing: 'tight',
@@ -1411,7 +1438,7 @@ function TutorialPlayerContent({
                     <div
                       className={css({
                         fontSize: 'sm',
-                        color: 'amber.800',
+                        color: theme === 'dark' ? 'gray.400' : 'amber.800',
                         fontWeight: '500',
                         lineHeight: '1.6',
                       })}
@@ -1489,17 +1516,17 @@ function TutorialPlayerContent({
               {/* Abacus */}
               <div
                 className={css({
-                  bg: 'white',
+                  bg: theme === 'dark' ? 'rgba(30, 30, 40, 0.4)' : 'white',
                   border: '2px solid',
-                  borderColor: 'gray.200',
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'gray.200',
                   borderRadius: 'lg',
                   p: 6,
-                  shadow: 'lg',
+                  shadow: theme === 'dark' ? '0 4px 6px rgba(0, 0, 0, 0.3)' : 'lg',
                 })}
               >
                 <AbacusReact
                   value={currentValue}
-                  columns={5}
+                  columns={abacusColumns}
                   interactive={true}
                   animated={true}
                   scaleFactor={2.5}

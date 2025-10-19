@@ -292,10 +292,10 @@ export default function RoomPage() {
                   disabled={isDisabled}
                   style={{
                     background: gameDef.manifest.gradient,
+                    borderColor: gameDef.manifest.borderColor,
                   }}
                   className={css({
                     border: '2px solid',
-                    borderColor: gameDef.manifest.borderColor,
                     borderRadius: '2xl',
                     padding: '6',
                     cursor: isDisabled ? 'not-allowed' : 'pointer',

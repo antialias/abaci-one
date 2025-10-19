@@ -206,122 +206,49 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className={grid({ columns: { base: 1, lg: 2 }, gap: '8' })}>
-              {/* Live demo */}
+            {/* Live demo and learning objectives */}
+            <div
+              className={css({
+                bg: 'rgba(0, 0, 0, 0.4)',
+                rounded: 'xl',
+                p: '8',
+                border: '1px solid',
+                borderColor: 'gray.700',
+                shadow: 'lg',
+                maxW: '900px',
+                mx: 'auto',
+              })}
+            >
+              <TutorialPlayer
+                tutorial={friendsOf5Tutorial}
+                isDebugMode={false}
+                showDebugPanel={false}
+                hideNavigation={true}
+                abacusColumns={2}
+                theme="dark"
+              />
+
+              {/* What you'll learn - below tutorial */}
               <div
-                className={`homepage-tutorial-demo ${css({
-                  bg: 'rgba(0, 0, 0, 0.4)',
-                  rounded: 'xl',
-                  p: '6',
-                  border: '1px solid',
+                className={css({
+                  mt: '8',
+                  pt: '6',
+                  borderTop: '1px solid',
                   borderColor: 'gray.700',
-                  shadow: 'lg',
-                })}`}
-              >
-                <style jsx>{`
-                  /* Hide close button on homepage tutorial */
-                  :global(.homepage-tutorial-demo .coachbar__hide) {
-                    display: none !important;
-                  }
-
-                  /* Soften white backgrounds to light gray */
-                  :global(.homepage-tutorial-demo) {
-                    /* Override abacus container white background */
-                    & :global(> div > div > div) {
-                      background: #f9fafb !important; /* gray.50 equivalent */
-                    }
-                  }
-
-                  /* Mute text colors to darker grays */
-                  :global(.homepage-tutorial-demo h2) {
-                    color: #1f2937 !important; /* gray.800 */
-                  }
-
-                  :global(.homepage-tutorial-demo p) {
-                    color: #4b5563 !important; /* gray.600 - muted from gray.700 */
-                  }
-
-                  /* Soften guidance box - add more transparency and muted colors */
-                  :global(.homepage-tutorial-demo) :global(div[style*='linear-gradient'][style*='255,248,225']) {
-                    background: linear-gradient(
-                      135deg,
-                      rgba(255, 248, 225, 0.7) 0%,
-                      rgba(254, 252, 232, 0.75) 50%,
-                      rgba(255, 245, 157, 0.1) 100%
-                    ) !important;
-                    padding: 1.75rem !important; /* Increase from p-5 (1.25rem) */
-                    box-shadow: 0 4px 16px rgba(251, 191, 36, 0.06),
-                      0 1px 4px rgba(0, 0, 0, 0.03),
-                      inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-                  }
-
-                  /* Soften pedagogical decomposition inner box */
-                  :global(.homepage-tutorial-demo) :global(div[style*='linear-gradient'][style*='248,250,252']) {
-                    background: linear-gradient(
-                      135deg,
-                      rgba(249, 250, 251, 0.6) 0%,
-                      rgba(243, 244, 246, 0.7) 100%
-                    ) !important; /* Softer gray gradient */
-                    padding: 1rem !important; /* Increase from 0.75rem */
-                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
-                  }
-
-                  /* Soften shadows on abacus container */
-                  :global(.homepage-tutorial-demo) :global(div[style*='box-shadow']) {
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
-                      0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
-                  }
-
-                  /* Mute amber text colors */
-                  :global(.homepage-tutorial-demo) :global([style*='color'][style*='amber']) {
-                    color: #78716c !important; /* stone.500 - more muted than amber */
-                  }
-
-                  /* Mute slate text colors in decomposition */
-                  :global(.homepage-tutorial-demo) :global([style*='color'][style*='slate']) {
-                    color: #64748b !important; /* slate.600 - muted from slate.800 */
-                  }
-
-                  /* Soften CoachBar if visible */
-                  :global(.homepage-tutorial-demo .coachbar) {
-                    background: #f9fafb !important;
-                    border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
-                    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02) !important;
-                    padding: 10px 14px !important; /* Slight increase */
-                  }
-
-                  /* Soften reason tooltip backgrounds */
-                  :global(.homepage-tutorial-demo .reason-tooltip) {
-                    background: #f9fafb !important;
-                    border: 1px solid #e5e7eb !important;
-                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
-                    padding: 14px !important; /* Increase from 12px */
-                  }
-                `}</style>
-                <TutorialPlayer
-                  tutorial={friendsOf5Tutorial}
-                  isDebugMode={false}
-                  showDebugPanel={false}
-                  hideNavigation={true}
-                />
-              </div>
-
-              {/* What you'll learn */}
-              <div
-                className={stack({
-                  gap: '4',
-                  bg: 'rgba(0, 0, 0, 0.4)',
-                  p: '6',
-                  borderRadius: 'xl',
-                  border: '1px solid',
-                  borderColor: 'gray.700',
-                  justifyContent: 'center',
                 })}
               >
-                <h3 className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'white' })}>
+                <h3
+                  className={css({
+                    fontSize: 'xl',
+                    fontWeight: 'bold',
+                    color: 'white',
+                    mb: '4',
+                    textAlign: 'center',
+                  })}
+                >
                   What You'll Learn
                 </h3>
-                <div className={stack({ gap: '3' })}>
+                <div className={grid({ columns: { base: 1, sm: 2 }, gap: '3' })}>
                   {[
                     'Read and set numbers on an abacus',
                     'Add and subtract with "friends" techniques',
@@ -330,7 +257,7 @@ export default function HomePage() {
                   ].map((skill, i) => (
                     <div key={i} className={hstack({ gap: '3' })}>
                       <span className={css({ color: 'yellow.400', fontSize: 'lg' })}>✓</span>
-                      <span className={css({ color: 'gray.300', fontSize: 'md' })}>{skill}</span>
+                      <span className={css({ color: 'gray.300', fontSize: 'sm' })}>{skill}</span>
                     </div>
                   ))}
                 </div>
