@@ -224,6 +224,7 @@ export default function HomePage() {
                 isDebugMode={false}
                 showDebugPanel={false}
                 hideNavigation={true}
+                hideTooltip={true}
                 abacusColumns={2}
                 theme="dark"
               />

@@ -216,6 +216,7 @@ interface TutorialPlayerProps {
   isDebugMode?: boolean
   showDebugPanel?: boolean
   hideNavigation?: boolean
+  hideTooltip?: boolean
   abacusColumns?: number
   theme?: 'light' | 'dark'
   onStepChange?: (stepIndex: number, step: TutorialStep) => void
@@ -231,6 +232,7 @@ function TutorialPlayerContent({
   isDebugMode = false,
   showDebugPanel = false,
   hideNavigation = false,
+  hideTooltip = false,
   abacusColumns = 5,
   theme = 'light',
   onStepChange,
@@ -1139,9 +1141,9 @@ function TutorialPlayerContent({
         <div
           className={css({
             borderBottom: '1px solid',
-            borderColor: 'gray.200',
+            borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'gray.200',
             p: 4,
-            bg: 'white',
+            bg: theme === 'dark' ? 'rgba(30, 30, 40, 0.6)' : 'white',
           })}
         >
           <div
@@ -1410,7 +1412,8 @@ function TutorialPlayerContent({
               </div>
 
               {/* Multi-step instructions panel */}
-              {currentStep.multiStepInstructions &&
+              {!hideTooltip &&
+                currentStep.multiStepInstructions &&
                 currentStep.multiStepInstructions.length > 0 && (
                   <div
                     className={css({
@@ -1546,7 +1549,10 @@ function TutorialPlayerContent({
                               className={css({
                                 mb: 1,
                                 fontWeight: 'bold',
-                                color: theme === 'dark' ? 'yellow.300' : 'yellow.900',
+                                color: theme === 'dark' ? 'yellow.200' : 'yellow.900',
+                                textShadow:
+                                  theme === 'dark' ? '0 0 12px rgba(251, 191, 36, 0.4)' : 'none',
+                                fontSize: theme === 'dark' ? 'lg' : 'base',
                               })}
                             >
                               {currentInstruction}
@@ -1664,7 +1670,7 @@ function TutorialPlayerContent({
               </div>
 
               {/* Tooltip */}
-              {currentStep.tooltip && (
+              {!hideTooltip && currentStep.tooltip && (
                 <div
                   className={css({
                     maxW: '500px',
