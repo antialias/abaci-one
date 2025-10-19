@@ -464,6 +464,24 @@ export function useRoomData() {
       }
     }
 
+    const handleOwnershipTransferred = (data: {
+      roomId: string
+      oldOwnerId: string
+      newOwnerId: string
+      newOwnerName: string
+      members: RoomMember[]
+    }) => {
+      if (data.roomId === roomData?.id) {
+        queryClient.setQueryData<RoomData | null>(roomKeys.current(), (prev) => {
+          if (!prev) return null
+          return {
+            ...prev,
+            members: data.members,
+          }
+        })
+      }
+    }
+
     socket.on('room-joined', handleRoomJoined)
     socket.on('member-joined', handleMemberJoined)
     socket.on('member-left', handleMemberLeft)
@@ -474,6 +492,7 @@ export function useRoomData() {
     socket.on('room-invitation-received', handleInvitationReceived)
     socket.on('join-request-submitted', handleJoinRequestSubmitted)
     socket.on('room-game-changed', handleRoomGameChanged)
+    socket.on('ownership-transferred', handleOwnershipTransferred)
 
     return () => {
       socket.off('room-joined', handleRoomJoined)
@@ -486,6 +505,7 @@ export function useRoomData() {
       socket.off('room-invitation-received', handleInvitationReceived)
       socket.off('join-request-submitted', handleJoinRequestSubmitted)
       socket.off('room-game-changed', handleRoomGameChanged)
+      socket.off('ownership-transferred', handleOwnershipTransferred)
     }
   }, [socket, roomData?.id, queryClient])
 
