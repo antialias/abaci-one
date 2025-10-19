@@ -539,16 +539,27 @@ function TutorialPlayerContent({
       return null
     }
 
+    // Validate that the bead is from a column that exists
+    if (topmostBead.placeValue >= abacusColumns) {
+      // Bead is from an invalid column, skip tooltip
+      return null
+    }
+
     // Smart positioning logic: avoid covering active beads
-    const targetColumnIndex = 4 - topmostBead.placeValue // Convert placeValue to columnIndex (5 columns: 0-4)
+    // Convert placeValue to columnIndex based on actual number of columns
+    const targetColumnIndex = abacusColumns - 1 - topmostBead.placeValue
 
     // Check if there are any active beads (against reckoning bar OR with arrows) in columns to the left
     const hasActiveBeadsToLeft = (() => {
       // Get current abacus state - we need to check which beads are against the reckoning bar
-      const abacusDigits = currentValue.toString().padStart(5, '0').split('').map(Number)
+      const abacusDigits = currentValue
+        .toString()
+        .padStart(abacusColumns, '0')
+        .split('')
+        .map(Number)
 
       for (let col = 0; col < targetColumnIndex; col++) {
-        const _placeValue = 4 - col // Convert columnIndex back to placeValue
+        const placeValue = abacusColumns - 1 - col // Convert columnIndex back to placeValue
         const digitValue = abacusDigits[col]
 
         // Check if any beads are active (against reckoning bar) in this column
@@ -564,7 +575,7 @@ function TutorialPlayerContent({
         // Also check if this column has beads with direction arrows (from current step)
         const hasArrowsInColumn =
           currentStepBeads?.some((bead) => {
-            const beadColumnIndex = 4 - bead.placeValue
+            const beadColumnIndex = abacusColumns - 1 - bead.placeValue
             return beadColumnIndex === col && bead.direction && bead.direction !== 'none'
           }) ?? false
         if (hasArrowsInColumn) {
@@ -690,6 +701,7 @@ function TutorialPlayerContent({
     currentValue,
     currentStep,
     isMeaningfulDecomposition,
+    abacusColumns,
   ])
 
   // Timer for smart help detection
