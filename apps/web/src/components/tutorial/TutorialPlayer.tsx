@@ -385,16 +385,20 @@ function TutorialPlayerContent({
       }
 
       // Convert bead diff results to StepBeadHighlight format expected by AbacusReact
-      const stepBeadHighlights: StepBeadHighlight[] = beadDiff.changes.map((change, _index) => ({
-        placeValue: change.placeValue,
-        beadType: change.beadType,
-        position: change.position,
-        direction: change.direction,
-        stepIndex: currentMultiStep, // Use current multi-step index to match AbacusReact filtering
-        order: change.order,
-      }))
+      // Filter to only include beads from columns that exist
+      const minValidPlaceValue = Math.max(0, 5 - abacusColumns)
+      const stepBeadHighlights: StepBeadHighlight[] = beadDiff.changes
+        .filter((change) => change.placeValue < abacusColumns)
+        .map((change, _index) => ({
+          placeValue: change.placeValue,
+          beadType: change.beadType,
+          position: change.position,
+          direction: change.direction,
+          stepIndex: currentMultiStep, // Use current multi-step index to match AbacusReact filtering
+          order: change.order,
+        }))
 
-      return stepBeadHighlights
+      return stepBeadHighlights.length > 0 ? stepBeadHighlights : undefined
     } catch (error) {
       console.error('Error generating step beads with bead diff:', error)
       return undefined
@@ -405,6 +409,7 @@ function TutorialPlayerContent({
     expectedSteps,
     currentMultiStep,
     currentStep.stepBeadHighlights,
+    abacusColumns,
   ])
 
   // Get the current step's bead diff summary for real-time user feedback
@@ -427,6 +432,15 @@ function TutorialPlayerContent({
 
   // Get current step summary for real-time user feedback
   const currentStepSummary = getCurrentStepSummary()
+
+  // Filter highlightBeads to only include valid columns
+  const filteredHighlightBeads = useMemo(() => {
+    if (!currentStep.highlightBeads) return undefined
+    return currentStep.highlightBeads.filter((highlight) => {
+      const placeValue = highlight.placeValue ?? 4 - (highlight.columnIndex ?? 0)
+      return placeValue < abacusColumns
+    })
+  }, [currentStep.highlightBeads, abacusColumns])
 
   // Helper function to highlight the current mathematical term in the full decomposition
   const renderHighlightedDecomposition = useCallback(() => {
@@ -1009,6 +1023,9 @@ function TutorialPlayerContent({
 
   // Memoize custom styles calculation to avoid expensive recalculation on every render
   const customStyles = useMemo(() => {
+    // Calculate valid column range based on abacusColumns
+    const minValidColumn = 5 - abacusColumns
+
     // Start with static highlights from step configuration
     const staticHighlights: Record<number, any> = {}
 
@@ -1017,6 +1034,11 @@ function TutorialPlayerContent({
         // Convert placeValue to columnIndex for AbacusReact compatibility
         const columnIndex =
           highlight.placeValue !== undefined ? 4 - highlight.placeValue : highlight.columnIndex
+
+        // Skip highlights for columns that don't exist
+        if (columnIndex < minValidColumn) {
+          return
+        }
 
         // Initialize column if it doesn't exist
         if (!staticHighlights[columnIndex]) {
@@ -1047,6 +1069,12 @@ function TutorialPlayerContent({
     const mergedHighlights = { ...staticHighlights }
     Object.keys(dynamicColumnHighlights).forEach((columnIndexStr) => {
       const columnIndex = parseInt(columnIndexStr, 10)
+
+      // Skip highlights for columns that don't exist
+      if (columnIndex < minValidColumn) {
+        return
+      }
+
       if (!mergedHighlights[columnIndex]) {
         mergedHighlights[columnIndex] = {}
       }
@@ -1055,7 +1083,7 @@ function TutorialPlayerContent({
     })
 
     return Object.keys(mergedHighlights).length > 0 ? { columns: mergedHighlights } : undefined
-  }, [currentStep.highlightBeads, dynamicColumnHighlights])
+  }, [currentStep.highlightBeads, dynamicColumnHighlights, abacusColumns])
 
   if (!currentStep) {
     return <div>No steps available</div>
@@ -1535,7 +1563,7 @@ function TutorialPlayerContent({
                   hideInactiveBeads={abacusConfig.hideInactiveBeads}
                   soundEnabled={abacusConfig.soundEnabled}
                   soundVolume={abacusConfig.soundVolume}
-                  highlightBeads={currentStep.highlightBeads}
+                  highlightBeads={filteredHighlightBeads}
                   stepBeadHighlights={currentStepBeads}
                   currentStep={currentMultiStep}
                   showDirectionIndicators={true}
