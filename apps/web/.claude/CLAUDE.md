@@ -90,6 +90,37 @@ npm run check          # Biome check (format + lint + organize imports)
 
 **Remember: Always run `npm run pre-commit` before creating commits.**
 
+## Styling Framework
+
+**CRITICAL: This project uses Panda CSS, NOT Tailwind CSS.**
+
+- All styling is done with Panda CSS (`@pandacss/dev`)
+- Configuration: `/panda.config.ts`
+- Generated system: `/styled-system/`
+- Import styles using: `import { css } from '../../styled-system/css'`
+- Token syntax: `color: 'blue.200'`, `borderColor: 'gray.300'`, etc.
+
+**Common Mistakes to Avoid:**
+- ❌ Don't reference "Tailwind" in code, comments, or documentation
+- ❌ Don't use Tailwind utility classes (e.g., `className="bg-blue-500"`)
+- ✅ Use Panda CSS `css()` function for all styling
+- ✅ Use Panda's token system (defined in `panda.config.ts`)
+
+**Color Tokens:**
+```typescript
+// Correct (Panda CSS)
+css({
+  bg: 'blue.200',
+  borderColor: 'gray.300',
+  color: 'brand.600'
+})
+
+// Incorrect (Tailwind)
+className="bg-blue-200 border-gray-300 text-brand-600"
+```
+
+See `.claude/GAME_THEMES.md` for standardized color theme usage in arcade games.
+
 ## Known Issues
 
 ### @soroban/abacus-react TypeScript Module Resolution
