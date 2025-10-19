@@ -219,22 +219,12 @@ export default function HomePage() {
                 mx: 'auto',
               })}
             >
-              <TutorialPlayer
-                tutorial={friendsOf5Tutorial}
-                isDebugMode={false}
-                showDebugPanel={false}
-                hideNavigation={true}
-                hideTooltip={true}
-                abacusColumns={2}
-                theme="dark"
-              />
-
-              {/* What you'll learn - below tutorial */}
+              {/* What you'll learn - above tutorial */}
               <div
                 className={css({
-                  mt: '8',
-                  pt: '6',
-                  borderTop: '1px solid',
+                  mb: '8',
+                  pb: '6',
+                  borderBottom: '1px solid',
                   borderColor: 'gray.700',
                 })}
               >
@@ -263,6 +253,16 @@ export default function HomePage() {
                   ))}
                 </div>
               </div>
+
+              <TutorialPlayer
+                tutorial={friendsOf5Tutorial}
+                isDebugMode={false}
+                showDebugPanel={false}
+                hideNavigation={true}
+                hideTooltip={true}
+                abacusColumns={2}
+                theme="dark"
+              />
             </div>
           </section>
 
