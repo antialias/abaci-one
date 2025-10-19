@@ -58,6 +58,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/
 # Copy core package (needed for Python flashcard generation scripts)
 COPY --from=builder --chown=nextjs:nodejs /app/packages/core ./packages/core
 
+# Install Python dependencies for flashcard generation
+RUN pip3 install --no-cache-dir -r packages/core/requirements.txt
+
 # Copy package.json files for module resolution
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/package.json ./apps/web/
