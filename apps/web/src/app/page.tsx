@@ -2,11 +2,21 @@
 
 import Link from 'next/link'
 import { PageWithNav } from '@/components/PageWithNav'
-import { FriendsOfFiveDemo } from '@/components/FriendsOfFiveDemo'
+import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
+import { getTutorialForEditor } from '@/utils/tutorialConverter'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
 
 export default function HomePage() {
+  // Extract just the "Friends of 5" step (2+3=5) for homepage demo
+  const fullTutorial = getTutorialForEditor()
+  const friendsOf5Tutorial = {
+    ...fullTutorial,
+    id: 'friends-of-5-demo',
+    title: 'Friends of 5',
+    description: 'Learn the "Friends of 5" technique: adding 3 to make 5',
+    steps: fullTutorial.steps.filter((step) => step.id === 'complement-2'),
+  }
 
   return (
     <PageWithNav navTitle="Soroban Learning Platform" navEmoji="🧮">
@@ -198,7 +208,20 @@ export default function HomePage() {
 
             <div className={grid({ columns: { base: 1, lg: 2 }, gap: '8' })}>
               {/* Live demo */}
-              <FriendsOfFiveDemo />
+              <div
+                className={css({
+                  bg: 'white',
+                  rounded: 'xl',
+                  p: '6',
+                  shadow: 'lg',
+                })}
+              >
+                <TutorialPlayer
+                  tutorial={friendsOf5Tutorial}
+                  isDebugMode={false}
+                  showDebugPanel={false}
+                />
+              </div>
 
               {/* What you'll learn */}
               <div
