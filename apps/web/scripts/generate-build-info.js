@@ -18,11 +18,13 @@ function exec(command) {
 }
 
 function getBuildInfo() {
-  const gitCommit = exec('git rev-parse HEAD')
-  const gitCommitShort = exec('git rev-parse --short HEAD')
-  const gitBranch = exec('git rev-parse --abbrev-ref HEAD')
-  const gitTag = exec('git describe --tags --exact-match 2>/dev/null')
-  const gitDirty = exec('git diff --quiet || echo "dirty"') === 'dirty'
+  // Try to get git info from environment variables first (for Docker builds)
+  // Fall back to git commands (for local development)
+  const gitCommit = process.env.GIT_COMMIT || exec('git rev-parse HEAD')
+  const gitCommitShort = process.env.GIT_COMMIT_SHORT || exec('git rev-parse --short HEAD')
+  const gitBranch = process.env.GIT_BRANCH || exec('git rev-parse --abbrev-ref HEAD')
+  const gitTag = process.env.GIT_TAG || exec('git describe --tags --exact-match 2>/dev/null')
+  const gitDirty = process.env.GIT_DIRTY === 'true' || exec('git diff --quiet || echo "dirty"') === 'dirty'
 
   const packageJson = require('../package.json')
 

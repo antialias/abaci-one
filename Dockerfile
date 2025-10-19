@@ -21,6 +21,21 @@ RUN pnpm install --frozen-lockfile
 
 # Builder stage
 FROM base AS builder
+
+# Accept git information as build arguments
+ARG GIT_COMMIT
+ARG GIT_COMMIT_SHORT
+ARG GIT_BRANCH
+ARG GIT_TAG
+ARG GIT_DIRTY
+
+# Set as environment variables for build scripts
+ENV GIT_COMMIT=${GIT_COMMIT}
+ENV GIT_COMMIT_SHORT=${GIT_COMMIT_SHORT}
+ENV GIT_BRANCH=${GIT_BRANCH}
+ENV GIT_TAG=${GIT_TAG}
+ENV GIT_DIRTY=${GIT_DIRTY}
+
 COPY . .
 
 # Generate Panda CSS styled-system before building

@@ -57,6 +57,10 @@ jobs:
             type=ref,event=pr
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Get short commit SHA
+        id: vars
+        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -64,3 +68,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            GIT_COMMIT_SHORT=${{ steps.vars.outputs.short_sha }}
+            GIT_BRANCH=${{ github.ref_name }}
+            GIT_TAG=${{ github.ref_type == 'tag' && github.ref_name || '' }}
+            GIT_DIRTY=false
