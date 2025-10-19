@@ -210,9 +210,11 @@ export default function HomePage() {
               {/* Live demo */}
               <div
                 className={css({
-                  bg: 'white',
+                  bg: 'rgba(0, 0, 0, 0.4)',
                   rounded: 'xl',
                   p: '6',
+                  border: '1px solid',
+                  borderColor: 'gray.700',
                   shadow: 'lg',
                 })}
               >
