@@ -101,7 +101,8 @@
       "WebFetch(domain:abaci.one)",
       "Bash(do gh run list --limit 1 --workflow=\"Build and Deploy\" --json conclusion,status,databaseId --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\") - Run ID: \\(.databaseId)\"\"')",
       "Bash(node -e:*)",
-      "Bash(do gh run list --limit 1 --workflow=\"Build and Deploy\" --json conclusion,status,databaseId --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\") - Run \\(.databaseId)\"\"')"
+      "Bash(do gh run list --limit 1 --workflow=\"Build and Deploy\" --json conclusion,status,databaseId --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\") - Run \\(.databaseId)\"\"')",
+      "Bash(do ssh nas.home.network '/usr/local/bin/docker inspect soroban-abacus-flashcards --format=\"\"{{index .Config.Labels \\\"\"org.opencontainers.image.revision\\\"\"}}\"\"')"
     ],
     "deny": [],
     "ask": []

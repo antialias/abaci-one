@@ -114,6 +114,9 @@ export function ModerationPanel({
     null
   )
 
+  // Transfer ownership confirmation state
+  const [confirmingTransferOwnership, setConfirmingTransferOwnership] = useState(false)
+
   // Auto-switch to Members tab when focusedUserId is provided
   useEffect(() => {
     if (isOpen && focusedUserId) {
@@ -171,8 +174,6 @@ export function ModerationPanel({
   }, [isOpen, roomId, members])
 
   const handleKick = async (userId: string) => {
-    if (!confirm('Kick this player from the room?')) return
-
     setActionLoading(`kick-${userId}`)
     try {
       const res = await fetch(`/api/arcade/rooms/${roomId}/kick`, {
@@ -414,10 +415,9 @@ export function ModerationPanel({
     const newOwner = members.find((m) => m.userId === selectedNewOwner)
     if (!newOwner) return
 
-    if (!confirm(`Transfer ownership to ${newOwner.displayName}? You will no longer be the host.`))
-      return
-
+    setConfirmingTransferOwnership(false)
     setActionLoading('transfer-ownership')
+
     try {
       const res = await fetch(`/api/arcade/rooms/${roomId}/transfer-ownership`, {
         method: 'POST',
@@ -436,6 +436,7 @@ export function ModerationPanel({
       showError(err instanceof Error ? err.message : 'Failed to transfer ownership')
     } finally {
       setActionLoading(null)
+      setSelectedNewOwner('') // Reset selection
     }
   }
 
@@ -1789,61 +1790,143 @@ export function ModerationPanel({
                       Transfer host privileges to another member. You will no longer be the host.
                     </p>
 
-                    <select
-                      value={selectedNewOwner}
-                      onChange={(e) => setSelectedNewOwner(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(75, 85, 99, 0.5)',
-                        borderRadius: '6px',
-                        color: 'rgba(209, 213, 219, 1)',
-                        fontSize: '14px',
-                        marginBottom: '12px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <option value="">Select new owner...</option>
-                      {otherMembers.map((member) => (
-                        <option key={member.userId} value={member.userId}>
-                          {member.displayName}
-                          {member.isOnline ? ' (Online)' : ' (Offline)'}
-                        </option>
-                      ))}
-                    </select>
+                    {!confirmingTransferOwnership ? (
+                      <>
+                        <select
+                          value={selectedNewOwner}
+                          onChange={(e) => setSelectedNewOwner(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(75, 85, 99, 0.5)',
+                            borderRadius: '6px',
+                            color: 'rgba(209, 213, 219, 1)',
+                            fontSize: '14px',
+                            marginBottom: '12px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="">Select new owner...</option>
+                          {otherMembers.map((member) => (
+                            <option key={member.userId} value={member.userId}>
+                              {member.displayName}
+                              {member.isOnline ? ' (Online)' : ' (Offline)'}
+                            </option>
+                          ))}
+                        </select>
 
-                    <button
-                      type="button"
-                      onClick={handleTransferOwnership}
-                      disabled={!selectedNewOwner || actionLoading === 'transfer-ownership'}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        background:
-                          !selectedNewOwner || actionLoading === 'transfer-ownership'
-                            ? 'rgba(75, 85, 99, 0.3)'
-                            : 'linear-gradient(135deg, rgba(251, 146, 60, 0.8), rgba(249, 115, 22, 0.8))',
-                        color: 'white',
-                        border:
-                          !selectedNewOwner || actionLoading === 'transfer-ownership'
-                            ? '1px solid rgba(75, 85, 99, 0.5)'
-                            : '1px solid rgba(251, 146, 60, 0.6)',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor:
-                          !selectedNewOwner || actionLoading === 'transfer-ownership'
-                            ? 'not-allowed'
-                            : 'pointer',
-                        opacity:
-                          !selectedNewOwner || actionLoading === 'transfer-ownership' ? 0.5 : 1,
-                      }}
-                    >
-                      {actionLoading === 'transfer-ownership'
-                        ? 'Transferring...'
-                        : 'Transfer Ownership'}
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmingTransferOwnership(true)}
+                          disabled={!selectedNewOwner}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            background: !selectedNewOwner
+                              ? 'rgba(75, 85, 99, 0.3)'
+                              : 'linear-gradient(135deg, rgba(251, 146, 60, 0.8), rgba(249, 115, 22, 0.8))',
+                            color: 'white',
+                            border: !selectedNewOwner
+                              ? '1px solid rgba(75, 85, 99, 0.5)'
+                              : '1px solid rgba(251, 146, 60, 0.6)',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: !selectedNewOwner ? 'not-allowed' : 'pointer',
+                            opacity: !selectedNewOwner ? 0.5 : 1,
+                          }}
+                        >
+                          Transfer Ownership
+                        </button>
+                      </>
+                    ) : (
+                      <div>
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: 'rgba(251, 191, 36, 1)',
+                            marginBottom: '8px',
+                          }}
+                        >
+                          ⚠️ Confirm Transfer to{' '}
+                          {members.find((m) => m.userId === selectedNewOwner)?.displayName}?
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            color: 'rgba(209, 213, 219, 0.8)',
+                            marginBottom: '12px',
+                          }}
+                        >
+                          You will no longer be the host and will lose moderation privileges. This
+                          cannot be undone.
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingTransferOwnership(false)}
+                            disabled={actionLoading === 'transfer-ownership'}
+                            style={{
+                              flex: 1,
+                              padding: '10px',
+                              background: 'rgba(75, 85, 99, 0.3)',
+                              color: 'rgba(209, 213, 219, 1)',
+                              border: '1px solid rgba(75, 85, 99, 0.5)',
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor:
+                                actionLoading === 'transfer-ownership' ? 'not-allowed' : 'pointer',
+                              opacity: actionLoading === 'transfer-ownership' ? 0.5 : 1,
+                              transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (actionLoading !== 'transfer-ownership') {
+                                e.currentTarget.style.background = 'rgba(75, 85, 99, 0.4)'
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (actionLoading !== 'transfer-ownership') {
+                                e.currentTarget.style.background = 'rgba(75, 85, 99, 0.3)'
+                              }
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleTransferOwnership}
+                            disabled={actionLoading === 'transfer-ownership'}
+                            style={{
+                              flex: 1,
+                              padding: '10px',
+                              background:
+                                actionLoading === 'transfer-ownership'
+                                  ? 'rgba(75, 85, 99, 0.3)'
+                                  : 'linear-gradient(135deg, rgba(251, 146, 60, 0.8), rgba(249, 115, 22, 0.8))',
+                              color: 'white',
+                              border:
+                                actionLoading === 'transfer-ownership'
+                                  ? '1px solid rgba(75, 85, 99, 0.5)'
+                                  : '1px solid rgba(251, 146, 60, 0.6)',
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor:
+                                actionLoading === 'transfer-ownership' ? 'not-allowed' : 'pointer',
+                              opacity: actionLoading === 'transfer-ownership' ? 0.5 : 1,
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            {actionLoading === 'transfer-ownership'
+                              ? 'Transferring...'
+                              : 'Confirm Transfer'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
