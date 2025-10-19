@@ -1094,8 +1094,37 @@ function TutorialPlayerContent({
       Object.assign(mergedHighlights[columnIndex], dynamicColumnHighlights[columnIndex])
     })
 
-    return Object.keys(mergedHighlights).length > 0 ? { columns: mergedHighlights } : undefined
-  }, [currentStep.highlightBeads, dynamicColumnHighlights, abacusColumns])
+    // Build the custom styles object
+    const styles: any = {}
+
+    // Add column highlights if any
+    if (Object.keys(mergedHighlights).length > 0) {
+      styles.columns = mergedHighlights
+    }
+
+    // Add frame styling for dark mode
+    if (theme === 'dark') {
+      styles.frame = {
+        // Column dividers
+        column: {
+          stroke: 'rgba(255, 255, 255, 0.15)',
+          strokeWidth: 2,
+        },
+        // Reckoning bar (horizontal middle bar)
+        reckoningBar: {
+          stroke: 'rgba(255, 255, 255, 0.2)',
+          strokeWidth: 3,
+        },
+        // Outer frame
+        border: {
+          stroke: 'rgba(255, 255, 255, 0.15)',
+          strokeWidth: 2,
+        },
+      }
+    }
+
+    return Object.keys(styles).length > 0 ? styles : undefined
+  }, [currentStep.highlightBeads, dynamicColumnHighlights, abacusColumns, theme])
 
   if (!currentStep) {
     return <div>No steps available</div>
@@ -1522,7 +1551,7 @@ function TutorialPlayerContent({
                               className={css({
                                 mb: 1,
                                 fontWeight: 'bold',
-                                color: 'yellow.900',
+                                color: theme === 'dark' ? 'yellow.300' : 'yellow.900',
                               })}
                             >
                               {currentInstruction}
