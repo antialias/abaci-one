@@ -27,6 +27,7 @@ export interface BeadStyle {
 }
 
 export interface ColumnPostStyle {
+  fill?: string;
   stroke?: string;
   strokeWidth?: number;
   opacity?: number;
@@ -34,6 +35,7 @@ export interface ColumnPostStyle {
 }
 
 export interface ReckoningBarStyle {
+  fill?: string;
   stroke?: string;
   strokeWidth?: number;
   opacity?: number;
@@ -1979,7 +1981,10 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
           const columnStyles = customStyles?.columns?.[colIndex];
           const globalColumnPosts = customStyles?.columnPosts;
           const rodStyle = {
-            fill: "rgb(0, 0, 0, 0.1)", // Default Typst color
+            fill:
+              columnStyles?.columnPost?.fill ||
+              globalColumnPosts?.fill ||
+              "rgb(0, 0, 0, 0.1)", // Default Typst color
             stroke:
               columnStyles?.columnPost?.stroke ||
               globalColumnPosts?.stroke ||
@@ -2017,8 +2022,10 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             (effectiveColumns - 1) * dimensions.rodSpacing + dimensions.beadSize
           }
           height={dimensions.barThickness}
-          fill="black" // Typst uses black
-          stroke="none"
+          fill={customStyles?.reckoningBar?.fill || "black"} // Typst default is black
+          stroke={customStyles?.reckoningBar?.stroke || "none"}
+          strokeWidth={customStyles?.reckoningBar?.strokeWidth ?? 0}
+          opacity={customStyles?.reckoningBar?.opacity ?? 1}
         />
 
         {/* Beads */}

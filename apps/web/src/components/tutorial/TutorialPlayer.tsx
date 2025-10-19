@@ -1106,11 +1106,13 @@ function TutorialPlayerContent({
     if (theme === 'dark') {
       // Column dividers (global for all columns)
       styles.columnPosts = {
+        fill: 'rgba(255, 255, 255, 0.3)', // High contrast fill for visibility
         stroke: 'rgba(255, 255, 255, 0.2)',
         strokeWidth: 2,
       }
       // Reckoning bar (horizontal middle bar)
       styles.reckoningBar = {
+        fill: 'rgba(255, 255, 255, 0.4)', // High contrast fill for visibility
         stroke: 'rgba(255, 255, 255, 0.25)',
         strokeWidth: 3,
       }
