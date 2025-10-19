@@ -12,6 +12,8 @@ import { CardSortingProvider } from './Provider'
 import type { CardSortingConfig, CardSortingMove, CardSortingState } from './types'
 import { cardSortingValidator } from './Validator'
 
+const theme = getGameTheme('teal')
+
 const manifest: GameManifest = {
   name: 'card-sorting',
   displayName: 'Card Sorting Challenge',
@@ -24,7 +26,9 @@ const manifest: GameManifest = {
   maxPlayers: 1, // Single player only
   difficulty: 'Intermediate',
   chips: ['🧠 Pattern Recognition', '🎯 Solo Challenge', '📊 Smart Scoring'],
-  ...getGameTheme('teal'),
+  color: theme.color,
+  gradient: theme.gradient,
+  borderColor: theme.borderColor,
   available: true,
 }
 

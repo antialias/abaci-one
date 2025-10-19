@@ -1,29 +1,28 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { PageWithNav } from '@/components/PageWithNav'
-import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+import { FriendsOfFiveDemo } from '@/components/FriendsOfFiveDemo'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
 
 export default function HomePage() {
-  const [abacusValue, setAbacusValue] = useState(1234567)
-  const appConfig = useAbacusConfig()
+
   return (
-    <PageWithNav navTitle="Soroban Mastery Platform" navEmoji="🧮">
+    <PageWithNav navTitle="Soroban Learning Platform" navEmoji="🧮">
       <div className={css({ bg: 'gray.900', minHeight: '100vh' })}>
-        {/* Hero with Large Abacus */}
+        {/* Hero Section */}
         <div
           className={css({
             background:
               'linear-gradient(135deg, rgba(17, 24, 39, 1) 0%, rgba(88, 28, 135, 0.3) 50%, rgba(17, 24, 39, 1) 100%)',
             color: 'white',
-            py: { base: '12', md: '20' },
+            py: { base: '12', md: '16' },
             position: 'relative',
             overflow: 'hidden',
           })}
         >
+          {/* Background pattern */}
           <div
             className={css({
               position: 'absolute',
@@ -34,69 +33,105 @@ export default function HomePage() {
               backgroundSize: '40px 40px',
             })}
           />
+
           <div className={container({ maxW: '6xl', px: '4', position: 'relative' })}>
             <div className={css({ textAlign: 'center', maxW: '5xl', mx: 'auto' })}>
+              {/* Main headline */}
               <h1
                 className={css({
                   fontSize: { base: '3xl', md: '5xl', lg: '6xl' },
                   fontWeight: 'bold',
-                  mb: '6',
+                  mb: '4',
                   lineHeight: 'tight',
                   background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
                   backgroundClip: 'text',
                   color: 'transparent',
                 })}
               >
-                Master the Soroban
+                A structured path to soroban fluency
               </h1>
 
-              {/* Large Featured Abacus */}
-              <div
-                className={css({
-                  display: 'flex',
-                  justifyContent: 'center',
-                  my: '10',
-                  p: '8',
-                  bg: 'white',
-                  borderRadius: '2xl',
-                  border: '2px solid',
-                  borderColor: 'purple.500/30',
-                  boxShadow: '0 25px 50px -12px rgba(139, 92, 246, 0.25)',
-                  color: '#1f2937',
-                })}
-              >
-                <AbacusReact
-                  value={abacusValue}
-                  columns={7}
-                  beadShape={appConfig.beadShape}
-                  colorScheme={appConfig.colorScheme}
-                  hideInactiveBeads={appConfig.hideInactiveBeads}
-                  interactive={true}
-                  animated={true}
-                  soundEnabled={true}
-                  soundVolume={0.4}
-                  scaleFactor={2.2}
-                  showNumbers={true}
-                  onValueChange={(newValue: number) => setAbacusValue(newValue)}
-                />
-              </div>
-
+              {/* Subtitle */}
               <p
                 className={css({
                   fontSize: { base: 'lg', md: 'xl' },
                   color: 'gray.300',
-                  mb: '8',
+                  mb: '6',
                   maxW: '3xl',
                   mx: 'auto',
+                  lineHeight: '1.6',
                 })}
               >
-                Interactive tutorials, multiplayer games, and beautiful flashcards—your complete
-                soroban learning ecosystem
+                Designed for self-directed learning. Start where you are, practice the skills you
+                need, play games that reinforce concepts.
               </p>
 
+              {/* Dev status badge */}
+              <div
+                className={css({
+                  display: 'inline-block',
+                  px: '4',
+                  py: '2',
+                  bg: 'rgba(139, 92, 246, 0.15)',
+                  border: '1px solid rgba(139, 92, 246, 0.3)',
+                  borderRadius: 'full',
+                  fontSize: 'sm',
+                  color: 'purple.300',
+                  mb: '8',
+                })}
+              >
+                🏗️ Curriculum system in active development
+              </div>
+
+              {/* Visual learning journey */}
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '2',
+                  mb: '8',
+                  flexWrap: 'wrap',
+                })}
+              >
+                {[
+                  { icon: '📖', label: 'Learn' },
+                  { icon: '→', label: '', isArrow: true },
+                  { icon: '✏️', label: 'Practice' },
+                  { icon: '→', label: '', isArrow: true },
+                  { icon: '🎮', label: 'Play' },
+                  { icon: '→', label: '', isArrow: true },
+                  { icon: '🎯', label: 'Master' },
+                ].map((step, i) => (
+                  <div
+                    key={i}
+                    className={css({
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '1',
+                      opacity: step.isArrow ? 0.5 : 1,
+                    })}
+                  >
+                    <div
+                      className={css({
+                        fontSize: step.isArrow ? 'xl' : '2xl',
+                        color: step.isArrow ? 'gray.500' : 'yellow.400',
+                      })}
+                    >
+                      {step.icon}
+                    </div>
+                    {step.label && (
+                      <div className={css({ fontSize: 'xs', color: 'gray.400' })}>{step.label}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Primary CTAs */}
               <div className={hstack({ gap: '4', justify: 'center', flexWrap: 'wrap' })}>
                 <Link
-                  href="/games"
+                  href="/guide"
                   className={css({
                     px: '8',
                     py: '4',
@@ -113,10 +148,10 @@ export default function HomePage() {
                     transition: 'all 0.3s ease',
                   })}
                 >
-                  🎮 Play Games
+                  📚 Start Learning
                 </Link>
                 <Link
-                  href="/guide"
+                  href="/games"
                   className={css({
                     px: '8',
                     py: '4',
@@ -134,28 +169,7 @@ export default function HomePage() {
                     transition: 'all 0.3s ease',
                   })}
                 >
-                  📚 Learn
-                </Link>
-                <Link
-                  href="/create"
-                  className={css({
-                    px: '8',
-                    py: '4',
-                    bg: 'rgba(139, 92, 246, 0.2)',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    fontSize: 'lg',
-                    rounded: 'xl',
-                    border: '2px solid',
-                    borderColor: 'purple.500',
-                    _hover: {
-                      bg: 'rgba(139, 92, 246, 0.3)',
-                      transform: 'translateY(-2px)',
-                    },
-                    transition: 'all 0.3s ease',
-                  })}
-                >
-                  🎨 Create
+                  🎮 Practice Through Games
                 </Link>
               </div>
             </div>
@@ -164,170 +178,288 @@ export default function HomePage() {
 
         {/* Main content container */}
         <div className={container({ maxW: '7xl', px: '4', py: '12' })}>
-          {/* Arcade Games Section */}
-          <section className={stack({ gap: '6', mt: '16' })}>
-            <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
-              <div>
-                <h2
-                  className={css({
-                    fontSize: { base: '2xl', md: '3xl' },
-                    fontWeight: 'bold',
-                    color: 'white',
-                    mb: '2',
-                  })}
-                >
-                  🕹️ Multiplayer Arcade
-                </h2>
-                <p className={css({ color: 'gray.400', fontSize: 'md' })}>
-                  Compete with friends in real-time soroban games
-                </p>
-              </div>
-              <Link
-                href="/games"
+          {/* Learn by Doing Section - with inline tutorial demo */}
+          <section className={stack({ gap: '8', mb: '16' })}>
+            <div className={css({ textAlign: 'center' })}>
+              <h2
                 className={css({
-                  fontSize: 'md',
-                  color: 'yellow.400',
-                  fontWeight: 'semibold',
-                  _hover: { color: 'yellow.300' },
-                  display: { base: 'none', md: 'block' },
+                  fontSize: { base: '2xl', md: '3xl' },
+                  fontWeight: 'bold',
+                  color: 'white',
+                  mb: '2',
                 })}
               >
-                View All →
-              </Link>
+                Learn by Doing
+              </h2>
+              <p className={css({ color: 'gray.400', fontSize: 'md', maxW: '2xl', mx: 'auto' })}>
+                Interactive tutorials teach you step-by-step. Try this example right now:
+              </p>
             </div>
+
+            <div className={grid({ columns: { base: 1, lg: 2 }, gap: '8' })}>
+              {/* Live demo */}
+              <FriendsOfFiveDemo />
+
+              {/* What you'll learn */}
+              <div
+                className={stack({
+                  gap: '4',
+                  bg: 'rgba(0, 0, 0, 0.4)',
+                  p: '6',
+                  borderRadius: 'xl',
+                  border: '1px solid',
+                  borderColor: 'gray.700',
+                  justifyContent: 'center',
+                })}
+              >
+                <h3 className={css({ fontSize: 'xl', fontWeight: 'bold', color: 'white' })}>
+                  What You'll Learn
+                </h3>
+                <div className={stack({ gap: '3' })}>
+                  {[
+                    'Read and set numbers on an abacus',
+                    'Add and subtract with "friends" techniques',
+                    'Multiply and divide fluently',
+                    'Calculate mentally without the abacus',
+                  ].map((skill, i) => (
+                    <div key={i} className={hstack({ gap: '3' })}>
+                      <span className={css({ color: 'yellow.400', fontSize: 'lg' })}>✓</span>
+                      <span className={css({ color: 'gray.300', fontSize: 'md' })}>{skill}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Current Offerings Section */}
+          <section className={stack({ gap: '6', mb: '16' })}>
+            <div className={css({ textAlign: 'center' })}>
+              <h2
+                className={css({
+                  fontSize: { base: '2xl', md: '3xl' },
+                  fontWeight: 'bold',
+                  color: 'white',
+                  mb: '2',
+                })}
+              >
+                Available Now
+              </h2>
+              <p className={css({ color: 'gray.400', fontSize: 'md' })}>
+                Foundation tutorials and reinforcement games ready to use
+              </p>
+            </div>
+
             <div className={grid({ columns: { base: 1, sm: 2, lg: 4 }, gap: '5' })}>
               <GameCard
                 icon="🧠"
                 title="Memory Lightning"
                 description="Memorize soroban numbers"
                 players="1-8 players"
-                tags={['Co-op', 'Competitive']}
+                tags={['Memory', 'Pattern Recognition']}
                 gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
                 href="/games"
               />
               <GameCard
                 icon="⚔️"
                 title="Matching Pairs"
-                description="Turn-based card battles"
+                description="Match complement numbers"
                 players="1-4 players"
-                tags={['Pattern Recognition']}
+                tags={['Friends of 5', 'Friends of 10']}
                 gradient="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
                 href="/games"
               />
               <GameCard
                 icon="🏁"
-                title="Speed Race"
-                description="Race AI with complements"
-                players="1-4 players + AI"
-                tags={['Practice', 'Sprint', 'Survival']}
+                title="Complement Race"
+                description="Race against time"
+                players="1-4 players"
+                tags={['Speed', 'Practice', 'Survival']}
                 gradient="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
                 href="/games"
               />
               <GameCard
                 icon="🔢"
                 title="Card Sorting"
-                description="Arrange cards visually"
+                description="Arrange numbers visually"
                 players="Solo challenge"
-                tags={['Visual Literacy']}
+                tags={['Visual Literacy', 'Ordering']}
                 gradient="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
                 href="/games"
               />
             </div>
           </section>
 
-          {/* Interactive Learning & Flashcard Creator */}
-          <div className={grid({ columns: { base: 1, lg: 2 }, gap: '8', mt: '16' })}>
-            <FeaturePanel
-              icon="📚"
-              title="Interactive Learning"
-              description="Master soroban through hands-on guided tutorials"
-              features={[
-                'Visual tutorials on reading bead positions',
-                'Step-by-step arithmetic operations',
-                'Interactive exercises with instant feedback',
-              ]}
-              ctaText="Start Learning →"
-              ctaHref="/guide"
-              accentColor="purple"
-            />
-            <FeaturePanel
-              icon="🎨"
-              title="Flashcard Creator"
-              description="Design beautiful soroban flashcards for any purpose"
-              features={[
-                'Multiple export formats: PDF, PNG, SVG, HTML',
-                'Custom bead shapes, colors, and layouts',
-                'All paper sizes: A3, A4, A5, US Letter',
-              ]}
-              ctaText="Create Flashcards →"
-              ctaHref="/create"
-              accentColor="blue"
-            />
-          </div>
+          {/* For Kids & Families Section */}
+          <section className={stack({ gap: '6', mb: '16' })}>
+            <div className={css({ textAlign: 'center' })}>
+              <h2
+                className={css({
+                  fontSize: { base: '2xl', md: '3xl' },
+                  fontWeight: 'bold',
+                  color: 'white',
+                  mb: '2',
+                })}
+              >
+                For Kids & Families
+              </h2>
+              <p className={css({ color: 'gray.400', fontSize: 'md', maxW: '2xl', mx: 'auto' })}>
+                Simple enough for kids to start on their own, structured enough for parents to trust
+              </p>
+            </div>
+
+            <div className={grid({ columns: { base: 1, lg: 2 }, gap: '8' })}>
+              <FeaturePanel
+                icon="🧒"
+                title="Self-Directed for Children"
+                features={[
+                  'Big, obvious buttons and clear instructions',
+                  'Progress at your own pace',
+                  'Works with or without a physical abacus',
+                ]}
+                accentColor="purple"
+              />
+              <FeaturePanel
+                icon="👨‍👩‍👧"
+                title="Trusted by Parents"
+                features={[
+                  'Structured curriculum following Japanese methods',
+                  'Traditional kyu/dan progression levels',
+                  'Track progress and celebrate achievements',
+                ]}
+                accentColor="blue"
+              />
+            </div>
+          </section>
+
+          {/* Progression Visualization */}
+          <section className={stack({ gap: '6', mb: '16' })}>
+            <div className={css({ textAlign: 'center' })}>
+              <h2
+                className={css({
+                  fontSize: { base: '2xl', md: '3xl' },
+                  fontWeight: 'bold',
+                  color: 'white',
+                  mb: '2',
+                })}
+              >
+                Your Journey
+              </h2>
+              <p className={css({ color: 'gray.400', fontSize: 'md' })}>
+                Progress from beginner to master
+              </p>
+            </div>
+
+            <div
+              className={css({
+                bg: 'rgba(0, 0, 0, 0.4)',
+                border: '1px solid',
+                borderColor: 'gray.700',
+                rounded: 'xl',
+                p: '8',
+              })}
+            >
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '4',
+                  flexWrap: 'wrap',
+                })}
+              >
+                {[
+                  { level: '10 Kyu', label: 'Beginner', color: 'green.400' },
+                  { level: '5 Kyu', label: 'Intermediate', color: 'blue.400' },
+                  { level: '1 Kyu', label: 'Advanced', color: 'purple.400' },
+                  { level: 'Dan', label: 'Master', color: 'yellow.400' },
+                ].map((stage, i) => (
+                  <div key={i} className={stack({ gap: '2', textAlign: 'center', flex: '1' })}>
+                    <div
+                      className={css({
+                        fontSize: 'xl',
+                        fontWeight: 'bold',
+                        color: stage.color,
+                      })}
+                    >
+                      {stage.level}
+                    </div>
+                    <div className={css({ fontSize: 'sm', color: 'gray.400' })}>{stage.label}</div>
+                    {i < 3 && (
+                      <div
+                        className={css({
+                          display: { base: 'none', md: 'block' },
+                          position: 'absolute',
+                          right: '-50%',
+                          fontSize: 'xl',
+                          color: 'gray.600',
+                        })}
+                      >
+                        →
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div
+                className={css({
+                  mt: '6',
+                  textAlign: 'center',
+                  fontSize: 'sm',
+                  color: 'gray.500',
+                  fontStyle: 'italic',
+                })}
+              >
+                You'll progress through all these levels eventually ↑
+              </div>
+            </div>
+          </section>
+
+          {/* Additional Tools Section */}
+          <section className={stack({ gap: '6' })}>
+            <div className={css({ textAlign: 'center' })}>
+              <h2
+                className={css({
+                  fontSize: { base: '2xl', md: '3xl' },
+                  fontWeight: 'bold',
+                  color: 'white',
+                  mb: '2',
+                })}
+              >
+                Additional Tools
+              </h2>
+            </div>
+
+            <div className={grid({ columns: { base: 1, lg: 2 }, gap: '8' })}>
+              <FeaturePanel
+                icon="🎨"
+                title="Flashcard Creator"
+                features={[
+                  'Multiple formats: PDF, PNG, SVG, HTML',
+                  'Custom bead shapes, colors, and layouts',
+                  'All paper sizes: A3, A4, A5, US Letter',
+                ]}
+                accentColor="blue"
+                ctaText="Create Flashcards →"
+                ctaHref="/create"
+              />
+              <FeaturePanel
+                icon="🧮"
+                title="Interactive Abacus"
+                features={[
+                  'Practice anytime in your browser',
+                  'Multiple color schemes and bead styles',
+                  'Sound effects and animations',
+                ]}
+                accentColor="purple"
+                ctaText="Try the Abacus →"
+                ctaHref="/guide"
+              />
+            </div>
+          </section>
         </div>
       </div>
     </PageWithNav>
-  )
-}
-
-function ColorSchemeCard({
-  title,
-  description,
-  colorScheme,
-  value,
-  beadShape,
-}: {
-  title: string
-  description: string
-  colorScheme: 'monochrome' | 'place-value' | 'heaven-earth' | 'alternating'
-  value: number
-  beadShape: 'diamond' | 'circle' | 'square'
-}) {
-  return (
-    <div
-      className={css({
-        bg: 'rgba(0, 0, 0, 0.4)',
-        rounded: 'xl',
-        p: '6',
-        border: '2px solid',
-        borderColor: 'gray.700',
-        transition: 'all 0.3s ease',
-        _hover: {
-          borderColor: 'purple.500',
-          transform: 'translateY(-4px)',
-          boxShadow: '0 20px 40px rgba(139, 92, 246, 0.2)',
-        },
-      })}
-    >
-      <h3
-        className={css({
-          fontSize: 'lg',
-          fontWeight: 'bold',
-          color: 'white',
-          mb: '2',
-        })}
-      >
-        {title}
-      </h3>
-      <p className={css({ fontSize: 'sm', color: 'gray.400', mb: '4' })}>{description}</p>
-      <div
-        className={css({
-          display: 'flex',
-          justifyContent: 'center',
-          p: '4',
-          bg: 'rgba(255, 255, 255, 0.05)',
-          rounded: 'lg',
-        })}
-      >
-        <AbacusReact
-          value={value}
-          columns={3}
-          beadShape={beadShape}
-          colorScheme={colorScheme}
-          hideInactiveBeads={false}
-        />
-      </div>
-    </div>
   )
 }
 
@@ -400,19 +532,17 @@ function GameCard({
 function FeaturePanel({
   icon,
   title,
-  description,
   features,
+  accentColor,
   ctaText,
   ctaHref,
-  accentColor,
 }: {
   icon: string
   title: string
-  description: string
   features: string[]
-  ctaText: string
-  ctaHref: string
   accentColor: 'purple' | 'blue'
+  ctaText?: string
+  ctaHref?: string
 }) {
   const borderColor = accentColor === 'purple' ? 'purple.500/30' : 'blue.500/30'
   const bgColor = accentColor === 'purple' ? 'purple.500/10' : 'blue.500/10'
@@ -432,8 +562,7 @@ function FeaturePanel({
         <span className={css({ fontSize: '3xl' })}>{icon}</span>
         <h2 className={css({ fontSize: '2xl', fontWeight: 'bold', color: 'white' })}>{title}</h2>
       </div>
-      <p className={css({ fontSize: 'md', color: 'gray.300', mb: '6' })}>{description}</p>
-      <div className={stack({ gap: '3', mb: '6' })}>
+      <div className={stack({ gap: '3', mb: ctaText ? '6' : '0' })}>
         {features.map((feature, i) => (
           <div key={i} className={hstack({ gap: '3' })}>
             <span className={css({ color: 'yellow.400', fontSize: 'lg' })}>✓</span>
@@ -441,25 +570,27 @@ function FeaturePanel({
           </div>
         ))}
       </div>
-      <Link
-        href={ctaHref}
-        className={css({
-          display: 'block',
-          textAlign: 'center',
-          py: '3',
-          px: '6',
-          bg: bgColor,
-          color: 'white',
-          fontWeight: 'bold',
-          rounded: 'lg',
-          border: '2px solid',
-          borderColor,
-          _hover: { bg: hoverBg },
-          transition: 'all 0.2s ease',
-        })}
-      >
-        {ctaText}
-      </Link>
+      {ctaText && ctaHref && (
+        <Link
+          href={ctaHref}
+          className={css({
+            display: 'block',
+            textAlign: 'center',
+            py: '3',
+            px: '6',
+            bg: bgColor,
+            color: 'white',
+            fontWeight: 'bold',
+            rounded: 'lg',
+            border: '2px solid',
+            borderColor,
+            _hover: { bg: hoverBg },
+            transition: 'all 0.2s ease',
+          })}
+        >
+          {ctaText}
+        </Link>
+      )}
     </div>
   )
 }
