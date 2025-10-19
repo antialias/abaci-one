@@ -33,6 +33,9 @@ interface CardSortingContextValue {
   // UI state
   selectedCardId: string | null
   selectCard: (cardId: string | null) => void
+  // Spectator mode
+  localPlayerId: string | undefined
+  isSpectating: boolean
 }
 
 // Create context
@@ -546,6 +549,9 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     // UI state
     selectedCardId,
     selectCard: setSelectedCardId,
+    // Spectator mode
+    localPlayerId,
+    isSpectating: !localPlayerId,
   }
 
   return <CardSortingContext.Provider value={contextValue}>{children}</CardSortingContext.Provider>

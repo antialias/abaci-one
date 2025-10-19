@@ -13,7 +13,7 @@ import { ResultsPhase } from './ResultsPhase'
 
 export function GameComponent() {
   const router = useRouter()
-  const { state, exitSession, startGame, goToSetup } = useCardSorting()
+  const { state, exitSession, startGame, goToSetup, isSpectating } = useCardSorting()
   const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
 
@@ -57,6 +57,34 @@ export function GameComponent() {
             overflow: 'auto',
           })}
         >
+          {/* Spectator Mode Banner */}
+          {isSpectating && state.gamePhase !== 'setup' && (
+            <div
+              className={css({
+                width: '100%',
+                maxWidth: '1200px',
+                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                borderRadius: { base: '8px', md: '12px' },
+                padding: { base: '12px', md: '16px' },
+                marginBottom: { base: '12px', md: '16px' },
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                fontSize: { base: '14px', sm: '16px', md: '18px' },
+                fontWeight: '600',
+                color: '#92400e',
+                textAlign: 'center',
+              })}
+            >
+              <span role="img" aria-label="watching">
+                👀
+              </span>
+              <span>Spectating {state.playerMetadata?.name || 'player'}'s game</span>
+            </div>
+          )}
+
           <main
             className={css({
               width: '100%',

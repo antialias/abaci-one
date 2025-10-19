@@ -18,6 +18,7 @@ export function PlayingPhase() {
     canCheckSolution,
     placedCount,
     elapsedTime,
+    isSpectating,
   } = useCardSorting()
 
   // Status message (mimics Python updateSortingStatus)
@@ -64,6 +65,7 @@ export function PlayingPhase() {
   }
 
   const handleCardClick = (cardId: string) => {
+    if (isSpectating) return // Spectators cannot interact
     if (selectedCardId === cardId) {
       selectCard(null) // Deselect
     } else {
@@ -72,6 +74,7 @@ export function PlayingPhase() {
   }
 
   const handleSlotClick = (position: number) => {
+    if (isSpectating) return // Spectators cannot interact
     if (!selectedCardId) {
       // No card selected - if slot has a card, move it back and auto-select
       if (state.placedCards[position]) {
@@ -89,6 +92,7 @@ export function PlayingPhase() {
   }
 
   const handleInsertClick = (insertPosition: number) => {
+    if (isSpectating) return // Spectators cannot interact
     if (!selectedCardId) {
       setStatusMessage('Please select a card first, then click where to insert it.')
       return
@@ -181,17 +185,19 @@ export function PlayingPhase() {
             <button
               type="button"
               onClick={revealNumbers}
+              disabled={isSpectating}
               className={css({
                 padding: '0.5rem 1rem',
                 borderRadius: '0.375rem',
-                background: 'orange.500',
+                background: isSpectating ? 'gray.300' : 'orange.500',
                 color: 'white',
                 fontSize: 'sm',
                 fontWeight: '600',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: isSpectating ? 'not-allowed' : 'pointer',
+                opacity: isSpectating ? 0.5 : 1,
                 _hover: {
-                  background: 'orange.600',
+                  background: isSpectating ? 'gray.300' : 'orange.600',
                 },
               })}
             >
@@ -201,19 +207,19 @@ export function PlayingPhase() {
           <button
             type="button"
             onClick={checkSolution}
-            disabled={!canCheckSolution}
+            disabled={!canCheckSolution || isSpectating}
             className={css({
               padding: '0.5rem 1rem',
               borderRadius: '0.375rem',
-              background: canCheckSolution ? 'teal.600' : 'gray.300',
+              background: canCheckSolution && !isSpectating ? 'teal.600' : 'gray.300',
               color: 'white',
               fontSize: 'sm',
               fontWeight: '600',
               border: 'none',
-              cursor: canCheckSolution ? 'pointer' : 'not-allowed',
-              opacity: canCheckSolution ? 1 : 0.6,
+              cursor: canCheckSolution && !isSpectating ? 'pointer' : 'not-allowed',
+              opacity: canCheckSolution && !isSpectating ? 1 : 0.5,
               _hover: {
-                background: canCheckSolution ? 'teal.700' : 'gray.300',
+                background: canCheckSolution && !isSpectating ? 'teal.700' : 'gray.300',
               },
             })}
           >
@@ -222,17 +228,19 @@ export function PlayingPhase() {
           <button
             type="button"
             onClick={goToSetup}
+            disabled={isSpectating}
             className={css({
               padding: '0.5rem 1rem',
               borderRadius: '0.375rem',
-              background: 'gray.600',
+              background: isSpectating ? 'gray.400' : 'gray.600',
               color: 'white',
               fontSize: 'sm',
               fontWeight: '600',
               border: 'none',
-              cursor: 'pointer',
+              cursor: isSpectating ? 'not-allowed' : 'pointer',
+              opacity: isSpectating ? 0.5 : 1,
               _hover: {
-                background: 'gray.700',
+                background: isSpectating ? 'gray.400' : 'gray.700',
               },
             })}
           >
@@ -287,7 +295,8 @@ export function PlayingPhase() {
                   borderColor: selectedCardId === card.id ? '#1976d2' : 'transparent',
                   borderRadius: '8px',
                   background: selectedCardId === card.id ? '#e3f2fd' : 'white',
-                  cursor: 'pointer',
+                  cursor: isSpectating ? 'not-allowed' : 'pointer',
+                  opacity: isSpectating ? 0.5 : 1,
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   position: 'relative',
                   userSelect: 'none',
@@ -296,11 +305,13 @@ export function PlayingPhase() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                  _hover: {
-                    transform: 'translateY(-5px)',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
-                    borderColor: '#2c5f76',
-                  },
+                  _hover: isSpectating
+                    ? {}
+                    : {
+                        transform: 'translateY(-5px)',
+                        boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                        borderColor: '#2c5f76',
+                      },
                 })}
                 style={
                   selectedCardId === card.id
@@ -378,27 +389,29 @@ export function PlayingPhase() {
             <button
               type="button"
               onClick={() => handleInsertClick(0)}
-              disabled={!selectedCardId}
+              disabled={!selectedCardId || isSpectating}
               className={css({
                 width: '32px',
                 height: '50px',
-                background: selectedCardId ? '#1976d2' : '#2c5f76',
+                background: selectedCardId && !isSpectating ? '#1976d2' : '#2c5f76',
                 color: 'white',
                 border: 'none',
                 borderRadius: '20px',
                 fontSize: '24px',
                 fontWeight: 'bold',
-                cursor: selectedCardId ? 'pointer' : 'default',
-                opacity: selectedCardId ? 1 : 0.3,
+                cursor: selectedCardId && !isSpectating ? 'pointer' : 'not-allowed',
+                opacity: selectedCardId && !isSpectating ? 1 : 0.3,
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                _hover: {
-                  opacity: 1,
-                  background: '#1976d2',
-                  transform: selectedCardId ? 'scale(1.1)' : 'none',
-                },
+                _hover: isSpectating
+                  ? {}
+                  : {
+                      opacity: 1,
+                      background: '#1976d2',
+                      transform: selectedCardId ? 'scale(1.1)' : 'none',
+                    },
               })}
             >
               +
@@ -421,7 +434,8 @@ export function PlayingPhase() {
                       padding: '0.5rem',
                       borderRadius: '8px',
                       border: '2px solid',
-                      cursor: 'pointer',
+                      cursor: isSpectating ? 'not-allowed' : 'pointer',
+                      opacity: isSpectating ? 0.5 : 1,
                       transition: 'all 0.2s',
                       display: 'flex',
                       flexDirection: 'column',
@@ -429,20 +443,23 @@ export function PlayingPhase() {
                       justifyContent: 'center',
                       gap: '0.25rem',
                       position: 'relative',
-                      _hover: {
-                        transform: selectedCardId && isEmpty ? 'scale(1.05)' : 'none',
-                        boxShadow:
-                          selectedCardId && isEmpty ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
-                      },
+                      _hover: isSpectating
+                        ? {}
+                        : {
+                            transform: selectedCardId && isEmpty ? 'scale(1.05)' : 'none',
+                            boxShadow:
+                              selectedCardId && isEmpty ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                          },
                     })}
                     style={
                       isEmpty
                         ? {
                             ...gradientStyle,
                             // Active state: add slight glow when card is selected
-                            boxShadow: selectedCardId
-                              ? '0 0 0 2px #1976d2, 0 2px 8px rgba(25, 118, 210, 0.3)'
-                              : 'none',
+                            boxShadow:
+                              selectedCardId && !isSpectating
+                                ? '0 0 0 2px #1976d2, 0 2px 8px rgba(25, 118, 210, 0.3)'
+                                : 'none',
                           }
                         : {
                             background: '#fff',
@@ -501,27 +518,29 @@ export function PlayingPhase() {
                     key={`insert-${index + 1}`}
                     type="button"
                     onClick={() => handleInsertClick(index + 1)}
-                    disabled={!selectedCardId}
+                    disabled={!selectedCardId || isSpectating}
                     className={css({
                       width: '32px',
                       height: '50px',
-                      background: selectedCardId ? '#1976d2' : '#2c5f76',
+                      background: selectedCardId && !isSpectating ? '#1976d2' : '#2c5f76',
                       color: 'white',
                       border: 'none',
                       borderRadius: '20px',
                       fontSize: '24px',
                       fontWeight: 'bold',
-                      cursor: selectedCardId ? 'pointer' : 'default',
-                      opacity: selectedCardId ? 1 : 0.3,
+                      cursor: selectedCardId && !isSpectating ? 'pointer' : 'not-allowed',
+                      opacity: selectedCardId && !isSpectating ? 1 : 0.3,
                       transition: 'all 0.2s',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      _hover: {
-                        opacity: 1,
-                        background: '#1976d2',
-                        transform: selectedCardId ? 'scale(1.1)' : 'none',
-                      },
+                      _hover: isSpectating
+                        ? {}
+                        : {
+                            opacity: 1,
+                            background: '#1976d2',
+                            transform: selectedCardId ? 'scale(1.1)' : 'none',
+                          },
                     })}
                   >
                     +
