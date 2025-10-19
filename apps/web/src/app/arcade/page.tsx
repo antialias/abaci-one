@@ -1,7 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { useRoomData, useSetRoomGame } from '@/hooks/useRoomData'
+import { useViewerId } from '@/hooks/useViewerId'
 import { GAMES_CONFIG } from '@/components/GameSelector'
 import type { GameType } from '@/components/GameSelector'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -23,7 +25,9 @@ import { getAllGames, getGame, hasGame } from '@/lib/arcade/game-registry'
 export default function RoomPage() {
   const router = useRouter()
   const { roomData, isLoading } = useRoomData()
+  const { data: viewerId } = useViewerId()
   const { mutate: setRoomGame } = useSetRoomGame()
+  const [permissionError, setPermissionError] = useState<string | null>(null)
 
   // Show loading state
   if (isLoading) {
@@ -74,8 +78,26 @@ export default function RoomPage() {
 
   // Show game selection if no game is set
   if (!roomData.gameName) {
+    // Determine if current user is the host
+    const currentMember = roomData.members.find((m) => m.userId === viewerId)
+    const isHost = currentMember?.isCreator === true
+    const hostMember = roomData.members.find((m) => m.isCreator)
+
     const handleGameSelect = (gameType: GameType) => {
       console.log('[RoomPage] handleGameSelect called with gameType:', gameType)
+
+      // Check if user is host before allowing selection
+      if (!isHost) {
+        setPermissionError(
+          `Only the room host can select a game. Ask ${hostMember?.displayName || 'the host'} to choose.`
+        )
+        // Clear error after 5 seconds
+        setTimeout(() => setPermissionError(null), 5000)
+        return
+      }
+
+      // Clear any previous errors
+      setPermissionError(null)
 
       // All games are now in the registry
       if (hasGame(gameType)) {
@@ -86,10 +108,21 @@ export default function RoomPage() {
         }
 
         console.log('[RoomPage] Selecting registry game:', gameType)
-        setRoomGame({
-          roomId: roomData.id,
-          gameName: gameType,
-        })
+        setRoomGame(
+          {
+            roomId: roomData.id,
+            gameName: gameType,
+          },
+          {
+            onError: (error: any) => {
+              console.error('[RoomPage] Failed to set game:', error)
+              setPermissionError(
+                error.message || 'Failed to select game. Only the host can change games.'
+              )
+              setTimeout(() => setPermissionError(null), 5000)
+            },
+          }
+        )
         return
       }
 
@@ -119,12 +152,69 @@ export default function RoomPage() {
               fontSize: { base: '2xl', md: '3xl' },
               fontWeight: 'bold',
               color: 'white',
-              mb: '8',
+              mb: '4',
               textAlign: 'center',
             })}
           >
             Choose a Game
           </h1>
+
+          {/* Host info and permission messaging */}
+          <div
+            className={css({
+              maxWidth: '800px',
+              width: '100%',
+              mb: '6',
+            })}
+          >
+            {isHost ? (
+              <div
+                className={css({
+                  background: 'rgba(34, 197, 94, 0.1)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  color: '#86efac',
+                  fontSize: 'sm',
+                  textAlign: 'center',
+                })}
+              >
+                👑 You're the room host. Select a game to start playing.
+              </div>
+            ) : (
+              <div
+                className={css({
+                  background: 'rgba(234, 179, 8, 0.1)',
+                  border: '1px solid rgba(234, 179, 8, 0.3)',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  color: '#fde047',
+                  fontSize: 'sm',
+                  textAlign: 'center',
+                })}
+              >
+                ⏳ Waiting for {hostMember?.displayName || 'the host'} to select a game...
+              </div>
+            )}
+
+            {/* Permission error message */}
+            {permissionError && (
+              <div
+                className={css({
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  color: '#fca5a5',
+                  fontSize: 'sm',
+                  textAlign: 'center',
+                  mt: '3',
+                })}
+              >
+                ⚠️ {permissionError}
+              </div>
+            )}
+          </div>
 
           <div
             className={css({
@@ -138,21 +228,22 @@ export default function RoomPage() {
             {/* Legacy games */}
             {Object.entries(GAMES_CONFIG).map(([gameType, config]: [string, any]) => {
               const isAvailable = !('available' in config) || config.available !== false
+              const isDisabled = !isHost || !isAvailable
               return (
                 <button
                   key={gameType}
                   onClick={() => handleGameSelect(gameType as GameType)}
-                  disabled={!isAvailable}
+                  disabled={isDisabled}
                   className={css({
                     background: config.gradient,
                     border: '2px solid',
                     borderColor: config.borderColor || 'blue.200',
                     borderRadius: '2xl',
                     padding: '6',
-                    cursor: !isAvailable ? 'not-allowed' : 'pointer',
-                    opacity: !isAvailable ? 0.5 : 1,
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    opacity: isDisabled ? 0.4 : 1,
                     transition: 'all 0.3s ease',
-                    _hover: !isAvailable
+                    _hover: isDisabled
                       ? {}
                       : {
                           transform: 'translateY(-4px) scale(1.02)',
@@ -193,21 +284,22 @@ export default function RoomPage() {
             {/* Registry games */}
             {getAllGames().map((gameDef) => {
               const isAvailable = gameDef.manifest.available
+              const isDisabled = !isHost || !isAvailable
               return (
                 <button
                   key={gameDef.manifest.name}
                   onClick={() => handleGameSelect(gameDef.manifest.name)}
-                  disabled={!isAvailable}
+                  disabled={isDisabled}
                   className={css({
                     background: gameDef.manifest.gradient,
                     border: '2px solid',
                     borderColor: gameDef.manifest.borderColor,
                     borderRadius: '2xl',
                     padding: '6',
-                    cursor: !isAvailable ? 'not-allowed' : 'pointer',
-                    opacity: !isAvailable ? 0.5 : 1,
+                    cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    opacity: isDisabled ? 0.4 : 1,
                     transition: 'all 0.3s ease',
-                    _hover: !isAvailable
+                    _hover: isDisabled
                       ? {}
                       : {
                           transform: 'translateY(-4px) scale(1.02)',
