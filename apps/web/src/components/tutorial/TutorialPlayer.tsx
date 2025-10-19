@@ -439,8 +439,7 @@ function TutorialPlayerContent({
   const filteredHighlightBeads = useMemo(() => {
     if (!currentStep.highlightBeads) return undefined
     return currentStep.highlightBeads.filter((highlight) => {
-      const placeValue = highlight.placeValue ?? 4 - (highlight.columnIndex ?? 0)
-      return placeValue < abacusColumns
+      return highlight.placeValue < abacusColumns
     })
   }, [currentStep.highlightBeads, abacusColumns])
 
@@ -898,8 +897,8 @@ function TutorialPlayerContent({
       // Check if this is the correct action
       if (currentStep.highlightBeads && Array.isArray(currentStep.highlightBeads)) {
         const isCorrectBead = currentStep.highlightBeads.some((highlight) => {
-          // Get place value from highlight (convert columnIndex to placeValue if needed)
-          const highlightPlaceValue = highlight.placeValue ?? 4 - highlight.columnIndex
+          // Get place value from highlight
+          const highlightPlaceValue = highlight.placeValue
           // Get place value from bead click event
           const beadPlaceValue = beadInfo.bead ? beadInfo.bead.placeValue : 4 - beadInfo.columnIndex
 
@@ -911,9 +910,10 @@ function TutorialPlayerContent({
         })
 
         if (!isCorrectBead) {
+          const errorMessage = "That's not the highlighted bead. Try clicking the highlighted bead."
           dispatch({
             type: 'SET_ERROR',
-            error: currentStep.errorMessages.wrongBead,
+            error: errorMessage,
           })
 
           dispatch({
@@ -921,7 +921,7 @@ function TutorialPlayerContent({
             event: {
               type: 'ERROR_OCCURRED',
               stepId: currentStep.id,
-              error: currentStep.errorMessages.wrongBead,
+              error: errorMessage,
               timestamp: new Date(),
             },
           })
@@ -1046,8 +1046,7 @@ function TutorialPlayerContent({
     if (currentStep.highlightBeads && Array.isArray(currentStep.highlightBeads)) {
       currentStep.highlightBeads.forEach((highlight) => {
         // Convert placeValue to columnIndex for AbacusReact compatibility
-        const columnIndex =
-          highlight.placeValue !== undefined ? 4 - highlight.placeValue : highlight.columnIndex
+        const columnIndex = abacusColumns - 1 - highlight.placeValue
 
         // Skip highlights for columns that don't exist
         if (columnIndex < minValidColumn) {
