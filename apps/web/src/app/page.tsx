@@ -222,6 +222,7 @@ export default function HomePage() {
                   tutorial={friendsOf5Tutorial}
                   isDebugMode={false}
                   showDebugPanel={false}
+                  hideNavigation={true}
                 />
               </div>
 

@@ -215,6 +215,7 @@ interface TutorialPlayerProps {
   initialStepIndex?: number
   isDebugMode?: boolean
   showDebugPanel?: boolean
+  hideNavigation?: boolean
   onStepChange?: (stepIndex: number, step: TutorialStep) => void
   onStepComplete?: (stepIndex: number, step: TutorialStep, success: boolean) => void
   onTutorialComplete?: (score: number, timeSpent: number) => void
@@ -227,6 +228,7 @@ function TutorialPlayerContent({
   initialStepIndex = 0,
   isDebugMode = false,
   showDebugPanel = false,
+  hideNavigation = false,
   onStepChange,
   onStepComplete,
   onTutorialComplete,
@@ -1061,183 +1063,187 @@ function TutorialPlayerContent({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        minHeight: '600px',
+        minHeight: hideNavigation ? 'auto' : '600px',
       })} ${className || ''}`}
     >
       {/* Header */}
-      <div
-        className={css({
-          borderBottom: '1px solid',
-          borderColor: 'gray.200',
-          p: 4,
-          bg: 'white',
-        })}
-      >
+      {!hideNavigation && (
         <div
-          className={hstack({
-            justifyContent: 'space-between',
-            alignItems: 'center',
+          className={css({
+            borderBottom: '1px solid',
+            borderColor: 'gray.200',
+            p: 4,
+            bg: 'white',
           })}
         >
-          <div>
-            <h1 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>{tutorial.title}</h1>
-            <p className={css({ fontSize: 'sm', color: 'gray.600' })}>
-              Step {currentStepIndex + 1} of {tutorial.steps.length}: {currentStep.title}
-            </p>
-          </div>
-
-          <div className={hstack({ gap: 2 })}>
-            {isDebugMode && (
-              <>
-                <button
-                  onClick={toggleDebugPanel}
-                  className={css({
-                    px: 3,
-                    py: 1,
-                    fontSize: 'sm',
-                    border: '1px solid',
-                    borderColor: 'blue.300',
-                    borderRadius: 'md',
-                    bg: uiState.showDebugPanel ? 'blue.100' : 'white',
-                    color: 'blue.700',
-                    cursor: 'pointer',
-                    _hover: { bg: 'blue.50' },
-                  })}
-                >
-                  Debug
-                </button>
-                <button
-                  onClick={toggleStepList}
-                  className={css({
-                    px: 3,
-                    py: 1,
-                    fontSize: 'sm',
-                    border: '1px solid',
-                    borderColor: 'gray.300',
-                    borderRadius: 'md',
-                    bg: uiState.showStepList ? 'gray.100' : 'white',
-                    cursor: 'pointer',
-                    _hover: { bg: 'gray.50' },
-                  })}
-                >
-                  Steps
-                </button>
-
-                {/* Multi-step navigation controls */}
-                {currentStep.multiStepInstructions &&
-                  currentStep.multiStepInstructions.length > 1 && (
-                    <>
-                      <div
-                        className={css({
-                          fontSize: 'xs',
-                          color: 'gray.600',
-                          px: 2,
-                          borderLeft: '1px solid',
-                          borderColor: 'gray.300',
-                          ml: 2,
-                          pl: 3,
-                        })}
-                      >
-                        Multi-Step: {currentMultiStep + 1} /{' '}
-                        {currentStep.multiStepInstructions.length}
-                      </div>
-                      <button
-                        onClick={() => dispatch({ type: 'RESET_MULTI_STEP' })}
-                        disabled={currentMultiStep === 0}
-                        className={css({
-                          px: 2,
-                          py: 1,
-                          fontSize: 'xs',
-                          border: '1px solid',
-                          borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
-                          borderRadius: 'md',
-                          bg: currentMultiStep === 0 ? 'gray.100' : 'white',
-                          color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
-                          cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
-                          _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' },
-                        })}
-                      >
-                        ⏮ First
-                      </button>
-                      <button
-                        onClick={() => previousMultiStep()}
-                        disabled={currentMultiStep === 0}
-                        className={css({
-                          px: 2,
-                          py: 1,
-                          fontSize: 'xs',
-                          border: '1px solid',
-                          borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
-                          borderRadius: 'md',
-                          bg: currentMultiStep === 0 ? 'gray.100' : 'white',
-                          color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
-                          cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
-                          _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' },
-                        })}
-                      >
-                        ⏪ Prev
-                      </button>
-                      <button
-                        onClick={() => advanceMultiStep()}
-                        disabled={currentMultiStep >= currentStep.multiStepInstructions.length - 1}
-                        className={css({
-                          px: 2,
-                          py: 1,
-                          fontSize: 'xs',
-                          border: '1px solid',
-                          borderColor:
-                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
-                              ? 'gray.200'
-                              : 'green.300',
-                          borderRadius: 'md',
-                          bg:
-                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
-                              ? 'gray.100'
-                              : 'white',
-                          color:
-                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
-                              ? 'gray.400'
-                              : 'green.700',
-                          cursor:
-                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
-                              ? 'not-allowed'
-                              : 'pointer',
-                          _hover:
-                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
-                              ? {}
-                              : { bg: 'green.50' },
-                        })}
-                      >
-                        Next ⏩
-                      </button>
-                    </>
-                  )}
-                <label className={hstack({ gap: 2, fontSize: 'sm' })}>
-                  <input
-                    type="checkbox"
-                    checked={uiState.autoAdvance}
-                    onChange={toggleAutoAdvance}
-                  />
-                  Auto-advance
-                </label>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div className={css({ mt: 2, bg: 'gray.200', borderRadius: 'full', h: 2 })}>
           <div
-            className={css({
-              bg: 'blue.500',
-              h: 'full',
-              borderRadius: 'full',
-              transition: 'width 0.3s ease',
+            className={hstack({
+              justifyContent: 'space-between',
+              alignItems: 'center',
             })}
-            style={{ width: `${navigationState.completionPercentage}%` }}
-          />
+          >
+            <div>
+              <h1 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>{tutorial.title}</h1>
+              <p className={css({ fontSize: 'sm', color: 'gray.600' })}>
+                Step {currentStepIndex + 1} of {tutorial.steps.length}: {currentStep.title}
+              </p>
+            </div>
+
+            <div className={hstack({ gap: 2 })}>
+              {isDebugMode && (
+                <>
+                  <button
+                    onClick={toggleDebugPanel}
+                    className={css({
+                      px: 3,
+                      py: 1,
+                      fontSize: 'sm',
+                      border: '1px solid',
+                      borderColor: 'blue.300',
+                      borderRadius: 'md',
+                      bg: uiState.showDebugPanel ? 'blue.100' : 'white',
+                      color: 'blue.700',
+                      cursor: 'pointer',
+                      _hover: { bg: 'blue.50' },
+                    })}
+                  >
+                    Debug
+                  </button>
+                  <button
+                    onClick={toggleStepList}
+                    className={css({
+                      px: 3,
+                      py: 1,
+                      fontSize: 'sm',
+                      border: '1px solid',
+                      borderColor: 'gray.300',
+                      borderRadius: 'md',
+                      bg: uiState.showStepList ? 'gray.100' : 'white',
+                      cursor: 'pointer',
+                      _hover: { bg: 'gray.50' },
+                    })}
+                  >
+                    Steps
+                  </button>
+
+                  {/* Multi-step navigation controls */}
+                  {currentStep.multiStepInstructions &&
+                    currentStep.multiStepInstructions.length > 1 && (
+                      <>
+                        <div
+                          className={css({
+                            fontSize: 'xs',
+                            color: 'gray.600',
+                            px: 2,
+                            borderLeft: '1px solid',
+                            borderColor: 'gray.300',
+                            ml: 2,
+                            pl: 3,
+                          })}
+                        >
+                          Multi-Step: {currentMultiStep + 1} /{' '}
+                          {currentStep.multiStepInstructions.length}
+                        </div>
+                        <button
+                          onClick={() => dispatch({ type: 'RESET_MULTI_STEP' })}
+                          disabled={currentMultiStep === 0}
+                          className={css({
+                            px: 2,
+                            py: 1,
+                            fontSize: 'xs',
+                            border: '1px solid',
+                            borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
+                            borderRadius: 'md',
+                            bg: currentMultiStep === 0 ? 'gray.100' : 'white',
+                            color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
+                            cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
+                            _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' },
+                          })}
+                        >
+                          ⏮ First
+                        </button>
+                        <button
+                          onClick={() => previousMultiStep()}
+                          disabled={currentMultiStep === 0}
+                          className={css({
+                            px: 2,
+                            py: 1,
+                            fontSize: 'xs',
+                            border: '1px solid',
+                            borderColor: currentMultiStep === 0 ? 'gray.200' : 'orange.300',
+                            borderRadius: 'md',
+                            bg: currentMultiStep === 0 ? 'gray.100' : 'white',
+                            color: currentMultiStep === 0 ? 'gray.400' : 'orange.700',
+                            cursor: currentMultiStep === 0 ? 'not-allowed' : 'pointer',
+                            _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' },
+                          })}
+                        >
+                          ⏪ Prev
+                        </button>
+                        <button
+                          onClick={() => advanceMultiStep()}
+                          disabled={
+                            currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                          }
+                          className={css({
+                            px: 2,
+                            py: 1,
+                            fontSize: 'xs',
+                            border: '1px solid',
+                            borderColor:
+                              currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                                ? 'gray.200'
+                                : 'green.300',
+                            borderRadius: 'md',
+                            bg:
+                              currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                                ? 'gray.100'
+                                : 'white',
+                            color:
+                              currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                                ? 'gray.400'
+                                : 'green.700',
+                            cursor:
+                              currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                                ? 'not-allowed'
+                                : 'pointer',
+                            _hover:
+                              currentMultiStep >= currentStep.multiStepInstructions.length - 1
+                                ? {}
+                                : { bg: 'green.50' },
+                          })}
+                        >
+                          Next ⏩
+                        </button>
+                      </>
+                    )}
+                  <label className={hstack({ gap: 2, fontSize: 'sm' })}>
+                    <input
+                      type="checkbox"
+                      checked={uiState.autoAdvance}
+                      onChange={toggleAutoAdvance}
+                    />
+                    Auto-advance
+                  </label>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className={css({ mt: 2, bg: 'gray.200', borderRadius: 'full', h: 2 })}>
+            <div
+              className={css({
+                bg: 'blue.500',
+                h: 'full',
+                borderRadius: 'full',
+                transition: 'width 0.3s ease',
+              })}
+              style={{ width: `${navigationState.completionPercentage}%` }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={hstack({ flex: 1, gap: 0 })}>
         {/* Step list sidebar */}
@@ -1596,57 +1602,60 @@ function TutorialPlayerContent({
           </div>
 
           {/* Navigation controls */}
-          <div
-            className={css({
-              borderTop: '1px solid',
-              borderColor: 'gray.200',
-              p: 4,
-              bg: 'gray.50',
-            })}
-          >
-            <div className={hstack({ justifyContent: 'space-between' })}>
-              <button
-                onClick={goToPreviousStep}
-                disabled={!navigationState.canGoPrevious}
-                className={css({
-                  px: 4,
-                  py: 2,
-                  border: '1px solid',
-                  borderColor: 'gray.300',
-                  borderRadius: 'md',
-                  bg: 'white',
-                  cursor: navigationState.canGoPrevious ? 'pointer' : 'not-allowed',
-                  opacity: navigationState.canGoPrevious ? 1 : 0.5,
-                  _hover: navigationState.canGoPrevious ? { bg: 'gray.50' } : {},
-                })}
-              >
-                ← Previous
-              </button>
+          {!hideNavigation && (
+            <div
+              className={css({
+                borderTop: '1px solid',
+                borderColor: 'gray.200',
+                p: 4,
+                bg: 'gray.50',
+              })}
+            >
+              <div className={hstack({ justifyContent: 'space-between' })}>
+                <button
+                  onClick={goToPreviousStep}
+                  disabled={!navigationState.canGoPrevious}
+                  className={css({
+                    px: 4,
+                    py: 2,
+                    border: '1px solid',
+                    borderColor: 'gray.300',
+                    borderRadius: 'md',
+                    bg: 'white',
+                    cursor: navigationState.canGoPrevious ? 'pointer' : 'not-allowed',
+                    opacity: navigationState.canGoPrevious ? 1 : 0.5,
+                    _hover: navigationState.canGoPrevious ? { bg: 'gray.50' } : {},
+                  })}
+                >
+                  ← Previous
+                </button>
 
-              <div className={css({ fontSize: 'sm', color: 'gray.600' })}>
-                Step {currentStepIndex + 1} of {navigationState.totalSteps}
+                <div className={css({ fontSize: 'sm', color: 'gray.600' })}>
+                  Step {currentStepIndex + 1} of {navigationState.totalSteps}
+                </div>
+
+                <button
+                  onClick={goToNextStep}
+                  disabled={!navigationState.canGoNext && !isStepCompleted}
+                  className={css({
+                    px: 4,
+                    py: 2,
+                    border: '1px solid',
+                    borderColor:
+                      navigationState.canGoNext || isStepCompleted ? 'blue.300' : 'gray.300',
+                    borderRadius: 'md',
+                    bg: navigationState.canGoNext || isStepCompleted ? 'blue.500' : 'gray.200',
+                    color: navigationState.canGoNext || isStepCompleted ? 'white' : 'gray.500',
+                    cursor:
+                      navigationState.canGoNext || isStepCompleted ? 'pointer' : 'not-allowed',
+                    _hover: navigationState.canGoNext || isStepCompleted ? { bg: 'blue.600' } : {},
+                  })}
+                >
+                  {navigationState.canGoNext ? 'Next →' : 'Complete Tutorial'}
+                </button>
               </div>
-
-              <button
-                onClick={goToNextStep}
-                disabled={!navigationState.canGoNext && !isStepCompleted}
-                className={css({
-                  px: 4,
-                  py: 2,
-                  border: '1px solid',
-                  borderColor:
-                    navigationState.canGoNext || isStepCompleted ? 'blue.300' : 'gray.300',
-                  borderRadius: 'md',
-                  bg: navigationState.canGoNext || isStepCompleted ? 'blue.500' : 'gray.200',
-                  color: navigationState.canGoNext || isStepCompleted ? 'white' : 'gray.500',
-                  cursor: navigationState.canGoNext || isStepCompleted ? 'pointer' : 'not-allowed',
-                  _hover: navigationState.canGoNext || isStepCompleted ? { bg: 'blue.600' } : {},
-                })}
-              >
-                {navigationState.canGoNext ? 'Next →' : 'Complete Tutorial'}
-              </button>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Debug panel */}

@@ -283,10 +283,6 @@ export default function RoomPage() {
 
             {/* Registry games */}
             {getAllGames().map((gameDef) => {
-              if (gameDef.manifest.name === 'card-sorting') {
-                console.log('[Arcade Page] Card Sorting gameDef.manifest:', gameDef.manifest)
-                console.log('[Arcade Page] gradient value:', gameDef.manifest.gradient)
-              }
               const isAvailable = gameDef.manifest.available
               const isDisabled = !isHost || !isAvailable
               return (
@@ -294,8 +290,10 @@ export default function RoomPage() {
                   key={gameDef.manifest.name}
                   onClick={() => handleGameSelect(gameDef.manifest.name)}
                   disabled={isDisabled}
-                  className={css({
+                  style={{
                     background: gameDef.manifest.gradient,
+                  }}
+                  className={css({
                     border: '2px solid',
                     borderColor: gameDef.manifest.borderColor,
                     borderRadius: '2xl',
