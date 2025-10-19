@@ -5,7 +5,7 @@
  * in ascending order using only visual patterns (no numbers shown).
  */
 
-import { defineGame } from '@/lib/arcade/game-sdk'
+import { defineGame, getGameTheme } from '@/lib/arcade/game-sdk'
 import type { GameManifest } from '@/lib/arcade/game-sdk'
 import { GameComponent } from './components/GameComponent'
 import { CardSortingProvider } from './Provider'
@@ -24,9 +24,7 @@ const manifest: GameManifest = {
   maxPlayers: 1, // Single player only
   difficulty: 'Intermediate',
   chips: ['🧠 Pattern Recognition', '🎯 Solo Challenge', '📊 Smart Scoring'],
-  color: 'blue',
-  gradient: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-  borderColor: 'blue.200',
+  ...getGameTheme('teal'),
   available: true,
 }
 

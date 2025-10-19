@@ -5,7 +5,7 @@
  * Supports both abacus-numeral matching and complement pairs modes.
  */
 
-import { defineGame } from '@/lib/arcade/game-sdk'
+import { defineGame, getGameTheme } from '@/lib/arcade/game-sdk'
 import type { GameManifest } from '@/lib/arcade/game-sdk'
 import { MemoryPairsGame } from './components/MemoryPairsGame'
 import { MatchingProvider } from './Provider'
@@ -23,9 +23,7 @@ const manifest: GameManifest = {
   maxPlayers: 4,
   difficulty: 'Intermediate',
   chips: ['👥 Multiplayer', '🎯 Strategic', '🏆 Competitive'],
-  color: 'purple',
-  gradient: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
-  borderColor: 'purple.200',
+  ...getGameTheme('purple'),
   available: true,
 }
 

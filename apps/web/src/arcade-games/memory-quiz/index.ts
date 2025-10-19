@@ -5,7 +5,7 @@
  * Supports both cooperative and competitive multiplayer modes.
  */
 
-import { defineGame } from '@/lib/arcade/game-sdk'
+import { defineGame, getGameTheme } from '@/lib/arcade/game-sdk'
 import type { GameManifest } from '@/lib/arcade/game-sdk'
 import { MemoryQuizGame } from './components/MemoryQuizGame'
 import { MemoryQuizProvider } from './Provider'
@@ -23,9 +23,7 @@ const manifest: GameManifest = {
   maxPlayers: 8,
   difficulty: 'Intermediate',
   chips: ['👥 Multiplayer', '🧠 Memory', '🧮 Soroban'],
-  color: 'blue',
-  gradient: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-  borderColor: 'blue.200',
+  ...getGameTheme('blue'),
   available: true,
 }
 

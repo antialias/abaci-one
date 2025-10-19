@@ -3,7 +3,7 @@
  * Complete integration into the arcade system with multiplayer support
  */
 
-import { defineGame } from '@/lib/arcade/game-sdk'
+import { defineGame, getGameTheme } from '@/lib/arcade/game-sdk'
 import type { GameManifest } from '@/lib/arcade/game-sdk'
 import { complementRaceValidator } from './Validator'
 import { ComplementRaceProvider } from './Provider'
@@ -20,9 +20,7 @@ const manifest: GameManifest = {
   maxPlayers: 4,
   icon: '🏁',
   chips: ['👥 1-4 Players', '🚂 Sprint Mode', '🤖 AI Opponents', '🔥 Speed Challenge'],
-  color: 'blue',
-  gradient: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-  borderColor: 'blue.200',
+  ...getGameTheme('blue'),
   difficulty: 'Intermediate',
   available: true,
 }

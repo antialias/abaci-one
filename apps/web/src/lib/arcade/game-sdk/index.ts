@@ -82,6 +82,13 @@ export { loadManifest } from './load-manifest'
  */
 export { defineGame } from './define-game'
 
+/**
+ * Standard color themes for game cards
+ * Use these to ensure consistent appearance across all games
+ */
+export { getGameTheme, GAME_THEMES } from '../game-themes'
+export type { GameTheme, GameThemeName } from '../game-themes'
+
 // ============================================================================
 // Re-exports for convenience
 // ============================================================================
