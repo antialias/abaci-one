@@ -48,8 +48,8 @@ RUN turbo build --filter=@soroban/web
 FROM node:18-alpine AS runner
 WORKDIR /app
 
-# Install Python, pip, build tools for better-sqlite3, and Typst (needed at runtime)
-RUN apk add --no-cache python3 py3-pip py3-setuptools make g++ typst
+# Install Python, pip, build tools for better-sqlite3, Typst, and qpdf (needed at runtime)
+RUN apk add --no-cache python3 py3-pip py3-setuptools make g++ typst qpdf
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
