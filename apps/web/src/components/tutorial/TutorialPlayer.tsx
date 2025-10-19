@@ -1104,22 +1104,15 @@ function TutorialPlayerContent({
 
     // Add frame styling for dark mode
     if (theme === 'dark') {
-      styles.frame = {
-        // Column dividers
-        column: {
-          stroke: 'rgba(255, 255, 255, 0.15)',
-          strokeWidth: 2,
-        },
-        // Reckoning bar (horizontal middle bar)
-        reckoningBar: {
-          stroke: 'rgba(255, 255, 255, 0.2)',
-          strokeWidth: 3,
-        },
-        // Outer frame
-        border: {
-          stroke: 'rgba(255, 255, 255, 0.15)',
-          strokeWidth: 2,
-        },
+      // Column dividers (global for all columns)
+      styles.columnPosts = {
+        stroke: 'rgba(255, 255, 255, 0.2)',
+        strokeWidth: 2,
+      }
+      // Reckoning bar (horizontal middle bar)
+      styles.reckoningBar = {
+        stroke: 'rgba(255, 255, 255, 0.25)',
+        strokeWidth: 3,
       }
     }
 
