@@ -16,6 +16,7 @@ Following `docs/terminology-user-player-room.md`:
 - **PLAYER ROSTER** - All PLAYERS belonging to a USER (can have many)
 - **ACTIVE PLAYERS** - PLAYERS where `isActive = true` - these are the ones that actually participate in games
 - **ROOM MEMBER** - A USER's participation in a multiplayer room (tracked in `room_members` table)
+- **SPECTATOR** - A room member who watches another player's game without participating (see Spectator Mode section)
 
 **Important:** A USER can have many PLAYERS in their roster, but only the ACTIVE PLAYERS (where `isActive = true`) participate in games. This enables "hot-potato" style local multiplayer where multiple people share the same device. This is LOCAL play (not networked), even though multiple PLAYERS participate.
 
@@ -27,25 +28,46 @@ In arcade sessions:
 
 ## Critical Architectural Requirements
 
-### 1. Mode Isolation (MUST ENFORCE)
+### 1. Game Synchronization Modes
 
-**Local Play** (`/arcade/[game-name]`)
+The arcade system supports three synchronization patterns:
+
+#### Local Play (No Network Sync)
+**Route**: Custom route or dedicated local page
+**Use Case**: Practice, offline play, or games that should never be visible to others
 
 - MUST NOT sync game state across the network
 - MUST NOT use room data, even if the USER is currently a member of an active room
-- MUST create isolated, per-USER game sessions
+- MUST pass `roomId: undefined` to `useArcadeSession`
 - Game state lives only in the current browser tab/session
 - CAN have multiple ACTIVE PLAYERS from the same USER (local multiplayer / hot-potato)
 - State is NOT shared across the network, only within the browser session
 
-**Room-Based Play** (`/arcade/room`)
+#### Room-Based with Spectator Mode (RECOMMENDED PATTERN)
+**Route**: `/arcade/room` (or use room context anywhere)
+**Use Case**: Most arcade games - enables spectating even for single-player games
 
-- MUST sync game state across all room members via network
-- MUST use the USER's current active room
-- MUST coordinate moves via server WebSocket
+- SYNCS game state across all room members via network
+- Uses the USER's current active room (`roomId: roomData?.id`)
+- Coordinates moves via server WebSocket
 - Game state is shared across all ACTIVE PLAYERS from all USERS in the room
-- When a PLAYER makes a move, all room members see it in real-time
-- CAN ALSO have multiple ACTIVE PLAYERS per USER (networked + local multiplayer combined)
+- **Non-playing room members become SPECTATORS** (see Spectator Mode section)
+- When a PLAYER makes a move, all room members see it in real-time (players + spectators)
+- CAN have multiple ACTIVE PLAYERS per USER (networked + local multiplayer combined)
+
+**✅ This is the PREFERRED pattern** - even for single-player games like Card Sorting, because:
+- Enables spectator mode automatically
+- Creates social experience ("watch me solve this!")
+- No extra code needed
+- Works seamlessly with multiplayer games too
+
+#### Pure Multiplayer (Room-Only)
+**Route**: `/arcade/room` with validation
+**Use Case**: Games that REQUIRE multiple players (e.g., competitive battles)
+
+- Same as Room-Based with Spectator Mode
+- Plus: Validates minimum player count before starting
+- Plus: May prevent game start if `activePlayers.length < minPlayers`
 
 ### 2. Room ID Usage Rules
 
@@ -257,6 +279,327 @@ sendMove({
    - USER B: "guest_def" with 2 active PLAYERS (2 kids at Device B)
    - Mode: Room-based play (roomId: "room_xyz")
    - 5 total active PLAYERS across 2 devices, all synced over network
+
+5. **Single-player game with spectators (Card Sorting):**
+   - USER A: "guest_abc"
+     - Active PLAYERS: ["player_001"]
+     - Playing Card Sorting Challenge
+   - USER B: "guest_def"
+     - Active PLAYERS: [] (none selected)
+     - Spectating USER A's game
+   - USER C: "guest_ghi"
+     - Active PLAYERS: ["player_005"]
+     - Spectating USER A's game (could play after USER A finishes)
+   - Mode: Room-based play (roomId: "room_xyz")
+   - All room members see USER A's card placements in real-time
+   - Spectators cannot interact with the game state
+
+## Spectator Mode
+
+### Overview
+
+Spectator mode is automatically enabled when using room-based sync (`roomId: roomData?.id`). Any room member who is not actively playing becomes a spectator and can watch the game in real-time.
+
+**Key Benefits**:
+- Creates social/collaborative experience even for single-player games
+- "Watch me solve this!" engagement
+- Learning by observation
+- Cheering/coaching opportunity
+- No extra implementation needed
+
+### How It Works
+
+1. **Automatic Role Assignment**:
+   - Room members with active PLAYERs in the game → **Players**
+   - Room members without active PLAYERs in the game → **Spectators**
+
+2. **State Synchronization**:
+   - All game state updates broadcast to entire room via `game:${roomId}` socket room
+   - Spectators receive same state updates as players
+   - Spectators see game in real-time as it happens
+
+3. **Interaction Control**:
+   - Players can make moves (send move actions)
+   - Spectators can only observe (no move actions permitted)
+   - Server validates PLAYER ownership before accepting moves
+
+### Implementation Pattern
+
+**Provider** (Room-Based with Spectator Support):
+
+```typescript
+export function CardSortingProvider({ children }: { children: ReactNode }) {
+  const { data: viewerId } = useViewerId()
+  const { roomData } = useRoomData()  // ✅ Fetch room data
+  const { activePlayers, players } = useGameMode()
+
+  // Find local player (if any)
+  const localPlayerId = useMemo(() => {
+    return Array.from(activePlayers).find((id) => {
+      const player = players.get(id)
+      return player?.isLocal !== false
+    })
+  }, [activePlayers, players])
+
+  const { state, sendMove, exitSession } = useArcadeSession<CardSortingState>({
+    userId: viewerId || '',
+    roomId: roomData?.id,  // ✅ Enable spectator mode
+    initialState,
+    applyMove: applyMoveOptimistically,
+  })
+
+  // Actions check if local player exists before allowing moves
+  const startGame = useCallback(() => {
+    if (!localPlayerId) {
+      console.warn('[CardSorting] No local player - spectating only')
+      return  // ✅ Spectators cannot start game
+    }
+    sendMove({ type: 'START_GAME', playerId: localPlayerId, ... })
+  }, [localPlayerId, sendMove])
+
+  // ... rest of provider
+}
+```
+
+**Key Implementation Points**:
+- Always check `if (!localPlayerId)` before allowing moves
+- Return early or show "Spectating..." message
+- Don't throw errors - spectating is a valid state
+- UI should indicate spectator vs player role
+
+### UI/UX Considerations
+
+#### 1. Spectator Indicators
+
+Show visual feedback when user is spectating:
+
+```typescript
+{!localPlayerId && state.gamePhase === 'playing' && (
+  <div className={spectatorBannerStyles}>
+    👀 Spectating {state.playerMetadata.name}'s game
+  </div>
+)}
+```
+
+#### 2. Disabled Controls
+
+Disable interactive elements for spectators:
+
+```typescript
+<button
+  onClick={placeCard}
+  disabled={!localPlayerId}  // Spectators can't interact
+  className={css({
+    opacity: !localPlayerId ? 0.5 : 1,
+    cursor: !localPlayerId ? 'not-allowed' : 'pointer',
+  })}
+>
+  Place Card
+</button>
+```
+
+#### 3. Join Prompt
+
+For games that support multiple players, show "Join Game" option:
+
+```typescript
+{!localPlayerId && state.gamePhase === 'setup' && (
+  <button onClick={selectPlayerAndJoin}>
+    Join as Player
+  </button>
+)}
+```
+
+#### 4. Real-Time Updates
+
+Ensure spectators see smooth updates:
+- Use optimistic UI updates (same as players)
+- Show animations for state changes
+- Display current player's moves as they happen
+
+### When to Use Spectator Mode
+
+**✅ Use Spectator Mode (room-based sync) For**:
+- Single-player puzzle games (Card Sorting, Sudoku, etc.)
+- Turn-based competitive games (Matching Pairs Battle)
+- Cooperative games (Memory Lightning)
+- Any game where watching is educational/entertaining
+- Social/family game nights
+- Classroom settings (teacher demonstrates, students watch)
+
+**❌ Avoid Spectator Mode (use local-only) For**:
+- Private practice sessions
+- Timed competitive games where watching gives unfair advantage
+- Games with personal/sensitive content
+- Offline/no-network scenarios
+- Performance-critical games (reduce network overhead)
+
+### Example Scenarios
+
+#### Scenario 1: Family Game Night - Card Sorting
+
+```
+Room: "Smith Family Game Night"
+
+USER A (Dad): Playing Card Sorting
+  - Active PLAYER: "Dad 👨"
+  - State: Placing cards, 6/8 complete
+  - Can interact with game
+
+USER B (Mom): Spectating
+  - Active PLAYERS: [] (none selected)
+  - State: Sees Dad's card placements in real-time
+  - Cannot place cards
+  - Can cheer and help
+
+USER C (Kid): Spectating
+  - Active PLAYER: "Emma 👧" (selected but not in this game)
+  - State: Watching to learn strategy
+  - Will play next round
+
+Flow:
+1. Dad starts Card Sorting
+2. Mom and Kid see setup phase
+3. Dad places cards one by one
+4. Mom/Kid see each placement instantly
+5. Dad checks solution
+6. Everyone sees the score together
+7. Kid says "My turn!" and starts their own game
+8. Dad and Mom become spectators
+```
+
+#### Scenario 2: Classroom - Memory Lightning
+
+```
+Room: "Ms. Johnson's 3rd Grade"
+
+USER A (Teacher): Playing cooperatively with 2 students
+  - Active PLAYERS: ["Teacher 👩‍🏫", "Student 1 👦"]
+  - State: Memorizing cards
+  - Both can participate
+
+USER B-F (5 other students): Spectating
+  - Watching demonstration
+  - Learning the rules
+  - Will join next round
+
+Flow:
+1. Teacher demonstrates with 2 students
+2. Other students watch and learn
+3. Round ends
+4. Teacher sets up new round
+5. New students join as players
+6. Previous players become spectators
+```
+
+### Server-Side Handling
+
+The server must handle spectators correctly:
+
+```typescript
+// Validate move ownership
+socket.on('game-move', ({ move, roomId }) => {
+  const session = getSession(roomId)
+
+  // Check if PLAYER making move is in the active players list
+  if (!session.activePlayers.includes(move.playerId)) {
+    return {
+      error: 'PLAYER not in game - spectators cannot make moves'
+    }
+  }
+
+  // Check if USER owns this PLAYER
+  const playerOwner = getPlayerOwner(move.playerId)
+  if (playerOwner !== socket.userId) {
+    return {
+      error: 'USER does not own this PLAYER'
+    }
+  }
+
+  // Valid move - apply and broadcast
+  const newState = validator.validateMove(session.state, move)
+  io.to(`game:${roomId}`).emit('state-update', newState)  // ALL room members get update
+})
+```
+
+**Key Server Logic**:
+- Validate PLAYER is in `session.activePlayers`
+- Validate USER owns PLAYER
+- Broadcast to entire room (players + spectators)
+- Spectators receive updates but cannot send moves
+
+### Testing Spectator Mode
+
+```typescript
+describe('Spectator Mode', () => {
+  it('should allow room members to spectate single-player games', () => {
+    // Setup: USER A and USER B in same room
+    // Action: USER A starts Card Sorting (single-player)
+    // Assert: USER B receives game state updates
+    // Assert: USER B cannot make moves
+    // Assert: USER B sees USER A's card placements in real-time
+  })
+
+  it('should prevent spectators from making moves', () => {
+    // Setup: USER A playing, USER B spectating
+    // Action: USER B attempts to place a card
+    // Assert: Server rejects move (PLAYER not in activePlayers)
+    // Assert: Client UI disables controls for USER B
+  })
+
+  it('should show spectator indicator in UI', () => {
+    // Setup: USER B spectating USER A's game
+    // Assert: UI shows "Spectating [Player Name]" banner
+    // Assert: Interactive controls are disabled
+    // Assert: Game state is visible
+  })
+
+  it('should allow spectator to join next round', () => {
+    // Setup: USER B spectating USER A's Card Sorting game
+    // Action: USER A finishes game, returns to setup
+    // Action: USER B starts new game
+    // Assert: USER A becomes spectator
+    // Assert: USER B becomes active player
+  })
+})
+```
+
+### Migration Path
+
+**For existing games**:
+
+If your game currently uses `roomId: roomData?.id`, it already supports spectator mode! You just need to:
+
+1. ✅ Check for `!localPlayerId` before allowing moves
+2. ✅ Add spectator UI indicators
+3. ✅ Disable controls when spectating
+4. ✅ Test spectator experience
+
+**Example Fix**:
+
+```typescript
+// Before (will crash for spectators)
+const placeCard = useCallback((cardId, position) => {
+  sendMove({
+    type: 'PLACE_CARD',
+    playerId: localPlayerId,  // ❌ Will be undefined for spectators!
+    ...
+  })
+}, [localPlayerId, sendMove])
+
+// After (spectator-safe)
+const placeCard = useCallback((cardId, position) => {
+  if (!localPlayerId) {
+    console.warn('Spectators cannot place cards')
+    return  // ✅ Spectators blocked from moving
+  }
+  sendMove({
+    type: 'PLACE_CARD',
+    playerId: localPlayerId,
+    ...
+  })
+}, [localPlayerId, sendMove])
+```
 
 ## Common Mistakes to Avoid
 
