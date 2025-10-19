@@ -13,6 +13,7 @@ import type { CardSortingConfig, CardSortingMove, CardSortingState } from './typ
 import { cardSortingValidator } from './Validator'
 
 const theme = getGameTheme('teal')
+console.log('[Card Sorting] Theme object:', theme)
 
 const manifest: GameManifest = {
   name: 'card-sorting',
@@ -31,6 +32,8 @@ const manifest: GameManifest = {
   borderColor: theme.borderColor,
   available: true,
 }
+
+console.log('[Card Sorting] Final manifest:', manifest)
 
 const defaultConfig: CardSortingConfig = {
   cardCount: 8,

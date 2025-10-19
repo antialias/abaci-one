@@ -1383,7 +1383,7 @@ function TutorialPlayerContent({
                           backdropFilter: 'blur(4px)',
                         })}
                       >
-                        <p
+                        <div
                           className={css({
                             fontSize: 'base',
                             color: 'slate.800',
@@ -1398,7 +1398,7 @@ function TutorialPlayerContent({
                             termPositions={termPositions}
                             segments={pedagogicalSegments}
                           />
-                        </p>
+                        </div>
                       </div>
                     )}
 
