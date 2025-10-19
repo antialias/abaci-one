@@ -408,7 +408,15 @@ export default function HomePage() {
                   { level: '1 Kyu', label: 'Advanced', color: 'purple.400' },
                   { level: 'Dan', label: 'Master', color: 'yellow.400' },
                 ].map((stage, i) => (
-                  <div key={i} className={stack({ gap: '2', textAlign: 'center', flex: '1' })}>
+                  <div
+                    key={i}
+                    className={stack({
+                      gap: '2',
+                      textAlign: 'center',
+                      flex: '1',
+                      position: 'relative',
+                    })}
+                  >
                     <div
                       className={css({
                         fontSize: 'xl',
