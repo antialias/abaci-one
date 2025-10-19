@@ -47,7 +47,7 @@ That's it! The theme automatically provides:
 
 ## Available Themes
 
-All themes use Tailwind's 100-200 color range for soft pastel appearance:
+All themes use Panda CSS's 100-200 color range for soft pastel appearance:
 
 | Theme | Color Range | Use Case |
 |-------|-------------|----------|
@@ -119,7 +119,7 @@ export const GAME_THEMES = {
   // ... existing themes
   mycolor: {
     color: 'mycolor',
-    gradient: 'linear-gradient(135deg, #lighter, #darker)', // Use Tailwind 100-200
+    gradient: 'linear-gradient(135deg, #lighter, #darker)', // Use Panda CSS 100-200 range
     borderColor: 'mycolor.200',
   },
 } as const satisfies Record<string, GameTheme>
