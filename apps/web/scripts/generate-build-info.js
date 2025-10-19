@@ -24,7 +24,8 @@ function getBuildInfo() {
   const gitCommitShort = process.env.GIT_COMMIT_SHORT || exec('git rev-parse --short HEAD')
   const gitBranch = process.env.GIT_BRANCH || exec('git rev-parse --abbrev-ref HEAD')
   const gitTag = process.env.GIT_TAG || exec('git describe --tags --exact-match 2>/dev/null')
-  const gitDirty = process.env.GIT_DIRTY === 'true' || exec('git diff --quiet || echo "dirty"') === 'dirty'
+  const gitDirty =
+    process.env.GIT_DIRTY === 'true' || exec('git diff --quiet || echo "dirty"') === 'dirty'
 
   const packageJson = require('../package.json')
 
