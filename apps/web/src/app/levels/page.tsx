@@ -479,7 +479,7 @@ export default function LevelsPage() {
                       <div
                         className={css({
                           position: 'absolute',
-                          bottom: '-60px',
+                          bottom: '-80px',
                           left: '50%',
                           transform: 'translateX(-50%)',
                           textAlign: 'center',
