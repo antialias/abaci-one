@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useSpring, animated } from '@react-spring/web'
+import * as Slider from '@radix-ui/react-slider'
 import { AbacusReact } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
@@ -122,7 +123,6 @@ const allLevels = [
 
 export default function LevelsPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const sliderRef = useRef<HTMLInputElement>(null)
   const currentLevel = allLevels[currentIndex]
 
   // Calculate scale factor based on number of columns to fit the page
@@ -135,23 +135,6 @@ export default function LevelsPage() {
     scaleFactor,
     config: { tension: 280, friction: 60 },
   })
-
-  // Handle mouse/touch move over slider for hover interaction
-  const handleSliderHover = (
-    e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>
-  ) => {
-    if (!sliderRef.current) return
-
-    const rect = sliderRef.current.getBoundingClientRect()
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const x = clientX - rect.left
-    const percentage = Math.max(0, Math.min(1, x / rect.width))
-    const newIndex = Math.round(percentage * (allLevels.length - 1))
-
-    if (newIndex !== currentIndex) {
-      setCurrentIndex(newIndex)
-    }
-  }
 
   // Generate an interesting non-zero number to display on the abacus
   // Use a suffix pattern so rightmost digits stay constant as columns increase
@@ -300,94 +283,108 @@ export default function LevelsPage() {
                 )}
               </div>
 
-              {/* Range Slider with hover support - Abacus themed */}
+              {/* Abacus-themed Radix Slider */}
               <div className={css({ mb: '6', px: { base: '2', md: '8' } })}>
                 <div className={css({ mb: '3', textAlign: 'center' })}>
                   <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
-                    Hover, drag, or touch the beads to explore all levels
+                    Drag or click the beads to explore all levels
                   </p>
                 </div>
 
-                <div
-                  onMouseMove={handleSliderHover}
-                  onTouchMove={handleSliderHover}
-                  className={css({
-                    position: 'relative',
-                    py: '6',
-                    cursor: 'pointer',
-                  })}
-                >
-                  {/* Reckoning Bar (Track) */}
-                  <div
-                    className={css({
-                      position: 'absolute',
-                      top: '50%',
-                      left: 0,
-                      right: 0,
-                      h: '3px',
-                      bg: 'rgba(255, 255, 255, 0.2)',
-                      transform: 'translateY(-50%)',
-                      rounded: 'full',
-                    })}
-                  />
-
-                  {/* Beads (Tick Marks) */}
-                  {allLevels.map((level, index) => {
-                    const isActive = index === currentIndex
-                    const isDan = 'color' in level && level.color === 'violet'
-                    const beadColor = isActive
-                      ? isDan
-                        ? 'violet.400'
-                        : 'green.400'
-                      : isDan
-                        ? 'rgba(139, 92, 246, 0.4)'
-                        : 'rgba(34, 197, 94, 0.4)'
-
-                    return (
-                      <div
-                        key={index}
-                        className={css({
-                          position: 'absolute',
-                          top: '50%',
-                          left: `${(index / (allLevels.length - 1)) * 100}%`,
-                          transform: 'translate(-50%, -50%)',
-                          w: isActive ? '16px' : '12px',
-                          h: isActive ? '16px' : '12px',
-                          bg: beadColor,
-                          rounded: 'full',
-                          border: '2px solid',
-                          borderColor: isActive
-                            ? isDan
-                              ? 'violet.200'
-                              : 'green.200'
-                            : 'rgba(255, 255, 255, 0.3)',
-                          transition: 'all 0.2s',
-                          boxShadow: isActive
-                            ? `0 0 12px ${isDan ? 'rgba(139, 92, 246, 0.6)' : 'rgba(34, 197, 94, 0.6)'}`
-                            : 'none',
-                        })}
-                      />
-                    )
-                  })}
-
-                  {/* Invisible input for accessibility and native slider behavior */}
-                  <input
-                    ref={sliderRef}
-                    type="range"
-                    min="0"
+                <div className={css({ position: 'relative', py: '6' })}>
+                  <Slider.Root
+                    value={[currentIndex]}
+                    onValueChange={([value]) => setCurrentIndex(value)}
+                    min={0}
                     max={allLevels.length - 1}
-                    value={currentIndex}
-                    onChange={(e) => setCurrentIndex(Number(e.target.value))}
+                    step={1}
                     className={css({
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      w: '100%',
-                      h: '100%',
-                      opacity: 0,
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      userSelect: 'none',
+                      touchAction: 'none',
+                      w: 'full',
+                      h: '12',
                       cursor: 'pointer',
                     })}
-                  />
+                  >
+                    {/* Decorative beads for all levels */}
+                    {allLevels.map((level, index) => {
+                      const isActive = index === currentIndex
+                      const isDan = 'color' in level && level.color === 'violet'
+                      const beadColor = isActive
+                        ? isDan
+                          ? 'violet.400'
+                          : 'green.400'
+                        : isDan
+                          ? 'rgba(139, 92, 246, 0.4)'
+                          : 'rgba(34, 197, 94, 0.4)'
+
+                      return (
+                        <div
+                          key={index}
+                          className={css({
+                            position: 'absolute',
+                            top: '50%',
+                            left: `${(index / (allLevels.length - 1)) * 100}%`,
+                            transform: 'translate(-50%, -50%)',
+                            w: isActive ? '16px' : '10px',
+                            h: isActive ? '16px' : '10px',
+                            bg: beadColor,
+                            rounded: 'full',
+                            border: '2px solid',
+                            borderColor: isActive
+                              ? isDan
+                                ? 'violet.200'
+                                : 'green.200'
+                              : 'rgba(255, 255, 255, 0.3)',
+                            transition: 'all 0.2s',
+                            boxShadow: isActive
+                              ? `0 0 12px ${isDan ? 'rgba(139, 92, 246, 0.6)' : 'rgba(34, 197, 94, 0.6)'}`
+                              : 'none',
+                            pointerEvents: 'none',
+                            zIndex: 0,
+                          })}
+                        />
+                      )
+                    })}
+
+                    <Slider.Track
+                      className={css({
+                        bg: 'rgba(255, 255, 255, 0.2)',
+                        position: 'relative',
+                        flexGrow: 1,
+                        rounded: 'full',
+                        h: '3px',
+                      })}
+                    >
+                      <Slider.Range className={css({ display: 'none' })} />
+                    </Slider.Track>
+
+                    <Slider.Thumb
+                      className={css({
+                        display: 'block',
+                        w: '20px',
+                        h: '20px',
+                        bg: currentLevel.color === 'violet' ? 'violet.500' : 'green.500',
+                        shadow: '0 0 16px rgba(0, 0, 0, 0.4)',
+                        rounded: 'full',
+                        border: '3px solid',
+                        borderColor: currentLevel.color === 'violet' ? 'violet.200' : 'green.200',
+                        cursor: 'grab',
+                        transition: 'all 0.2s',
+                        zIndex: 10,
+                        _hover: { transform: 'scale(1.15)' },
+                        _focus: {
+                          outline: 'none',
+                          transform: 'scale(1.15)',
+                          boxShadow: `0 0 20px ${currentLevel.color === 'violet' ? 'rgba(139, 92, 246, 0.8)' : 'rgba(34, 197, 94, 0.8)'}`,
+                        },
+                        _active: { cursor: 'grabbing' },
+                      })}
+                    />
+                  </Slider.Root>
                 </div>
 
                 {/* Level Markers */}
