@@ -192,21 +192,63 @@ function getLevelDetailsKey(levelName: string): string | null {
   return null
 }
 
-// Helper function to format and translate kyu level details for display
-function formatKyuDetails(rawText: string): string {
-  return (
-    rawText
-      // Translate Japanese characters
-      .replace(/口/g, 'rows')
-      .replace(/字/g, 'chars')
-      .replace(/実\+法/g, 'total')
-      .replace(/法\+商/g, 'total')
-      .replace(/題/g, 'sets')
-      // Remove shuzan.jp attribution (we can add it elsewhere if needed)
-      .replace(/\nshuzan\.jp/g, '')
-      // Use operator symbols
-      .replace(/Add\/Sub:/g, '+ / −:')
-  )
+// Parse and format kyu level details into structured sections with icons
+function parseKyuDetails(rawText: string) {
+  const lines = rawText.split('\n').filter((line) => line.trim() && !line.includes('shuzan.jp'))
+
+  const sections: Array<{ icon: string; label: string; value: string }> = []
+
+  for (const line of lines) {
+    if (line.includes('Add/Sub:')) {
+      // Parse addition/subtraction requirements
+      const match = line.match(/(\d+)-digit.*?(\d+)口.*?(\d+)字/)
+      if (match) {
+        sections.push({
+          icon: '➕➖',
+          label: 'Add/Sub',
+          value: `${match[1]}-digit, ${match[2]} rows, ${match[3]} chars`,
+        })
+      }
+    } else if (line.includes('×:')) {
+      // Parse multiplication requirements
+      const match = line.match(/(\d+) digits.*?\((\d+)/)
+      if (match) {
+        sections.push({
+          icon: '✖️',
+          label: 'Multiply',
+          value: `${match[1]}-digit total (${match[2]} problems)`,
+        })
+      }
+    } else if (line.includes('÷:')) {
+      // Parse division requirements
+      const match = line.match(/(\d+) digits.*?\((\d+)/)
+      if (match) {
+        sections.push({
+          icon: '➗',
+          label: 'Divide',
+          value: `${match[1]}-digit total (${match[2]} problems)`,
+        })
+      }
+    } else if (line.includes('Time:')) {
+      // Parse time and pass requirements
+      const timeMatch = line.match(/(\d+) min/)
+      const passMatch = line.match(/≥\s*(\d+)\/(\d+)/)
+      if (timeMatch && passMatch) {
+        sections.push({
+          icon: '⏱️',
+          label: 'Time',
+          value: `${timeMatch[1]} minutes`,
+        })
+        sections.push({
+          icon: '✅',
+          label: 'Pass',
+          value: `≥${passMatch[1]}/${passMatch[2]} pts`,
+        })
+      }
+    }
+  }
+
+  return sections
 }
 
 export default function LevelsPage() {
@@ -625,41 +667,80 @@ export default function LevelsPage() {
                     const rawText = detailsKey
                       ? kyuLevelDetails[detailsKey as keyof typeof kyuLevelDetails]
                       : null
-                    const detailsText = rawText ? formatKyuDetails(rawText) : null
+                    const sections = rawText ? parseKyuDetails(rawText) : []
 
-                    // Calculate responsive font size based on digits
-                    // More digits = larger abacus = less space for details
-                    const getFontSize = () => {
-                      if (currentLevel.digits <= 3) return 'sm' // 10th-8th Kyu
-                      if (currentLevel.digits <= 6) return 'xs' // 7th-5th Kyu
-                      return '2xs' // 4th-1st Kyu
-                    }
+                    // Use consistent sizing across all levels
+                    const sizing = { fontSize: 'sm', gap: '3', iconSize: 'xl' }
 
-                    return detailsText ? (
+                    return sections.length > 0 ? (
                       <div
                         className={css({
                           flex: '0 0 auto',
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'center',
+                          gap: sizing.gap,
                           pr: '4',
+                          pl: '2',
                           borderRight: '1px solid',
                           borderColor: 'gray.600',
-                          maxW: '280px',
+                          maxW: '320px',
                         })}
                       >
-                        <pre
-                          className={css({
-                            fontFamily: 'mono',
-                            fontSize: getFontSize(),
-                            color: 'gray.300',
-                            lineHeight: '1.5',
-                            whiteSpace: 'pre-wrap',
-                            wordWrap: 'break-word',
-                          })}
-                        >
-                          {detailsText}
-                        </pre>
+                        {sections.map((section, idx) => (
+                          <div
+                            key={idx}
+                            className={css({
+                              bg: 'rgba(0, 0, 0, 0.4)',
+                              border: '1px solid',
+                              borderColor: 'gray.700',
+                              rounded: 'md',
+                              p: '2',
+                              transition: 'all 0.2s',
+                              _hover: {
+                                borderColor: 'gray.500',
+                                transform: 'translateX(4px)',
+                              },
+                            })}
+                          >
+                            <div
+                              className={css({
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '2',
+                                mb: '1',
+                              })}
+                            >
+                              <span className={css({ fontSize: sizing.iconSize })}>
+                                {section.icon}
+                              </span>
+                              <span
+                                className={css({
+                                  fontSize: sizing.fontSize,
+                                  fontWeight: 'semibold',
+                                  color:
+                                    currentLevel.color === 'green'
+                                      ? 'green.300'
+                                      : currentLevel.color === 'blue'
+                                        ? 'blue.300'
+                                        : 'violet.300',
+                                })}
+                              >
+                                {section.label}
+                              </span>
+                            </div>
+                            <div
+                              className={css({
+                                fontSize: sizing.fontSize,
+                                color: 'gray.400',
+                                lineHeight: '1.4',
+                                pl: sizing.gap === '3' ? '6' : sizing.gap === '2' ? '5' : '4',
+                              })}
+                            >
+                              {section.value}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ) : null
                   })()}
