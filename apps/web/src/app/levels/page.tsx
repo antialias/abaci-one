@@ -196,41 +196,66 @@ function getLevelDetailsKey(levelName: string): string | null {
 function parseKyuDetails(rawText: string) {
   const lines = rawText.split('\n').filter((line) => line.trim() && !line.includes('shuzan.jp'))
 
-  const sections: Array<{ icon: string; label: string; value: string }> = []
+  // Always return sections in consistent order: Add/Sub, Multiply, Divide
+  const sections: Array<{
+    type: 'addSub' | 'multiply' | 'divide'
+    icon: string
+    label: string
+    digits: string | null
+    rows: string | null
+    chars: string | null
+    problems: string | null
+  }> = [
+    {
+      type: 'addSub',
+      icon: '➕➖',
+      label: 'Add/Sub',
+      digits: null,
+      rows: null,
+      chars: null,
+      problems: null,
+    },
+    {
+      type: 'multiply',
+      icon: '✖️',
+      label: 'Multiply',
+      digits: null,
+      rows: null,
+      chars: null,
+      problems: null,
+    },
+    {
+      type: 'divide',
+      icon: '➗',
+      label: 'Divide',
+      digits: null,
+      rows: null,
+      chars: null,
+      problems: null,
+    },
+  ]
 
   for (const line of lines) {
     if (line.includes('Add/Sub:')) {
-      // Parse addition/subtraction requirements
       const match = line.match(/(\d+)-digit.*?(\d+)口.*?(\d+)字/)
       if (match) {
-        sections.push({
-          icon: '➕➖',
-          label: 'Add/Sub',
-          value: `${match[1]}-digit, ${match[2]} rows, ${match[3]} chars`,
-        })
+        sections[0].digits = match[1]
+        sections[0].rows = match[2]
+        sections[0].chars = match[3]
       }
     } else if (line.includes('×:')) {
-      // Parse multiplication requirements
       const match = line.match(/(\d+) digits.*?\((\d+)/)
       if (match) {
-        sections.push({
-          icon: '✖️',
-          label: 'Multiply',
-          value: `${match[1]}-digit total (${match[2]} problems)`,
-        })
+        sections[1].digits = match[1]
+        sections[1].problems = match[2]
       }
     } else if (line.includes('÷:')) {
-      // Parse division requirements
       const match = line.match(/(\d+) digits.*?\((\d+)/)
       if (match) {
-        sections.push({
-          icon: '➗',
-          label: 'Divide',
-          value: `${match[1]}-digit total (${match[2]} problems)`,
-        })
+        sections[2].digits = match[1]
+        sections[2].problems = match[2]
       }
     }
-    // Skip Time and Pass requirements since we don't have tests implemented
   }
 
   return sections
@@ -670,20 +695,25 @@ export default function LevelsPage() {
                           borderColor: 'gray.600',
                           maxW: '480px',
                           alignContent: 'center',
+                          my: '6',
                         })}
                       >
                         {sections.map((section, idx) => {
-                          // Extract the digit count (e.g., "4" from "4-digit total")
-                          const digitMatch = section.value.match(/(\d+)-digit/)
-                          const digitCount = digitMatch ? digitMatch[1] : null
+                          const hasData = section.digits !== null
+                          const levelColor =
+                            currentLevel.color === 'green'
+                              ? 'green.300'
+                              : currentLevel.color === 'blue'
+                                ? 'blue.300'
+                                : 'violet.300'
 
                           return (
                             <div
                               key={idx}
                               className={css({
-                                bg: 'rgba(0, 0, 0, 0.4)',
+                                bg: hasData ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.2)',
                                 border: '1px solid',
-                                borderColor: 'gray.700',
+                                borderColor: hasData ? 'gray.700' : 'gray.800',
                                 rounded: 'md',
                                 p: '4',
                                 transition: 'all 0.2s',
@@ -692,36 +722,63 @@ export default function LevelsPage() {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 gap: '2',
-                                _hover: {
-                                  borderColor: 'gray.500',
-                                  transform: 'scale(1.05)',
-                                },
+                                opacity: hasData ? 1 : 0.3,
+                                width: '200px',
+                                height: '180px',
+                                _hover: hasData
+                                  ? {
+                                      borderColor: 'gray.500',
+                                      transform: 'scale(1.05)',
+                                    }
+                                  : {},
                               })}
                             >
                               <span className={css({ fontSize: sizing.iconSize, lineHeight: '1' })}>
                                 {section.icon}
                               </span>
-                              {digitCount && (
-                                <div
-                                  className={css({
-                                    fontSize: '2xl',
-                                    fontWeight: 'bold',
-                                    color:
-                                      currentLevel.color === 'green'
-                                        ? 'green.300'
-                                        : currentLevel.color === 'blue'
-                                          ? 'blue.300'
-                                          : 'violet.300',
-                                  })}
-                                >
-                                  {digitCount} digits
-                                </div>
+                              {hasData && section.digits && (
+                                <>
+                                  <div
+                                    className={css({
+                                      fontSize: '2xl',
+                                      fontWeight: 'bold',
+                                      color: levelColor,
+                                    })}
+                                  >
+                                    {section.digits} digits
+                                  </div>
+                                  {(section.rows || section.chars) && (
+                                    <div
+                                      className={css({
+                                        fontSize: 'sm',
+                                        color: 'gray.400',
+                                        textAlign: 'center',
+                                      })}
+                                    >
+                                      {section.rows && `${section.rows} rows`}
+                                      {section.rows && section.chars && ' • '}
+                                      {section.chars && `${section.chars} chars`}
+                                    </div>
+                                  )}
+                                  {section.problems && (
+                                    <div
+                                      className={css({
+                                        fontSize: 'sm',
+                                        color: 'gray.400',
+                                        textAlign: 'center',
+                                      })}
+                                    >
+                                      {section.problems} problems
+                                    </div>
+                                  )}
+                                </>
                               )}
                               <div
                                 className={css({
                                   fontSize: 'xs',
-                                  color: 'gray.500',
+                                  color: hasData ? 'gray.500' : 'gray.700',
                                   textAlign: 'center',
+                                  fontWeight: hasData ? 'normal' : 'bold',
                                 })}
                               >
                                 {section.label}
