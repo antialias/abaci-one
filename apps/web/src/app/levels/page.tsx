@@ -357,7 +357,7 @@ export default function LevelsPage() {
                   rounded: 'lg',
                   border: '1px solid',
                   borderColor: 'gray.700',
-                  overflow: 'visible',
+                  overflow: 'hidden',
                   flex: 1,
                 })}
               >
