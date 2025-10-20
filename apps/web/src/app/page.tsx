@@ -246,83 +246,114 @@ export default function HomePage() {
                 <div
                   className={css({
                     flex: '0 0 auto',
-                    minW: '320px',
-                    maxW: { base: '100%', md: '400px' },
+                    minW: '340px',
+                    maxW: { base: '100%', md: '420px' },
                   })}
                 >
                   <h3
                     className={css({
-                      fontSize: 'xl',
+                      fontSize: '2xl',
                       fontWeight: 'bold',
                       color: 'white',
-                      mb: '5',
+                      mb: '6',
                     })}
                   >
                     What You'll Learn
                   </h3>
-                  <div className={stack({ gap: '4' })}>
+                  <div className={stack({ gap: '5' })}>
                     {[
                       {
                         icon: '🔢',
                         title: 'Read and set numbers',
-                        desc: 'Master abacus number representation',
+                        desc: 'Master abacus number representation from zero to thousands',
                         example: '0-9999',
+                        badge: 'Foundation',
                       },
                       {
                         icon: '🤝',
                         title: 'Friends techniques',
-                        desc: 'Add and subtract with complements',
+                        desc: 'Add and subtract using complement pairs and mental shortcuts',
                         example: '5 = 2+3',
+                        badge: 'Core',
                       },
                       {
                         icon: '✖️➗',
                         title: 'Multiply & divide',
-                        desc: 'Fluent multi-digit calculations',
+                        desc: 'Fluent multi-digit calculations with advanced techniques',
                         example: '12×34',
+                        badge: 'Advanced',
                       },
                       {
                         icon: '🧠',
                         title: 'Mental calculation',
-                        desc: 'Visualize and compute without the tool',
-                        example: 'Anzan',
+                        desc: 'Visualize and compute without the physical tool (Anzan)',
+                        example: 'Speed math',
+                        badge: 'Expert',
                       },
                     ].map((skill, i) => (
                       <div
                         key={i}
                         className={css({
-                          bg: 'rgba(255, 255, 255, 0.05)',
-                          borderRadius: 'lg',
-                          p: '3',
+                          bg: 'linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03))',
+                          borderRadius: 'xl',
+                          p: '4',
                           border: '1px solid',
-                          borderColor: 'rgba(255, 255, 255, 0.1)',
+                          borderColor: 'rgba(255, 255, 255, 0.15)',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                           transition: 'all 0.2s',
                           _hover: {
-                            bg: 'rgba(255, 255, 255, 0.08)',
-                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                            bg: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
+                            borderColor: 'rgba(255, 255, 255, 0.25)',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 6px 16px rgba(0, 0, 0, 0.4)',
                           },
                         })}
                       >
                         <div className={hstack({ gap: '3', alignItems: 'flex-start' })}>
                           <div
                             className={css({
-                              fontSize: '2xl',
-                              minW: '40px',
+                              fontSize: '3xl',
+                              minW: '50px',
                               textAlign: 'center',
+                              bg: 'rgba(255, 255, 255, 0.1)',
+                              borderRadius: 'lg',
+                              p: '2',
                             })}
                           >
                             {skill.icon}
                           </div>
-                          <div className={stack({ gap: '1', flex: '1' })}>
+                          <div className={stack({ gap: '2', flex: '1' })}>
+                            <div className={hstack({ gap: '2', alignItems: 'center' })}>
+                              <div
+                                className={css({
+                                  color: 'white',
+                                  fontSize: 'md',
+                                  fontWeight: 'bold',
+                                })}
+                              >
+                                {skill.title}
+                              </div>
+                              <div
+                                className={css({
+                                  bg: 'rgba(250, 204, 21, 0.2)',
+                                  color: 'yellow.400',
+                                  fontSize: '2xs',
+                                  fontWeight: 'semibold',
+                                  px: '2',
+                                  py: '0.5',
+                                  borderRadius: 'md',
+                                })}
+                              >
+                                {skill.badge}
+                              </div>
+                            </div>
                             <div
                               className={css({
-                                color: 'white',
-                                fontSize: 'sm',
-                                fontWeight: 'semibold',
+                                color: 'gray.300',
+                                fontSize: 'xs',
+                                lineHeight: '1.5',
                               })}
                             >
-                              {skill.title}
-                            </div>
-                            <div className={css({ color: 'gray.400', fontSize: 'xs' })}>
                               {skill.desc}
                             </div>
                             <div
@@ -330,7 +361,13 @@ export default function HomePage() {
                                 color: 'yellow.400',
                                 fontSize: 'xs',
                                 fontFamily: 'mono',
+                                fontWeight: 'semibold',
                                 mt: '1',
+                                bg: 'rgba(250, 204, 21, 0.1)',
+                                px: '2',
+                                py: '1',
+                                borderRadius: 'md',
+                                w: 'fit-content',
                               })}
                             >
                               {skill.example}
