@@ -25,31 +25,47 @@ export function InteractiveFlashcards() {
   const [cards, setCards] = useState<Flashcard[]>([])
 
   useEffect(() => {
-    // Wait for container to mount and get actual dimensions
     if (!containerRef.current) return
 
-    const containerWidth = containerRef.current.offsetWidth
-    const containerHeight = containerRef.current.offsetHeight
+    // Double rAF pattern - ensures layout is fully complete
+    const frameId1 = requestAnimationFrame(() => {
+      const frameId2 = requestAnimationFrame(() => {
+        if (!containerRef.current) return
 
-    const count = Math.floor(Math.random() * 8) + 8 // 8-15 cards
-    const generated: Flashcard[] = []
+        const containerWidth = containerRef.current.offsetWidth
+        const containerHeight = containerRef.current.offsetHeight
 
-    // Position cards within the actual container bounds
-    const cardWidth = 120 // approximate card width
-    const cardHeight = 200 // approximate card height
+        // Only generate cards once we have proper dimensions
+        if (containerWidth < 100 || containerHeight < 100) {
+          return
+        }
 
-    for (let i = 0; i < count; i++) {
-      generated.push({
-        id: i,
-        number: Math.floor(Math.random() * 900) + 100, // 100-999
-        initialX: Math.random() * (containerWidth - cardWidth - 40) + 20,
-        initialY: Math.random() * (containerHeight - cardHeight - 40) + 20,
-        initialRotation: Math.random() * 40 - 20, // -20 to 20 degrees
-        zIndex: i,
+        const count = Math.floor(Math.random() * 8) + 8 // 8-15 cards
+        const generated: Flashcard[] = []
+
+        // Position cards within the actual container bounds
+        const cardWidth = 120 // approximate card width
+        const cardHeight = 200 // approximate card height
+
+        for (let i = 0; i < count; i++) {
+          const card = {
+            id: i,
+            number: Math.floor(Math.random() * 900) + 100, // 100-999
+            initialX: Math.random() * (containerWidth - cardWidth - 40) + 20,
+            initialY: Math.random() * (containerHeight - cardHeight - 40) + 20,
+            initialRotation: Math.random() * 40 - 20, // -20 to 20 degrees
+            zIndex: i,
+          }
+          generated.push(card)
+        }
+
+        setCards(generated)
       })
-    }
+    })
 
-    setCards(generated)
+    return () => {
+      // Note: can't cancel nested rAF properly, but component cleanup will prevent state updates
+    }
   }, [])
 
   return (
@@ -58,6 +74,8 @@ export function InteractiveFlashcards() {
       className={css({
         position: 'relative',
         width: '100%',
+        maxW: '1200px',
+        mx: 'auto',
         height: { base: '400px', md: '500px' },
         overflow: 'hidden',
         bg: 'rgba(0, 0, 0, 0.3)',
@@ -65,24 +83,6 @@ export function InteractiveFlashcards() {
         border: '1px solid rgba(255, 255, 255, 0.1)',
       })}
     >
-      {/* Hint text */}
-      <div
-        className={css({
-          position: 'absolute',
-          top: '4',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          color: 'white',
-          opacity: '0.6',
-          fontSize: 'sm',
-          fontWeight: 'medium',
-          zIndex: 1000,
-          pointerEvents: 'none',
-        })}
-      >
-        Drag and throw the flashcards!
-      </div>
-
       {cards.map((card) => (
         <DraggableCard key={card.id} card={card} />
       ))}
@@ -95,6 +95,13 @@ interface DraggableCardProps {
 }
 
 function DraggableCard({ card }: DraggableCardProps) {
+  // Track the card's current position in state (separate from the animation values)
+  const currentPositionRef = useRef({
+    x: card.initialX,
+    y: card.initialY,
+    rotation: card.initialRotation,
+  })
+
   const [{ x, y, rotation, scale }, api] = useSpring(() => ({
     x: card.initialX,
     y: card.initialY,
@@ -104,28 +111,125 @@ function DraggableCard({ card }: DraggableCardProps) {
   }))
 
   const [zIndex, setZIndex] = useState(card.zIndex)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const dragOffsetRef = useRef({ x: 0, y: 0 })
+  const lastVelocityRef = useRef({ vx: 0, vy: 0 })
+  const velocityHistoryRef = useRef<Array<{ vx: number; vy: number }>>([])
+  const [transformOrigin, setTransformOrigin] = useState('center center')
 
   const bind = useDrag(
-    ({ down, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy] }) => {
+    ({ down, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], first, xy }) => {
       // Bring card to front when dragging
       if (down) {
         setZIndex(1000)
-      }
 
-      api.start({
-        x: down ? card.initialX + mx : card.initialX + mx + vx * 100 * dx,
-        y: down ? card.initialY + my : card.initialY + my + vy * 100 * dy,
-        scale: down ? 1.1 : 1,
-        rotation: down ? card.initialRotation + mx / 20 : card.initialRotation + vx * 10,
-        immediate: down,
-        config: down ? config.stiff : config.wobbly,
-      })
+        // Calculate drag offset from card center on first touch
+        if (first && cardRef.current) {
+          const cardRect = cardRef.current.getBoundingClientRect()
+          const cardWidth = cardRect.width
+          const cardHeight = cardRect.height
 
-      // Update initial position after release for next drag
-      if (!down) {
-        card.initialX = card.initialX + mx + vx * 100 * dx
-        card.initialY = card.initialY + my + vy * 100 * dy
-        card.initialRotation = card.initialRotation + vx * 10
+          // xy is in viewport coordinates, convert to position relative to card
+          const clickRelativeToCard = {
+            x: xy[0] - cardRect.left,
+            y: xy[1] - cardRect.top,
+          }
+
+          // Calculate offset from card center
+          const cardCenterX = cardWidth / 2
+          const cardCenterY = cardHeight / 2
+          const offsetX = clickRelativeToCard.x - cardCenterX
+          const offsetY = clickRelativeToCard.y - cardCenterY
+
+          dragOffsetRef.current = { x: offsetX, y: offsetY }
+
+          // Convert offset to transform-origin (50% + offset as percentage of card size)
+          const originX = 50 + (offsetX / cardWidth) * 100
+          const originY = 50 + (offsetY / cardHeight) * 100
+          const transformOriginValue = `${originX}% ${originY}%`
+
+          console.log(
+            `Drag start: click at (${clickRelativeToCard.x.toFixed(0)}, ${clickRelativeToCard.y.toFixed(0)}) in card, offset from center: (${offsetX.toFixed(0)}, ${offsetY.toFixed(0)}), origin: ${transformOriginValue}`
+          )
+
+          setTransformOrigin(transformOriginValue)
+          velocityHistoryRef.current = []
+        }
+
+        // Smooth velocity by averaging last 3 frames
+        velocityHistoryRef.current.push({ vx, vy })
+        if (velocityHistoryRef.current.length > 3) {
+          velocityHistoryRef.current.shift()
+        }
+
+        const avgVx =
+          velocityHistoryRef.current.reduce((sum, v) => sum + v.vx, 0) /
+          velocityHistoryRef.current.length
+        const avgVy =
+          velocityHistoryRef.current.reduce((sum, v) => sum + v.vy, 0) /
+          velocityHistoryRef.current.length
+
+        // Calculate rotation based on smoothed velocity and drag offset
+        const velocityAngle = Math.atan2(avgVy, avgVx) * (180 / Math.PI)
+        const offsetAngle =
+          Math.atan2(dragOffsetRef.current.y, dragOffsetRef.current.x) * (180 / Math.PI)
+
+        // Card rotates to align with movement direction, offset by where we're grabbing
+        const targetRotation = velocityAngle - offsetAngle + 90
+
+        const speed = Math.sqrt(avgVx * avgVx + avgVy * avgVy)
+
+        // Store smoothed velocity for throw
+        lastVelocityRef.current = { vx: avgVx, vy: avgVy }
+
+        const finalRotation = speed > 0.01 ? targetRotation : currentPositionRef.current.rotation
+
+        api.start({
+          x: currentPositionRef.current.x + mx,
+          y: currentPositionRef.current.y + my,
+          scale: 1.1,
+          rotation: finalRotation,
+          immediate: (key) => key !== 'rotation', // Position immediate, rotation smooth
+          config: { tension: 200, friction: 30 }, // Smoother rotation spring
+        })
+      } else {
+        // On release, reset transform origin to center
+        setTransformOrigin('center center')
+
+        // On release, apply momentum with decay physics
+        const throwVelocityX = lastVelocityRef.current.vx * 1000
+        const throwVelocityY = lastVelocityRef.current.vy * 1000
+
+        // Calculate final rotation based on throw direction
+        const throwAngle = Math.atan2(throwVelocityY, throwVelocityX) * (180 / Math.PI)
+
+        api.start({
+          x: {
+            from: currentPositionRef.current.x + mx,
+            velocity: throwVelocityX,
+            decay: true,
+          },
+          y: {
+            from: currentPositionRef.current.y + my,
+            velocity: throwVelocityY,
+            decay: true,
+          },
+          scale: 1,
+          rotation: throwAngle + 90, // Card aligns with throw direction
+          config: config.wobbly,
+          onChange: (result) => {
+            // Update current position as card settles
+            if (result.value.x !== undefined) {
+              currentPositionRef.current.x = result.value.x
+            }
+            if (result.value.y !== undefined) {
+              currentPositionRef.current.y = result.value.y
+            }
+            if (result.value.rotation !== undefined) {
+              currentPositionRef.current.rotation = result.value.rotation
+            }
+          },
+        })
       }
     },
     {
@@ -137,6 +241,7 @@ function DraggableCard({ card }: DraggableCardProps) {
 
   return (
     <animated.div
+      ref={cardRef}
       {...bind()}
       style={{
         position: 'absolute',
@@ -146,6 +251,7 @@ function DraggableCard({ card }: DraggableCardProps) {
           [x, y, rotation, scale],
           (x, y, r, s) => `translate(${x}px, ${y}px) rotate(${r}deg) scale(${s})`
         ),
+        transformOrigin,
         zIndex,
         touchAction: 'none',
         cursor: 'grab',
