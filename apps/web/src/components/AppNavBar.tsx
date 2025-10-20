@@ -580,7 +580,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
           shadow: isTransparent ? 'none' : 'sm',
           borderBottom: isTransparent ? 'none' : '1px solid',
           borderColor: isTransparent ? 'transparent' : 'gray.200',
-          position: isTransparent ? 'fixed' : 'sticky',
+          position: 'fixed',
           top: 0,
           left: 0,
           right: 0,

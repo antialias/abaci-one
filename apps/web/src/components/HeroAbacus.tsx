@@ -24,31 +24,17 @@ export function HeroAbacus() {
     },
   }
 
-  // Detect when hero scrolls out of view with hysteresis to prevent thrashing
+  // Detect when hero scrolls out of view
   useEffect(() => {
     if (!heroRef.current) return
 
-    let currentlyVisible = true // Start as visible (hero starts at top)
-
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // Use hysteresis: different thresholds for showing vs hiding
-        // When scrolling down (becoming invisible): hide when < 10% visible
-        // When scrolling up (becoming visible): show when > 30% visible
-        const ratio = entry.intersectionRatio
-
-        if (currentlyVisible && ratio < 0.1) {
-          // Was visible, now scrolled far enough to hide nav branding
-          currentlyVisible = false
-          setIsHeroVisible(false)
-        } else if (!currentlyVisible && ratio > 0.3) {
-          // Was hidden, now scrolled far enough to show nav branding
-          currentlyVisible = true
-          setIsHeroVisible(true)
-        }
+        // Hero is visible if more than 20% is in viewport
+        setIsHeroVisible(entry.intersectionRatio > 0.2)
       },
       {
-        threshold: [0, 0.1, 0.3, 0.5, 1],
+        threshold: [0, 0.2, 0.5, 1],
       }
     )
 
