@@ -6,6 +6,7 @@ import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
 import { getTutorialForEditor } from '@/utils/tutorialConverter'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
+import { token } from '../../styled-system/tokens'
 
 export default function HomePage() {
   // Extract just the "Friends of 5" step (2+3=5) for homepage demo
@@ -400,12 +401,14 @@ export default function HomePage() {
                   flexWrap: 'wrap',
                 })}
               >
-                {[
-                  { level: '10 Kyu', label: 'Beginner', color: '#4ade80' },
-                  { level: '5 Kyu', label: 'Intermediate', color: '#60a5fa' },
-                  { level: '1 Kyu', label: 'Advanced', color: '#a78bfa' },
-                  { level: 'Dan', label: 'Master', color: '#fbbf24' },
-                ].map((stage, i) => (
+                {(
+                  [
+                    { level: '10 Kyu', label: 'Beginner', color: 'colors.green.400' },
+                    { level: '5 Kyu', label: 'Intermediate', color: 'colors.blue.400' },
+                    { level: '1 Kyu', label: 'Advanced', color: 'colors.violet.400' },
+                    { level: 'Dan', label: 'Master', color: 'colors.amber.400' },
+                  ] as const
+                ).map((stage, i) => (
                   <div
                     key={i}
                     className={stack({
@@ -415,15 +418,31 @@ export default function HomePage() {
                       position: 'relative',
                     })}
                   >
-                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: stage.color }}>
+                    <div
+                      className={css({
+                        fontSize: 'xl',
+                        fontWeight: 'bold',
+                      })}
+                      style={{ color: token(stage.color) }}
+                    >
                       {stage.level}
                     </div>
-                    <div style={{ fontSize: '14px', color: '#e5e7eb' }}>{stage.label}</div>
+                    <div
+                      className={css({
+                        fontSize: 'sm',
+                        color: 'gray.300',
+                      })}
+                    >
+                      {stage.label}
+                    </div>
                     {i < 3 && (
                       <div
                         style={{
                           position: 'absolute',
-                          right: '-50%',
+                          left: '100%',
+                          marginLeft: '0.5rem',
+                          top: '50%',
+                          transform: 'translate(-50%, -50%)',
                           fontSize: '20px',
                           color: '#9ca3af',
                         }}
