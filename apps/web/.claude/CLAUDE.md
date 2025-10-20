@@ -121,6 +121,31 @@ className="bg-blue-200 border-gray-300 text-brand-600"
 
 See `.claude/GAME_THEMES.md` for standardized color theme usage in arcade games.
 
+## Abacus Visualizations
+
+**CRITICAL: This project uses @soroban/abacus-react for all abacus visualizations.**
+
+- All abacus displays MUST use components from `@soroban/abacus-react`
+- Package location: `packages/abacus-react`
+- Main components: `AbacusReact`, `useAbacusConfig`, `useAbacusDisplay`
+- DO NOT create custom abacus visualizations
+- DO NOT manually draw abacus columns, beads, or bars
+
+**Common Mistakes to Avoid:**
+- ❌ Don't create custom abacus components or SVGs
+- ❌ Don't manually render abacus beads or columns
+- ✅ Always use `AbacusReact` from `@soroban/abacus-react`
+- ✅ Use `useAbacusConfig` for abacus configuration
+- ✅ Use `useAbacusDisplay` for reading abacus state
+
+**Example Usage:**
+```typescript
+import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+
+const config = useAbacusConfig({ columns: 5 })
+<AbacusReact config={config} initialNumber={123} />
+```
+
 ## Known Issues
 
 ### @soroban/abacus-react TypeScript Module Resolution
