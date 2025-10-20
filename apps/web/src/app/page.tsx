@@ -567,116 +567,95 @@ export default function HomePage() {
                 </p>
               </div>
 
-              {/* Interactive Flashcards Display */}
+              {/* Combined interactive display and CTA */}
               <div
                 className={css({
+                  bg: 'rgba(0, 0, 0, 0.4)',
+                  rounded: 'xl',
+                  p: { base: '6', md: '8' },
+                  border: '1px solid',
+                  borderColor: 'gray.700',
+                  shadow: 'lg',
                   maxW: '1200px',
                   mx: 'auto',
-                  mb: '8',
                 })}
               >
-                <InteractiveFlashcards />
-              </div>
+                {/* Interactive Flashcards Display */}
+                <div className={css({ mb: '8' })}>
+                  <InteractiveFlashcards />
+                </div>
 
-              {/* Features and CTA */}
-              <Link
-                href="/create"
-                className={css({
-                  display: 'block',
-                  transition: 'all 0.3s ease',
-                  _hover: {
-                    transform: 'translateY(-4px)',
-                  },
-                })}
-              >
-                <div
-                  className={css({
-                    bg: 'rgba(0, 0, 0, 0.4)',
-                    rounded: 'xl',
-                    p: { base: '6', md: '8' },
-                    border: '1px solid',
-                    borderColor: 'gray.700',
-                    shadow: 'lg',
-                    maxW: '1200px',
-                    mx: 'auto',
-                    transition: 'all 0.3s ease',
-                    _hover: {
-                      borderColor: 'blue.500',
-                      shadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
+                {/* Features */}
+                <div className={grid({ columns: { base: 1, md: 3 }, gap: '4', mb: '6' })}>
+                  {[
+                    {
+                      icon: '📄',
+                      title: 'Multiple Formats',
+                      desc: 'PDF, PNG, SVG, HTML',
                     },
-                  })}
-                >
-                  {/* Features */}
-                  <div className={grid({ columns: { base: 1, md: 3 }, gap: '4', mb: '6' })}>
-                    {[
-                      {
-                        icon: '📄',
-                        title: 'Multiple Formats',
-                        desc: 'PDF, PNG, SVG, HTML',
-                      },
-                      {
-                        icon: '🎨',
-                        title: 'Customizable',
-                        desc: 'Bead shapes, colors, layouts',
-                      },
-                      {
-                        icon: '📐',
-                        title: 'All Paper Sizes',
-                        desc: 'A3, A4, A5, US Letter',
-                      },
-                    ].map((feature, i) => (
-                      <div
-                        key={i}
-                        className={css({
-                          textAlign: 'center',
-                          p: '4',
-                          rounded: 'lg',
-                          bg: 'rgba(255, 255, 255, 0.05)',
-                        })}
-                      >
-                        <div className={css({ fontSize: '2xl', mb: '2' })}>{feature.icon}</div>
-                        <div
-                          className={css({
-                            fontSize: 'sm',
-                            fontWeight: 'semibold',
-                            color: 'white',
-                            mb: '1',
-                          })}
-                        >
-                          {feature.title}
-                        </div>
-                        <div className={css({ fontSize: 'xs', color: 'gray.400' })}>
-                          {feature.desc}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* CTA Button */}
-                  <div className={css({ textAlign: 'center' })}>
+                    {
+                      icon: '🎨',
+                      title: 'Customizable',
+                      desc: 'Bead shapes, colors, layouts',
+                    },
+                    {
+                      icon: '📐',
+                      title: 'All Paper Sizes',
+                      desc: 'A3, A4, A5, US Letter',
+                    },
+                  ].map((feature, i) => (
                     <div
+                      key={i}
                       className={css({
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '2',
-                        bg: 'blue.600',
-                        color: 'white',
-                        px: '6',
-                        py: '3',
+                        textAlign: 'center',
+                        p: '4',
                         rounded: 'lg',
-                        fontWeight: 'semibold',
-                        transition: 'all 0.2s',
-                        _hover: {
-                          bg: 'blue.500',
-                        },
+                        bg: 'rgba(255, 255, 255, 0.05)',
                       })}
                     >
-                      <span>Create Flashcards</span>
-                      <span>→</span>
+                      <div className={css({ fontSize: '2xl', mb: '2' })}>{feature.icon}</div>
+                      <div
+                        className={css({
+                          fontSize: 'sm',
+                          fontWeight: 'semibold',
+                          color: 'white',
+                          mb: '1',
+                        })}
+                      >
+                        {feature.title}
+                      </div>
+                      <div className={css({ fontSize: 'xs', color: 'gray.400' })}>
+                        {feature.desc}
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              </Link>
+
+                {/* CTA Button */}
+                <div className={css({ textAlign: 'center' })}>
+                  <Link
+                    href="/create"
+                    className={css({
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '2',
+                      bg: 'blue.600',
+                      color: 'white',
+                      px: '6',
+                      py: '3',
+                      rounded: 'lg',
+                      fontWeight: 'semibold',
+                      transition: 'all 0.2s',
+                      _hover: {
+                        bg: 'blue.500',
+                      },
+                    })}
+                  >
+                    <span>Create Flashcards</span>
+                    <span>→</span>
+                  </Link>
+                </div>
+              </div>
             </section>
           </div>
         </div>
