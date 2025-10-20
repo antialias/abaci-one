@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useSpring, animated } from '@react-spring/web'
 import { AbacusReact } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
@@ -121,11 +122,35 @@ const allLevels = [
 
 export default function LevelsPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const sliderRef = useRef<HTMLInputElement>(null)
   const currentLevel = allLevels[currentIndex]
 
   // Calculate scale factor based on number of columns to fit the page
   // Smaller scale for more columns (Dan levels with 30 columns)
   const scaleFactor = Math.min(2.5, 20 / currentLevel.digits)
+
+  // Animate scale factor with React Spring for smooth transitions
+  const animatedProps = useSpring({
+    scaleFactor,
+    config: { tension: 280, friction: 60 },
+  })
+
+  // Handle mouse/touch move over slider for hover interaction
+  const handleSliderHover = (
+    e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>
+  ) => {
+    if (!sliderRef.current) return
+
+    const rect = sliderRef.current.getBoundingClientRect()
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const x = clientX - rect.left
+    const percentage = Math.max(0, Math.min(1, x / rect.width))
+    const newIndex = Math.round(percentage * (allLevels.length - 1))
+
+    if (newIndex !== currentIndex) {
+      setCurrentIndex(newIndex)
+    }
+  }
 
   // Generate an interesting non-zero number to display on the abacus
   // Use a suffix pattern so rightmost digits stay constant as columns increase
@@ -263,7 +288,7 @@ export default function LevelsPage() {
               </div>
 
               {/* Abacus Display */}
-              <div
+              <animated.div
                 className={css({
                   display: 'flex',
                   justifyContent: 'center',
@@ -275,6 +300,9 @@ export default function LevelsPage() {
                   borderColor: 'gray.700',
                   overflowX: 'auto',
                 })}
+                style={{
+                  transform: animatedProps.scaleFactor.to((s) => `scale(${s / scaleFactor})`),
+                }}
               >
                 <AbacusReact
                   value={displayValue}
@@ -283,7 +311,7 @@ export default function LevelsPage() {
                   showNumbers={true}
                   customStyles={darkStyles}
                 />
-              </div>
+              </animated.div>
 
               {/* Digit Count */}
               <div className={css({ textAlign: 'center', color: 'gray.400', fontSize: 'sm' })}>
@@ -308,26 +336,33 @@ export default function LevelsPage() {
                   Explore All Levels
                 </h3>
                 <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
-                  Drag the slider to see each rank
+                  Hover, drag, or touch the slider to see each rank
                 </p>
               </div>
 
-              {/* Range Slider */}
-              <input
-                type="range"
-                min="0"
-                max={allLevels.length - 1}
-                value={currentIndex}
-                onChange={(e) => setCurrentIndex(Number(e.target.value))}
-                className={css({
-                  w: '100%',
-                  h: '2',
-                  bg: 'gray.700',
-                  rounded: 'full',
-                  outline: 'none',
-                  cursor: 'pointer',
-                })}
-              />
+              {/* Range Slider with hover support */}
+              <div
+                onMouseMove={handleSliderHover}
+                onTouchMove={handleSliderHover}
+                className={css({ position: 'relative' })}
+              >
+                <input
+                  ref={sliderRef}
+                  type="range"
+                  min="0"
+                  max={allLevels.length - 1}
+                  value={currentIndex}
+                  onChange={(e) => setCurrentIndex(Number(e.target.value))}
+                  className={css({
+                    w: '100%',
+                    h: '2',
+                    bg: 'gray.700',
+                    rounded: 'full',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  })}
+                />
+              </div>
 
               {/* Level Markers */}
               <div
