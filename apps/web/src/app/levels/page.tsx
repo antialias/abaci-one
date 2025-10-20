@@ -229,23 +229,8 @@ function parseKyuDetails(rawText: string) {
           value: `${match[1]}-digit total (${match[2]} problems)`,
         })
       }
-    } else if (line.includes('Time:')) {
-      // Parse time and pass requirements
-      const timeMatch = line.match(/(\d+) min/)
-      const passMatch = line.match(/≥\s*(\d+)\/(\d+)/)
-      if (timeMatch && passMatch) {
-        sections.push({
-          icon: '⏱️',
-          label: 'Time',
-          value: `${timeMatch[1]} minutes`,
-        })
-        sections.push({
-          icon: '✅',
-          label: 'Pass',
-          value: `≥${passMatch[1]}/${passMatch[2]} pts`,
-        })
-      }
     }
+    // Skip Time and Pass requirements since we don't have tests implemented
   }
 
   return sections
