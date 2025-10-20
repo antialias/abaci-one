@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSpring, useTransition, animated } from '@react-spring/web'
 import * as Slider from '@radix-ui/react-slider'
 import { AbacusReact, StandaloneBead } from '@soroban/abacus-react'
@@ -186,6 +186,40 @@ export default function LevelsPage() {
   const [isHovering, setIsHovering] = useState(false)
   const currentLevel = allLevels[currentIndex]
 
+  // State for animated abacus digits
+  const [animatedDigits, setAnimatedDigits] = useState<string>('')
+
+  // Initialize animated digits when level changes
+  useEffect(() => {
+    const generateRandomDigits = (numDigits: number) => {
+      return Array.from({ length: numDigits }, () => Math.floor(Math.random() * 10)).join('')
+    }
+    setAnimatedDigits(generateRandomDigits(currentLevel.digits))
+  }, [currentLevel.digits])
+
+  // Animate abacus calculations every 0.5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAnimatedDigits((prev) => {
+        const digits = prev.split('').map(Number)
+        const numColumns = digits.length
+
+        // Pick 1-3 adjacent columns to change (grouping effect)
+        const groupSize = Math.floor(Math.random() * 3) + 1
+        const startCol = Math.floor(Math.random() * (numColumns - groupSize + 1))
+
+        // Change the selected columns
+        for (let i = startCol; i < startCol + groupSize && i < numColumns; i++) {
+          digits[i] = Math.floor(Math.random() * 10)
+        }
+
+        return digits.join('')
+      })
+    }, 500)
+
+    return () => clearInterval(interval)
+  }, [])
+
   // Handle hover on slider track
   const handleSliderHover = (e: React.MouseEvent<HTMLSpanElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -215,17 +249,12 @@ export default function LevelsPage() {
     config: { duration: 120 },
   })
 
-  // Generate an interesting non-zero number to display on the abacus
-  // Use a suffix pattern so rightmost digits stay constant as columns increase
-  // This prevents beads from shifting: ones always 9, tens always 8, etc.
-  const digitPattern = '123456789'
-  // Use BigInt for numbers > 15 digits (Dan levels with 30 columns)
-  const repeatedPattern = digitPattern.repeat(Math.ceil(currentLevel.digits / digitPattern.length))
-  const digitString = repeatedPattern.slice(-currentLevel.digits)
-
+  // Convert animated digits to a number/BigInt for the abacus display
   // Use BigInt for large numbers to get full 30-digit precision
   const displayValue =
-    currentLevel.digits > 15 ? BigInt(digitString) : Number.parseInt(digitString, 10)
+    animatedDigits.length > 15
+      ? BigInt(animatedDigits || '0')
+      : Number.parseInt(animatedDigits || '0', 10)
 
   // Dark theme styles matching the homepage
   const darkStyles = {
