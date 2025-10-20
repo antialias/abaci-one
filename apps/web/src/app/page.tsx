@@ -609,8 +609,8 @@ function GameCard({
   return (
     <Link href={href}>
       <div
+        style={{ background: gradient }}
         className={css({
-          background: gradient,
           rounded: 'xl',
           p: '6',
           shadow: 'lg',
