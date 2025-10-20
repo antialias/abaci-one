@@ -549,19 +549,191 @@ export default function HomePage() {
             </section>
 
             {/* Flashcard Generator Section */}
-            <section className={stack({ gap: '6' })}>
-              <FeaturePanel
-                icon="🎨"
-                title="Flashcard Creator"
-                features={[
-                  'Multiple formats: PDF, PNG, SVG, HTML',
-                  'Custom bead shapes, colors, and layouts',
-                  'All paper sizes: A3, A4, A5, US Letter',
-                ]}
-                accentColor="blue"
-                ctaText="Create Flashcards →"
-                ctaHref="/create"
-              />
+            <section className={stack({ gap: '8', mb: '16' })}>
+              <div className={css({ textAlign: 'center' })}>
+                <h2
+                  className={css({
+                    fontSize: { base: '2xl', md: '3xl' },
+                    fontWeight: 'bold',
+                    color: 'white',
+                    mb: '2',
+                  })}
+                >
+                  Create Custom Flashcards
+                </h2>
+                <p className={css({ color: 'gray.400', fontSize: 'md', maxW: '2xl', mx: 'auto' })}>
+                  Design beautiful flashcards for learning and practice
+                </p>
+              </div>
+
+              <Link
+                href="/create"
+                className={css({
+                  display: 'block',
+                  transition: 'all 0.3s ease',
+                  _hover: {
+                    transform: 'translateY(-4px)',
+                  },
+                })}
+              >
+                <div
+                  className={css({
+                    bg: 'rgba(0, 0, 0, 0.4)',
+                    rounded: 'xl',
+                    p: { base: '6', md: '8' },
+                    border: '1px solid',
+                    borderColor: 'gray.700',
+                    shadow: 'lg',
+                    maxW: '1200px',
+                    mx: 'auto',
+                    transition: 'all 0.3s ease',
+                    _hover: {
+                      borderColor: 'blue.500',
+                      shadow: '0 20px 40px rgba(59, 130, 246, 0.2)',
+                    },
+                  })}
+                >
+                  {/* Flashcards Display */}
+                  <div
+                    className={css({
+                      position: 'relative',
+                      height: { base: '200px', md: '280px' },
+                      mb: '8',
+                    })}
+                  >
+                    {/* Spread out flashcards */}
+                    {[
+                      { number: 123, rotation: -8, zIndex: 1, offset: '-60px' },
+                      { number: 456, rotation: -3, zIndex: 2, offset: '-30px' },
+                      { number: 789, rotation: 2, zIndex: 3, offset: '0px' },
+                      { number: 321, rotation: 5, zIndex: 2, offset: '30px' },
+                      { number: 654, rotation: 9, zIndex: 1, offset: '60px' },
+                    ].map((card, i) => (
+                      <div
+                        key={i}
+                        className={css({
+                          position: 'absolute',
+                          left: '50%',
+                          top: '50%',
+                          transform: `translate(-50%, -50%) translateX(${card.offset}) rotate(${card.rotation}deg)`,
+                          transition: 'all 0.3s ease',
+                          _hover: {
+                            transform: `translate(-50%, -50%) translateX(${card.offset}) rotate(${card.rotation}deg) scale(1.05) translateY(-10px)`,
+                            zIndex: 10,
+                          },
+                        })}
+                        style={{ zIndex: card.zIndex }}
+                      >
+                        <div
+                          className={css({
+                            bg: 'white',
+                            rounded: 'lg',
+                            p: '4',
+                            shadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+                            border: '2px solid',
+                            borderColor: 'gray.200',
+                            width: { base: '120px', md: '160px' },
+                            height: { base: '160px', md: '220px' },
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '3',
+                          })}
+                        >
+                          <div
+                            className={css({
+                              transform: 'scale(0.7)',
+                            })}
+                          >
+                            <AbacusReact value={card.number} columns={3} beadShape="circle" />
+                          </div>
+                          <div
+                            className={css({
+                              fontSize: { base: 'lg', md: 'xl' },
+                              fontWeight: 'bold',
+                              color: 'gray.800',
+                              fontFamily: 'mono',
+                            })}
+                          >
+                            {card.number}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Features */}
+                  <div className={grid({ columns: { base: 1, md: 3 }, gap: '4', mb: '6' })}>
+                    {[
+                      {
+                        icon: '📄',
+                        title: 'Multiple Formats',
+                        desc: 'PDF, PNG, SVG, HTML',
+                      },
+                      {
+                        icon: '🎨',
+                        title: 'Customizable',
+                        desc: 'Bead shapes, colors, layouts',
+                      },
+                      {
+                        icon: '📐',
+                        title: 'All Paper Sizes',
+                        desc: 'A3, A4, A5, US Letter',
+                      },
+                    ].map((feature, i) => (
+                      <div
+                        key={i}
+                        className={css({
+                          textAlign: 'center',
+                          p: '4',
+                          rounded: 'lg',
+                          bg: 'rgba(255, 255, 255, 0.05)',
+                        })}
+                      >
+                        <div className={css({ fontSize: '2xl', mb: '2' })}>{feature.icon}</div>
+                        <div
+                          className={css({
+                            fontSize: 'sm',
+                            fontWeight: 'semibold',
+                            color: 'white',
+                            mb: '1',
+                          })}
+                        >
+                          {feature.title}
+                        </div>
+                        <div className={css({ fontSize: 'xs', color: 'gray.400' })}>
+                          {feature.desc}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CTA Button */}
+                  <div className={css({ textAlign: 'center' })}>
+                    <div
+                      className={css({
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '2',
+                        bg: 'blue.600',
+                        color: 'white',
+                        px: '6',
+                        py: '3',
+                        rounded: 'lg',
+                        fontWeight: 'semibold',
+                        transition: 'all 0.2s',
+                        _hover: {
+                          bg: 'blue.500',
+                        },
+                      })}
+                    >
+                      <span>Create Flashcards</span>
+                      <span>→</span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
             </section>
           </div>
         </div>
