@@ -16,7 +16,11 @@ function GamesPageContent() {
   const router = useRouter()
 
   // Get all players sorted by creation time
-  const allPlayers = getAllPlayers().sort((a, b) => a.createdAt - b.createdAt)
+  const allPlayers = getAllPlayers().sort((a, b) => {
+    const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : a.createdAt
+    const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : b.createdAt
+    return aTime - bTime
+  })
 
   return (
     <div

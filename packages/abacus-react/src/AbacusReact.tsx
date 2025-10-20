@@ -213,7 +213,7 @@ export interface AbacusCallbacks {
     value: number,
     event: React.MouseEvent,
   ) => void;
-  onValueChange?: (newValue: number) => void;
+  onValueChange?: (newValue: number | bigint) => void;
   onBeadRef?: (bead: BeadConfig, element: SVGElement | null) => void;
   // Legacy callback for backward compatibility
   onClick?: (bead: BeadConfig) => void;
@@ -240,7 +240,7 @@ export interface AbacusOverlay {
 
 export interface AbacusConfig {
   // Basic configuration
-  value?: number;
+  value?: number | bigint;
   columns?: number | "auto";
   showEmptyColumns?: boolean;
   hideInactiveBeads?: boolean;
@@ -271,7 +271,7 @@ export interface AbacusConfig {
 
   // Legacy callbacks for backward compatibility
   onClick?: (bead: BeadConfig) => void;
-  onValueChange?: (newValue: number) => void;
+  onValueChange?: (newValue: number | bigint) => void;
 }
 
 export interface AbacusDimensions {
@@ -474,18 +474,23 @@ export function useAbacusState(
 
 // NEW: Native place-value state management hook (eliminates the column index nightmare!)
 export function useAbacusPlaceStates(
-  controlledValue: number = 0,
+  controlledValue: number | bigint = 0,
   maxPlaceValue: ValidPlaceValues = 4,
 ) {
   // Initialize state from value using place values as keys - NO MORE ARRAY INDICES!
   const initializeFromValue = useCallback(
-    (value: number): PlaceStatesMap => {
+    (value: number | bigint): PlaceStatesMap => {
       const states = new Map<ValidPlaceValues, PlaceState>();
+
+      // Convert to string to handle both number and bigint
+      const valueStr = value.toString();
+      const digits = valueStr.split('').map(Number);
 
       // Always create ALL place values from 0 to maxPlaceValue (to match columns)
       for (let place = 0; place <= maxPlaceValue; place++) {
-        const placeValueNum = Math.pow(10, place);
-        const digit = Math.floor(value / placeValueNum) % 10;
+        // Get digit from right: place 0 = rightmost, place 1 = second from right, etc.
+        const digitIndex = digits.length - 1 - place;
+        const digit = digitIndex >= 0 ? digits[digitIndex] : 0;
 
         states.set(place as ValidPlaceValues, {
           placeValue: place as ValidPlaceValues,
@@ -504,18 +509,32 @@ export function useAbacusPlaceStates(
   );
 
   // Calculate current value from place states - NO MORE INDEX MATH!
+  // Use BigInt for numbers that exceed safe integer range (>15 digits)
   const value = useMemo(() => {
-    let total = 0;
-    placeStates.forEach((state) => {
-      const placeValueNum = Math.pow(10, state.placeValue);
-      const digitValue = (state.heavenActive ? 5 : 0) + state.earthActive;
-      total += digitValue * placeValueNum;
-    });
-    return total;
-  }, [placeStates]);
+    // Check if we need BigInt (maxPlaceValue > 14 means >15 digits)
+    const useBigInt = maxPlaceValue > 14;
+
+    if (useBigInt) {
+      let total = 0n;
+      placeStates.forEach((state) => {
+        const placeValueNum = 10n ** BigInt(state.placeValue);
+        const digitValue = BigInt((state.heavenActive ? 5 : 0) + state.earthActive);
+        total += digitValue * placeValueNum;
+      });
+      return total;
+    } else {
+      let total = 0;
+      placeStates.forEach((state) => {
+        const placeValueNum = Math.pow(10, state.placeValue);
+        const digitValue = (state.heavenActive ? 5 : 0) + state.earthActive;
+        total += digitValue * placeValueNum;
+      });
+      return total;
+    }
+  }, [placeStates, maxPlaceValue]);
 
   const setValue = useCallback(
-    (newValue: number) => {
+    (newValue: number | bigint) => {
       setPlaceStates(initializeFromValue(newValue));
     },
     [initializeFromValue],
@@ -530,6 +549,37 @@ export function useAbacusPlaceStates(
       setPlaceStates(initializeFromValue(controlledValue));
     }
   }, [controlledValue, initializeFromValue, value]);
+
+  // Clean up place states when maxPlaceValue decreases (columns decrease)
+  // This prevents stale place values from causing out-of-bounds access
+  React.useEffect(() => {
+    setPlaceStates((prev) => {
+      const newStates = new Map(prev);
+      let hasChanges = false;
+
+      // Remove any place values greater than maxPlaceValue
+      for (const placeValue of newStates.keys()) {
+        if (placeValue > maxPlaceValue) {
+          newStates.delete(placeValue);
+          hasChanges = true;
+        }
+      }
+
+      // Add missing place values up to maxPlaceValue
+      for (let place = 0; place <= maxPlaceValue; place++) {
+        if (!newStates.has(place as ValidPlaceValues)) {
+          newStates.set(place as ValidPlaceValues, {
+            placeValue: place as ValidPlaceValues,
+            heavenActive: false,
+            earthActive: 0,
+          });
+          hasChanges = true;
+        }
+      }
+
+      return hasChanges ? newStates : prev;
+    });
+  }, [maxPlaceValue]);
 
   const getPlaceState = useCallback(
     (placeValue: ValidPlaceValues): PlaceState => {
@@ -1058,13 +1108,15 @@ function calculateBeadStates(
 // NEW: Native place-value bead state calculation (eliminates array index math!)
 function calculateBeadStatesFromPlaces(
   placeStates: PlaceStatesMap,
+  maxPlaceValue: ValidPlaceValues,
 ): BeadConfig[][] {
   const columnsList: BeadConfig[][] = [];
 
   // Convert Map to sorted array by place value (ascending order for correct visual layout)
-  const sortedPlaces = Array.from(placeStates.entries()).sort(
-    ([a], [b]) => a - b,
-  );
+  // Filter to only include place values that are within the current column count
+  const sortedPlaces = Array.from(placeStates.entries())
+    .filter(([placeValue]) => placeValue <= maxPlaceValue)
+    .sort(([a], [b]) => a - b);
 
   for (const [placeValue, placeState] of sortedPlaces) {
     const beads: BeadConfig[] = [];
@@ -1114,17 +1166,26 @@ function calculateValueFromColumnStates(
 }
 
 // NEW: Native place-value calculation (eliminates the array index nightmare!)
-function calculateValueFromPlaceStates(placeStates: PlaceStatesMap): number {
-  let value = 0;
+function calculateValueFromPlaceStates(placeStates: PlaceStatesMap): number | bigint {
+  // Determine if we need BigInt based on the largest place value
+  const maxPlace = Math.max(...Array.from(placeStates.keys()));
+  const useBigInt = maxPlace > 14; // >15 digits
 
-  // Direct place value iteration - NO MORE ARRAY INDEX MATH!
-  for (const [placeValue, placeState] of placeStates) {
-    const digitValue =
-      (placeState.heavenActive ? 5 : 0) + placeState.earthActive;
-    value += digitValue * Math.pow(10, placeValue); // Direct place value - no conversion!
+  if (useBigInt) {
+    let value = 0n;
+    for (const [placeValue, placeState] of placeStates) {
+      const digitValue = BigInt((placeState.heavenActive ? 5 : 0) + placeState.earthActive);
+      value += digitValue * (10n ** BigInt(placeValue));
+    }
+    return value;
+  } else {
+    let value = 0;
+    for (const [placeValue, placeState] of placeStates) {
+      const digitValue = (placeState.heavenActive ? 5 : 0) + placeState.earthActive;
+      value += digitValue * Math.pow(10, placeValue);
+    }
+    return value;
   }
-
-  return value;
 }
 
 // Components
@@ -1588,8 +1649,8 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
   // Use new place-value bead calculation!
   const beadStates = useMemo(
-    () => calculateBeadStatesFromPlaces(placeStates),
-    [placeStates],
+    () => calculateBeadStatesFromPlaces(placeStates, maxPlaceValue),
+    [placeStates, maxPlaceValue],
   );
 
   // Layout calculations using exact Typst positioning
@@ -1939,6 +2000,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
         {/* Background glow effects - rendered behind everything */}
         {Array.from({ length: effectiveColumns }, (_, colIndex) => {
+          const placeValue = effectiveColumns - 1 - colIndex;
           const columnStyles = customStyles?.columns?.[colIndex];
           const backgroundGlow = columnStyles?.backgroundGlow;
 
@@ -1952,7 +2014,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
           return (
             <rect
-              key={`background-glow-${colIndex}`}
+              key={`background-glow-pv${placeValue}`}
               x={x - glowWidth / 2}
               y={-(backgroundGlow.spread || 0) / 2}
               width={glowWidth}
@@ -1970,6 +2032,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
         {/* Rods - positioned as rectangles like in Typst */}
         {Array.from({ length: effectiveColumns }, (_, colIndex) => {
+          const placeValue = effectiveColumns - 1 - colIndex;
           const x =
             colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
 
@@ -2001,7 +2064,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
           return (
             <rect
-              key={`rod-${colIndex}`}
+              key={`rod-pv${placeValue}`}
               x={x - dimensions.rodWidth / 2}
               y={rodStartY}
               width={dimensions.rodWidth}
@@ -2056,6 +2119,15 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             } else {
               // Earth bead positioning - exact Typst formulas (lines 249-261)
               const columnState = columnStates[colIndex];
+              if (!columnState) {
+                throw new Error(
+                  `Invalid abacus state: columnState is undefined for column index ${colIndex}. ` +
+                  `effectiveColumns=${effectiveColumns}, columnStates.length=${columnStates.length}, ` +
+                  `beadStates.length=${beadStates.length}, placeValue=${bead.placeValue}. ` +
+                  `This indicates a mismatch between the number of columns and the bead states. ` +
+                  `Please report this issue with the abacus configuration that triggered it.`
+                );
+              }
               const earthActive = columnState.earthActive;
 
               if (bead.active) {
@@ -2134,7 +2206,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
             return (
               <Bead
-                key={`bead-${colIndex}-${bead.type}-${beadIndex}`}
+                key={`bead-pv${bead.placeValue}-${bead.type}-${bead.type === "earth" ? bead.position : 0}`}
                 bead={bead}
                 x={x}
                 y={y}
@@ -2208,6 +2280,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         {/* Background rectangles for place values - in SVG */}
         {finalConfig.showNumbers &&
           placeValues.map((value, columnIndex) => {
+            const placeValue = effectiveColumns - 1 - columnIndex;
             const x =
               columnIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
             // Position background rectangles to match the text positioning
@@ -2220,7 +2293,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
             return (
               <rect
-                key={`place-bg-${columnIndex}`}
+                key={`place-bg-pv${placeValue}`}
                 x={x - 12 * finalConfig.scaleFactor}
                 y={y - 12 * finalConfig.scaleFactor}
                 width={24 * finalConfig.scaleFactor}
@@ -2248,6 +2321,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         {/* NumberFlow place value displays - inside SVG using foreignObject */}
         {finalConfig.showNumbers &&
           placeValues.map((value, columnIndex) => {
+            const placeValue = effectiveColumns - 1 - columnIndex;
             const x =
               columnIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
             // Position numbers within the allocated numbers space (below the baseHeight)
@@ -2259,7 +2333,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
             return (
               <foreignObject
-                key={`place-number-${columnIndex}`}
+                key={`place-number-pv${placeValue}`}
                 x={x - 12 * finalConfig.scaleFactor}
                 y={y - 8 * finalConfig.scaleFactor}
                 width={24 * finalConfig.scaleFactor}
@@ -2320,6 +2394,12 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
               if (targetBeadType === "heaven") {
                 const columnState = columnStates[targetColumn];
+                if (!columnState) {
+                  console.error(
+                    `Invalid abacus overlay: columnState is undefined for overlay targeting column ${targetColumn}`
+                  );
+                  return;
+                }
                 y = columnState.heavenActive
                   ? dimensions.heavenEarthGap -
                     dimensions.beadSize / 2 -
@@ -2332,6 +2412,12 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                 targetBeadPosition !== undefined
               ) {
                 const columnState = columnStates[targetColumn];
+                if (!columnState) {
+                  console.error(
+                    `Invalid abacus overlay: columnState is undefined for overlay targeting column ${targetColumn}`
+                  );
+                  return;
+                }
                 const earthActive = columnState.earthActive;
                 const isActive = targetBeadPosition < earthActive;
 
@@ -2403,6 +2489,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
         {/* Column interaction areas - rendered last to be on top of all other elements */}
         {Array.from({ length: effectiveColumns }, (_, colIndex) => {
+          const placeValue = effectiveColumns - 1 - colIndex;
           const x =
             colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
           const columnStyles = customStyles?.columns?.[colIndex];
@@ -2413,7 +2500,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
 
           return (
             <rect
-              key={`column-interaction-${colIndex}`}
+              key={`column-interaction-pv${placeValue}`}
               x={x - backgroundWidth / 2}
               y={0}
               width={backgroundWidth}

@@ -128,13 +128,16 @@ export default function LevelsPage() {
   const scaleFactor = Math.min(2.5, 20 / currentLevel.digits)
 
   // Generate an interesting non-zero number to display on the abacus
-  // Create a value that uses all available columns (e.g., 2 columns = 12, 3 columns = 123)
-  // For larger numbers, create a pattern like 123456789012... up to the column count
+  // Use a suffix pattern so rightmost digits stay constant as columns increase
+  // This prevents beads from shifting: ones always 9, tens always 8, etc.
   const digitPattern = '123456789'
-  const displayValue = Number.parseInt(
-    digitPattern.repeat(Math.ceil(currentLevel.digits / digitPattern.length)).slice(0, currentLevel.digits),
-    10,
-  )
+  // Use BigInt for numbers > 15 digits (Dan levels with 30 columns)
+  const repeatedPattern = digitPattern.repeat(Math.ceil(currentLevel.digits / digitPattern.length))
+  const digitString = repeatedPattern.slice(-currentLevel.digits)
+
+  // Use BigInt for large numbers to get full 30-digit precision
+  const displayValue =
+    currentLevel.digits > 15 ? BigInt(digitString) : Number.parseInt(digitString, 10)
 
   // Dark theme styles matching the homepage
   const darkStyles = {
