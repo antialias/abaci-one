@@ -54,7 +54,7 @@ function MiniAbacus() {
           value={currentValue}
           columns={3}
           beadShape={appConfig.beadShape}
-          styles={darkStyles}
+          customStyles={darkStyles}
         />
       </div>
     </div>
@@ -366,12 +366,14 @@ export default function HomePage() {
                           <div
                             className={css({
                               fontSize: '3xl',
-                              minW: '50px',
+                              width: '75px',
+                              height: '115px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                               textAlign: 'center',
                               bg: 'rgba(255, 255, 255, 0.1)',
                               borderRadius: 'lg',
-                              py: i === 0 ? '4' : '2',
-                              px: '0',
                             })}
                           >
                             {i === 0 ? <MiniAbacus /> : skill.icon}
@@ -572,16 +574,21 @@ export default function HomePage() {
               >
                 {(
                   [
-                    { level: '10 Kyu', label: 'Beginner', color: 'colors.green.400' },
-                    { level: '5 Kyu', label: 'Intermediate', color: 'colors.blue.400' },
-                    { level: '1 Kyu', label: 'Advanced', color: 'colors.violet.400' },
-                    { level: 'Dan', label: 'Master', color: 'colors.amber.400' },
+                    { level: '10 Kyu', label: 'Beginner', color: 'colors.green.400', emoji: '🧒' },
+                    {
+                      level: '5 Kyu',
+                      label: 'Intermediate',
+                      color: 'colors.blue.400',
+                      emoji: '🧑',
+                    },
+                    { level: '1 Kyu', label: 'Advanced', color: 'colors.violet.400', emoji: '🧔' },
+                    { level: 'Dan', label: 'Master', color: 'colors.amber.400', emoji: '🧙' },
                   ] as const
                 ).map((stage, i) => (
                   <div
                     key={i}
                     className={stack({
-                      gap: '2',
+                      gap: '0',
                       textAlign: 'center',
                       flex: '1',
                       position: 'relative',
@@ -589,8 +596,17 @@ export default function HomePage() {
                   >
                     <div
                       className={css({
+                        fontSize: '5xl',
+                        mb: '0',
+                      })}
+                    >
+                      {stage.emoji}
+                    </div>
+                    <div
+                      className={css({
                         fontSize: 'xl',
                         fontWeight: 'bold',
+                        mt: '-2',
                       })}
                       style={{ color: token(stage.color) }}
                     >
