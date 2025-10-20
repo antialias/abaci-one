@@ -13,22 +13,9 @@ import { token } from '../../styled-system/tokens'
 // Mini abacus that cycles through random 3-digit numbers
 function MiniAbacus() {
   const [currentValue, setCurrentValue] = useState(123)
-  const [isReady, setIsReady] = useState(false)
-  const abacusConfig = useAbacusConfig({
-    abacusColumns: 3,
-    theme: 'dark',
-  })
+  const appConfig = useAbacusConfig()
 
   useEffect(() => {
-    // Give the abacus a moment to initialize before starting animation
-    const readyTimer = setTimeout(() => setIsReady(true), 500)
-
-    return () => clearTimeout(readyTimer)
-  }, [])
-
-  useEffect(() => {
-    if (!isReady) return
-
     // Cycle through random 3-digit numbers every 2.5 seconds
     const interval = setInterval(() => {
       const randomNum = Math.floor(Math.random() * 1000) // 0-999
@@ -36,21 +23,38 @@ function MiniAbacus() {
     }, 2500)
 
     return () => clearInterval(interval)
-  }, [isReady])
+  }, [])
+
+  // Dark theme styles for the abacus
+  const darkStyles = {
+    columnPosts: {
+      fill: 'rgba(255, 255, 255, 0.3)',
+      stroke: 'rgba(255, 255, 255, 0.2)',
+      strokeWidth: 2,
+    },
+    reckoningBar: {
+      fill: 'rgba(255, 255, 255, 0.4)',
+      stroke: 'rgba(255, 255, 255, 0.25)',
+      strokeWidth: 3,
+    },
+  }
 
   return (
     <div
       className={css({
-        height: '75px',
         width: '75px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        overflow: 'hidden',
       })}
     >
-      <div className={css({ transform: 'scale(0.7)' })}>
-        <AbacusReact value={currentValue} config={abacusConfig} />
+      <div className={css({ transform: 'scale(0.6)', transformOrigin: 'center center' })}>
+        <AbacusReact
+          value={currentValue}
+          columns={3}
+          beadShape={appConfig.beadShape}
+          styles={darkStyles}
+        />
       </div>
     </div>
   )
