@@ -1,190 +1,132 @@
 'use client'
 
+import { useState } from 'react'
+import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
 import { container, stack } from '../../../styled-system/patterns'
 
-// Kyu level data from the Japan Abacus Federation
-const kyuLevels = [
-  { level: '10th Kyu', emoji: '🧒', color: 'green', digits: 2 },
-  { level: '9th Kyu', emoji: '🧒', color: 'green', digits: 2 },
-  { level: '8th Kyu', emoji: '🧒', color: 'green', digits: 3 },
-  { level: '7th Kyu', emoji: '🧒', color: 'green', digits: 4 },
-  { level: '6th Kyu', emoji: '🧑', color: 'blue', digits: 5 },
-  { level: '5th Kyu', emoji: '🧑', color: 'blue', digits: 6 },
-  { level: '4th Kyu', emoji: '🧑', color: 'blue', digits: 7 },
-  { level: '3rd Kyu', emoji: '🧔', color: 'violet', digits: 8 },
-  { level: '2nd Kyu', emoji: '🧔', color: 'violet', digits: 9 },
-  { level: '1st Kyu', emoji: '🧔', color: 'violet', digits: 10 },
+// Combine all levels into one array for the slider
+const allLevels = [
+  { level: '10th Kyu', emoji: '🧒', color: 'green', digits: 2, type: 'kyu' as const },
+  { level: '9th Kyu', emoji: '🧒', color: 'green', digits: 2, type: 'kyu' as const },
+  { level: '8th Kyu', emoji: '🧒', color: 'green', digits: 3, type: 'kyu' as const },
+  { level: '7th Kyu', emoji: '🧒', color: 'green', digits: 4, type: 'kyu' as const },
+  { level: '6th Kyu', emoji: '🧑', color: 'blue', digits: 5, type: 'kyu' as const },
+  { level: '5th Kyu', emoji: '🧑', color: 'blue', digits: 6, type: 'kyu' as const },
+  { level: '4th Kyu', emoji: '🧑', color: 'blue', digits: 7, type: 'kyu' as const },
+  { level: '3rd Kyu', emoji: '🧔', color: 'violet', digits: 8, type: 'kyu' as const },
+  { level: '2nd Kyu', emoji: '🧔', color: 'violet', digits: 9, type: 'kyu' as const },
+  { level: '1st Kyu', emoji: '🧔', color: 'violet', digits: 10, type: 'kyu' as const },
+  {
+    level: 'Pre-1st Dan',
+    name: 'Jun-Shodan',
+    minScore: 90,
+    emoji: '🧙',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '1st Dan',
+    name: 'Shodan',
+    minScore: 100,
+    emoji: '🧙',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '2nd Dan',
+    name: 'Nidan',
+    minScore: 120,
+    emoji: '🧙‍♂️',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '3rd Dan',
+    name: 'Sandan',
+    minScore: 140,
+    emoji: '🧙‍♂️',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '4th Dan',
+    name: 'Yondan',
+    minScore: 160,
+    emoji: '🧙‍♀️',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '5th Dan',
+    name: 'Godan',
+    minScore: 180,
+    emoji: '🧙‍♀️',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '6th Dan',
+    name: 'Rokudan',
+    minScore: 200,
+    emoji: '🧝',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '7th Dan',
+    name: 'Nanadan',
+    minScore: 220,
+    emoji: '🧝',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '8th Dan',
+    name: 'Hachidan',
+    minScore: 250,
+    emoji: '🧝‍♂️',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '9th Dan',
+    name: 'Kudan',
+    minScore: 270,
+    emoji: '🧝‍♀️',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
+  {
+    level: '10th Dan',
+    name: 'Judan',
+    minScore: 290,
+    emoji: '👑',
+    color: 'amber',
+    digits: 30,
+    type: 'dan' as const,
+  },
 ] as const
-
-// Dan level data - all use 30-digit calculations
-const danLevels = [
-  { level: 'Pre-1st Dan', name: 'Jun-Shodan', minScore: 90, emoji: '🧙', digits: 30 },
-  { level: '1st Dan', name: 'Shodan', minScore: 100, emoji: '🧙', digits: 30 },
-  { level: '2nd Dan', name: 'Nidan', minScore: 120, emoji: '🧙‍♂️', digits: 30 },
-  { level: '3rd Dan', name: 'Sandan', minScore: 140, emoji: '🧙‍♂️', digits: 30 },
-  { level: '4th Dan', name: 'Yondan', minScore: 160, emoji: '🧙‍♀️', digits: 30 },
-  { level: '5th Dan', name: 'Godan', minScore: 180, emoji: '🧙‍♀️', digits: 30 },
-  { level: '6th Dan', name: 'Rokudan', minScore: 200, emoji: '🧝', digits: 30 },
-  { level: '7th Dan', name: 'Nanadan', minScore: 220, emoji: '🧝', digits: 30 },
-  { level: '8th Dan', name: 'Hachidan', minScore: 250, emoji: '🧝‍♂️', digits: 30 },
-  { level: '9th Dan', name: 'Kudan', minScore: 270, emoji: '🧝‍♀️', digits: 30 },
-  { level: '10th Dan', name: 'Judan', minScore: 290, emoji: '👑', digits: 30 },
-] as const
-
-// Compact abacus column component
-function AbacusColumn({ color }: { color: string }) {
-  return (
-    <div
-      className={css({
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.5',
-        w: '2',
-      })}
-    >
-      {/* Top bead */}
-      <div
-        className={css({
-          w: '2',
-          h: '2',
-          rounded: 'full',
-          bg:
-            color === 'green'
-              ? 'green.500'
-              : color === 'blue'
-                ? 'blue.500'
-                : color === 'violet'
-                  ? 'violet.500'
-                  : 'amber.500',
-          opacity: 0.7,
-        })}
-      />
-      {/* Divider */}
-      <div className={css({ w: '2', h: '0.5', bg: 'gray.600' })} />
-      {/* Bottom beads */}
-      {[0, 1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className={css({
-            w: '2',
-            h: '2',
-            rounded: 'full',
-            bg:
-              color === 'green'
-                ? 'green.500'
-                : color === 'blue'
-                  ? 'blue.500'
-                  : color === 'violet'
-                    ? 'violet.500'
-                    : 'amber.500',
-            opacity: 0.7,
-          })}
-        />
-      ))}
-    </div>
-  )
-}
-
-// Level card component for the slider
-function LevelCard({
-  level,
-  emoji,
-  color,
-  digits,
-  subtitle,
-}: {
-  level: string
-  emoji: string
-  color: string
-  digits: number
-  subtitle?: string
-}) {
-  // Limit display for very high digit counts
-  const displayDigits = Math.min(digits, 15)
-  const showEllipsis = digits > 15
-
-  return (
-    <div
-      className={css({
-        minW: { base: '64', md: '80' },
-        bg: 'rgba(0, 0, 0, 0.4)',
-        border: '2px solid',
-        borderColor:
-          color === 'green'
-            ? 'green.500'
-            : color === 'blue'
-              ? 'blue.500'
-              : color === 'violet'
-                ? 'violet.500'
-                : 'amber.500',
-        rounded: 'xl',
-        p: { base: '4', md: '6' },
-        transition: 'all 0.2s',
-        _hover: {
-          transform: 'translateY(-4px)',
-          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.4)',
-        },
-      })}
-    >
-      {/* Header */}
-      <div className={css({ textAlign: 'center', mb: '4' })}>
-        <div className={css({ fontSize: { base: '3xl', md: '4xl' }, mb: '2' })}>{emoji}</div>
-        <div
-          className={css({
-            fontSize: { base: 'lg', md: 'xl' },
-            fontWeight: 'bold',
-            color:
-              color === 'green'
-                ? 'green.400'
-                : color === 'blue'
-                  ? 'blue.400'
-                  : color === 'violet'
-                    ? 'violet.400'
-                    : 'amber.400',
-            mb: '1',
-          })}
-        >
-          {level}
-        </div>
-        {subtitle && <div className={css({ fontSize: 'sm', color: 'gray.400' })}>{subtitle}</div>}
-      </div>
-
-      {/* Abacus Visualization */}
-      <div
-        className={css({
-          display: 'flex',
-          gap: '1.5',
-          justifyContent: 'center',
-          alignItems: 'center',
-          p: '4',
-          bg: 'rgba(0, 0, 0, 0.3)',
-          rounded: 'lg',
-          minH: '32',
-        })}
-      >
-        {Array.from({ length: displayDigits }).map((_, i) => (
-          <AbacusColumn key={i} color={color} />
-        ))}
-        {showEllipsis && (
-          <div className={css({ color: 'gray.500', fontSize: '2xl', px: '2' })}>...</div>
-        )}
-      </div>
-
-      {/* Digit count label */}
-      <div className={css({ textAlign: 'center', mt: '3', fontSize: 'sm', color: 'gray.400' })}>
-        {digits} {digits === 1 ? 'digit' : 'digits'}
-      </div>
-    </div>
-  )
-}
 
 export default function LevelsPage() {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const currentLevel = allLevels[currentIndex]
+  const abacusConfig = useAbacusConfig({ columns: currentLevel.digits })
+
   return (
     <PageWithNav navTitle="Kyu & Dan Levels" navEmoji="📊">
-      <div className={css({ bg: 'gray.900', minHeight: '100vh' })}>
+      <div className={css({ bg: 'gray.900', minHeight: '100vh', pb: '12' })}>
         {/* Hero Section */}
         <div
           className={css({
@@ -233,78 +175,137 @@ export default function LevelsPage() {
                   lineHeight: '1.6',
                 })}
               >
-                Explore the progression from beginner to master
+                Slide through the complete progression from beginner to master
               </p>
             </div>
           </div>
         </div>
 
-        {/* Main content container */}
-        <div className={container({ maxW: '7xl', px: '4', py: '12' })}>
-          {/* Journey Slider */}
+        {/* Main content */}
+        <div className={container({ maxW: '6xl', px: '4', py: '12' })}>
           <section className={stack({ gap: '8' })}>
-            <div className={css({ textAlign: 'center' })}>
-              <h2
-                className={css({
-                  fontSize: { base: '2xl', md: '3xl' },
-                  fontWeight: 'bold',
-                  color: 'white',
-                  mb: '4',
-                })}
-              >
-                The Complete Journey
-              </h2>
-              <p className={css({ color: 'gray.400', fontSize: 'md', mb: '8' })}>
-                Slide through all ranks from 10th Kyu to 10th Dan
-              </p>
-            </div>
-
-            {/* Horizontal Slider */}
+            {/* Current Level Display */}
             <div
               className={css({
-                w: '100%',
-                overflowX: 'auto',
-                overflowY: 'hidden',
-                pb: '4',
+                bg: 'rgba(0, 0, 0, 0.4)',
+                border: '2px solid',
+                borderColor:
+                  currentLevel.color === 'green'
+                    ? 'green.500'
+                    : currentLevel.color === 'blue'
+                      ? 'blue.500'
+                      : currentLevel.color === 'violet'
+                        ? 'violet.500'
+                        : 'amber.500',
+                rounded: 'xl',
+                p: { base: '6', md: '8' },
               })}
             >
-              <div className={css({ display: 'flex', gap: '4', pb: '2' })}>
-                {/* Kyu Levels */}
-                {kyuLevels.map((kyu, index) => (
-                  <LevelCard
-                    key={index}
-                    level={kyu.level}
-                    emoji={kyu.emoji}
-                    color={kyu.color}
-                    digits={kyu.digits}
-                  />
-                ))}
-
-                {/* Transition marker */}
-                <div
+              {/* Level Info */}
+              <div className={css({ textAlign: 'center', mb: '6' })}>
+                <div className={css({ fontSize: '5xl', mb: '3' })}>{currentLevel.emoji}</div>
+                <h2
                   className={css({
-                    minW: '20',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '4xl',
-                    color: 'gray.500',
+                    fontSize: { base: '2xl', md: '3xl' },
+                    fontWeight: 'bold',
+                    color:
+                      currentLevel.color === 'green'
+                        ? 'green.400'
+                        : currentLevel.color === 'blue'
+                          ? 'blue.400'
+                          : currentLevel.color === 'violet'
+                            ? 'violet.400'
+                            : 'amber.400',
+                    mb: '2',
                   })}
                 >
-                  →
-                </div>
+                  {currentLevel.level}
+                </h2>
+                {'name' in currentLevel && (
+                  <div className={css({ fontSize: 'md', color: 'gray.400', mb: '1' })}>
+                    {currentLevel.name}
+                  </div>
+                )}
+                {'minScore' in currentLevel && (
+                  <div className={css({ fontSize: 'sm', color: 'gray.500' })}>
+                    Minimum Score: {currentLevel.minScore} points
+                  </div>
+                )}
+              </div>
 
-                {/* Dan Levels */}
-                {danLevels.map((dan, index) => (
-                  <LevelCard
-                    key={index}
-                    level={dan.level}
-                    emoji={dan.emoji}
-                    color="amber"
-                    digits={dan.digits}
-                    subtitle={`${dan.minScore}+ pts`}
-                  />
-                ))}
+              {/* Abacus Display */}
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'center',
+                  mb: '6',
+                  p: '6',
+                  bg: 'rgba(0, 0, 0, 0.3)',
+                  rounded: 'lg',
+                  border: '1px solid',
+                  borderColor: 'gray.700',
+                })}
+              >
+                <AbacusReact config={abacusConfig} initialNumber={0} />
+              </div>
+
+              {/* Digit Count */}
+              <div className={css({ textAlign: 'center', color: 'gray.400', fontSize: 'sm' })}>
+                Requires mastery of <strong>{currentLevel.digits}-digit</strong> calculations
+              </div>
+            </div>
+
+            {/* Slider Control */}
+            <div
+              className={css({
+                bg: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid',
+                borderColor: 'gray.700',
+                rounded: 'xl',
+                p: '6',
+              })}
+            >
+              <div className={css({ mb: '4', textAlign: 'center' })}>
+                <h3
+                  className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'white', mb: '2' })}
+                >
+                  Explore All Levels
+                </h3>
+                <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
+                  Drag the slider to see each rank
+                </p>
+              </div>
+
+              {/* Range Slider */}
+              <input
+                type="range"
+                min="0"
+                max={allLevels.length - 1}
+                value={currentIndex}
+                onChange={(e) => setCurrentIndex(Number(e.target.value))}
+                className={css({
+                  w: '100%',
+                  h: '2',
+                  bg: 'gray.700',
+                  rounded: 'full',
+                  outline: 'none',
+                  cursor: 'pointer',
+                })}
+              />
+
+              {/* Level Markers */}
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  mt: '4',
+                  fontSize: 'xs',
+                  color: 'gray.500',
+                })}
+              >
+                <span>10th Kyu</span>
+                <span>1st Kyu</span>
+                <span>10th Dan</span>
               </div>
             </div>
 
@@ -315,10 +316,11 @@ export default function LevelsPage() {
                 flexWrap: 'wrap',
                 gap: '6',
                 justifyContent: 'center',
-                mt: '6',
                 p: '6',
                 bg: 'rgba(0, 0, 0, 0.3)',
                 rounded: 'lg',
+                border: '1px solid',
+                borderColor: 'gray.700',
               })}
             >
               <div className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
@@ -346,10 +348,8 @@ export default function LevelsPage() {
                 </span>
               </div>
             </div>
-          </section>
 
-          {/* Additional Information Section */}
-          <section className={stack({ gap: '8', mt: '16', pb: '12' })}>
+            {/* Info Section */}
             <div
               className={css({
                 bg: 'rgba(0, 0, 0, 0.4)',
@@ -382,21 +382,6 @@ export default function LevelsPage() {
                   levels all require mastery of 30-digit calculations, with ranks awarded based on
                   exam scores.
                 </p>
-                <div
-                  className={css({
-                    mt: '4',
-                    pt: '4',
-                    borderTop: '1px solid',
-                    borderColor: 'gray.700',
-                    fontSize: 'sm',
-                    color: 'gray.400',
-                    fontStyle: 'italic',
-                  })}
-                >
-                  Note: This page provides information about the official Japanese ranking system
-                  for educational purposes. This application does not administer official
-                  examinations or certifications.
-                </div>
               </div>
             </div>
           </section>
