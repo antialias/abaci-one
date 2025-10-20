@@ -24,7 +24,7 @@ const manifest: GameManifest = {
   maxPlayers: 1, // Single player only
   difficulty: 'Intermediate',
   chips: ['🧠 Pattern Recognition', '🎯 Solo Challenge', '📊 Smart Scoring'],
-  ...getGameTheme('teal'),
+  ...getGameTheme('green'),
   available: true,
 }
 

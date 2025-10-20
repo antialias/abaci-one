@@ -23,7 +23,7 @@ const manifest: GameManifest = {
   maxPlayers: 8,
   difficulty: 'Intermediate',
   chips: ['👥 Multiplayer', '🧠 Memory', '🧮 Soroban'],
-  ...getGameTheme('blue'),
+  ...getGameTheme('purple'),
   available: true,
 }
 

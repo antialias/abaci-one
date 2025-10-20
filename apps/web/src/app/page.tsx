@@ -590,7 +590,7 @@ function GameCard({
   href: string
 }) {
   return (
-    <Link href={href}>
+    <Link href={href} style={{ height: '100%', display: 'block' }}>
       <div
         className={css({
           rounded: 'xl',
@@ -600,6 +600,9 @@ function GameCard({
           cursor: 'pointer',
           position: 'relative',
           overflow: 'hidden',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
           _hover: {
             transform: 'translateY(-6px) scale(1.02)',
             shadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
@@ -625,7 +628,15 @@ function GameCard({
           })}
         />
         {/* Content */}
-        <div className={css({ position: 'relative', zIndex: 2 })}>
+        <div
+          className={css({
+            position: 'relative',
+            zIndex: 2,
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+          })}
+        >
           <div
             className={css({
               fontSize: '3xl',

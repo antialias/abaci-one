@@ -23,7 +23,7 @@ const manifest: GameManifest = {
   maxPlayers: 4,
   difficulty: 'Intermediate',
   chips: ['👥 Multiplayer', '🎯 Strategic', '🏆 Competitive'],
-  ...getGameTheme('purple'),
+  ...getGameTheme('pink'),
   available: true,
 }
 
