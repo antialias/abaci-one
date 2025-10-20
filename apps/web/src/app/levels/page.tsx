@@ -300,19 +300,77 @@ export default function LevelsPage() {
                 )}
               </div>
 
-              {/* Range Slider with hover support */}
+              {/* Range Slider with hover support - Abacus themed */}
               <div className={css({ mb: '6', px: { base: '2', md: '8' } })}>
                 <div className={css({ mb: '3', textAlign: 'center' })}>
                   <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
-                    Hover, drag, or touch the slider to explore all levels
+                    Hover, drag, or touch the beads to explore all levels
                   </p>
                 </div>
 
                 <div
                   onMouseMove={handleSliderHover}
                   onTouchMove={handleSliderHover}
-                  className={css({ position: 'relative' })}
+                  className={css({
+                    position: 'relative',
+                    py: '6',
+                    cursor: 'pointer',
+                  })}
                 >
+                  {/* Reckoning Bar (Track) */}
+                  <div
+                    className={css({
+                      position: 'absolute',
+                      top: '50%',
+                      left: 0,
+                      right: 0,
+                      h: '3px',
+                      bg: 'rgba(255, 255, 255, 0.2)',
+                      transform: 'translateY(-50%)',
+                      rounded: 'full',
+                    })}
+                  />
+
+                  {/* Beads (Tick Marks) */}
+                  {allLevels.map((level, index) => {
+                    const isActive = index === currentIndex
+                    const isDan = 'color' in level && level.color === 'violet'
+                    const beadColor = isActive
+                      ? isDan
+                        ? 'violet.400'
+                        : 'green.400'
+                      : isDan
+                        ? 'rgba(139, 92, 246, 0.4)'
+                        : 'rgba(34, 197, 94, 0.4)'
+
+                    return (
+                      <div
+                        key={index}
+                        className={css({
+                          position: 'absolute',
+                          top: '50%',
+                          left: `${(index / (allLevels.length - 1)) * 100}%`,
+                          transform: 'translate(-50%, -50%)',
+                          w: isActive ? '16px' : '12px',
+                          h: isActive ? '16px' : '12px',
+                          bg: beadColor,
+                          rounded: 'full',
+                          border: '2px solid',
+                          borderColor: isActive
+                            ? isDan
+                              ? 'violet.200'
+                              : 'green.200'
+                            : 'rgba(255, 255, 255, 0.3)',
+                          transition: 'all 0.2s',
+                          boxShadow: isActive
+                            ? `0 0 12px ${isDan ? 'rgba(139, 92, 246, 0.6)' : 'rgba(34, 197, 94, 0.6)'}`
+                            : 'none',
+                        })}
+                      />
+                    )
+                  })}
+
+                  {/* Invisible input for accessibility and native slider behavior */}
                   <input
                     ref={sliderRef}
                     type="range"
@@ -321,11 +379,12 @@ export default function LevelsPage() {
                     value={currentIndex}
                     onChange={(e) => setCurrentIndex(Number(e.target.value))}
                     className={css({
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
                       w: '100%',
-                      h: '2',
-                      bg: 'gray.700',
-                      rounded: 'full',
-                      outline: 'none',
+                      h: '100%',
+                      opacity: 0,
                       cursor: 'pointer',
                     })}
                   />
@@ -336,7 +395,7 @@ export default function LevelsPage() {
                   className={css({
                     display: 'flex',
                     justifyContent: 'space-between',
-                    mt: '3',
+                    mt: '1',
                     fontSize: 'xs',
                     color: 'gray.500',
                   })}
