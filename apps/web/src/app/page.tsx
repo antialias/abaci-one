@@ -370,7 +370,8 @@ export default function HomePage() {
                               textAlign: 'center',
                               bg: 'rgba(255, 255, 255, 0.1)',
                               borderRadius: 'lg',
-                              p: i === 0 ? '5' : '2',
+                              p: '2',
+                              ...(i === 0 && { py: '5', px: '3' }),
                             })}
                           >
                             {i === 0 ? <MiniAbacus /> : skill.icon}
