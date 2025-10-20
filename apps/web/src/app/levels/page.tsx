@@ -695,7 +695,7 @@ export default function LevelsPage() {
                           borderColor: 'gray.600',
                           maxW: '480px',
                           alignContent: 'center',
-                          my: '6',
+                          my: '2',
                         })}
                       >
                         {sections.map((section, idx) => {
