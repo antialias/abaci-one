@@ -319,12 +319,6 @@ export default function LevelsPage() {
             >
               {/* Abacus-themed Radix Slider */}
               <div className={css({ mb: '6', px: { base: '2', md: '8' } })}>
-                <div className={css({ mb: '3', textAlign: 'center' })}>
-                  <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
-                    Drag or click the beads to explore all levels
-                  </p>
-                </div>
-
                 <div className={css({ position: 'relative', py: '12' })}>
                   {/* Emoji tick marks */}
                   <div
@@ -351,10 +345,14 @@ export default function LevelsPage() {
                       {allLevels.map((level, index) => (
                         <div
                           key={index}
+                          onClick={() => setCurrentIndex(index)}
                           className={css({
                             fontSize: '4xl',
                             opacity: index === currentIndex ? '1' : '0.3',
                             transition: 'all 0.2s',
+                            cursor: 'pointer',
+                            pointerEvents: 'auto',
+                            _hover: { opacity: index === currentIndex ? '1' : '0.6' },
                           })}
                         >
                           {level.emoji}
@@ -498,49 +496,6 @@ export default function LevelsPage() {
                   <span>10th Kyu</span>
                   <span>1st Kyu</span>
                   <span>10th Dan</span>
-                </div>
-
-                {/* Level Text - integrated with slider */}
-                <div
-                  className={css({
-                    textAlign: 'center',
-                    mt: '4',
-                    mb: '2',
-                  })}
-                >
-                  <h2
-                    className={css({
-                      fontSize: { base: 'xl', md: '2xl' },
-                      fontWeight: 'bold',
-                      color:
-                        currentLevel.color === 'green'
-                          ? 'green.400'
-                          : currentLevel.color === 'blue'
-                            ? 'blue.400'
-                            : currentLevel.color === 'violet'
-                              ? 'violet.400'
-                              : 'amber.400',
-                      mb: '1',
-                    })}
-                  >
-                    {currentLevel.level}
-                  </h2>
-                  {'name' in currentLevel && (
-                    <div
-                      className={css({
-                        fontSize: 'sm',
-                        color: 'gray.400',
-                        mb: '1',
-                      })}
-                    >
-                      {currentLevel.name}
-                    </div>
-                  )}
-                  {'minScore' in currentLevel && (
-                    <div className={css({ fontSize: 'xs', color: 'gray.500' })}>
-                      Minimum Score: {currentLevel.minScore} points
-                    </div>
-                  )}
                 </div>
               </div>
 
