@@ -10,6 +10,20 @@ export function HeroAbacus() {
   const appConfig = useAbacusConfig()
   const heroRef = useRef<HTMLDivElement>(null)
 
+  // Dark theme styles for the abacus (matching the mini abacus on homepage)
+  const darkStyles = {
+    columnPosts: {
+      fill: 'rgba(255, 255, 255, 0.3)',
+      stroke: 'rgba(255, 255, 255, 0.2)',
+      strokeWidth: 2,
+    },
+    reckoningBar: {
+      fill: 'rgba(255, 255, 255, 0.4)',
+      stroke: 'rgba(255, 255, 255, 0.25)',
+      strokeWidth: 3,
+    },
+  }
+
   // Detect when hero scrolls out of view
   useEffect(() => {
     if (!heroRef.current) return
@@ -123,6 +137,7 @@ export function HeroAbacus() {
             columns={4}
             beadShape={appConfig.beadShape}
             showNumbers={true}
+            customStyles={darkStyles}
           />
         </div>
 
