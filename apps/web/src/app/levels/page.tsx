@@ -387,7 +387,7 @@ export default function LevelsPage() {
                       display: 'flex',
                       alignItems: 'center',
                       pointerEvents: 'none',
-                      px: '90px', // Half of bead width (180px / 2)
+                      px: '0', // Use full width for tick spacing
                     })}
                   >
                     <div
