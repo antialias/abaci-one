@@ -198,8 +198,25 @@ export default function LevelsPage() {
     setAnimatedDigits(generateRandomDigits(currentLevel.digits))
   }, [currentLevel.digits])
 
-  // Animate abacus calculations every 0.5 seconds
+  // Animate abacus calculations - speed increases with Dan level
   useEffect(() => {
+    // Calculate animation speed based on level
+    // Kyu levels: 500ms
+    // Dan levels: interpolate from 500ms (Pre-1st Dan) to 50ms (10th Dan)
+    const getAnimationInterval = () => {
+      if (currentIndex < 10) {
+        // Kyu levels: constant 500ms
+        return 500
+      }
+      // Dan levels: speed up from 500ms to 50ms
+      // Index 10 (Pre-1st Dan) → 500ms
+      // Index 20 (10th Dan) → 50ms
+      const danProgress = (currentIndex - 10) / 10 // 0.0 to 1.0
+      return 500 - danProgress * 450 // 500ms down to 50ms
+    }
+
+    const intervalMs = getAnimationInterval()
+
     const interval = setInterval(() => {
       setAnimatedDigits((prev) => {
         const digits = prev.split('').map(Number)
@@ -216,10 +233,10 @@ export default function LevelsPage() {
 
         return digits.join('')
       })
-    }, 500)
+    }, intervalMs)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [currentIndex])
 
   // Auto-advance slider position every 3 seconds (unless pane is hovered)
   useEffect(() => {
