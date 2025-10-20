@@ -155,6 +155,21 @@ const kyuLevels = [
   },
 ] as const
 
+// Dan level data - score-based ranking system
+const danLevels = [
+  { level: 'Pre-1st Dan', name: 'Jun-Shodan', minScore: 90, emoji: '🧙' },
+  { level: '1st Dan', name: 'Shodan', minScore: 100, emoji: '🧙' },
+  { level: '2nd Dan', name: 'Nidan', minScore: 120, emoji: '🧙‍♂️' },
+  { level: '3rd Dan', name: 'Sandan', minScore: 140, emoji: '🧙‍♂️' },
+  { level: '4th Dan', name: 'Yondan', minScore: 160, emoji: '🧙‍♀️' },
+  { level: '5th Dan', name: 'Godan', minScore: 180, emoji: '🧙‍♀️' },
+  { level: '6th Dan', name: 'Rokudan', minScore: 200, emoji: '🧝' },
+  { level: '7th Dan', name: 'Nanadan', minScore: 220, emoji: '🧝' },
+  { level: '8th Dan', name: 'Hachidan', minScore: 250, emoji: '🧝‍♂️' },
+  { level: '9th Dan', name: 'Kudan', minScore: 270, emoji: '🧝‍♀️' },
+  { level: '10th Dan', name: 'Judan', minScore: 290, emoji: '👑' },
+] as const
+
 export default function LevelsPage() {
   return (
     <PageWithNav navTitle="Kyu & Dan Levels" navEmoji="📊">
@@ -414,6 +429,161 @@ export default function LevelsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Dan Levels Section */}
+          <section className={stack({ gap: '8', mt: '16' })}>
+            <div className={css({ textAlign: 'center' })}>
+              <h2
+                className={css({
+                  fontSize: { base: '2xl', md: '3xl' },
+                  fontWeight: 'bold',
+                  color: 'white',
+                  mb: '4',
+                })}
+              >
+                Dan Levels (Master Ranks)
+              </h2>
+              <p className={css({ color: 'gray.400', fontSize: 'md', mb: '8' })}>
+                Score-based ranking system for master-level practitioners
+              </p>
+            </div>
+
+            {/* Exam Requirements Box */}
+            <div
+              className={css({
+                bg: 'rgba(251, 191, 36, 0.1)',
+                border: '1px solid',
+                borderColor: 'amber.700',
+                rounded: 'xl',
+                p: '6',
+                mb: '6',
+              })}
+            >
+              <h3
+                className={css({
+                  fontSize: 'lg',
+                  fontWeight: 'bold',
+                  color: 'amber.400',
+                  mb: '3',
+                })}
+              >
+                Dan Exam Requirements
+              </h3>
+              <div className={stack({ gap: '2' })}>
+                <div className={css({ fontSize: 'sm', color: 'gray.300' })}>
+                  <strong>Duration:</strong> 30 minutes
+                </div>
+                <div className={css({ fontSize: 'sm', color: 'gray.300' })}>
+                  <strong>Problem Complexity:</strong> 3× that of 1st Kyu
+                </div>
+                <div className={css({ fontSize: 'sm', color: 'gray.300', mt: '2' })}>
+                  • Addition/Subtraction: 30-digit numbers
+                </div>
+                <div className={css({ fontSize: 'sm', color: 'gray.300' })}>
+                  • Multiplication: 27×6 digits
+                </div>
+                <div className={css({ fontSize: 'sm', color: 'gray.300' })}>
+                  • Division: 30÷6 digits
+                </div>
+              </div>
+            </div>
+
+            {/* Dan Ladder Visualization */}
+            <div
+              className={css({
+                bg: 'rgba(0, 0, 0, 0.4)',
+                border: '1px solid',
+                borderColor: 'amber.700',
+                rounded: 'xl',
+                p: { base: '6', md: '8' },
+                position: 'relative',
+              })}
+            >
+              <div className={stack({ gap: '0' })}>
+                {danLevels
+                  .slice()
+                  .reverse()
+                  .map((dan, index) => {
+                    const isTop = index === 0
+                    return (
+                      <div
+                        key={index}
+                        className={css({
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4',
+                          p: '3',
+                          borderBottom: !isTop ? '1px solid' : 'none',
+                          borderColor: 'gray.700',
+                          transition: 'all 0.2s',
+                          _hover: {
+                            bg: isTop ? 'rgba(251, 191, 36, 0.1)' : 'rgba(251, 191, 36, 0.05)',
+                          },
+                        })}
+                      >
+                        {/* Emoji */}
+                        <div
+                          className={css({
+                            fontSize: '3xl',
+                            minW: '12',
+                            textAlign: 'center',
+                          })}
+                        >
+                          {dan.emoji}
+                        </div>
+
+                        {/* Level Info */}
+                        <div className={css({ flex: '1' })}>
+                          <div
+                            className={css({
+                              fontSize: 'lg',
+                              fontWeight: 'bold',
+                              color: isTop ? 'amber.300' : 'amber.400',
+                            })}
+                          >
+                            {dan.level}
+                          </div>
+                          <div className={css({ fontSize: 'sm', color: 'gray.400' })}>
+                            {dan.name}
+                          </div>
+                        </div>
+
+                        {/* Score */}
+                        <div
+                          className={css({
+                            fontSize: { base: 'xl', md: '2xl' },
+                            fontWeight: 'bold',
+                            color: isTop ? 'amber.300' : 'white',
+                            minW: { base: '20', md: '24' },
+                            textAlign: 'right',
+                          })}
+                        >
+                          {dan.minScore}
+                          <span className={css({ fontSize: 'sm', color: 'gray.400', ml: '1' })}>
+                            pts
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+
+              {/* Legend */}
+              <div
+                className={css({
+                  mt: '6',
+                  pt: '6',
+                  borderTop: '1px solid',
+                  borderColor: 'gray.700',
+                  fontSize: 'sm',
+                  color: 'gray.400',
+                  textAlign: 'center',
+                })}
+              >
+                Ranks are awarded based on total score achieved on the Dan-level exam
+              </div>
             </div>
           </section>
         </div>
