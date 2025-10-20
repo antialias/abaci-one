@@ -216,55 +216,65 @@ export default function HomePage() {
                 border: '1px solid',
                 borderColor: 'gray.700',
                 shadow: 'lg',
-                maxW: '900px',
+                maxW: '1200px',
                 mx: 'auto',
               })}
             >
-              {/* What you'll learn - above tutorial */}
               <div
                 className={css({
-                  mb: '8',
-                  pb: '6',
-                  borderBottom: '1px solid',
-                  borderColor: 'gray.700',
+                  display: 'flex',
+                  flexDirection: { base: 'column', md: 'row' },
+                  gap: '8',
+                  alignItems: { base: 'center', md: 'flex-start' },
                 })}
               >
-                <h3
+                {/* Tutorial on the left */}
+                <div className={css({ flex: '1' })}>
+                  <TutorialPlayer
+                    tutorial={friendsOf5Tutorial}
+                    isDebugMode={false}
+                    showDebugPanel={false}
+                    hideNavigation={true}
+                    hideTooltip={true}
+                    silentErrors={true}
+                    abacusColumns={1}
+                    theme="dark"
+                  />
+                </div>
+
+                {/* What you'll learn on the right */}
+                <div
                   className={css({
-                    fontSize: 'xl',
-                    fontWeight: 'bold',
-                    color: 'white',
-                    mb: '4',
-                    textAlign: 'center',
+                    flex: '0 0 auto',
+                    minW: '300px',
+                    maxW: { base: '100%', md: '350px' },
                   })}
                 >
-                  What You'll Learn
-                </h3>
-                <div className={grid({ columns: { base: 1, sm: 2 }, gap: '3' })}>
-                  {[
-                    'Read and set numbers on an abacus',
-                    'Add and subtract with "friends" techniques',
-                    'Multiply and divide fluently',
-                    'Calculate mentally without the abacus',
-                  ].map((skill, i) => (
-                    <div key={i} className={hstack({ gap: '3' })}>
-                      <span className={css({ color: 'yellow.400', fontSize: 'lg' })}>✓</span>
-                      <span className={css({ color: 'gray.300', fontSize: 'sm' })}>{skill}</span>
-                    </div>
-                  ))}
+                  <h3
+                    className={css({
+                      fontSize: 'xl',
+                      fontWeight: 'bold',
+                      color: 'white',
+                      mb: '4',
+                    })}
+                  >
+                    What You'll Learn
+                  </h3>
+                  <div className={stack({ gap: '3' })}>
+                    {[
+                      'Read and set numbers on an abacus',
+                      'Add and subtract with "friends" techniques',
+                      'Multiply and divide fluently',
+                      'Calculate mentally without the abacus',
+                    ].map((skill, i) => (
+                      <div key={i} className={hstack({ gap: '3' })}>
+                        <span className={css({ color: 'yellow.400', fontSize: 'lg' })}>✓</span>
+                        <span className={css({ color: 'gray.300', fontSize: 'sm' })}>{skill}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-
-              <TutorialPlayer
-                tutorial={friendsOf5Tutorial}
-                isDebugMode={false}
-                showDebugPanel={false}
-                hideNavigation={true}
-                hideTooltip={true}
-                silentErrors={true}
-                abacusColumns={1}
-                theme="dark"
-              />
             </div>
           </section>
 
