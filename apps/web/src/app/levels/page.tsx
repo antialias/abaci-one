@@ -259,7 +259,16 @@ export default function LevelsPage() {
               })}
             >
               {/* Level Info */}
-              <div className={css({ textAlign: 'center', mb: '6' })}>
+              <div
+                className={css({
+                  textAlign: 'center',
+                  mb: '4',
+                  height: '160px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                })}
+              >
                 <div className={css({ fontSize: '5xl', mb: '3' })}>{currentLevel.emoji}</div>
                 <h2
                   className={css({
@@ -343,13 +352,12 @@ export default function LevelsPage() {
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  mb: '6',
                   p: '6',
                   bg: 'rgba(0, 0, 0, 0.3)',
                   rounded: 'lg',
                   border: '1px solid',
                   borderColor: 'gray.700',
-                  overflowX: 'auto',
+                  overflow: 'visible',
                   flex: 1,
                 })}
               >
