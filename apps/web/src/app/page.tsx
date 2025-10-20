@@ -8,6 +8,7 @@ import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
 import { PageWithNav } from '@/components/PageWithNav'
 import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
 import { getTutorialForEditor } from '@/utils/tutorialConverter'
+import { getAvailableGames } from '@/lib/arcade/game-registry'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
 import { token } from '../../styled-system/tokens'
@@ -298,42 +299,24 @@ export default function HomePage() {
               </div>
 
               <div className={grid({ columns: { base: 1, sm: 2, lg: 4 }, gap: '5' })}>
-                <GameCard
-                  icon="🧠"
-                  title="Memory Lightning"
-                  description="Memorize soroban numbers"
-                  players="1-8 players"
-                  tags={['Memory', 'Pattern Recognition']}
-                  gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                  href="/games"
-                />
-                <GameCard
-                  icon="⚔️"
-                  title="Matching Pairs"
-                  description="Match complement numbers"
-                  players="1-4 players"
-                  tags={['Friends of 5', 'Friends of 10']}
-                  gradient="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
-                  href="/games"
-                />
-                <GameCard
-                  icon="🏁"
-                  title="Complement Race"
-                  description="Race against time"
-                  players="1-4 players"
-                  tags={['Speed', 'Practice', 'Survival']}
-                  gradient="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
-                  href="/games"
-                />
-                <GameCard
-                  icon="🔢"
-                  title="Card Sorting"
-                  description="Arrange numbers visually"
-                  players="Solo challenge"
-                  tags={['Visual Literacy', 'Ordering']}
-                  gradient="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
-                  href="/games"
-                />
+                {getAvailableGames().map((game) => {
+                  const playersText =
+                    game.manifest.maxPlayers === 1
+                      ? 'Solo challenge'
+                      : `1-${game.manifest.maxPlayers} players`
+                  return (
+                    <GameCard
+                      key={game.manifest.name}
+                      icon={game.manifest.icon}
+                      title={game.manifest.displayName}
+                      description={game.manifest.description}
+                      players={playersText}
+                      tags={game.manifest.chips}
+                      gradient={game.manifest.gradient}
+                      href="/games"
+                    />
+                  )
+                })}
               </div>
             </section>
 
