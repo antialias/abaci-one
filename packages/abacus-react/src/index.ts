@@ -14,3 +14,6 @@ export type {
   AbacusDisplayConfig,
   AbacusDisplayContextType,
 } from "./AbacusContext";
+
+export { StandaloneBead } from "./StandaloneBead";
+export type { StandaloneBeadProps } from "./StandaloneBead";
