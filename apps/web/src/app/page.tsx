@@ -609,77 +609,99 @@ function GameCard({
   return (
     <Link href={href}>
       <div
-        style={{ background: gradient }}
         className={css({
           rounded: 'xl',
           p: '6',
           shadow: 'lg',
           transition: 'all 0.3s ease',
           cursor: 'pointer',
+          position: 'relative',
+          overflow: 'hidden',
           _hover: {
             transform: 'translateY(-6px) scale(1.02)',
             shadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
           },
         })}
       >
+        {/* Vibrant gradient background */}
+        <div
+          style={{ background: gradient }}
+          className={css({
+            position: 'absolute',
+            inset: 0,
+            zIndex: 0,
+          })}
+        />
+        {/* Dark gradient overlay for text readability */}
         <div
           className={css({
-            fontSize: '3xl',
-            mb: '3',
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%)',
+            zIndex: 1,
           })}
-        >
-          {icon}
-        </div>
-        <h3
-          className={css({
-            fontSize: 'lg',
-            fontWeight: 'bold',
-            color: 'white',
-            mb: '2',
-            textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
-          })}
-        >
-          {title}
-        </h3>
-        <p
-          className={css({
-            fontSize: 'sm',
-            color: 'rgba(255, 255, 255, 0.95)',
-            mb: '2',
-            textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
-          })}
-        >
-          {description}
-        </p>
-        <p
-          className={css({
-            fontSize: 'xs',
-            color: 'rgba(255, 255, 255, 0.85)',
-            mb: '3',
-            textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
-          })}
-        >
-          {players}
-        </p>
-        <div className={hstack({ gap: '2', flexWrap: 'wrap' })}>
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className={css({
-                fontSize: 'xs',
-                px: '2',
-                py: '1',
-                bg: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                rounded: 'full',
-                fontWeight: 'semibold',
-                textShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
-              })}
-            >
-              {tag}
-            </span>
-          ))}
+        />
+        {/* Content */}
+        <div className={css({ position: 'relative', zIndex: 2 })}>
+          <div
+            className={css({
+              fontSize: '3xl',
+              mb: '3',
+              textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+            })}
+          >
+            {icon}
+          </div>
+          <h3
+            className={css({
+              fontSize: 'lg',
+              fontWeight: 'bold',
+              color: 'white',
+              mb: '2',
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+            })}
+          >
+            {title}
+          </h3>
+          <p
+            className={css({
+              fontSize: 'sm',
+              color: 'rgba(255, 255, 255, 0.95)',
+              mb: '2',
+              textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
+            })}
+          >
+            {description}
+          </p>
+          <p
+            className={css({
+              fontSize: 'xs',
+              color: 'rgba(255, 255, 255, 0.85)',
+              mb: '3',
+              textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
+            })}
+          >
+            {players}
+          </p>
+          <div className={hstack({ gap: '2', flexWrap: 'wrap' })}>
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className={css({
+                  fontSize: 'xs',
+                  px: '2',
+                  py: '1',
+                  bg: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  rounded: 'full',
+                  fontWeight: 'semibold',
+                  textShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
+                })}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </Link>
