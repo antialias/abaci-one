@@ -184,6 +184,7 @@ const allLevels = [
 export default function LevelsPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isHovering, setIsHovering] = useState(false)
+  const [isPaneHovered, setIsPaneHovered] = useState(false)
   const currentLevel = allLevels[currentIndex]
 
   // State for animated abacus digits
@@ -219,6 +220,20 @@ export default function LevelsPage() {
 
     return () => clearInterval(interval)
   }, [])
+
+  // Auto-advance slider position every 3 seconds (unless pane is hovered)
+  useEffect(() => {
+    if (isPaneHovered) return // Don't auto-advance when mouse is over the pane
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => {
+        // Cycle back to 0 when reaching the end
+        return prev >= allLevels.length - 1 ? 0 : prev + 1
+      })
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [isPaneHovered])
 
   // Handle hover on slider track
   const handleSliderHover = (e: React.MouseEvent<HTMLSpanElement>) => {
@@ -338,6 +353,8 @@ export default function LevelsPage() {
           <section className={stack({ gap: '8' })}>
             {/* Current Level Display */}
             <div
+              onMouseEnter={() => setIsPaneHovered(true)}
+              onMouseLeave={() => setIsPaneHovered(false)}
               className={css({
                 bg: 'transparent',
                 border: '2px solid',
