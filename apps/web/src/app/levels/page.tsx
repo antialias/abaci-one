@@ -127,6 +127,29 @@ export default function LevelsPage() {
   // Smaller scale for more columns (Dan levels with 30 columns)
   const scaleFactor = Math.min(2.5, 20 / currentLevel.digits)
 
+  // Generate an interesting non-zero number to display on the abacus
+  // Create a value that uses all available columns (e.g., 2 columns = 12, 3 columns = 123)
+  // For larger numbers, create a pattern like 123456789012... up to the column count
+  const digitPattern = '123456789'
+  const displayValue = Number.parseInt(
+    digitPattern.repeat(Math.ceil(currentLevel.digits / digitPattern.length)).slice(0, currentLevel.digits),
+    10,
+  )
+
+  // Dark theme styles matching the homepage
+  const darkStyles = {
+    columnPosts: {
+      fill: 'rgba(255, 255, 255, 0.3)',
+      stroke: 'rgba(255, 255, 255, 0.2)',
+      strokeWidth: 2,
+    },
+    reckoningBar: {
+      fill: 'rgba(255, 255, 255, 0.4)',
+      stroke: 'rgba(255, 255, 255, 0.25)',
+      strokeWidth: 3,
+    },
+  }
+
   return (
     <PageWithNav navTitle="Kyu & Dan Levels" navEmoji="📊">
       <div className={css({ bg: 'gray.900', minHeight: '100vh', pb: '12' })}>
@@ -251,17 +274,11 @@ export default function LevelsPage() {
                 })}
               >
                 <AbacusReact
-                  value={0}
+                  value={displayValue}
                   columns={currentLevel.digits}
                   scaleFactor={scaleFactor}
                   showNumbers={true}
-                  customStyles={{
-                    reckoningBar: { stroke: '#9ca3af', strokeWidth: 3 },
-                    columnPosts: { stroke: '#6b7280' },
-                    numerals: { color: '#d1d5db', fontSize: '14px', fontWeight: 'normal' },
-                    heavenBeads: { fill: '#60a5fa' },
-                    earthBeads: { fill: '#34d399' },
-                  }}
+                  customStyles={darkStyles}
                 />
               </div>
 

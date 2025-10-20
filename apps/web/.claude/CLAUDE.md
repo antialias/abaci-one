@@ -138,12 +138,43 @@ See `.claude/GAME_THEMES.md` for standardized color theme usage in arcade games.
 - ✅ Use `useAbacusConfig` for abacus configuration
 - ✅ Use `useAbacusDisplay` for reading abacus state
 
+**MANDATORY: Read the Docs Before Customizing**
+
+**ALWAYS read the full README documentation before customizing or styling AbacusReact:**
+- Location: `packages/abacus-react/README.md`
+- Check homepage implementation: `src/app/page.tsx` (MiniAbacus component)
+- Check storybook examples: `src/stories/AbacusReact.*.stories.tsx`
+
+**Key Documentation Points:**
+1. **Custom Styles**: Use `fill` (not just `stroke`) for columnPosts and reckoningBar
+2. **Props**: Use direct props like `value`, `columns`, `scaleFactor` (not config objects)
+3. **Example from Homepage:**
+   ```typescript
+   const darkStyles = {
+     columnPosts: {
+       fill: 'rgba(255, 255, 255, 0.3)',
+       stroke: 'rgba(255, 255, 255, 0.2)',
+       strokeWidth: 2,
+     },
+     reckoningBar: {
+       fill: 'rgba(255, 255, 255, 0.4)',
+       stroke: 'rgba(255, 255, 255, 0.25)',
+       strokeWidth: 3,
+     },
+   }
+
+   <AbacusReact
+     value={123}
+     columns={3}
+     customStyles={darkStyles}
+   />
+   ```
+
 **Example Usage:**
 ```typescript
-import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+import { AbacusReact } from '@soroban/abacus-react'
 
-const config = useAbacusConfig({ columns: 5 })
-<AbacusReact config={config} initialNumber={123} />
+<AbacusReact value={123} columns={5} scaleFactor={1.5} showNumbers={true} />
 ```
 
 ## Known Issues
