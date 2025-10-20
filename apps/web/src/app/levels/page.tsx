@@ -253,6 +253,9 @@ export default function LevelsPage() {
                         : 'amber.500',
                 rounded: 'xl',
                 p: { base: '6', md: '8' },
+                height: { base: 'auto', md: '700px' },
+                display: 'flex',
+                flexDirection: 'column',
               })}
             >
               {/* Level Info */}
@@ -300,7 +303,7 @@ export default function LevelsPage() {
                   border: '1px solid',
                   borderColor: 'gray.700',
                   overflowX: 'auto',
-                  minHeight: '400px',
+                  flex: 1,
                 })}
               >
                 <animated.div
