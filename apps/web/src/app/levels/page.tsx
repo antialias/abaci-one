@@ -290,6 +290,53 @@ export default function LevelsPage() {
                 )}
               </div>
 
+              {/* Range Slider with hover support */}
+              <div className={css({ mb: '6', px: { base: '2', md: '8' } })}>
+                <div className={css({ mb: '3', textAlign: 'center' })}>
+                  <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
+                    Hover, drag, or touch the slider to explore all levels
+                  </p>
+                </div>
+
+                <div
+                  onMouseMove={handleSliderHover}
+                  onTouchMove={handleSliderHover}
+                  className={css({ position: 'relative' })}
+                >
+                  <input
+                    ref={sliderRef}
+                    type="range"
+                    min="0"
+                    max={allLevels.length - 1}
+                    value={currentIndex}
+                    onChange={(e) => setCurrentIndex(Number(e.target.value))}
+                    className={css({
+                      w: '100%',
+                      h: '2',
+                      bg: 'gray.700',
+                      rounded: 'full',
+                      outline: 'none',
+                      cursor: 'pointer',
+                    })}
+                  />
+                </div>
+
+                {/* Level Markers */}
+                <div
+                  className={css({
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    mt: '3',
+                    fontSize: 'xs',
+                    color: 'gray.500',
+                  })}
+                >
+                  <span>10th Kyu</span>
+                  <span>1st Kyu</span>
+                  <span>10th Dan</span>
+                </div>
+              </div>
+
               {/* Abacus Display */}
               <div
                 className={css({
@@ -324,67 +371,6 @@ export default function LevelsPage() {
               {/* Digit Count */}
               <div className={css({ textAlign: 'center', color: 'gray.400', fontSize: 'sm' })}>
                 Requires mastery of <strong>{currentLevel.digits}-digit</strong> calculations
-              </div>
-            </div>
-
-            {/* Slider Control */}
-            <div
-              className={css({
-                bg: 'rgba(0, 0, 0, 0.3)',
-                border: '1px solid',
-                borderColor: 'gray.700',
-                rounded: 'xl',
-                p: '6',
-              })}
-            >
-              <div className={css({ mb: '4', textAlign: 'center' })}>
-                <h3
-                  className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'white', mb: '2' })}
-                >
-                  Explore All Levels
-                </h3>
-                <p className={css({ fontSize: 'sm', color: 'gray.400' })}>
-                  Hover, drag, or touch the slider to see each rank
-                </p>
-              </div>
-
-              {/* Range Slider with hover support */}
-              <div
-                onMouseMove={handleSliderHover}
-                onTouchMove={handleSliderHover}
-                className={css({ position: 'relative' })}
-              >
-                <input
-                  ref={sliderRef}
-                  type="range"
-                  min="0"
-                  max={allLevels.length - 1}
-                  value={currentIndex}
-                  onChange={(e) => setCurrentIndex(Number(e.target.value))}
-                  className={css({
-                    w: '100%',
-                    h: '2',
-                    bg: 'gray.700',
-                    rounded: 'full',
-                    outline: 'none',
-                    cursor: 'pointer',
-                  })}
-                />
-              </div>
-
-              {/* Level Markers */}
-              <div
-                className={css({
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  mt: '4',
-                  fontSize: 'xs',
-                  color: 'gray.500',
-                })}
-              >
-                <span>10th Kyu</span>
-                <span>1st Kyu</span>
-                <span>10th Dan</span>
               </div>
             </div>
 
