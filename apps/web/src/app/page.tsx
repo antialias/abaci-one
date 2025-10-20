@@ -654,6 +654,37 @@ export default function HomePage() {
               >
                 You'll progress through all these levels eventually ↑
               </div>
+
+              {/* Learn More Link */}
+              <div className={css({ textAlign: 'center', mt: '6' })}>
+                <Link
+                  href="/levels"
+                  className={css({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2',
+                    px: '6',
+                    py: '3',
+                    bg: 'rgba(124, 58, 237, 0.2)',
+                    border: '1px solid',
+                    borderColor: 'violet.500',
+                    rounded: 'lg',
+                    color: 'violet.300',
+                    fontSize: 'sm',
+                    fontWeight: '500',
+                    transition: 'all 0.2s',
+                    _hover: {
+                      bg: 'rgba(124, 58, 237, 0.3)',
+                      borderColor: 'violet.400',
+                      color: 'violet.200',
+                      transform: 'translateY(-1px)',
+                    },
+                  })}
+                >
+                  Learn about Kyu & Dan Levels
+                  <span>→</span>
+                </Link>
+              </div>
             </div>
           </section>
 
