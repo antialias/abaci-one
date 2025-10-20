@@ -261,7 +261,7 @@ export default function HomePage() {
                 showDebugPanel={false}
                 hideNavigation={true}
                 hideTooltip={true}
-                abacusColumns={2}
+                abacusColumns={1}
                 theme="dark"
               />
             </div>
