@@ -9,6 +9,7 @@ import { PageWithNav } from '@/components/PageWithNav'
 import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
 import { getTutorialForEditor } from '@/utils/tutorialConverter'
 import { getAvailableGames } from '@/lib/arcade/game-registry'
+import { InteractiveFlashcards } from '@/components/InteractiveFlashcards'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
 import { token } from '../../styled-system/tokens'
@@ -566,6 +567,18 @@ export default function HomePage() {
                 </p>
               </div>
 
+              {/* Interactive Flashcards Display */}
+              <div
+                className={css({
+                  maxW: '1200px',
+                  mx: 'auto',
+                  mb: '8',
+                })}
+              >
+                <InteractiveFlashcards />
+              </div>
+
+              {/* Features and CTA */}
               <Link
                 href="/create"
                 className={css({
@@ -593,76 +606,6 @@ export default function HomePage() {
                     },
                   })}
                 >
-                  {/* Flashcards Display */}
-                  <div
-                    className={css({
-                      position: 'relative',
-                      height: { base: '200px', md: '280px' },
-                      mb: '8',
-                    })}
-                  >
-                    {/* Spread out flashcards */}
-                    {[
-                      { number: 123, rotation: -8, zIndex: 1, offset: '-60px' },
-                      { number: 456, rotation: -3, zIndex: 2, offset: '-30px' },
-                      { number: 789, rotation: 2, zIndex: 3, offset: '0px' },
-                      { number: 321, rotation: 5, zIndex: 2, offset: '30px' },
-                      { number: 654, rotation: 9, zIndex: 1, offset: '60px' },
-                    ].map((card, i) => (
-                      <div
-                        key={i}
-                        className={css({
-                          position: 'absolute',
-                          left: '50%',
-                          top: '50%',
-                          transform: `translate(-50%, -50%) translateX(${card.offset}) rotate(${card.rotation}deg)`,
-                          transition: 'all 0.3s ease',
-                          _hover: {
-                            transform: `translate(-50%, -50%) translateX(${card.offset}) rotate(${card.rotation}deg) scale(1.05) translateY(-10px)`,
-                            zIndex: 10,
-                          },
-                        })}
-                        style={{ zIndex: card.zIndex }}
-                      >
-                        <div
-                          className={css({
-                            bg: 'white',
-                            rounded: 'lg',
-                            p: '4',
-                            shadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-                            border: '2px solid',
-                            borderColor: 'gray.200',
-                            width: { base: '120px', md: '160px' },
-                            height: { base: '160px', md: '220px' },
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '3',
-                          })}
-                        >
-                          <div
-                            className={css({
-                              transform: 'scale(0.7)',
-                            })}
-                          >
-                            <AbacusReact value={card.number} columns={3} beadShape="circle" />
-                          </div>
-                          <div
-                            className={css({
-                              fontSize: { base: 'lg', md: 'xl' },
-                              fontWeight: 'bold',
-                              color: 'gray.800',
-                              fontFamily: 'mono',
-                            })}
-                          >
-                            {card.number}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
                   {/* Features */}
                   <div className={grid({ columns: { base: 1, md: 3 }, gap: '4', mb: '6' })}>
                     {[
