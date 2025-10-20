@@ -659,31 +659,9 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
               <div />
             )}
 
-            <div
-              className={css({
-                display: 'flex',
-                gap: '6',
-                alignItems: 'center',
-                px: isTransparent ? '4' : '0',
-                py: isTransparent ? '2' : '0',
-                rounded: isTransparent ? 'lg' : 'none',
-                border: isTransparent ? '1px solid' : 'none',
-                borderColor: isTransparent ? 'rgba(255, 255, 255, 0.3)' : 'transparent',
-                transition: 'all 0.3s ease',
-              })}
-            >
+            <div className={hstack({ gap: '6', alignItems: 'center' })}>
               {/* Navigation Links */}
-              <nav
-                className={css({
-                  display: 'flex',
-                  gap: '4',
-                  px: isTransparent ? '2' : '0',
-                  py: isTransparent ? '1' : '0',
-                  rounded: isTransparent ? 'md' : 'none',
-                  border: isTransparent ? '1px solid' : 'none',
-                  borderColor: isTransparent ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-                })}
-              >
+              <nav className={hstack({ gap: '4' })}>
                 <NavLink href="/create" currentPath={pathname} isTransparent={isTransparent}>
                   Create
                 </NavLink>
@@ -695,18 +673,8 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                 </NavLink>
               </nav>
 
-              {/* Abacus Style Dropdown - with border when transparent */}
-              <div
-                className={css({
-                  px: isTransparent ? '2' : '0',
-                  py: isTransparent ? '1' : '0',
-                  rounded: isTransparent ? 'md' : 'none',
-                  border: isTransparent ? '1px solid' : 'none',
-                  borderColor: isTransparent ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
-                })}
-              >
-                <AbacusDisplayDropdown isFullscreen={false} />
-              </div>
+              {/* Abacus Style Dropdown */}
+              <AbacusDisplayDropdown isFullscreen={false} />
             </div>
           </div>
         </div>
