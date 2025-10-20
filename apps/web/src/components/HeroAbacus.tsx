@@ -22,6 +22,16 @@ export function HeroAbacus() {
       stroke: 'rgba(255, 255, 255, 0.25)',
       strokeWidth: 3,
     },
+    heavenBeads: {
+      fill: 'rgba(196, 181, 253, 0.8)',
+      stroke: 'rgba(167, 139, 250, 0.9)',
+      strokeWidth: 2,
+    },
+    earthBeads: {
+      fill: 'rgba(167, 139, 250, 0.7)',
+      stroke: 'rgba(139, 92, 246, 0.9)',
+      strokeWidth: 2,
+    },
   }
 
   // Detect when hero scrolls out of view
