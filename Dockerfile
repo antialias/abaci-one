@@ -59,6 +59,9 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next ./apps/web/.next
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
+# Copy Panda CSS generated styles
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/styled-system ./apps/web/styled-system
+
 # Copy server files (compiled from TypeScript)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/server.js ./apps/web/
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/dist ./apps/web/dist
