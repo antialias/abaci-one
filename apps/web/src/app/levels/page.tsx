@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
 import { container, grid, stack } from '../../../styled-system/patterns'
@@ -170,7 +171,122 @@ const danLevels = [
   { level: '10th Dan', name: 'Judan', minScore: 290, emoji: '👑' },
 ] as const
 
+// Helper function to extract digit count from a kyu level
+function getDigitCount(kyu: (typeof kyuLevels)[number]): number {
+  const additionSection = kyu.sections.find((s) => s.name === 'Addition')
+  if (!additionSection) return 0
+  const match = additionSection.digits.match(/(\d+)-digit/)
+  return match ? Number.parseInt(match[1], 10) : 0
+}
+
+// Abacus visualization component
+function AbacusVisualization({ digitCount, color }: { digitCount: number; color: string }) {
+  // Show limited columns on mobile
+  const displayCount = digitCount
+
+  return (
+    <div
+      className={css({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3' })}
+    >
+      <div
+        className={css({
+          fontSize: 'sm',
+          color: 'gray.400',
+          textAlign: 'center',
+        })}
+      >
+        Master {digitCount}-digit calculations
+      </div>
+      <div
+        className={css({
+          display: 'flex',
+          gap: '2',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          maxW: '100%',
+        })}
+      >
+        {Array.from({ length: displayCount }).map((_, i) => (
+          <div
+            key={i}
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1',
+            })}
+          >
+            {/* Top bead (heaven) */}
+            <div
+              className={css({
+                w: '3',
+                h: '3',
+                rounded: 'full',
+                bg: color === 'green' ? 'green.500' : color === 'blue' ? 'blue.500' : 'violet.500',
+                opacity: 0.6,
+              })}
+            />
+            {/* Divider bar */}
+            <div
+              className={css({
+                w: '4',
+                h: '0.5',
+                bg: 'gray.600',
+              })}
+            />
+            {/* Bottom beads (earth) - 4 beads */}
+            <div className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
+              {Array.from({ length: 4 }).map((_, j) => (
+                <div
+                  key={j}
+                  className={css({
+                    w: '3',
+                    h: '3',
+                    rounded: 'full',
+                    bg:
+                      color === 'green'
+                        ? 'green.500'
+                        : color === 'blue'
+                          ? 'blue.500'
+                          : 'violet.500',
+                    opacity: 0.6,
+                  })}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function LevelsPage() {
+  const [currentKyuIndex, setCurrentKyuIndex] = useState(0)
+  const currentKyu = kyuLevels[currentKyuIndex]
+  const digitCount = getDigitCount(currentKyu)
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        setCurrentKyuIndex((prev) => (prev > 0 ? prev - 1 : kyuLevels.length - 1))
+      } else if (e.key === 'ArrowRight') {
+        setCurrentKyuIndex((prev) => (prev < kyuLevels.length - 1 ? prev + 1 : 0))
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  const handlePrevious = () => {
+    setCurrentKyuIndex((prev) => (prev > 0 ? prev - 1 : kyuLevels.length - 1))
+  }
+
+  const handleNext = () => {
+    setCurrentKyuIndex((prev) => (prev < kyuLevels.length - 1 ? prev + 1 : 0))
+  }
+
   return (
     <PageWithNav navTitle="Kyu & Dan Levels" navEmoji="📊">
       <div className={css({ bg: 'gray.900', minHeight: '100vh' })}>
@@ -292,135 +408,246 @@ export default function LevelsPage() {
               >
                 Kyu Levels (10th to 1st)
               </h2>
-              <p className={css({ color: 'gray.400', fontSize: 'md', mb: '8' })}>
-                Progress from beginner to advanced mastery
+              <p className={css({ color: 'gray.400', fontSize: 'md', mb: '4' })}>
+                Explore the progression from beginner to advanced mastery
+              </p>
+              <p className={css({ color: 'gray.500', fontSize: 'sm', mb: '8' })}>
+                Use arrow keys or click the buttons to navigate
               </p>
             </div>
 
-            {/* Kyu Level Cards */}
-            <div className={grid({ columns: { base: 1, md: 2, lg: 3 }, gap: '6' })}>
-              {kyuLevels.map((kyu, index) => (
+            {/* Slider Container */}
+            <div className={css({ position: 'relative', maxW: '4xl', mx: 'auto', w: '100%' })}>
+              {/* Navigation Buttons */}
+              <button
+                type="button"
+                onClick={handlePrevious}
+                className={css({
+                  position: 'absolute',
+                  left: { base: '-4', md: '-16' },
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 10,
+                  bg: 'rgba(0, 0, 0, 0.6)',
+                  border: '1px solid',
+                  borderColor: 'gray.600',
+                  rounded: 'full',
+                  w: { base: '10', md: '12' },
+                  h: { base: '10', md: '12' },
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  _hover: {
+                    bg: 'rgba(0, 0, 0, 0.8)',
+                    borderColor: 'gray.400',
+                    transform: 'translateY(-50%) scale(1.1)',
+                  },
+                })}
+              >
+                <span className={css({ fontSize: { base: 'xl', md: '2xl' }, color: 'white' })}>
+                  ‹
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNext}
+                className={css({
+                  position: 'absolute',
+                  right: { base: '-4', md: '-16' },
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 10,
+                  bg: 'rgba(0, 0, 0, 0.6)',
+                  border: '1px solid',
+                  borderColor: 'gray.600',
+                  rounded: 'full',
+                  w: { base: '10', md: '12' },
+                  h: { base: '10', md: '12' },
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  _hover: {
+                    bg: 'rgba(0, 0, 0, 0.8)',
+                    borderColor: 'gray.400',
+                    transform: 'translateY(-50%) scale(1.1)',
+                  },
+                })}
+              >
+                <span className={css({ fontSize: { base: 'xl', md: '2xl' }, color: 'white' })}>
+                  ›
+                </span>
+              </button>
+
+              {/* Current Level Card */}
+              <div
+                className={css({
+                  bg: 'rgba(0, 0, 0, 0.4)',
+                  border: '2px solid',
+                  borderColor:
+                    currentKyu.color === 'green'
+                      ? 'green.500'
+                      : currentKyu.color === 'blue'
+                        ? 'blue.500'
+                        : 'violet.500',
+                  rounded: 'xl',
+                  p: { base: '6', md: '8' },
+                  transition: 'all 0.3s ease',
+                })}
+              >
+                {/* Card Header */}
+                <div className={css({ display: 'flex', alignItems: 'center', gap: '4', mb: '6' })}>
+                  <div className={css({ fontSize: { base: '4xl', md: '5xl' } })}>
+                    {currentKyu.emoji}
+                  </div>
+                  <div className={css({ flex: '1' })}>
+                    <h3
+                      className={css({
+                        fontSize: { base: '2xl', md: '3xl' },
+                        fontWeight: 'bold',
+                        color:
+                          currentKyu.color === 'green'
+                            ? 'green.400'
+                            : currentKyu.color === 'blue'
+                              ? 'blue.400'
+                              : 'violet.400',
+                        mb: '1',
+                      })}
+                    >
+                      {currentKyu.level}
+                    </h3>
+                    <p className={css({ fontSize: 'md', color: 'gray.400' })}>{currentKyu.notes}</p>
+                  </div>
+                </div>
+
+                {/* Abacus Visualization */}
                 <div
-                  key={index}
                   className={css({
-                    bg: 'rgba(0, 0, 0, 0.4)',
+                    mb: '6',
+                    p: { base: '4', md: '6' },
+                    bg: 'rgba(0, 0, 0, 0.3)',
+                    rounded: 'lg',
                     border: '1px solid',
-                    borderColor:
-                      kyu.color === 'green'
-                        ? 'green.700'
-                        : kyu.color === 'blue'
-                          ? 'blue.700'
-                          : 'violet.700',
-                    rounded: 'xl',
-                    p: '6',
-                    transition: 'all 0.2s',
-                    _hover: {
-                      bg: 'rgba(0, 0, 0, 0.5)',
-                      borderColor:
-                        kyu.color === 'green'
-                          ? 'green.500'
-                          : kyu.color === 'blue'
-                            ? 'blue.500'
-                            : 'violet.500',
-                      transform: 'translateY(-2px)',
-                    },
+                    borderColor: 'gray.700',
                   })}
                 >
-                  {/* Card Header */}
-                  <div
-                    className={css({ display: 'flex', alignItems: 'center', gap: '3', mb: '4' })}
-                  >
-                    <div className={css({ fontSize: '3xl' })}>{kyu.emoji}</div>
-                    <div>
-                      <h3
-                        className={css({
-                          fontSize: 'xl',
-                          fontWeight: 'bold',
-                          color:
-                            kyu.color === 'green'
-                              ? 'green.400'
-                              : kyu.color === 'blue'
-                                ? 'blue.400'
-                                : 'violet.400',
-                        })}
-                      >
-                        {kyu.level}
-                      </h3>
-                      <p className={css({ fontSize: 'sm', color: 'gray.400' })}>{kyu.notes}</p>
-                    </div>
-                  </div>
+                  <AbacusVisualization digitCount={digitCount} color={currentKyu.color} />
+                </div>
 
-                  {/* Exam Details */}
-                  <div className={stack({ gap: '3' })}>
-                    <div
-                      className={css({
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 'sm',
-                      })}
-                    >
-                      <span className={css({ color: 'gray.400' })}>Duration:</span>
-                      <span className={css({ color: 'white', fontWeight: '500' })}>
-                        {kyu.duration}
-                      </span>
-                    </div>
-                    <div
-                      className={css({
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 'sm',
-                      })}
-                    >
-                      <span className={css({ color: 'gray.400' })}>Pass Threshold:</span>
-                      <span className={css({ color: 'amber.400', fontWeight: '600' })}>
-                        {kyu.passThreshold}
-                      </span>
-                    </div>
-                    <div
-                      className={css({
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 'sm',
-                      })}
-                    >
-                      <span className={css({ color: 'gray.400' })}>Points Needed:</span>
-                      <span className={css({ color: 'white', fontWeight: '500' })}>
-                        {kyu.points}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Sections */}
+                {/* Exam Details */}
+                <div className={grid({ columns: { base: 1, md: 3 }, gap: '4', mb: '6' })}>
                   <div
                     className={css({
-                      mt: '4',
-                      pt: '4',
-                      borderTop: '1px solid',
-                      borderColor: 'gray.700',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '2',
+                      p: '4',
+                      bg: 'rgba(0, 0, 0, 0.3)',
+                      rounded: 'lg',
                     })}
                   >
-                    <div
+                    <span className={css({ fontSize: 'sm', color: 'gray.400' })}>Duration</span>
+                    <span
                       className={css({
-                        fontSize: 'xs',
-                        color: 'gray.500',
-                        mb: '2',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
+                        fontSize: { base: 'lg', md: 'xl' },
+                        color: 'white',
+                        fontWeight: '600',
                       })}
                     >
-                      Problem Types
-                    </div>
-                    {kyu.sections.map((section, i) => (
+                      {currentKyu.duration}
+                    </span>
+                  </div>
+                  <div
+                    className={css({
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '2',
+                      p: '4',
+                      bg: 'rgba(0, 0, 0, 0.3)',
+                      rounded: 'lg',
+                    })}
+                  >
+                    <span className={css({ fontSize: 'sm', color: 'gray.400' })}>
+                      Pass Threshold
+                    </span>
+                    <span
+                      className={css({
+                        fontSize: { base: 'lg', md: 'xl' },
+                        color: 'amber.400',
+                        fontWeight: '700',
+                      })}
+                    >
+                      {currentKyu.passThreshold}
+                    </span>
+                  </div>
+                  <div
+                    className={css({
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '2',
+                      p: '4',
+                      bg: 'rgba(0, 0, 0, 0.3)',
+                      rounded: 'lg',
+                    })}
+                  >
+                    <span className={css({ fontSize: 'sm', color: 'gray.400' })}>
+                      Points Needed
+                    </span>
+                    <span
+                      className={css({
+                        fontSize: { base: 'lg', md: 'xl' },
+                        color: 'white',
+                        fontWeight: '600',
+                      })}
+                    >
+                      {currentKyu.points}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Problem Types */}
+                <div
+                  className={css({
+                    pt: '6',
+                    borderTop: '1px solid',
+                    borderColor: 'gray.700',
+                  })}
+                >
+                  <div
+                    className={css({
+                      fontSize: 'xs',
+                      color: 'gray.500',
+                      mb: '4',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.1em',
+                      textAlign: 'center',
+                    })}
+                  >
+                    Problem Types
+                  </div>
+                  <div className={grid({ columns: { base: 1, md: 2 }, gap: '3' })}>
+                    {currentKyu.sections.map((section, i) => (
                       <div
                         key={i}
                         className={css({
                           display: 'flex',
                           justifyContent: 'space-between',
                           fontSize: 'sm',
-                          py: '1',
+                          p: '3',
+                          bg: 'rgba(0, 0, 0, 0.2)',
+                          rounded: 'md',
                         })}
                       >
-                        <span className={css({ color: 'gray.300' })}>{section.name}</span>
+                        <span className={css({ color: 'gray.300', fontWeight: '500' })}>
+                          {section.name}
+                        </span>
                         <span className={css({ color: 'gray.400', fontSize: 'xs' })}>
                           {section.digits}
                         </span>
@@ -428,7 +655,51 @@ export default function LevelsPage() {
                     ))}
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Progress Indicators */}
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '2',
+                  mt: '6',
+                })}
+              >
+                {kyuLevels.map((_, index) => (
+                  <button
+                    type="button"
+                    key={index}
+                    onClick={() => setCurrentKyuIndex(index)}
+                    className={css({
+                      w: currentKyuIndex === index ? '8' : '2',
+                      h: '2',
+                      rounded: 'full',
+                      bg:
+                        currentKyuIndex === index
+                          ? currentKyu.color === 'green'
+                            ? 'green.500'
+                            : currentKyu.color === 'blue'
+                              ? 'blue.500'
+                              : 'violet.500'
+                          : 'gray.600',
+                      transition: 'all 0.3s',
+                      cursor: 'pointer',
+                      _hover: {
+                        bg:
+                          currentKyuIndex === index
+                            ? currentKyu.color === 'green'
+                              ? 'green.400'
+                              : currentKyu.color === 'blue'
+                                ? 'blue.400'
+                                : 'violet.400'
+                            : 'gray.500',
+                      },
+                    })}
+                    aria-label={`Go to ${kyuLevels[index].level}`}
+                  />
+                ))}
+              </div>
             </div>
           </section>
 
