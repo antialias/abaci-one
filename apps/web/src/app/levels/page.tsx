@@ -183,7 +183,17 @@ const allLevels = [
 
 export default function LevelsPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isHovering, setIsHovering] = useState(false)
   const currentLevel = allLevels[currentIndex]
+
+  // Handle hover on slider track
+  const handleSliderHover = (e: React.MouseEvent<HTMLSpanElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const percentage = x / rect.width
+    const index = Math.round(percentage * (allLevels.length - 1))
+    setCurrentIndex(Math.max(0, Math.min(allLevels.length - 1, index)))
+  }
 
   // Calculate scale factor based on number of columns to fit the page
   // Use constrained range to prevent huge size differences between levels
@@ -367,6 +377,9 @@ export default function LevelsPage() {
                     min={0}
                     max={allLevels.length - 1}
                     step={1}
+                    onMouseMove={handleSliderHover}
+                    onMouseEnter={() => setIsHovering(true)}
+                    onMouseLeave={() => setIsHovering(false)}
                     className={css({
                       position: 'relative',
                       display: 'flex',
