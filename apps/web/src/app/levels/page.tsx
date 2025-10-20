@@ -127,8 +127,8 @@ export default function LevelsPage() {
 
   // Calculate scale factor based on number of columns to fit the page
   // Use constrained range to prevent huge size differences between levels
-  // Min 1.5 (for 30-column Dan levels) to Max 2.0 (for 2-column Kyu levels)
-  const scaleFactor = Math.max(1.5, Math.min(2.0, 20 / currentLevel.digits))
+  // Min 1.2 (for 30-column Dan levels) to Max 2.0 (for 2-column Kyu levels)
+  const scaleFactor = Math.max(1.2, Math.min(2.0, 20 / currentLevel.digits))
 
   // Animate scale factor with React Spring for smooth transitions
   const animatedProps = useSpring({
@@ -254,7 +254,7 @@ export default function LevelsPage() {
                         : 'amber.500',
                 rounded: 'xl',
                 p: { base: '6', md: '8' },
-                height: { base: 'auto', md: '900px' },
+                height: { base: 'auto', md: '700px' },
                 display: 'flex',
                 flexDirection: 'column',
               })}
