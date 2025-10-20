@@ -12,32 +12,46 @@ import { token } from '../../styled-system/tokens'
 
 // Mini abacus that cycles through random 3-digit numbers
 function MiniAbacus() {
-  const [currentValue, setCurrentValue] = useState(0)
+  const [currentValue, setCurrentValue] = useState(123)
+  const [isReady, setIsReady] = useState(false)
   const abacusConfig = useAbacusConfig({
     abacusColumns: 3,
     theme: 'dark',
   })
 
   useEffect(() => {
-    // Cycle through random 3-digit numbers every 2 seconds
+    // Give the abacus a moment to initialize before starting animation
+    const readyTimer = setTimeout(() => setIsReady(true), 500)
+
+    return () => clearTimeout(readyTimer)
+  }, [])
+
+  useEffect(() => {
+    if (!isReady) return
+
+    // Cycle through random 3-digit numbers every 2.5 seconds
     const interval = setInterval(() => {
       const randomNum = Math.floor(Math.random() * 1000) // 0-999
       setCurrentValue(randomNum)
-    }, 2000)
+    }, 2500)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [isReady])
 
   return (
     <div
       className={css({
         height: '75px',
+        width: '75px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'hidden',
       })}
     >
-      <AbacusReact value={currentValue} config={abacusConfig} />
+      <div className={css({ transform: 'scale(0.7)' })}>
+        <AbacusReact value={currentValue} config={abacusConfig} />
+      </div>
     </div>
   )
 }
