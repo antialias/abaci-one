@@ -1,147 +1,123 @@
 /**
  * Detailed requirements for each Kyu level in the Soroban certification system
  * Source: shuzan.jp
+ *
+ * Note: Stored verbatim from source. Display formatting/translation happens in the UI layer.
  */
 
 export const kyuLevelDetails = {
-  '10-kyu': `+ / −:
-  • 2-digit, 5 rows, 10 chars
+  '10-kyu': `Add/Sub: 2-digit, 5口, 10字
 
-×:
-  • 3 digits total (20 problems)
+×: 実+法 = 3 digits (20 problems)
 
-Exam: 20 min
-Pass: ≥60/200 points`,
+Time: 20 min; Pass ≥ 60/200.
+shuzan.jp`,
 
-  '9-kyu': `+ / −:
-  • 2-digit, 5 rows, 10 chars
+  '9-kyu': `Add/Sub: 2-digit, 5口, 10字
 
-×:
-  • 3 digits total (20 problems)
+×: 実+法 = 3 digits (20)
 
-Exam: 20 min
-Pass: ≥120/200 points`,
+Time: 20 min; Pass ≥ 120/200. (If only one part clears, it's treated as 10-kyu per federation notes.)
+shuzan.jp`,
 
-  '8-kyu': `+ / −:
-  • 2-digit, 8 rows, 16 chars
+  '8-kyu': `Add/Sub: 2-digit, 8口, 16字
 
-×:
-  • 4 digits total (10 problems)
+×: 実+法 = 4 digits (10)
 
-÷:
-  • 3 digits total (10 problems)
+÷: 法+商 = 3 digits (10)
 
-Exam: 20 min | Pass: ≥120/200`,
+Time: 20 min; Pass ≥ 120/200.
+shuzan.jp`,
 
-  '7-kyu': `+ / −:
-  • 2-digit, 10 rows, 20 chars
+  '7-kyu': `Add/Sub: 2-digit, 10口, 20字
 
-×:
-  • 4 digits total (10 problems)
+×: 実+法 = 4 digits (10)
 
-÷:
-  • 4 digits total (10 problems)
+÷: 法+商 = 4 digits (10)
 
-Exam: 20 min | Pass: ≥120/200`,
+Time: 20 min; Pass ≥ 120/200.
+shuzan.jp`,
 
-  '6-kyu': `+ / −:
-  • 10 rows, 30 chars
+  '6-kyu': `Add/Sub: 10口, 30字
 
-×:
-  • 5 digits total (20 problems)
+×: 実+法 = 5 digits (20)
 
-÷:
-  • 4 digits total (20 problems)
+÷: 法+商 = 4 digits (20)
 
-Exam: 30 min | Pass: ≥210/300`,
+Time: 30 min; Pass ≥ 210/300.
+shuzan.jp`,
 
-  '5-kyu': `+ / −:
-  • 10 rows, 40 chars
+  '5-kyu': `Add/Sub: 10口, 40字
 
-×:
-  • 6 digits total (20 problems)
+×: 実+法 = 6 digits (20)
 
-÷:
-  • 5 digits total (20 problems)
+÷: 法+商 = 5 digits (20)
 
-Exam: 30 min | Pass: ≥210/300`,
+Time: 30 min; Pass ≥ 210/300.
+shuzan.jp`,
 
-  '4-kyu': `+ / −:
-  • 10 rows, 50 chars
+  '4-kyu': `Add/Sub: 10口, 50字
 
-×:
-  • 7 digits total (20 problems)
+×: 実+法 = 7 digits (20)
 
-÷:
-  • 6 digits total (20 problems)
+÷: 法+商 = 6 digits (20)
 
-Exam: 30 min | Pass: ≥210/300`,
+Time: 30 min; Pass ≥ 210/300.
+shuzan.jp`,
 
-  'Pre-3-kyu': `+ / −:
-  • 10 rows, 50-60 chars (10 problems)
+  'Pre-3-kyu': `Add/Sub: 10口, 50字 ×5題 and 10口, 60字 ×5題 (total 10)
 
-×:
-  • 7 digits total (20 problems)
+×: 実+法 = 7 digits (20)
 
-÷:
-  • 6 digits total (20 problems)
+÷: 法+商 = 6 digits (20)
 
-Exam: 30 min | Pass: ≥240/300`,
+Time: 30 min; Pass ≥ 240/300.
+shuzan.jp`,
 
-  '3-kyu': `+ / −:
-  • 10 rows, 60 chars
+  '3-kyu': `Add/Sub: 10口, 60字
 
-×:
-  • 7 digits total (20 problems)
+×: 実+法 = 7 digits (20)
 
-÷:
-  • 6 digits total (20 problems)
+÷: 法+商 = 6 digits (20)
 
-Exam: 30 min | Pass: ≥240/300`,
+Time: 30 min; Pass ≥ 240/300.
+shuzan.jp`,
 
-  'Pre-2-kyu': `+ / −:
-  • 10 rows, 70 chars
+  'Pre-2-kyu': `Add/Sub: 10口, 70字
 
-×:
-  • 8 digits total (20 problems)
+×: 実+法 = 8 digits (20)
 
-÷:
-  • 7 digits total (20 problems)
+÷: 法+商 = 7 digits (20)
 
-Exam: 30 min | Pass: ≥240/300`,
+Time: 30 min; Pass ≥ 240/300.
+shuzan.jp`,
 
-  '2-kyu': `+ / −:
-  • 10 rows, 80 chars
+  '2-kyu': `Add/Sub: 10口, 80字
 
-×:
-  • 9 digits total (20 problems)
+×: 実+法 = 9 digits (20)
 
-÷:
-  • 8 digits total (20 problems)
+÷: 法+商 = 8 digits (20)
 
-Exam: 30 min | Pass: ≥240/300`,
+Time: 30 min; Pass ≥ 240/300.
+shuzan.jp`,
 
-  'Pre-1-kyu': `+ / −:
-  • 10 rows, 90 chars
+  'Pre-1-kyu': `Add/Sub: 10口, 90字
 
-×:
-  • 10 digits total (20 problems)
+×: 実+法 = 10 digits (20)
 
-÷:
-  • 9 digits total (20 problems)
+÷: 法+商 = 9 digits (20)
 
-Exam: 30 min | Pass: ≥240/300`,
+Time: 30 min; Pass ≥ 240/300.
+shuzan.jp`,
 
-  '1-kyu': `+ / −:
-  • 10 rows, 100 chars
+  '1-kyu': `Add/Sub: 10口, 100字
 
-×:
-  • 11 digits total (20 problems)
+×: 実+法 = 11 digits (20)
 
-÷:
-  • 10 digits total (20 problems)
+÷: 法+商 = 10 digits (20)
 
-Exam: 30 min | Pass: ≥240/300`,
+Time: 30 min; Pass ≥ 240/300.
+shuzan.jp`,
 } as const
 
 export type KyuLevel = keyof typeof kyuLevelDetails

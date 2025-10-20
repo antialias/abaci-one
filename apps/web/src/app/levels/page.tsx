@@ -192,6 +192,23 @@ function getLevelDetailsKey(levelName: string): string | null {
   return null
 }
 
+// Helper function to format and translate kyu level details for display
+function formatKyuDetails(rawText: string): string {
+  return (
+    rawText
+      // Translate Japanese characters
+      .replace(/口/g, 'rows')
+      .replace(/字/g, 'chars')
+      .replace(/実\+法/g, 'total')
+      .replace(/法\+商/g, 'total')
+      .replace(/題/g, 'sets')
+      // Remove shuzan.jp attribution (we can add it elsewhere if needed)
+      .replace(/\nshuzan\.jp/g, '')
+      // Use operator symbols
+      .replace(/Add\/Sub:/g, '+ / −:')
+  )
+}
+
 export default function LevelsPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isHovering, setIsHovering] = useState(false)
@@ -605,9 +622,10 @@ export default function LevelsPage() {
                 {currentLevel.type === 'kyu' &&
                   (() => {
                     const detailsKey = getLevelDetailsKey(currentLevel.level)
-                    const detailsText = detailsKey
+                    const rawText = detailsKey
                       ? kyuLevelDetails[detailsKey as keyof typeof kyuLevelDetails]
                       : null
+                    const detailsText = rawText ? formatKyuDetails(rawText) : null
 
                     // Calculate responsive font size based on digits
                     // More digits = larger abacus = less space for details
