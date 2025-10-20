@@ -3,7 +3,7 @@
 import { AbacusReact } from '@soroban/abacus-react'
 import { useDrag } from '@use-gesture/react'
 import { useEffect, useState } from 'react'
-import { animated, config, useSpring } from '@react-spring/web'
+import { animated, config, to, useSpring } from '@react-spring/web'
 import { css } from '../../styled-system/css'
 
 interface Flashcard {
@@ -130,12 +130,14 @@ function DraggableCard({ card }: DraggableCardProps) {
     <animated.div
       {...bind()}
       style={{
-        x,
-        y,
-        rotation,
-        scale,
-        zIndex,
         position: 'absolute',
+        left: 0,
+        top: 0,
+        transform: to(
+          [x, y, rotation, scale],
+          (x, y, r, s) => `translate(${x}px, ${y}px) rotate(${r}deg) scale(${s})`
+        ),
+        zIndex,
         touchAction: 'none',
         cursor: 'grab',
       }}
