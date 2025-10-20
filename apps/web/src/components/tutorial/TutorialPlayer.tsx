@@ -217,6 +217,7 @@ interface TutorialPlayerProps {
   showDebugPanel?: boolean
   hideNavigation?: boolean
   hideTooltip?: boolean
+  silentErrors?: boolean
   abacusColumns?: number
   theme?: 'light' | 'dark'
   onStepChange?: (stepIndex: number, step: TutorialStep) => void
@@ -233,6 +234,7 @@ function TutorialPlayerContent({
   showDebugPanel = false,
   hideNavigation = false,
   hideTooltip = false,
+  silentErrors = false,
   abacusColumns = 5,
   theme = 'light',
   onStepChange,
@@ -909,7 +911,7 @@ function TutorialPlayerContent({
           )
         })
 
-        if (!isCorrectBead) {
+        if (!isCorrectBead && !silentErrors) {
           const errorMessage = "That's not the highlighted bead. Try clicking the highlighted bead."
           dispatch({
             type: 'SET_ERROR',

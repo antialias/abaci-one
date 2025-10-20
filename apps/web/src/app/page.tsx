@@ -261,6 +261,7 @@ export default function HomePage() {
                 showDebugPanel={false}
                 hideNavigation={true}
                 hideTooltip={true}
+                silentErrors={true}
                 abacusColumns={1}
                 theme="dark"
               />
