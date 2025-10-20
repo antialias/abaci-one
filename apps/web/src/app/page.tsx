@@ -401,10 +401,10 @@ export default function HomePage() {
                 })}
               >
                 {[
-                  { level: '10 Kyu', label: 'Beginner', color: 'green.400' },
-                  { level: '5 Kyu', label: 'Intermediate', color: 'blue.400' },
-                  { level: '1 Kyu', label: 'Advanced', color: 'purple.400' },
-                  { level: 'Dan', label: 'Master', color: 'yellow.400' },
+                  { level: '10 Kyu', label: 'Beginner', color: '#4ade80' },
+                  { level: '5 Kyu', label: 'Intermediate', color: '#60a5fa' },
+                  { level: '1 Kyu', label: 'Advanced', color: '#a78bfa' },
+                  { level: 'Dan', label: 'Master', color: '#fbbf24' },
                 ].map((stage, i) => (
                   <div
                     key={i}
@@ -415,13 +415,7 @@ export default function HomePage() {
                       position: 'relative',
                     })}
                   >
-                    <div
-                      className={css({
-                        fontSize: 'xl',
-                        fontWeight: 'bold',
-                        color: stage.color,
-                      })}
-                    >
+                    <div style={{ fontSize: '20px', fontWeight: 'bold', color: stage.color }}>
                       {stage.level}
                     </div>
                     <div style={{ fontSize: '14px', color: '#e5e7eb' }}>{stage.label}</div>
