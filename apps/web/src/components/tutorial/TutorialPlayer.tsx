@@ -640,7 +640,7 @@ function TutorialPlayerContent({
                   maxWidth: '200px',
                   minWidth: '150px',
                   wordBreak: 'break-word',
-                  zIndex: 1000,
+                  zIndex: 50,
                   opacity: 0.95,
                   transition: 'all 0.3s ease',
                   transform: showCelebration ? 'scale(1.05)' : 'scale(1)',
