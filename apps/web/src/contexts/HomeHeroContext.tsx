@@ -12,6 +12,7 @@ interface HomeHeroContextValue {
   isHeroVisible: boolean
   setIsHeroVisible: (visible: boolean) => void
   isAbacusLoaded: boolean
+  isSubtitleLoaded: boolean
 }
 
 const HomeHeroContext = createContext<HomeHeroContextValue | null>(null)
@@ -21,6 +22,7 @@ export { HomeHeroContext }
 export function HomeHeroProvider({ children }: { children: React.ReactNode }) {
   // Use first subtitle for SSR, then select random one on client mount
   const [subtitle, setSubtitle] = useState<Subtitle>(subtitles[0])
+  const [isSubtitleLoaded, setIsSubtitleLoaded] = useState(false)
 
   // Select random subtitle only on client side, persist per-session
   useEffect(() => {
@@ -32,6 +34,7 @@ export function HomeHeroProvider({ children }: { children: React.ReactNode }) {
       const index = parseInt(storedIndex, 10)
       if (!Number.isNaN(index) && index >= 0 && index < subtitles.length) {
         setSubtitle(subtitles[index])
+        setIsSubtitleLoaded(true)
         return
       }
     }
@@ -40,6 +43,7 @@ export function HomeHeroProvider({ children }: { children: React.ReactNode }) {
     const randomIndex = Math.floor(Math.random() * subtitles.length)
     sessionStorage.setItem('heroSubtitleIndex', randomIndex.toString())
     setSubtitle(subtitles[randomIndex])
+    setIsSubtitleLoaded(true)
   }, [])
 
   // Shared abacus value - always start at 0 for SSR/hydration consistency
@@ -106,8 +110,9 @@ export function HomeHeroProvider({ children }: { children: React.ReactNode }) {
       isHeroVisible,
       setIsHeroVisible,
       isAbacusLoaded,
+      isSubtitleLoaded,
     }),
-    [subtitle, abacusValue, isHeroVisible, isAbacusLoaded]
+    [subtitle, abacusValue, isHeroVisible, isAbacusLoaded, isSubtitleLoaded]
   )
 
   return <HomeHeroContext.Provider value={value}>{children}</HomeHeroContext.Provider>

@@ -6,7 +6,14 @@ import { css } from '../../styled-system/css'
 import { useHomeHero } from '../contexts/HomeHeroContext'
 
 export function HeroAbacus() {
-  const { subtitle, abacusValue, setAbacusValue, setIsHeroVisible, isAbacusLoaded } = useHomeHero()
+  const {
+    subtitle,
+    abacusValue,
+    setAbacusValue,
+    setIsHeroVisible,
+    isAbacusLoaded,
+    isSubtitleLoaded,
+  } = useHomeHero()
   const appConfig = useAbacusConfig()
   const heroRef = useRef<HTMLDivElement>(null)
 
@@ -101,6 +108,8 @@ export function HeroAbacus() {
             color: 'purple.300',
             fontStyle: 'italic',
             marginBottom: '8',
+            opacity: isSubtitleLoaded ? 1 : 0,
+            transition: 'opacity 0.5s ease-in-out',
           })}
         >
           {subtitle.text}
