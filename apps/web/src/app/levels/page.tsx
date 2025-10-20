@@ -580,7 +580,7 @@ export default function LevelsPage() {
               <div
                 className={css({
                   display: 'flex',
-                  justifyContent: 'center',
+                  justifyContent: 'flex-end',
                   alignItems: 'center',
                   p: '6',
                   bg: 'rgba(0, 0, 0, 0.3)',
