@@ -554,15 +554,44 @@ export default function HomePage() {
               <p style={{ color: '#e5e7eb', fontSize: '16px' }}>Progress from beginner to master</p>
             </div>
 
-            <div
+            <Link
+              href="/levels"
               className={css({
                 bg: 'rgba(0, 0, 0, 0.4)',
                 border: '1px solid',
                 borderColor: 'gray.700',
                 rounded: 'xl',
                 p: '8',
+                display: 'block',
+                transition: 'all 0.2s',
+                cursor: 'pointer',
+                position: 'relative',
+                _hover: {
+                  bg: 'rgba(0, 0, 0, 0.5)',
+                  borderColor: 'violet.500',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 16px rgba(124, 58, 237, 0.2)',
+                },
               })}
             >
+              {/* Subtle arrow indicator */}
+              <div
+                className={css({
+                  position: 'absolute',
+                  top: '4',
+                  right: '4',
+                  fontSize: 'xl',
+                  color: 'gray.500',
+                  transition: 'all 0.2s',
+                  _groupHover: {
+                    color: 'violet.400',
+                    transform: 'translateX(4px)',
+                  },
+                })}
+              >
+                →
+              </div>
+
               <div
                 className={css({
                   display: 'flex',
@@ -652,40 +681,9 @@ export default function HomePage() {
                   mt: '6',
                 })}
               >
-                You'll progress through all these levels eventually ↑
+                Click to learn about the official Japanese ranking system →
               </div>
-
-              {/* Learn More Link */}
-              <div className={css({ textAlign: 'center', mt: '6' })}>
-                <Link
-                  href="/levels"
-                  className={css({
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '2',
-                    px: '6',
-                    py: '3',
-                    bg: 'rgba(124, 58, 237, 0.2)',
-                    border: '1px solid',
-                    borderColor: 'violet.500',
-                    rounded: 'lg',
-                    color: 'violet.300',
-                    fontSize: 'sm',
-                    fontWeight: '500',
-                    transition: 'all 0.2s',
-                    _hover: {
-                      bg: 'rgba(124, 58, 237, 0.3)',
-                      borderColor: 'violet.400',
-                      color: 'violet.200',
-                      transform: 'translateY(-1px)',
-                    },
-                  })}
-                >
-                  Learn about Kyu & Dan Levels
-                  <span>→</span>
-                </Link>
-              </div>
-            </div>
+            </Link>
           </section>
 
           {/* Additional Tools Section */}
