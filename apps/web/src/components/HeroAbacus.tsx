@@ -59,8 +59,7 @@ export function HeroAbacus() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background:
-          'linear-gradient(135deg, rgba(17, 24, 39, 1) 0%, rgba(88, 28, 135, 0.3) 50%, rgba(17, 24, 39, 1) 100%)',
+        bg: 'gray.900',
         position: 'relative',
         overflow: 'hidden',
         px: '4',
