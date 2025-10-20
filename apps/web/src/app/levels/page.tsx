@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+import { AbacusReact } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
 import { container, stack } from '../../../styled-system/patterns'
@@ -122,7 +122,6 @@ const allLevels = [
 export default function LevelsPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentLevel = allLevels[currentIndex]
-  const abacusConfig = useAbacusConfig({ columns: currentLevel.digits })
 
   return (
     <PageWithNav navTitle="Kyu & Dan Levels" navEmoji="📊">
@@ -246,7 +245,7 @@ export default function LevelsPage() {
                   borderColor: 'gray.700',
                 })}
               >
-                <AbacusReact config={abacusConfig} initialNumber={0} />
+                <AbacusReact value={0} columns={currentLevel.digits} scaleFactor={1.5} />
               </div>
 
               {/* Digit Count */}
