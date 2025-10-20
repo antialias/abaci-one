@@ -655,7 +655,7 @@ export default function LevelsPage() {
                     const sections = rawText ? parseKyuDetails(rawText) : []
 
                     // Use consistent sizing across all levels
-                    const sizing = { fontSize: 'sm', gap: '3', iconSize: 'xl' }
+                    const sizing = { fontSize: 'md', gap: '3', iconSize: '4xl' }
 
                     return sections.length > 0 ? (
                       <div
@@ -672,60 +672,63 @@ export default function LevelsPage() {
                           alignContent: 'center',
                         })}
                       >
-                        {sections.map((section, idx) => (
-                          <div
-                            key={idx}
-                            className={css({
-                              bg: 'rgba(0, 0, 0, 0.4)',
-                              border: '1px solid',
-                              borderColor: 'gray.700',
-                              rounded: 'md',
-                              p: '2',
-                              transition: 'all 0.2s',
-                              _hover: {
-                                borderColor: 'gray.500',
-                                transform: 'translateX(4px)',
-                              },
-                            })}
-                          >
+                        {sections.map((section, idx) => {
+                          // Extract the digit count (e.g., "4" from "4-digit total")
+                          const digitMatch = section.value.match(/(\d+)-digit/)
+                          const digitCount = digitMatch ? digitMatch[1] : null
+
+                          return (
                             <div
+                              key={idx}
                               className={css({
+                                bg: 'rgba(0, 0, 0, 0.4)',
+                                border: '1px solid',
+                                borderColor: 'gray.700',
+                                rounded: 'md',
+                                p: '4',
+                                transition: 'all 0.2s',
                                 display: 'flex',
+                                flexDirection: 'column',
                                 alignItems: 'center',
+                                justifyContent: 'center',
                                 gap: '2',
-                                mb: '1',
+                                _hover: {
+                                  borderColor: 'gray.500',
+                                  transform: 'scale(1.05)',
+                                },
                               })}
                             >
-                              <span className={css({ fontSize: sizing.iconSize })}>
+                              <span className={css({ fontSize: sizing.iconSize, lineHeight: '1' })}>
                                 {section.icon}
                               </span>
-                              <span
+                              {digitCount && (
+                                <div
+                                  className={css({
+                                    fontSize: '2xl',
+                                    fontWeight: 'bold',
+                                    color:
+                                      currentLevel.color === 'green'
+                                        ? 'green.300'
+                                        : currentLevel.color === 'blue'
+                                          ? 'blue.300'
+                                          : 'violet.300',
+                                  })}
+                                >
+                                  {digitCount} digits
+                                </div>
+                              )}
+                              <div
                                 className={css({
-                                  fontSize: sizing.fontSize,
-                                  fontWeight: 'semibold',
-                                  color:
-                                    currentLevel.color === 'green'
-                                      ? 'green.300'
-                                      : currentLevel.color === 'blue'
-                                        ? 'blue.300'
-                                        : 'violet.300',
+                                  fontSize: 'xs',
+                                  color: 'gray.500',
+                                  textAlign: 'center',
                                 })}
                               >
                                 {section.label}
-                              </span>
+                              </div>
                             </div>
-                            <div
-                              className={css({
-                                fontSize: sizing.fontSize,
-                                color: 'gray.400',
-                                lineHeight: '1.4',
-                                pl: sizing.gap === '3' ? '6' : sizing.gap === '2' ? '5' : '4',
-                              })}
-                            >
-                              {section.value}
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     ) : null
                   })()}
