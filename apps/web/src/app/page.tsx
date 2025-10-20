@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+import { useSpring, useTransition } from '@react-spring/web'
 import { HeroAbacus } from '@/components/HeroAbacus'
 import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -10,9 +11,21 @@ import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
 import { getTutorialForEditor } from '@/utils/tutorialConverter'
 import { getAvailableGames } from '@/lib/arcade/game-registry'
 import { InteractiveFlashcards } from '@/components/InteractiveFlashcards'
+import { LevelsSlider } from '@/components/LevelsSlider'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
-import { token } from '../../styled-system/tokens'
+
+// Simplified level data for homepage slider (showing key milestones)
+const allLevels = [
+  { level: '10th Kyu', emoji: '🧒', color: 'green', digits: 2 },
+  { level: '7th Kyu', emoji: '🧒', color: 'green', digits: 4 },
+  { level: '5th Kyu', emoji: '🧑', color: 'blue', digits: 6 },
+  { level: '3rd Kyu', emoji: '🧔', color: 'violet', digits: 8 },
+  { level: '1st Kyu', emoji: '🧔', color: 'violet', digits: 10 },
+  { level: '1st Dan', emoji: '🧙', color: 'amber', digits: 30 },
+  { level: '5th Dan', emoji: '🧙‍♀️', color: 'amber', digits: 30 },
+  { level: '10th Dan', emoji: '👑', color: 'amber', digits: 30 },
+] as const
 
 // Mini abacus that cycles through a sequence of values
 function MiniAbacus({
@@ -76,6 +89,87 @@ function MiniAbacus({
 export default function HomePage() {
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(1) // Default to "Friends techniques"
   const fullTutorial = getTutorialForEditor()
+
+  // State for interactive levels slider
+  const [levelIndex, setLevelIndex] = useState(0)
+  const [isPaneHovered, setIsPaneHovered] = useState(false)
+  const [animatedDigits, setAnimatedDigits] = useState<string>('')
+  const currentLevel = allLevels[levelIndex]
+
+  // Initialize animated digits when level changes
+  useEffect(() => {
+    const generateRandomDigits = (numDigits: number) => {
+      return Array.from({ length: numDigits }, () => Math.floor(Math.random() * 10)).join('')
+    }
+    setAnimatedDigits(generateRandomDigits(currentLevel.digits))
+  }, [currentLevel.digits])
+
+  // Animate abacus calculations
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAnimatedDigits((prev) => {
+        const digits = prev.split('').map(Number)
+        const numColumns = digits.length
+        const groupSize = Math.floor(Math.random() * 3) + 1
+        const startCol = Math.floor(Math.random() * (numColumns - groupSize + 1))
+
+        for (let i = startCol; i < startCol + groupSize && i < numColumns; i++) {
+          digits[i] = Math.floor(Math.random() * 10)
+        }
+        return digits.join('')
+      })
+    }, 500)
+    return () => clearInterval(interval)
+  }, [levelIndex])
+
+  // Auto-advance slider every 3 seconds (unless pane is hovered)
+  useEffect(() => {
+    if (isPaneHovered) return
+
+    const interval = setInterval(() => {
+      setLevelIndex((prev) => {
+        return prev >= allLevels.length - 1 ? 0 : prev + 1
+      })
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [isPaneHovered])
+
+  // Calculate scale factor and animate it
+  const scaleFactor = Math.max(1.2, Math.min(2.0, 20 / currentLevel.digits))
+  const animatedProps = useSpring({
+    scaleFactor,
+    config: { tension: 350, friction: 45 },
+  })
+
+  // Animate emoji transitions
+  const emojiTransitions = useTransition(currentLevel.emoji, {
+    keys: levelIndex,
+    from: { opacity: 0 },
+    enter: { opacity: 1 },
+    leave: { opacity: 0 },
+    config: { duration: 120 },
+  })
+
+  // Convert animated digits to number for abacus
+  const displayValue =
+    animatedDigits.length > 15
+      ? BigInt(animatedDigits || '0')
+      : Number.parseInt(animatedDigits || '0', 10)
+
+  // Dark theme styles for abacus
+  const darkStyles = {
+    columnPosts: {
+      fill: 'rgba(255, 255, 255, 0.3)',
+      stroke: 'rgba(255, 255, 255, 0.2)',
+      strokeWidth: 2,
+    },
+    reckoningBar: {
+      fill: 'rgba(255, 255, 255, 0.4)',
+      stroke: 'rgba(255, 255, 255, 0.25)',
+      strokeWidth: 3,
+    },
+  }
 
   // Create different tutorials for each skill level
   const skillTutorials = [
@@ -407,146 +501,17 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <Link
-                href="/levels"
-                className={css({
-                  bg: 'rgba(0, 0, 0, 0.4)',
-                  border: '1px solid',
-                  borderColor: 'gray.700',
-                  rounded: 'xl',
-                  p: '8',
-                  display: 'block',
-                  transition: 'all 0.2s',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  _hover: {
-                    bg: 'rgba(0, 0, 0, 0.5)',
-                    borderColor: 'violet.500',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 8px 16px rgba(124, 58, 237, 0.2)',
-                  },
-                })}
-              >
-                {/* Subtle arrow indicator */}
-                <div
-                  className={css({
-                    position: 'absolute',
-                    top: '4',
-                    right: '4',
-                    fontSize: 'xl',
-                    color: 'gray.500',
-                    transition: 'all 0.2s',
-                    _groupHover: {
-                      color: 'violet.400',
-                      transform: 'translateX(4px)',
-                    },
-                  })}
-                >
-                  →
-                </div>
-
-                <div
-                  className={css({
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '4',
-                    flexWrap: 'wrap',
-                  })}
-                >
-                  {(
-                    [
-                      {
-                        level: '10 Kyu',
-                        label: 'Beginner',
-                        color: 'colors.green.400',
-                        emoji: '🧒',
-                      },
-                      {
-                        level: '5 Kyu',
-                        label: 'Intermediate',
-                        color: 'colors.blue.400',
-                        emoji: '🧑',
-                      },
-                      {
-                        level: '1 Kyu',
-                        label: 'Advanced',
-                        color: 'colors.violet.400',
-                        emoji: '🧔',
-                      },
-                      { level: 'Dan', label: 'Master', color: 'colors.amber.400', emoji: '🧙' },
-                    ] as const
-                  ).map((stage, i) => (
-                    <div
-                      key={i}
-                      className={stack({
-                        gap: '0',
-                        textAlign: 'center',
-                        flex: '1',
-                        position: 'relative',
-                      })}
-                    >
-                      <div
-                        className={css({
-                          fontSize: '5xl',
-                          mb: '0',
-                        })}
-                      >
-                        {stage.emoji}
-                      </div>
-                      <div
-                        className={css({
-                          fontSize: 'xl',
-                          fontWeight: 'bold',
-                          mt: '-2',
-                        })}
-                        style={{ color: token(stage.color) }}
-                      >
-                        {stage.level}
-                      </div>
-                      <div
-                        className={css({
-                          fontSize: 'sm',
-                          color: 'gray.300',
-                        })}
-                      >
-                        {stage.label}
-                      </div>
-                      {i < 3 && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            left: '100%',
-                            marginLeft: '0.5rem',
-                            top: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            fontSize: '20px',
-                            color: '#9ca3af',
-                          }}
-                          className={css({
-                            display: { base: 'none', md: 'block' },
-                          })}
-                        >
-                          →
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div
-                  style={{
-                    textAlign: 'center',
-                    fontSize: '14px',
-                    color: '#d1d5db',
-                    fontStyle: 'italic',
-                  }}
-                  className={css({
-                    mt: '6',
-                  })}
-                >
-                  Click to learn about the official Japanese ranking system →
-                </div>
-              </Link>
+              <LevelsSlider
+                levels={allLevels}
+                currentIndex={levelIndex}
+                onIndexChange={setLevelIndex}
+                onPaneHoverChange={setIsPaneHovered}
+                emojiTransitions={emojiTransitions}
+                displayValue={displayValue}
+                scaleFactor={scaleFactor}
+                animatedProps={animatedProps}
+                darkStyles={darkStyles}
+              />
             </section>
 
             {/* Flashcard Generator Section */}
