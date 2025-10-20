@@ -1,6 +1,6 @@
 {
   "name": "soroban-monorepo",
-  "version": "4.20.4",
+  "version": "4.20.5",
   "private": true,
   "description": "Beautiful Soroban Flashcard Generator - Monorepo",
   "workspaces": [
