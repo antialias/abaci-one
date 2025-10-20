@@ -193,7 +193,7 @@ export default function LevelsPage() {
   // Animate scale factor with React Spring for smooth transitions
   const animatedProps = useSpring({
     scaleFactor,
-    config: { tension: 400, friction: 40 },
+    config: { tension: 350, friction: 45 },
   })
 
   // Animate emoji with proper cross-fade (old fades out, new fades in)
@@ -202,7 +202,7 @@ export default function LevelsPage() {
     from: { opacity: 0 },
     enter: { opacity: 1 },
     leave: { opacity: 0 },
-    config: { duration: 80 },
+    config: { duration: 120 },
   })
 
   // Generate an interesting non-zero number to display on the abacus
@@ -402,7 +402,7 @@ export default function LevelsPage() {
                         h: '128px',
                         bg: 'transparent',
                         cursor: 'grab',
-                        transition: 'all 0.1s ease-out',
+                        transition: 'transform 0.15s ease-out, left 0.3s ease-out',
                         zIndex: 10,
                         _hover: { transform: 'scale(1.15)' },
                         _focus: {
