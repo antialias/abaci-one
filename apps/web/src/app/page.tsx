@@ -363,8 +363,8 @@ export default function HomePage() {
                   The Arcade
                 </h2>
                 <p className={css({ color: 'gray.400', fontSize: 'md' })}>
-                  Create or join multiplayer rooms to play real-time games with friends over the
-                  network
+                  Single-player challenges and multiplayer battles in networked rooms. Invite
+                  friends to play or watch live.
                 </p>
               </div>
 
