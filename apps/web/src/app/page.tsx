@@ -371,7 +371,7 @@ export default function HomePage() {
                               bg: 'rgba(255, 255, 255, 0.1)',
                               borderRadius: 'lg',
                               py: i === 0 ? '4' : '2',
-                              px: i === 0 ? '3' : '2',
+                              px: '0',
                             })}
                           >
                             {i === 0 ? <MiniAbacus /> : skill.icon}
