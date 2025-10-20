@@ -89,56 +89,69 @@ export function HeroAbacus() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '8',
+          justifyContent: 'space-between',
+          height: '100%',
+          py: '12',
         })}
       >
-        {/* Title */}
-        <h1
-          className={css({
-            fontSize: { base: '4xl', md: '6xl', lg: '7xl' },
-            fontWeight: 'bold',
-            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
-            backgroundClip: 'text',
-            color: 'transparent',
-            mb: '4',
-          })}
-        >
-          Abaci One
-        </h1>
-
-        {/* Subtitle */}
-        <p
-          className={css({
-            fontSize: { base: 'xl', md: '2xl' },
-            fontWeight: 'medium',
-            color: 'purple.300',
-            fontStyle: 'italic',
-            mb: '16',
-            zIndex: 10,
-            position: 'relative',
-          })}
-        >
-          {subtitle.text}
-        </p>
-
-        {/* Large Interactive Abacus */}
+        {/* Title and Subtitle Section */}
         <div
           className={css({
-            transform: { base: 'scale(2)', md: 'scale(3)', lg: 'scale(4)' },
-            transformOrigin: 'center center',
-            mb: { base: '12', md: '16', lg: '20' },
-            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-            position: 'relative',
-            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '4',
           })}
         >
-          <AbacusReact
-            value={abacusValue}
-            columns={4}
-            beadShape={appConfig.beadShape}
-            showNumbers={true}
-            customStyles={darkStyles}
-          />
+          <h1
+            className={css({
+              fontSize: { base: '4xl', md: '6xl', lg: '7xl' },
+              fontWeight: 'bold',
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
+              backgroundClip: 'text',
+              color: 'transparent',
+            })}
+          >
+            Abaci One
+          </h1>
+          <p
+            className={css({
+              fontSize: { base: 'xl', md: '2xl' },
+              fontWeight: 'medium',
+              color: 'purple.300',
+              fontStyle: 'italic',
+            })}
+          >
+            {subtitle.text}
+          </p>
+        </div>
+
+        {/* Large Interactive Abacus - centered in remaining space */}
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: '1',
+            width: '100%',
+            py: { base: '12', md: '16', lg: '20' },
+          })}
+        >
+          <div
+            className={css({
+              transform: { base: 'scale(2)', md: 'scale(3)', lg: 'scale(4)' },
+              transformOrigin: 'center center',
+              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            })}
+          >
+            <AbacusReact
+              value={abacusValue}
+              columns={4}
+              beadShape={appConfig.beadShape}
+              showNumbers={true}
+              customStyles={darkStyles}
+            />
+          </div>
         </div>
 
         {/* Subtle hint to scroll */}
