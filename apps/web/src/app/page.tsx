@@ -622,14 +622,44 @@ function GameCard({
           },
         })}
       >
-        <div className={css({ fontSize: '3xl', mb: '3' })}>{icon}</div>
-        <h3 className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'white', mb: '2' })}>
+        <div
+          className={css({
+            fontSize: '3xl',
+            mb: '3',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+          })}
+        >
+          {icon}
+        </div>
+        <h3
+          className={css({
+            fontSize: 'lg',
+            fontWeight: 'bold',
+            color: 'white',
+            mb: '2',
+            textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+          })}
+        >
           {title}
         </h3>
-        <p className={css({ fontSize: 'sm', color: 'rgba(255, 255, 255, 0.9)', mb: '2' })}>
+        <p
+          className={css({
+            fontSize: 'sm',
+            color: 'rgba(255, 255, 255, 0.95)',
+            mb: '2',
+            textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
+          })}
+        >
           {description}
         </p>
-        <p className={css({ fontSize: 'xs', color: 'rgba(255, 255, 255, 0.7)', mb: '3' })}>
+        <p
+          className={css({
+            fontSize: 'xs',
+            color: 'rgba(255, 255, 255, 0.85)',
+            mb: '3',
+            textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
+          })}
+        >
           {players}
         </p>
         <div className={hstack({ gap: '2', flexWrap: 'wrap' })}>
@@ -644,6 +674,7 @@ function GameCard({
                 color: 'white',
                 rounded: 'full',
                 fontWeight: 'semibold',
+                textShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
               })}
             >
               {tag}
