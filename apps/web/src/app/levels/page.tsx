@@ -7,6 +7,7 @@ import { AbacusReact, StandaloneBead } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
 import { container, stack } from '../../../styled-system/patterns'
+import { kyuLevelDetails } from '@/data/kyuLevelDetails'
 
 // Combine all levels into one array for the slider
 const allLevels = [
@@ -180,6 +181,16 @@ const allLevels = [
     type: 'dan' as const,
   },
 ] as const
+
+// Helper function to map level names to kyuLevelDetails keys
+function getLevelDetailsKey(levelName: string): string | null {
+  // Convert "10th Kyu" → "10-kyu", "3rd Kyu" → "3-kyu", etc.
+  const match = levelName.match(/^(\d+)(?:st|nd|rd|th)\s+Kyu$/)
+  if (match) {
+    return `${match[1]}-kyu`
+  }
+  return null
+}
 
 export default function LevelsPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -576,12 +587,11 @@ export default function LevelsPage() {
                 </div>
               </div>
 
-              {/* Abacus Display */}
+              {/* Abacus Display with Level Details */}
               <div
                 className={css({
                   display: 'flex',
-                  justifyContent: 'flex-end',
-                  alignItems: 'center',
+                  gap: '4',
                   p: '6',
                   bg: 'rgba(0, 0, 0, 0.3)',
                   rounded: 'lg',
@@ -591,19 +601,74 @@ export default function LevelsPage() {
                   flex: 1,
                 })}
               >
-                <animated.div
-                  style={{
-                    transform: animatedProps.scaleFactor.to((s) => `scale(${s / scaleFactor})`),
-                  }}
+                {/* Level Details (only for Kyu levels) */}
+                {currentLevel.type === 'kyu' &&
+                  (() => {
+                    const detailsKey = getLevelDetailsKey(currentLevel.level)
+                    const detailsText = detailsKey
+                      ? kyuLevelDetails[detailsKey as keyof typeof kyuLevelDetails]
+                      : null
+
+                    // Calculate responsive font size based on digits
+                    // More digits = larger abacus = less space for details
+                    const getFontSize = () => {
+                      if (currentLevel.digits <= 3) return 'sm' // 10th-8th Kyu
+                      if (currentLevel.digits <= 6) return 'xs' // 7th-5th Kyu
+                      return '2xs' // 4th-1st Kyu
+                    }
+
+                    return detailsText ? (
+                      <div
+                        className={css({
+                          flex: '0 0 auto',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          pr: '4',
+                          borderRight: '1px solid',
+                          borderColor: 'gray.600',
+                          maxW: '280px',
+                        })}
+                      >
+                        <pre
+                          className={css({
+                            fontFamily: 'mono',
+                            fontSize: getFontSize(),
+                            color: 'gray.300',
+                            lineHeight: '1.5',
+                            whiteSpace: 'pre-wrap',
+                            wordWrap: 'break-word',
+                          })}
+                        >
+                          {detailsText}
+                        </pre>
+                      </div>
+                    ) : null
+                  })()}
+
+                {/* Abacus (right-aligned for Kyu, centered for Dan) */}
+                <div
+                  className={css({
+                    display: 'flex',
+                    justifyContent: currentLevel.type === 'kyu' ? 'flex-end' : 'center',
+                    alignItems: 'center',
+                    flex: 1,
+                  })}
                 >
-                  <AbacusReact
-                    value={displayValue}
-                    columns={currentLevel.digits}
-                    scaleFactor={scaleFactor}
-                    showNumbers={true}
-                    customStyles={darkStyles}
-                  />
-                </animated.div>
+                  <animated.div
+                    style={{
+                      transform: animatedProps.scaleFactor.to((s) => `scale(${s / scaleFactor})`),
+                    }}
+                  >
+                    <AbacusReact
+                      value={displayValue}
+                      columns={currentLevel.digits}
+                      scaleFactor={scaleFactor}
+                      showNumbers={true}
+                      customStyles={darkStyles}
+                    />
+                  </animated.div>
+                </div>
               </div>
 
               {/* Digit Count */}
