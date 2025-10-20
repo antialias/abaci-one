@@ -288,10 +288,11 @@ export default function LevelsPage() {
               </div>
 
               {/* Abacus Display */}
-              <animated.div
+              <div
                 className={css({
                   display: 'flex',
                   justifyContent: 'center',
+                  alignItems: 'center',
                   mb: '6',
                   p: '6',
                   bg: 'rgba(0, 0, 0, 0.3)',
@@ -299,19 +300,23 @@ export default function LevelsPage() {
                   border: '1px solid',
                   borderColor: 'gray.700',
                   overflowX: 'auto',
+                  minHeight: '400px',
                 })}
-                style={{
-                  transform: animatedProps.scaleFactor.to((s) => `scale(${s / scaleFactor})`),
-                }}
               >
-                <AbacusReact
-                  value={displayValue}
-                  columns={currentLevel.digits}
-                  scaleFactor={scaleFactor}
-                  showNumbers={true}
-                  customStyles={darkStyles}
-                />
-              </animated.div>
+                <animated.div
+                  style={{
+                    transform: animatedProps.scaleFactor.to((s) => `scale(${s / scaleFactor})`),
+                  }}
+                >
+                  <AbacusReact
+                    value={displayValue}
+                    columns={currentLevel.digits}
+                    scaleFactor={scaleFactor}
+                    showNumbers={true}
+                    customStyles={darkStyles}
+                  />
+                </animated.div>
+              </div>
 
               {/* Digit Count */}
               <div className={css({ textAlign: 'center', color: 'gray.400', fontSize: 'sm' })}>
