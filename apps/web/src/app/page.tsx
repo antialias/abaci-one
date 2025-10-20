@@ -246,8 +246,8 @@ export default function HomePage() {
                 <div
                   className={css({
                     flex: '0 0 auto',
-                    minW: '300px',
-                    maxW: { base: '100%', md: '350px' },
+                    minW: '320px',
+                    maxW: { base: '100%', md: '400px' },
                   })}
                 >
                   <h3
@@ -255,21 +255,88 @@ export default function HomePage() {
                       fontSize: 'xl',
                       fontWeight: 'bold',
                       color: 'white',
-                      mb: '4',
+                      mb: '5',
                     })}
                   >
                     What You'll Learn
                   </h3>
-                  <div className={stack({ gap: '3' })}>
+                  <div className={stack({ gap: '4' })}>
                     {[
-                      'Read and set numbers on an abacus',
-                      'Add and subtract with "friends" techniques',
-                      'Multiply and divide fluently',
-                      'Calculate mentally without the abacus',
+                      {
+                        icon: '🔢',
+                        title: 'Read and set numbers',
+                        desc: 'Master abacus number representation',
+                        example: '0-9999',
+                      },
+                      {
+                        icon: '🤝',
+                        title: 'Friends techniques',
+                        desc: 'Add and subtract with complements',
+                        example: '5 = 2+3',
+                      },
+                      {
+                        icon: '✖️➗',
+                        title: 'Multiply & divide',
+                        desc: 'Fluent multi-digit calculations',
+                        example: '12×34',
+                      },
+                      {
+                        icon: '🧠',
+                        title: 'Mental calculation',
+                        desc: 'Visualize and compute without the tool',
+                        example: 'Anzan',
+                      },
                     ].map((skill, i) => (
-                      <div key={i} className={hstack({ gap: '3' })}>
-                        <span className={css({ color: 'yellow.400', fontSize: 'lg' })}>✓</span>
-                        <span className={css({ color: 'gray.300', fontSize: 'sm' })}>{skill}</span>
+                      <div
+                        key={i}
+                        className={css({
+                          bg: 'rgba(255, 255, 255, 0.05)',
+                          borderRadius: 'lg',
+                          p: '3',
+                          border: '1px solid',
+                          borderColor: 'rgba(255, 255, 255, 0.1)',
+                          transition: 'all 0.2s',
+                          _hover: {
+                            bg: 'rgba(255, 255, 255, 0.08)',
+                            borderColor: 'rgba(255, 255, 255, 0.2)',
+                          },
+                        })}
+                      >
+                        <div className={hstack({ gap: '3', alignItems: 'flex-start' })}>
+                          <div
+                            className={css({
+                              fontSize: '2xl',
+                              minW: '40px',
+                              textAlign: 'center',
+                            })}
+                          >
+                            {skill.icon}
+                          </div>
+                          <div className={stack({ gap: '1', flex: '1' })}>
+                            <div
+                              className={css({
+                                color: 'white',
+                                fontSize: 'sm',
+                                fontWeight: 'semibold',
+                              })}
+                            >
+                              {skill.title}
+                            </div>
+                            <div className={css({ color: 'gray.400', fontSize: 'xs' })}>
+                              {skill.desc}
+                            </div>
+                            <div
+                              className={css({
+                                color: 'yellow.400',
+                                fontSize: 'xs',
+                                fontFamily: 'mono',
+                                mt: '1',
+                              })}
+                            >
+                              {skill.example}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
