@@ -370,7 +370,7 @@ export default function HomePage() {
                               textAlign: 'center',
                               bg: 'rgba(255, 255, 255, 0.1)',
                               borderRadius: 'lg',
-                              py: i === 0 ? '5' : '2',
+                              py: i === 0 ? '4' : '2',
                               px: i === 0 ? '3' : '2',
                             })}
                           >
