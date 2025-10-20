@@ -320,49 +320,6 @@ export default function HomePage() {
               </div>
             </section>
 
-            {/* For Kids & Families Section */}
-            <section className={stack({ gap: '6', mb: '16' })}>
-              <div className={css({ textAlign: 'center' })}>
-                <h2
-                  className={css({
-                    fontSize: { base: '2xl', md: '3xl' },
-                    fontWeight: 'bold',
-                    color: 'white',
-                    mb: '2',
-                  })}
-                >
-                  For Kids & Families
-                </h2>
-                <p className={css({ color: 'gray.400', fontSize: 'md', maxW: '2xl', mx: 'auto' })}>
-                  Simple enough for kids to start on their own, structured enough for parents to
-                  trust
-                </p>
-              </div>
-
-              <div className={grid({ columns: { base: 1, lg: 2 }, gap: '8' })}>
-                <FeaturePanel
-                  icon="🧒"
-                  title="Self-Directed for Children"
-                  features={[
-                    'Big, obvious buttons and clear instructions',
-                    'Progress at your own pace',
-                    'Works with or without a physical abacus',
-                  ]}
-                  accentColor="purple"
-                />
-                <FeaturePanel
-                  icon="👨‍👩‍👧"
-                  title="Trusted by Parents"
-                  features={[
-                    'Structured curriculum following Japanese methods',
-                    'Traditional kyu/dan progression levels',
-                    'Track progress and celebrate achievements',
-                  ]}
-                  accentColor="blue"
-                />
-              </div>
-            </section>
-
             {/* Progression Visualization */}
             <section className={stack({ gap: '6', mb: '16' })}>
               <div className={css({ textAlign: 'center' })}>
@@ -523,47 +480,20 @@ export default function HomePage() {
               </Link>
             </section>
 
-            {/* Additional Tools Section */}
+            {/* Flashcard Generator Section */}
             <section className={stack({ gap: '6' })}>
-              <div className={css({ textAlign: 'center' })}>
-                <h2
-                  className={css({
-                    fontSize: { base: '2xl', md: '3xl' },
-                    fontWeight: 'bold',
-                    color: 'white',
-                    mb: '2',
-                  })}
-                >
-                  Additional Tools
-                </h2>
-              </div>
-
-              <div className={grid({ columns: { base: 1, lg: 2 }, gap: '8' })}>
-                <FeaturePanel
-                  icon="🎨"
-                  title="Flashcard Creator"
-                  features={[
-                    'Multiple formats: PDF, PNG, SVG, HTML',
-                    'Custom bead shapes, colors, and layouts',
-                    'All paper sizes: A3, A4, A5, US Letter',
-                  ]}
-                  accentColor="blue"
-                  ctaText="Create Flashcards →"
-                  ctaHref="/create"
-                />
-                <FeaturePanel
-                  icon="🧮"
-                  title="Interactive Abacus"
-                  features={[
-                    'Practice anytime in your browser',
-                    'Multiple color schemes and bead styles',
-                    'Sound effects and animations',
-                  ]}
-                  accentColor="purple"
-                  ctaText="Try the Abacus →"
-                  ctaHref="/guide"
-                />
-              </div>
+              <FeaturePanel
+                icon="🎨"
+                title="Flashcard Creator"
+                features={[
+                  'Multiple formats: PDF, PNG, SVG, HTML',
+                  'Custom bead shapes, colors, and layouts',
+                  'All paper sizes: A3, A4, A5, US Letter',
+                ]}
+                accentColor="blue"
+                ctaText="Create Flashcards →"
+                ctaHref="/create"
+              />
             </section>
           </div>
         </div>
