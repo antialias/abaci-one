@@ -253,7 +253,7 @@ export default function LevelsPage() {
                         : 'amber.500',
                 rounded: 'xl',
                 p: { base: '6', md: '8' },
-                height: { base: 'auto', md: '700px' },
+                height: { base: 'auto', md: '900px' },
                 display: 'flex',
                 flexDirection: 'column',
               })}
