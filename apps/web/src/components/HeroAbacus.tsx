@@ -6,31 +6,21 @@ import { css } from '../../styled-system/css'
 import { useHomeHero } from '../contexts/HomeHeroContext'
 
 export function HeroAbacus() {
-  const { subtitle, abacusValue, setAbacusValue, setIsHeroVisible } = useHomeHero()
+  const { subtitle, abacusValue, setAbacusValue, setIsHeroVisible, isAbacusLoaded } = useHomeHero()
   const appConfig = useAbacusConfig()
   const heroRef = useRef<HTMLDivElement>(null)
 
-  // Dark theme styles for the abacus (matching the mini abacus on homepage)
-  const darkStyles = {
+  // Styling for structural elements (solid, no translucency)
+  const structuralStyles = {
     columnPosts: {
-      fill: 'rgba(255, 255, 255, 0.3)',
-      stroke: 'rgba(255, 255, 255, 0.2)',
+      fill: 'rgb(255, 255, 255)',
+      stroke: 'rgb(200, 200, 200)',
       strokeWidth: 2,
     },
     reckoningBar: {
-      fill: 'rgba(255, 255, 255, 0.4)',
-      stroke: 'rgba(255, 255, 255, 0.25)',
+      fill: 'rgb(255, 255, 255)',
+      stroke: 'rgb(200, 200, 200)',
       strokeWidth: 3,
-    },
-    heavenBeads: {
-      fill: 'rgba(196, 181, 253, 0.8)',
-      stroke: 'rgba(167, 139, 250, 0.9)',
-      strokeWidth: 2,
-    },
-    earthBeads: {
-      fill: 'rgba(167, 139, 250, 0.7)',
-      stroke: 'rgba(139, 92, 246, 0.9)',
-      strokeWidth: 2,
     },
   }
 
@@ -53,30 +43,21 @@ export function HeroAbacus() {
     return () => observer.disconnect()
   }, [setIsHeroVisible])
 
-  // Auto-cycle through random numbers (optional - user can also interact)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const randomNum = Math.floor(Math.random() * 10000) // 0-9999
-      setAbacusValue(randomNum)
-    }, 4000)
-
-    return () => clearInterval(interval)
-  }, [setAbacusValue])
-
   return (
     <div
       ref={heroRef}
       className={css({
-        minHeight: '100vh',
+        height: '100vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         background:
           'linear-gradient(135deg, rgba(17, 24, 39, 1) 0%, rgba(88, 28, 135, 0.3) 50%, rgba(17, 24, 39, 1) 100%)',
         position: 'relative',
         overflow: 'hidden',
         px: '4',
+        py: '12',
       })}
     >
       {/* Background pattern */}
@@ -91,94 +72,91 @@ export function HeroAbacus() {
         })}
       />
 
-      {/* Content */}
+      {/* Title and Subtitle Section - DIRECT CHILD */}
       <div
         className={css({
           position: 'relative',
-          textAlign: 'center',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          height: '100%',
-          py: '12',
+          gap: '2',
+          zIndex: 10,
         })}
       >
-        {/* Title and Subtitle Section */}
-        <div
+        <h1
           className={css({
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4',
+            fontSize: { base: '4xl', md: '6xl', lg: '7xl' },
+            fontWeight: 'bold',
+            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
+            backgroundClip: 'text',
+            color: 'transparent',
           })}
         >
-          <h1
-            className={css({
-              fontSize: { base: '4xl', md: '6xl', lg: '7xl' },
-              fontWeight: 'bold',
-              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
-              backgroundClip: 'text',
-              color: 'transparent',
-            })}
-          >
-            Abaci One
-          </h1>
-          <p
-            className={css({
-              fontSize: { base: 'xl', md: '2xl' },
-              fontWeight: 'medium',
-              color: 'purple.300',
-              fontStyle: 'italic',
-            })}
-          >
-            {subtitle.text}
-          </p>
-        </div>
+          Abaci One
+        </h1>
+        <p
+          className={css({
+            fontSize: { base: 'xl', md: '2xl' },
+            fontWeight: 'medium',
+            color: 'purple.300',
+            fontStyle: 'italic',
+            marginBottom: '8',
+          })}
+        >
+          {subtitle.text}
+        </p>
+      </div>
 
-        {/* Large Interactive Abacus - centered in remaining space */}
+      {/* Large Interactive Abacus - DIRECT CHILD */}
+      <div
+        className={css({
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: '1',
+          width: '100%',
+          zIndex: 10,
+          opacity: isAbacusLoaded ? 1 : 0,
+          transition: 'opacity 0.5s ease-in-out',
+        })}
+      >
         <div
           className={css({
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: '1',
-            width: '100%',
-            py: { base: '12', md: '16', lg: '20' },
+            transform: { base: 'scale(2)', md: 'scale(3)', lg: 'scale(4)' },
+            transformOrigin: 'center center',
+            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           })}
         >
-          <div
-            className={css({
-              transform: { base: 'scale(2)', md: 'scale(3)', lg: 'scale(4)' },
-              transformOrigin: 'center center',
-              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-            })}
-          >
-            <AbacusReact
-              value={abacusValue}
-              columns={4}
-              beadShape={appConfig.beadShape}
-              showNumbers={true}
-              customStyles={darkStyles}
-            />
-          </div>
+          <AbacusReact
+            value={abacusValue}
+            columns={4}
+            beadShape={appConfig.beadShape}
+            showNumbers={true}
+            interactive={true}
+            animated={true}
+            customStyles={structuralStyles}
+            onValueChange={setAbacusValue}
+          />
         </div>
+      </div>
 
-        {/* Subtle hint to scroll */}
-        <div
-          className={css({
-            fontSize: 'sm',
-            color: 'gray.400',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '2',
-            animation: 'bounce 2s ease-in-out infinite',
-          })}
-        >
-          <span>Scroll to explore</span>
-          <span>↓</span>
-        </div>
+      {/* Subtle hint to scroll - DIRECT CHILD */}
+      <div
+        className={css({
+          position: 'relative',
+          fontSize: 'sm',
+          color: 'gray.400',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '2',
+          animation: 'bounce 2s ease-in-out infinite',
+          zIndex: 10,
+        })}
+      >
+        <span>Scroll to explore</span>
+        <span>↓</span>
       </div>
 
       {/* Keyframes for bounce animation */}
