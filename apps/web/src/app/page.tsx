@@ -1,12 +1,46 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
 import { getTutorialForEditor } from '@/utils/tutorialConverter'
 import { css } from '../../styled-system/css'
 import { container, grid, hstack, stack } from '../../styled-system/patterns'
 import { token } from '../../styled-system/tokens'
+
+// Mini abacus that cycles through random 3-digit numbers
+function MiniAbacus() {
+  const [currentValue, setCurrentValue] = useState(0)
+  const abacusConfig = useAbacusConfig({
+    abacusColumns: 3,
+    theme: 'dark',
+  })
+
+  useEffect(() => {
+    // Cycle through random 3-digit numbers every 2 seconds
+    const interval = setInterval(() => {
+      const randomNum = Math.floor(Math.random() * 1000) // 0-999
+      setCurrentValue(randomNum)
+    }, 2000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <div
+      className={css({
+        height: '75px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      })}
+    >
+      <AbacusReact value={currentValue} config={abacusConfig} />
+    </div>
+  )
+}
 
 export default function HomePage() {
   // Extract just the "Friends of 5" step (2+3=5) for homepage demo
@@ -320,7 +354,7 @@ export default function HomePage() {
                               p: '2',
                             })}
                           >
-                            {skill.icon}
+                            {i === 0 ? <MiniAbacus /> : skill.icon}
                           </div>
                           <div className={stack({ gap: '2', flex: '1' })}>
                             <div className={hstack({ gap: '2', alignItems: 'center' })}>
