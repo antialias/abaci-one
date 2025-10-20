@@ -569,17 +569,23 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
     )
   }
 
+  // Check if we should use transparent styling (when hero is visible)
+  const isTransparent = homeHero?.isHeroVisible
+
   return (
     <Tooltip.Provider delayDuration={200}>
       <header
         className={css({
-          bg: 'white',
-          shadow: 'sm',
-          borderBottom: '1px solid',
-          borderColor: 'gray.200',
-          position: 'sticky',
+          bg: isTransparent ? 'transparent' : 'white',
+          shadow: isTransparent ? 'none' : 'sm',
+          borderBottom: isTransparent ? 'none' : '1px solid',
+          borderColor: isTransparent ? 'transparent' : 'gray.200',
+          position: isTransparent ? 'fixed' : 'sticky',
           top: 0,
+          left: 0,
+          right: 0,
           zIndex: 30,
+          transition: 'all 0.3s ease',
         })}
       >
         <div className={container({ maxW: '7xl', px: '4', py: '3' })}>
@@ -653,22 +659,54 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
               <div />
             )}
 
-            <div className={hstack({ gap: '6', alignItems: 'center' })}>
+            <div
+              className={css({
+                display: 'flex',
+                gap: '6',
+                alignItems: 'center',
+                px: isTransparent ? '4' : '0',
+                py: isTransparent ? '2' : '0',
+                rounded: isTransparent ? 'lg' : 'none',
+                border: isTransparent ? '1px solid' : 'none',
+                borderColor: isTransparent ? 'rgba(255, 255, 255, 0.3)' : 'transparent',
+                transition: 'all 0.3s ease',
+              })}
+            >
               {/* Navigation Links */}
-              <nav className={hstack({ gap: '4' })}>
-                <NavLink href="/create" currentPath={pathname}>
+              <nav
+                className={css({
+                  display: 'flex',
+                  gap: '4',
+                  px: isTransparent ? '2' : '0',
+                  py: isTransparent ? '1' : '0',
+                  rounded: isTransparent ? 'md' : 'none',
+                  border: isTransparent ? '1px solid' : 'none',
+                  borderColor: isTransparent ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                })}
+              >
+                <NavLink href="/create" currentPath={pathname} isTransparent={isTransparent}>
                   Create
                 </NavLink>
-                <NavLink href="/guide" currentPath={pathname}>
+                <NavLink href="/guide" currentPath={pathname} isTransparent={isTransparent}>
                   Guide
                 </NavLink>
-                <NavLink href="/games" currentPath={pathname}>
+                <NavLink href="/games" currentPath={pathname} isTransparent={isTransparent}>
                   Games
                 </NavLink>
               </nav>
 
-              {/* Abacus Style Dropdown */}
-              <AbacusDisplayDropdown isFullscreen={false} />
+              {/* Abacus Style Dropdown - with border when transparent */}
+              <div
+                className={css({
+                  px: isTransparent ? '2' : '0',
+                  py: isTransparent ? '1' : '0',
+                  rounded: isTransparent ? 'md' : 'none',
+                  border: isTransparent ? '1px solid' : 'none',
+                  borderColor: isTransparent ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                })}
+              >
+                <AbacusDisplayDropdown isFullscreen={false} />
+              </div>
             </div>
           </div>
         </div>
@@ -699,10 +737,12 @@ function NavLink({
   href,
   currentPath,
   children,
+  isTransparent,
 }: {
   href: string
   currentPath: string | null
   children: React.ReactNode
+  isTransparent?: boolean
 }) {
   const isActive = currentPath === href || (href !== '/' && currentPath?.startsWith(href))
 
@@ -716,8 +756,20 @@ function NavLink({
         minW: { base: '44px', md: 'auto' },
         fontSize: 'sm',
         fontWeight: 'medium',
-        color: isActive ? 'brand.700' : 'gray.600',
-        bg: isActive ? 'brand.50' : 'transparent',
+        color: isTransparent
+          ? isActive
+            ? 'white'
+            : 'rgba(255, 255, 255, 0.8)'
+          : isActive
+            ? 'brand.700'
+            : 'gray.600',
+        bg: isTransparent
+          ? isActive
+            ? 'rgba(255, 255, 255, 0.15)'
+            : 'transparent'
+          : isActive
+            ? 'brand.50'
+            : 'transparent',
         rounded: 'lg',
         transition: 'all',
         textDecoration: 'none',
@@ -725,8 +777,8 @@ function NavLink({
         alignItems: 'center',
         justifyContent: 'center',
         _hover: {
-          color: isActive ? 'brand.800' : 'gray.900',
-          bg: isActive ? 'brand.100' : 'gray.50',
+          color: isTransparent ? 'white' : isActive ? 'brand.800' : 'gray.900',
+          bg: isTransparent ? 'rgba(255, 255, 255, 0.2)' : isActive ? 'brand.100' : 'gray.50',
         },
       })}
     >
