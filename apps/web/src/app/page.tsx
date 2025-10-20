@@ -360,10 +360,11 @@ export default function HomePage() {
                     mb: '2',
                   })}
                 >
-                  Available Now
+                  The Arcade
                 </h2>
                 <p className={css({ color: 'gray.400', fontSize: 'md' })}>
-                  Foundation tutorials and reinforcement games ready to use
+                  Create or join multiplayer rooms to play real-time games with friends over the
+                  network
                 </p>
               </div>
 
