@@ -676,15 +676,15 @@ export default function LevelsPage() {
                       <div
                         className={css({
                           flex: '0 0 auto',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, 1fr)',
                           gap: sizing.gap,
                           pr: '4',
                           pl: '2',
                           borderRight: '1px solid',
                           borderColor: 'gray.600',
-                          maxW: '320px',
+                          maxW: '480px',
+                          alignContent: 'center',
                         })}
                       >
                         {sections.map((section, idx) => (
