@@ -3,7 +3,7 @@
 import type React from 'react'
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { Subtitle } from '../data/abaciOneSubtitles'
-import { getRandomSubtitle, subtitles } from '../data/abaciOneSubtitles'
+import { subtitles } from '../data/abaciOneSubtitles'
 
 interface HomeHeroContextValue {
   subtitle: Subtitle
@@ -22,9 +22,24 @@ export function HomeHeroProvider({ children }: { children: React.ReactNode }) {
   // Use first subtitle for SSR, then select random one on client mount
   const [subtitle, setSubtitle] = useState<Subtitle>(subtitles[0])
 
-  // Select random subtitle only on client side to avoid SSR mismatch
+  // Select random subtitle only on client side, persist per-session
   useEffect(() => {
-    setSubtitle(getRandomSubtitle())
+    // Check if we have a stored subtitle index for this session
+    const storedIndex = sessionStorage.getItem('heroSubtitleIndex')
+
+    if (storedIndex !== null) {
+      // Use the stored subtitle index
+      const index = parseInt(storedIndex, 10)
+      if (!Number.isNaN(index) && index >= 0 && index < subtitles.length) {
+        setSubtitle(subtitles[index])
+        return
+      }
+    }
+
+    // Generate a new random index and store it
+    const randomIndex = Math.floor(Math.random() * subtitles.length)
+    sessionStorage.setItem('heroSubtitleIndex', randomIndex.toString())
+    setSubtitle(subtitles[randomIndex])
   }, [])
 
   // Shared abacus value - always start at 0 for SSR/hydration consistency
