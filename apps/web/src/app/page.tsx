@@ -163,7 +163,13 @@ export default function HomePage() {
                   })}
                 >
                   {/* Tutorial on the left */}
-                  <div className={css({ flex: '1', minW: '0' })}>
+                  <div
+                    className={css({
+                      flex: '1',
+                      minW: { base: '100%', md: '500px' },
+                      maxW: { base: '100%', md: '500px' },
+                    })}
+                  >
                     <TutorialPlayer
                       key={selectedTutorial.id}
                       tutorial={selectedTutorial}
