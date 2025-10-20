@@ -15,6 +15,11 @@ import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 // Import HomeHeroContext for optional usage
 import type { Subtitle } from '../data/abaciOneSubtitles'
 
+type HomeHeroContextValue = {
+  subtitle: Subtitle
+  isHeroVisible: boolean
+} | null
+
 // HomeHeroContext - imported dynamically to avoid circular deps
 let HomeHeroContextModule: any = null
 try {
@@ -23,10 +28,11 @@ try {
   // Context not available
 }
 
-const HomeHeroContext = HomeHeroContextModule?.HomeHeroContext || React.createContext(null)
+const HomeHeroContext: React.Context<HomeHeroContextValue> =
+  HomeHeroContextModule?.HomeHeroContext || React.createContext<HomeHeroContextValue>(null)
 
 // Use HomeHeroContext without requiring it
-function useOptionalHomeHero(): { subtitle: Subtitle; isHeroVisible: boolean } | null {
+function useOptionalHomeHero(): HomeHeroContextValue {
   return useContext(HomeHeroContext)
 }
 
