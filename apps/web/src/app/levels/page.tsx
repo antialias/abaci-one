@@ -689,9 +689,7 @@ export default function LevelsPage() {
                           display: 'grid',
                           gridTemplateColumns: 'repeat(2, 1fr)',
                           gap: '2',
-                          pr: '3',
-                          pl: '2',
-                          py: '2',
+                          p: '2',
                           maxW: '400px',
                           alignContent: 'center',
                         })}
