@@ -223,3 +223,48 @@ Three places must handle settings correctly:
 3. **Validator** (`{Game}Validator.ts`) - `getInitialState()` must accept ALL settings
 
 If a setting doesn't persist, check all three locations.
+
+## Z-Index and Stacking Context Management
+
+When working with z-index values or encountering layering issues, refer to:
+
+- **`.claude/Z_INDEX_MANAGEMENT.md`** - Complete z-index documentation
+  - Z-index layering hierarchy (0-20000+)
+  - Stacking context rules and gotchas
+  - Current z-index audit of all components
+  - Guidelines for choosing z-index values
+  - Migration plan to use constants file
+  - Debugging checklist for layering issues
+
+**Quick Reference:**
+
+**ALWAYS use the constants file:**
+```typescript
+import { Z_INDEX } from '@/constants/zIndex'
+
+// ✅ Good
+zIndex: Z_INDEX.NAV_BAR
+zIndex: Z_INDEX.MODAL
+zIndex: Z_INDEX.TOOLTIP
+
+// ❌ Bad - magic numbers!
+zIndex: 100
+zIndex: 10000
+zIndex: 500
+```
+
+**Layering hierarchy:**
+- Base content: 0-99
+- Navigation/UI chrome: 100-999
+- Overlays/dropdowns/tooltips: 1000-9999
+- Modals/dialogs: 10000-19999
+- Toasts: 20000+
+
+**Critical reminder about stacking contexts:**
+
+Z-index values are only compared within the same stacking context! Elements with `position + zIndex`, `opacity < 1`, `transform`, or `filter` create new stacking contexts where child z-indexes are relative, not global.
+
+Before setting a z-index, always check:
+1. What stacking context is this element in?
+2. Am I comparing against siblings or global elements?
+3. Does my parent create a stacking context?
