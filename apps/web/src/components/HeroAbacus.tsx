@@ -86,10 +86,10 @@ export function HeroAbacus() {
             background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
             backgroundClip: 'text',
             color: 'transparent',
-            mb: '2',
+            mb: '4',
           })}
         >
-          🧮 Abaci One
+          Abaci One
         </h1>
 
         {/* Subtitle */}
@@ -99,7 +99,9 @@ export function HeroAbacus() {
             fontWeight: 'medium',
             color: 'purple.300',
             fontStyle: 'italic',
-            mb: '8',
+            mb: '16',
+            zIndex: 10,
+            position: 'relative',
           })}
         >
           {subtitle.text}
@@ -108,10 +110,12 @@ export function HeroAbacus() {
         {/* Large Interactive Abacus */}
         <div
           className={css({
-            transform: { base: 'scale(1.5)', md: 'scale(2)', lg: 'scale(2.5)' },
+            transform: { base: 'scale(2)', md: 'scale(3)', lg: 'scale(4)' },
             transformOrigin: 'center center',
             mb: { base: '12', md: '16', lg: '20' },
             transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            position: 'relative',
+            zIndex: 1,
           })}
         >
           <AbacusReact

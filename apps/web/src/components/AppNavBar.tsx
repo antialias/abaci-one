@@ -579,7 +579,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
         <div className={container({ maxW: '7xl', px: '4', py: '3' })}>
           <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
             {/* Logo - conditionally shown based on hero visibility */}
-            {showBranding && (
+            {showBranding ? (
               <Link
                 href="/"
                 className={css({
@@ -643,6 +643,8 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                   </Tooltip.Portal>
                 </Tooltip.Root>
               </Link>
+            ) : (
+              <div />
             )}
 
             <div className={hstack({ gap: '6', alignItems: 'center' })}>
