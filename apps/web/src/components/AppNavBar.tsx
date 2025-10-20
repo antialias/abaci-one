@@ -1,13 +1,15 @@
 'use client'
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
 import { Z_INDEX } from '../constants/zIndex'
 import { useFullscreen } from '../contexts/FullscreenContext'
+import { getRandomSubtitle } from '../data/abaciOneSubtitles'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
 
 interface AppNavBarProps {
@@ -514,6 +516,9 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const isArcadePage = pathname?.startsWith('/arcade')
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
 
+  // Select a random subtitle once on mount (performance: won't change on re-renders)
+  const subtitle = useMemo(() => getRandomSubtitle(), [])
+
   // Auto-detect variant based on context
   const actualVariant = variant === 'full' && (isGamePage || isArcadePage) ? 'minimal' : variant
 
@@ -533,53 +538,104 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   }
 
   return (
-    <header
-      className={css({
-        bg: 'white',
-        shadow: 'sm',
-        borderBottom: '1px solid',
-        borderColor: 'gray.200',
-        position: 'sticky',
-        top: 0,
-        zIndex: 30,
-      })}
-    >
-      <div className={container({ maxW: '7xl', px: '4', py: '3' })}>
-        <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
-          {/* Logo */}
-          <Link
-            href="/"
-            className={css({
-              fontSize: 'xl',
-              fontWeight: 'bold',
-              color: 'brand.800',
-              textDecoration: 'none',
-              _hover: { color: 'brand.900' },
-            })}
-          >
-            🧮 Soroban Generator
-          </Link>
+    <Tooltip.Provider delayDuration={200}>
+      <header
+        className={css({
+          bg: 'white',
+          shadow: 'sm',
+          borderBottom: '1px solid',
+          borderColor: 'gray.200',
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+        })}
+      >
+        <div className={container({ maxW: '7xl', px: '4', py: '3' })}>
+          <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
+            {/* Logo */}
+            <Link
+              href="/"
+              className={css({
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0',
+                textDecoration: 'none',
+                _hover: { '& > .brand-name': { color: 'brand.900' } },
+              })}
+            >
+              <span
+                className={css({
+                  fontSize: 'xl',
+                  fontWeight: 'bold',
+                  color: 'brand.800',
+                })}
+              >
+                🧮 Abaci One
+              </span>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <span
+                    className={css({
+                      fontSize: 'xs',
+                      fontWeight: 'medium',
+                      color: 'brand.600',
+                      fontStyle: 'italic',
+                      cursor: 'help',
+                      _hover: { color: 'brand.700' },
+                    })}
+                  >
+                    {subtitle.text}
+                  </span>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="bottom"
+                    align="start"
+                    sideOffset={4}
+                    className={css({
+                      bg: 'gray.900',
+                      color: 'white',
+                      px: '3',
+                      py: '2',
+                      rounded: 'md',
+                      fontSize: 'sm',
+                      maxW: '250px',
+                      shadow: 'lg',
+                      zIndex: 50,
+                    })}
+                  >
+                    {subtitle.description}
+                    <Tooltip.Arrow
+                      className={css({
+                        fill: 'gray.900',
+                      })}
+                    />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </Link>
 
-          <div className={hstack({ gap: '6', alignItems: 'center' })}>
-            {/* Navigation Links */}
-            <nav className={hstack({ gap: '4' })}>
-              <NavLink href="/create" currentPath={pathname}>
-                Create
-              </NavLink>
-              <NavLink href="/guide" currentPath={pathname}>
-                Guide
-              </NavLink>
-              <NavLink href="/games" currentPath={pathname}>
-                Games
-              </NavLink>
-            </nav>
+            <div className={hstack({ gap: '6', alignItems: 'center' })}>
+              {/* Navigation Links */}
+              <nav className={hstack({ gap: '4' })}>
+                <NavLink href="/create" currentPath={pathname}>
+                  Create
+                </NavLink>
+                <NavLink href="/guide" currentPath={pathname}>
+                  Guide
+                </NavLink>
+                <NavLink href="/games" currentPath={pathname}>
+                  Games
+                </NavLink>
+              </nav>
 
-            {/* Abacus Style Dropdown */}
-            <AbacusDisplayDropdown isFullscreen={false} />
+              {/* Abacus Style Dropdown */}
+              <AbacusDisplayDropdown isFullscreen={false} />
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </Tooltip.Provider>
   )
 }
 
