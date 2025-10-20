@@ -202,17 +202,18 @@ export default function LevelsPage() {
   useEffect(() => {
     // Calculate animation speed based on level
     // Kyu levels: 500ms
-    // Dan levels: interpolate from 500ms (Pre-1st Dan) to 50ms (10th Dan)
+    // Pre-1st Dan: 500ms
+    // 1st-10th Dan: interpolate from 500ms to 10ms
     const getAnimationInterval = () => {
-      if (currentIndex < 10) {
-        // Kyu levels: constant 500ms
+      if (currentIndex < 11) {
+        // Kyu levels and Pre-1st Dan: constant 500ms
         return 500
       }
-      // Dan levels: speed up from 500ms to 50ms
-      // Index 10 (Pre-1st Dan) → 500ms
-      // Index 20 (10th Dan) → 50ms
-      const danProgress = (currentIndex - 10) / 10 // 0.0 to 1.0
-      return 500 - danProgress * 450 // 500ms down to 50ms
+      // 1st Dan through 10th Dan: speed up from 500ms to 10ms
+      // Index 11 (1st Dan) → 500ms
+      // Index 20 (10th Dan) → 10ms
+      const danProgress = (currentIndex - 11) / 9 // 0.0 to 1.0
+      return 500 - danProgress * 490 // 500ms down to 10ms
     }
 
     const intervalMs = getAnimationInterval()
