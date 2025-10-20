@@ -586,6 +586,59 @@ export default function LevelsPage() {
               </div>
             </div>
           </section>
+
+          {/* Additional Information Section */}
+          <section className={stack({ gap: '8', mt: '16', pb: '12' })}>
+            <div
+              className={css({
+                bg: 'rgba(0, 0, 0, 0.4)',
+                border: '1px solid',
+                borderColor: 'gray.700',
+                rounded: 'xl',
+                p: { base: '6', md: '8' },
+              })}
+            >
+              <h3
+                className={css({
+                  fontSize: { base: 'xl', md: '2xl' },
+                  fontWeight: 'bold',
+                  color: 'white',
+                  mb: '4',
+                })}
+              >
+                About This Ranking System
+              </h3>
+              <div className={stack({ gap: '4' })}>
+                <p className={css({ color: 'gray.300', lineHeight: '1.6' })}>
+                  This ranking system is based on the official examination structure used by the{' '}
+                  <strong className={css({ color: 'white' })}>Japan Abacus Federation</strong>. It
+                  represents a standardized progression from beginner (10th Kyu) to master level
+                  (10th Dan), used internationally for soroban proficiency assessment.
+                </p>
+                <p className={css({ color: 'gray.300', lineHeight: '1.6' })}>
+                  The system is designed to gradually increase in difficulty, ensuring students
+                  build a solid foundation before advancing. Each level requires mastery of
+                  increasingly complex calculations, from simple 2-digit operations at 10th Kyu to
+                  30-digit calculations at Dan level.
+                </p>
+                <div
+                  className={css({
+                    mt: '4',
+                    pt: '4',
+                    borderTop: '1px solid',
+                    borderColor: 'gray.700',
+                    fontSize: 'sm',
+                    color: 'gray.400',
+                    fontStyle: 'italic',
+                  })}
+                >
+                  Note: This page provides information about the official Japanese ranking system
+                  for educational purposes. This application does not administer official
+                  examinations or certifications.
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </PageWithNav>
