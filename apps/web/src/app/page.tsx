@@ -43,6 +43,7 @@ function MiniAbacus() {
     <div
       className={css({
         width: '75px',
+        height: '80px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
