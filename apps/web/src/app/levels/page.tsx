@@ -123,6 +123,10 @@ export default function LevelsPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const currentLevel = allLevels[currentIndex]
 
+  // Calculate scale factor based on number of columns to fit the page
+  // Smaller scale for more columns (Dan levels with 30 columns)
+  const scaleFactor = Math.min(2.5, 20 / currentLevel.digits)
+
   return (
     <PageWithNav navTitle="Kyu & Dan Levels" navEmoji="📊">
       <div className={css({ bg: 'gray.900', minHeight: '100vh', pb: '12' })}>
@@ -243,9 +247,22 @@ export default function LevelsPage() {
                   rounded: 'lg',
                   border: '1px solid',
                   borderColor: 'gray.700',
+                  overflowX: 'auto',
                 })}
               >
-                <AbacusReact value={0} columns={currentLevel.digits} scaleFactor={1.5} />
+                <AbacusReact
+                  value={0}
+                  columns={currentLevel.digits}
+                  scaleFactor={scaleFactor}
+                  showNumbers={true}
+                  customStyles={{
+                    reckoningBar: { stroke: '#9ca3af', strokeWidth: 3 },
+                    columnPosts: { stroke: '#6b7280' },
+                    numerals: { color: '#d1d5db', fontSize: '14px', fontWeight: 'normal' },
+                    heavenBeads: { fill: '#60a5fa' },
+                    earthBeads: { fill: '#34d399' },
+                  }}
+                />
               </div>
 
               {/* Digit Count */}
