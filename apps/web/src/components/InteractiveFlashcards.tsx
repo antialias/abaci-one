@@ -2,7 +2,7 @@
 
 import { AbacusReact } from '@soroban/abacus-react'
 import { useDrag } from '@use-gesture/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { animated, config, to, useSpring } from '@react-spring/web'
 import { css } from '../../styled-system/css'
 
@@ -15,27 +15,35 @@ interface Flashcard {
   zIndex: number
 }
 
-const CONTAINER_WIDTH = 800
-const CONTAINER_HEIGHT = 500
-
 /**
  * InteractiveFlashcards - A fun, physics-based flashcard display
  * Users can drag and throw flashcards around with realistic momentum
  */
 export function InteractiveFlashcards() {
+  const containerRef = useRef<HTMLDivElement>(null)
   // Generate 8-15 random flashcards (client-side only to avoid hydration errors)
   const [cards, setCards] = useState<Flashcard[]>([])
 
   useEffect(() => {
+    // Wait for container to mount and get actual dimensions
+    if (!containerRef.current) return
+
+    const containerWidth = containerRef.current.offsetWidth
+    const containerHeight = containerRef.current.offsetHeight
+
     const count = Math.floor(Math.random() * 8) + 8 // 8-15 cards
     const generated: Flashcard[] = []
+
+    // Position cards within the actual container bounds
+    const cardWidth = 120 // approximate card width
+    const cardHeight = 200 // approximate card height
 
     for (let i = 0; i < count; i++) {
       generated.push({
         id: i,
         number: Math.floor(Math.random() * 900) + 100, // 100-999
-        initialX: Math.random() * (CONTAINER_WIDTH - 200) + 100,
-        initialY: Math.random() * (CONTAINER_HEIGHT - 200) + 100,
+        initialX: Math.random() * (containerWidth - cardWidth - 40) + 20,
+        initialY: Math.random() * (containerHeight - cardHeight - 40) + 20,
         initialRotation: Math.random() * 40 - 20, // -20 to 20 degrees
         zIndex: i,
       })
@@ -46,6 +54,7 @@ export function InteractiveFlashcards() {
 
   return (
     <div
+      ref={containerRef}
       className={css({
         position: 'relative',
         width: '100%',
