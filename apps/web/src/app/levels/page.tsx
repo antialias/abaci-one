@@ -309,14 +309,15 @@ export default function LevelsPage() {
                       cursor: 'pointer',
                     })}
                   >
-                    {/* Decorative beads for all levels */}
+                    {/* Decorative diamond beads for all levels */}
                     {allLevels.map((level, index) => {
                       const isActive = index === currentIndex
                       const isDan = 'color' in level && level.color === 'violet'
+                      const size = isActive ? 14 : 8
                       const beadColor = isActive
                         ? isDan
-                          ? 'violet.400'
-                          : 'green.400'
+                          ? '#8b5cf6'
+                          : '#22c55e'
                         : isDan
                           ? 'rgba(139, 92, 246, 0.4)'
                           : 'rgba(34, 197, 94, 0.4)'
@@ -324,29 +325,36 @@ export default function LevelsPage() {
                       return (
                         <div
                           key={index}
-                          className={css({
+                          style={{
                             position: 'absolute',
                             top: '50%',
                             left: `${(index / (allLevels.length - 1)) * 100}%`,
                             transform: 'translate(-50%, -50%)',
-                            w: isActive ? '16px' : '10px',
-                            h: isActive ? '16px' : '10px',
-                            bg: beadColor,
-                            rounded: 'full',
-                            border: '2px solid',
-                            borderColor: isActive
-                              ? isDan
-                                ? 'violet.200'
-                                : 'green.200'
-                              : 'rgba(255, 255, 255, 0.3)',
+                            width: `${size}px`,
+                            height: `${size}px`,
                             transition: 'all 0.2s',
-                            boxShadow: isActive
-                              ? `0 0 12px ${isDan ? 'rgba(139, 92, 246, 0.6)' : 'rgba(34, 197, 94, 0.6)'}`
-                              : 'none',
                             pointerEvents: 'none',
                             zIndex: 0,
-                          })}
-                        />
+                            filter: isActive
+                              ? `drop-shadow(0 0 6px ${isDan ? 'rgba(139, 92, 246, 0.6)' : 'rgba(34, 197, 94, 0.6)'})`
+                              : 'none',
+                          }}
+                        >
+                          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                            <polygon
+                              points={`0,${size / 2} ${size / 2},0 ${size},${size / 2} ${size / 2},${size}`}
+                              fill={beadColor}
+                              stroke={
+                                isActive
+                                  ? isDan
+                                    ? '#c4b5fd'
+                                    : '#86efac'
+                                  : 'rgba(255, 255, 255, 0.3)'
+                              }
+                              strokeWidth="0.5"
+                            />
+                          </svg>
+                        </div>
                       )
                     })}
 
@@ -364,14 +372,12 @@ export default function LevelsPage() {
 
                     <Slider.Thumb
                       className={css({
-                        display: 'block',
-                        w: '20px',
-                        h: '20px',
-                        bg: currentLevel.color === 'violet' ? 'violet.500' : 'green.500',
-                        shadow: '0 0 16px rgba(0, 0, 0, 0.4)',
-                        rounded: 'full',
-                        border: '3px solid',
-                        borderColor: currentLevel.color === 'violet' ? 'violet.200' : 'green.200',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        w: '28px',
+                        h: '28px',
+                        bg: 'transparent',
                         cursor: 'grab',
                         transition: 'all 0.2s',
                         zIndex: 10,
@@ -379,11 +385,30 @@ export default function LevelsPage() {
                         _focus: {
                           outline: 'none',
                           transform: 'scale(1.15)',
-                          boxShadow: `0 0 20px ${currentLevel.color === 'violet' ? 'rgba(139, 92, 246, 0.8)' : 'rgba(34, 197, 94, 0.8)'}`,
                         },
                         _active: { cursor: 'grabbing' },
                       })}
-                    />
+                    >
+                      <svg width="28" height="28" viewBox="0 0 28 28">
+                        {/* Diamond bead matching abacus style */}
+                        <polygon
+                          points="0,14 14,0 28,14 14,28"
+                          fill={currentLevel.color === 'violet' ? '#8b5cf6' : '#22c55e'}
+                          stroke="#000"
+                          strokeWidth="0.8"
+                        />
+                        {/* Inner highlight for depth */}
+                        <polygon
+                          points="3,14 14,3 25,14 14,25"
+                          fill={
+                            currentLevel.color === 'violet'
+                              ? 'rgba(139, 92, 246, 0.3)'
+                              : 'rgba(34, 197, 94, 0.3)'
+                          }
+                          stroke="none"
+                        />
+                      </svg>
+                    </Slider.Thumb>
                   </Slider.Root>
                 </div>
 
