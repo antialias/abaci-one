@@ -4,13 +4,31 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import React, { useMemo, useState } from 'react'
+import React, { useContext, useMemo, useState } from 'react'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
 import { Z_INDEX } from '../constants/zIndex'
 import { useFullscreen } from '../contexts/FullscreenContext'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
+
+// Import HomeHeroContext for optional usage
+import type { Subtitle } from '../data/abaciOneSubtitles'
+
+// HomeHeroContext - imported dynamically to avoid circular deps
+let HomeHeroContextModule: any = null
+try {
+  HomeHeroContextModule = require('../contexts/HomeHeroContext')
+} catch {
+  // Context not available
+}
+
+const HomeHeroContext = HomeHeroContextModule?.HomeHeroContext || React.createContext(null)
+
+// Use HomeHeroContext without requiring it
+function useOptionalHomeHero(): { subtitle: Subtitle; isHeroVisible: boolean } | null {
+  return useContext(HomeHeroContext)
+}
 
 interface AppNavBarProps {
   variant?: 'full' | 'minimal'
@@ -516,8 +534,16 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const isArcadePage = pathname?.startsWith('/arcade')
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
 
+  // Try to get home hero context (if on homepage)
+  const homeHero = useOptionalHomeHero()
+
   // Select a random subtitle once on mount (performance: won't change on re-renders)
-  const subtitle = useMemo(() => getRandomSubtitle(), [])
+  // Use homeHero subtitle if available, otherwise generate one
+  const fallbackSubtitle = useMemo(() => getRandomSubtitle(), [])
+  const subtitle = homeHero?.subtitle || fallbackSubtitle
+
+  // Show branding unless we're on homepage with visible hero
+  const showBranding = !homeHero || !homeHero.isHeroVisible
 
   // Auto-detect variant based on context
   const actualVariant = variant === 'full' && (isGamePage || isArcadePage) ? 'minimal' : variant
@@ -552,68 +578,72 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
       >
         <div className={container({ maxW: '7xl', px: '4', py: '3' })}>
           <div className={hstack({ justify: 'space-between', alignItems: 'center' })}>
-            {/* Logo */}
-            <Link
-              href="/"
-              className={css({
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0',
-                textDecoration: 'none',
-                _hover: { '& > .brand-name': { color: 'brand.900' } },
-              })}
-            >
-              <span
+            {/* Logo - conditionally shown based on hero visibility */}
+            {showBranding && (
+              <Link
+                href="/"
                 className={css({
-                  fontSize: 'xl',
-                  fontWeight: 'bold',
-                  color: 'brand.800',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0',
+                  textDecoration: 'none',
+                  _hover: { '& > .brand-name': { color: 'brand.900' } },
+                  opacity: 0,
+                  animation: 'fadeIn 0.3s ease-out forwards',
                 })}
               >
-                🧮 Abaci One
-              </span>
-              <Tooltip.Root>
-                <Tooltip.Trigger asChild>
-                  <span
-                    className={css({
-                      fontSize: 'xs',
-                      fontWeight: 'medium',
-                      color: 'brand.600',
-                      fontStyle: 'italic',
-                      cursor: 'help',
-                      _hover: { color: 'brand.700' },
-                    })}
-                  >
-                    {subtitle.text}
-                  </span>
-                </Tooltip.Trigger>
-                <Tooltip.Portal>
-                  <Tooltip.Content
-                    side="bottom"
-                    align="start"
-                    sideOffset={4}
-                    className={css({
-                      bg: 'gray.900',
-                      color: 'white',
-                      px: '3',
-                      py: '2',
-                      rounded: 'md',
-                      fontSize: 'sm',
-                      maxW: '250px',
-                      shadow: 'lg',
-                      zIndex: 50,
-                    })}
-                  >
-                    {subtitle.description}
-                    <Tooltip.Arrow
+                <span
+                  className={css({
+                    fontSize: 'xl',
+                    fontWeight: 'bold',
+                    color: 'brand.800',
+                  })}
+                >
+                  🧮 Abaci One
+                </span>
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <span
                       className={css({
-                        fill: 'gray.900',
+                        fontSize: 'xs',
+                        fontWeight: 'medium',
+                        color: 'brand.600',
+                        fontStyle: 'italic',
+                        cursor: 'help',
+                        _hover: { color: 'brand.700' },
                       })}
-                    />
-                  </Tooltip.Content>
-                </Tooltip.Portal>
-              </Tooltip.Root>
-            </Link>
+                    >
+                      {subtitle.text}
+                    </span>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      side="bottom"
+                      align="start"
+                      sideOffset={4}
+                      className={css({
+                        bg: 'gray.900',
+                        color: 'white',
+                        px: '3',
+                        py: '2',
+                        rounded: 'md',
+                        fontSize: 'sm',
+                        maxW: '250px',
+                        shadow: 'lg',
+                        zIndex: 50,
+                      })}
+                    >
+                      {subtitle.description}
+                      <Tooltip.Arrow
+                        className={css({
+                          fill: 'gray.900',
+                        })}
+                      />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              </Link>
+            )}
 
             <div className={hstack({ gap: '6', alignItems: 'center' })}>
               {/* Navigation Links */}
@@ -635,6 +665,24 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
           </div>
         </div>
       </header>
+
+      {/* Keyframes for fade-in animation */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+                transform: translateY(-5px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+          `,
+        }}
+      />
     </Tooltip.Provider>
   )
 }
