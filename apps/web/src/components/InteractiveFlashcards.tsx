@@ -1,9 +1,7 @@
 'use client'
 
 import { AbacusReact } from '@soroban/abacus-react'
-import { useDrag } from '@use-gesture/react'
 import { useEffect, useRef, useState } from 'react'
-import { animated, config, to, useSpring } from '@react-spring/web'
 import { css } from '../../styled-system/css'
 
 interface Flashcard {
@@ -16,12 +14,11 @@ interface Flashcard {
 }
 
 /**
- * InteractiveFlashcards - A fun, physics-based flashcard display
- * Users can drag and throw flashcards around with realistic momentum
+ * InteractiveFlashcards - A fun flashcard display where you can drag cards around
+ * Cards stay where you drop them - simple and intuitive
  */
 export function InteractiveFlashcards() {
   const containerRef = useRef<HTMLDivElement>(null)
-  // Generate 8-15 random flashcards (client-side only to avoid hydration errors)
   const [cards, setCards] = useState<Flashcard[]>([])
 
   useEffect(() => {
@@ -95,186 +92,70 @@ interface DraggableCardProps {
 }
 
 function DraggableCard({ card }: DraggableCardProps) {
-  // Track the card's current position in state (separate from the animation values)
-  const currentPositionRef = useRef({
-    x: card.initialX,
-    y: card.initialY,
-    rotation: card.initialRotation,
-  })
-
-  const [{ x, y, rotation, scale }, api] = useSpring(() => ({
-    x: card.initialX,
-    y: card.initialY,
-    rotation: card.initialRotation,
-    scale: 1,
-    config: config.wobbly,
-  }))
-
+  // Track position - starts at initial, updates when dragged
+  const [position, setPosition] = useState({ x: card.initialX, y: card.initialY })
+  const [rotation] = useState(card.initialRotation)
   const [zIndex, setZIndex] = useState(card.zIndex)
-  const cardRef = useRef<HTMLDivElement>(null)
-  const dragOffsetRef = useRef({ x: 0, y: 0 })
-  const lastVelocityRef = useRef({ vx: 0, vy: 0 })
-  const velocityHistoryRef = useRef<Array<{ vx: number; vy: number }>>([])
-  const [transformOrigin, setTransformOrigin] = useState('center center')
+  const [isDragging, setIsDragging] = useState(false)
 
-  const bind = useDrag(
-    ({ down, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], first, xy }) => {
-      // Bring card to front when dragging
-      if (down) {
-        setZIndex(1000)
+  // Track drag state
+  const dragStartRef = useRef<{ x: number; y: number; cardX: number; cardY: number } | null>(null)
 
-        // Calculate drag offset from card center on first touch
-        if (first && cardRef.current) {
-          const cardRect = cardRef.current.getBoundingClientRect()
-          const cardWidth = cardRect.width
-          const cardHeight = cardRect.height
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setIsDragging(true)
+    setZIndex(1000) // Bring to front
 
-          // xy is in viewport coordinates, convert to position relative to card
-          const clickRelativeToCard = {
-            x: xy[0] - cardRect.left,
-            y: xy[1] - cardRect.top,
-          }
+    // Capture the pointer
+    e.currentTarget.setPointerCapture(e.pointerId)
 
-          // Calculate offset from card center
-          const cardCenterX = cardWidth / 2
-          const cardCenterY = cardHeight / 2
-          const offsetX = clickRelativeToCard.x - cardCenterX
-          const offsetY = clickRelativeToCard.y - cardCenterY
-
-          dragOffsetRef.current = { x: offsetX, y: offsetY }
-
-          // Convert offset to transform-origin (50% + offset as percentage of card size)
-          const originX = 50 + (offsetX / cardWidth) * 100
-          const originY = 50 + (offsetY / cardHeight) * 100
-          const transformOriginValue = `${originX}% ${originY}%`
-
-          console.log(
-            `Drag start: click at (${clickRelativeToCard.x.toFixed(0)}, ${clickRelativeToCard.y.toFixed(0)}) in card, offset from center: (${offsetX.toFixed(0)}, ${offsetY.toFixed(0)}), origin: ${transformOriginValue}`
-          )
-
-          setTransformOrigin(transformOriginValue)
-          velocityHistoryRef.current = []
-        }
-
-        // Smooth velocity by averaging last 3 frames
-        velocityHistoryRef.current.push({ vx, vy })
-        if (velocityHistoryRef.current.length > 3) {
-          velocityHistoryRef.current.shift()
-        }
-
-        const avgVx =
-          velocityHistoryRef.current.reduce((sum, v) => sum + v.vx, 0) /
-          velocityHistoryRef.current.length
-        const avgVy =
-          velocityHistoryRef.current.reduce((sum, v) => sum + v.vy, 0) /
-          velocityHistoryRef.current.length
-
-        // Calculate rotation based on smoothed velocity and drag offset
-        const velocityAngle = Math.atan2(avgVy, avgVx) * (180 / Math.PI)
-        const offsetAngle =
-          Math.atan2(dragOffsetRef.current.y, dragOffsetRef.current.x) * (180 / Math.PI)
-
-        // Card rotates to align with movement direction, offset by where we're grabbing
-        const targetRotation = velocityAngle - offsetAngle + 90
-
-        const speed = Math.sqrt(avgVx * avgVx + avgVy * avgVy)
-
-        // Store smoothed velocity for throw
-        lastVelocityRef.current = { vx: avgVx, vy: avgVy }
-
-        const finalRotation = speed > 0.01 ? targetRotation : currentPositionRef.current.rotation
-
-        api.start({
-          x: currentPositionRef.current.x + mx,
-          y: currentPositionRef.current.y + my,
-          scale: 1.1,
-          rotation: finalRotation,
-          immediate: (key) => key !== 'rotation', // Position immediate, rotation smooth
-          config: { tension: 200, friction: 30 }, // Smoother rotation spring
-        })
-      } else {
-        // On release, reset transform origin to center
-        setTransformOrigin('center center')
-
-        // Update current position to where the card was dropped
-        currentPositionRef.current.x = currentPositionRef.current.x + mx
-        currentPositionRef.current.y = currentPositionRef.current.y + my
-
-        // First, snap the spring to the dropped position immediately
-        api.set({
-          x: currentPositionRef.current.x,
-          y: currentPositionRef.current.y,
-        })
-
-        // On release, apply momentum with decay physics
-        const throwVelocityX = lastVelocityRef.current.vx * 1000
-        const throwVelocityY = lastVelocityRef.current.vy * 1000
-
-        // Calculate final rotation based on throw direction
-        const throwAngle = Math.atan2(throwVelocityY, throwVelocityX) * (180 / Math.PI)
-
-        // Start position decay and rotation/scale animations
-        api.start({
-          x: {
-            velocity: throwVelocityX,
-            config: { decay: true },
-          },
-          y: {
-            velocity: throwVelocityY,
-            config: { decay: true },
-          },
-          scale: {
-            value: 1,
-            config: config.wobbly,
-          },
-          rotation: {
-            value: throwAngle + 90, // Card aligns with throw direction
-            config: config.wobbly,
-          },
-          onChange: (result) => {
-            // Continue updating position as card settles with momentum
-            if (result.value.x !== undefined) {
-              currentPositionRef.current.x = result.value.x
-            }
-            if (result.value.y !== undefined) {
-              currentPositionRef.current.y = result.value.y
-            }
-            if (result.value.rotation !== undefined) {
-              currentPositionRef.current.rotation = result.value.rotation
-            }
-          },
-        })
-      }
-    },
-    {
-      // Prevent scrolling when dragging
-      preventDefault: true,
-      filterTaps: true,
+    // Record where the drag started (pointer position and card position)
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      cardX: position.x,
+      cardY: position.y,
     }
-  )
+  }
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging || !dragStartRef.current) return
+
+    // Calculate how far the pointer has moved since drag started
+    const deltaX = e.clientX - dragStartRef.current.x
+    const deltaY = e.clientY - dragStartRef.current.y
+
+    // Update card position
+    setPosition({
+      x: dragStartRef.current.cardX + deltaX,
+      y: dragStartRef.current.cardY + deltaY,
+    })
+  }
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false)
+    dragStartRef.current = null
+
+    // Release the pointer capture
+    e.currentTarget.releasePointerCapture(e.pointerId)
+  }
 
   return (
-    <animated.div
-      ref={cardRef}
-      {...bind()}
+    <div
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       style={{
         position: 'absolute',
         left: 0,
         top: 0,
-        transform: to(
-          [x, y, rotation, scale],
-          (x, y, r, s) => `translate(${x}px, ${y}px) rotate(${r}deg) scale(${s})`
-        ),
-        transformOrigin,
+        transform: `translate(${position.x}px, ${position.y}px) rotate(${rotation}deg) scale(${isDragging ? 1.05 : 1})`,
         zIndex,
         touchAction: 'none',
-        cursor: 'grab',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        transition: isDragging ? 'none' : 'transform 0.2s ease-out',
       }}
       className={css({
         userSelect: 'none',
-        _active: {
-          cursor: 'grabbing',
-        },
       })}
     >
       <div
@@ -282,7 +163,9 @@ function DraggableCard({ card }: DraggableCardProps) {
           bg: 'white',
           rounded: 'lg',
           p: '4',
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+          boxShadow: isDragging
+            ? '0 16px 48px rgba(0, 0, 0, 0.5)'
+            : '0 8px 24px rgba(0, 0, 0, 0.3)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -290,9 +173,6 @@ function DraggableCard({ card }: DraggableCardProps) {
           minW: '120px',
           border: '2px solid rgba(0, 0, 0, 0.1)',
           transition: 'box-shadow 0.2s',
-          _hover: {
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.4)',
-          },
         })}
       >
         {/* Abacus visualization */}
@@ -317,6 +197,6 @@ function DraggableCard({ card }: DraggableCardProps) {
           {card.number}
         </div>
       </div>
-    </animated.div>
+    </div>
   )
 }
