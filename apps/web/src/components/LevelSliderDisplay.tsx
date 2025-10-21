@@ -412,8 +412,9 @@ export function LevelSliderDisplay({
                   ? 'violet.500'
                   : 'amber.500',
           rounded: 'xl',
-          p: { base: '6', md: '8' },
+          p: { base: '4', md: '8' },
           height: { base: 'auto', md: '700px' },
+          maxHeight: { base: '500px', md: 'none' },
           display: 'flex',
           flexDirection: 'column',
         })}
