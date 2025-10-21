@@ -622,6 +622,7 @@ export function LevelSliderDisplay({
             borderColor: 'gray.700',
             overflow: 'hidden',
             flex: 1,
+            minH: 0, // Allow flex shrinking
           })}
         >
           {/* Level Details (only for Kyu levels) */}
@@ -640,16 +641,12 @@ export function LevelSliderDisplay({
                 <div
                   className={css({
                     flex: '0 0 auto',
-                    display: 'grid',
-                    gridTemplateColumns: {
-                      base: 'repeat(2, 1fr)',
-                      sm: 'repeat(3, 1fr)',
-                      lg: 'repeat(2, 1fr)',
-                    },
+                    display: { base: 'none', lg: 'grid' },
+                    gridTemplateColumns: 'repeat(2, 1fr)',
                     gap: '2',
                     p: '2',
                     w: '100%',
-                    maxW: { base: '100%', lg: '400px' },
+                    maxW: '400px',
                     alignContent: 'center',
                     justifyItems: 'center',
                   })}
@@ -748,7 +745,7 @@ export function LevelSliderDisplay({
               ) : null
             })()}
 
-          {/* Abacus (right-aligned for Kyu, centered for Dan) */}
+          {/* Abacus (centered on mobile, right-aligned for Kyu on desktop, centered for Dan) */}
           <div
             className={css({
               display: 'flex',
@@ -759,6 +756,7 @@ export function LevelSliderDisplay({
               overflowX: 'auto',
               overflowY: 'hidden',
               minW: 0, // Allow flex shrinking
+              minH: 0, // Allow flex shrinking
             })}
           >
             <animated.div
