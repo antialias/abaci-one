@@ -149,24 +149,24 @@ export default function HomePage() {
                 border: '1px solid',
                 borderColor: 'gray.700',
                 shadow: 'lg',
-                minW: '1400px',
+                minW: { base: '100%', xl: '1400px' },
                 mx: 'auto',
               })}
             >
               <div
                 className={css({
                   display: 'flex',
-                  flexDirection: { base: 'column', md: 'row' },
+                  flexDirection: { base: 'column', xl: 'row' },
                   gap: '8',
-                  alignItems: { base: 'center', md: 'flex-start' },
+                  alignItems: { base: 'center', xl: 'flex-start' },
                 })}
               >
                 {/* Tutorial on the left */}
                 <div
                   className={css({
                     flex: '1',
-                    minW: { base: '100%', md: '500px' },
-                    maxW: { base: '100%', md: '500px' },
+                    minW: { base: '100%', xl: '500px' },
+                    maxW: { base: '100%', xl: '500px' },
                   })}
                 >
                   <TutorialPlayer
