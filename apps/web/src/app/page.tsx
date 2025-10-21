@@ -397,7 +397,7 @@ export default function HomePage() {
             </section>
 
             {/* Progression Visualization */}
-            <section className={stack({ gap: '6', mb: '16' })}>
+            <section className={stack({ gap: '6', mb: '16', overflow: 'hidden' })}>
               <div className={css({ textAlign: 'center' })}>
                 <h2
                   className={css({
