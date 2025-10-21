@@ -188,7 +188,7 @@ export default function HomePage() {
                   <div
                     className={css({
                       flex: '0 0 auto',
-                      w: { base: '100%', md: '650px' },
+                      w: { base: '100%', lg: '650px' },
                     })}
                   >
                     <h3
