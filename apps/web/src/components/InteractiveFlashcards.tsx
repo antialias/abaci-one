@@ -200,6 +200,12 @@ function DraggableCard({ card }: DraggableCardProps) {
         currentPositionRef.current.x = currentPositionRef.current.x + mx
         currentPositionRef.current.y = currentPositionRef.current.y + my
 
+        // First, snap the spring to the dropped position immediately
+        api.set({
+          x: currentPositionRef.current.x,
+          y: currentPositionRef.current.y,
+        })
+
         // On release, apply momentum with decay physics
         const throwVelocityX = lastVelocityRef.current.vx * 1000
         const throwVelocityY = lastVelocityRef.current.vy * 1000
@@ -209,14 +215,12 @@ function DraggableCard({ card }: DraggableCardProps) {
 
         api.start({
           x: {
-            from: currentPositionRef.current.x,
             velocity: throwVelocityX,
-            decay: true,
+            config: { decay: true },
           },
           y: {
-            from: currentPositionRef.current.y,
             velocity: throwVelocityY,
-            decay: true,
+            config: { decay: true },
           },
           scale: 1,
           rotation: throwAngle + 90, // Card aligns with throw direction
