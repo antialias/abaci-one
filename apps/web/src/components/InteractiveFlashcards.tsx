@@ -103,6 +103,7 @@ function DraggableCard({ card }: DraggableCardProps) {
   const dragStartRef = useRef<{ x: number; y: number; cardX: number; cardY: number } | null>(null)
   const lastMoveTimeRef = useRef<number>(0)
   const lastMovePositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const lastLogTimeRef = useRef<number>(0) // Separate throttling for logging
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true)
@@ -121,8 +122,10 @@ function DraggableCard({ card }: DraggableCardProps) {
     }
 
     // Initialize velocity tracking
-    lastMoveTimeRef.current = Date.now()
+    const now = Date.now()
+    lastMoveTimeRef.current = now
     lastMovePositionRef.current = { x: e.clientX, y: e.clientY }
+    lastLogTimeRef.current = now
 
     console.log('[Shadow] Drag started, speed reset to 0')
   }
@@ -150,11 +153,13 @@ function DraggableCard({ card }: DraggableCardProps) {
 
       setDragSpeed(scaledSpeed)
 
-      // Log occasionally (every ~100ms) to avoid console spam
-      if (timeDelta > 100) {
+      // Log occasionally (every ~200ms) to avoid console spam
+      const timeSinceLastLog = now - lastLogTimeRef.current
+      if (timeSinceLastLog > 200) {
         console.log(
-          `[Shadow] Speed: ${scaledSpeed.toFixed(1)}, distance: ${distance.toFixed(0)}px, time: ${timeDelta}ms`
+          `[Shadow] Speed: ${scaledSpeed.toFixed(1)}, distance: ${distance.toFixed(0)}px, timeDelta: ${timeDelta}ms`
         )
+        lastLogTimeRef.current = now
       }
 
       lastMoveTimeRef.current = now
