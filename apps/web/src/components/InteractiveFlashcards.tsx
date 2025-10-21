@@ -81,7 +81,7 @@ export function InteractiveFlashcards() {
       })}
     >
       {cards.map((card) => (
-        <DraggableCard key={card.id} card={card} />
+        <DraggableCard key={card.id} card={card} containerRef={containerRef} />
       ))}
     </div>
   )
@@ -89,9 +89,10 @@ export function InteractiveFlashcards() {
 
 interface DraggableCardProps {
   card: Flashcard
+  containerRef: React.RefObject<HTMLDivElement>
 }
 
-function DraggableCard({ card }: DraggableCardProps) {
+function DraggableCard({ card, containerRef }: DraggableCardProps) {
   // Track position - starts at initial, updates when dragged
   const [position, setPosition] = useState({ x: card.initialX, y: card.initialY })
   const [rotation, setRotation] = useState(card.initialRotation) // Now dynamic!
@@ -206,11 +207,46 @@ function DraggableCard({ card }: DraggableCardProps) {
       )
     }
 
-    // Update card position - simple delta from drag start
-    // The rotation is visual only and happens around the card's center via CSS transform-origin
+    // Update card position - keep grab point under cursor while rotating
+    // Calculate the rotated grab offset
+    const rotationRad = (clampedRotation * Math.PI) / 180
+    const cosRot = Math.cos(rotationRad)
+    const sinRot = Math.sin(rotationRad)
+
+    // Rotate the grab offset by the current rotation angle
+    const rotatedGrabX = grabOffsetRef.current.x * cosRot - grabOffsetRef.current.y * sinRot
+    const rotatedGrabY = grabOffsetRef.current.x * sinRot + grabOffsetRef.current.y * cosRot
+
+    // Get container bounds for coordinate conversion
+    if (!containerRef.current || !cardRef.current) {
+      // Fallback to simple delta if refs not ready
+      setPosition({
+        x: dragStartRef.current.cardX + deltaX,
+        y: dragStartRef.current.cardY + deltaY,
+      })
+      return
+    }
+
+    const containerRect = containerRef.current.getBoundingClientRect()
+    const cardRect = cardRef.current.getBoundingClientRect()
+
+    // Current cursor position in viewport space
+    const cursorViewportX = e.clientX
+    const cursorViewportY = e.clientY
+
+    // Card center should be at: cursor - rotated grab offset (viewport space)
+    const cardCenterViewportX = cursorViewportX - rotatedGrabX
+    const cardCenterViewportY = cursorViewportY - rotatedGrabY
+
+    // Convert card center from viewport space to container space
+    const cardCenterContainerX = cardCenterViewportX - containerRect.left
+    const cardCenterContainerY = cardCenterViewportY - containerRect.top
+
+    // position.x/y represents translate() which positions the top-left corner
+    // So we need: top-left = center - (width/2, height/2)
     setPosition({
-      x: dragStartRef.current.cardX + deltaX,
-      y: dragStartRef.current.cardY + deltaY,
+      x: cardCenterContainerX - cardRect.width / 2,
+      y: cardCenterContainerY - cardRect.height / 2,
     })
   }
 
