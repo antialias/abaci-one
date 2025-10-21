@@ -201,10 +201,10 @@ export default function HomePage() {
                     >
                       What You'll Learn
                     </h3>
-                    <div className={stack({ gap: '5' })}>
+                    <div className={grid({ columns: { base: 1, lg: 2 }, gap: '5' })}>
                       {[
                         {
-                          title: 'Read and set numbers',
+                          title: '📖 Read and set numbers',
                           desc: 'Master abacus number representation from zero to thousands',
                           example: '0-9999',
                           badge: 'Foundation',
@@ -212,7 +212,7 @@ export default function HomePage() {
                           columns: 3,
                         },
                         {
-                          title: 'Friends techniques',
+                          title: '🤝 Friends techniques',
                           desc: 'Add and subtract using complement pairs and mental shortcuts',
                           example: '5 = 2+3',
                           badge: 'Core',
@@ -220,7 +220,7 @@ export default function HomePage() {
                           columns: 1,
                         },
                         {
-                          title: 'Multiply & divide',
+                          title: '✖️ Multiply & divide',
                           desc: 'Fluent multi-digit calculations with advanced techniques',
                           example: '12×34',
                           badge: 'Advanced',
@@ -228,7 +228,7 @@ export default function HomePage() {
                           columns: 2,
                         },
                         {
-                          title: 'Mental calculation',
+                          title: '🧠 Mental calculation',
                           desc: 'Visualize and compute without the physical tool (Anzan)',
                           example: 'Speed math',
                           badge: 'Expert',
@@ -246,7 +246,7 @@ export default function HomePage() {
                                 ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(250, 204, 21, 0.08))'
                                 : 'linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03))',
                               borderRadius: 'xl',
-                              p: '4',
+                              p: { base: '4', lg: '5' },
                               border: '1px solid',
                               borderColor: isSelected
                                 ? 'rgba(250, 204, 21, 0.4)'
@@ -275,7 +275,7 @@ export default function HomePage() {
                                 className={css({
                                   fontSize: '3xl',
                                   width: '75px',
-                                  height: '115px',
+                                  height: { base: '115px', lg: '140px' },
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
