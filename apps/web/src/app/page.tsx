@@ -288,8 +288,14 @@ export default function HomePage() {
                               >
                                 <MiniAbacus values={skill.values} columns={skill.columns} />
                               </div>
-                              <div className={stack({ gap: '2', flex: '1' })}>
-                                <div className={hstack({ gap: '2', alignItems: 'center' })}>
+                              <div className={stack({ gap: '2', flex: '1', minWidth: '0' })}>
+                                <div
+                                  className={hstack({
+                                    gap: '2',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                  })}
+                                >
                                   <div
                                     className={css({
                                       color: 'white',
