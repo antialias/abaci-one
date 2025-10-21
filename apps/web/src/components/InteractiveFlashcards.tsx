@@ -94,16 +94,19 @@ interface DraggableCardProps {
 function DraggableCard({ card }: DraggableCardProps) {
   // Track position - starts at initial, updates when dragged
   const [position, setPosition] = useState({ x: card.initialX, y: card.initialY })
-  const [rotation] = useState(card.initialRotation)
+  const [rotation, setRotation] = useState(card.initialRotation) // Now dynamic!
   const [zIndex, setZIndex] = useState(card.zIndex)
   const [isDragging, setIsDragging] = useState(false)
   const [dragSpeed, setDragSpeed] = useState(0) // Speed for dynamic shadow
 
   // Track drag state
   const dragStartRef = useRef<{ x: number; y: number; cardX: number; cardY: number } | null>(null)
+  const grabOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 }) // Offset from card center where grabbed
+  const baseRotationRef = useRef(card.initialRotation) // Starting rotation
   const lastMoveTimeRef = useRef<number>(0)
   const lastMovePositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const lastLogTimeRef = useRef<number>(0) // Separate throttling for logging
+  const cardRef = useRef<HTMLDivElement>(null) // Reference to card element
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true)
@@ -120,6 +123,23 @@ function DraggableCard({ card }: DraggableCardProps) {
       cardX: position.x,
       cardY: position.y,
     }
+
+    // Calculate grab offset from card center
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect()
+      const cardCenterX = rect.left + rect.width / 2
+      const cardCenterY = rect.top + rect.height / 2
+      grabOffsetRef.current = {
+        x: e.clientX - cardCenterX,
+        y: e.clientY - cardCenterY,
+      }
+      console.log(
+        `[GrabPoint] Grabbed at offset: (${grabOffsetRef.current.x.toFixed(0)}, ${grabOffsetRef.current.y.toFixed(0)})px from center`
+      )
+    }
+
+    // Store the current rotation as the base for this drag
+    baseRotationRef.current = rotation
 
     // Initialize velocity tracking
     const now = Date.now()
@@ -166,6 +186,18 @@ function DraggableCard({ card }: DraggableCardProps) {
       lastMovePositionRef.current = { x: e.clientX, y: e.clientY }
     }
 
+    // Calculate rotation based on grab point physics
+    // Cross product of grab offset and drag direction determines rotation
+    // If grabbed on left and dragged right → clockwise rotation
+    // If grabbed on right and dragged left → counter-clockwise rotation
+    const crossProduct = grabOffsetRef.current.x * deltaY - grabOffsetRef.current.y * deltaX
+    const rotationInfluence = crossProduct / 5000 // Scale factor for reasonable rotation (adjust as needed)
+    const newRotation = baseRotationRef.current + rotationInfluence
+
+    // Clamp rotation to prevent excessive spinning
+    const clampedRotation = Math.max(-45, Math.min(45, newRotation))
+    setRotation(clampedRotation)
+
     // Update card position
     setPosition({
       x: dragStartRef.current.cardX + deltaX,
@@ -178,6 +210,9 @@ function DraggableCard({ card }: DraggableCardProps) {
     dragStartRef.current = null
 
     console.log('[Shadow] Drag released, speed decaying to 0')
+    console.log(
+      `[GrabPoint] Final rotation: ${rotation.toFixed(1)}° (base was ${baseRotationRef.current.toFixed(1)}°)`
+    )
 
     // Gradually decay speed back to 0 for smooth shadow transition
     const decayInterval = setInterval(() => {
@@ -205,6 +240,7 @@ function DraggableCard({ card }: DraggableCardProps) {
 
   return (
     <div
+      ref={cardRef}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
