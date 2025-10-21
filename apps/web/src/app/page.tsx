@@ -54,14 +54,14 @@ function MiniAbacus({
   return (
     <div
       className={css({
-        width: '75px',
-        height: '80px',
+        width: '100%',
+        height: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
       })}
     >
-      <div className={css({ transform: 'scale(0.6)', transformOrigin: 'center center' })}>
+      <div className={css({ transform: 'scale(0.75)', transformOrigin: 'center center' })}>
         <AbacusReact
           value={values[currentIndex] || 0}
           columns={columns}
