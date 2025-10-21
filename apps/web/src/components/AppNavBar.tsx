@@ -612,7 +612,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                     color: 'rgba(255, 255, 255, 0.95)',
                   })}
                 >
-                  🧮 Abaci One
+                  Abaci One
                 </span>
                 <Tooltip.Root>
                   <Tooltip.Trigger asChild>
@@ -623,6 +623,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                         color: 'rgba(196, 181, 253, 0.8)',
                         fontStyle: 'italic',
                         cursor: 'help',
+                        whiteSpace: 'nowrap',
                         _hover: { color: 'rgba(196, 181, 253, 1)' },
                       })}
                     >
