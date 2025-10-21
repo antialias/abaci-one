@@ -191,12 +191,20 @@ function DraggableCard({ card }: DraggableCardProps) {
     // If grabbed on left and dragged right → clockwise rotation
     // If grabbed on right and dragged left → counter-clockwise rotation
     const crossProduct = grabOffsetRef.current.x * deltaY - grabOffsetRef.current.y * deltaX
-    const rotationInfluence = crossProduct / 5000 // Scale factor for reasonable rotation (adjust as needed)
+    const rotationInfluence = crossProduct / 500 // Reduced scale factor for more visible rotation
     const newRotation = baseRotationRef.current + rotationInfluence
 
     // Clamp rotation to prevent excessive spinning
     const clampedRotation = Math.max(-45, Math.min(45, newRotation))
     setRotation(clampedRotation)
+
+    // Log rotation changes occasionally (same throttle as shadow logging)
+    const timeSinceLastLog = now - lastLogTimeRef.current
+    if (timeSinceLastLog > 200) {
+      console.log(
+        `[GrabPoint] Rotation: ${clampedRotation.toFixed(1)}° (influence: ${rotationInfluence.toFixed(1)}°, cross: ${crossProduct.toFixed(0)})`
+      )
+    }
 
     // Update card position
     setPosition({
