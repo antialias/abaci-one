@@ -275,7 +275,7 @@ export default function HomePage() {
                                 className={css({
                                   fontSize: '3xl',
                                   width: '75px',
-                                  height: { base: '115px', lg: '140px' },
+                                  minHeight: { base: '115px', lg: '140px' },
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
