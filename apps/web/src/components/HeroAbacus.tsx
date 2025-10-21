@@ -131,7 +131,7 @@ export function HeroAbacus() {
       >
         <div
           className={css({
-            transform: { base: 'scale(3)', md: 'scale(4.5)', lg: 'scale(6)' },
+            transform: { base: 'scale(2.8)', md: 'scale(3.5)', lg: 'scale(4.25)' },
             transformOrigin: 'center center',
             transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           })}
