@@ -125,17 +125,27 @@ function DraggableCard({ card, containerRef }: DraggableCardProps) {
       cardY: position.y,
     }
 
-    // Calculate grab offset from card center
+    // Calculate grab offset from card center IN LOCAL COORDINATES (unrotated)
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect()
       const cardCenterX = rect.left + rect.width / 2
       const cardCenterY = rect.top + rect.height / 2
+
+      // Screen-space offset from center
+      const screenOffsetX = e.clientX - cardCenterX
+      const screenOffsetY = e.clientY - cardCenterY
+
+      // Convert to local coordinates by rotating by -rotation
+      const currentRotationRad = (rotation * Math.PI) / 180
+      const cosRot = Math.cos(-currentRotationRad)
+      const sinRot = Math.sin(-currentRotationRad)
+
       grabOffsetRef.current = {
-        x: e.clientX - cardCenterX,
-        y: e.clientY - cardCenterY,
+        x: screenOffsetX * cosRot - screenOffsetY * sinRot,
+        y: screenOffsetX * sinRot + screenOffsetY * cosRot,
       }
       console.log(
-        `[GrabPoint] Grabbed at offset: (${grabOffsetRef.current.x.toFixed(0)}, ${grabOffsetRef.current.y.toFixed(0)})px from center`
+        `[GrabPoint] Grabbed at local offset: (${grabOffsetRef.current.x.toFixed(0)}, ${grabOffsetRef.current.y.toFixed(0)})px (screen offset: ${screenOffsetX.toFixed(0)}, ${screenOffsetY.toFixed(0)}px, rotation: ${rotation.toFixed(1)}°)`
       )
     }
 
