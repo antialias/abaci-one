@@ -576,10 +576,11 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
     <Tooltip.Provider delayDuration={200}>
       <header
         className={css({
-          bg: isTransparent ? 'transparent' : 'white',
-          shadow: isTransparent ? 'none' : 'sm',
-          borderBottom: isTransparent ? 'none' : '1px solid',
-          borderColor: isTransparent ? 'transparent' : 'gray.200',
+          bg: isTransparent ? 'transparent' : 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: isTransparent ? 'none' : 'blur(12px)',
+          shadow: isTransparent ? 'none' : 'lg',
+          borderBottom: '1px solid',
+          borderColor: isTransparent ? 'transparent' : 'rgba(139, 92, 246, 0.2)',
           position: 'fixed',
           top: 0,
           left: 0,
@@ -599,7 +600,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                   flexDirection: 'column',
                   gap: '0',
                   textDecoration: 'none',
-                  _hover: { '& > .brand-name': { color: 'brand.900' } },
+                  _hover: { '& > .brand-name': { color: 'rgba(196, 181, 253, 1)' } },
                   opacity: 0,
                   animation: 'fadeIn 0.3s ease-out forwards',
                 })}
@@ -608,7 +609,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                   className={css({
                     fontSize: 'xl',
                     fontWeight: 'bold',
-                    color: 'brand.800',
+                    color: 'rgba(255, 255, 255, 0.95)',
                   })}
                 >
                   🧮 Abaci One
@@ -619,10 +620,10 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                       className={css({
                         fontSize: 'xs',
                         fontWeight: 'medium',
-                        color: 'brand.600',
+                        color: 'rgba(196, 181, 253, 0.8)',
                         fontStyle: 'italic',
                         cursor: 'help',
-                        _hover: { color: 'brand.700' },
+                        _hover: { color: 'rgba(196, 181, 253, 1)' },
                       })}
                     >
                       {subtitle.text}
@@ -729,14 +730,14 @@ function NavLink({
             ? 'white'
             : 'rgba(255, 255, 255, 0.8)'
           : isActive
-            ? 'brand.700'
-            : 'gray.600',
+            ? 'rgba(196, 181, 253, 1)'
+            : 'rgba(209, 213, 219, 0.9)',
         bg: isTransparent
           ? isActive
             ? 'rgba(255, 255, 255, 0.15)'
             : 'transparent'
           : isActive
-            ? 'brand.50'
+            ? 'rgba(139, 92, 246, 0.2)'
             : 'transparent',
         rounded: 'lg',
         transition: 'all',
@@ -745,8 +746,8 @@ function NavLink({
         alignItems: 'center',
         justifyContent: 'center',
         _hover: {
-          color: isTransparent ? 'white' : isActive ? 'brand.800' : 'gray.900',
-          bg: isTransparent ? 'rgba(255, 255, 255, 0.2)' : isActive ? 'brand.100' : 'gray.50',
+          color: isTransparent ? 'white' : 'rgba(196, 181, 253, 1)',
+          bg: isTransparent ? 'rgba(255, 255, 255, 0.2)' : 'rgba(139, 92, 246, 0.25)',
         },
       })}
     >
