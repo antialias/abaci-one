@@ -448,7 +448,7 @@ export function LevelSliderDisplay({
                     key={index}
                     onClick={() => setCurrentIndex(index)}
                     className={css({
-                      fontSize: '4xl',
+                      fontSize: { base: '2xl', sm: '3xl', md: '4xl' },
                       opacity: index === currentIndex ? '1' : '0.3',
                       transition: 'all 0.2s',
                       cursor: 'pointer',
@@ -500,8 +500,8 @@ export function LevelSliderDisplay({
                   alignItems: 'center',
                   justifyContent: 'center',
                   position: 'relative',
-                  w: '180px',
-                  h: '128px',
+                  w: { base: '120px', md: '180px' },
+                  h: { base: '96px', md: '128px' },
                   bg: 'transparent',
                   cursor: 'grab',
                   transition: 'transform 0.15s ease-out, left 0.3s ease-out',
@@ -514,7 +514,12 @@ export function LevelSliderDisplay({
                   _active: { cursor: 'grabbing' },
                 })}
               >
-                <div className={css({ opacity: 0.75 })}>
+                <div
+                  className={css({
+                    opacity: 0.75,
+                    transform: { base: 'scale(0.75)', md: 'scale(1)' },
+                  })}
+                >
                   <StandaloneBead
                     size={128}
                     color={currentLevel.color === 'violet' ? '#8b5cf6' : '#22c55e'}
@@ -607,8 +612,9 @@ export function LevelSliderDisplay({
         <div
           className={css({
             display: 'flex',
+            flexDirection: { base: 'column', lg: 'row' },
             gap: '4',
-            p: '6',
+            p: { base: '4', md: '6' },
             bg: 'rgba(0, 0, 0, 0.3)',
             rounded: 'lg',
             border: '1px solid',
@@ -634,11 +640,17 @@ export function LevelSliderDisplay({
                   className={css({
                     flex: '0 0 auto',
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gridTemplateColumns: {
+                      base: 'repeat(2, 1fr)',
+                      sm: 'repeat(3, 1fr)',
+                      lg: 'repeat(2, 1fr)',
+                    },
                     gap: '2',
                     p: '2',
-                    maxW: '400px',
+                    w: '100%',
+                    maxW: { base: '100%', lg: '400px' },
                     alignContent: 'center',
+                    justifyItems: 'center',
                   })}
                 >
                   {sections.map((section, idx) => {
@@ -666,8 +678,10 @@ export function LevelSliderDisplay({
                           justifyContent: 'center',
                           gap: '1.5',
                           opacity: hasData ? 1 : 0.3,
-                          width: '170px',
-                          height: '150px',
+                          w: { base: '100%', sm: 'auto' },
+                          minW: { sm: '140px' },
+                          maxW: { base: '170px', sm: '170px' },
+                          minH: '150px',
                           _hover: hasData
                             ? {
                                 borderColor: 'gray.500',
@@ -737,9 +751,13 @@ export function LevelSliderDisplay({
           <div
             className={css({
               display: 'flex',
-              justifyContent: currentLevel.type === 'kyu' ? 'flex-end' : 'center',
+              justifyContent:
+                currentLevel.type === 'kyu' ? { base: 'center', lg: 'flex-end' } : 'center',
               alignItems: 'center',
               flex: 1,
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              minW: 0, // Allow flex shrinking
             })}
           >
             <animated.div
