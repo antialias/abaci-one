@@ -575,11 +575,15 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   return (
     <Tooltip.Provider delayDuration={200}>
       <header
+        style={{
+          background: isTransparent
+            ? 'transparent'
+            : 'linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.5) calc(100% - 10px), transparent 100%)',
+        }}
         className={css({
-          bg: isTransparent ? 'transparent' : 'rgba(0, 0, 0, 0.5)',
           backdropFilter: isTransparent ? 'none' : 'blur(12px)',
           shadow: isTransparent ? 'none' : 'lg',
-          borderBottom: '1px solid',
+          borderBottom: isTransparent ? 'none' : '1px solid',
           borderColor: isTransparent ? 'transparent' : 'rgba(139, 92, 246, 0.2)',
           position: 'fixed',
           top: 0,
