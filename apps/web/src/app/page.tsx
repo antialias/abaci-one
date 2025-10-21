@@ -274,7 +274,7 @@ export default function HomePage() {
                               <div
                                 className={css({
                                   fontSize: '3xl',
-                                  width: { base: '95px', lg: '110px' },
+                                  width: { base: '120px', lg: '150px' },
                                   minHeight: { base: '115px', lg: '140px' },
                                   display: 'flex',
                                   alignItems: 'center',
