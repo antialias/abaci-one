@@ -206,11 +206,45 @@ function DraggableCard({ card }: DraggableCardProps) {
       )
     }
 
-    // Update card position
-    setPosition({
-      x: dragStartRef.current.cardX + deltaX,
-      y: dragStartRef.current.cardY + deltaY,
-    })
+    // Update card position - keep the grab point "stuck" to the cursor
+    // As the card rotates, the grab point rotates with it, so we need to account for rotation
+    const rotationRad = (clampedRotation * Math.PI) / 180
+    const cosRot = Math.cos(rotationRad)
+    const sinRot = Math.sin(rotationRad)
+
+    // Rotate the grab offset by the current rotation angle
+    const rotatedGrabX = grabOffsetRef.current.x * cosRot - grabOffsetRef.current.y * sinRot
+    const rotatedGrabY = grabOffsetRef.current.x * sinRot + grabOffsetRef.current.y * cosRot
+
+    // Current cursor position
+    const cursorX = e.clientX
+    const cursorY = e.clientY
+
+    // Card center should be at: cursor position - rotated grab offset
+    // But we need to position the card element (top-left), not the center
+    // Get card dimensions to calculate offset from center to top-left
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect()
+      const cardWidth = rect.width
+      const cardHeight = rect.height
+
+      // Card center position in screen space
+      const cardCenterX = cursorX - rotatedGrabX
+      const cardCenterY = cursorY - rotatedGrabY
+
+      // Convert center position to top-left position (what we store in position state)
+      // Note: position.x/y is used in translate(), which positions the element
+      setPosition({
+        x: cardCenterX - cardWidth / 2,
+        y: cardCenterY - cardHeight / 2,
+      })
+    } else {
+      // Fallback to simple delta if we don't have card dimensions yet
+      setPosition({
+        x: dragStartRef.current.cardX + deltaX,
+        y: dragStartRef.current.cardY + deltaY,
+      })
+    }
   }
 
   const handlePointerUp = (e: React.PointerEvent) => {
