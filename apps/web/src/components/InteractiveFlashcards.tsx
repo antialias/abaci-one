@@ -213,6 +213,7 @@ function DraggableCard({ card }: DraggableCardProps) {
         // Calculate final rotation based on throw direction
         const throwAngle = Math.atan2(throwVelocityY, throwVelocityX) * (180 / Math.PI)
 
+        // Start position decay and rotation/scale animations
         api.start({
           x: {
             velocity: throwVelocityX,
@@ -222,9 +223,14 @@ function DraggableCard({ card }: DraggableCardProps) {
             velocity: throwVelocityY,
             config: { decay: true },
           },
-          scale: 1,
-          rotation: throwAngle + 90, // Card aligns with throw direction
-          config: config.wobbly,
+          scale: {
+            value: 1,
+            config: config.wobbly,
+          },
+          rotation: {
+            value: throwAngle + 90, // Card aligns with throw direction
+            config: config.wobbly,
+          },
           onChange: (result) => {
             // Continue updating position as card settles with momentum
             if (result.value.x !== undefined) {
