@@ -719,7 +719,7 @@ function NavLink({
     <Link
       href={href}
       style={{
-        backdropFilter: isTransparent ? 'none' : 'blur(8px)',
+        backdropFilter: isTransparent ? 'blur(8px)' : 'none',
       }}
       className={css({
         px: { base: '4', md: '3' },
@@ -737,29 +737,29 @@ function NavLink({
             : 'rgba(209, 213, 219, 0.9)',
         bg: isTransparent
           ? isActive
-            ? 'rgba(255, 255, 255, 0.15)'
-            : 'transparent'
+            ? 'rgba(255, 255, 255, 0.2)'
+            : 'rgba(255, 255, 255, 0.08)'
           : isActive
-            ? 'rgba(139, 92, 246, 0.25)'
-            : 'rgba(255, 255, 255, 0.08)',
-        border: isTransparent ? 'none' : '1px solid',
+            ? 'rgba(139, 92, 246, 0.2)'
+            : 'transparent',
+        border: isTransparent ? '1px solid' : 'none',
         borderColor: isTransparent
-          ? 'transparent'
-          : isActive
-            ? 'rgba(139, 92, 246, 0.3)'
-            : 'rgba(255, 255, 255, 0.15)',
+          ? isActive
+            ? 'rgba(255, 255, 255, 0.3)'
+            : 'rgba(255, 255, 255, 0.15)'
+          : 'transparent',
         rounded: 'lg',
         transition: 'all',
         textDecoration: 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: isTransparent ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.2)',
+        boxShadow: isTransparent ? '0 2px 8px rgba(0, 0, 0, 0.2)' : 'none',
         _hover: {
           color: isTransparent ? 'white' : 'rgba(196, 181, 253, 1)',
-          bg: isTransparent ? 'rgba(255, 255, 255, 0.2)' : 'rgba(139, 92, 246, 0.3)',
-          borderColor: isTransparent ? 'transparent' : 'rgba(139, 92, 246, 0.4)',
-          boxShadow: isTransparent ? 'none' : '0 4px 12px rgba(139, 92, 246, 0.2)',
+          bg: isTransparent ? 'rgba(255, 255, 255, 0.25)' : 'rgba(139, 92, 246, 0.25)',
+          borderColor: isTransparent ? 'rgba(255, 255, 255, 0.4)' : 'transparent',
+          boxShadow: isTransparent ? '0 4px 12px rgba(0, 0, 0, 0.3)' : 'none',
         },
       })}
     >
