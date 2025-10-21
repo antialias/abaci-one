@@ -97,13 +97,17 @@ function DraggableCard({ card }: DraggableCardProps) {
   const [rotation] = useState(card.initialRotation)
   const [zIndex, setZIndex] = useState(card.zIndex)
   const [isDragging, setIsDragging] = useState(false)
+  const [dragSpeed, setDragSpeed] = useState(0) // Speed for dynamic shadow
 
   // Track drag state
   const dragStartRef = useRef<{ x: number; y: number; cardX: number; cardY: number } | null>(null)
+  const lastMoveTimeRef = useRef<number>(0)
+  const lastMovePositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true)
     setZIndex(1000) // Bring to front
+    setDragSpeed(0)
 
     // Capture the pointer
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -115,6 +119,12 @@ function DraggableCard({ card }: DraggableCardProps) {
       cardX: position.x,
       cardY: position.y,
     }
+
+    // Initialize velocity tracking
+    lastMoveTimeRef.current = Date.now()
+    lastMovePositionRef.current = { x: e.clientX, y: e.clientY }
+
+    console.log('[Shadow] Drag started, speed reset to 0')
   }
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -123,6 +133,33 @@ function DraggableCard({ card }: DraggableCardProps) {
     // Calculate how far the pointer has moved since drag started
     const deltaX = e.clientX - dragStartRef.current.x
     const deltaY = e.clientY - dragStartRef.current.y
+
+    // Calculate velocity for dynamic shadow
+    const now = Date.now()
+    const timeDelta = now - lastMoveTimeRef.current
+
+    if (timeDelta > 0) {
+      // Distance moved since last frame
+      const distX = e.clientX - lastMovePositionRef.current.x
+      const distY = e.clientY - lastMovePositionRef.current.y
+      const distance = Math.sqrt(distX * distX + distY * distY)
+
+      // Speed in pixels per millisecond, then convert to reasonable scale
+      const speed = distance / timeDelta
+      const scaledSpeed = Math.min(speed * 100, 100) // Cap at 100 for reasonable shadow size
+
+      setDragSpeed(scaledSpeed)
+
+      // Log occasionally (every ~100ms) to avoid console spam
+      if (timeDelta > 100) {
+        console.log(
+          `[Shadow] Speed: ${scaledSpeed.toFixed(1)}, distance: ${distance.toFixed(0)}px, time: ${timeDelta}ms`
+        )
+      }
+
+      lastMoveTimeRef.current = now
+      lastMovePositionRef.current = { x: e.clientX, y: e.clientY }
+    }
 
     // Update card position
     setPosition({
@@ -135,9 +172,31 @@ function DraggableCard({ card }: DraggableCardProps) {
     setIsDragging(false)
     dragStartRef.current = null
 
+    console.log('[Shadow] Drag released, speed decaying to 0')
+
+    // Gradually decay speed back to 0 for smooth shadow transition
+    const decayInterval = setInterval(() => {
+      setDragSpeed((prev) => {
+        const newSpeed = prev * 0.8 // Decay by 20% each frame
+        if (newSpeed < 1) {
+          clearInterval(decayInterval)
+          return 0
+        }
+        return newSpeed
+      })
+    }, 50) // Update every 50ms
+
     // Release the pointer capture
     e.currentTarget.releasePointerCapture(e.pointerId)
   }
+
+  // Calculate dynamic shadow based on drag speed
+  // Base shadow: 0 8px 24px rgba(0, 0, 0, 0.3)
+  // Fast drag: 0 32px 64px rgba(0, 0, 0, 0.6)
+  const shadowY = 8 + (dragSpeed / 100) * 24 // 8px to 32px
+  const shadowBlur = 24 + (dragSpeed / 100) * 40 // 24px to 64px
+  const shadowOpacity = 0.3 + (dragSpeed / 100) * 0.3 // 0.3 to 0.6
+  const boxShadow = `0 ${shadowY}px ${shadowBlur}px rgba(0, 0, 0, ${shadowOpacity})`
 
   return (
     <div
@@ -159,20 +218,20 @@ function DraggableCard({ card }: DraggableCardProps) {
       })}
     >
       <div
+        style={{
+          boxShadow, // Dynamic shadow based on drag speed
+        }}
         className={css({
           bg: 'white',
           rounded: 'lg',
           p: '4',
-          boxShadow: isDragging
-            ? '0 16px 48px rgba(0, 0, 0, 0.5)'
-            : '0 8px 24px rgba(0, 0, 0, 0.3)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: '2',
           minW: '120px',
           border: '2px solid rgba(0, 0, 0, 0.1)',
-          transition: 'box-shadow 0.2s',
+          transition: 'box-shadow 0.1s', // Quick transition for responsive feel
         })}
       >
         {/* Abacus visualization */}
