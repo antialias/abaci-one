@@ -77,7 +77,7 @@ export function InteractiveFlashcards() {
         maxW: '1200px',
         mx: 'auto',
         height: { base: '400px', md: '500px' },
-        overflow: 'hidden',
+        overflow: 'visible',
         bg: 'rgba(0, 0, 0, 0.3)',
         rounded: 'xl',
         border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -196,6 +196,10 @@ function DraggableCard({ card }: DraggableCardProps) {
         // On release, reset transform origin to center
         setTransformOrigin('center center')
 
+        // Update current position to where the card was dropped
+        currentPositionRef.current.x = currentPositionRef.current.x + mx
+        currentPositionRef.current.y = currentPositionRef.current.y + my
+
         // On release, apply momentum with decay physics
         const throwVelocityX = lastVelocityRef.current.vx * 1000
         const throwVelocityY = lastVelocityRef.current.vy * 1000
@@ -205,12 +209,12 @@ function DraggableCard({ card }: DraggableCardProps) {
 
         api.start({
           x: {
-            from: currentPositionRef.current.x + mx,
+            from: currentPositionRef.current.x,
             velocity: throwVelocityX,
             decay: true,
           },
           y: {
-            from: currentPositionRef.current.y + my,
+            from: currentPositionRef.current.y,
             velocity: throwVelocityY,
             decay: true,
           },
@@ -218,7 +222,7 @@ function DraggableCard({ card }: DraggableCardProps) {
           rotation: throwAngle + 90, // Card aligns with throw direction
           config: config.wobbly,
           onChange: (result) => {
-            // Update current position as card settles
+            // Continue updating position as card settles with momentum
             if (result.value.x !== undefined) {
               currentPositionRef.current.x = result.value.x
             }
