@@ -718,6 +718,9 @@ function NavLink({
   return (
     <Link
       href={href}
+      style={{
+        backdropFilter: isTransparent ? 'none' : 'blur(8px)',
+      }}
       className={css({
         px: { base: '4', md: '3' },
         py: { base: '3', md: '2' },
@@ -737,17 +740,26 @@ function NavLink({
             ? 'rgba(255, 255, 255, 0.15)'
             : 'transparent'
           : isActive
-            ? 'rgba(139, 92, 246, 0.2)'
-            : 'transparent',
+            ? 'rgba(139, 92, 246, 0.25)'
+            : 'rgba(255, 255, 255, 0.08)',
+        border: isTransparent ? 'none' : '1px solid',
+        borderColor: isTransparent
+          ? 'transparent'
+          : isActive
+            ? 'rgba(139, 92, 246, 0.3)'
+            : 'rgba(255, 255, 255, 0.15)',
         rounded: 'lg',
         transition: 'all',
         textDecoration: 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        boxShadow: isTransparent ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.2)',
         _hover: {
           color: isTransparent ? 'white' : 'rgba(196, 181, 253, 1)',
-          bg: isTransparent ? 'rgba(255, 255, 255, 0.2)' : 'rgba(139, 92, 246, 0.25)',
+          bg: isTransparent ? 'rgba(255, 255, 255, 0.2)' : 'rgba(139, 92, 246, 0.3)',
+          borderColor: isTransparent ? 'transparent' : 'rgba(139, 92, 246, 0.4)',
+          boxShadow: isTransparent ? 'none' : '0 4px 12px rgba(139, 92, 246, 0.2)',
         },
       })}
     >
