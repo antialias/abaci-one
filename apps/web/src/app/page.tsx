@@ -151,7 +151,7 @@ export default function HomePage() {
                   border: '1px solid',
                   borderColor: 'gray.700',
                   shadow: 'lg',
-                  maxW: '1200px',
+                  minW: '1400px',
                   mx: 'auto',
                 })}
               >
