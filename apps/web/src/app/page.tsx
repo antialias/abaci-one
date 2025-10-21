@@ -122,239 +122,239 @@ export default function HomePage() {
           {/* Hero Section with Large Interactive Abacus */}
           <HeroAbacus />
 
-          {/* Main content container */}
-          <div className={container({ maxW: '7xl', px: '4', py: '12' })}>
-            {/* Learn by Doing Section - with inline tutorial demo */}
-            <section className={stack({ gap: '8', mb: '16' })}>
-              <div className={css({ textAlign: 'center' })}>
-                <h2
-                  className={css({
-                    fontSize: { base: '2xl', md: '3xl' },
-                    fontWeight: 'bold',
-                    color: 'white',
-                    mb: '2',
-                  })}
-                >
-                  Learn by Doing
-                </h2>
-                <p className={css({ color: 'gray.400', fontSize: 'md', maxW: '2xl', mx: 'auto' })}>
-                  Interactive tutorials teach you step-by-step. Try this example right now:
-                </p>
-              </div>
-
-              {/* Live demo and learning objectives */}
-              <div
+          {/* Learn by Doing Section - with inline tutorial demo */}
+          <section className={stack({ gap: '8', mb: '16', px: '4', py: '12' })}>
+            <div className={css({ textAlign: 'center' })}>
+              <h2
                 className={css({
-                  bg: 'rgba(0, 0, 0, 0.4)',
-                  rounded: 'xl',
-                  p: '8',
-                  border: '1px solid',
-                  borderColor: 'gray.700',
-                  shadow: 'lg',
-                  minW: '1400px',
-                  mx: 'auto',
+                  fontSize: { base: '2xl', md: '3xl' },
+                  fontWeight: 'bold',
+                  color: 'white',
+                  mb: '2',
                 })}
               >
+                Learn by Doing
+              </h2>
+              <p className={css({ color: 'gray.400', fontSize: 'md', maxW: '2xl', mx: 'auto' })}>
+                Interactive tutorials teach you step-by-step. Try this example right now:
+              </p>
+            </div>
+
+            {/* Live demo and learning objectives */}
+            <div
+              className={css({
+                bg: 'rgba(0, 0, 0, 0.4)',
+                rounded: 'xl',
+                p: '8',
+                border: '1px solid',
+                borderColor: 'gray.700',
+                shadow: 'lg',
+                minW: '1400px',
+                mx: 'auto',
+              })}
+            >
+              <div
+                className={css({
+                  display: 'flex',
+                  flexDirection: { base: 'column', md: 'row' },
+                  gap: '8',
+                  alignItems: { base: 'center', md: 'flex-start' },
+                })}
+              >
+                {/* Tutorial on the left */}
                 <div
                   className={css({
-                    display: 'flex',
-                    flexDirection: { base: 'column', md: 'row' },
-                    gap: '8',
-                    alignItems: { base: 'center', md: 'flex-start' },
+                    flex: '1',
+                    minW: { base: '100%', md: '500px' },
+                    maxW: { base: '100%', md: '500px' },
                   })}
                 >
-                  {/* Tutorial on the left */}
-                  <div
-                    className={css({
-                      flex: '1',
-                      minW: { base: '100%', md: '500px' },
-                      maxW: { base: '100%', md: '500px' },
-                    })}
-                  >
-                    <TutorialPlayer
-                      key={selectedTutorial.id}
-                      tutorial={selectedTutorial}
-                      isDebugMode={false}
-                      showDebugPanel={false}
-                      hideNavigation={true}
-                      hideTooltip={true}
-                      silentErrors={true}
-                      abacusColumns={1}
-                      theme="dark"
-                    />
-                  </div>
+                  <TutorialPlayer
+                    key={selectedTutorial.id}
+                    tutorial={selectedTutorial}
+                    isDebugMode={false}
+                    showDebugPanel={false}
+                    hideNavigation={true}
+                    hideTooltip={true}
+                    silentErrors={true}
+                    abacusColumns={1}
+                    theme="dark"
+                  />
+                </div>
 
-                  {/* What you'll learn on the right */}
-                  <div
+                {/* What you'll learn on the right */}
+                <div
+                  className={css({
+                    flex: '0 0 auto',
+                    w: { base: '100%', lg: '800px' },
+                  })}
+                >
+                  <h3
                     className={css({
-                      flex: '0 0 auto',
-                      w: { base: '100%', lg: '800px' },
+                      fontSize: '2xl',
+                      fontWeight: 'bold',
+                      color: 'white',
+                      mb: '6',
                     })}
                   >
-                    <h3
-                      className={css({
-                        fontSize: '2xl',
-                        fontWeight: 'bold',
-                        color: 'white',
-                        mb: '6',
-                      })}
-                    >
-                      What You'll Learn
-                    </h3>
-                    <div className={grid({ columns: { base: 1, lg: 2 }, gap: '5' })}>
-                      {[
-                        {
-                          title: '📖 Read and set numbers',
-                          desc: 'Master abacus number representation from zero to thousands',
-                          example: '0-9999',
-                          badge: 'Foundation',
-                          values: [0, 1, 2, 3, 4, 5, 10, 50, 100, 500, 999],
-                          columns: 3,
-                        },
-                        {
-                          title: '🤝 Friends techniques',
-                          desc: 'Add and subtract using complement pairs and mental shortcuts',
-                          example: '5 = 2+3',
-                          badge: 'Core',
-                          values: [2, 5, 3],
-                          columns: 1,
-                        },
-                        {
-                          title: '✖️ Multiply & divide',
-                          desc: 'Fluent multi-digit calculations with advanced techniques',
-                          example: '12×34',
-                          badge: 'Advanced',
-                          values: [12, 24, 36, 48],
-                          columns: 2,
-                        },
-                        {
-                          title: '🧠 Mental calculation',
-                          desc: 'Visualize and compute without the physical tool (Anzan)',
-                          example: 'Speed math',
-                          badge: 'Expert',
-                          values: [7, 14, 21, 28, 35],
-                          columns: 2,
-                        },
-                      ].map((skill, i) => {
-                        const isSelected = i === selectedSkillIndex
-                        return (
-                          <div
-                            key={i}
-                            onClick={() => setSelectedSkillIndex(i)}
-                            className={css({
+                    What You'll Learn
+                  </h3>
+                  <div className={grid({ columns: { base: 1, lg: 2 }, gap: '5' })}>
+                    {[
+                      {
+                        title: '📖 Read and set numbers',
+                        desc: 'Master abacus number representation from zero to thousands',
+                        example: '0-9999',
+                        badge: 'Foundation',
+                        values: [0, 1, 2, 3, 4, 5, 10, 50, 100, 500, 999],
+                        columns: 3,
+                      },
+                      {
+                        title: '🤝 Friends techniques',
+                        desc: 'Add and subtract using complement pairs and mental shortcuts',
+                        example: '5 = 2+3',
+                        badge: 'Core',
+                        values: [2, 5, 3],
+                        columns: 1,
+                      },
+                      {
+                        title: '✖️ Multiply & divide',
+                        desc: 'Fluent multi-digit calculations with advanced techniques',
+                        example: '12×34',
+                        badge: 'Advanced',
+                        values: [12, 24, 36, 48],
+                        columns: 2,
+                      },
+                      {
+                        title: '🧠 Mental calculation',
+                        desc: 'Visualize and compute without the physical tool (Anzan)',
+                        example: 'Speed math',
+                        badge: 'Expert',
+                        values: [7, 14, 21, 28, 35],
+                        columns: 2,
+                      },
+                    ].map((skill, i) => {
+                      const isSelected = i === selectedSkillIndex
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => setSelectedSkillIndex(i)}
+                          className={css({
+                            bg: isSelected
+                              ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(250, 204, 21, 0.08))'
+                              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03))',
+                            borderRadius: 'xl',
+                            p: { base: '4', lg: '5' },
+                            border: '1px solid',
+                            borderColor: isSelected
+                              ? 'rgba(250, 204, 21, 0.4)'
+                              : 'rgba(255, 255, 255, 0.15)',
+                            boxShadow: isSelected
+                              ? '0 6px 16px rgba(250, 204, 21, 0.2)'
+                              : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                            transition: 'all 0.2s',
+                            cursor: 'pointer',
+                            _hover: {
                               bg: isSelected
-                                ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.15), rgba(250, 204, 21, 0.08))'
-                                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03))',
-                              borderRadius: 'xl',
-                              p: { base: '4', lg: '5' },
-                              border: '1px solid',
+                                ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(250, 204, 21, 0.12))'
+                                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
                               borderColor: isSelected
-                                ? 'rgba(250, 204, 21, 0.4)'
-                                : 'rgba(255, 255, 255, 0.15)',
+                                ? 'rgba(250, 204, 21, 0.5)'
+                                : 'rgba(255, 255, 255, 0.25)',
+                              transform: 'translateY(-2px)',
                               boxShadow: isSelected
-                                ? '0 6px 16px rgba(250, 204, 21, 0.2)'
-                                : '0 4px 12px rgba(0, 0, 0, 0.3)',
-                              transition: 'all 0.2s',
-                              cursor: 'pointer',
-                              _hover: {
+                                ? '0 8px 20px rgba(250, 204, 21, 0.3)'
+                                : '0 6px 16px rgba(0, 0, 0, 0.4)',
+                            },
+                          })}
+                        >
+                          <div className={hstack({ gap: '3', alignItems: 'flex-start' })}>
+                            <div
+                              className={css({
+                                fontSize: '3xl',
+                                width: { base: '120px', lg: '150px' },
+                                minHeight: { base: '115px', lg: '140px' },
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                textAlign: 'center',
                                 bg: isSelected
-                                  ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(250, 204, 21, 0.12))'
-                                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05))',
-                                borderColor: isSelected
-                                  ? 'rgba(250, 204, 21, 0.5)'
-                                  : 'rgba(255, 255, 255, 0.25)',
-                                transform: 'translateY(-2px)',
-                                boxShadow: isSelected
-                                  ? '0 8px 20px rgba(250, 204, 21, 0.3)'
-                                  : '0 6px 16px rgba(0, 0, 0, 0.4)',
-                              },
-                            })}
-                          >
-                            <div className={hstack({ gap: '3', alignItems: 'flex-start' })}>
+                                  ? 'rgba(250, 204, 21, 0.15)'
+                                  : 'rgba(255, 255, 255, 0.1)',
+                                borderRadius: 'lg',
+                              })}
+                            >
+                              <MiniAbacus values={skill.values} columns={skill.columns} />
+                            </div>
+                            <div className={stack({ gap: '2', flex: '1', minWidth: '0' })}>
                               <div
-                                className={css({
-                                  fontSize: '3xl',
-                                  width: { base: '120px', lg: '150px' },
-                                  minHeight: { base: '115px', lg: '140px' },
-                                  display: 'flex',
+                                className={hstack({
+                                  gap: '2',
                                   alignItems: 'center',
-                                  justifyContent: 'center',
-                                  textAlign: 'center',
-                                  bg: isSelected
-                                    ? 'rgba(250, 204, 21, 0.15)'
-                                    : 'rgba(255, 255, 255, 0.1)',
-                                  borderRadius: 'lg',
+                                  flexWrap: 'wrap',
                                 })}
                               >
-                                <MiniAbacus values={skill.values} columns={skill.columns} />
-                              </div>
-                              <div className={stack({ gap: '2', flex: '1', minWidth: '0' })}>
                                 <div
-                                  className={hstack({
-                                    gap: '2',
-                                    alignItems: 'center',
-                                    flexWrap: 'wrap',
+                                  className={css({
+                                    color: 'white',
+                                    fontSize: 'md',
+                                    fontWeight: 'bold',
                                   })}
                                 >
-                                  <div
-                                    className={css({
-                                      color: 'white',
-                                      fontSize: 'md',
-                                      fontWeight: 'bold',
-                                    })}
-                                  >
-                                    {skill.title}
-                                  </div>
-                                  <div
-                                    className={css({
-                                      bg: 'rgba(250, 204, 21, 0.2)',
-                                      color: 'yellow.400',
-                                      fontSize: '2xs',
-                                      fontWeight: 'semibold',
-                                      px: '2',
-                                      py: '0.5',
-                                      borderRadius: 'md',
-                                    })}
-                                  >
-                                    {skill.badge}
-                                  </div>
+                                  {skill.title}
                                 </div>
                                 <div
                                   className={css({
-                                    color: 'gray.300',
-                                    fontSize: 'xs',
-                                    lineHeight: '1.5',
-                                  })}
-                                >
-                                  {skill.desc}
-                                </div>
-                                <div
-                                  className={css({
+                                    bg: 'rgba(250, 204, 21, 0.2)',
                                     color: 'yellow.400',
-                                    fontSize: 'xs',
-                                    fontFamily: 'mono',
+                                    fontSize: '2xs',
                                     fontWeight: 'semibold',
-                                    mt: '1',
-                                    bg: 'rgba(250, 204, 21, 0.1)',
                                     px: '2',
-                                    py: '1',
+                                    py: '0.5',
                                     borderRadius: 'md',
-                                    w: 'fit-content',
                                   })}
                                 >
-                                  {skill.example}
+                                  {skill.badge}
                                 </div>
+                              </div>
+                              <div
+                                className={css({
+                                  color: 'gray.300',
+                                  fontSize: 'xs',
+                                  lineHeight: '1.5',
+                                })}
+                              >
+                                {skill.desc}
+                              </div>
+                              <div
+                                className={css({
+                                  color: 'yellow.400',
+                                  fontSize: 'xs',
+                                  fontFamily: 'mono',
+                                  fontWeight: 'semibold',
+                                  mt: '1',
+                                  bg: 'rgba(250, 204, 21, 0.1)',
+                                  px: '2',
+                                  py: '1',
+                                  borderRadius: 'md',
+                                  w: 'fit-content',
+                                })}
+                              >
+                                {skill.example}
                               </div>
                             </div>
                           </div>
-                        )
-                      })}
-                    </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
-            </section>
+            </div>
+          </section>
 
+          {/* Main content container */}
+          <div className={container({ maxW: '7xl', px: '4', py: '12' })}>
             {/* Current Offerings Section */}
             <section className={stack({ gap: '6', mb: '16' })}>
               <div className={css({ textAlign: 'center' })}>
