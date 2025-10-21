@@ -256,6 +256,7 @@ export default function HomePage() {
                                 : '0 4px 12px rgba(0, 0, 0, 0.3)',
                               transition: 'all 0.2s',
                               cursor: 'pointer',
+                              overflow: 'hidden',
                               _hover: {
                                 bg: isSelected
                                   ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.2), rgba(250, 204, 21, 0.12))'
