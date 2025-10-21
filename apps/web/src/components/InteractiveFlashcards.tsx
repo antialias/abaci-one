@@ -1,6 +1,6 @@
 'use client'
 
-import { AbacusReact } from '@soroban/abacus-react'
+import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { useEffect, useRef, useState } from 'react'
 import { css } from '../../styled-system/css'
 
@@ -93,6 +93,8 @@ interface DraggableCardProps {
 }
 
 function DraggableCard({ card, containerRef }: DraggableCardProps) {
+  const appConfig = useAbacusConfig()
+
   // Track position - starts at initial, updates when dragged
   const [position, setPosition] = useState({ x: card.initialX, y: card.initialY })
   const [rotation, setRotation] = useState(card.initialRotation) // Now dynamic!
@@ -337,7 +339,7 @@ function DraggableCard({ card, containerRef }: DraggableCardProps) {
             transformOrigin: 'center',
           })}
         >
-          <AbacusReact value={card.number} columns={3} beadShape="circle" />
+          <AbacusReact value={card.number} columns={3} beadShape={appConfig.beadShape} />
         </div>
 
         {/* Number display */}
