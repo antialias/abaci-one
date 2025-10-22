@@ -201,6 +201,16 @@ export function SteamTrainJourney({
     []
   )
 
+  // Calculate local train car positions for ghost train overlap detection
+  // Array includes locomotive + all cars: [locomotive, car1, car2, car3]
+  const localTrainCarPositions = useMemo(() => {
+    const positions = [trainPosition] // Locomotive at front
+    for (let i = 0; i < maxCars; i++) {
+      positions.push(Math.max(0, trainPosition - (i + 1) * carSpacing))
+    }
+    return positions
+  }, [trainPosition, maxCars, carSpacing])
+
   // Get other players for ghost trains (filter out local player)
   const otherPlayers = useMemo(() => {
     if (!multiplayerState?.players || !localPlayerId) {
@@ -292,6 +302,9 @@ export function SteamTrainJourney({
             key={player.id}
             player={player}
             trainPosition={player.position} // Use each player's individual position
+            localTrainCarPositions={localTrainCarPositions} // For per-car overlap detection
+            maxCars={maxCars}
+            carSpacing={carSpacing}
             trackGenerator={trackGenerator}
             pathRef={pathRef}
           />
