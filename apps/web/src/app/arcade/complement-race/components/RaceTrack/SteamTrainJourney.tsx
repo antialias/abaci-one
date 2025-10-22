@@ -1,7 +1,7 @@
 'use client'
 
 import { animated, useSpring } from '@react-spring/web'
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useUserProfile } from '@/contexts/UserProfileContext'
 import { useComplementRace } from '@/arcade-games/complement-race/Provider'
@@ -106,12 +106,15 @@ export function SteamTrainJourney({
   const firstActivePlayer = activePlayers[0]
   const playerEmoji = firstActivePlayer?.emoji ?? '👤'
 
-  console.log(
-    '[SteamTrainJourney] firstActivePlayer:',
-    firstActivePlayer?.name,
-    'isLocal:',
-    firstActivePlayer?.isLocal
-  )
+  // Log only when firstActivePlayer changes
+  useEffect(() => {
+    console.log(
+      '[SteamTrainJourney] firstActivePlayer:',
+      firstActivePlayer?.name,
+      'isLocal:',
+      firstActivePlayer?.isLocal
+    )
+  }, [firstActivePlayer?.id, firstActivePlayer?.name, firstActivePlayer?.isLocal])
 
   const svgRef = useRef<SVGSVGElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
@@ -202,7 +205,6 @@ export function SteamTrainJourney({
   // Get other players for ghost trains (filter out local player)
   const otherPlayers = useMemo(() => {
     if (!multiplayerState?.players || !localPlayerId) {
-      console.log('[SteamTrainJourney] otherPlayers: 0 (no state/localId)')
       return []
     }
 
@@ -210,9 +212,13 @@ export function SteamTrainJourney({
       .filter(([playerId, player]) => playerId !== localPlayerId && player.isActive)
       .map(([_, player]) => player)
 
-    console.log('[SteamTrainJourney] otherPlayers count:', filtered.length)
     return filtered
   }, [multiplayerState?.players, localPlayerId])
+
+  // Log only when otherPlayers count changes
+  useEffect(() => {
+    console.log('[SteamTrainJourney] otherPlayers count:', otherPlayers.length)
+  }, [otherPlayers.length])
 
   if (!trackData) return null
 

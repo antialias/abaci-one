@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { PlayerState } from '@/arcade-games/complement-race/types'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
 
@@ -43,12 +43,19 @@ export function GhostTrain({ player, trainPosition, trackGenerator, pathRef }: G
     }
   }, [trainPosition, pathRef])
 
+  // Log only once when this ghost train first renders
+  const hasLoggedRef = useRef(false)
+  useEffect(() => {
+    if (!hasLoggedRef.current && trainTransform.opacity > 0) {
+      console.log('[GhostTrain] rendering:', player.name)
+      hasLoggedRef.current = true
+    }
+  }, [trainTransform.opacity, player.name])
+
   // Don't render if position data isn't ready
   if (trainTransform.opacity === 0) {
     return null
   }
-
-  console.log('[GhostTrain] rendering:', player.name)
 
   return (
     <g

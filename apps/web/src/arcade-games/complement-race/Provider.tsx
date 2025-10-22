@@ -310,9 +310,13 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       const player = players.get(id)
       return player?.isLocal
     })
-    console.log('[Provider] localPlayerId:', foundId)
     return foundId
   }, [activePlayers, players])
+
+  // Log only when localPlayerId changes
+  useEffect(() => {
+    console.log('[Provider] localPlayerId:', localPlayerId)
+  }, [localPlayerId])
 
   // Debug logging ref (track last logged values)
   const lastLogRef = useState({ key: '', count: 0 })[0]
