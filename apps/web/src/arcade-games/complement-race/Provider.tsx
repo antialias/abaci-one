@@ -313,14 +313,6 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     return foundId
   }, [activePlayers, players])
 
-  // Log only when localPlayerId changes
-  useEffect(() => {
-    console.log('[Provider] localPlayerId:', localPlayerId)
-  }, [localPlayerId])
-
-  // Debug logging ref (track last logged values)
-  const lastLogRef = useState({ key: '', count: 0 })[0]
-
   // Client-side game state (NOT synced to server - purely visual/gameplay)
   const [clientMomentum, setClientMomentum] = useState(10) // Start at 10 for gentle push
   const [clientPosition, setClientPosition] = useState(0)
@@ -328,6 +320,12 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
 
   // Ref to track latest position for broadcasting (avoids recreating interval on every position change)
   const clientPositionRef = useRef(clientPosition)
+
+  // Refs for throttled logging
+  const lastBroadcastLogRef = useRef({ position: 0, time: 0 })
+  const broadcastCountRef = useRef(0)
+  const lastReceivedPositionsRef = useRef<Record<string, number>>({})
+
   const [clientAIRacers, setClientAIRacers] = useState<
     Array<{
       id: string
@@ -559,9 +557,6 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     const currentRoute = multiplayerState.currentRoute
     // When route changes, reset position and give starting momentum
     if (currentRoute > 1 && compatibleState.style === 'sprint') {
-      console.log(
-        `[Provider] Route changed to ${currentRoute}, resetting position. Passengers: ${multiplayerState.passengers.length}`
-      )
       setClientPosition(0)
       setClientMomentum(10) // Reset to starting momentum (gentle push)
     }
@@ -572,23 +567,63 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     clientPositionRef.current = clientPosition
   }, [clientPosition])
 
+  // Log when we receive position updates from other players
+  useEffect(() => {
+    if (!multiplayerState?.players || !localPlayerId) return
+
+    Object.entries(multiplayerState.players).forEach(([playerId, player]) => {
+      if (playerId === localPlayerId || !player.isActive) return
+
+      const lastPos = lastReceivedPositionsRef.current[playerId] ?? -1
+      const currentPos = player.position
+
+      // Log when position changes significantly (>2%)
+      if (Math.abs(currentPos - lastPos) > 2) {
+        console.log(
+          `[POS_RECEIVED] ${player.name}: ${currentPos.toFixed(1)}% (was ${lastPos.toFixed(1)}%, delta=${(currentPos - lastPos).toFixed(1)}%)`
+        )
+        lastReceivedPositionsRef.current[playerId] = currentPos
+      }
+    })
+  }, [multiplayerState?.players, localPlayerId])
+
   // Broadcast position to server for multiplayer ghost trains
   useEffect(() => {
     if (!compatibleState.isGameActive || compatibleState.style !== 'sprint' || !localPlayerId) {
       return
     }
 
+    console.log('[POS_BROADCAST] Starting position broadcast interval')
+
     // Send position update every 200ms (reads from ref to avoid restarting interval)
     const interval = setInterval(() => {
+      const currentPos = clientPositionRef.current
+      broadcastCountRef.current++
+
+      // Throttled logging: only log when position changes by >2% or every 5 seconds
+      const now = Date.now()
+      const posDiff = Math.abs(currentPos - lastBroadcastLogRef.current.position)
+      const timeDiff = now - lastBroadcastLogRef.current.time
+
+      if (posDiff > 2 || timeDiff > 5000) {
+        console.log(
+          `[POS_BROADCAST] #${broadcastCountRef.current} pos=${currentPos.toFixed(1)}% (delta=${posDiff.toFixed(1)}%)`
+        )
+        lastBroadcastLogRef.current = { position: currentPos, time: now }
+      }
+
       sendMove({
         type: 'UPDATE_POSITION',
         playerId: localPlayerId,
         userId: viewerId || '',
-        data: { position: clientPositionRef.current },
+        data: { position: currentPos },
       } as ComplementRaceMove)
     }, 200)
 
-    return () => clearInterval(interval)
+    return () => {
+      console.log(`[POS_BROADCAST] Stopping interval (sent ${broadcastCountRef.current} updates)`)
+      clearInterval(interval)
+    }
   }, [compatibleState.isGameActive, compatibleState.style, localPlayerId, viewerId, sendMove])
 
   // Keep lastLogRef for future debugging needs
@@ -804,7 +839,6 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
         case 'START_NEW_ROUTE':
           // Send route progression to server
           if (action.routeNumber !== undefined) {
-            console.log(`[Provider] Dispatching START_NEW_ROUTE for route ${action.routeNumber}`)
             sendMove({
               type: 'START_NEW_ROUTE',
               playerId: activePlayers[0] || '',

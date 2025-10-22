@@ -115,15 +115,6 @@ export function GhostTrain({
     return cars
   }, [trainPosition, maxCars, carSpacing, localTrainCarPositions, pathRef])
 
-  // Log only once when this ghost train first renders
-  const hasLoggedRef = useRef(false)
-  useEffect(() => {
-    if (!hasLoggedRef.current && locomotiveTransform) {
-      console.log('[GhostTrain] rendering:', player.name, 'at position:', trainPosition.toFixed(1))
-      hasLoggedRef.current = true
-    }
-  }, [locomotiveTransform, player.name, trainPosition])
-
   // Don't render if position data isn't ready
   if (!locomotiveTransform) {
     return null

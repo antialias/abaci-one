@@ -106,16 +106,6 @@ export function SteamTrainJourney({
   const localPlayer = activePlayers.find((p) => p.isLocal)
   const playerEmoji = localPlayer?.emoji ?? '👤'
 
-  // Log only when localPlayer changes
-  useEffect(() => {
-    console.log(
-      '[SteamTrainJourney] localPlayer:',
-      localPlayer?.name,
-      'isLocal:',
-      localPlayer?.isLocal
-    )
-  }, [localPlayer?.id, localPlayer?.name, localPlayer?.isLocal])
-
   const svgRef = useRef<SVGSVGElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
   const [trackGenerator] = useState(() => new RailroadTrackGenerator(800, 600))
@@ -223,17 +213,6 @@ export function SteamTrainJourney({
 
     return filtered
   }, [multiplayerState?.players, localPlayerId])
-
-  // Log only when otherPlayers count changes
-  useEffect(() => {
-    console.log('[SteamTrainJourney] otherPlayers count:', otherPlayers.length)
-    if (otherPlayers.length > 0) {
-      console.log(
-        '[SteamTrainJourney] ghost positions:',
-        otherPlayers.map((p) => `${p.name}: ${p.position.toFixed(1)}`).join(', ')
-      )
-    }
-  }, [otherPlayers.length, otherPlayers])
 
   if (!trackData) return null
 
