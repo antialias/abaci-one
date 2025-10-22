@@ -1,5 +1,6 @@
 'use client'
 
+import { useSpring, useSprings, animated } from '@react-spring/web'
 import { useMemo, useRef } from 'react'
 import type { PlayerState } from '@/arcade-games/complement-race/types'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
@@ -56,8 +57,8 @@ export function GhostTrain({
 }: GhostTrainProps) {
   const ghostRef = useRef<SVGGElement>(null)
 
-  // Calculate ghost train locomotive transform and opacity
-  const locomotiveTransform = useMemo<CarTransform | null>(() => {
+  // Calculate target transform for locomotive (used by spring animation)
+  const locomotiveTarget = useMemo<CarTransform | null>(() => {
     if (!pathRef.current) {
       return null
     }
@@ -82,8 +83,17 @@ export function GhostTrain({
     }
   }, [trainPosition, localTrainCarPositions, pathRef])
 
-  // Calculate ghost train car transforms (each car behind locomotive)
-  const carTransforms = useMemo<CarTransform[]>(() => {
+  // Animated spring for smooth locomotive movement
+  const locomotiveSpring = useSpring({
+    x: locomotiveTarget?.x ?? 0,
+    y: locomotiveTarget?.y ?? 0,
+    rotation: locomotiveTarget?.rotation ?? 0,
+    opacity: locomotiveTarget?.opacity ?? 1,
+    config: { tension: 280, friction: 60 }, // Smooth but responsive
+  })
+
+  // Calculate target transforms for cars (used by spring animations)
+  const carTargets = useMemo<CarTransform[]>(() => {
     if (!pathRef.current) {
       return []
     }
@@ -115,20 +125,33 @@ export function GhostTrain({
     return cars
   }, [trainPosition, maxCars, carSpacing, localTrainCarPositions, pathRef])
 
+  // Animated springs for smooth car movement (useSprings for multiple cars)
+  const carSprings = useSprings(
+    carTargets.length,
+    carTargets.map((target) => ({
+      x: target.x,
+      y: target.y,
+      rotation: target.rotation,
+      opacity: target.opacity,
+      config: { tension: 280, friction: 60 },
+    }))
+  )
+
   // Don't render if position data isn't ready
-  if (!locomotiveTransform) {
+  if (!locomotiveTarget) {
     return null
   }
 
   return (
     <g ref={ghostRef} data-component="ghost-train" data-player-id={player.id}>
-      {/* Ghost locomotive */}
-      <g
-        transform={`translate(${locomotiveTransform.x}, ${locomotiveTransform.y}) rotate(${locomotiveTransform.rotation}) scale(-1, 1)`}
-        opacity={locomotiveTransform.opacity}
-        style={{
-          transition: 'opacity 0.3s ease-in-out',
-        }}
+      {/* Ghost locomotive - animated */}
+      <animated.g
+        transform={locomotiveSpring.x.to(
+          (x, y, rot) => `translate(${x}, ${y}) rotate(${rot}) scale(-1, 1)`,
+          locomotiveSpring.y,
+          locomotiveSpring.rotation
+        )}
+        opacity={locomotiveSpring.opacity}
       >
         <text
           data-element="ghost-locomotive"
@@ -179,17 +202,18 @@ export function GhostTrain({
         >
           {player.score}
         </text>
-      </g>
+      </animated.g>
 
-      {/* Ghost cars - each with individual opacity */}
-      {carTransforms.map((car, index) => (
-        <g
+      {/* Ghost cars - each with individual animated opacity and position */}
+      {carSprings.map((spring, index) => (
+        <animated.g
           key={`car-${index}`}
-          transform={`translate(${car.x}, ${car.y}) rotate(${car.rotation}) scale(-1, 1)`}
-          opacity={car.opacity}
-          style={{
-            transition: 'opacity 0.3s ease-in-out',
-          }}
+          transform={spring.x.to(
+            (x, y, rot) => `translate(${x}, ${y}) rotate(${rot}) scale(-1, 1)`,
+            spring.y,
+            spring.rotation
+          )}
+          opacity={spring.opacity}
         >
           <text
             data-element={`ghost-car-${index}`}
@@ -204,7 +228,7 @@ export function GhostTrain({
           >
             🚃
           </text>
-        </g>
+        </animated.g>
       ))}
     </g>
   )
