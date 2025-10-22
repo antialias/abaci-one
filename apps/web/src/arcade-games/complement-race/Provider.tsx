@@ -566,20 +566,29 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
 
   // Broadcast position to server for multiplayer ghost trains
   useEffect(() => {
-    if (!compatibleState.isGameActive || compatibleState.style !== 'sprint') {
+    if (!compatibleState.isGameActive || compatibleState.style !== 'sprint' || !localPlayerId) {
       return
     }
 
     // Send position update every 200ms
     const interval = setInterval(() => {
-      makeMove({
+      sendMove({
         type: 'UPDATE_POSITION',
+        playerId: localPlayerId,
+        userId: viewerId || '',
         data: { position: clientPosition },
-      })
+      } as ComplementRaceMove)
     }, 200)
 
     return () => clearInterval(interval)
-  }, [compatibleState.isGameActive, compatibleState.style, clientPosition, makeMove])
+  }, [
+    compatibleState.isGameActive,
+    compatibleState.style,
+    clientPosition,
+    localPlayerId,
+    viewerId,
+    sendMove,
+  ])
 
   // Keep lastLogRef for future debugging needs
   // (removed debug logging)
