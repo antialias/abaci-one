@@ -101,20 +101,20 @@ export function SteamTrainJourney({
   const { players } = useGameMode()
   const { profile: _profile } = useUserProfile()
 
-  // Get the first active player's emoji
+  // Get the LOCAL player's emoji (not just the first player!)
   const activePlayers = Array.from(players.values()).filter((p) => p.isActive)
-  const firstActivePlayer = activePlayers[0]
-  const playerEmoji = firstActivePlayer?.emoji ?? '👤'
+  const localPlayer = activePlayers.find((p) => p.isLocal)
+  const playerEmoji = localPlayer?.emoji ?? '👤'
 
-  // Log only when firstActivePlayer changes
+  // Log only when localPlayer changes
   useEffect(() => {
     console.log(
-      '[SteamTrainJourney] firstActivePlayer:',
-      firstActivePlayer?.name,
+      '[SteamTrainJourney] localPlayer:',
+      localPlayer?.name,
       'isLocal:',
-      firstActivePlayer?.isLocal
+      localPlayer?.isLocal
     )
-  }, [firstActivePlayer?.id, firstActivePlayer?.name, firstActivePlayer?.isLocal])
+  }, [localPlayer?.id, localPlayer?.name, localPlayer?.isLocal])
 
   const svgRef = useRef<SVGSVGElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
@@ -175,14 +175,13 @@ export function SteamTrainJourney({
 
   // Memoize filtered passenger lists to avoid recalculating on every render
   // Arcade room multiplayer uses claimedBy/deliveredBy instead of isBoarded/isDelivered
-  // Only show passengers claimed by the first active player
+  // Only show passengers claimed by the LOCAL player
   const boardedPassengers = useMemo(
     () =>
       displayPassengers.filter(
-        (p) =>
-          p.claimedBy === firstActivePlayer?.id && p.claimedBy !== null && p.deliveredBy === null
+        (p) => p.claimedBy === localPlayer?.id && p.claimedBy !== null && p.deliveredBy === null
       ),
-    [displayPassengers, firstActivePlayer?.id]
+    [displayPassengers, localPlayer?.id]
   )
 
   const nonDeliveredPassengers = useMemo(
