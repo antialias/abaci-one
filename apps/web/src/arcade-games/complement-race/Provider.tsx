@@ -325,6 +325,9 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   const [clientMomentum, setClientMomentum] = useState(10) // Start at 10 for gentle push
   const [clientPosition, setClientPosition] = useState(0)
   const [clientPressure, setClientPressure] = useState(0)
+
+  // Ref to track latest position for broadcasting (avoids recreating interval on every position change)
+  const clientPositionRef = useRef(clientPosition)
   const [clientAIRacers, setClientAIRacers] = useState<
     Array<{
       id: string
@@ -564,31 +567,29 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     }
   }, [multiplayerState.currentRoute, compatibleState.style, multiplayerState.passengers.length])
 
+  // Keep position ref in sync with latest position
+  useEffect(() => {
+    clientPositionRef.current = clientPosition
+  }, [clientPosition])
+
   // Broadcast position to server for multiplayer ghost trains
   useEffect(() => {
     if (!compatibleState.isGameActive || compatibleState.style !== 'sprint' || !localPlayerId) {
       return
     }
 
-    // Send position update every 200ms
+    // Send position update every 200ms (reads from ref to avoid restarting interval)
     const interval = setInterval(() => {
       sendMove({
         type: 'UPDATE_POSITION',
         playerId: localPlayerId,
         userId: viewerId || '',
-        data: { position: clientPosition },
+        data: { position: clientPositionRef.current },
       } as ComplementRaceMove)
     }, 200)
 
     return () => clearInterval(interval)
-  }, [
-    compatibleState.isGameActive,
-    compatibleState.style,
-    clientPosition,
-    localPlayerId,
-    viewerId,
-    sendMove,
-  ])
+  }, [compatibleState.isGameActive, compatibleState.style, localPlayerId, viewerId, sendMove])
 
   // Keep lastLogRef for future debugging needs
   // (removed debug logging)
