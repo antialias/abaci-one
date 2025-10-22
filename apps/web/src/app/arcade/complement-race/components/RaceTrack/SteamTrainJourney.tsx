@@ -106,23 +106,12 @@ export function SteamTrainJourney({
   const firstActivePlayer = activePlayers[0]
   const playerEmoji = firstActivePlayer?.emoji ?? '👤'
 
-  console.log('[SteamTrainJourney] Component render:', {
-    localPlayerId,
-    multiplayerStatePlayers: multiplayerState?.players
-      ? Object.keys(multiplayerState.players)
-      : 'no players',
-    gameModePlayers: Array.from(players.entries()).map(([id, p]) => ({
-      id,
-      name: p.name,
-      emoji: p.emoji,
-      isActive: p.isActive,
-      isLocal: p.isLocal,
-    })),
-    firstActivePlayer: firstActivePlayer
-      ? { id: firstActivePlayer.id, emoji: firstActivePlayer.emoji, name: firstActivePlayer.name }
-      : null,
-    selectedPlayerEmoji: playerEmoji,
-  })
+  console.log(
+    '[SteamTrainJourney] firstActivePlayer:',
+    firstActivePlayer?.name,
+    'isLocal:',
+    firstActivePlayer?.isLocal
+  )
 
   const svgRef = useRef<SVGSVGElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
@@ -212,47 +201,16 @@ export function SteamTrainJourney({
 
   // Get other players for ghost trains (filter out local player)
   const otherPlayers = useMemo(() => {
-    console.log('[SteamTrainJourney] Computing otherPlayers:', {
-      hasMultiplayerState: !!multiplayerState,
-      hasPlayers: !!multiplayerState?.players,
-      localPlayerId,
-      allPlayers: multiplayerState?.players
-        ? Object.entries(multiplayerState.players).map(([id, p]) => ({
-            id,
-            name: p.name,
-            isActive: p.isActive,
-            score: p.score,
-          }))
-        : [],
-    })
-
     if (!multiplayerState?.players || !localPlayerId) {
-      console.log(
-        '[SteamTrainJourney] No multiplayer state or localPlayerId, returning empty array'
-      )
+      console.log('[SteamTrainJourney] otherPlayers: 0 (no state/localId)')
       return []
     }
 
     const filtered = Object.entries(multiplayerState.players)
-      .filter(([playerId, player]) => {
-        const isNotLocal = playerId !== localPlayerId
-        const isActive = player.isActive
-        console.log('[SteamTrainJourney] Filter player:', {
-          playerId,
-          name: player.name,
-          isNotLocal,
-          isActive,
-          willInclude: isNotLocal && isActive,
-        })
-        return isNotLocal && isActive
-      })
+      .filter(([playerId, player]) => playerId !== localPlayerId && player.isActive)
       .map(([_, player]) => player)
 
-    console.log('[SteamTrainJourney] Filtered otherPlayers:', {
-      count: filtered.length,
-      players: filtered.map((p) => ({ id: p.id, name: p.name, score: p.score })),
-    })
-
+    console.log('[SteamTrainJourney] otherPlayers count:', filtered.length)
     return filtered
   }, [multiplayerState?.players, localPlayerId])
 
