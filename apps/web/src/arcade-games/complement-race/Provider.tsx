@@ -310,15 +310,7 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
       const player = players.get(id)
       return player?.isLocal
     })
-    console.log('[Provider] Local player ID calculation:', {
-      activePlayers: Array.from(activePlayers),
-      playersMap: Array.from(players.entries()).map(([id, p]) => ({
-        id,
-        isLocal: p.isLocal,
-        name: p.name,
-      })),
-      foundLocalPlayerId: foundId,
-    })
+    console.log('[Provider] localPlayerId:', foundId)
     return foundId
   }, [activePlayers, players])
 
@@ -943,22 +935,6 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     exitSession,
     boostMomentum, // Client-side momentum control
   }
-
-  // Debug logging for multiplayer state
-  console.log('[Provider] Context value prepared:', {
-    localPlayerId,
-    multiplayerPlayers: multiplayerState?.players
-      ? Object.keys(multiplayerState.players)
-      : 'no players',
-    multiplayerPlayerDetails: multiplayerState?.players
-      ? Object.entries(multiplayerState.players).map(([id, p]) => ({
-          id,
-          name: p.name,
-          isActive: p.isActive,
-          score: p.score,
-        }))
-      : [],
-  })
 
   return (
     <ComplementRaceContext.Provider value={contextValue}>{children}</ComplementRaceContext.Provider>

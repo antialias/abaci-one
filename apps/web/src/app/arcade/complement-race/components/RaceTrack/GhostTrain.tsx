@@ -18,14 +18,6 @@ interface GhostTrainProps {
 export function GhostTrain({ player, trainPosition, trackGenerator, pathRef }: GhostTrainProps) {
   const ghostRef = useRef<SVGGElement>(null)
 
-  console.log('[GhostTrain] Rendering ghost train for player:', {
-    playerId: player.id,
-    playerName: player.name,
-    playerScore: player.score,
-    playerColor: player.color,
-    trainPosition,
-  })
-
   // Calculate train transform using same logic as local player
   const trainTransform = useMemo(() => {
     if (!pathRef.current) {
@@ -53,17 +45,10 @@ export function GhostTrain({ player, trainPosition, trackGenerator, pathRef }: G
 
   // Don't render if position data isn't ready
   if (trainTransform.opacity === 0) {
-    console.log('[GhostTrain] Not rendering - opacity is 0 (path not ready)', {
-      playerId: player.id,
-    })
     return null
   }
 
-  console.log('[GhostTrain] Rendering visible ghost train:', {
-    playerId: player.id,
-    playerName: player.name,
-    transform: trainTransform,
-  })
+  console.log('[GhostTrain] rendering:', player.name)
 
   return (
     <g
