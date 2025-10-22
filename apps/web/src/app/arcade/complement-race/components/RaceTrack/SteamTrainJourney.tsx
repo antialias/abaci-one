@@ -164,9 +164,14 @@ export function SteamTrainJourney({
 
   // Memoize filtered passenger lists to avoid recalculating on every render
   // Arcade room multiplayer uses claimedBy/deliveredBy instead of isBoarded/isDelivered
+  // Only show passengers claimed by the first active player
   const boardedPassengers = useMemo(
-    () => displayPassengers.filter((p) => p.claimedBy !== null && p.deliveredBy === null),
-    [displayPassengers]
+    () =>
+      displayPassengers.filter(
+        (p) =>
+          p.claimedBy === firstActivePlayer?.id && p.claimedBy !== null && p.deliveredBy === null
+      ),
+    [displayPassengers, firstActivePlayer?.id]
   )
 
   const nonDeliveredPassengers = useMemo(
