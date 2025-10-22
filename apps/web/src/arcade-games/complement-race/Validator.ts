@@ -97,6 +97,9 @@ export class ComplementRaceValidator
       case 'UPDATE_INPUT':
         return this.validateUpdateInput(state, move.playerId, move.data.input)
 
+      case 'UPDATE_POSITION':
+        return this.validateUpdatePosition(state, move.playerId, move.data.position)
+
       case 'CLAIM_PASSENGER':
         return this.validateClaimPassenger(
           state,
@@ -390,6 +393,39 @@ export class ComplementRaceValidator
         [playerId]: {
           ...player,
           currentAnswer: input,
+        },
+      },
+    }
+
+    return { valid: true, newState }
+  }
+
+  private validateUpdatePosition(
+    state: ComplementRaceState,
+    playerId: string,
+    position: number
+  ): ValidationResult {
+    if (state.gamePhase !== 'playing') {
+      return { valid: false, error: 'Game not in playing phase' }
+    }
+
+    const player = state.players[playerId]
+    if (!player) {
+      return { valid: false, error: 'Player not found' }
+    }
+
+    // Validate position is a reasonable number (0-100)
+    if (typeof position !== 'number' || position < 0 || position > 100) {
+      return { valid: false, error: 'Invalid position value' }
+    }
+
+    const newState: ComplementRaceState = {
+      ...state,
+      players: {
+        ...state.players,
+        [playerId]: {
+          ...player,
+          position,
         },
       },
     }

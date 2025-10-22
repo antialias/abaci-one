@@ -143,6 +143,7 @@ export type ComplementRaceMove = BaseGameMove &
     // Playing phase
     | { type: 'SUBMIT_ANSWER'; data: { answer: number; responseTime: number } }
     | { type: 'UPDATE_INPUT'; data: { input: string } } // Show "thinking" indicator
+    | { type: 'UPDATE_POSITION'; data: { position: number } } // Sprint mode: sync train position
     | { type: 'CLAIM_PASSENGER'; data: { passengerId: string; carIndex: number } } // Sprint mode: pickup
     | { type: 'DELIVER_PASSENGER'; data: { passengerId: string } } // Sprint mode: delivery
 
