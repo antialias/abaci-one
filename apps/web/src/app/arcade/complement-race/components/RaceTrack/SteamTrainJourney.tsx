@@ -1,7 +1,7 @@
 'use client'
 
 import { animated, useSpring } from '@react-spring/web'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useUserProfile } from '@/contexts/UserProfileContext'
 import { useComplementRace } from '@/arcade-games/complement-race/Provider'

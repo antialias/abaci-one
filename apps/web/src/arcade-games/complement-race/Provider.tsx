@@ -318,6 +318,9 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   const [clientPosition, setClientPosition] = useState(0)
   const [clientPressure, setClientPressure] = useState(0)
 
+  // Track if we've synced position from server (for reconnect/reload scenarios)
+  const hasInitializedPositionRef = useRef(false)
+
   // Ref to track latest position for broadcasting (avoids recreating interval on every position change)
   const clientPositionRef = useRef(clientPosition)
 
@@ -325,6 +328,12 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
   const lastBroadcastLogRef = useRef({ position: 0, time: 0 })
   const broadcastCountRef = useRef(0)
   const lastReceivedPositionsRef = useRef<Record<string, number>>({})
+
+  // Ref to hold sendMove so interval doesn't restart when sendMove changes
+  const sendMoveRef = useRef(sendMove)
+  useEffect(() => {
+    sendMoveRef.current = sendMove
+  }, [sendMove])
 
   const [clientAIRacers, setClientAIRacers] = useState<
     Array<{
@@ -452,16 +461,45 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     clientAIRacers,
   ])
 
+  // Sync client position from server on reconnect/reload (multiplayer only)
+  useEffect(() => {
+    // Only sync if:
+    // 1. We haven't synced yet
+    // 2. Game is active
+    // 3. We're in sprint mode
+    // 4. We have a local player with a position from server
+    if (
+      !hasInitializedPositionRef.current &&
+      multiplayerState.gamePhase === 'playing' &&
+      multiplayerState.config.style === 'sprint' &&
+      localPlayerId
+    ) {
+      const serverPosition = multiplayerState.players[localPlayerId]?.position
+      if (serverPosition !== undefined && serverPosition > 0) {
+        console.log(`[POSITION_SYNC] Restoring position from server: ${serverPosition.toFixed(1)}%`)
+        setClientPosition(serverPosition)
+        hasInitializedPositionRef.current = true
+      }
+    }
+
+    // Reset sync flag when game ends
+    if (multiplayerState.gamePhase !== 'playing') {
+      hasInitializedPositionRef.current = false
+    }
+  }, [multiplayerState.gamePhase, multiplayerState.config.style, multiplayerState.players, localPlayerId])
+
   // Initialize game start time when game becomes active
   useEffect(() => {
     if (compatibleState.isGameActive && compatibleState.style === 'sprint') {
       if (gameStartTimeRef.current === 0) {
         gameStartTimeRef.current = Date.now()
         lastUpdateRef.current = Date.now()
-        // Reset client state for new game
-        setClientMomentum(10) // Start with gentle push
-        setClientPosition(0)
-        setClientPressure((10 / 100) * 150) // Initial pressure from starting momentum
+        // Reset client state for new game (only if not restored from server)
+        if (!hasInitializedPositionRef.current) {
+          setClientMomentum(10) // Start with gentle push
+          setClientPosition(0)
+          setClientPressure((10 / 100) * 150) // Initial pressure from starting momentum
+        }
       }
     } else {
       // Reset when game ends
@@ -589,13 +627,16 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
 
   // Broadcast position to server for multiplayer ghost trains
   useEffect(() => {
-    if (!compatibleState.isGameActive || compatibleState.style !== 'sprint' || !localPlayerId) {
+    const isGameActive = multiplayerState.gamePhase === 'playing'
+    const isSprint = multiplayerState.config.style === 'sprint'
+
+    if (!isGameActive || !isSprint || !localPlayerId) {
       return
     }
 
     console.log('[POS_BROADCAST] Starting position broadcast interval')
 
-    // Send position update every 200ms (reads from ref to avoid restarting interval)
+    // Send position update every 100ms for smoother ghost trains (reads from refs to avoid restarting interval)
     const interval = setInterval(() => {
       const currentPos = clientPositionRef.current
       broadcastCountRef.current++
@@ -612,19 +653,19 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
         lastBroadcastLogRef.current = { position: currentPos, time: now }
       }
 
-      sendMove({
+      sendMoveRef.current({
         type: 'UPDATE_POSITION',
         playerId: localPlayerId,
         userId: viewerId || '',
         data: { position: currentPos },
       } as ComplementRaceMove)
-    }, 200)
+    }, 100)
 
     return () => {
       console.log(`[POS_BROADCAST] Stopping interval (sent ${broadcastCountRef.current} updates)`)
       clearInterval(interval)
     }
-  }, [compatibleState.isGameActive, compatibleState.style, localPlayerId, viewerId, sendMove])
+  }, [multiplayerState.gamePhase, multiplayerState.config.style, localPlayerId, viewerId])
 
   // Keep lastLogRef for future debugging needs
   // (removed debug logging)

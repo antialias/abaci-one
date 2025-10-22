@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import type { PlayerState } from '@/arcade-games/complement-race/types'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
 
