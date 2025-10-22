@@ -217,7 +217,13 @@ export function SteamTrainJourney({
   // Log only when otherPlayers count changes
   useEffect(() => {
     console.log('[SteamTrainJourney] otherPlayers count:', otherPlayers.length)
-  }, [otherPlayers.length])
+    if (otherPlayers.length > 0) {
+      console.log(
+        '[SteamTrainJourney] ghost positions:',
+        otherPlayers.map((p) => `${p.name}: ${p.position.toFixed(1)}`).join(', ')
+      )
+    }
+  }, [otherPlayers.length, otherPlayers])
 
   if (!trackData) return null
 
@@ -285,7 +291,7 @@ export function SteamTrainJourney({
           <GhostTrain
             key={player.id}
             player={player}
-            trainPosition={trainPosition} // For now, use same position calculation
+            trainPosition={player.position} // Use each player's individual position
             trackGenerator={trackGenerator}
             pathRef={pathRef}
           />

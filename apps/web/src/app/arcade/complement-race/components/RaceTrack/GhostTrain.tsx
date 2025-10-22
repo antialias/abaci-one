@@ -47,10 +47,10 @@ export function GhostTrain({ player, trainPosition, trackGenerator, pathRef }: G
   const hasLoggedRef = useRef(false)
   useEffect(() => {
     if (!hasLoggedRef.current && trainTransform.opacity > 0) {
-      console.log('[GhostTrain] rendering:', player.name)
+      console.log('[GhostTrain] rendering:', player.name, 'at position:', trainPosition.toFixed(1))
       hasLoggedRef.current = true
     }
-  }, [trainTransform.opacity, player.name])
+  }, [trainTransform.opacity, player.name, trainPosition])
 
   // Don't render if position data isn't ready
   if (trainTransform.opacity === 0) {
