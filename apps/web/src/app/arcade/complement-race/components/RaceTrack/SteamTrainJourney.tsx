@@ -20,6 +20,7 @@ import { GameHUD } from './GameHUD'
 import { RailroadTrackPath } from './RailroadTrackPath'
 import { TrainAndCars } from './TrainAndCars'
 import { TrainTerrainBackground } from './TrainTerrainBackground'
+import { GhostTrain } from './GhostTrain'
 
 const BoardingPassengerAnimation = memo(({ animation }: { animation: BoardingAnimation }) => {
   const spring = useSpring({
@@ -92,7 +93,7 @@ export function SteamTrainJourney({
   currentQuestion,
   currentInput,
 }: SteamTrainJourneyProps) {
-  const { state } = useComplementRace()
+  const { state, multiplayerState, localPlayerId } = useComplementRace()
 
   const { getSkyGradient, getTimeOfDayPeriod } = useSteamJourney()
   const _skyGradient = getSkyGradient()
@@ -191,6 +192,14 @@ export function SteamTrainJourney({
     []
   )
 
+  // Get other players for ghost trains (filter out local player)
+  const otherPlayers = useMemo(() => {
+    if (!multiplayerState?.players || !localPlayerId) return []
+    return Object.entries(multiplayerState.players)
+      .filter(([playerId, player]) => playerId !== localPlayerId && player.isActive)
+      .map(([_, player]) => player)
+  }, [multiplayerState?.players, localPlayerId])
+
   if (!trackData) return null
 
   return (
@@ -252,7 +261,18 @@ export function SteamTrainJourney({
           disembarkingAnimations={disembarkingAnimations}
         />
 
-        {/* Train, cars, and passenger animations */}
+        {/* Ghost trains - other players in multiplayer */}
+        {otherPlayers.map((player) => (
+          <GhostTrain
+            key={player.id}
+            player={player}
+            trainPosition={trainPosition} // For now, use same position calculation
+            trackGenerator={trackGenerator}
+            pathRef={pathRef}
+          />
+        ))}
+
+        {/* Train, cars, and passenger animations - local player */}
         <TrainAndCars
           boardingAnimations={boardingAnimations}
           disembarkingAnimations={disembarkingAnimations}

@@ -99,6 +99,8 @@ interface CompatibleGameState {
  */
 interface ComplementRaceContextValue {
   state: CompatibleGameState // Return adapted state
+  multiplayerState: ComplementRaceState // Raw multiplayer state for rendering other players
+  localPlayerId: string | undefined // Local player ID for filtering
   dispatch: (action: { type: string; [key: string]: any }) => void // Compatibility layer
   lastError: string | null
   startGame: () => void
@@ -914,6 +916,8 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
 
   const contextValue: ComplementRaceContextValue = {
     state: compatibleState, // Use transformed state
+    multiplayerState, // Expose raw multiplayer state for ghost trains
+    localPlayerId, // Expose local player ID for filtering
     dispatch,
     lastError,
     startGame,
