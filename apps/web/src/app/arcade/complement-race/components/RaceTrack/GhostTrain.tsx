@@ -1,6 +1,6 @@
 'use client'
 
-import { useSpring, useSprings, animated } from '@react-spring/web'
+import { useSpring, useSprings, animated, to } from '@react-spring/web'
 import { useMemo, useRef } from 'react'
 import type { PlayerState } from '@/arcade-games/complement-race/types'
 import type { RailroadTrackGenerator } from '../../lib/RailroadTrackGenerator'
@@ -146,10 +146,9 @@ export function GhostTrain({
     <g ref={ghostRef} data-component="ghost-train" data-player-id={player.id}>
       {/* Ghost locomotive - animated */}
       <animated.g
-        transform={locomotiveSpring.x.to(
-          (x, y, rot) => `translate(${x}, ${y}) rotate(${rot}) scale(-1, 1)`,
-          locomotiveSpring.y,
-          locomotiveSpring.rotation
+        transform={to(
+          [locomotiveSpring.x, locomotiveSpring.y, locomotiveSpring.rotation],
+          (x, y, rot) => `translate(${x}, ${y}) rotate(${rot}) scale(-1, 1)`
         )}
         opacity={locomotiveSpring.opacity}
       >
@@ -208,10 +207,9 @@ export function GhostTrain({
       {carSprings.map((spring, index) => (
         <animated.g
           key={`car-${index}`}
-          transform={spring.x.to(
-            (x, y, rot) => `translate(${x}, ${y}) rotate(${rot}) scale(-1, 1)`,
-            spring.y,
-            spring.rotation
+          transform={to(
+            [spring.x, spring.y, spring.rotation],
+            (x, y, rot) => `translate(${x}, ${y}) rotate(${rot}) scale(-1, 1)`
           )}
           opacity={spring.opacity}
         >
