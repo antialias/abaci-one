@@ -32,6 +32,7 @@ const defaultConfig: CardSortingConfig = {
   cardCount: 8,
   showNumbers: true,
   timeLimit: null,
+  gameMode: 'solo',
 }
 
 // Config validation function
@@ -55,6 +56,13 @@ function validateCardSortingConfig(config: unknown): config is CardSortingConfig
   // Validate timeLimit
   if ('timeLimit' in c) {
     if (c.timeLimit !== null && (typeof c.timeLimit !== 'number' || c.timeLimit < 30)) {
+      return false
+    }
+  }
+
+  // Validate gameMode (optional, defaults to 'solo')
+  if ('gameMode' in c) {
+    if (!['solo', 'collaborative', 'competitive', 'relay'].includes(c.gameMode as string)) {
       return false
     }
   }

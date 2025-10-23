@@ -15,10 +15,13 @@ export interface PlayerMetadata {
 // Configuration
 // ============================================================================
 
+export type GameMode = 'solo' | 'collaborative' | 'competitive' | 'relay'
+
 export interface CardSortingConfig extends GameConfig {
   cardCount: 5 | 8 | 12 | 15 // Difficulty (number of cards)
   showNumbers: boolean // Allow reveal numbers button
   timeLimit: number | null // Optional time limit (seconds), null = unlimited
+  gameMode: GameMode // Game mode (solo, collaborative, competitive, relay)
 }
 
 // ============================================================================
@@ -40,6 +43,7 @@ export interface CardPosition {
   rotation: number // degrees (-15 to 15)
   zIndex: number
   draggedByPlayerId?: string // ID of player currently dragging this card
+  draggedByWindowId?: string // ID of specific window/tab doing the drag
 }
 
 export interface PlacedCard {
@@ -68,13 +72,16 @@ export interface CardSortingState extends GameState {
   cardCount: 5 | 8 | 12 | 15
   showNumbers: boolean
   timeLimit: number | null
+  gameMode: GameMode
 
   // Game phase
   gamePhase: GamePhase
 
   // Player & timing
-  playerId: string // Single player ID
+  playerId: string // Single player ID (primary player in solo/collaborative)
   playerMetadata: PlayerMetadata // Player display info
+  activePlayers: string[] // All active player IDs (for collaborative mode)
+  allPlayerMetadata: Map<string, PlayerMetadata> // Metadata for all players
   gameStartTime: number | null
   gameEndTime: number | null
 
@@ -84,6 +91,9 @@ export interface CardSortingState extends GameState {
   availableCards: SortingCard[] // Cards not yet placed
   placedCards: (SortingCard | null)[] // Array of N slots (null = empty)
   cardPositions: CardPosition[] // Viewport-relative positions for all cards
+
+  // Multiplayer cursors (collaborative mode)
+  cursorPositions: Map<string, { x: number; y: number }> // Player ID -> cursor position
 
   // UI state (client-only, not in server state)
   selectedCardId: string | null // Currently selected card
@@ -178,7 +188,7 @@ export type CardSortingMove =
       userId: string
       timestamp: number
       data: {
-        field: 'cardCount' | 'showNumbers' | 'timeLimit'
+        field: 'cardCount' | 'showNumbers' | 'timeLimit' | 'gameMode'
         value: unknown
       }
     }
@@ -196,6 +206,32 @@ export type CardSortingMove =
       timestamp: number
       data: {
         positions: CardPosition[]
+      }
+    }
+  | {
+      type: 'JOIN_COLLABORATIVE_GAME'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        playerMetadata: PlayerMetadata
+      }
+    }
+  | {
+      type: 'LEAVE_COLLABORATIVE_GAME'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: Record<string, never>
+    }
+  | {
+      type: 'UPDATE_CURSOR_POSITION'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        x: number // % of viewport width (0-100)
+        y: number // % of viewport height (0-100)
       }
     }
 

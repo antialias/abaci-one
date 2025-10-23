@@ -139,6 +139,7 @@ export const DEFAULT_CARD_SORTING_CONFIG: CardSortingGameConfig = {
   cardCount: 8,
   showNumbers: true,
   timeLimit: null,
+  gameMode: 'solo',
 }
 
 export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {
