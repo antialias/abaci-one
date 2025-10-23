@@ -3,6 +3,7 @@
 import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
 import { useState, useEffect, useRef } from 'react'
+import { useSpring, animated } from '@react-spring/web'
 import type { SortingCard } from '../types'
 
 // Add celebration animations
@@ -54,9 +55,9 @@ if (typeof document !== 'undefined') {
 }
 
 interface CardState {
-  x: number
-  y: number
-  rotation: number
+  x: number // % of viewport width (0-100)
+  y: number // % of viewport height (0-100)
+  rotation: number // degrees
   zIndex: number
 }
 
@@ -65,16 +66,18 @@ interface CardState {
  * Uses a horizontal left-to-right ordering with some vertical tolerance.
  *
  * Algorithm:
- * 1. Group cards into horizontal "lanes" (vertical tolerance of ~60px)
+ * 1. Group cards into horizontal "lanes" (vertical tolerance)
  * 2. Within each lane, sort left-to-right by x position
  * 3. Sort lanes top-to-bottom
  * 4. Flatten to get final sequence
+ *
+ * Note: Positions are in viewport percentages (0-100)
  */
 function inferSequenceFromPositions(
   cardStates: Map<string, CardState>,
   allCards: SortingCard[]
 ): SortingCard[] {
-  const VERTICAL_TOLERANCE = 60 // Cards within 60px vertically are in the same "lane"
+  const VERTICAL_TOLERANCE = 8 // Cards within 8% of viewport height are in the same "lane"
 
   // Get all positioned cards
   const positionedCards = allCards
@@ -129,6 +132,226 @@ function inferSequenceFromPositions(
   return lanes.flat().map((item) => item.card)
 }
 
+/**
+ * Animated arrow component using react-spring for smooth movements
+ */
+function AnimatedArrow({
+  fromCard,
+  toCard,
+  isCorrect,
+  sequenceNumber,
+  isDragging,
+  isResizing,
+  viewportWidth,
+  viewportHeight,
+}: {
+  fromCard: CardState
+  toCard: CardState
+  isCorrect: boolean
+  sequenceNumber: number
+  isDragging: boolean
+  isResizing: boolean
+  viewportWidth: number
+  viewportHeight: number
+}) {
+  // Convert percentage positions to pixels
+  const fromPx = {
+    x: (fromCard.x / 100) * viewportWidth,
+    y: (fromCard.y / 100) * viewportHeight,
+  }
+  const toPx = {
+    x: (toCard.x / 100) * viewportWidth,
+    y: (toCard.y / 100) * viewportHeight,
+  }
+
+  // Calculate arrow position (from center of current card to center of next card)
+  const fromX = fromPx.x + 70 // 70 = half of card width (140px)
+  const fromY = fromPx.y + 90 // 90 = half of card height (180px)
+  const toX = toPx.x + 70
+  const toY = toPx.y + 90
+
+  // Calculate angle and distance
+  const dx = toX - fromX
+  const dy = toY - fromY
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+  const distance = Math.sqrt(dx * dx + dy * dy)
+
+  // Don't draw arrow if cards are too close
+  if (distance < 80) return null
+
+  // Use spring animation for arrow position and size
+  // Disable animation when dragging or resizing
+  const springProps = useSpring({
+    fromX,
+    fromY,
+    distance,
+    angle,
+    immediate: isDragging || isResizing,
+    config: {
+      tension: 300,
+      friction: 30,
+    },
+  })
+
+  return (
+    <animated.div
+      style={{
+        position: 'absolute',
+        left: springProps.fromX.to((val) => `${val}px`),
+        top: springProps.fromY.to((val) => `${val}px`),
+        width: springProps.distance.to((val) => `${val}px`),
+        height: isCorrect ? '4px' : '3px',
+        transformOrigin: '0 50%',
+        transform: springProps.angle.to((val) => `rotate(${val}deg)`),
+        pointerEvents: 'none',
+        zIndex: 0,
+        animation: isCorrect ? 'correctArrowGlow 1.5s ease-in-out infinite' : 'none',
+      }}
+    >
+      {/* Arrow line */}
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          background: isCorrect
+            ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.7) 0%, rgba(34, 197, 94, 0.9) 100%)'
+            : 'linear-gradient(90deg, rgba(251, 146, 60, 0.6) 0%, rgba(251, 146, 60, 0.8) 100%)',
+          position: 'relative',
+        }}
+      >
+        {/* Arrow head */}
+        <div
+          style={{
+            position: 'absolute',
+            right: '-8px',
+            top: '50%',
+            width: '0',
+            height: '0',
+            borderLeft: isCorrect
+              ? '10px solid rgba(34, 197, 94, 0.9)'
+              : '10px solid rgba(251, 146, 60, 0.8)',
+            borderTop: '6px solid transparent',
+            borderBottom: '6px solid transparent',
+            transform: 'translateY(-50%)',
+          }}
+        />
+        {/* Sequence number badge */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: isCorrect ? 'rgba(34, 197, 94, 0.95)' : 'rgba(251, 146, 60, 0.95)',
+            color: 'white',
+            borderRadius: '50%',
+            width: '24px',
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            border: '2px solid white',
+            boxShadow: isCorrect ? '0 0 12px rgba(34, 197, 94, 0.6)' : '0 2px 4px rgba(0,0,0,0.2)',
+            animation: isCorrect ? 'correctBadgePulse 1.5s ease-in-out infinite' : 'none',
+          }}
+        >
+          {sequenceNumber}
+        </div>
+      </div>
+    </animated.div>
+  )
+}
+
+/**
+ * Animated card component using react-spring for smooth movements
+ */
+function AnimatedCard({
+  card,
+  cardState,
+  isDragging,
+  isResizing,
+  isSpectating,
+  viewportWidth,
+  viewportHeight,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}: {
+  card: SortingCard
+  cardState: CardState
+  isDragging: boolean
+  isResizing: boolean
+  isSpectating: boolean
+  viewportWidth: number
+  viewportHeight: number
+  onPointerDown: (e: React.PointerEvent) => void
+  onPointerMove: (e: React.PointerEvent) => void
+  onPointerUp: (e: React.PointerEvent) => void
+}) {
+  // Convert percentage position to pixels for rendering
+  const pixelPos = {
+    x: (cardState.x / 100) * viewportWidth,
+    y: (cardState.y / 100) * viewportHeight,
+  }
+
+  // Use spring animation for position and rotation
+  // Disable animation when:
+  // - User is dragging (for immediate response)
+  // - Viewport is resizing (for instant repositioning)
+  const springProps = useSpring({
+    left: pixelPos.x,
+    top: pixelPos.y,
+    rotation: cardState.rotation,
+    immediate: isDragging || isResizing, // Instant updates when dragging or resizing
+    config: {
+      tension: 300,
+      friction: 30,
+    },
+  })
+
+  return (
+    <animated.div
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      className={css({
+        position: 'absolute',
+        width: '140px',
+        height: '180px',
+        cursor: isSpectating ? 'default' : 'grab',
+        touchAction: 'none',
+        userSelect: 'none',
+        transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
+      })}
+      style={{
+        left: springProps.left.to((val) => `${val}px`),
+        top: springProps.top.to((val) => `${val}px`),
+        transform: springProps.rotation.to((val) => `rotate(${val}deg)`),
+        zIndex: cardState.zIndex,
+        boxShadow: isDragging ? '0 20px 40px rgba(0, 0, 0, 0.3)' : '0 4px 8px rgba(0, 0, 0, 0.15)',
+      }}
+    >
+      <div
+        className={css({
+          width: '100%',
+          height: '100%',
+          background: 'white',
+          borderRadius: '12px',
+          border: '3px solid #0369a1',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '12px',
+          boxSizing: 'border-box',
+        })}
+        dangerouslySetInnerHTML={{ __html: card.svgContent }}
+      />
+    </animated.div>
+  )
+}
+
 export function PlayingPhaseDrag() {
   const {
     state,
@@ -136,6 +359,7 @@ export function PlayingPhaseDrag() {
     checkSolution,
     revealNumbers,
     goToSetup,
+    updateCardPositions,
     canCheckSolution,
     elapsedTime,
     isSpectating,
@@ -155,10 +379,55 @@ export function PlayingPhaseDrag() {
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null)
   const [nextZIndex, setNextZIndex] = useState(1)
 
+  // Track viewport dimensions for responsive positioning
+  const [viewportDimensions, setViewportDimensions] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1000,
+    height: typeof window !== 'undefined' ? window.innerHeight : 800,
+  })
+
+  // Track if we're currently resizing to disable spring animations
+  const [isResizing, setIsResizing] = useState(false)
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Throttle position updates during drag (every 100ms)
+  const lastSyncTimeRef = useRef<number>(0)
+
   // Track when we're waiting to check solution
   const [waitingToCheck, setWaitingToCheck] = useState(false)
   const cardsToInsertRef = useRef<SortingCard[]>([])
   const currentInsertIndexRef = useRef(0)
+
+  // Handle viewport resize
+  useEffect(() => {
+    const handleResize = () => {
+      // Set resizing flag to disable spring animations
+      setIsResizing(true)
+
+      // Update viewport dimensions immediately
+      setViewportDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })
+
+      // Clear any existing timeout
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current)
+      }
+
+      // After 150ms of no resize events, re-enable spring animations
+      resizeTimeoutRef.current = setTimeout(() => {
+        setIsResizing(false)
+      }, 150)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Initialize card positions when game starts or restarts
   useEffect(() => {
@@ -176,25 +445,97 @@ export function PlayingPhaseDrag() {
 
     if (!shouldInitialize) return
 
-    // Use full viewport dimensions
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
     const newStates = new Map<string, CardState>()
 
+    // Check if we have server positions to restore from
+    const hasServerPositions = state.cardPositions && state.cardPositions.length === allCards.length
+
     allCards.forEach((card, index) => {
-      // Scatter cards randomly across the entire viewport
-      // Leave margin for card size (140x180) and UI elements
-      newStates.set(card.id, {
-        x: Math.random() * (viewportWidth - 180) + 20,
-        y: Math.random() * (viewportHeight - 250) + 80, // Extra margin for top UI
-        rotation: Math.random() * 30 - 15, // -15 to 15 degrees
-        zIndex: index,
-      })
+      const serverPos = state.cardPositions?.find((p) => p.cardId === card.id)
+
+      if (hasServerPositions && serverPos) {
+        // Restore from server (already in percentages)
+        newStates.set(card.id, {
+          x: serverPos.x,
+          y: serverPos.y,
+          rotation: serverPos.rotation,
+          zIndex: serverPos.zIndex,
+        })
+      } else {
+        // Generate random positions as percentages
+        // Leave margin for card size and UI elements
+        // Card is ~140px wide on ~1000px viewport = ~14% of width
+        // Card is ~180px tall on ~800px viewport = ~22.5% of height
+        const xMargin = 2 // 2% margin on sides
+        const yMargin = 10 // 10% margin for top UI
+        newStates.set(card.id, {
+          x: Math.random() * (100 - 2 * xMargin - 14) + xMargin,
+          y: Math.random() * (100 - yMargin - 22.5) + yMargin,
+          rotation: Math.random() * 30 - 15, // -15 to 15 degrees
+          zIndex: index,
+        })
+      }
     })
 
     setCardStates(newStates)
-    setNextZIndex(allCards.length)
-  }, [state.availableCards.length, state.placedCards.length, state.gameStartTime, cardStates.size])
+    setNextZIndex(Math.max(...Array.from(newStates.values()).map((s) => s.zIndex)) + 1)
+
+    // If we generated new positions (not restored from server), send them to server
+    if (!hasServerPositions && !isSpectating) {
+      const positions = Array.from(newStates.entries()).map(([id, cardState]) => ({
+        cardId: id,
+        x: cardState.x,
+        y: cardState.y,
+        rotation: cardState.rotation,
+        zIndex: cardState.zIndex,
+      }))
+      updateCardPositions(positions)
+    }
+  }, [
+    state.availableCards.length,
+    state.placedCards.length,
+    state.gameStartTime,
+    state.cardPositions?.length,
+    cardStates.size,
+    isSpectating,
+    updateCardPositions,
+  ])
+
+  // Sync server position updates (for spectators and multi-window sync)
+  useEffect(() => {
+    if (!state.cardPositions || state.cardPositions.length === 0) return
+    if (cardStates.size === 0) return
+
+    // Check if server positions differ from current positions
+    let needsUpdate = false
+    const newStates = new Map(cardStates)
+
+    for (const serverPos of state.cardPositions) {
+      const currentState = cardStates.get(serverPos.cardId)
+      if (!currentState) continue
+
+      // Compare percentages directly (tolerance: 0.5%)
+      if (
+        Math.abs(currentState.x - serverPos.x) > 0.5 ||
+        Math.abs(currentState.y - serverPos.y) > 0.5 ||
+        Math.abs(currentState.rotation - serverPos.rotation) > 1 ||
+        currentState.zIndex !== serverPos.zIndex
+      ) {
+        needsUpdate = true
+        newStates.set(serverPos.cardId, {
+          x: serverPos.x,
+          y: serverPos.y,
+          rotation: serverPos.rotation,
+          zIndex: serverPos.zIndex,
+        })
+      }
+    }
+
+    if (needsUpdate && !draggingCardId) {
+      // Only apply server updates if not currently dragging
+      setCardStates(newStates)
+    }
+  }, [state.cardPositions, draggingCardId, cardStates])
 
   // Infer sequence from current positions
   const inferredSequence = inferSequenceFromPositions(cardStates, [
@@ -248,9 +589,15 @@ export function PlayingPhaseDrag() {
 
     const { offsetX, offsetY } = dragStateRef.current
 
-    // Calculate new position in viewport coordinates
-    const newX = e.clientX - offsetX
-    const newY = e.clientY - offsetY
+    // Calculate new position in pixels
+    const newXPx = e.clientX - offsetX
+    const newYPx = e.clientY - offsetY
+
+    // Convert to percentages
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    const newX = (newXPx / viewportWidth) * 100
+    const newY = (newYPx / viewportHeight) * 100
 
     // Calculate rotation based on drag velocity
     const dragDeltaX = e.clientX - dragStateRef.current.startX
@@ -266,6 +613,22 @@ export function PlayingPhaseDrag() {
           y: newY,
           rotation,
         })
+
+        // Send real-time position updates (throttled to every 100ms)
+        if (!isSpectating) {
+          const now = Date.now()
+          if (now - lastSyncTimeRef.current > 100) {
+            lastSyncTimeRef.current = now
+            const positions = Array.from(newStates.entries()).map(([id, state]) => ({
+              cardId: id,
+              x: state.x,
+              y: state.y,
+              rotation: state.rotation,
+              zIndex: state.zIndex,
+            }))
+            updateCardPositions(positions)
+          }
+        }
       }
       return newStates
     })
@@ -279,17 +642,27 @@ export function PlayingPhaseDrag() {
     target.releasePointerCapture(e.pointerId)
 
     // Reset rotation to slight random tilt
-    setCardStates((prev) => {
-      const newStates = new Map(prev)
-      const cardState = newStates.get(cardId)
-      if (cardState) {
-        newStates.set(cardId, {
-          ...cardState,
-          rotation: Math.random() * 10 - 5,
-        })
+    const updatedStates = new Map(cardStates)
+    const cardState = updatedStates.get(cardId)
+    if (cardState) {
+      updatedStates.set(cardId, {
+        ...cardState,
+        rotation: Math.random() * 10 - 5,
+      })
+      setCardStates(updatedStates)
+
+      // Sync positions to server (already in percentages)
+      if (!isSpectating) {
+        const positions = Array.from(updatedStates.entries()).map(([id, state]) => ({
+          cardId: id,
+          x: state.x,
+          y: state.y,
+          rotation: state.rotation,
+          zIndex: state.zIndex,
+        }))
+        updateCardPositions(positions)
       }
-      return newStates
-    })
+    }
 
     dragStateRef.current = null
     setDraggingCardId(null)
@@ -516,98 +889,18 @@ export function PlayingPhaseDrag() {
               state.correctOrder[index]?.id === card.id &&
               state.correctOrder[index + 1]?.id === inferredSequence[index + 1].id
 
-            // Calculate arrow position (from center of current card to center of next card)
-            const fromX = currentCard.x + 70 // 70 = half of card width (140px)
-            const fromY = currentCard.y + 90 // 90 = half of card height (180px)
-            const toX = nextCard.x + 70
-            const toY = nextCard.y + 90
-
-            // Calculate angle and distance
-            const dx = toX - fromX
-            const dy = toY - fromY
-            const angle = Math.atan2(dy, dx) * (180 / Math.PI)
-            const distance = Math.sqrt(dx * dx + dy * dy)
-
-            // Don't draw arrow if cards are too close (overlapping or very near)
-            if (distance < 80) return null
-
             return (
-              <div
+              <AnimatedArrow
                 key={`arrow-${card.id}-${inferredSequence[index + 1].id}`}
-                style={{
-                  position: 'absolute',
-                  left: `${fromX}px`,
-                  top: `${fromY}px`,
-                  width: `${distance}px`,
-                  height: isCorrectConnection ? '4px' : '3px',
-                  transformOrigin: '0 50%',
-                  transform: `rotate(${angle}deg)`,
-                  pointerEvents: 'none',
-                  zIndex: 0, // Behind cards
-                  animation: isCorrectConnection
-                    ? 'correctArrowGlow 1.5s ease-in-out infinite'
-                    : 'none',
-                }}
-              >
-                {/* Arrow line */}
-                <div
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    background: isCorrectConnection
-                      ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.7) 0%, rgba(34, 197, 94, 0.9) 100%)'
-                      : 'linear-gradient(90deg, rgba(251, 146, 60, 0.6) 0%, rgba(251, 146, 60, 0.8) 100%)',
-                    position: 'relative',
-                  }}
-                >
-                  {/* Arrow head */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      right: '-8px',
-                      top: '50%',
-                      width: '0',
-                      height: '0',
-                      borderLeft: isCorrectConnection
-                        ? '10px solid rgba(34, 197, 94, 0.9)'
-                        : '10px solid rgba(251, 146, 60, 0.8)',
-                      borderTop: '6px solid transparent',
-                      borderBottom: '6px solid transparent',
-                      transform: 'translateY(-50%)',
-                    }}
-                  />
-                  {/* Sequence number badge */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      background: isCorrectConnection
-                        ? 'rgba(34, 197, 94, 0.95)'
-                        : 'rgba(251, 146, 60, 0.95)',
-                      color: 'white',
-                      borderRadius: '50%',
-                      width: '24px',
-                      height: '24px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      border: '2px solid white',
-                      boxShadow: isCorrectConnection
-                        ? '0 0 12px rgba(34, 197, 94, 0.6)'
-                        : '0 2px 4px rgba(0,0,0,0.2)',
-                      animation: isCorrectConnection
-                        ? 'correctBadgePulse 1.5s ease-in-out infinite'
-                        : 'none',
-                    }}
-                  >
-                    {index + 1}
-                  </div>
-                </div>
-              </div>
+                fromCard={currentCard}
+                toCard={nextCard}
+                isCorrect={isCorrectConnection}
+                sequenceNumber={index + 1}
+                isDragging={!!draggingCardId}
+                isResizing={isResizing}
+                viewportWidth={viewportDimensions.width}
+                viewportHeight={viewportDimensions.height}
+              />
             )
           })}
 
@@ -622,46 +915,19 @@ export function PlayingPhaseDrag() {
           const isDragging = draggingCardId === card.id
 
           return (
-            <div
+            <AnimatedCard
               key={card.id}
+              card={card}
+              cardState={cardState}
+              isDragging={isDragging}
+              isResizing={isResizing}
+              isSpectating={isSpectating}
+              viewportWidth={viewportDimensions.width}
+              viewportHeight={viewportDimensions.height}
               onPointerDown={(e) => handlePointerDown(e, card.id)}
               onPointerMove={(e) => handlePointerMove(e, card.id)}
               onPointerUp={(e) => handlePointerUp(e, card.id)}
-              className={css({
-                position: 'absolute',
-                width: '140px',
-                height: '180px',
-                cursor: isSpectating ? 'default' : 'grab',
-                touchAction: 'none',
-                userSelect: 'none',
-                transition: isDragging ? 'none' : 'transform 0.2s ease, box-shadow 0.2s ease',
-              })}
-              style={{
-                left: `${cardState.x}px`,
-                top: `${cardState.y}px`,
-                transform: `rotate(${cardState.rotation}deg)`,
-                zIndex: cardState.zIndex,
-                boxShadow: isDragging
-                  ? '0 20px 40px rgba(0, 0, 0, 0.3)'
-                  : '0 4px 8px rgba(0, 0, 0, 0.15)',
-              }}
-            >
-              <div
-                className={css({
-                  width: '100%',
-                  height: '100%',
-                  background: 'white',
-                  borderRadius: '12px',
-                  border: '3px solid #0369a1',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '12px',
-                  boxSizing: 'border-box',
-                })}
-                dangerouslySetInnerHTML={{ __html: card.svgContent }}
-              />
-            </div>
+            />
           )
         })}
       </div>
