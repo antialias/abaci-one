@@ -2,7 +2,7 @@
 
 import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSpring, animated, to } from '@react-spring/web'
 import type { SortingCard } from '../types'
 
@@ -832,6 +832,18 @@ export function PlayingPhaseDrag() {
   // Spectator stats sidebar collapsed state
   const [spectatorStatsCollapsed, setSpectatorStatsCollapsed] = useState(false)
 
+  // Activity feed notifications
+  interface ActivityNotification {
+    id: string
+    playerId: string
+    playerEmoji: string
+    playerName: string
+    action: string
+    timestamp: number
+  }
+  const [activityFeed, setActivityFeed] = useState<ActivityNotification[]>([])
+  const activityIdCounter = useRef(0)
+
   const containerRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{
     cardId: string
@@ -867,6 +879,83 @@ export function PlayingPhaseDrag() {
   const [waitingToCheck, setWaitingToCheck] = useState(false)
   const cardsToInsertRef = useRef<SortingCard[]>([])
   const currentInsertIndexRef = useRef(0)
+
+  // Helper to add activity notifications (only in collaborative mode)
+  const addActivityNotification = useCallback(
+    (playerId: string, action: string) => {
+      if (state.gameMode !== 'collaborative') return
+      if (playerId === localPlayerId) return // Don't show notifications for own actions
+
+      const player = players.get(playerId)
+      if (!player) return
+
+      const notification: ActivityNotification = {
+        id: `activity-${activityIdCounter.current++}`,
+        playerId,
+        playerEmoji: player.emoji,
+        playerName: player.name,
+        action,
+        timestamp: Date.now(),
+      }
+
+      setActivityFeed((prev) => [...prev, notification])
+    },
+    [state.gameMode, localPlayerId, players]
+  )
+
+  // Auto-dismiss notifications after 3 seconds
+  useEffect(() => {
+    if (activityFeed.length === 0) return
+
+    const timeout = setTimeout(() => {
+      const now = Date.now()
+      setActivityFeed((prev) => prev.filter((n) => now - n.timestamp < 3000))
+    }, 100) // Check every 100ms for smooth removal
+
+    return () => clearTimeout(timeout)
+  }, [activityFeed])
+
+  // Track previous state for detecting changes
+  const prevNumbersRevealedRef = useRef(state.numbersRevealed)
+  const prevDraggingPlayersRef = useRef<Set<string>>(new Set())
+
+  // Detect state changes and generate activity notifications
+  useEffect(() => {
+    // Only track in collaborative mode
+    if (state.gameMode !== 'collaborative') return
+    if (!state.cardPositions) return
+
+    // Detect who is currently dragging cards
+    const currentlyDragging = new Set<string>()
+    for (const pos of state.cardPositions) {
+      if (pos.draggedByPlayerId && pos.draggedByPlayerId !== localPlayerId) {
+        currentlyDragging.add(pos.draggedByPlayerId)
+      }
+    }
+
+    // Detect new players starting to drag (activity notification)
+    for (const playerId of currentlyDragging) {
+      if (!prevDraggingPlayersRef.current.has(playerId)) {
+        addActivityNotification(playerId, 'is moving cards')
+      }
+    }
+
+    prevDraggingPlayersRef.current = currentlyDragging
+
+    // Detect revealed numbers
+    if (state.numbersRevealed && !prevNumbersRevealedRef.current) {
+      // We don't know who revealed them without player metadata in state
+      // Skip for now
+    }
+
+    prevNumbersRevealedRef.current = state.numbersRevealed
+  }, [
+    state.cardPositions,
+    state.numbersRevealed,
+    state.gameMode,
+    localPlayerId,
+    addActivityNotification,
+  ])
 
   // Handle viewport resize
   useEffect(() => {
@@ -1720,6 +1809,56 @@ export function PlayingPhaseDrag() {
           )
         })}
       </div>
+
+      {/* Activity Feed (collaborative mode only) */}
+      {state.gameMode === 'collaborative' && activityFeed.length > 0 && (
+        <div
+          className={css({
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            zIndex: 150,
+            maxWidth: '320px',
+          })}
+        >
+          {activityFeed.map((notification) => {
+            const age = Date.now() - notification.timestamp
+            const opacity = Math.max(0, 1 - age / 3000) // Fade out over 3 seconds
+
+            return (
+              <div
+                key={notification.id}
+                className={css({
+                  padding: '12px 16px',
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  border: '2px solid rgba(99, 102, 241, 0.3)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#1f2937',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.3s ease',
+                })}
+                style={{
+                  opacity,
+                  transform: `translateY(${(1 - opacity) * 20}px)`,
+                }}
+              >
+                <span style={{ fontSize: '20px' }}>{notification.playerEmoji}</span>
+                <span>
+                  <strong>{notification.playerName}</strong> {notification.action}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
