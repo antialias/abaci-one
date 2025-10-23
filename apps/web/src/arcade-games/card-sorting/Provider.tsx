@@ -1,6 +1,14 @@
 'use client'
 
-import { type ReactNode, useCallback, useMemo, createContext, useContext, useState } from 'react'
+import {
+  type ReactNode,
+  useCallback,
+  useMemo,
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+} from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
@@ -18,7 +26,7 @@ interface CardSortingContextValue {
   placeCard: (cardId: string, position: number) => void
   insertCard: (cardId: string, insertPosition: number) => void
   removeCard: (position: number) => void
-  checkSolution: () => void
+  checkSolution: (finalSequence?: SortingCard[]) => void
   revealNumbers: () => void
   goToSetup: () => void
   resumeGame: () => void
@@ -126,7 +134,9 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
     case 'INSERT_CARD': {
       const { cardId, insertPosition } = typedMove.data
       const card = state.availableCards.find((c) => c.id === cardId)
-      if (!card) return state
+      if (!card) {
+        return state
+      }
 
       // Insert with shift and compact (no gaps)
       const newPlaced = new Array(state.cardCount).fill(null)
@@ -201,12 +211,8 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
     }
 
     case 'CHECK_SOLUTION': {
-      // Server will calculate score - just transition to results optimistically
-      return {
-        ...state,
-        gamePhase: 'results',
-        gameEndTime: Date.now(),
-      }
+      // Don't apply optimistic update - wait for server to calculate and return score
+      return state
     }
 
     case 'GO_TO_SETUP': {
@@ -376,7 +382,6 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
   // Action creators
   const startGame = useCallback(() => {
     if (!localPlayerId) {
-      console.error('[CardSortingProvider] No local player available')
       return
     }
 
@@ -392,7 +397,7 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
         selectedCards,
       },
     })
-  }, [localPlayerId, state.cardCount, buildPlayerMetadata, sendMove, viewerId])
+  }, [localPlayerId, state.cardCount, buildPlayerMetadata, sendMove, viewerId, state.gamePhase])
 
   const placeCard = useCallback(
     (cardId: string, position: number) => {
@@ -442,20 +447,26 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     [localPlayerId, sendMove, viewerId]
   )
 
-  const checkSolution = useCallback(() => {
-    if (!localPlayerId) return
-    if (!canCheckSolution) {
-      console.warn('[CardSortingProvider] Cannot check - not all cards placed')
-      return
-    }
+  const checkSolution = useCallback(
+    (finalSequence?: SortingCard[]) => {
+      if (!localPlayerId) return
 
-    sendMove({
-      type: 'CHECK_SOLUTION',
-      playerId: localPlayerId,
-      userId: viewerId || '',
-      data: {},
-    })
-  }, [localPlayerId, canCheckSolution, sendMove, viewerId])
+      // If finalSequence provided, use it. Otherwise check current placedCards
+      if (!finalSequence && !canCheckSolution) {
+        return
+      }
+
+      sendMove({
+        type: 'CHECK_SOLUTION',
+        playerId: localPlayerId,
+        userId: viewerId || '',
+        data: {
+          finalSequence,
+        },
+      })
+    },
+    [localPlayerId, canCheckSolution, sendMove, viewerId, state.cardCount, state.gamePhase]
+  )
 
   const revealNumbers = useCallback(() => {
     if (!localPlayerId) return

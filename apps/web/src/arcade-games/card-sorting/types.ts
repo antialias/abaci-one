@@ -150,7 +150,9 @@ export type CardSortingMove =
       playerId: string
       userId: string
       timestamp: number
-      data: Record<string, never>
+      data: {
+        finalSequence?: SortingCard[] // Optional - if provided, use this as the final placement
+      }
     }
   | {
       type: 'GO_TO_SETUP'

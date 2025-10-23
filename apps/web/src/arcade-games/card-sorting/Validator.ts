@@ -25,7 +25,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       case 'REVEAL_NUMBERS':
         return this.validateRevealNumbers(state)
       case 'CHECK_SOLUTION':
-        return this.validateCheckSolution(state)
+        return this.validateCheckSolution(state, move.data.finalSequence)
       case 'GO_TO_SETUP':
         return this.validateGoToSetup(state)
       case 'SET_CONFIG':
@@ -45,13 +45,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
     data: { playerMetadata: unknown; selectedCards: unknown },
     playerId: string
   ): ValidationResult {
-    // Must be in setup phase
-    if (state.gamePhase !== 'setup') {
-      return {
-        valid: false,
-        error: 'Can only start game from setup phase',
-      }
-    }
+    // Allow starting a new game from any phase (for "Play Again" button)
 
     // Validate selectedCards
     if (!Array.isArray(data.selectedCards)) {
@@ -82,11 +76,13 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         playerId,
         playerMetadata: data.playerMetadata,
         gameStartTime: Date.now(),
+        gameEndTime: null,
         selectedCards: selectedCards as typeof state.selectedCards,
         correctOrder: correctOrder as typeof state.correctOrder,
         availableCards: selectedCards as typeof state.availableCards,
         placedCards: new Array(state.cardCount).fill(null),
         numbersRevealed: false,
+        scoreBreakdown: null,
       },
     }
   }
@@ -263,7 +259,10 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
     }
   }
 
-  private validateCheckSolution(state: CardSortingState): ValidationResult {
+  private validateCheckSolution(
+    state: CardSortingState,
+    finalSequence?: typeof state.selectedCards
+  ): ValidationResult {
     // Must be in playing phase
     if (state.gamePhase !== 'playing') {
       return {
@@ -272,13 +271,18 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       }
     }
 
-    // All slots must be filled
-    if (state.placedCards.some((c) => c === null)) {
+    // Use finalSequence if provided, otherwise use placedCards
+    const userCards =
+      finalSequence ||
+      state.placedCards.filter((c): c is (typeof state.selectedCards)[0] => c !== null)
+
+    // Must have all cards
+    if (userCards.length !== state.cardCount) {
       return { valid: false, error: 'Must place all cards before checking' }
     }
 
     // Calculate score using scoring algorithms
-    const userSequence = state.placedCards.map((c) => c!.number)
+    const userSequence = userCards.map((c) => c.number)
     const correctSequence = state.correctOrder.map((c) => c.number)
 
     const scoreBreakdown = calculateScore(
@@ -288,6 +292,11 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       state.numbersRevealed
     )
 
+    // If finalSequence was provided, update placedCards with it
+    const newPlacedCards = finalSequence
+      ? [...userCards, ...new Array(state.cardCount - userCards.length).fill(null)]
+      : state.placedCards
+
     return {
       valid: true,
       newState: {
@@ -295,6 +304,8 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         gamePhase: 'results',
         gameEndTime: Date.now(),
         scoreBreakdown,
+        placedCards: newPlacedCards,
+        availableCards: [], // All cards are now placed
       },
     }
   }

@@ -8,7 +8,7 @@ import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { useFullscreen } from '@/contexts/FullscreenContext'
 import { useCardSorting } from '../Provider'
 import { SetupPhase } from './SetupPhase'
-import { PlayingPhase } from './PlayingPhase'
+import { PlayingPhaseDrag } from './PlayingPhaseDrag'
 import { ResultsPhase } from './ResultsPhase'
 
 export function GameComponent() {
@@ -49,16 +49,16 @@ export function GameComponent() {
           ref={gameRef}
           className={css({
             flex: 1,
-            padding: { base: '12px', sm: '16px', md: '20px' },
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
             position: 'relative',
-            overflow: 'auto',
+            overflow: 'hidden',
+            // Remove all padding/margins for playing phase
+            padding: state.gamePhase === 'playing' ? '0' : { base: '12px', sm: '16px', md: '20px' },
           })}
         >
-          {/* Spectator Mode Banner */}
-          {isSpectating && state.gamePhase !== 'setup' && (
+          {/* Spectator Mode Banner - only show in setup/results */}
+          {isSpectating && state.gamePhase !== 'setup' && state.gamePhase !== 'playing' && (
             <div
               className={css({
                 width: '100%',
@@ -76,6 +76,7 @@ export function GameComponent() {
                 fontWeight: '600',
                 color: '#92400e',
                 textAlign: 'center',
+                alignSelf: 'center',
               })}
             >
               <span role="img" aria-label="watching">
@@ -85,24 +86,29 @@ export function GameComponent() {
             </div>
           )}
 
-          <main
-            className={css({
-              width: '100%',
-              maxWidth: '1200px',
-              background: 'rgba(255,255,255,0.95)',
-              borderRadius: { base: '12px', md: '20px' },
-              padding: { base: '12px', sm: '16px', md: '24px', lg: '32px' },
-              boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            })}
-          >
-            {state.gamePhase === 'setup' && <SetupPhase />}
-            {state.gamePhase === 'playing' && <PlayingPhase />}
-            {state.gamePhase === 'results' && <ResultsPhase />}
-          </main>
+          {/* For playing phase, render full viewport. For setup/results, use container */}
+          {state.gamePhase === 'playing' ? (
+            <PlayingPhaseDrag />
+          ) : (
+            <main
+              className={css({
+                width: '100%',
+                maxWidth: '1200px',
+                background: 'rgba(255,255,255,0.95)',
+                borderRadius: { base: '12px', md: '20px' },
+                padding: { base: '12px', sm: '16px', md: '24px', lg: '32px' },
+                boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                alignSelf: 'center',
+              })}
+            >
+              {state.gamePhase === 'setup' && <SetupPhase />}
+              {state.gamePhase === 'results' && <ResultsPhase />}
+            </main>
+          )}
         </div>
       </StandardGameLayout>
     </PageWithNav>
