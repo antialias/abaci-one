@@ -443,12 +443,26 @@ export function PlayingPhaseDrag() {
     const shouldInitialize =
       allCards.length > 0 && (cardStates.size === 0 || cardStates.size !== allCards.length)
 
+    console.log('[PlayingPhaseDrag] Init check:', {
+      allCardsLength: allCards.length,
+      cardStatesSize: cardStates.size,
+      shouldInitialize,
+      hasCardPositions: !!state.cardPositions,
+      cardPositionsLength: state.cardPositions?.length,
+    })
+
     if (!shouldInitialize) return
 
     const newStates = new Map<string, CardState>()
 
     // Check if we have server positions to restore from
     const hasServerPositions = state.cardPositions && state.cardPositions.length === allCards.length
+
+    console.log('[PlayingPhaseDrag] Initializing positions:', {
+      hasServerPositions,
+      cardPositionsLength: state.cardPositions?.length,
+      allCardsLength: allCards.length,
+    })
 
     allCards.forEach((card, index) => {
       const serverPos = state.cardPositions?.find((p) => p.cardId === card.id)
