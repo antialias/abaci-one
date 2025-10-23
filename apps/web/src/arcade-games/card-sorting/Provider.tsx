@@ -28,7 +28,7 @@ interface CardSortingContextValue {
   revealNumbers: () => void
   goToSetup: () => void
   resumeGame: () => void
-  setConfig: (field: 'cardCount' | 'showNumbers' | 'timeLimit', value: unknown) => void
+  setConfig: (field: 'cardCount' | 'showNumbers' | 'timeLimit' | 'gameMode', value: unknown) => void
   updateCardPositions: (positions: CardPosition[]) => void
   exitSession: () => void
   // Computed
@@ -55,6 +55,7 @@ const createInitialState = (config: Partial<CardSortingConfig>): CardSortingStat
   cardCount: config.cardCount ?? 8,
   showNumbers: config.showNumbers ?? true,
   timeLimit: config.timeLimit ?? null,
+  gameMode: config.gameMode ?? 'solo',
   gamePhase: 'setup',
   playerId: '',
   playerMetadata: {
@@ -63,6 +64,8 @@ const createInitialState = (config: Partial<CardSortingConfig>): CardSortingStat
     emoji: '',
     userId: '',
   },
+  activePlayers: [],
+  allPlayerMetadata: new Map(),
   gameStartTime: null,
   gameEndTime: null,
   selectedCards: [],
@@ -70,6 +73,7 @@ const createInitialState = (config: Partial<CardSortingConfig>): CardSortingStat
   availableCards: [],
   placedCards: new Array(config.cardCount ?? 8).fill(null),
   cardPositions: [],
+  cursorPositions: new Map(),
   selectedCardId: null,
   numbersRevealed: false,
   scoreBreakdown: null,
@@ -91,6 +95,8 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
         gamePhase: 'playing',
         playerId: typedMove.playerId,
         playerMetadata: typedMove.data.playerMetadata,
+        activePlayers: [typedMove.playerId],
+        allPlayerMetadata: new Map([[typedMove.playerId, typedMove.data.playerMetadata]]),
         gameStartTime: Date.now(),
         selectedCards,
         correctOrder,
@@ -103,6 +109,7 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
           cardCount: state.cardCount,
           showNumbers: state.showNumbers,
           timeLimit: state.timeLimit,
+          gameMode: state.gameMode,
         },
         pausedGamePhase: undefined,
         pausedGameState: undefined,
@@ -535,7 +542,7 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
   }, [localPlayerId, canResumeGame, sendMove, viewerId])
 
   const setConfig = useCallback(
-    (field: 'cardCount' | 'showNumbers' | 'timeLimit', value: unknown) => {
+    (field: 'cardCount' | 'showNumbers' | 'timeLimit' | 'gameMode', value: unknown) => {
       if (!localPlayerId) return
 
       sendMove({

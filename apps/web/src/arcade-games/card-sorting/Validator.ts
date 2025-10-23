@@ -323,11 +323,13 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
             cardCount: state.cardCount,
             showNumbers: state.showNumbers,
             timeLimit: state.timeLimit,
+            gameMode: state.gameMode,
           }),
           originalConfig: {
             cardCount: state.cardCount,
             showNumbers: state.showNumbers,
             timeLimit: state.timeLimit,
+            gameMode: state.gameMode,
           },
           pausedGamePhase: 'playing',
           pausedGameState: {
@@ -349,6 +351,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         cardCount: state.cardCount,
         showNumbers: state.showNumbers,
         timeLimit: state.timeLimit,
+        gameMode: state.gameMode,
       }),
     }
   }
@@ -408,6 +411,24 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
           newState: {
             ...state,
             timeLimit: value as number | null,
+            // Clear pause state if config changed
+            pausedGamePhase: undefined,
+            pausedGameState: undefined,
+          },
+        }
+
+      case 'gameMode':
+        if (!['solo', 'collaborative', 'competitive', 'relay'].includes(value as string)) {
+          return {
+            valid: false,
+            error: 'gameMode must be solo, collaborative, competitive, or relay',
+          }
+        }
+        return {
+          valid: true,
+          newState: {
+            ...state,
+            gameMode: value as 'solo' | 'collaborative' | 'competitive' | 'relay',
             // Clear pause state if config changed
             pausedGamePhase: undefined,
             pausedGameState: undefined,
@@ -500,6 +521,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       cardCount: config.cardCount,
       showNumbers: config.showNumbers,
       timeLimit: config.timeLimit,
+      gameMode: config.gameMode,
       gamePhase: 'setup',
       playerId: '',
       playerMetadata: {
@@ -508,6 +530,8 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         emoji: '',
         userId: '',
       },
+      activePlayers: [],
+      allPlayerMetadata: new Map(),
       gameStartTime: null,
       gameEndTime: null,
       selectedCards: [],
@@ -515,6 +539,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       availableCards: [],
       placedCards: new Array(config.cardCount).fill(null),
       cardPositions: [],
+      cursorPositions: new Map(),
       selectedCardId: null,
       numbersRevealed: false,
       scoreBreakdown: null,
