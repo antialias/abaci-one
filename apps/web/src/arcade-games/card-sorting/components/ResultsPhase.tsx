@@ -39,9 +39,12 @@ interface CardPosition {
 }
 
 export function ResultsPhase() {
-  const { state, startGame, goToSetup, exitSession } = useCardSorting()
+  const { state, startGame, goToSetup, exitSession, players } = useCardSorting()
   const { scoreBreakdown } = state
   const [showCorrections, setShowCorrections] = useState(false)
+
+  // Determine if this is a collaborative game
+  const isCollaborative = state.gameMode === 'collaborative'
 
   // Get user's sequence from placedCards
   const userSequence = state.placedCards.filter((c): c is SortingCard => c !== null)
@@ -118,6 +121,12 @@ export function ResultsPhase() {
   const isExcellent = scoreBreakdown.finalScore >= 80
 
   const getMessage = (score: number) => {
+    if (isCollaborative) {
+      if (score === 100) return 'Perfect teamwork! All cards in correct order!'
+      if (score >= 80) return 'Excellent collaboration! Very close to perfect!'
+      if (score >= 60) return 'Good team effort! You worked well together!'
+      return 'Keep working together! Communication is key.'
+    }
     if (score === 100) return 'Perfect! All cards in correct order!'
     if (score >= 80) return 'Excellent! Very close to perfect!'
     if (score >= 60) return 'Good job! You understand the pattern!'
@@ -358,6 +367,25 @@ export function ResultsPhase() {
             </div>
           </div>
 
+          {/* Team/Solo Label */}
+          {isCollaborative && (
+            <div
+              className={css({
+                padding: '6px 16px',
+                background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
+                borderRadius: '20px',
+                fontSize: '13px',
+                fontWeight: '700',
+                color: 'white',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
+              })}
+            >
+              👥 Team Score
+            </div>
+          )}
+
           <div
             className={css({
               textAlign: 'center',
@@ -384,6 +412,60 @@ export function ResultsPhase() {
             ⏱️ {formatTime(scoreBreakdown.elapsedTime)}
           </div>
         </div>
+
+        {/* Team Members (collaborative mode only) */}
+        {isCollaborative && players.size > 0 && (
+          <div
+            className={css({
+              background: 'white',
+              borderRadius: '12px',
+              padding: '16px',
+              border: '2px solid rgba(139, 92, 246, 0.2)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+            })}
+          >
+            <div
+              className={css({
+                fontSize: '13px',
+                fontWeight: '700',
+                color: '#64748b',
+                marginBottom: '12px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              })}
+            >
+              Team Members ({players.size})
+            </div>
+            <div
+              className={css({
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '8px',
+              })}
+            >
+              {Array.from(players.values()).map((player) => (
+                <div
+                  key={player.id}
+                  className={css({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    background: 'rgba(139, 92, 246, 0.1)',
+                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    borderRadius: '20px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#5b21b6',
+                  })}
+                >
+                  <span style={{ fontSize: '18px' }}>{player.emoji}</span>
+                  <span>{player.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Score Details - Compact Cards */}
         <div
