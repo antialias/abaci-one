@@ -193,74 +193,143 @@ function AnimatedArrow({
   // Don't draw arrow if cards are too close
   if (distance < 80) return null
 
+  // Calculate control point for bezier curve (perpendicular to line, offset by 30px)
+  const midX = (fromX + toX) / 2
+  const midY = (fromY + toY) / 2
+  const perpAngle = angle + 90 // Perpendicular to the line
+  const curveOffset = 30 // How much to curve (in pixels)
+  const controlX = midX + Math.cos((perpAngle * Math.PI) / 180) * curveOffset
+  const controlY = midY + Math.sin((perpAngle * Math.PI) / 180) * curveOffset
+
+  // Calculate arrowhead position and angle at the end of the curve
+  // For a quadratic bezier, the tangent at t=1 is: 2*(P2 - P1)
+  const tangentX = toX - controlX
+  const tangentY = toY - controlY
+  const arrowAngle = Math.atan2(tangentY, tangentX) * (180 / Math.PI)
+
   return (
     <animated.div
       style={{
         position: 'absolute',
-        left: springProps.fromX.to((val) => `${val}px`),
-        top: springProps.fromY.to((val) => `${val}px`),
-        width: springProps.distance.to((val) => `${val}px`),
-        height: isCorrect ? '4px' : '3px',
-        transformOrigin: '0 50%',
-        transform: springProps.angle.to((val) => `rotate(${val}deg)`),
+        left: 0,
+        top: 0,
+        width: '100%',
+        height: '100%',
         pointerEvents: 'none',
         zIndex: 0,
-        animation: isCorrect ? 'correctArrowGlow 1.5s ease-in-out infinite' : 'none',
       }}
     >
-      {/* Arrow line */}
-      <div
+      <svg
         style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
           width: '100%',
           height: '100%',
-          background: isCorrect
-            ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.7) 0%, rgba(34, 197, 94, 0.9) 100%)'
-            : 'linear-gradient(90deg, rgba(251, 146, 60, 0.6) 0%, rgba(251, 146, 60, 0.8) 100%)',
-          position: 'relative',
+          overflow: 'visible',
         }}
       >
-        {/* Arrow head */}
-        <div
+        {/* Curved line using quadratic bezier */}
+        <animated.path
+          d={springProps.fromX.to(
+            (fx, fy, dist, ang) => {
+              // Recalculate curve with animated values
+              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
+              const ty = fy + Math.sin((ang * Math.PI) / 180) * dist
+              const mx = (fx + tx) / 2
+              const my = (fy + ty) / 2
+              const perpAng = ang + 90
+              const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
+              const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
+              return `M ${fx} ${fy} Q ${cx} ${cy} ${tx} ${ty}`
+            },
+            springProps.fromY,
+            springProps.distance,
+            springProps.angle
+          )}
+          stroke={isCorrect ? 'rgba(34, 197, 94, 0.8)' : 'rgba(251, 146, 60, 0.7)'}
+          strokeWidth={isCorrect ? '4' : '3'}
+          fill="none"
           style={{
-            position: 'absolute',
-            right: '-8px',
-            top: '50%',
-            width: '0',
-            height: '0',
-            borderLeft: isCorrect
-              ? '10px solid rgba(34, 197, 94, 0.9)'
-              : '10px solid rgba(251, 146, 60, 0.8)',
-            borderTop: '6px solid transparent',
-            borderBottom: '6px solid transparent',
-            transform: 'translateY(-50%)',
+            filter: isCorrect ? 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.6))' : 'none',
           }}
         />
-        {/* Sequence number badge */}
-        <animated.div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            // Counter-rotate to keep number upright, plus center translation
-            transform: springProps.angle.to((val) => `translate(-50%, -50%) rotate(${-val}deg)`),
-            background: isCorrect ? 'rgba(34, 197, 94, 0.95)' : 'rgba(251, 146, 60, 0.95)',
-            color: 'white',
-            borderRadius: '50%',
-            width: '24px',
-            height: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            border: '2px solid white',
-            boxShadow: isCorrect ? '0 0 12px rgba(34, 197, 94, 0.6)' : '0 2px 4px rgba(0,0,0,0.2)',
-            animation: isCorrect ? 'correctBadgePulse 1.5s ease-in-out infinite' : 'none',
-          }}
-        >
-          {sequenceNumber}
-        </animated.div>
-      </div>
+
+        {/* Arrowhead */}
+        <animated.polygon
+          points={springProps.angle.to((ang) => {
+            // Recalculate end position and angle
+            const tx = fromX + Math.cos((ang * Math.PI) / 180) * distance
+            const ty = fromY + Math.sin((ang * Math.PI) / 180) * distance
+            const mx = (fromX + tx) / 2
+            const my = (fromY + ty) / 2
+            const perpAng = ang + 90
+            const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
+            const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
+            const tangX = tx - cx
+            const tangY = ty - cy
+            const aAngle = Math.atan2(tangY, tangX)
+
+            // Arrow points relative to tip
+            const tipX = tx
+            const tipY = ty
+            const baseX = tipX - Math.cos(aAngle) * 10
+            const baseY = tipY - Math.sin(aAngle) * 10
+            const left = `${baseX + Math.cos(aAngle + Math.PI / 2) * 6},${baseY + Math.sin(aAngle + Math.PI / 2) * 6}`
+            const right = `${baseX + Math.cos(aAngle - Math.PI / 2) * 6},${baseY + Math.sin(aAngle - Math.PI / 2) * 6}`
+            return `${tipX},${tipY} ${left} ${right}`
+          })}
+          fill={isCorrect ? 'rgba(34, 197, 94, 0.9)' : 'rgba(251, 146, 60, 0.8)'}
+        />
+      </svg>
+
+      {/* Sequence number badge */}
+      <animated.div
+        style={{
+          position: 'absolute',
+          left: springProps.fromX.to(
+            (fx, fy, dist, ang) => {
+              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
+              const mx = (fx + tx) / 2
+              const perpAng = ang + 90
+              const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
+              return `${cx}px`
+            },
+            springProps.fromY,
+            springProps.distance,
+            springProps.angle
+          ),
+          top: springProps.fromY.to(
+            (fy, fx, dist, ang) => {
+              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
+              const ty = fy + Math.sin((ang * Math.PI) / 180) * dist
+              const my = (fy + ty) / 2
+              const perpAng = ang + 90
+              const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
+              return `${cy}px`
+            },
+            springProps.fromX,
+            springProps.distance,
+            springProps.angle
+          ),
+          transform: 'translate(-50%, -50%)',
+          background: isCorrect ? 'rgba(34, 197, 94, 0.95)' : 'rgba(251, 146, 60, 0.95)',
+          color: 'white',
+          borderRadius: '50%',
+          width: '24px',
+          height: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          border: '2px solid white',
+          boxShadow: isCorrect ? '0 0 12px rgba(34, 197, 94, 0.6)' : '0 2px 4px rgba(0,0,0,0.2)',
+          animation: isCorrect ? 'correctBadgePulse 1.5s ease-in-out infinite' : 'none',
+        }}
+      >
+        {sequenceNumber}
+      </animated.div>
     </animated.div>
   )
 }
