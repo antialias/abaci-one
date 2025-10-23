@@ -3,7 +3,7 @@
  * Handles database operations and validation for arcade sessions
  */
 
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { buildPlayerOwnershipMap, type PlayerOwnershipMap } from './player-ownership'
 import { getValidator, type GameName } from './validators'
@@ -249,17 +249,19 @@ export async function applyGameMove(
         version: session.version + 1,
       })
       .where(
-        eq(schema.arcadeSessions.roomId, session.roomId) // Use roomId (PRIMARY KEY)
+        and(
+          eq(schema.arcadeSessions.roomId, session.roomId), // Use roomId (PRIMARY KEY)
+          eq(schema.arcadeSessions.version, session.version) // Optimistic locking
+        )
       )
-      // Version check for optimistic locking would go here
-      // SQLite doesn't support WHERE clauses in UPDATE with RETURNING easily
-      // We'll handle this by checking the version after
       .returning()
 
     if (!updatedSession) {
+      // Version conflict - another move was processed first
       return {
         success: false,
-        error: 'Failed to update session',
+        error: 'Version conflict - please retry',
+        versionConflict: true,
       }
     }
 
