@@ -595,13 +595,16 @@ export function PlayingPhaseDrag() {
     const target = e.currentTarget as HTMLElement
     target.setPointerCapture(e.pointerId)
 
-    const rect = target.getBoundingClientRect()
-    const offsetX = e.clientX - rect.left
-    const offsetY = e.clientY - rect.top
-
-    // Store initial rotation to preserve it during drag
+    // Get current card state to calculate proper offset
     const currentCard = cardStates.get(cardId)
-    const initialRotation = currentCard?.rotation || 0
+    if (!currentCard) return
+
+    // Calculate offset from card's actual position (in pixels) to pointer
+    // This accounts for rotation and prevents position jump
+    const cardPixelX = (currentCard.x / 100) * viewportDimensions.width
+    const cardPixelY = (currentCard.y / 100) * viewportDimensions.height
+    const offsetX = e.clientX - cardPixelX
+    const offsetY = e.clientY - cardPixelY
 
     dragStateRef.current = {
       cardId,
@@ -609,7 +612,7 @@ export function PlayingPhaseDrag() {
       offsetY,
       startX: e.clientX,
       startY: e.clientY,
-      initialRotation,
+      initialRotation: currentCard.rotation,
     }
 
     setDraggingCardId(cardId)
