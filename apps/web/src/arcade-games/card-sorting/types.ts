@@ -98,6 +98,7 @@ export interface CardSortingState extends GameState {
     selectedCards: SortingCard[]
     availableCards: SortingCard[]
     placedCards: (SortingCard | null)[]
+    cardPositions: CardPosition[]
     gameStartTime: number
     numbersRevealed: boolean
   }

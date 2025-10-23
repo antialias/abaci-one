@@ -176,9 +176,6 @@ function AnimatedArrow({
   const angle = Math.atan2(dy, dx) * (180 / Math.PI)
   const distance = Math.sqrt(dx * dx + dy * dy)
 
-  // Don't draw arrow if cards are too close
-  if (distance < 80) return null
-
   // Use spring animation for arrow position and size
   // Disable animation when dragging or resizing
   const springProps = useSpring({
@@ -192,6 +189,9 @@ function AnimatedArrow({
       friction: 30,
     },
   })
+
+  // Don't draw arrow if cards are too close
+  if (distance < 80) return null
 
   return (
     <animated.div

@@ -233,6 +233,7 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
               selectedCards: state.selectedCards,
               availableCards: state.availableCards,
               placedCards: state.placedCards,
+              cardPositions: state.cardPositions,
               gameStartTime: state.gameStartTime || Date.now(),
               numbersRevealed: state.numbersRevealed,
             }
@@ -276,6 +277,7 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
         correctOrder,
         availableCards: state.pausedGameState.availableCards,
         placedCards: state.pausedGameState.placedCards,
+        cardPositions: state.pausedGameState.cardPositions,
         gameStartTime: state.pausedGameState.gameStartTime,
         numbersRevealed: state.pausedGameState.numbersRevealed,
         pausedGamePhase: undefined,
