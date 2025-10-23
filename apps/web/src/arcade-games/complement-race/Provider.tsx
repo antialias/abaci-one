@@ -486,7 +486,12 @@ export function ComplementRaceProvider({ children }: { children: ReactNode }) {
     if (multiplayerState.gamePhase !== 'playing') {
       hasInitializedPositionRef.current = false
     }
-  }, [multiplayerState.gamePhase, multiplayerState.config.style, multiplayerState.players, localPlayerId])
+  }, [
+    multiplayerState.gamePhase,
+    multiplayerState.config.style,
+    multiplayerState.players,
+    localPlayerId,
+  ])
 
   // Initialize game start time when game becomes active
   useEffect(() => {
