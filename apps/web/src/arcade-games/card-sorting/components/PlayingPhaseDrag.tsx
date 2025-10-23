@@ -325,7 +325,7 @@ function AnimatedCard({
         cursor: isSpectating ? 'default' : 'grab',
         touchAction: 'none',
         userSelect: 'none',
-        transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
+        transition: 'box-shadow 0.2s ease',
         borderRadius: '12px',
         overflow: 'hidden',
       })}
