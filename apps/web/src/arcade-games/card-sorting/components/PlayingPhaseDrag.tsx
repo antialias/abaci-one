@@ -826,6 +826,8 @@ export function PlayingPhaseDrag() {
 
   // Spectator educational mode (show correctness indicators)
   const [spectatorEducationalMode, setSpectatorEducationalMode] = useState(false)
+  // Spectator stats sidebar collapsed state
+  const [spectatorStatsCollapsed, setSpectatorStatsCollapsed] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{
@@ -1339,6 +1341,180 @@ export function PlayingPhaseDrag() {
               <span>{spectatorEducationalMode ? '✅' : '📚'}</span>
               <span>Educational Mode</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Spectator Stats Sidebar */}
+      {isSpectating && (
+        <div
+          className={css({
+            position: 'fixed',
+            top: '56px', // Below banner
+            right: spectatorStatsCollapsed ? '-280px' : '0',
+            width: '280px',
+            height: 'calc(100vh - 56px)',
+            background: 'rgba(255, 255, 255, 0.95)',
+            boxShadow: '-2px 0 12px rgba(0, 0, 0, 0.1)',
+            transition: 'right 0.3s ease',
+            zIndex: 90,
+            display: 'flex',
+            flexDirection: 'column',
+          })}
+        >
+          {/* Collapse/Expand Toggle */}
+          <button
+            type="button"
+            onClick={() => setSpectatorStatsCollapsed(!spectatorStatsCollapsed)}
+            className={css({
+              position: 'absolute',
+              left: '-40px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: '40px',
+              height: '80px',
+              background: 'rgba(255, 255, 255, 0.95)',
+              border: 'none',
+              borderRadius: '8px 0 0 8px',
+              boxShadow: '-2px 0 8px rgba(0, 0, 0, 0.1)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              transition: 'all 0.2s',
+              _hover: {
+                background: 'rgba(255, 255, 255, 1)',
+                width: '44px',
+              },
+            })}
+          >
+            {spectatorStatsCollapsed ? '◀' : '▶'}
+          </button>
+
+          {/* Stats Content */}
+          <div
+            className={css({
+              padding: '24px',
+              overflowY: 'auto',
+              flex: 1,
+            })}
+          >
+            <h3
+              className={css({
+                fontSize: '18px',
+                fontWeight: '700',
+                marginBottom: '20px',
+                color: '#1e293b',
+                borderBottom: '2px solid #e2e8f0',
+                paddingBottom: '8px',
+              })}
+            >
+              📊 Live Stats
+            </h3>
+
+            {/* Time Elapsed */}
+            <div
+              className={css({
+                marginBottom: '16px',
+                padding: '12px',
+                background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                borderRadius: '8px',
+                border: '1px solid #93c5fd',
+              })}
+            >
+              <div className={css({ fontSize: '12px', color: '#1e40af', marginBottom: '4px' })}>
+                ⏱️ Time Elapsed
+              </div>
+              <div className={css({ fontSize: '24px', fontWeight: '700', color: '#1e3a8a' })}>
+                {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+              </div>
+            </div>
+
+            {/* Cards Placed */}
+            <div
+              className={css({
+                marginBottom: '16px',
+                padding: '12px',
+                background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
+                borderRadius: '8px',
+                border: '1px solid #86efac',
+              })}
+            >
+              <div className={css({ fontSize: '12px', color: '#15803d', marginBottom: '4px' })}>
+                🎯 Cards Placed
+              </div>
+              <div className={css({ fontSize: '24px', fontWeight: '700', color: '#14532d' })}>
+                {state.placedCards.filter((c) => c !== null).length} / {state.cardCount}
+              </div>
+              <div className={css({ fontSize: '11px', color: '#15803d', marginTop: '4px' })}>
+                {Math.round(
+                  (state.placedCards.filter((c) => c !== null).length / state.cardCount) * 100
+                )}
+                % complete
+              </div>
+            </div>
+
+            {/* Current Accuracy */}
+            <div
+              className={css({
+                marginBottom: '16px',
+                padding: '12px',
+                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                borderRadius: '8px',
+                border: '1px solid #fbbf24',
+              })}
+            >
+              <div className={css({ fontSize: '12px', color: '#92400e', marginBottom: '4px' })}>
+                ✨ Current Accuracy
+              </div>
+              <div className={css({ fontSize: '24px', fontWeight: '700', color: '#78350f' })}>
+                {(() => {
+                  const placedCards = state.placedCards.filter((c): c is SortingCard => c !== null)
+                  if (placedCards.length === 0) return '0%'
+                  const correctCount = placedCards.filter(
+                    (c, i) => state.correctOrder[i]?.id === c.id
+                  ).length
+                  return `${Math.round((correctCount / placedCards.length) * 100)}%`
+                })()}
+              </div>
+              <div className={css({ fontSize: '11px', color: '#92400e', marginTop: '4px' })}>
+                Cards in correct position
+              </div>
+            </div>
+
+            {/* Numbers Revealed */}
+            <div
+              className={css({
+                marginBottom: '16px',
+                padding: '12px',
+                background: state.numbersRevealed
+                  ? 'linear-gradient(135deg, #fce7f3, #fbcfe8)'
+                  : 'linear-gradient(135deg, #f1f5f9, #e2e8f0)',
+                borderRadius: '8px',
+                border: '1px solid',
+                borderColor: state.numbersRevealed ? '#f9a8d4' : '#cbd5e1',
+              })}
+            >
+              <div
+                className={css({
+                  fontSize: '12px',
+                  color: state.numbersRevealed ? '#9f1239' : '#475569',
+                  marginBottom: '4px',
+                })}
+              >
+                👁️ Numbers Revealed
+              </div>
+              <div
+                className={css({
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: state.numbersRevealed ? '#9f1239' : '#475569',
+                })}
+              >
+                {state.numbersRevealed ? '✓ Yes' : '✗ No'}
+              </div>
+            </div>
           </div>
         </div>
       )}
