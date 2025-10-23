@@ -131,6 +131,82 @@ export function SetupPhase() {
         </label>
       </div>
 
+      {/* Game Mode Selection */}
+      <div className={css({ width: '100%', maxWidth: '400px' })}>
+        <label
+          className={css({
+            display: 'block',
+            fontSize: 'sm',
+            fontWeight: '600',
+            marginBottom: '0.5rem',
+            color: 'gray.700',
+          })}
+        >
+          Game Mode
+        </label>
+        <div
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: '2',
+            gap: '0.5rem',
+          })}
+        >
+          <button
+            type="button"
+            onClick={() => setConfig('gameMode', 'solo')}
+            className={css({
+              padding: '0.75rem',
+              borderRadius: '0.5rem',
+              border: '2px solid',
+              borderColor: state.gameMode === 'solo' ? 'teal.500' : 'gray.300',
+              background: state.gameMode === 'solo' ? 'teal.50' : 'white',
+              color: state.gameMode === 'solo' ? 'teal.700' : 'gray.700',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              _hover: {
+                borderColor: 'teal.400',
+                background: 'teal.50',
+              },
+            })}
+          >
+            👤 Solo
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfig('gameMode', 'collaborative')}
+            className={css({
+              padding: '0.75rem',
+              borderRadius: '0.5rem',
+              border: '2px solid',
+              borderColor: state.gameMode === 'collaborative' ? 'teal.500' : 'gray.300',
+              background: state.gameMode === 'collaborative' ? 'teal.50' : 'white',
+              color: state.gameMode === 'collaborative' ? 'teal.700' : 'gray.700',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              _hover: {
+                borderColor: 'teal.400',
+                background: 'teal.50',
+              },
+            })}
+          >
+            👥 Collaborative
+          </button>
+        </div>
+        <p
+          className={css({
+            fontSize: 'xs',
+            color: 'gray.500',
+            marginTop: '0.5rem',
+          })}
+        >
+          {state.gameMode === 'solo'
+            ? 'Play alone and beat your best score'
+            : 'Work together with other players in real-time'}
+        </p>
+      </div>
+
       {/* Action Buttons */}
       <div
         className={css({
