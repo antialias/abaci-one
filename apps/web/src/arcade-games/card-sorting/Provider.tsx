@@ -43,6 +43,8 @@ interface CardSortingContextValue {
   // Spectator mode
   localPlayerId: string | undefined
   isSpectating: boolean
+  // Multiplayer
+  players: Map<string, { id: string; name: string; emoji: string }> // All room players
 }
 
 // Create context
@@ -606,6 +608,8 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     // Spectator mode
     localPlayerId,
     isSpectating: !localPlayerId,
+    // Multiplayer
+    players,
   }
 
   return <CardSortingContext.Provider value={contextValue}>{children}</CardSortingContext.Provider>

@@ -39,6 +39,7 @@ export interface CardPosition {
   y: number // % of viewport height (0-100)
   rotation: number // degrees (-15 to 15)
   zIndex: number
+  draggedByPlayerId?: string // ID of player currently dragging this card
 }
 
 export interface PlacedCard {

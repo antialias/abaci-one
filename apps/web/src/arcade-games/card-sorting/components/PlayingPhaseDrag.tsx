@@ -690,6 +690,8 @@ function AnimatedCard({
   isResizing,
   isSpectating,
   isCorrect,
+  draggedByPlayerId,
+  players,
   viewportWidth,
   viewportHeight,
   onPointerDown,
@@ -702,6 +704,8 @@ function AnimatedCard({
   isResizing: boolean
   isSpectating: boolean
   isCorrect: boolean
+  draggedByPlayerId?: string
+  players: Map<string, { id: string; name: string; emoji: string }>
   viewportWidth: number
   viewportHeight: number
   onPointerDown: (e: React.PointerEvent) => void
@@ -771,6 +775,37 @@ function AnimatedCard({
         })}
         dangerouslySetInnerHTML={{ __html: card.svgContent }}
       />
+
+      {/* Player emoji overlay when card is being dragged by a player */}
+      {draggedByPlayerId &&
+        (() => {
+          const player = players.get(draggedByPlayerId)
+          if (!player) return null
+
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                top: '4px',
+                right: '4px',
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.95)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                border: '2px solid rgba(59, 130, 246, 0.6)',
+                zIndex: 10,
+                pointerEvents: 'none',
+              }}
+            >
+              {player.emoji}
+            </div>
+          )
+        })()}
     </animated.div>
   )
 }
@@ -786,6 +821,8 @@ export function PlayingPhaseDrag() {
     canCheckSolution,
     elapsedTime,
     isSpectating,
+    localPlayerId,
+    players,
   } = useCardSorting()
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1097,6 +1134,8 @@ export function PlayingPhaseDrag() {
               y: state.y,
               rotation: state.rotation,
               zIndex: state.zIndex,
+              // Mark this card as being dragged by local player
+              draggedByPlayerId: id === cardId ? localPlayerId : undefined,
             }))
             updateCardPositions(positions)
           }
@@ -1131,6 +1170,8 @@ export function PlayingPhaseDrag() {
           y: state.y,
           rotation: state.rotation,
           zIndex: state.zIndex,
+          // Clear draggedByPlayerId when drag ends
+          draggedByPlayerId: undefined,
         }))
         lastPositionUpdateRef.current = Date.now()
         updateCardPositions(positions)
@@ -1375,6 +1416,10 @@ export function PlayingPhaseDrag() {
           const isCorrect =
             positionInSequence >= 0 && state.correctOrder[positionInSequence]?.id === card.id
 
+          // Get draggedByPlayerId from server state
+          const serverPosition = state.cardPositions.find((p) => p.cardId === card.id)
+          const draggedByPlayerId = serverPosition?.draggedByPlayerId
+
           return (
             <AnimatedCard
               key={card.id}
@@ -1384,6 +1429,8 @@ export function PlayingPhaseDrag() {
               isResizing={isResizing}
               isSpectating={isSpectating}
               isCorrect={isCorrect}
+              draggedByPlayerId={draggedByPlayerId}
+              players={players}
               viewportWidth={viewportDimensions.width}
               viewportHeight={viewportDimensions.height}
               onPointerDown={(e) => handlePointerDown(e, card.id)}
