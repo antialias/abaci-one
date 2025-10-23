@@ -236,12 +236,13 @@ function AnimatedArrow({
           }}
         />
         {/* Sequence number badge */}
-        <div
+        <animated.div
           style={{
             position: 'absolute',
             left: '50%',
             top: '50%',
-            transform: 'translate(-50%, -50%)',
+            // Counter-rotate to keep number upright, plus center translation
+            transform: springProps.angle.to((val) => `translate(-50%, -50%) rotate(${-val}deg)`),
             background: isCorrect ? 'rgba(34, 197, 94, 0.95)' : 'rgba(251, 146, 60, 0.95)',
             color: 'white',
             borderRadius: '50%',
@@ -258,7 +259,7 @@ function AnimatedArrow({
           }}
         >
           {sequenceNumber}
-        </div>
+        </animated.div>
       </div>
     </animated.div>
   )
