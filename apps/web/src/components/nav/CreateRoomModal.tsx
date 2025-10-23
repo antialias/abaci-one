@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import * as Select from '@radix-ui/react-select'
+import { animated } from '@react-spring/web'
 import { Modal } from '@/components/common/Modal'
 import { useCreateRoom } from '@/hooks/useRoomData'
+import { getAvailableGames } from '@/lib/arcade/game-registry'
 
 export interface CreateRoomModalProps {
   /**
@@ -24,10 +27,9 @@ export interface CreateRoomModalProps {
  */
 export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalProps) {
   const { mutateAsync: createRoom, isPending } = useCreateRoom()
+  const availableGames = getAvailableGames()
   const [error, setError] = useState('')
-  const [gameName, setGameName] = useState<'matching' | 'memory-quiz' | 'complement-race'>(
-    'matching'
-  )
+  const [gameName, setGameName] = useState<string>('__choose_later__') // Special value = user will choose later
   const [accessMode, setAccessMode] = useState<
     'open' | 'password' | 'approval-only' | 'restricted'
   >('open')
@@ -35,7 +37,7 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
 
   const handleClose = () => {
     setError('')
-    setGameName('matching')
+    setGameName('__choose_later__')
     setAccessMode('open')
     setPassword('')
     onClose()
@@ -59,9 +61,13 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
 
     try {
       // Create the room (creator is auto-added as first member)
+      // If no game selected (choose later), use first available game as default
+      const selectedGame =
+        gameName === '__choose_later__' ? availableGames[0]?.manifest.name || 'matching' : gameName
+
       await createRoom({
         name,
-        gameName,
+        gameName: selectedGame,
         creatorName: 'Player',
         gameConfig: { difficulty: 6 },
         accessMode,
@@ -153,77 +159,308 @@ export function CreateRoomModal({ isOpen, onClose, onSuccess }: CreateRoomModalP
             <label
               style={{
                 display: 'block',
-                marginBottom: '8px',
+                marginBottom: '6px',
                 fontWeight: '600',
                 color: 'rgba(209, 213, 219, 1)',
                 fontSize: '13px',
               }}
             >
-              Choose Game
+              🎮 Choose Your Game{' '}
+              <span
+                style={{ fontWeight: '400', color: 'rgba(156, 163, 175, 1)', fontSize: '12px' }}
+              >
+                (optional)
+              </span>
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-              {[
-                { value: 'matching' as const, emoji: '🃏', label: 'Memory', desc: 'Matching' },
-                { value: 'memory-quiz' as const, emoji: '🧠', label: 'Memory', desc: 'Quiz' },
-                {
-                  value: 'complement-race' as const,
-                  emoji: '⚡',
-                  label: 'Complement',
-                  desc: 'Race',
-                },
-              ].map((game) => (
-                <button
-                  key={game.value}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => setGameName(game.value)}
+            <Select.Root value={gameName} onValueChange={setGameName} disabled={isPending}>
+              <Select.Trigger
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  border: '2px solid rgba(75, 85, 99, 0.5)',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: gameName ? 'rgba(209, 213, 219, 1)' : 'rgba(156, 163, 175, 1)',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: isPending ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  transition: 'all 0.2s ease',
+                  outline: 'none',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isPending) {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                    e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.5)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                  e.currentTarget.style.borderColor = 'rgba(75, 85, 99, 0.5)'
+                }}
+              >
+                <Select.Value placeholder="Select a game..." />
+                <Select.Icon>
+                  <span style={{ fontSize: '12px' }}>▼</span>
+                </Select.Icon>
+              </Select.Trigger>
+
+              <Select.Portal>
+                <Select.Content
+                  position="popper"
+                  side="bottom"
+                  align="start"
+                  sideOffset={5}
+                  collisionPadding={30}
+                  avoidCollisions={true}
                   style={{
-                    padding: '12px 8px',
-                    background:
-                      gameName === game.value
-                        ? 'rgba(34, 197, 94, 0.15)'
-                        : 'rgba(255, 255, 255, 0.05)',
-                    border:
-                      gameName === game.value
-                        ? '2px solid rgba(34, 197, 94, 0.6)'
-                        : '2px solid rgba(75, 85, 99, 0.5)',
-                    borderRadius: '8px',
-                    color:
-                      gameName === game.value
-                        ? 'rgba(134, 239, 172, 1)'
-                        : 'rgba(209, 213, 219, 0.8)',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    cursor: isPending ? 'not-allowed' : 'pointer',
-                    opacity: isPending ? 0.5 : 1,
-                    textAlign: 'center',
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isPending && gameName !== game.value) {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
-                      e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.4)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (gameName !== game.value) {
-                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
-                      e.currentTarget.style.borderColor = 'rgba(75, 85, 99, 0.5)'
-                    }
+                    background: 'linear-gradient(180deg, #1f2937 0%, #111827 100%)',
+                    borderRadius: '12px',
+                    border: '2px solid rgba(34, 197, 94, 0.3)',
+                    padding: '6px',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+                    zIndex: 1000,
+                    minWidth: '300px',
+                    maxWidth: 'min(400px, 90vw)',
+                    maxHeight: 'min(300px, 50vh)',
+                    overflow: 'hidden',
+                    position: 'relative',
                   }}
                 >
-                  <span style={{ fontSize: '24px' }}>{game.emoji}</span>
-                  <div style={{ lineHeight: '1.2' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600' }}>{game.label}</div>
-                    <div style={{ fontSize: '11px', opacity: 0.7 }}>{game.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
+                  <Select.ScrollUpButton asChild>
+                    <animated.div
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        left: '6px',
+                        right: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '30px',
+                        background:
+                          'linear-gradient(180deg, rgba(31, 41, 55, 0.98) 0%, rgba(31, 41, 55, 0.7) 70%, transparent 100%)',
+                        cursor: 'default',
+                        color: 'rgba(34, 197, 94, 1)',
+                        fontSize: '14px',
+                        transition: 'opacity 0.2s ease',
+                        zIndex: 10,
+                        pointerEvents: 'auto',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '0.7'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '1'
+                      }}
+                    >
+                      ▲
+                    </animated.div>
+                  </Select.ScrollUpButton>
+                  <Select.Viewport
+                    style={{
+                      maxHeight: 'inherit',
+                      scrollBehavior: 'smooth',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    <Select.Item
+                      value="__choose_later__"
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        outline: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        transition: 'all 0.15s ease',
+                        background:
+                          gameName === '__choose_later__'
+                            ? 'rgba(34, 197, 94, 0.15)'
+                            : 'transparent',
+                        color: 'rgba(209, 213, 219, 0.9)',
+                        fontSize: '14px',
+                        marginBottom: '4px',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (gameName !== '__choose_later__') {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (gameName !== '__choose_later__') {
+                          e.currentTarget.style.background = 'transparent'
+                        }
+                      }}
+                    >
+                      <Select.ItemText>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '20px' }}>✨</span>
+                          <div>
+                            <div style={{ fontWeight: '500', fontSize: '14px' }}>Choose later</div>
+                            <div
+                              style={{
+                                fontSize: '12px',
+                                opacity: 0.7,
+                                color: 'rgba(156, 163, 175, 1)',
+                              }}
+                            >
+                              Pick on the game selection page
+                            </div>
+                          </div>
+                        </div>
+                      </Select.ItemText>
+                    </Select.Item>
+
+                    <div
+                      style={{
+                        height: '1px',
+                        background: 'rgba(75, 85, 99, 0.5)',
+                        margin: '6px 0',
+                      }}
+                    />
+
+                    {availableGames.map((game) => {
+                      const gameId = game.manifest.name
+                      // Map game gradients to colors
+                      const gradientColors: Record<string, string> = {
+                        pink: 'rgba(236, 72, 153, 0.2)',
+                        purple: 'rgba(168, 85, 247, 0.2)',
+                        blue: 'rgba(59, 130, 246, 0.2)',
+                        green: 'rgba(34, 197, 94, 0.2)',
+                        orange: 'rgba(249, 115, 22, 0.2)',
+                        red: 'rgba(239, 68, 68, 0.2)',
+                      }
+                      const bgColor =
+                        gradientColors[game.manifest.gradient || 'blue'] || gradientColors.blue
+
+                      return (
+                        <Select.Item
+                          key={gameId}
+                          value={gameId}
+                          style={{
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            outline: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            transition: 'all 0.15s ease',
+                            background: gameName === gameId ? bgColor : 'transparent',
+                            marginBottom: '4px',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (gameName !== gameId) {
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (gameName !== gameId) {
+                              e.currentTarget.style.background = 'transparent'
+                            }
+                          }}
+                        >
+                          <Select.ItemText>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <span style={{ fontSize: '28px' }}>{game.manifest.icon}</span>
+                              <div style={{ flex: 1 }}>
+                                <div
+                                  style={{
+                                    fontWeight: '600',
+                                    fontSize: '15px',
+                                    color: 'rgba(209, 213, 219, 1)',
+                                    marginBottom: '2px',
+                                  }}
+                                >
+                                  {game.manifest.displayName}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: '12px',
+                                    color: 'rgba(156, 163, 175, 1)',
+                                    lineHeight: '1.3',
+                                  }}
+                                >
+                                  {game.manifest.description}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: '11px',
+                                    marginTop: '4px',
+                                    display: 'flex',
+                                    gap: '8px',
+                                    flexWrap: 'wrap',
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      background: 'rgba(59, 130, 246, 0.2)',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      color: 'rgba(147, 197, 253, 1)',
+                                      fontWeight: '500',
+                                    }}
+                                  >
+                                    {game.manifest.maxPlayers === 1
+                                      ? '👤 Solo'
+                                      : `👥 ${game.manifest.maxPlayers}p`}
+                                  </span>
+                                  <span
+                                    style={{
+                                      background: 'rgba(168, 85, 247, 0.2)',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      color: 'rgba(196, 181, 253, 1)',
+                                      fontWeight: '500',
+                                    }}
+                                  >
+                                    {game.manifest.difficulty}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </Select.ItemText>
+                        </Select.Item>
+                      )
+                    })}
+                  </Select.Viewport>
+                  <Select.ScrollDownButton asChild>
+                    <animated.div
+                      style={{
+                        position: 'absolute',
+                        bottom: '6px',
+                        left: '6px',
+                        right: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '30px',
+                        background:
+                          'linear-gradient(0deg, rgba(31, 41, 55, 0.98) 0%, rgba(31, 41, 55, 0.7) 70%, transparent 100%)',
+                        cursor: 'default',
+                        color: 'rgba(34, 197, 94, 1)',
+                        fontSize: '14px',
+                        transition: 'opacity 0.2s ease',
+                        zIndex: 10,
+                        pointerEvents: 'auto',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '0.7'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '1'
+                      }}
+                    >
+                      ▼
+                    </animated.div>
+                  </Select.ScrollDownButton>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
           </div>
 
           {/* Access Mode Selection */}
