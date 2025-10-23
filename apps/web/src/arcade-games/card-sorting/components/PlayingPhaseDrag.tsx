@@ -324,6 +324,8 @@ function AnimatedCard({
         touchAction: 'none',
         userSelect: 'none',
         transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
+        borderRadius: '12px',
+        overflow: 'hidden',
       })}
       style={{
         left: springProps.left.to((val) => `${val}px`),
@@ -346,6 +348,8 @@ function AnimatedCard({
           padding: '12px',
           boxSizing: 'border-box',
           overflow: 'hidden',
+          // Clip content to border-box so rounded corners work properly
+          backgroundClip: 'border-box',
         })}
         dangerouslySetInnerHTML={{ __html: card.svgContent }}
       />
