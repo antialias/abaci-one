@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { useRoomData, useSetRoomGame } from '@/hooks/useRoomData'
+import { useState, useEffect } from 'react'
+import { useRoomData, useSetRoomGame, useCreateRoom } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
 import { GAMES_CONFIG } from '@/components/GameSelector'
 import type { GameType } from '@/components/GameSelector'
@@ -17,7 +17,8 @@ import { getAllGames, getGame, hasGame } from '@/lib/arcade/game-registry'
  * Shows game selection when no game is set, then shows the game itself once selected.
  * URL never changes - it's always /arcade regardless of selection, setup, or gameplay.
  *
- * Note: We show a friendly message with a link if no room exists to avoid navigation loops.
+ * Auto-creates a solo room if the user doesn't have one, ensuring they always have
+ * a context in which to play games.
  *
  * Note: ModerationNotifications is handled by PageWithNav inside each game component,
  * so we don't need to render it here.
@@ -27,10 +28,38 @@ export default function RoomPage() {
   const { roomData, isLoading } = useRoomData()
   const { data: viewerId } = useViewerId()
   const { mutate: setRoomGame } = useSetRoomGame()
+  const { mutate: createRoom, isPending: isCreatingRoom } = useCreateRoom()
   const [permissionError, setPermissionError] = useState<string | null>(null)
 
-  // Show loading state
-  if (isLoading) {
+  // Auto-create room when user has no room
+  // This happens when:
+  // 1. First time visiting /arcade
+  // 2. After leaving a room
+  useEffect(() => {
+    if (!isLoading && !roomData && viewerId && !isCreatingRoom) {
+      console.log('[RoomPage] No room found, auto-creating room for user:', viewerId)
+
+      createRoom(
+        {
+          name: 'My Room',
+          gameName: null, // No game selected yet
+          gameConfig: undefined, // No game config since no game selected
+          accessMode: 'open' as const, // Open by default - user can change settings later
+        },
+        {
+          onSuccess: (newRoom) => {
+            console.log('[RoomPage] Successfully created room:', newRoom.id)
+          },
+          onError: (error) => {
+            console.error('[RoomPage] Failed to auto-create room:', error)
+          },
+        }
+      )
+    }
+  }, [isLoading, roomData, viewerId, isCreatingRoom, createRoom])
+
+  // Show loading state (includes both initial load and room creation)
+  if (isLoading || isCreatingRoom) {
     return (
       <div
         style={{
@@ -42,12 +71,13 @@ export default function RoomPage() {
           color: '#666',
         }}
       >
-        Loading room...
+        {isCreatingRoom ? 'Creating solo room...' : 'Loading room...'}
       </div>
     )
   }
 
-  // Show error if no room (instead of redirecting)
+  // If still no room after loading and creation attempt, show fallback
+  // This should rarely happen (only if auto-creation fails)
   if (!roomData) {
     return (
       <div
@@ -62,16 +92,8 @@ export default function RoomPage() {
           gap: '1rem',
         }}
       >
-        <div>No active room found</div>
-        <a
-          href="/arcade"
-          style={{
-            color: '#3b82f6',
-            textDecoration: 'underline',
-          }}
-        >
-          Go to Champion Arena
-        </a>
+        <div>Unable to create room</div>
+        <div style={{ fontSize: '14px', color: '#999' }}>Please try refreshing the page</div>
       </div>
     )
   }
