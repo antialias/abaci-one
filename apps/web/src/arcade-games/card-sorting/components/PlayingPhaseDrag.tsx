@@ -467,18 +467,48 @@ export function PlayingPhaseDrag() {
           zIndex: serverPos.zIndex,
         })
       } else {
-        // Generate random positions as percentages
-        // Leave margin for card size and UI elements
+        // Generate scattered positions that look like cards thrown on a table
         // Card is ~140px wide on ~1000px viewport = ~14% of width
         // Card is ~180px tall on ~800px viewport = ~22.5% of height
-        const xMargin = 2 // 2% margin on sides
-        const yMargin = 10 // 10% margin for top UI
-        newStates.set(card.id, {
-          x: Math.random() * (100 - 2 * xMargin - 14) + xMargin,
-          y: Math.random() * (100 - yMargin - 22.5) + yMargin,
-          rotation: Math.random() * 30 - 15, // -15 to 15 degrees
-          zIndex: index,
-        })
+        const xMargin = 5 // 5% margin on sides
+        const yMargin = 15 // 15% margin for top UI
+
+        // Create a more natural distribution by using clusters
+        // Divide the play area into a rough grid, then add randomness
+        const numCards = allCards.length
+        const cols = Math.ceil(Math.sqrt(numCards * 1.5)) // Slightly wider grid
+        const rows = Math.ceil(numCards / cols)
+
+        const row = Math.floor(index / cols)
+        const col = index % cols
+
+        // Available space after margins
+        const availableWidth = 100 - 2 * xMargin - 14
+        const availableHeight = 100 - yMargin - 22.5
+
+        // Grid cell size
+        const cellWidth = availableWidth / cols
+        const cellHeight = availableHeight / rows
+
+        // Base position in grid (centered in cell)
+        const baseX = xMargin + col * cellWidth + cellWidth / 2 - 7 // -7 to center card
+        const baseY = yMargin + row * cellHeight + cellHeight / 2 - 11.25 // -11.25 to center card
+
+        // Add significant randomness to make it look scattered (±40% of cell size)
+        const offsetX = (Math.random() - 0.5) * cellWidth * 0.8
+        const offsetY = (Math.random() - 0.5) * cellHeight * 0.8
+
+        // Ensure we stay within bounds
+        const x = Math.max(xMargin, Math.min(100 - 14 - xMargin, baseX + offsetX))
+        const y = Math.max(yMargin, Math.min(100 - 22.5, baseY + offsetY))
+
+        // More varied rotation for natural look
+        const rotation = (Math.random() - 0.5) * 40 // -20 to 20 degrees
+
+        // Randomize z-index for natural stacking
+        const zIndex = Math.floor(Math.random() * numCards)
+
+        newStates.set(card.id, { x, y, rotation, zIndex })
       }
     })
 
