@@ -1,4 +1,5 @@
 import { CopyButton } from '@/components/common/CopyButton'
+import { QRCodeButton } from '@/components/common/QRCodeButton'
 
 export interface RoomShareButtonsProps {
   /**
@@ -41,6 +42,8 @@ export function RoomShareButtons({ joinCode, shareUrl }: RoomShareButtonsProps) 
         }
         copiedLabel="Link Copied!"
       />
+
+      <QRCodeButton url={shareUrl} />
     </>
   )
 }
