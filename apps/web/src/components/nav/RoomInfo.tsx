@@ -673,8 +673,8 @@ export function RoomInfo({
                     <span>Join Another</span>
                   </DropdownMenu.Item>
 
-                  {/* Leave Room - only show when in a room */}
-                  {roomId && (
+                  {/* Leave Room - only show when in a room with other members */}
+                  {roomId && roomData && roomData.members.length > 1 && (
                     <>
                       <DropdownMenu.Separator
                         style={{
