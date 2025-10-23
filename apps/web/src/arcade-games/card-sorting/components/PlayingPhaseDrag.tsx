@@ -379,6 +379,7 @@ export function PlayingPhaseDrag() {
     offsetY: number
     startX: number
     startY: number
+    initialRotation: number
   } | null>(null)
 
   // Track card positions and visual states (UI only - not game state)
@@ -598,12 +599,17 @@ export function PlayingPhaseDrag() {
     const offsetX = e.clientX - rect.left
     const offsetY = e.clientY - rect.top
 
+    // Store initial rotation to preserve it during drag
+    const currentCard = cardStates.get(cardId)
+    const initialRotation = currentCard?.rotation || 0
+
     dragStateRef.current = {
       cardId,
       offsetX,
       offsetY,
       startX: e.clientX,
       startY: e.clientY,
+      initialRotation,
     }
 
     setDraggingCardId(cardId)
@@ -636,9 +642,10 @@ export function PlayingPhaseDrag() {
     const newX = (newXPx / viewportWidth) * 100
     const newY = (newYPx / viewportHeight) * 100
 
-    // Calculate rotation based on drag velocity
+    // Calculate rotation based on drag velocity, adding to initial rotation
     const dragDeltaX = e.clientX - dragStateRef.current.startX
-    const rotation = Math.max(-15, Math.min(15, dragDeltaX * 0.05))
+    const dragRotation = Math.max(-15, Math.min(15, dragDeltaX * 0.05))
+    const rotation = dragStateRef.current.initialRotation + dragRotation
 
     setCardStates((prev) => {
       const newStates = new Map(prev)
