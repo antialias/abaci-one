@@ -395,6 +395,16 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    // Prevent multiple simultaneous START_GAME moves when multiple clients
+    // click "Play Again" at the same time. Only allow if we're NOT already starting/in a game.
+    // Also check if we just started a game (within 500ms) to prevent rapid double-sends.
+    const now = Date.now()
+    const justStarted = state.gameStartTime && now - state.gameStartTime < 500
+
+    if (state.gamePhase === 'playing' || justStarted) {
+      return
+    }
+
     const playerMetadata = buildPlayerMetadata()
     const selectedCards = shuffleCards(generateRandomCards(state.cardCount))
 
@@ -407,7 +417,15 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
         selectedCards,
       },
     })
-  }, [localPlayerId, state.cardCount, buildPlayerMetadata, sendMove, viewerId])
+  }, [
+    localPlayerId,
+    state.cardCount,
+    state.gamePhase,
+    state.gameStartTime,
+    buildPlayerMetadata,
+    sendMove,
+    viewerId,
+  ])
 
   const placeCard = useCallback(
     (cardId: string, position: number) => {
