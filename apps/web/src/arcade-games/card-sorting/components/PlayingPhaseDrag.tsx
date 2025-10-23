@@ -824,6 +824,9 @@ export function PlayingPhaseDrag() {
     players,
   } = useCardSorting()
 
+  // Spectator educational mode (show correctness indicators)
+  const [spectatorEducationalMode, setSpectatorEducationalMode] = useState(false)
+
   const containerRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{
     cardId: string
@@ -1249,6 +1252,97 @@ export function PlayingPhaseDrag() {
         bottom: 0,
       })}
     >
+      {/* Spectator Banner */}
+      {isSpectating && (
+        <div
+          className={css({
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '56px',
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 24px',
+            zIndex: 100,
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+            gap: '16px',
+          })}
+        >
+          {/* Player info */}
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              fontSize: '16px',
+              fontWeight: '600',
+            })}
+          >
+            <span>👀 Spectating:</span>
+            <span>
+              {state.playerMetadata.emoji} {state.playerMetadata.name}
+            </span>
+          </div>
+
+          {/* Progress */}
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              fontSize: '14px',
+            })}
+          >
+            <div
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              })}
+            >
+              <span>Progress:</span>
+              <span className={css({ fontWeight: '600', fontSize: '16px' })}>
+                {state.placedCards.filter((c) => c !== null).length}/{state.cardCount}
+              </span>
+              <span>cards</span>
+            </div>
+
+            {/* Educational Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => setSpectatorEducationalMode(!spectatorEducationalMode)}
+              className={css({
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                background: spectatorEducationalMode
+                  ? 'rgba(255, 255, 255, 0.2)'
+                  : 'rgba(255, 255, 255, 0.1)',
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                _hover: {
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                },
+              })}
+            >
+              <span>{spectatorEducationalMode ? '✅' : '📚'}</span>
+              <span>Educational Mode</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Floating action buttons */}
       {!isSpectating && (
         <div
@@ -1412,8 +1506,15 @@ export function PlayingPhaseDrag() {
 
           // Check if this card is in the correct position in the inferred sequence
           const positionInSequence = inferredSequence.findIndex((c) => c.id === card.id)
-          const isCorrect =
+          const isCorrectPosition =
             positionInSequence >= 0 && state.correctOrder[positionInSequence]?.id === card.id
+
+          // Only show correctness indicator if:
+          // 1. Player is actively playing (not spectating), OR
+          // 2. Spectator has educational mode enabled
+          const isCorrect = isSpectating
+            ? spectatorEducationalMode && isCorrectPosition
+            : isCorrectPosition
 
           // Get draggedByPlayerId from server state
           const serverPosition = state.cardPositions.find((p) => p.cardId === card.id)
