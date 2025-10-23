@@ -33,6 +33,14 @@ export interface SortingCard {
   svgContent: string // Serialized AbacusReact SVG
 }
 
+export interface CardPosition {
+  cardId: string
+  x: number // % of viewport width (0-100)
+  y: number // % of viewport height (0-100)
+  rotation: number // degrees (-15 to 15)
+  zIndex: number
+}
+
 export interface PlacedCard {
   card: SortingCard // The card data
   position: number // Which slot it's in (0-indexed)
@@ -74,6 +82,7 @@ export interface CardSortingState extends GameState {
   correctOrder: SortingCard[] // Sorted by number (answer key)
   availableCards: SortingCard[] // Cards not yet placed
   placedCards: (SortingCard | null)[] // Array of N slots (null = empty)
+  cardPositions: CardPosition[] // Viewport-relative positions for all cards
 
   // UI state (client-only, not in server state)
   selectedCardId: string | null // Currently selected card
@@ -177,6 +186,15 @@ export type CardSortingMove =
       userId: string
       timestamp: number
       data: Record<string, never>
+    }
+  | {
+      type: 'UPDATE_CARD_POSITIONS'
+      playerId: string
+      userId: string
+      timestamp: number
+      data: {
+        positions: CardPosition[]
+      }
     }
 
 // ============================================================================

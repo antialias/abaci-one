@@ -3,7 +3,7 @@ import type {
   ValidationContext,
   ValidationResult,
 } from '@/lib/arcade/validation/types'
-import type { CardSortingConfig, CardSortingMove, CardSortingState } from './types'
+import type { CardSortingConfig, CardSortingMove, CardSortingState, CardPosition } from './types'
 import { calculateScore } from './utils/scoringAlgorithm'
 import { placeCardAtPosition, insertCardAtPosition, removeCardAtPosition } from './utils/validation'
 
@@ -32,6 +32,8 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         return this.validateSetConfig(state, move.data.field, move.data.value)
       case 'RESUME_GAME':
         return this.validateResumeGame(state)
+      case 'UPDATE_CARD_POSITIONS':
+        return this.validateUpdateCardPositions(state, move.data.positions)
       default:
         return {
           valid: false,
@@ -81,6 +83,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         correctOrder: correctOrder as typeof state.correctOrder,
         availableCards: selectedCards as typeof state.availableCards,
         placedCards: new Array(state.cardCount).fill(null),
+        cardPositions: [], // Will be set by first position update
         numbersRevealed: false,
         scoreBreakdown: null,
       },
@@ -444,6 +447,48 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
     }
   }
 
+  private validateUpdateCardPositions(
+    state: CardSortingState,
+    positions: CardPosition[]
+  ): ValidationResult {
+    // Must be in playing phase
+    if (state.gamePhase !== 'playing') {
+      return { valid: false, error: 'Can only update positions during playing phase' }
+    }
+
+    // Validate positions array
+    if (!Array.isArray(positions)) {
+      return { valid: false, error: 'positions must be an array' }
+    }
+
+    // Basic validation of position values
+    for (const pos of positions) {
+      if (typeof pos.x !== 'number' || pos.x < 0 || pos.x > 100) {
+        return { valid: false, error: 'x must be between 0 and 100' }
+      }
+      if (typeof pos.y !== 'number' || pos.y < 0 || pos.y > 100) {
+        return { valid: false, error: 'y must be between 0 and 100' }
+      }
+      if (typeof pos.rotation !== 'number') {
+        return { valid: false, error: 'rotation must be a number' }
+      }
+      if (typeof pos.zIndex !== 'number') {
+        return { valid: false, error: 'zIndex must be a number' }
+      }
+      if (typeof pos.cardId !== 'string') {
+        return { valid: false, error: 'cardId must be a string' }
+      }
+    }
+
+    return {
+      valid: true,
+      newState: {
+        ...state,
+        cardPositions: positions,
+      },
+    }
+  }
+
   isGameComplete(state: CardSortingState): boolean {
     return state.gamePhase === 'results'
   }
@@ -467,6 +512,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       correctOrder: [],
       availableCards: [],
       placedCards: new Array(config.cardCount).fill(null),
+      cardPositions: [],
       selectedCardId: null,
       numbersRevealed: false,
       scoreBreakdown: null,
