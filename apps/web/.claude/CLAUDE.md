@@ -284,3 +284,43 @@ This project uses SQLite with Drizzle ORM. Database location: `./data/sqlite.db`
 - Schema definitions: `src/db/schema/`
 - Drizzle config: `drizzle.config.ts`
 - Migrations: `drizzle/` directory
+
+## Deployment Verification
+
+**CRITICAL: Never assume deployment is complete just because the website is accessible.**
+
+When monitoring deployments to production (NAS at abaci.one):
+
+1. **GitHub Actions Success ≠ NAS Deployment**
+   - GitHub Actions builds and pushes Docker images to GHCR
+   - The NAS must separately pull and restart containers
+   - There may be a delay or manual step between these
+
+2. **Always verify the deployed commit:**
+   ```bash
+   # Check what's actually running on production
+   ssh nas.home.network '/usr/local/bin/docker inspect soroban-abacus-flashcards --format="{{index .Config.Labels \"org.opencontainers.image.revision\"}}"'
+
+   # Or check the deployment info modal in the app UI
+   # Look for the "Commit" field and compare to current HEAD
+   ```
+
+3. **Compare commits explicitly:**
+   ```bash
+   # Current HEAD
+   git rev-parse HEAD
+
+   # If NAS deployed commit doesn't match HEAD, deployment is INCOMPLETE
+   ```
+
+4. **Never report "deployed successfully" unless:**
+   - ✅ GitHub Actions completed
+   - ✅ NAS commit SHA matches origin/main HEAD
+   - ✅ Website is accessible AND serving the new code
+
+5. **If commits don't match:**
+   - Report the gap clearly: "NAS is X commits behind origin/main"
+   - List what features are NOT yet deployed
+   - Ask if manual NAS deployment action is needed
+
+**Common mistake:** Seeing https://abaci.one is online and assuming the new code is deployed. Always verify the commit SHA.
