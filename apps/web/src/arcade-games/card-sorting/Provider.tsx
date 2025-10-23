@@ -1,14 +1,6 @@
 'use client'
 
-import {
-  type ReactNode,
-  useCallback,
-  useMemo,
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-} from 'react'
+import { type ReactNode, useCallback, useMemo, createContext, useContext, useState } from 'react'
 import { useArcadeSession } from '@/hooks/useArcadeSession'
 import { useRoomData, useUpdateGameConfig } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
@@ -16,7 +8,13 @@ import { buildPlayerMetadata as buildPlayerMetadataUtil } from '@/lib/arcade/pla
 import type { GameMove } from '@/lib/arcade/validation'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { generateRandomCards, shuffleCards } from './utils/cardGeneration'
-import type { CardSortingState, CardSortingMove, SortingCard, CardSortingConfig } from './types'
+import type {
+  CardSortingState,
+  CardSortingMove,
+  SortingCard,
+  CardSortingConfig,
+  CardPosition,
+} from './types'
 
 // Context value interface
 interface CardSortingContextValue {
@@ -31,6 +29,7 @@ interface CardSortingContextValue {
   goToSetup: () => void
   resumeGame: () => void
   setConfig: (field: 'cardCount' | 'showNumbers' | 'timeLimit', value: unknown) => void
+  updateCardPositions: (positions: CardPosition[]) => void
   exitSession: () => void
   // Computed
   canCheckSolution: boolean
@@ -68,6 +67,7 @@ const createInitialState = (config: Partial<CardSortingConfig>): CardSortingStat
   correctOrder: [],
   availableCards: [],
   placedCards: new Array(config.cardCount ?? 8).fill(null),
+  cardPositions: [],
   selectedCardId: null,
   numbersRevealed: false,
   scoreBreakdown: null,
@@ -92,7 +92,8 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
         gameStartTime: Date.now(),
         selectedCards,
         correctOrder,
-        availableCards: shuffleCards(selectedCards),
+        // Use cards in the order they were sent (already shuffled by initiating client)
+        availableCards: selectedCards,
         placedCards: new Array(state.cardCount).fill(null),
         numbersRevealed: false,
         // Save original config for pause/resume
@@ -282,6 +283,13 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
       }
     }
 
+    case 'UPDATE_CARD_POSITIONS': {
+      return {
+        ...state,
+        cardPositions: typedMove.data.positions,
+      }
+    }
+
     default:
       return state
   }
@@ -386,7 +394,7 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     }
 
     const playerMetadata = buildPlayerMetadata()
-    const selectedCards = generateRandomCards(state.cardCount)
+    const selectedCards = shuffleCards(generateRandomCards(state.cardCount))
 
     sendMove({
       type: 'START_GAME',
@@ -397,7 +405,7 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
         selectedCards,
       },
     })
-  }, [localPlayerId, state.cardCount, buildPlayerMetadata, sendMove, viewerId, state.gamePhase])
+  }, [localPlayerId, state.cardCount, buildPlayerMetadata, sendMove, viewerId])
 
   const placeCard = useCallback(
     (cardId: string, position: number) => {
@@ -465,7 +473,7 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
         },
       })
     },
-    [localPlayerId, canCheckSolution, sendMove, viewerId, state.cardCount, state.gamePhase]
+    [localPlayerId, canCheckSolution, sendMove, viewerId]
   )
 
   const revealNumbers = useCallback(() => {
@@ -538,6 +546,20 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     [localPlayerId, sendMove, viewerId, roomData, updateGameConfig]
   )
 
+  const updateCardPositions = useCallback(
+    (positions: CardPosition[]) => {
+      if (!localPlayerId) return
+
+      sendMove({
+        type: 'UPDATE_CARD_POSITIONS',
+        playerId: localPlayerId,
+        userId: viewerId || '',
+        data: { positions },
+      })
+    },
+    [localPlayerId, sendMove, viewerId]
+  )
+
   const contextValue: CardSortingContextValue = {
     state,
     // Actions
@@ -550,6 +572,7 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     goToSetup,
     resumeGame,
     setConfig,
+    updateCardPositions,
     exitSession,
     // Computed
     canCheckSolution,
