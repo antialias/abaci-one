@@ -786,20 +786,19 @@ function AnimatedCard({
             <div
               style={{
                 position: 'absolute',
-                top: '4px',
-                right: '4px',
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.95)',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: '12px',
+                background: 'rgba(59, 130, 246, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '18px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                border: '2px solid rgba(59, 130, 246, 0.6)',
+                fontSize: '120px',
                 zIndex: 10,
                 pointerEvents: 'none',
+                opacity: 0.3,
               }}
             >
               {player.emoji}
