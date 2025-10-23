@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "sqlite": {
+      "command": "/Users/antialias/.nvm/versions/node/v20.19.3/bin/npx",
+      "args": [
+        "-y",
+        "mcp-server-sqlite-npx",
+        "/Users/antialias/projects/soroban-abacus-flashcards/apps/web/data/sqlite.db"
+      ],
+      "env": {
+        "PATH": "/Users/antialias/.nvm/versions/node/v20.19.3/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin",
+        "NODE_PATH": "/Users/antialias/.nvm/versions/node/v20.19.3/lib/node_modules"
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useClipboard } from '@/hooks/useClipboard'
+import { Z_INDEX } from '@/constants/zIndex'
 
 export interface QRCodeButtonProps {
   /**
@@ -25,21 +26,20 @@ export function QRCodeButton({ url, style }: QRCodeButtonProps) {
   const { copied, copy } = useClipboard()
 
   const buttonStyles: CSSProperties = {
-    width: '100%',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
-    marginBottom: '6px',
     border: '2px solid rgba(251, 146, 60, 0.4)',
     background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(251, 146, 60, 0.3))',
     borderRadius: '8px',
-    padding: '10px 16px',
-    fontSize: '13px',
-    fontWeight: '600',
+    padding: '6px',
+    fontSize: '16px',
     color: 'rgba(253, 186, 116, 1)',
+    aspectRatio: '1',
+    alignSelf: 'stretch',
+    flexShrink: 0,
     ...style,
   }
 
@@ -61,8 +61,7 @@ export function QRCodeButton({ url, style }: QRCodeButtonProps) {
             Object.assign(e.currentTarget.style, buttonStyles)
           }}
         >
-          <span style={{ fontSize: '16px' }}>📱</span>
-          <span>QR Code</span>
+          <QRCodeSVG value={url} size={40} level="L" />
         </button>
       </Popover.Trigger>
 
@@ -77,7 +76,7 @@ export function QRCodeButton({ url, style }: QRCodeButtonProps) {
             borderRadius: '12px',
             padding: '20px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-            zIndex: 1000,
+            zIndex: Z_INDEX.GAME_NAV.HAMBURGER_NESTED_DROPDOWN,
             maxWidth: '320px',
           }}
         >

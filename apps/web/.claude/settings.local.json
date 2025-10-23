@@ -104,9 +104,17 @@
       "Bash(do gh run list --limit 1 --workflow=\"Build and Deploy\" --json conclusion,status,databaseId --jq '.[0] | \"\"\\(.status) - \\(.conclusion // \"\"running\"\") - Run \\(.databaseId)\"\"')",
       "Bash(do ssh nas.home.network '/usr/local/bin/docker inspect soroban-abacus-flashcards --format=\"\"{{index .Config.Labels \\\"\"org.opencontainers.image.revision\\\"\"}}\"\"')",
       "Bash(git rev-parse HEAD)",
-      "Bash(gh run watch --exit-status 18662351595)"
+      "Bash(gh run watch --exit-status 18662351595)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "mcp__sqlite__list_tables",
+      "mcp__sqlite__describe_table",
+      "mcp__sqlite__read_query"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["sqlite"]
 }

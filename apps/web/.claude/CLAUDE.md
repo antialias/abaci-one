@@ -267,3 +267,20 @@ Before setting a z-index, always check:
 1. What stacking context is this element in?
 2. Am I comparing against siblings or global elements?
 3. Does my parent create a stacking context?
+
+## Database Access
+
+This project uses SQLite with Drizzle ORM. Database location: `./data/sqlite.db`
+
+**ALWAYS use MCP SQLite tools for database operations:**
+- `mcp__sqlite__list_tables` - List all tables
+- `mcp__sqlite__describe_table` - Get table schema
+- `mcp__sqlite__read_query` - Run SELECT queries
+- `mcp__sqlite__write_query` - Run INSERT/UPDATE/DELETE queries
+- `mcp__sqlite__create_table` - Create new tables
+- **DO NOT use bash `sqlite3` commands** - use the MCP tools instead
+
+**Database Schema:**
+- Schema definitions: `src/db/schema/`
+- Drizzle config: `drizzle.config.ts`
+- Migrations: `drizzle/` directory

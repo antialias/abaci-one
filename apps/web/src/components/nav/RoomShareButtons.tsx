@@ -19,31 +19,37 @@ export interface RoomShareButtonsProps {
  */
 export function RoomShareButtons({ joinCode, shareUrl }: RoomShareButtonsProps) {
   return (
-    <>
-      <CopyButton
-        text={joinCode}
-        variant="code"
-        label={
-          <>
-            <span>📋</span>
-            <span>{joinCode}</span>
-          </>
-        }
-      />
+    <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+      {/* Left side: stacked buttons */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+        <CopyButton
+          text={joinCode}
+          variant="code"
+          label={
+            <>
+              <span>📋</span>
+              <span>{joinCode}</span>
+            </>
+          }
+          style={{ marginBottom: 0 }}
+        />
 
-      <CopyButton
-        text={shareUrl}
-        variant="link"
-        label={
-          <>
-            <span>🔗</span>
-            <span>Share Link</span>
-          </>
-        }
-        copiedLabel="Link Copied!"
-      />
+        <CopyButton
+          text={shareUrl}
+          variant="link"
+          label={
+            <>
+              <span>🔗</span>
+              <span>Share Link</span>
+            </>
+          }
+          copiedLabel="Link Copied!"
+          style={{ marginBottom: 0 }}
+        />
+      </div>
 
+      {/* Right side: QR code button */}
       <QRCodeButton url={shareUrl} />
-    </>
+    </div>
   )
 }
