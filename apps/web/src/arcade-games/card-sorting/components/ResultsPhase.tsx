@@ -414,7 +414,7 @@ export function ResultsPhase() {
         </div>
 
         {/* Team Members (collaborative mode only) */}
-        {isCollaborative && players.size > 0 && (
+        {isCollaborative && state.activePlayers.length > 0 && (
           <div
             className={css({
               background: 'white',
@@ -434,7 +434,7 @@ export function ResultsPhase() {
                 letterSpacing: '0.5px',
               })}
             >
-              Team Members ({players.size})
+              Team Members ({state.activePlayers.length})
             </div>
             <div
               className={css({
@@ -443,26 +443,29 @@ export function ResultsPhase() {
                 gap: '8px',
               })}
             >
-              {Array.from(players.values()).map((player) => (
-                <div
-                  key={player.id}
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
-                    background: 'rgba(139, 92, 246, 0.1)',
-                    border: '1px solid rgba(139, 92, 246, 0.2)',
-                    borderRadius: '20px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#5b21b6',
-                  })}
-                >
-                  <span style={{ fontSize: '18px' }}>{player.emoji}</span>
-                  <span>{player.name}</span>
-                </div>
-              ))}
+              {state.activePlayers
+                .map((playerId) => players.get(playerId))
+                .filter((player): player is NonNullable<typeof player> => player !== undefined)
+                .map((player) => (
+                  <div
+                    key={player.id}
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      background: 'rgba(139, 92, 246, 0.1)',
+                      border: '1px solid rgba(139, 92, 246, 0.2)',
+                      borderRadius: '20px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#5b21b6',
+                    })}
+                  >
+                    <span style={{ fontSize: '18px' }}>{player.emoji}</span>
+                    <span>{player.name}</span>
+                  </div>
+                ))}
             </div>
           </div>
         )}
