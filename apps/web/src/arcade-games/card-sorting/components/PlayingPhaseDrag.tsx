@@ -273,6 +273,7 @@ function AnimatedCard({
   isDragging,
   isResizing,
   isSpectating,
+  isCorrect,
   viewportWidth,
   viewportHeight,
   onPointerDown,
@@ -284,6 +285,7 @@ function AnimatedCard({
   isDragging: boolean
   isResizing: boolean
   isSpectating: boolean
+  isCorrect: boolean
   viewportWidth: number
   viewportHeight: number
   onPointerDown: (e: React.PointerEvent) => void
@@ -341,7 +343,7 @@ function AnimatedCard({
           height: '100%',
           background: 'white',
           borderRadius: '12px',
-          border: '3px solid #0369a1',
+          border: isCorrect ? '3px solid #22c55e' : '3px solid #0369a1',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -949,6 +951,11 @@ export function PlayingPhaseDrag() {
 
           const isDragging = draggingCardId === card.id
 
+          // Check if this card is in the correct position in the inferred sequence
+          const positionInSequence = inferredSequence.findIndex((c) => c.id === card.id)
+          const isCorrect =
+            positionInSequence >= 0 && state.correctOrder[positionInSequence]?.id === card.id
+
           return (
             <AnimatedCard
               key={card.id}
@@ -957,6 +964,7 @@ export function PlayingPhaseDrag() {
               isDragging={isDragging}
               isResizing={isResizing}
               isSpectating={isSpectating}
+              isCorrect={isCorrect}
               viewportWidth={viewportDimensions.width}
               viewportHeight={viewportDimensions.height}
               onPointerDown={(e) => handlePointerDown(e, card.id)}
