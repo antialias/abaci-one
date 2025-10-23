@@ -44,14 +44,13 @@ When asked to make ANY changes:
 1. Make your code changes
 2. Run `npm run pre-commit`
 3. If it fails, fix the issues and run again
-4. Only after all checks pass can you:
-   - Say the work is "done" or "complete"
-   - Mark tasks as finished
-   - Create commits
-   - Tell the user it's working
-5. Push immediately after committing
+4. **STOP - Tell user changes are ready for testing**
+5. **WAIT for user to manually test and approve**
+6. Only commit/push when user explicitly approves or requests it
 
-**Nothing is complete until `npm run pre-commit` passes.**
+**CRITICAL:** Passing `npm run pre-commit` only verifies code quality (TypeScript, linting, formatting). It does NOT verify that features work correctly. Manual testing by the user is REQUIRED before committing.
+
+**Never auto-commit or auto-push after making changes.**
 
 ## Details
 
