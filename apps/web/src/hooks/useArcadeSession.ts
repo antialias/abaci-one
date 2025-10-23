@@ -115,7 +115,14 @@ export function useArcadeSession<TState>(
     },
 
     onMoveRejected: (data) => {
-      console.log(`[ArcadeSession] Move rejected: ${data.error}`)
+      // For version conflicts, automatically retry the move
+      if (data.versionConflict) {
+        // Wait a tiny bit for server state to propagate, then retry
+        setTimeout(() => {
+          socketSendMove(userId, data.move, roomId)
+        }, 10)
+      }
+
       optimistic.handleMoveRejected(data.error, data.move)
     },
 
