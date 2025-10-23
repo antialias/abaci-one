@@ -383,6 +383,9 @@ export function PlayingPhaseDrag() {
     initialRotation: number
   } | null>(null)
 
+  // Track timestamp of last position update we sent to avoid re-applying our own updates
+  const lastPositionUpdateRef = useRef<number>(0)
+
   // Track card positions and visual states (UI only - not game state)
   const [cardStates, setCardStates] = useState<Map<string, CardState>>(new Map())
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null)
@@ -545,6 +548,11 @@ export function PlayingPhaseDrag() {
     if (!state.cardPositions || state.cardPositions.length === 0) return
     if (cardStates.size === 0) return
 
+    // Ignore server updates for 500ms after we send our own update
+    // This prevents replaying our own movements when they bounce back from server
+    const timeSinceOurUpdate = Date.now() - lastPositionUpdateRef.current
+    if (timeSinceOurUpdate < 500) return
+
     // Check if server positions differ from current positions
     let needsUpdate = false
     const newStates = new Map(cardStates)
@@ -667,6 +675,7 @@ export function PlayingPhaseDrag() {
           const now = Date.now()
           if (now - lastSyncTimeRef.current > 100) {
             lastSyncTimeRef.current = now
+            lastPositionUpdateRef.current = now
             const positions = Array.from(newStates.entries()).map(([id, state]) => ({
               cardId: id,
               x: state.x,
@@ -708,6 +717,7 @@ export function PlayingPhaseDrag() {
           rotation: state.rotation,
           zIndex: state.zIndex,
         }))
+        lastPositionUpdateRef.current = Date.now()
         updateCardPositions(positions)
       }
     }
