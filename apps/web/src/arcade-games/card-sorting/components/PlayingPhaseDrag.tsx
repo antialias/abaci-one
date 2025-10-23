@@ -3,7 +3,7 @@
 import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
 import { useState, useEffect, useRef } from 'react'
-import { useSpring, animated } from '@react-spring/web'
+import { useSpring, animated, to } from '@react-spring/web'
 import type { SortingCard } from '../types'
 
 // Add celebration animations
@@ -133,6 +133,355 @@ function inferSequenceFromPositions(
 }
 
 /**
+ * Continuous curved path showing the full sequence of cards
+ */
+function ContinuousSequencePath({
+  cardStates,
+  sequence,
+  correctOrder,
+  viewportWidth,
+  viewportHeight,
+}: {
+  cardStates: Map<string, CardState>
+  sequence: SortingCard[]
+  correctOrder: SortingCard[]
+  viewportWidth: number
+  viewportHeight: number
+}) {
+  if (sequence.length < 2) return null
+
+  // Card dimensions
+  const CARD_WIDTH = 140
+  const CARD_HEIGHT = 180
+  const CARD_HALF_WIDTH = CARD_WIDTH / 2
+  const CARD_HALF_HEIGHT = CARD_HEIGHT / 2
+
+  // Get all card positions (card centers)
+  const cardCenters = sequence
+    .map((card) => {
+      const state = cardStates.get(card.id)
+      if (!state) return null
+      return {
+        x: (state.x / 100) * viewportWidth + CARD_HALF_WIDTH,
+        y: (state.y / 100) * viewportHeight + CARD_HALF_HEIGHT,
+        cardId: card.id,
+      }
+    })
+    .filter((p): p is { x: number; y: number; cardId: string } => p !== null)
+
+  if (cardCenters.length < 2) return null
+
+  // Helper function to find intersection of line from center in direction (dx, dy) with card rectangle
+  const findCardEdgePoint = (
+    centerX: number,
+    centerY: number,
+    dx: number,
+    dy: number
+  ): { x: number; y: number } => {
+    // Normalize direction
+    const length = Math.sqrt(dx * dx + dy * dy)
+    const ndx = dx / length
+    const ndy = dy / length
+
+    // Find which edge we hit first
+    const txRight = ndx > 0 ? CARD_HALF_WIDTH / ndx : Number.POSITIVE_INFINITY
+    const txLeft = ndx < 0 ? -CARD_HALF_WIDTH / ndx : Number.POSITIVE_INFINITY
+    const tyBottom = ndy > 0 ? CARD_HALF_HEIGHT / ndy : Number.POSITIVE_INFINITY
+    const tyTop = ndy < 0 ? -CARD_HALF_HEIGHT / ndy : Number.POSITIVE_INFINITY
+
+    const t = Math.min(txRight, txLeft, tyBottom, tyTop)
+
+    return {
+      x: centerX + ndx * t,
+      y: centerY + ndy * t,
+    }
+  }
+
+  // Calculate edge points for each card based on direction to next/prev card
+  const positions = cardCenters.map((center, i) => {
+    if (i === 0) {
+      // First card: direction towards next card
+      const next = cardCenters[i + 1]
+      const dx = next.x - center.x
+      const dy = next.y - center.y
+      return findCardEdgePoint(center.x, center.y, dx, dy)
+    }
+    if (i === cardCenters.length - 1) {
+      // Last card: direction from previous card
+      const prev = cardCenters[i - 1]
+      const dx = center.x - prev.x
+      const dy = center.y - prev.y
+      return findCardEdgePoint(center.x, center.y, dx, dy)
+    }
+    // Middle cards: average direction between prev and next
+    const prev = cardCenters[i - 1]
+    const next = cardCenters[i + 1]
+    const dx = next.x - prev.x
+    const dy = next.y - prev.y
+    return findCardEdgePoint(center.x, center.y, dx, dy)
+  })
+
+  if (positions.length < 2) return null
+
+  // Build continuous curved path using cubic bezier curves with smooth transitions
+  // Use Catmull-Rom style control points for smooth continuous curves
+  let pathD = `M ${positions[0].x} ${positions[0].y}`
+
+  for (let i = 0; i < positions.length - 1; i++) {
+    const current = positions[i]
+    const next = positions[i + 1]
+
+    // Get previous and next-next points for tangent calculation (or use current/next if at edges)
+    const prev = i > 0 ? positions[i - 1] : current
+    const nextNext = i < positions.length - 2 ? positions[i + 2] : next
+
+    // Calculate tangent vectors for smooth curve
+    // Tangent at current point: direction from prev to next
+    const tension = 0.3 // Adjust this to control curve tightness (0 = loose, 1 = tight)
+
+    const tangent1X = (next.x - prev.x) * tension
+    const tangent1Y = (next.y - prev.y) * tension
+
+    // Tangent at next point: direction from current to nextNext
+    const tangent2X = (nextNext.x - current.x) * tension
+    const tangent2Y = (nextNext.y - current.y) * tension
+
+    // Control points for cubic bezier
+    const cp1X = current.x + tangent1X
+    const cp1Y = current.y + tangent1Y
+    const cp2X = next.x - tangent2X
+    const cp2Y = next.y - tangent2Y
+
+    pathD += ` C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${next.x} ${next.y}`
+  }
+
+  // Calculate badge positions along the actual drawn path at arc-length midpoint
+  const badges: Array<{ x: number; y: number; number: number; isCorrect: boolean }> = []
+
+  // Helper to evaluate cubic bezier at parameter t
+  const evalCubicBezier = (
+    p0x: number,
+    p0y: number,
+    cp1x: number,
+    cp1y: number,
+    cp2x: number,
+    cp2y: number,
+    p1x: number,
+    p1y: number,
+    t: number
+  ) => {
+    const mt = 1 - t
+    return {
+      x: mt * mt * mt * p0x + 3 * mt * mt * t * cp1x + 3 * mt * t * t * cp2x + t * t * t * p1x,
+      y: mt * mt * mt * p0y + 3 * mt * mt * t * cp1y + 3 * mt * t * t * cp2y + t * t * t * p1y,
+    }
+  }
+
+  for (let i = 0; i < positions.length - 1; i++) {
+    const current = positions[i]
+    const next = positions[i + 1]
+
+    // Use the actual edge-based control points (same as the drawn path)
+    const prev = i > 0 ? positions[i - 1] : current
+    const nextNext = i < positions.length - 2 ? positions[i + 2] : next
+    const tension = 0.3
+
+    const tangent1X = (next.x - prev.x) * tension
+    const tangent1Y = (next.y - prev.y) * tension
+    const tangent2X = (nextNext.x - current.x) * tension
+    const tangent2Y = (nextNext.y - current.y) * tension
+
+    const cp1X = current.x + tangent1X
+    const cp1Y = current.y + tangent1Y
+    const cp2X = next.x - tangent2X
+    const cp2Y = next.y - tangent2Y
+
+    // Sample the curve at many points to calculate arc length
+    const samples = 50
+    const arcLengths: number[] = [0]
+    let prevPoint = { x: current.x, y: current.y }
+
+    for (let j = 1; j <= samples; j++) {
+      const t = j / samples
+      const point = evalCubicBezier(current.x, current.y, cp1X, cp1Y, cp2X, cp2Y, next.x, next.y, t)
+      const segmentLength = Math.sqrt((point.x - prevPoint.x) ** 2 + (point.y - prevPoint.y) ** 2)
+      arcLengths.push(arcLengths[arcLengths.length - 1] + segmentLength)
+      prevPoint = point
+    }
+
+    // Find the t value that corresponds to 50% of arc length
+    const totalArcLength = arcLengths[arcLengths.length - 1]
+    const targetLength = totalArcLength * 0.5
+
+    let tAtMidArc = 0.5
+    for (let j = 0; j < arcLengths.length - 1; j++) {
+      if (arcLengths[j] <= targetLength && targetLength <= arcLengths[j + 1]) {
+        const ratio = (targetLength - arcLengths[j]) / (arcLengths[j + 1] - arcLengths[j])
+        tAtMidArc = (j + ratio) / samples
+        break
+      }
+    }
+
+    // Evaluate curve at the arc-length midpoint
+    const midPoint = evalCubicBezier(
+      current.x,
+      current.y,
+      cp1X,
+      cp1Y,
+      cp2X,
+      cp2Y,
+      next.x,
+      next.y,
+      tAtMidArc
+    )
+
+    // Calculate tangent at this t for perpendicular offset
+    const mt = 1 - tAtMidArc
+    const tangentAtMidX =
+      3 * mt * mt * (cp1X - current.x) +
+      6 * mt * tAtMidArc * (cp2X - cp1X) +
+      3 * tAtMidArc * tAtMidArc * (next.x - cp2X)
+    const tangentAtMidY =
+      3 * mt * mt * (cp1Y - current.y) +
+      6 * mt * tAtMidArc * (cp2Y - cp1Y) +
+      3 * tAtMidArc * tAtMidArc * (next.y - cp2Y)
+
+    // Small perpendicular offset so badges sit slightly off the curve line
+    const perpX = -tangentAtMidY
+    const perpY = tangentAtMidX
+    const perpLength = Math.sqrt(perpX * perpX + perpY * perpY)
+    const offsetDistance = 5 // Small offset
+
+    const finalX = midPoint.x + (perpX / perpLength) * offsetDistance
+    const finalY = midPoint.y + (perpY / perpLength) * offsetDistance
+
+    // Check if this connection is correct
+    const isCorrect =
+      correctOrder[i]?.id === sequence[i].id && correctOrder[i + 1]?.id === sequence[i + 1].id
+
+    badges.push({
+      x: finalX,
+      y: finalY,
+      number: i + 1,
+      isCorrect,
+    })
+  }
+
+  // Check if entire sequence is correct for coloring
+  const allCorrect = sequence.every((card, idx) => correctOrder[idx]?.id === card.id)
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}
+    >
+      <svg
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: '100%',
+          height: '100%',
+          overflow: 'visible',
+        }}
+      >
+        {/* Continuous curved path */}
+        <path
+          d={pathD}
+          stroke={allCorrect ? 'rgba(34, 197, 94, 0.8)' : 'rgba(251, 146, 60, 0.7)'}
+          strokeWidth={allCorrect ? '8' : '6'}
+          fill="none"
+          style={{
+            filter: allCorrect ? 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.6))' : 'none',
+          }}
+        />
+
+        {/* Arrowhead at the end */}
+        {(() => {
+          const i = positions.length - 2 // Last segment index
+          const current = positions[i]
+          const next = positions[i + 1]
+
+          // Recalculate control points for last segment
+          const prev = i > 0 ? positions[i - 1] : current
+          const nextNext = next // At the end, so nextNext is same as next
+          const tension = 0.3
+
+          const tangent1X = (next.x - prev.x) * tension
+          const tangent1Y = (next.y - prev.y) * tension
+          const tangent2X = (nextNext.x - current.x) * tension
+          const tangent2Y = (nextNext.y - current.y) * tension
+
+          const cp1X = current.x + tangent1X
+          const cp1Y = current.y + tangent1Y
+          const cp2X = next.x - tangent2X
+          const cp2Y = next.y - tangent2Y
+
+          // Calculate tangent at t=1 (end of curve) for cubic bezier
+          // Derivative: B'(t) = 3(1-t)²(P1-P0) + 6(1-t)t(P2-P1) + 3t²(P3-P2)
+          // At t=1: B'(1) = 3(P3-P2)
+          const tangentX = 3 * (next.x - cp2X)
+          const tangentY = 3 * (next.y - cp2Y)
+          const arrowAngle = Math.atan2(tangentY, tangentX)
+
+          // Arrow triangle
+          const tipX = next.x
+          const tipY = next.y
+          const baseX = tipX - Math.cos(arrowAngle) * 10
+          const baseY = tipY - Math.sin(arrowAngle) * 10
+          const left = `${baseX + Math.cos(arrowAngle + Math.PI / 2) * 6},${baseY + Math.sin(arrowAngle + Math.PI / 2) * 6}`
+          const right = `${baseX + Math.cos(arrowAngle - Math.PI / 2) * 6},${baseY + Math.sin(arrowAngle - Math.PI / 2) * 6}`
+
+          return (
+            <polygon
+              points={`${tipX},${tipY} ${left} ${right}`}
+              fill={allCorrect ? 'rgba(34, 197, 94, 0.9)' : 'rgba(251, 146, 60, 0.8)'}
+            />
+          )
+        })()}
+      </svg>
+
+      {/* Number badges */}
+      {badges.map((badge) => (
+        <div
+          key={badge.number}
+          style={{
+            position: 'absolute',
+            left: `${badge.x}px`,
+            top: `${badge.y}px`,
+            transform: 'translate(-50%, -50%)',
+            background: badge.isCorrect ? '#22c55e' : '#f97316',
+            color: 'white',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            border: '3px solid white',
+            boxShadow: badge.isCorrect
+              ? '0 0 0 2px #22c55e, 0 4px 8px rgba(0, 0, 0, 0.3)'
+              : '0 0 0 2px #f97316, 0 4px 8px rgba(0, 0, 0, 0.3)',
+            animation: badge.isCorrect ? 'correctBadgePulse 1.5s ease-in-out infinite' : 'none',
+          }}
+        >
+          {badge.number}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
  * Animated arrow component using react-spring for smooth movements
  */
 function AnimatedArrow({
@@ -231,7 +580,8 @@ function AnimatedArrow({
       >
         {/* Curved line using quadratic bezier */}
         <animated.path
-          d={springProps.fromX.to(
+          d={to(
+            [springProps.fromX, springProps.fromY, springProps.distance, springProps.angle],
             (fx, fy, dist, ang) => {
               // Recalculate curve with animated values
               const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
@@ -242,10 +592,7 @@ function AnimatedArrow({
               const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
               const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
               return `M ${fx} ${fy} Q ${cx} ${cy} ${tx} ${ty}`
-            },
-            springProps.fromY,
-            springProps.distance,
-            springProps.angle
+            }
           )}
           stroke={isCorrect ? 'rgba(34, 197, 94, 0.8)' : 'rgba(251, 146, 60, 0.7)'}
           strokeWidth={isCorrect ? '4' : '3'}
@@ -257,28 +604,31 @@ function AnimatedArrow({
 
         {/* Arrowhead */}
         <animated.polygon
-          points={springProps.angle.to((ang) => {
-            // Recalculate end position and angle
-            const tx = fromX + Math.cos((ang * Math.PI) / 180) * distance
-            const ty = fromY + Math.sin((ang * Math.PI) / 180) * distance
-            const mx = (fromX + tx) / 2
-            const my = (fromY + ty) / 2
-            const perpAng = ang + 90
-            const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
-            const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
-            const tangX = tx - cx
-            const tangY = ty - cy
-            const aAngle = Math.atan2(tangY, tangX)
+          points={to(
+            [springProps.fromX, springProps.fromY, springProps.distance, springProps.angle],
+            (fx, fy, dist, ang) => {
+              // Recalculate end position and angle
+              const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
+              const ty = fy + Math.sin((ang * Math.PI) / 180) * dist
+              const mx = (fx + tx) / 2
+              const my = (fy + ty) / 2
+              const perpAng = ang + 90
+              const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
+              const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
+              const tangX = tx - cx
+              const tangY = ty - cy
+              const aAngle = Math.atan2(tangY, tangX)
 
-            // Arrow points relative to tip
-            const tipX = tx
-            const tipY = ty
-            const baseX = tipX - Math.cos(aAngle) * 10
-            const baseY = tipY - Math.sin(aAngle) * 10
-            const left = `${baseX + Math.cos(aAngle + Math.PI / 2) * 6},${baseY + Math.sin(aAngle + Math.PI / 2) * 6}`
-            const right = `${baseX + Math.cos(aAngle - Math.PI / 2) * 6},${baseY + Math.sin(aAngle - Math.PI / 2) * 6}`
-            return `${tipX},${tipY} ${left} ${right}`
-          })}
+              // Arrow points relative to tip
+              const tipX = tx
+              const tipY = ty
+              const baseX = tipX - Math.cos(aAngle) * 10
+              const baseY = tipY - Math.sin(aAngle) * 10
+              const left = `${baseX + Math.cos(aAngle + Math.PI / 2) * 6},${baseY + Math.sin(aAngle + Math.PI / 2) * 6}`
+              const right = `${baseX + Math.cos(aAngle - Math.PI / 2) * 6},${baseY + Math.sin(aAngle - Math.PI / 2) * 6}`
+              return `${tipX},${tipY} ${left} ${right}`
+            }
+          )}
           fill={isCorrect ? 'rgba(34, 197, 94, 0.9)' : 'rgba(251, 146, 60, 0.8)'}
         />
       </svg>
@@ -287,30 +637,26 @@ function AnimatedArrow({
       <animated.div
         style={{
           position: 'absolute',
-          left: springProps.fromX.to(
+          left: to(
+            [springProps.fromX, springProps.fromY, springProps.distance, springProps.angle],
             (fx, fy, dist, ang) => {
               const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
               const mx = (fx + tx) / 2
               const perpAng = ang + 90
               const cx = mx + Math.cos((perpAng * Math.PI) / 180) * curveOffset
               return `${cx}px`
-            },
-            springProps.fromY,
-            springProps.distance,
-            springProps.angle
+            }
           ),
-          top: springProps.fromY.to(
-            (fy, fx, dist, ang) => {
+          top: to(
+            [springProps.fromX, springProps.fromY, springProps.distance, springProps.angle],
+            (fx, fy, dist, ang) => {
               const tx = fx + Math.cos((ang * Math.PI) / 180) * dist
               const ty = fy + Math.sin((ang * Math.PI) / 180) * dist
               const my = (fy + ty) / 2
               const perpAng = ang + 90
               const cy = my + Math.sin((perpAng * Math.PI) / 180) * curveOffset
               return `${cy}px`
-            },
-            springProps.fromX,
-            springProps.distance,
-            springProps.angle
+            }
           ),
           transform: 'translate(-50%, -50%)',
           background: isCorrect ? 'rgba(34, 197, 94, 0.95)' : 'rgba(251, 146, 60, 0.95)',
@@ -1003,33 +1349,16 @@ export function PlayingPhaseDrag() {
           overflow: 'hidden',
         })}
       >
-        {/* Render arrows between cards in inferred sequence */}
-        {inferredSequence.length > 1 &&
-          inferredSequence.slice(0, -1).map((card, index) => {
-            const currentCard = cardStates.get(card.id)
-            const nextCard = cardStates.get(inferredSequence[index + 1].id)
-
-            if (!currentCard || !nextCard) return null
-
-            // Check if this connection is correct
-            const isCorrectConnection =
-              state.correctOrder[index]?.id === card.id &&
-              state.correctOrder[index + 1]?.id === inferredSequence[index + 1].id
-
-            return (
-              <AnimatedArrow
-                key={`arrow-${card.id}-${inferredSequence[index + 1].id}`}
-                fromCard={currentCard}
-                toCard={nextCard}
-                isCorrect={isCorrectConnection}
-                sequenceNumber={index + 1}
-                isDragging={!!draggingCardId}
-                isResizing={isResizing}
-                viewportWidth={viewportDimensions.width}
-                viewportHeight={viewportDimensions.height}
-              />
-            )
-          })}
+        {/* Render continuous curved path through the entire sequence */}
+        {inferredSequence.length > 1 && (
+          <ContinuousSequencePath
+            cardStates={cardStates}
+            sequence={inferredSequence}
+            correctOrder={state.correctOrder}
+            viewportWidth={viewportDimensions.width}
+            viewportHeight={viewportDimensions.height}
+          />
+        )}
 
         {/* Render all cards at their positions */}
         {[
