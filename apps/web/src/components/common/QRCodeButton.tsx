@@ -34,9 +34,10 @@ export function QRCodeButton({ url, style }: QRCodeButtonProps) {
     border: '2px solid rgba(251, 146, 60, 0.4)',
     background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(251, 146, 60, 0.3))',
     borderRadius: '8px',
-    padding: '6px',
+    padding: '4px',
     fontSize: '16px',
     color: 'rgba(253, 186, 116, 1)',
+    width: '100%',
     aspectRatio: '1',
     alignSelf: 'stretch',
     flexShrink: 0,
@@ -61,7 +62,7 @@ export function QRCodeButton({ url, style }: QRCodeButtonProps) {
             Object.assign(e.currentTarget.style, buttonStyles)
           }}
         >
-          <QRCodeSVG value={url} size={40} level="L" />
+          <QRCodeSVG value={url} size={52} level="L" />
         </button>
       </Popover.Trigger>
 
