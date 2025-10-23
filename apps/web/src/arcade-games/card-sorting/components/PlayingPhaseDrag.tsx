@@ -691,6 +691,7 @@ function AnimatedCard({
   isSpectating,
   isCorrect,
   draggedByPlayerId,
+  localPlayerId,
   players,
   viewportWidth,
   viewportHeight,
@@ -705,6 +706,7 @@ function AnimatedCard({
   isSpectating: boolean
   isCorrect: boolean
   draggedByPlayerId?: string
+  localPlayerId?: string
   players: Map<string, { id: string; name: string; emoji: string }>
   viewportWidth: number
   viewportHeight: number
@@ -776,8 +778,9 @@ function AnimatedCard({
         dangerouslySetInnerHTML={{ __html: card.svgContent }}
       />
 
-      {/* Player emoji overlay when card is being dragged by a player */}
+      {/* Player emoji overlay when card is being dragged by ANOTHER player */}
       {draggedByPlayerId &&
+        draggedByPlayerId !== localPlayerId &&
         (() => {
           const player = players.get(draggedByPlayerId)
           if (!player) return null
@@ -1706,6 +1709,7 @@ export function PlayingPhaseDrag() {
               isSpectating={isSpectating}
               isCorrect={isCorrect}
               draggedByPlayerId={draggedByPlayerId}
+              localPlayerId={localPlayerId}
               players={players}
               viewportWidth={viewportDimensions.width}
               viewportHeight={viewportDimensions.height}
