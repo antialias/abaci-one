@@ -160,12 +160,21 @@ function ContinuousSequencePath({
   const CARD_HALF_WIDTH = CARD_WIDTH / 2
   const CARD_HALF_HEIGHT = CARD_HEIGHT / 2
 
-  // Helper to check if a card is in correct position (and thus scaled to 50%)
+  // Helper to check if a card is part of the correct prefix (and thus scaled to 50%)
   const isCardCorrect = (card: SortingCard): boolean => {
     const positionInSequence = sequence.findIndex((c) => c.id === card.id)
-    const isCorrectPosition =
-      positionInSequence >= 0 && correctOrder[positionInSequence]?.id === card.id
-    return isSpectating ? spectatorEducationalMode && isCorrectPosition : isCorrectPosition
+    if (positionInSequence < 0) return false
+
+    // Check if all positions from 0 to positionInSequence are correct
+    let isInCorrectPrefix = true
+    for (let i = 0; i <= positionInSequence; i++) {
+      if (sequence[i]?.id !== correctOrder[i]?.id) {
+        isInCorrectPrefix = false
+        break
+      }
+    }
+
+    return isSpectating ? spectatorEducationalMode && isInCorrectPrefix : isInCorrectPrefix
   }
 
   // Get all card positions (card centers) with scale information
@@ -1872,15 +1881,30 @@ export function PlayingPhaseDrag() {
 
           const isDragging = draggingCardId === card.id
 
-          // Check if this card is in the correct position in the inferred sequence
+          // Find the position of this card in the inferred sequence
           const positionInSequence = inferredSequence.findIndex((c) => c.id === card.id)
-          const isCorrectPosition =
-            positionInSequence >= 0 && state.correctOrder[positionInSequence]?.id === card.id
+
+          // Check if this card is part of the correct prefix
+          // A card is in the correct prefix if:
+          // 1. It's in the inferred sequence
+          // 2. All cards before it (positions 0 to positionInSequence-1) are also correct
+          // 3. This card itself matches the correct order at its position
+          let isInCorrectPrefix = false
+          if (positionInSequence >= 0) {
+            // Check if all positions from 0 to positionInSequence are correct
+            isInCorrectPrefix = true
+            for (let i = 0; i <= positionInSequence; i++) {
+              if (inferredSequence[i]?.id !== state.correctOrder[i]?.id) {
+                isInCorrectPrefix = false
+                break
+              }
+            }
+          }
 
           // Show green border based on educational mode for spectators
           const isCorrect = isSpectating
-            ? spectatorEducationalMode && isCorrectPosition
-            : isCorrectPosition
+            ? spectatorEducationalMode && isInCorrectPrefix
+            : isInCorrectPrefix
 
           // Get draggedByPlayerId from server state
           const serverPosition = state.cardPositions.find((p) => p.cardId === card.id)
@@ -1895,7 +1919,7 @@ export function PlayingPhaseDrag() {
               isResizing={isResizing}
               isSpectating={isSpectating}
               isCorrect={isCorrect}
-              isCorrectPosition={isCorrectPosition}
+              isCorrectPosition={isInCorrectPrefix}
               draggedByPlayerId={draggedByPlayerId}
               localPlayerId={localPlayerId}
               players={players}
