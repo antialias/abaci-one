@@ -867,6 +867,9 @@ export function PlayingPhaseDrag() {
   const [activityFeed, setActivityFeed] = useState<ActivityNotification[]>([])
   const activityIdCounter = useRef(0)
 
+  // Perfect sequence countdown (auto-submit after 3-2-1)
+  const [perfectCountdown, setPerfectCountdown] = useState<number | null>(null)
+
   const containerRef = useRef<HTMLDivElement>(null)
   const dragStateRef = useRef<{
     cardId: string
@@ -1312,6 +1315,36 @@ export function PlayingPhaseDrag() {
       return correctCard && card.id === correctCard.id
     })
 
+  // Start countdown when sequence is perfect
+  useEffect(() => {
+    if (isSequenceCorrect && !isSpectating) {
+      // Start countdown from 3
+      setPerfectCountdown(3)
+    } else {
+      // Reset countdown if sequence is no longer perfect
+      setPerfectCountdown(null)
+    }
+  }, [isSequenceCorrect, isSpectating])
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (perfectCountdown === null) return
+    if (perfectCountdown <= 0) {
+      // Auto-submit when countdown reaches 0
+      handleCheckSolution()
+      setPerfectCountdown(null)
+      return
+    }
+
+    // Decrement every 1.5 seconds
+    const timer = setTimeout(() => {
+      setPerfectCountdown((prev) => (prev !== null ? prev - 1 : null))
+    }, 1500)
+
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perfectCountdown])
+
   // Watch for server confirmations and insert next card or check solution
   useEffect(() => {
     if (!waitingToCheck) return
@@ -1722,7 +1755,7 @@ export function PlayingPhaseDrag() {
                 animationName: isSequenceCorrect ? 'celebrate' : undefined,
               }}
             >
-              ✓
+              {perfectCountdown !== null && perfectCountdown > 0 ? perfectCountdown : '✓'}
             </button>
             <div
               className={css({
