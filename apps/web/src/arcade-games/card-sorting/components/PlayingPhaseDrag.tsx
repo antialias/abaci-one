@@ -1909,8 +1909,8 @@ export function PlayingPhaseDrag() {
         })}
       </div>
 
-      {/* Activity Feed (collaborative mode only) */}
-      {state.gameMode === 'collaborative' && activityFeed.length > 0 && (
+      {/* Activity Feed (collaborative mode only, hidden for spectators) */}
+      {state.gameMode === 'collaborative' && !isSpectating && activityFeed.length > 0 && (
         <div
           className={css({
             position: 'fixed',
