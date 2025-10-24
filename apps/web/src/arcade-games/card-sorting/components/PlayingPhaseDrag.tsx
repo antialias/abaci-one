@@ -1263,12 +1263,14 @@ export function PlayingPhaseDrag() {
       prefixCards.push(inferredSequence[i])
     }
 
-    // Find suffix cards (cards at positions ...n-2, n-1, n that are all correct)
+    // Find suffix cards (cards at the END of correctOrder that are all correct)
+    // Start from the end of both sequences and work backwards
     const suffixCards: SortingCard[] = []
-    for (let i = inferredSequence.length - 1; i >= 0; i--) {
-      const correctIdx = state.correctOrder.length - 1 - (inferredSequence.length - 1 - i)
-      if (inferredSequence[i]?.id !== state.correctOrder[correctIdx]?.id) break
-      suffixCards.unshift(inferredSequence[i])
+    for (let offset = 0; offset < inferredSequence.length; offset++) {
+      const inferredIdx = inferredSequence.length - 1 - offset
+      const correctIdx = state.correctOrder.length - 1 - offset
+      if (inferredSequence[inferredIdx]?.id !== state.correctOrder[correctIdx]?.id) break
+      suffixCards.unshift(inferredSequence[inferredIdx])
     }
 
     // Check if prefix and suffix overlap (all cards are correct)
