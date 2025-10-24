@@ -709,6 +709,7 @@ function AnimatedCard({
   isResizing,
   isSpectating,
   isCorrect,
+  isCorrectPosition,
   draggedByPlayerId,
   localPlayerId,
   players,
@@ -724,6 +725,7 @@ function AnimatedCard({
   isResizing: boolean
   isSpectating: boolean
   isCorrect: boolean
+  isCorrectPosition: boolean
   draggedByPlayerId?: string
   localPlayerId?: string
   players: Map<string, { id: string; name: string; emoji: string }>
@@ -747,7 +749,7 @@ function AnimatedCard({
     left: pixelPos.x,
     top: pixelPos.y,
     rotation: cardState.rotation,
-    scale: isCorrect ? 0.5 : 1, // Scale down to 50% when in correct position
+    scale: isCorrectPosition ? 0.5 : 1, // Scale down to 50% when in correct position (for all users)
     immediate: isDragging || isResizing, // Instant updates when dragging or resizing
     config: {
       tension: 300,
@@ -1835,9 +1837,7 @@ export function PlayingPhaseDrag() {
           const isCorrectPosition =
             positionInSequence >= 0 && state.correctOrder[positionInSequence]?.id === card.id
 
-          // Only show correctness indicator if:
-          // 1. Player is actively playing (not spectating), OR
-          // 2. Spectator has educational mode enabled
+          // Show green border based on educational mode for spectators
           const isCorrect = isSpectating
             ? spectatorEducationalMode && isCorrectPosition
             : isCorrectPosition
@@ -1855,6 +1855,7 @@ export function PlayingPhaseDrag() {
               isResizing={isResizing}
               isSpectating={isSpectating}
               isCorrect={isCorrect}
+              isCorrectPosition={isCorrectPosition}
               draggedByPlayerId={draggedByPlayerId}
               localPlayerId={localPlayerId}
               players={players}
