@@ -2,8 +2,7 @@
 
 import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
-import { useSpring, animated, config, useSprings } from '@react-spring/web'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import type { SortingCard } from '../types'
 
 // Add result animations
@@ -32,12 +31,6 @@ if (typeof document !== 'undefined') {
   document.head.appendChild(style)
 }
 
-interface CardPosition {
-  x: number
-  y: number
-  rotation: number
-}
-
 export function ResultsPhase() {
   const { state, startGame, goToSetup, exitSession, players } = useCardSorting()
   const { scoreBreakdown } = state
@@ -49,167 +42,13 @@ export function ResultsPhase() {
   // Get user's sequence from placedCards
   const userSequence = state.placedCards.filter((c): c is SortingCard => c !== null)
 
-  // Get viewport dimensions for converting percentage positions to pixels
-  const containerRef = useRef<HTMLDivElement>(null)
-  const viewportDimensionsRef = useRef({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  })
-  const [, forceUpdate] = useState({})
-
-  useEffect(() => {
-    const updateDimensions = () => {
-      viewportDimensionsRef.current = {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      }
-      forceUpdate({}) // Force re-render for viewport updates
-    }
-    window.addEventListener('resize', updateDimensions)
-    return () => window.removeEventListener('resize', updateDimensions)
-  }, [])
-
-  // Calculate grid positions for cards (final positions)
-  // Use percentage-based coordinates (same as game board)
-  const calculateGridPosition = (cardIndex: number) => {
-    const gridCols = 3
-    const cardWidthPct = 14 // ~140px on ~1000px viewport
-    const cardHeightPct = 22.5 // ~180px on ~800px viewport
-    const gapPct = 2
-
-    // Center the grid horizontally
-    const gridWidth = gridCols * cardWidthPct + (gridCols - 1) * gapPct
-    const startXPct = (100 - gridWidth) / 2
-
-    const col = cardIndex % gridCols
-    const row = Math.floor(cardIndex / gridCols)
-
-    return {
-      x: startXPct + col * (cardWidthPct + gapPct),
-      y: 15 + row * (cardHeightPct + gapPct), // Start from 15% down
-      rotation: 0,
-    }
-  }
-
-  // Get initial positions from game table (already in percentage)
-  const getInitialPosition = (cardId: string) => {
-    const cardPos = state.cardPositions.find((p) => p.cardId === cardId)
-    if (!cardPos) {
-      return { x: 50, y: 50, rotation: 0 }
-    }
-
-    // Already in percentage, just pass through
-    return {
-      x: cardPos.x,
-      y: cardPos.y,
-      rotation: cardPos.rotation,
-    }
-  }
-
-  // Create springs for each card - memoize initial positions
-  const initialPositions = useMemo(() => {
-    return userSequence.map((card) => getInitialPosition(card.id))
-  }, []) // Empty deps - only calculate once on mount
-
-  // Use ref to ensure springs are truly only created once
-  const springsInitializedRef = useRef(false)
-  const gridPositionsRef = useRef<{ x: number; y: number; rotation: number }[]>([])
-
-  const [springs, api] = useSprings(userSequence.length, (index) => {
-    // If already initialized (on re-render), use the grid position
-    if (springsInitializedRef.current) {
-      const gridPos = gridPositionsRef.current[index] || calculateGridPosition(index)
-      console.log('[ResultsPhase] Re-creating spring', index, 'at GRID position', gridPos)
-      return {
-        from: gridPos,
-        to: gridPos,
-        immediate: true, // Already at grid position
-        config: config.gentle,
-      }
-    }
-    // First time - use initial game board positions
-    console.log('[ResultsPhase] Creating spring', index, 'from', initialPositions[index])
-    return {
-      from: initialPositions[index],
-      to: initialPositions[index],
-      immediate: false,
-      config: config.gentle,
-    }
-  })
-
-  console.log(
-    '[ResultsPhase] Component render, springs.length:',
-    springs.length,
-    'initialized:',
-    springsInitializedRef.current
-  )
-
-  // Immediately start animating to grid positions (only once)
-  useEffect(() => {
-    console.log('[ResultsPhase] Animation effect running')
-
-    // Small delay to ensure mount
-    const timer = setTimeout(() => {
-      console.log('[ResultsPhase] Starting animation to grid positions')
-      api.start((index) => {
-        const card = userSequence[index]
-        const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
-        const gridPos = calculateGridPosition(correctIndex)
-        console.log('[ResultsPhase] Animating card', index, 'to', gridPos)
-        return {
-          to: gridPos,
-          immediate: false,
-          config: { ...config.gentle, tension: 120, friction: 26 },
-        }
-      })
-    }, 100)
-
-    // After animation completes, lock positions by setting immediate: true
-    const lockTimer = setTimeout(() => {
-      console.log('[ResultsPhase] Locking positions with immediate: true')
-
-      // Store grid positions in ref
-      gridPositionsRef.current = userSequence.map((card, index) => {
-        const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
-        return calculateGridPosition(correctIndex)
-      })
-
-      api.start((index) => {
-        const card = userSequence[index]
-        const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
-        const gridPos = calculateGridPosition(correctIndex)
-        console.log('[ResultsPhase] Locking card', index, 'at', gridPos)
-        return {
-          to: gridPos,
-          immediate: true, // No more animations - locked in place
-        }
-      })
-
-      springsInitializedRef.current = true // Mark as initialized
-      console.log('[ResultsPhase] Springs locked and marked as initialized')
-    }, 1100) // Wait for animation to complete (100ms + 1000ms)
-
-    return () => {
-      console.log('[ResultsPhase] Animation effect cleanup')
-      clearTimeout(timer)
-      clearTimeout(lockTimer)
-    }
-  }, []) // Empty deps - only run once
-
-  // Show corrections after animation completes
+  // Show corrections after a delay
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowCorrections(true)
-    }, 1500)
+    }, 1000)
     return () => clearTimeout(timer)
   }, [])
-
-  // Panel slide-in animation
-  const panelSpring = useSpring({
-    from: { opacity: 0, transform: 'translateX(50px)' },
-    to: { opacity: 1, transform: 'translateX(0px)' },
-    config: config.gentle,
-  })
 
   if (!scoreBreakdown) {
     return (
@@ -255,6 +94,7 @@ export function ResultsPhase() {
       className={css({
         width: '100%',
         height: '100%',
+        display: 'flex',
         position: 'fixed',
         top: 0,
         left: 0,
@@ -263,146 +103,115 @@ export function ResultsPhase() {
         background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
       })}
     >
-      {/* Full viewport for cards (same coordinate system as game board) */}
+      {/* Cards Grid Area */}
       <div
-        ref={containerRef}
         className={css({
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          overflow: 'hidden',
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px',
+          overflow: 'auto',
         })}
       >
-        {/* Cards with animated positions */}
-        {userSequence.map((card, userIndex) => {
-          const spring = springs[userIndex]
-          if (!spring) return null
+        <div
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '16px',
+            maxWidth: '600px',
+          })}
+        >
+          {userSequence.map((card, userIndex) => {
+            const isCorrect = state.correctOrder[userIndex]?.id === card.id
+            const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
 
-          // Check if this card is correct for its position in the user's sequence
-          // Same logic as during gameplay: does the card at this position match the correct card for this position?
-          const isCorrect = state.correctOrder[userIndex]?.id === card.id
-          const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
-
-          return (
-            <animated.div
-              key={card.id}
-              style={{
-                position: 'absolute',
-                left: spring.x.to((x) => `${(x / 100) * viewportDimensionsRef.current.width}px`),
-                top: spring.y.to((y) => `${(y / 100) * viewportDimensionsRef.current.height}px`),
-                transform: spring.rotation.to((r) => `rotate(${r}deg)`),
-                width: '140px',
-                height: '180px',
-                zIndex: 5,
-              }}
-            >
-              {/* Card */}
+            return (
               <div
+                key={card.id}
                 className={css({
-                  width: '100%',
-                  height: '100%',
-                  background: 'white',
-                  borderRadius: '8px',
-                  border: '3px solid',
-                  borderColor: isCorrect ? '#22c55e' : showCorrections ? '#ef4444' : '#0369a1',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '8px',
-                  boxSizing: 'border-box',
                   position: 'relative',
-                  boxShadow: isCorrect
-                    ? '0 0 20px rgba(34, 197, 94, 0.4)'
-                    : showCorrections
-                      ? '0 0 20px rgba(239, 68, 68, 0.4)'
-                      : '0 4px 8px rgba(0, 0, 0, 0.1)',
+                  width: '160px',
+                  height: '200px',
                 })}
-                dangerouslySetInnerHTML={{ __html: card.svgContent }}
-              />
-
-              {/* Correct/Incorrect indicator */}
-              {showCorrections && (
+              >
+                {/* Card */}
                 <div
                   className={css({
-                    position: 'absolute',
-                    top: '-12px',
-                    right: '-12px',
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: isCorrect ? '#22c55e' : '#ef4444',
+                    width: '100%',
+                    height: '100%',
+                    background: 'white',
+                    borderRadius: '8px',
+                    border: '3px solid',
+                    borderColor: isCorrect ? '#22c55e' : showCorrections ? '#ef4444' : '#0369a1',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '20px',
+                    padding: '8px',
+                    boxSizing: 'border-box',
+                    position: 'relative',
+                    boxShadow: isCorrect
+                      ? '0 0 20px rgba(34, 197, 94, 0.4)'
+                      : showCorrections
+                        ? '0 0 20px rgba(239, 68, 68, 0.4)'
+                        : '0 4px 8px rgba(0, 0, 0, 0.1)',
+                    animation: 'scoreReveal 0.5s ease-out',
+                  })}
+                  dangerouslySetInnerHTML={{ __html: card.svgContent }}
+                />
+
+                {/* Correct/Incorrect indicator */}
+                {showCorrections && (
+                  <div
+                    className={css({
+                      position: 'absolute',
+                      top: '-12px',
+                      right: '-12px',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: isCorrect ? '#22c55e' : '#ef4444',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                      animation: 'scoreReveal 0.4s ease-out',
+                    })}
+                  >
+                    {isCorrect ? '✓' : '✗'}
+                  </div>
+                )}
+
+                {/* Position number */}
+                <div
+                  className={css({
+                    position: 'absolute',
+                    bottom: '-8px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: isCorrect ? '#22c55e' : showCorrections ? '#ef4444' : '#0369a1',
                     color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
                     fontWeight: 'bold',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                    animation: 'scoreReveal 0.4s ease-out',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
                   })}
                 >
-                  {isCorrect ? '✓' : '✗'}
+                  #{showCorrections ? correctIndex + 1 : userIndex + 1}
                 </div>
-              )}
-
-              {/* Position number */}
-              <div
-                className={css({
-                  position: 'absolute',
-                  bottom: '-8px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: isCorrect ? '#22c55e' : showCorrections ? '#ef4444' : '#0369a1',
-                  color: 'white',
-                  padding: '4px 8px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-                })}
-              >
-                #{showCorrections ? correctIndex + 1 : userIndex + 1}
               </div>
-            </animated.div>
-          )
-        })}
-
-        {/* Correction message */}
-        {showCorrections && (
-          <div
-            className={css({
-              position: 'absolute',
-              bottom: '20px',
-              left: '20px',
-              right: '20px',
-              padding: '12px 16px',
-              background: 'rgba(59, 130, 246, 0.2)',
-              border: '2px solid rgba(59, 130, 246, 0.4)',
-              borderRadius: '12px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1e3a8a',
-              textAlign: 'center',
-              animation: 'scoreReveal 0.6s ease-out 0.5s both',
-            })}
-          >
-            {isPerfect
-              ? '🎉 Perfect arrangement!'
-              : '↗️ Cards have moved to their correct positions'}
-          </div>
-        )}
+            )
+          })}
+        </div>
       </div>
 
       {/* Right side: Score panel */}
-      <animated.div
-        style={panelSpring}
+      <div
         className={css({
-          position: 'fixed',
-          right: 0,
-          top: 0,
-          bottom: 0,
           width: '400px',
           background: 'rgba(255, 255, 255, 0.95)',
           borderLeft: '3px solid rgba(59, 130, 246, 0.3)',
@@ -800,7 +609,7 @@ export function ResultsPhase() {
             🚪 Exit
           </button>
         </div>
-      </animated.div>
+      </div>
     </div>
   )
 }

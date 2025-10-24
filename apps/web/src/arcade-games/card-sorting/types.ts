@@ -19,7 +19,6 @@ export type GameMode = 'solo' | 'collaborative' | 'competitive' | 'relay'
 
 export interface CardSortingConfig extends GameConfig {
   cardCount: 5 | 8 | 12 | 15 // Difficulty (number of cards)
-  showNumbers: boolean // Allow reveal numbers button
   timeLimit: number | null // Optional time limit (seconds), null = unlimited
   gameMode: GameMode // Game mode (solo, collaborative, competitive, relay)
 }
@@ -60,7 +59,6 @@ export interface ScoreBreakdown {
   exactPositionScore: number // 0-100 based on exact matches
   inversionScore: number // 0-100 based on inversions
   elapsedTime: number // Seconds taken
-  numbersRevealed: boolean // Whether player used reveal
 }
 
 // ============================================================================
@@ -70,7 +68,6 @@ export interface ScoreBreakdown {
 export interface CardSortingState extends GameState {
   // Configuration
   cardCount: 5 | 8 | 12 | 15
-  showNumbers: boolean
   timeLimit: number | null
   gameMode: GameMode
 
@@ -97,7 +94,6 @@ export interface CardSortingState extends GameState {
 
   // UI state (client-only, not in server state)
   selectedCardId: string | null // Currently selected card
-  numbersRevealed: boolean // If player revealed numbers
 
   // Results
   scoreBreakdown: ScoreBreakdown | null // Final score details
@@ -111,7 +107,6 @@ export interface CardSortingState extends GameState {
     placedCards: (SortingCard | null)[]
     cardPositions: CardPosition[]
     gameStartTime: number
-    numbersRevealed: boolean
   }
 }
 
@@ -160,13 +155,6 @@ export type CardSortingMove =
       }
     }
   | {
-      type: 'REVEAL_NUMBERS'
-      playerId: string
-      userId: string
-      timestamp: number
-      data: Record<string, never>
-    }
-  | {
       type: 'CHECK_SOLUTION'
       playerId: string
       userId: string
@@ -188,7 +176,7 @@ export type CardSortingMove =
       userId: string
       timestamp: number
       data: {
-        field: 'cardCount' | 'showNumbers' | 'timeLimit' | 'gameMode'
+        field: 'cardCount' | 'timeLimit' | 'gameMode'
         value: unknown
       }
     }
@@ -245,7 +233,6 @@ export interface SortingCardProps {
   isPlaced: boolean
   isCorrect?: boolean // After checking solution
   onClick: () => void
-  showNumber: boolean // If revealed
 }
 
 export interface PositionSlotProps {

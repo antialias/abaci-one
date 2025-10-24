@@ -57,8 +57,7 @@ export function countInversions(userSeq: number[], correctSeq: number[]): number
 export function calculateScore(
   userSequence: number[],
   correctSequence: number[],
-  startTime: number,
-  numbersRevealed: boolean
+  startTime: number
 ): ScoreBreakdown {
   // LCS-based score (relative order)
   const lcsLength = longestCommonSubsequence(userSequence, correctSequence)
@@ -95,6 +94,5 @@ export function calculateScore(
     exactPositionScore: Math.round(exactPositionScore),
     inversionScore: Math.round(inversionScore),
     elapsedTime: Math.floor((Date.now() - startTime) / 1000),
-    numbersRevealed,
   }
 }

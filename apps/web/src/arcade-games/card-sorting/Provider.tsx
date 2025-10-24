@@ -25,10 +25,9 @@ interface CardSortingContextValue {
   insertCard: (cardId: string, insertPosition: number) => void
   removeCard: (position: number) => void
   checkSolution: (finalSequence?: SortingCard[]) => void
-  revealNumbers: () => void
   goToSetup: () => void
   resumeGame: () => void
-  setConfig: (field: 'cardCount' | 'showNumbers' | 'timeLimit' | 'gameMode', value: unknown) => void
+  setConfig: (field: 'cardCount' | 'timeLimit' | 'gameMode', value: unknown) => void
   updateCardPositions: (positions: CardPosition[]) => void
   exitSession: () => void
   // Computed
@@ -53,7 +52,6 @@ const CardSortingContext = createContext<CardSortingContextValue | null>(null)
 // Initial state matching validator's getInitialState
 const createInitialState = (config: Partial<CardSortingConfig>): CardSortingState => ({
   cardCount: config.cardCount ?? 8,
-  showNumbers: config.showNumbers ?? true,
   timeLimit: config.timeLimit ?? null,
   gameMode: config.gameMode ?? 'solo',
   gamePhase: 'setup',
@@ -75,7 +73,6 @@ const createInitialState = (config: Partial<CardSortingConfig>): CardSortingStat
   cardPositions: [],
   cursorPositions: new Map(),
   selectedCardId: null,
-  numbersRevealed: false,
   scoreBreakdown: null,
 })
 
@@ -103,11 +100,9 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
         // Use cards in the order they were sent (already shuffled by initiating client)
         availableCards: selectedCards,
         placedCards: new Array(state.cardCount).fill(null),
-        numbersRevealed: false,
         // Save original config for pause/resume
         originalConfig: {
           cardCount: state.cardCount,
-          showNumbers: state.showNumbers,
           timeLimit: state.timeLimit,
           gameMode: state.gameMode,
         },
@@ -213,13 +208,6 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
       }
     }
 
-    case 'REVEAL_NUMBERS': {
-      return {
-        ...state,
-        numbersRevealed: true,
-      }
-    }
-
     case 'CHECK_SOLUTION': {
       // Don't apply optimistic update - wait for server to calculate and return score
       return state
@@ -231,8 +219,8 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
       return {
         ...createInitialState({
           cardCount: state.cardCount,
-          showNumbers: state.showNumbers,
           timeLimit: state.timeLimit,
+          gameMode: state.gameMode,
         }),
         // Save paused state if coming from active game
         originalConfig: state.originalConfig,
@@ -244,7 +232,6 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
               placedCards: state.placedCards,
               cardPositions: state.cardPositions,
               gameStartTime: state.gameStartTime || Date.now(),
-              numbersRevealed: state.numbersRevealed,
             }
           : undefined,
       }
@@ -288,7 +275,6 @@ function applyMoveOptimistically(state: CardSortingState, move: GameMove): CardS
         placedCards: state.pausedGameState.placedCards,
         cardPositions: state.pausedGameState.cardPositions,
         gameStartTime: state.pausedGameState.gameStartTime,
-        numbersRevealed: state.pausedGameState.numbersRevealed,
         pausedGamePhase: undefined,
         pausedGameState: undefined,
       }
@@ -389,10 +375,10 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     if (!state.originalConfig) return false
     return (
       state.cardCount !== state.originalConfig.cardCount ||
-      state.showNumbers !== state.originalConfig.showNumbers ||
-      state.timeLimit !== state.originalConfig.timeLimit
+      state.timeLimit !== state.originalConfig.timeLimit ||
+      state.gameMode !== state.originalConfig.gameMode
     )
-  }, [state.cardCount, state.showNumbers, state.timeLimit, state.originalConfig])
+  }, [state.cardCount, state.timeLimit, state.gameMode, state.originalConfig])
 
   const canResumeGame = useMemo(() => {
     return !!state.pausedGamePhase && !!state.pausedGameState && !hasConfigChanged
@@ -503,17 +489,6 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     [localPlayerId, canCheckSolution, sendMove, viewerId]
   )
 
-  const revealNumbers = useCallback(() => {
-    if (!localPlayerId) return
-
-    sendMove({
-      type: 'REVEAL_NUMBERS',
-      playerId: localPlayerId,
-      userId: viewerId || '',
-      data: {},
-    })
-  }, [localPlayerId, sendMove, viewerId])
-
   const goToSetup = useCallback(() => {
     if (!localPlayerId) return
 
@@ -540,7 +515,7 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
   }, [localPlayerId, canResumeGame, sendMove, viewerId])
 
   const setConfig = useCallback(
-    (field: 'cardCount' | 'showNumbers' | 'timeLimit' | 'gameMode', value: unknown) => {
+    (field: 'cardCount' | 'timeLimit' | 'gameMode', value: unknown) => {
       if (!localPlayerId) return
 
       sendMove({
@@ -595,7 +570,6 @@ export function CardSortingProvider({ children }: { children: ReactNode }) {
     insertCard,
     removeCard,
     checkSolution,
-    revealNumbers,
     goToSetup,
     resumeGame,
     setConfig,

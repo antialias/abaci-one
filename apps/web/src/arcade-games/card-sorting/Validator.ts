@@ -22,8 +22,6 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         return this.validateInsertCard(state, move.data.cardId, move.data.insertPosition)
       case 'REMOVE_CARD':
         return this.validateRemoveCard(state, move.data.position)
-      case 'REVEAL_NUMBERS':
-        return this.validateRevealNumbers(state)
       case 'CHECK_SOLUTION':
         return this.validateCheckSolution(state, move.data.finalSequence)
       case 'GO_TO_SETUP':
@@ -84,7 +82,6 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         availableCards: selectedCards as typeof state.availableCards,
         placedCards: new Array(state.cardCount).fill(null),
         cardPositions: [], // Will be set by first position update
-        numbersRevealed: false,
         scoreBreakdown: null,
       },
     }
@@ -234,34 +231,6 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
     }
   }
 
-  private validateRevealNumbers(state: CardSortingState): ValidationResult {
-    // Must be in playing phase
-    if (state.gamePhase !== 'playing') {
-      return {
-        valid: false,
-        error: 'Can only reveal numbers during playing phase',
-      }
-    }
-
-    // Must be enabled in config
-    if (!state.showNumbers) {
-      return { valid: false, error: 'Reveal numbers is not enabled' }
-    }
-
-    // Already revealed
-    if (state.numbersRevealed) {
-      return { valid: false, error: 'Numbers already revealed' }
-    }
-
-    return {
-      valid: true,
-      newState: {
-        ...state,
-        numbersRevealed: true,
-      },
-    }
-  }
-
   private validateCheckSolution(
     state: CardSortingState,
     finalSequence?: typeof state.selectedCards
@@ -291,8 +260,7 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
     const scoreBreakdown = calculateScore(
       userSequence,
       correctSequence,
-      state.gameStartTime || Date.now(),
-      state.numbersRevealed
+      state.gameStartTime || Date.now()
     )
 
     // If finalSequence was provided, update placedCards with it
@@ -321,13 +289,11 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         newState: {
           ...this.getInitialState({
             cardCount: state.cardCount,
-            showNumbers: state.showNumbers,
             timeLimit: state.timeLimit,
             gameMode: state.gameMode,
           }),
           originalConfig: {
             cardCount: state.cardCount,
-            showNumbers: state.showNumbers,
             timeLimit: state.timeLimit,
             gameMode: state.gameMode,
           },
@@ -338,7 +304,6 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
             placedCards: state.placedCards,
             cardPositions: state.cardPositions,
             gameStartTime: state.gameStartTime || Date.now(),
-            numbersRevealed: state.numbersRevealed,
           },
         },
       }
@@ -349,7 +314,6 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       valid: true,
       newState: this.getInitialState({
         cardCount: state.cardCount,
-        showNumbers: state.showNumbers,
         timeLimit: state.timeLimit,
         gameMode: state.gameMode,
       }),
@@ -378,21 +342,6 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
             ...state,
             cardCount: value as 5 | 8 | 12 | 15,
             placedCards: new Array(value as number).fill(null),
-            // Clear pause state if config changed
-            pausedGamePhase: undefined,
-            pausedGameState: undefined,
-          },
-        }
-
-      case 'showNumbers':
-        if (typeof value !== 'boolean') {
-          return { valid: false, error: 'showNumbers must be a boolean' }
-        }
-        return {
-          valid: true,
-          newState: {
-            ...state,
-            showNumbers: value,
             // Clear pause state if config changed
             pausedGamePhase: undefined,
             pausedGameState: undefined,
@@ -463,7 +412,6 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
         placedCards: state.pausedGameState.placedCards,
         cardPositions: state.pausedGameState.cardPositions,
         gameStartTime: state.pausedGameState.gameStartTime,
-        numbersRevealed: state.pausedGameState.numbersRevealed,
         pausedGamePhase: undefined,
         pausedGameState: undefined,
       },
@@ -519,7 +467,6 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
   getInitialState(config: CardSortingConfig): CardSortingState {
     return {
       cardCount: config.cardCount,
-      showNumbers: config.showNumbers,
       timeLimit: config.timeLimit,
       gameMode: config.gameMode,
       gamePhase: 'setup',
@@ -541,7 +488,6 @@ export class CardSortingValidator implements GameValidator<CardSortingState, Car
       cardPositions: [],
       cursorPositions: new Map(),
       selectedCardId: null,
-      numbersRevealed: false,
       scoreBreakdown: null,
     }
   }

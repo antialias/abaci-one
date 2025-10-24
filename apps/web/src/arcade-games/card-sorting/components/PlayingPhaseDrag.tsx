@@ -998,7 +998,6 @@ export function PlayingPhaseDrag() {
   }, [activityFeed])
 
   // Track previous state for detecting changes
-  const prevNumbersRevealedRef = useRef(state.numbersRevealed)
   const prevDraggingPlayersRef = useRef<Set<string>>(new Set())
 
   // Detect state changes and generate activity notifications
@@ -1023,21 +1022,7 @@ export function PlayingPhaseDrag() {
     }
 
     prevDraggingPlayersRef.current = currentlyDragging
-
-    // Detect revealed numbers
-    if (state.numbersRevealed && !prevNumbersRevealedRef.current) {
-      // We don't know who revealed them without player metadata in state
-      // Skip for now
-    }
-
-    prevNumbersRevealedRef.current = state.numbersRevealed
-  }, [
-    state.cardPositions,
-    state.numbersRevealed,
-    state.gameMode,
-    localPlayerId,
-    addActivityNotification,
-  ])
+  }, [state.cardPositions, state.gameMode, localPlayerId, addActivityNotification])
 
   // Handle viewport resize
   useEffect(() => {
@@ -1696,39 +1681,6 @@ export function PlayingPhaseDrag() {
                 Cards in correct position
               </div>
             </div>
-
-            {/* Numbers Revealed */}
-            <div
-              className={css({
-                marginBottom: '16px',
-                padding: '12px',
-                background: state.numbersRevealed
-                  ? 'linear-gradient(135deg, #fce7f3, #fbcfe8)'
-                  : 'linear-gradient(135deg, #f1f5f9, #e2e8f0)',
-                borderRadius: '8px',
-                border: '1px solid',
-                borderColor: state.numbersRevealed ? '#f9a8d4' : '#cbd5e1',
-              })}
-            >
-              <div
-                className={css({
-                  fontSize: '12px',
-                  color: state.numbersRevealed ? '#9f1239' : '#475569',
-                  marginBottom: '4px',
-                })}
-              >
-                👁️ Numbers Revealed
-              </div>
-              <div
-                className={css({
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: state.numbersRevealed ? '#9f1239' : '#475569',
-                })}
-              >
-                {state.numbersRevealed ? '✓ Yes' : '✗ No'}
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -1745,32 +1697,6 @@ export function PlayingPhaseDrag() {
             zIndex: 10,
           })}
         >
-          {/* Reveal Numbers Button */}
-          {!state.showNumbers && (
-            <button
-              type="button"
-              onClick={revealNumbers}
-              title="Reveal Numbers"
-              className={css({
-                width: '56px',
-                height: '56px',
-                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                border: '3px solid #f59e0b',
-                borderRadius: '50%',
-                fontSize: '24px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                _hover: {
-                  transform: 'scale(1.1)',
-                  boxShadow: '0 6px 20px rgba(245, 158, 11, 0.4)',
-                },
-              })}
-            >
-              👁️
-            </button>
-          )}
-
           {/* Check Solution Button with Label */}
           <div
             className={css({
