@@ -1264,6 +1264,13 @@ export function PlayingPhaseDrag() {
       suffixCards.unshift(inferredSequence[i])
     }
 
+    // Check if prefix and suffix overlap (all cards are correct)
+    // In this case, prefix and suffix cards are the same, so skip auto-arrange
+    const prefixAndSuffixOverlap =
+      prefixCards.length > 0 &&
+      suffixCards.length > 0 &&
+      prefixCards[prefixCards.length - 1].id === suffixCards[0].id
+
     if (shouldLog) {
       console.log('[AutoArrange] Loop count:', autoArrangeLoopCount.current)
       console.log(
@@ -1273,7 +1280,16 @@ export function PlayingPhaseDrag() {
         suffixCards.length
       )
       console.log('[AutoArrange] Total cards:', inferredSequence.length)
+      console.log('[AutoArrange] Prefix/suffix overlap:', prefixAndSuffixOverlap)
       lastLogTime.current = now
+    }
+
+    // Skip auto-arrange if all cards are correct (prefix and suffix are the same cards)
+    if (prefixAndSuffixOverlap) {
+      if (shouldLog) {
+        console.log('[AutoArrange] Skipping auto-arrange: all cards are correct')
+      }
+      return
     }
 
     // Tolerance for position comparison (0.1%)
@@ -1292,47 +1308,68 @@ export function PlayingPhaseDrag() {
     }
 
     // Arrange prefix cards at top-left, side by side
-    prefixCards.forEach((card, index) => {
-      const x = 5 + index * (CARD_WIDTH_PCT + SPACING) // Start at 5% margin
-      const y = 5 // Top margin
-      const rotation = 0 // No rotation for organized cards
-      const zIndex = 1000 + index // Higher z-index so they're on top
+    // But only if they fit within the viewport
+    const lastPrefixX = 5 + (prefixCards.length - 1) * (CARD_WIDTH_PCT + SPACING) + CARD_WIDTH_PCT
+    if (lastPrefixX <= 100) {
+      prefixCards.forEach((card, index) => {
+        const x = 5 + index * (CARD_WIDTH_PCT + SPACING) // Start at 5% margin
+        const y = 5 // Top margin
+        const rotation = 0 // No rotation for organized cards
+        const zIndex = 1000 + index // Higher z-index so they're on top
 
-      const currentState = newStates.get(card.id)
-      if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
-        if (shouldLog) {
-          console.log('[AutoArrange] Prefix card needs update:', {
-            cardId: card.id.slice(0, 8),
-            current: currentState,
-            target: { x, y, rotation },
-          })
+        const currentState = newStates.get(card.id)
+        if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
+          if (shouldLog) {
+            console.log('[AutoArrange] Prefix card needs update:', {
+              cardId: card.id.slice(0, 8),
+              current: currentState,
+              target: { x, y, rotation },
+            })
+          }
+          newStates.set(card.id, { x, y, rotation, zIndex })
+          hasChanges = true
         }
-        newStates.set(card.id, { x, y, rotation, zIndex })
-        hasChanges = true
-      }
-    })
+      })
+    } else if (shouldLog) {
+      console.log(
+        '[AutoArrange] Skipping prefix arrange: would exceed viewport (',
+        lastPrefixX,
+        '% > 100%)'
+      )
+    }
 
     // Arrange suffix cards at bottom-right, side by side (right to left)
-    suffixCards.forEach((card, index) => {
-      const fromRight = suffixCards.length - 1 - index
-      const x = 100 - CARD_WIDTH_PCT - 5 - fromRight * (CARD_WIDTH_PCT + SPACING) // From right edge
-      const y = 100 - CARD_HEIGHT_PCT - 5 // Bottom margin
-      const rotation = 0 // No rotation for organized cards
-      const zIndex = 1000 + index // Higher z-index so they're on top
+    // But only if they fit within the viewport
+    const firstSuffixX =
+      100 - CARD_WIDTH_PCT - 5 - (suffixCards.length - 1) * (CARD_WIDTH_PCT + SPACING)
+    if (firstSuffixX >= 0) {
+      suffixCards.forEach((card, index) => {
+        const fromRight = suffixCards.length - 1 - index
+        const x = 100 - CARD_WIDTH_PCT - 5 - fromRight * (CARD_WIDTH_PCT + SPACING) // From right edge
+        const y = 100 - CARD_HEIGHT_PCT - 5 // Bottom margin
+        const rotation = 0 // No rotation for organized cards
+        const zIndex = 1000 + index // Higher z-index so they're on top
 
-      const currentState = newStates.get(card.id)
-      if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
-        if (shouldLog) {
-          console.log('[AutoArrange] Suffix card needs update:', {
-            cardId: card.id.slice(0, 8),
-            current: currentState,
-            target: { x, y, rotation },
-          })
+        const currentState = newStates.get(card.id)
+        if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
+          if (shouldLog) {
+            console.log('[AutoArrange] Suffix card needs update:', {
+              cardId: card.id.slice(0, 8),
+              current: currentState,
+              target: { x, y, rotation },
+            })
+          }
+          newStates.set(card.id, { x, y, rotation, zIndex })
+          hasChanges = true
         }
-        newStates.set(card.id, { x, y, rotation, zIndex })
-        hasChanges = true
-      }
-    })
+      })
+    } else if (shouldLog) {
+      console.log(
+        '[AutoArrange] Skipping suffix arrange: would exceed viewport (',
+        firstSuffixX,
+        '% < 0%)'
+      )
+    }
 
     if (hasChanges) {
       if (shouldLog) {
