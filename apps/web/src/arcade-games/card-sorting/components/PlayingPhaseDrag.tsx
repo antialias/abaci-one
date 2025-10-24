@@ -929,8 +929,9 @@ export function PlayingPhaseDrag() {
   const getEffectiveViewportWidth = () => {
     if (typeof window === 'undefined') return 1000
     const baseWidth = window.innerWidth
-    if (isSpectating && !spectatorStatsCollapsed) {
-      return baseWidth - 280 // Subtract stats sidebar width
+    // Sidebar is hidden on mobile (< 768px), narrower on desktop
+    if (isSpectating && !spectatorStatsCollapsed && baseWidth >= 768) {
+      return baseWidth - 240 // Subtract stats sidebar width on desktop
     }
     return baseWidth
   }
@@ -938,8 +939,10 @@ export function PlayingPhaseDrag() {
   const getEffectiveViewportHeight = () => {
     if (typeof window === 'undefined') return 800
     const baseHeight = window.innerHeight
+    const baseWidth = window.innerWidth
     if (isSpectating) {
-      return baseHeight - 56 // Subtract banner height
+      // Banner is 170px on mobile (130px mini nav + 40px spectator banner), 56px on desktop
+      return baseHeight - (baseWidth < 768 ? 170 : 56)
     }
     return baseHeight
   }
@@ -1457,19 +1460,19 @@ export function PlayingPhaseDrag() {
         <div
           className={css({
             position: 'fixed',
-            top: 0,
+            top: { base: '130px', md: 0 },
             left: 0,
             right: 0,
-            height: '56px',
+            height: { base: '40px', md: '56px' },
             background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
             color: 'white',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 24px',
+            padding: { base: '0 8px', md: '0 24px' },
             zIndex: 100,
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-            gap: '16px',
+            gap: { base: '8px', md: '16px' },
           })}
         >
           {/* Player info */}
@@ -1477,12 +1480,12 @@ export function PlayingPhaseDrag() {
             className={css({
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              fontSize: '16px',
+              gap: { base: '6px', md: '12px' },
+              fontSize: { base: '12px', md: '16px' },
               fontWeight: '600',
             })}
           >
-            <span>👀 Spectating:</span>
+            <span className={css({ display: { base: 'none', sm: 'inline' } })}>👀 Spectating:</span>
             <span>
               {state.playerMetadata.emoji} {state.playerMetadata.name}
             </span>
@@ -1493,22 +1496,22 @@ export function PlayingPhaseDrag() {
             className={css({
               display: 'flex',
               alignItems: 'center',
-              gap: '16px',
-              fontSize: '14px',
+              gap: { base: '8px', md: '16px' },
+              fontSize: { base: '11px', md: '14px' },
             })}
           >
             <div
               className={css({
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: { base: '4px', md: '8px' },
               })}
             >
-              <span>Progress:</span>
-              <span className={css({ fontWeight: '600', fontSize: '16px' })}>
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>Progress:</span>
+              <span className={css({ fontWeight: '600', fontSize: { base: '12px', md: '16px' } })}>
                 {state.placedCards.filter((c) => c !== null).length}/{state.cardCount}
               </span>
-              <span>cards</span>
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>cards</span>
             </div>
 
             {/* Educational Mode Toggle */}
@@ -1518,15 +1521,15 @@ export function PlayingPhaseDrag() {
               className={css({
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '6px 12px',
+                gap: { base: '4px', md: '8px' },
+                padding: { base: '4px 8px', md: '6px 12px' },
                 borderRadius: '20px',
                 border: '2px solid rgba(255, 255, 255, 0.3)',
                 background: spectatorEducationalMode
                   ? 'rgba(255, 255, 255, 0.2)'
                   : 'rgba(255, 255, 255, 0.1)',
                 color: 'white',
-                fontSize: '14px',
+                fontSize: { base: '11px', md: '14px' },
                 fontWeight: '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
@@ -1537,24 +1540,32 @@ export function PlayingPhaseDrag() {
               })}
             >
               <span>{spectatorEducationalMode ? '✅' : '📚'}</span>
-              <span>Educational Mode</span>
+              <span className={css({ display: { base: 'none', sm: 'inline' } })}>
+                Educational Mode
+              </span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Spectator Stats Sidebar */}
+      {/* Spectator Stats Sidebar/Bottom Sheet */}
       {isSpectating && (
         <div
           className={css({
             position: 'fixed',
-            top: '56px', // Below banner
-            right: spectatorStatsCollapsed ? '-280px' : '0',
-            width: '280px',
-            height: 'calc(100vh - 56px)',
+            // Mobile: bottom sheet, Desktop: right sidebar
+            top: { base: 'auto', md: '56px' },
+            bottom: { base: spectatorStatsCollapsed ? '-120px' : '0', md: 'auto' },
+            right: { base: '0', md: spectatorStatsCollapsed ? '-240px' : '0' },
+            left: { base: '0', md: 'auto' },
+            width: { base: '100%', md: '240px' },
+            height: { base: '120px', md: 'calc(100vh - 56px)' },
             background: 'rgba(255, 255, 255, 0.95)',
-            boxShadow: '-2px 0 12px rgba(0, 0, 0, 0.1)',
-            transition: 'right 0.3s ease',
+            boxShadow: {
+              base: '0 -2px 12px rgba(0, 0, 0, 0.1)',
+              md: '-2px 0 12px rgba(0, 0, 0, 0.1)',
+            },
+            transition: { base: 'bottom 0.3s ease', md: 'right 0.3s ease' },
             zIndex: 90,
             display: 'flex',
             flexDirection: 'column',
@@ -1566,118 +1577,199 @@ export function PlayingPhaseDrag() {
             onClick={() => setSpectatorStatsCollapsed(!spectatorStatsCollapsed)}
             className={css({
               position: 'absolute',
-              left: '-40px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: '40px',
-              height: '80px',
+              // Mobile: top center, Desktop: left middle
+              left: { base: '50%', md: '-40px' },
+              top: { base: '-30px', md: '50%' },
+              transform: { base: 'translateX(-50%)', md: 'translateY(-50%)' },
+              width: { base: '80px', md: '40px' },
+              height: { base: '30px', md: '80px' },
               background: 'rgba(255, 255, 255, 0.95)',
               border: 'none',
-              borderRadius: '8px 0 0 8px',
-              boxShadow: '-2px 0 8px rgba(0, 0, 0, 0.1)',
+              borderRadius: { base: '8px 8px 0 0', md: '8px 0 0 8px' },
+              boxShadow: {
+                base: '0 -2px 8px rgba(0, 0, 0, 0.1)',
+                md: '-2px 0 8px rgba(0, 0, 0, 0.1)',
+              },
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px',
+              fontSize: { base: '16px', md: '20px' },
               transition: 'all 0.2s',
               _hover: {
                 background: 'rgba(255, 255, 255, 1)',
-                width: '44px',
               },
             })}
           >
-            {spectatorStatsCollapsed ? '◀' : '▶'}
+            <span className={css({ display: { base: 'inline', md: 'none' } })}>
+              {spectatorStatsCollapsed ? '▲' : '▼'}
+            </span>
+            <span className={css({ display: { base: 'none', md: 'inline' } })}>
+              {spectatorStatsCollapsed ? '◀' : '▶'}
+            </span>
           </button>
 
           {/* Stats Content */}
           <div
             className={css({
-              padding: '24px',
+              padding: { base: '8px 12px', md: '24px' },
               overflowY: 'auto',
               flex: 1,
             })}
           >
             <h3
               className={css({
-                fontSize: '18px',
+                fontSize: { base: '12px', md: '18px' },
                 fontWeight: '700',
-                marginBottom: '20px',
+                marginBottom: { base: '6px', md: '20px' },
                 color: '#1e293b',
                 borderBottom: '2px solid #e2e8f0',
-                paddingBottom: '8px',
+                paddingBottom: { base: '3px', md: '8px' },
               })}
             >
-              📊 Live Stats
+              <span className={css({ display: { base: 'none', md: 'inline' } })}>
+                📊 Live Stats
+              </span>
+              <span className={css({ display: { base: 'inline', md: 'none' } })}>📊 Stats</span>
             </h3>
 
-            {/* Time Elapsed */}
+            {/* Mobile: horizontal layout, Desktop: vertical layout */}
             <div
               className={css({
-                marginBottom: '16px',
-                padding: '12px',
-                background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-                borderRadius: '8px',
-                border: '1px solid #93c5fd',
+                display: { base: 'grid', md: 'block' },
+                gridTemplateColumns: { base: 'repeat(3, 1fr)', md: 'none' },
+                gap: { base: '8px', md: '0' },
               })}
             >
-              <div className={css({ fontSize: '12px', color: '#1e40af', marginBottom: '4px' })}>
-                ⏱️ Time Elapsed
+              {/* Time Elapsed */}
+              <div
+                className={css({
+                  marginBottom: { base: '0', md: '16px' },
+                  padding: { base: '8px', md: '12px' },
+                  background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                  borderRadius: { base: '6px', md: '8px' },
+                  border: '1px solid #93c5fd',
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: { base: '10px', md: '12px' },
+                    color: '#1e40af',
+                    marginBottom: '4px',
+                  })}
+                >
+                  <span className={css({ display: { base: 'none', md: 'inline' } })}>
+                    ⏱️ Time Elapsed
+                  </span>
+                  <span className={css({ display: { base: 'inline', md: 'none' } })}>⏱️</span>
+                </div>
+                <div
+                  className={css({
+                    fontSize: { base: '16px', md: '24px' },
+                    fontWeight: '700',
+                    color: '#1e3a8a',
+                  })}
+                >
+                  {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
+                </div>
               </div>
-              <div className={css({ fontSize: '24px', fontWeight: '700', color: '#1e3a8a' })}>
-                {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
-              </div>
-            </div>
 
-            {/* Cards Placed */}
-            <div
-              className={css({
-                marginBottom: '16px',
-                padding: '12px',
-                background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
-                borderRadius: '8px',
-                border: '1px solid #86efac',
-              })}
-            >
-              <div className={css({ fontSize: '12px', color: '#15803d', marginBottom: '4px' })}>
-                🎯 Cards Placed
+              {/* Cards Placed */}
+              <div
+                className={css({
+                  marginBottom: { base: '0', md: '16px' },
+                  padding: { base: '8px', md: '12px' },
+                  background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
+                  borderRadius: { base: '6px', md: '8px' },
+                  border: '1px solid #86efac',
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: { base: '10px', md: '12px' },
+                    color: '#15803d',
+                    marginBottom: '4px',
+                  })}
+                >
+                  <span className={css({ display: { base: 'none', md: 'inline' } })}>
+                    🎯 Cards Placed
+                  </span>
+                  <span className={css({ display: { base: 'inline', md: 'none' } })}>🎯</span>
+                </div>
+                <div
+                  className={css({
+                    fontSize: { base: '16px', md: '24px' },
+                    fontWeight: '700',
+                    color: '#14532d',
+                  })}
+                >
+                  {state.placedCards.filter((c) => c !== null).length} / {state.cardCount}
+                </div>
+                <div
+                  className={css({
+                    fontSize: '11px',
+                    color: '#15803d',
+                    marginTop: '4px',
+                    display: { base: 'none', md: 'block' },
+                  })}
+                >
+                  {Math.round(
+                    (state.placedCards.filter((c) => c !== null).length / state.cardCount) * 100
+                  )}
+                  % complete
+                </div>
               </div>
-              <div className={css({ fontSize: '24px', fontWeight: '700', color: '#14532d' })}>
-                {state.placedCards.filter((c) => c !== null).length} / {state.cardCount}
-              </div>
-              <div className={css({ fontSize: '11px', color: '#15803d', marginTop: '4px' })}>
-                {Math.round(
-                  (state.placedCards.filter((c) => c !== null).length / state.cardCount) * 100
-                )}
-                % complete
-              </div>
-            </div>
 
-            {/* Current Accuracy */}
-            <div
-              className={css({
-                marginBottom: '16px',
-                padding: '12px',
-                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                borderRadius: '8px',
-                border: '1px solid #fbbf24',
-              })}
-            >
-              <div className={css({ fontSize: '12px', color: '#92400e', marginBottom: '4px' })}>
-                ✨ Current Accuracy
-              </div>
-              <div className={css({ fontSize: '24px', fontWeight: '700', color: '#78350f' })}>
-                {(() => {
-                  const placedCards = state.placedCards.filter((c): c is SortingCard => c !== null)
-                  if (placedCards.length === 0) return '0%'
-                  const correctCount = placedCards.filter(
-                    (c, i) => state.correctOrder[i]?.id === c.id
-                  ).length
-                  return `${Math.round((correctCount / placedCards.length) * 100)}%`
-                })()}
-              </div>
-              <div className={css({ fontSize: '11px', color: '#92400e', marginTop: '4px' })}>
-                Cards in correct position
+              {/* Current Accuracy */}
+              <div
+                className={css({
+                  marginBottom: { base: '0', md: '16px' },
+                  padding: { base: '8px', md: '12px' },
+                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                  borderRadius: { base: '6px', md: '8px' },
+                  border: '1px solid #fbbf24',
+                })}
+              >
+                <div
+                  className={css({
+                    fontSize: { base: '10px', md: '12px' },
+                    color: '#92400e',
+                    marginBottom: '4px',
+                  })}
+                >
+                  <span className={css({ display: { base: 'none', md: 'inline' } })}>
+                    ✨ Current Accuracy
+                  </span>
+                  <span className={css({ display: { base: 'inline', md: 'none' } })}>✨</span>
+                </div>
+                <div
+                  className={css({
+                    fontSize: { base: '16px', md: '24px' },
+                    fontWeight: '700',
+                    color: '#78350f',
+                  })}
+                >
+                  {(() => {
+                    const placedCards = state.placedCards.filter(
+                      (c): c is SortingCard => c !== null
+                    )
+                    if (placedCards.length === 0) return '0%'
+                    const correctCount = placedCards.filter(
+                      (c, i) => state.correctOrder[i]?.id === c.id
+                    ).length
+                    return `${Math.round((correctCount / placedCards.length) * 100)}%`
+                  })()}
+                </div>
+                <div
+                  className={css({
+                    fontSize: '11px',
+                    color: '#92400e',
+                    marginTop: '4px',
+                    display: { base: 'none', md: 'block' },
+                  })}
+                >
+                  Cards in correct position
+                </div>
               </div>
             </div>
           </div>
@@ -1791,15 +1883,31 @@ export function PlayingPhaseDrag() {
       <div
         ref={containerRef}
         className={css({
-          width: isSpectating && !spectatorStatsCollapsed ? 'calc(100vw - 280px)' : '100vw',
-          height: isSpectating ? 'calc(100vh - 56px)' : '100vh',
           position: 'absolute',
-          top: isSpectating ? '56px' : 0,
           left: 0,
           background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
           overflow: 'hidden',
           transition: 'width 0.3s ease, height 0.3s ease, top 0.3s ease',
         })}
+        style={{
+          width:
+            isSpectating &&
+            !spectatorStatsCollapsed &&
+            typeof window !== 'undefined' &&
+            window.innerWidth >= 768
+              ? 'calc(100vw - 240px)'
+              : '100vw',
+          height: isSpectating
+            ? typeof window !== 'undefined' && window.innerWidth < 768
+              ? 'calc(100vh - 170px)'
+              : 'calc(100vh - 56px)'
+            : '100vh',
+          top: isSpectating
+            ? typeof window !== 'undefined' && window.innerWidth < 768
+              ? '170px'
+              : '56px'
+            : '0',
+        }}
       >
         {/* Render continuous curved path through the entire sequence */}
         {inferredSequence.length > 1 && (

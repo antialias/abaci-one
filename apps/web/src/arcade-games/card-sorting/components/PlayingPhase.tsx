@@ -180,32 +180,9 @@ export function PlayingPhase() {
         </div>
 
         <div className={css({ display: 'flex', gap: '0.5rem' })}>
-          {state.showNumbers && !state.numbersRevealed && (
-            <button
-              type="button"
-              onClick={revealNumbers}
-              disabled={isSpectating}
-              className={css({
-                padding: '0.5rem 1rem',
-                borderRadius: '0.375rem',
-                background: isSpectating ? 'gray.300' : 'orange.500',
-                color: 'white',
-                fontSize: 'sm',
-                fontWeight: '600',
-                border: 'none',
-                cursor: isSpectating ? 'not-allowed' : 'pointer',
-                opacity: isSpectating ? 0.5 : 1,
-                _hover: {
-                  background: isSpectating ? 'gray.300' : 'orange.600',
-                },
-              })}
-            >
-              Reveal Numbers
-            </button>
-          )}
           <button
             type="button"
-            onClick={checkSolution}
+            onClick={() => checkSolution()}
             disabled={!canCheckSolution || isSpectating}
             className={css({
               padding: '0.5rem 1rem',
@@ -337,23 +314,6 @@ export function PlayingPhase() {
                     },
                   })}
                 />
-                {state.numbersRevealed && (
-                  <div
-                    className={css({
-                      position: 'absolute',
-                      top: '5px',
-                      right: '5px',
-                      background: '#ffc107',
-                      color: '#333',
-                      borderRadius: '4px',
-                      padding: '2px 8px',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                    })}
-                  >
-                    {card.number}
-                  </div>
-                )}
               </div>
             ))}
           </div>

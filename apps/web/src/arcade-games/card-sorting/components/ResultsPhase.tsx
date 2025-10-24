@@ -95,7 +95,7 @@ export function ResultsPhase() {
         width: '100%',
         height: '100%',
         display: 'flex',
-        flexDirection: { base: 'column-reverse', md: 'row' },
+        flexDirection: { base: 'column', md: 'row' },
         position: 'fixed',
         top: 0,
         left: 0,
@@ -103,6 +103,8 @@ export function ResultsPhase() {
         bottom: 0,
         background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
         overflow: 'auto',
+        paddingTop: { base: '130px', md: 0 },
+        paddingBottom: { base: '70px', md: 0 },
       })}
     >
       {/* Cards Grid Area */}
@@ -110,17 +112,23 @@ export function ResultsPhase() {
         className={css({
           flex: { base: '0 0 auto', md: 1 },
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'center',
-          padding: { base: '16px 12px', md: '40px' },
-          overflow: { base: 'visible', md: 'auto' },
+          padding: { base: '8px', md: '40px' },
+          overflow: { base: 'auto', md: 'auto' },
+          order: { base: 2, md: 1 },
+          maxHeight: { base: '50vh', md: 'none' },
         })}
       >
         <div
           className={css({
             display: 'grid',
-            gridTemplateColumns: { base: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(3, 1fr)' },
-            gap: { base: '12px', md: '16px' },
+            gridTemplateColumns: {
+              base: 'repeat(3, 1fr)',
+              sm: 'repeat(3, 1fr)',
+              md: 'repeat(3, 1fr)',
+            },
+            gap: state.cardCount <= 5 ? { base: '8px', md: '16px' } : { base: '6px', md: '16px' },
             maxWidth: '600px',
             width: '100%',
           })}
@@ -132,11 +140,18 @@ export function ResultsPhase() {
             return (
               <div
                 key={card.id}
-                className={css({
+                style={{
                   position: 'relative',
                   width: '100%',
-                  paddingBottom: '125%', // 5:4 aspect ratio
-                })}
+                  paddingBottom:
+                    state.cardCount <= 5
+                      ? '130%'
+                      : state.cardCount <= 8
+                        ? '120%'
+                        : state.cardCount <= 12
+                          ? '110%'
+                          : '105%',
+                }}
               >
                 {/* Card */}
                 <div
@@ -170,16 +185,31 @@ export function ResultsPhase() {
                   <div
                     className={css({
                       position: 'absolute',
-                      top: { base: '-8px', md: '-12px' },
-                      right: { base: '-8px', md: '-12px' },
-                      width: { base: '24px', md: '32px' },
-                      height: { base: '24px', md: '32px' },
+                      top:
+                        state.cardCount > 8
+                          ? { base: '-6px', md: '-12px' }
+                          : { base: '-8px', md: '-12px' },
+                      right:
+                        state.cardCount > 8
+                          ? { base: '-6px', md: '-12px' }
+                          : { base: '-8px', md: '-12px' },
+                      width:
+                        state.cardCount > 8
+                          ? { base: '20px', md: '32px' }
+                          : { base: '24px', md: '32px' },
+                      height:
+                        state.cardCount > 8
+                          ? { base: '20px', md: '32px' }
+                          : { base: '24px', md: '32px' },
                       borderRadius: '50%',
                       background: isCorrect ? '#22c55e' : '#ef4444',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: { base: '16px', md: '20px' },
+                      fontSize:
+                        state.cardCount > 8
+                          ? { base: '12px', md: '20px' }
+                          : { base: '16px', md: '20px' },
                       color: 'white',
                       fontWeight: 'bold',
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
@@ -194,14 +224,23 @@ export function ResultsPhase() {
                 <div
                   className={css({
                     position: 'absolute',
-                    bottom: { base: '-6px', md: '-8px' },
+                    bottom:
+                      state.cardCount > 8
+                        ? { base: '-5px', md: '-8px' }
+                        : { base: '-6px', md: '-8px' },
                     left: '50%',
                     transform: 'translateX(-50%)',
                     background: isCorrect ? '#22c55e' : showCorrections ? '#ef4444' : '#0369a1',
                     color: 'white',
-                    padding: { base: '3px 6px', md: '4px 8px' },
-                    borderRadius: { base: '8px', md: '12px' },
-                    fontSize: { base: '10px', md: '12px' },
+                    padding:
+                      state.cardCount > 8
+                        ? { base: '2px 5px', md: '4px 8px' }
+                        : { base: '3px 6px', md: '4px 8px' },
+                    borderRadius: { base: '6px', md: '12px' },
+                    fontSize:
+                      state.cardCount > 8
+                        ? { base: '9px', md: '12px' }
+                        : { base: '10px', md: '12px' },
                     fontWeight: 'bold',
                     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
                   })}
@@ -221,30 +260,32 @@ export function ResultsPhase() {
           background: 'rgba(255, 255, 255, 0.95)',
           borderLeft: { base: 'none', md: '3px solid rgba(59, 130, 246, 0.3)' },
           borderBottom: { base: '3px solid rgba(59, 130, 246, 0.3)', md: 'none' },
-          padding: { base: '20px 16px', md: '40px' },
+          padding: { base: '12px', md: '40px' },
           overflow: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: { base: '16px', md: '24px' },
+          gap: { base: '10px', md: '24px' },
           boxShadow: {
             base: '0 4px 20px rgba(0, 0, 0, 0.1)',
             md: '-4px 0 20px rgba(0, 0, 0, 0.1)',
           },
+          order: { base: 1, md: 2 },
         })}
       >
         {/* Score Circle */}
         <div
           className={css({
             display: 'flex',
-            flexDirection: 'column',
+            flexDirection: { base: 'row', md: 'column' },
             alignItems: 'center',
-            gap: { base: '12px', md: '16px' },
+            justifyContent: { base: 'space-between', md: 'center' },
+            gap: { base: '10px', md: '16px' },
           })}
         >
           <div
             className={css({
-              width: { base: '120px', md: '160px' },
-              height: { base: '120px', md: '160px' },
+              width: { base: '80px', md: '160px' },
+              height: { base: '80px', md: '160px' },
               borderRadius: '50%',
               background: isPerfect
                 ? 'linear-gradient(135deg, #fbbf24, #f59e0b)'
@@ -261,6 +302,7 @@ export function ResultsPhase() {
               animation: isPerfect
                 ? 'perfectCelebrate 0.6s ease-in-out'
                 : 'scoreReveal 0.6s ease-out',
+              flexShrink: 0,
             })}
             style={{
               animationName: isPerfect ? 'perfectCelebrate' : 'scoreReveal',
@@ -268,7 +310,7 @@ export function ResultsPhase() {
           >
             <div
               className={css({
-                fontSize: { base: '48px', md: '64px' },
+                fontSize: { base: '32px', md: '64px' },
                 fontWeight: 'bold',
                 color: 'white',
                 lineHeight: 1,
@@ -279,7 +321,7 @@ export function ResultsPhase() {
             </div>
             <div
               className={css({
-                fontSize: { base: '16px', md: '20px' },
+                fontSize: { base: '12px', md: '20px' },
                 fontWeight: '600',
                 color: 'white',
                 opacity: 0.9,
@@ -289,50 +331,61 @@ export function ResultsPhase() {
             </div>
           </div>
 
-          {/* Team/Solo Label */}
-          {isCollaborative && (
+          <div
+            className={css({
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: { base: 'flex-start', md: 'center' },
+              gap: { base: '6px', md: '12px' },
+              flex: { base: 1, md: 'none' },
+            })}
+          >
+            {/* Team/Solo Label */}
+            {isCollaborative && (
+              <div
+                className={css({
+                  padding: { base: '4px 10px', md: '6px 16px' },
+                  background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
+                  borderRadius: '20px',
+                  fontSize: { base: '11px', md: '13px' },
+                  fontWeight: '700',
+                  color: 'white',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
+                })}
+              >
+                👥 Team Score
+              </div>
+            )}
+
             <div
               className={css({
-                padding: { base: '5px 12px', md: '6px 16px' },
-                background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
-                borderRadius: '20px',
-                fontSize: { base: '12px', md: '13px' },
-                fontWeight: '700',
-                color: 'white',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
+                textAlign: { base: 'left', md: 'center' },
+                fontSize: { base: '13px', md: '18px' },
+                fontWeight: '600',
+                color: '#0c4a6e',
+                lineHeight: 1.2,
+                display: { base: 'none', md: 'block' },
               })}
             >
-              👥 Team Score
+              {getMessage(scoreBreakdown.finalScore)}
             </div>
-          )}
 
-          <div
-            className={css({
-              textAlign: 'center',
-              fontSize: { base: '15px', md: '18px' },
-              fontWeight: '600',
-              color: '#0c4a6e',
-              lineHeight: 1.3,
-            })}
-          >
-            {getMessage(scoreBreakdown.finalScore)}
-          </div>
-
-          {/* Time Badge */}
-          <div
-            className={css({
-              padding: { base: '6px 16px', md: '8px 20px' },
-              background: 'rgba(59, 130, 246, 0.1)',
-              border: '2px solid rgba(59, 130, 246, 0.3)',
-              borderRadius: '20px',
-              fontSize: { base: '14px', md: '16px' },
-              fontWeight: '600',
-              color: '#0c4a6e',
-            })}
-          >
-            ⏱️ {formatTime(scoreBreakdown.elapsedTime)}
+            {/* Time Badge */}
+            <div
+              className={css({
+                padding: { base: '4px 12px', md: '8px 20px' },
+                background: 'rgba(59, 130, 246, 0.1)',
+                border: '2px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '20px',
+                fontSize: { base: '12px', md: '16px' },
+                fontWeight: '600',
+                color: '#0c4a6e',
+              })}
+            >
+              ⏱️ {formatTime(scoreBreakdown.elapsedTime)}
+            </div>
           </div>
         </div>
 
@@ -523,8 +576,8 @@ export function ResultsPhase() {
         <div
           className={css({
             display: 'flex',
-            flexDirection: 'column',
-            gap: { base: '8px', md: '10px' },
+            flexDirection: { base: 'row', md: 'column' },
+            gap: { base: '6px', md: '10px' },
             marginTop: 'auto',
           })}
         >
@@ -532,11 +585,11 @@ export function ResultsPhase() {
             type="button"
             onClick={startGame}
             className={css({
-              padding: { base: '12px 20px', md: '14px 24px' },
+              padding: { base: '10px 8px', md: '14px 24px' },
               background: 'linear-gradient(135deg, #86efac, #22c55e)',
               border: { base: '2px solid #22c55e', md: '3px solid #22c55e' },
-              borderRadius: { base: '10px', md: '12px' },
-              fontSize: { base: '14px', md: '16px' },
+              borderRadius: { base: '8px', md: '12px' },
+              fontSize: { base: '11px', md: '16px' },
               fontWeight: '700',
               color: 'white',
               cursor: 'pointer',
@@ -544,61 +597,64 @@ export function ResultsPhase() {
               boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
+              flex: { base: 1, md: 'none' },
               _hover: {
                 transform: 'translateY(-2px)',
                 boxShadow: '0 6px 20px rgba(34, 197, 94, 0.4)',
               },
             })}
           >
-            🎮 Play Again
+            <span className={css({ display: { base: 'none', md: 'inline' } })}>🎮 </span>Play
           </button>
 
           <button
             type="button"
             onClick={goToSetup}
             className={css({
-              padding: { base: '10px 16px', md: '12px 20px' },
+              padding: { base: '10px 8px', md: '12px 20px' },
               background: 'white',
               border: '2px solid rgba(59, 130, 246, 0.3)',
-              borderRadius: { base: '10px', md: '12px' },
-              fontSize: { base: '13px', md: '14px' },
+              borderRadius: { base: '8px', md: '12px' },
+              fontSize: { base: '11px', md: '14px' },
               fontWeight: '700',
               color: '#0c4a6e',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
+              flex: { base: 1, md: 'none' },
               _hover: {
                 borderColor: 'rgba(59, 130, 246, 0.5)',
                 background: 'rgba(59, 130, 246, 0.05)',
               },
             })}
           >
-            ⚙️ Settings
+            <span className={css({ display: { base: 'none', md: 'inline' } })}>⚙️ </span>Settings
           </button>
 
           <button
             type="button"
             onClick={exitSession}
             className={css({
-              padding: { base: '10px 16px', md: '12px 20px' },
+              padding: { base: '10px 8px', md: '12px 20px' },
               background: 'white',
               border: '2px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: { base: '10px', md: '12px' },
-              fontSize: { base: '13px', md: '14px' },
+              borderRadius: { base: '8px', md: '12px' },
+              fontSize: { base: '11px', md: '14px' },
               fontWeight: '700',
               color: '#991b1b',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
+              flex: { base: 1, md: 'none' },
               _hover: {
                 borderColor: 'rgba(239, 68, 68, 0.5)',
                 background: 'rgba(239, 68, 68, 0.05)',
               },
             })}
           >
-            🚪 Exit
+            <span className={css({ display: { base: 'none', md: 'inline' } })}>🚪 </span>Exit
           </button>
         </div>
       </div>
