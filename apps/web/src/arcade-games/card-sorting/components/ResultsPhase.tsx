@@ -51,48 +51,55 @@ export function ResultsPhase() {
 
   // Get viewport dimensions for converting percentage positions to pixels
   const containerRef = useRef<HTMLDivElement>(null)
+  const [viewportDimensions, setViewportDimensions] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  })
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      setViewportDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })
+    }
+    window.addEventListener('resize', updateDimensions)
+    return () => window.removeEventListener('resize', updateDimensions)
+  }, [])
 
   // Calculate grid positions for cards (final positions)
+  // Use percentage-based coordinates (same as game board)
   const calculateGridPosition = (cardIndex: number) => {
     const gridCols = 3
-    const cardWidth = 100
-    const cardHeight = 130
-    const gap = 20
-    const startX = 50
-    const startY = 100
+    const cardWidthPct = 14 // ~140px on ~1000px viewport
+    const cardHeightPct = 22.5 // ~180px on ~800px viewport
+    const gapPct = 2
+
+    // Center the grid horizontally
+    const gridWidth = gridCols * cardWidthPct + (gridCols - 1) * gapPct
+    const startXPct = (100 - gridWidth) / 2
 
     const col = cardIndex % gridCols
     const row = Math.floor(cardIndex / gridCols)
 
     return {
-      x: startX + col * (cardWidth + gap),
-      y: startY + row * (cardHeight + gap),
+      x: startXPct + col * (cardWidthPct + gapPct),
+      y: 15 + row * (cardHeightPct + gapPct), // Start from 15% down
       rotation: 0,
     }
   }
 
-  // Get initial positions from game table (percentage-based from state.cardPositions)
-  // These are in percentage of the FULL viewport (window)
+  // Get initial positions from game table (already in percentage)
   const getInitialPosition = (cardId: string) => {
     const cardPos = state.cardPositions.find((p) => p.cardId === cardId)
     if (!cardPos) {
-      return { x: 0, y: 0, rotation: 0 }
+      return { x: 50, y: 50, rotation: 0 }
     }
 
-    // Convert from percentage of window to pixels relative to the results container
-    // The game board uses the full window, but results container is 50% width
-    const windowWidth = window.innerWidth
-    const windowHeight = window.innerHeight
-
-    // Get absolute position in pixels
-    const absoluteX = (cardPos.x / 100) * windowWidth
-    const absoluteY = (cardPos.y / 100) * windowHeight
-
-    // Convert to position relative to the container (which is 50% of window width)
-    // Container starts at 0, so we just use absolute positions
+    // Already in percentage, just pass through
     return {
-      x: absoluteX,
-      y: absoluteY,
+      x: cardPos.x,
+      y: cardPos.y,
       rotation: cardPos.rotation,
     }
   }
@@ -193,33 +200,20 @@ export function ResultsPhase() {
         right: 0,
         bottom: 0,
         background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
-        display: 'flex',
       })}
     >
-      {/* Left side: Card visualization */}
+      {/* Full viewport for cards (same coordinate system as game board) */}
       <div
         ref={containerRef}
         className={css({
-          flex: '0 0 50%',
-          position: 'relative',
-          padding: '20px',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
           overflow: 'hidden',
         })}
       >
-        {/* Title */}
-        <div
-          className={css({
-            position: 'absolute',
-            top: '20px',
-            left: '20px',
-            fontSize: '24px',
-            fontWeight: '700',
-            color: '#0c4a6e',
-          })}
-        >
-          Your Arrangement
-        </div>
-
         {/* Cards with animated positions */}
         {userSequence.map((card, userIndex) => {
           const spring = springs[userIndex]
@@ -235,11 +229,11 @@ export function ResultsPhase() {
               key={card.id}
               style={{
                 position: 'absolute',
-                left: spring.x.to((x) => `${x}px`),
-                top: spring.y.to((y) => `${y}px`),
+                left: spring.x.to((x) => `${(x / 100) * viewportDimensions.width}px`),
+                top: spring.y.to((y) => `${(y / 100) * viewportDimensions.height}px`),
                 transform: spring.rotation.to((r) => `rotate(${r}deg)`),
-                width: '100px',
-                height: '130px',
+                width: '140px',
+                height: '180px',
                 zIndex: 5,
               }}
             >
