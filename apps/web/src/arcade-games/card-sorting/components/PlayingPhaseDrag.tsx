@@ -1225,6 +1225,84 @@ export function PlayingPhaseDrag() {
     ...state.placedCards.filter((c): c is SortingCard => c !== null),
   ])
 
+  // Auto-arrange correct prefix and suffix cards
+  useEffect(() => {
+    if (cardStates.size === 0) return
+    if (inferredSequence.length === 0) return
+    if (isSpectating) return // Don't auto-arrange for spectators
+
+    const newStates = new Map(cardStates)
+    let hasChanges = false
+
+    // Card dimensions in percentages
+    const CARD_WIDTH_PCT = 14 // ~140px on ~1000px viewport
+    const CARD_HEIGHT_PCT = 22.5 // ~180px on ~800px viewport
+    const SPACING = 2 // spacing between cards
+
+    // Find prefix cards (cards at positions 0, 1, 2... that are all correct)
+    const prefixCards: SortingCard[] = []
+    for (let i = 0; i < inferredSequence.length; i++) {
+      if (inferredSequence[i]?.id !== state.correctOrder[i]?.id) break
+      prefixCards.push(inferredSequence[i])
+    }
+
+    // Find suffix cards (cards at positions ...n-2, n-1, n that are all correct)
+    const suffixCards: SortingCard[] = []
+    for (let i = inferredSequence.length - 1; i >= 0; i--) {
+      const correctIdx = state.correctOrder.length - 1 - (inferredSequence.length - 1 - i)
+      if (inferredSequence[i]?.id !== state.correctOrder[correctIdx]?.id) break
+      suffixCards.unshift(inferredSequence[i])
+    }
+
+    // Arrange prefix cards at top-left, side by side
+    prefixCards.forEach((card, index) => {
+      const x = 5 + index * (CARD_WIDTH_PCT + SPACING) // Start at 5% margin
+      const y = 5 // Top margin
+      const rotation = 0 // No rotation for organized cards
+      const zIndex = 1000 + index // Higher z-index so they're on top
+
+      const currentState = newStates.get(card.id)
+      if (
+        currentState &&
+        (currentState.x !== x || currentState.y !== y || currentState.rotation !== rotation)
+      ) {
+        newStates.set(card.id, { x, y, rotation, zIndex })
+        hasChanges = true
+      }
+    })
+
+    // Arrange suffix cards at bottom-right, side by side (right to left)
+    suffixCards.forEach((card, index) => {
+      const fromRight = suffixCards.length - 1 - index
+      const x = 100 - CARD_WIDTH_PCT - 5 - fromRight * (CARD_WIDTH_PCT + SPACING) // From right edge
+      const y = 100 - CARD_HEIGHT_PCT - 5 // Bottom margin
+      const rotation = 0 // No rotation for organized cards
+      const zIndex = 1000 + index // Higher z-index so they're on top
+
+      const currentState = newStates.get(card.id)
+      if (
+        currentState &&
+        (currentState.x !== x || currentState.y !== y || currentState.rotation !== rotation)
+      ) {
+        newStates.set(card.id, { x, y, rotation, zIndex })
+        hasChanges = true
+      }
+    })
+
+    if (hasChanges) {
+      setCardStates(newStates)
+      // Send updated positions to server
+      const positions = Array.from(newStates.entries()).map(([id, cardState]) => ({
+        cardId: id,
+        x: cardState.x,
+        y: cardState.y,
+        rotation: cardState.rotation,
+        zIndex: cardState.zIndex,
+      }))
+      updateCardPositions(positions)
+    }
+  }, [inferredSequence, state.correctOrder, cardStates, isSpectating, updateCardPositions])
+
   // Format time display
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
