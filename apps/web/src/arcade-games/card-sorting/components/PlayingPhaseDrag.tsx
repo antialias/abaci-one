@@ -1256,6 +1256,21 @@ export function PlayingPhaseDrag() {
       suffixCards.unshift(inferredSequence[i])
     }
 
+    // Tolerance for position comparison (0.1%)
+    const TOLERANCE = 0.1
+
+    // Helper to check if positions differ significantly
+    const positionsDiffer = (
+      current: { x: number; y: number; rotation: number },
+      target: { x: number; y: number; rotation: number }
+    ) => {
+      return (
+        Math.abs(current.x - target.x) > TOLERANCE ||
+        Math.abs(current.y - target.y) > TOLERANCE ||
+        Math.abs(current.rotation - target.rotation) > TOLERANCE
+      )
+    }
+
     // Arrange prefix cards at top-left, side by side
     prefixCards.forEach((card, index) => {
       const x = 5 + index * (CARD_WIDTH_PCT + SPACING) // Start at 5% margin
@@ -1264,10 +1279,7 @@ export function PlayingPhaseDrag() {
       const zIndex = 1000 + index // Higher z-index so they're on top
 
       const currentState = newStates.get(card.id)
-      if (
-        currentState &&
-        (currentState.x !== x || currentState.y !== y || currentState.rotation !== rotation)
-      ) {
+      if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
         newStates.set(card.id, { x, y, rotation, zIndex })
         hasChanges = true
       }
@@ -1282,10 +1294,7 @@ export function PlayingPhaseDrag() {
       const zIndex = 1000 + index // Higher z-index so they're on top
 
       const currentState = newStates.get(card.id)
-      if (
-        currentState &&
-        (currentState.x !== x || currentState.y !== y || currentState.rotation !== rotation)
-      ) {
+      if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
         newStates.set(card.id, { x, y, rotation, zIndex })
         hasChanges = true
       }
