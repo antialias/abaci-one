@@ -1307,13 +1307,14 @@ export function PlayingPhaseDrag() {
       )
     }
 
-    // Arrange prefix cards at top-left, side by side
-    // But only if they fit within the viewport
-    const lastPrefixX = 5 + (prefixCards.length - 1) * (CARD_WIDTH_PCT + SPACING) + CARD_WIDTH_PCT
-    if (lastPrefixX <= 100) {
+    // Arrange prefix cards at top-left, wrapping to multiple rows if needed
+    const maxCardsPerRow = Math.floor((100 - 10) / (CARD_WIDTH_PCT + SPACING)) // 5% margin on each side
+    if (maxCardsPerRow > 0) {
       prefixCards.forEach((card, index) => {
-        const x = 5 + index * (CARD_WIDTH_PCT + SPACING) // Start at 5% margin
-        const y = 5 // Top margin
+        const row = Math.floor(index / maxCardsPerRow)
+        const col = index % maxCardsPerRow
+        const x = 5 + col * (CARD_WIDTH_PCT + SPACING) // Start at 5% margin
+        const y = 5 + row * (CARD_HEIGHT_PCT + SPACING) // Stack rows vertically
         const rotation = 0 // No rotation for organized cards
         const zIndex = 1000 + index // Higher z-index so they're on top
 
@@ -1331,22 +1332,17 @@ export function PlayingPhaseDrag() {
         }
       })
     } else if (shouldLog) {
-      console.log(
-        '[AutoArrange] Skipping prefix arrange: would exceed viewport (',
-        lastPrefixX,
-        '% > 100%)'
-      )
+      console.log('[AutoArrange] Skipping prefix arrange: viewport too narrow')
     }
 
-    // Arrange suffix cards at bottom-right, side by side (right to left)
-    // But only if they fit within the viewport
-    const firstSuffixX =
-      100 - CARD_WIDTH_PCT - 5 - (suffixCards.length - 1) * (CARD_WIDTH_PCT + SPACING)
-    if (firstSuffixX >= 0) {
+    // Arrange suffix cards at bottom-right, wrapping to multiple rows if needed (right to left)
+    if (maxCardsPerRow > 0) {
       suffixCards.forEach((card, index) => {
-        const fromRight = suffixCards.length - 1 - index
+        const row = Math.floor(index / maxCardsPerRow)
+        const col = index % maxCardsPerRow
+        const fromRight = col
         const x = 100 - CARD_WIDTH_PCT - 5 - fromRight * (CARD_WIDTH_PCT + SPACING) // From right edge
-        const y = 100 - CARD_HEIGHT_PCT - 5 // Bottom margin
+        const y = 100 - CARD_HEIGHT_PCT - 5 - row * (CARD_HEIGHT_PCT + SPACING) // Stack rows upward
         const rotation = 0 // No rotation for organized cards
         const zIndex = 1000 + index // Higher z-index so they're on top
 
@@ -1364,11 +1360,7 @@ export function PlayingPhaseDrag() {
         }
       })
     } else if (shouldLog) {
-      console.log(
-        '[AutoArrange] Skipping suffix arrange: would exceed viewport (',
-        firstSuffixX,
-        '% < 0%)'
-      )
+      console.log('[AutoArrange] Skipping suffix arrange: viewport too narrow')
     }
 
     if (hasChanges) {
