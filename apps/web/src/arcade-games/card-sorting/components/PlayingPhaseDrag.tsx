@@ -743,14 +743,20 @@ function AnimatedCard({
 
   // Use spring animation for position, rotation, and scale
   // Disable animation when:
-  // - User is dragging (for immediate response)
+  // - User is dragging (for immediate response on position/rotation)
   // - Viewport is resizing (for instant repositioning)
+  // Note: Scale always animates smoothly, even during dragging
   const springProps = useSpring({
     left: pixelPos.x,
     top: pixelPos.y,
     rotation: cardState.rotation,
     scale: isCorrectPosition ? 0.5 : 1, // Scale down to 50% when in correct position (for all users)
-    immediate: isDragging || isResizing, // Instant updates when dragging or resizing
+    immediate: (key) => {
+      // Scale always animates smoothly
+      if (key === 'scale') return false
+      // Position and rotation are immediate when dragging or resizing
+      return isDragging || isResizing
+    },
     config: {
       tension: 300,
       friction: 30,
