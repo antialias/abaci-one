@@ -104,20 +104,16 @@ export function ResultsPhase() {
     }
   }
 
-  // Create springs for each card
-  const [springs, api] = useSprings(
-    userSequence.length,
-    (index) => {
-      const card = userSequence[index]
-      const initial = getInitialPosition(card.id)
-      return {
-        from: initial,
-        to: initial,
-        config: config.gentle,
-      }
-    },
-    [userSequence]
-  )
+  // Create springs for each card - only initialize once
+  const [springs, api] = useSprings(userSequence.length, (index) => {
+    const card = userSequence[index]
+    const initial = getInitialPosition(card.id)
+    return {
+      from: initial,
+      to: initial,
+      config: config.gentle,
+    }
+  })
 
   // Immediately start animating to grid positions
   useEffect(() => {
@@ -133,7 +129,7 @@ export function ResultsPhase() {
       })
     }, 100)
     return () => clearTimeout(timer)
-  }, [])
+  }, [api, userSequence, state.correctOrder])
 
   // Show corrections after animation completes
   useEffect(() => {
