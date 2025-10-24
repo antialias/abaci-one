@@ -3,7 +3,7 @@
 import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
 import { useSpring, animated, config, useSprings } from '@react-spring/web'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import type { SortingCard } from '../types'
 
 // Add result animations
