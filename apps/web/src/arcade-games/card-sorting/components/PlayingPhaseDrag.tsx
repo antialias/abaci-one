@@ -160,12 +160,12 @@ function ContinuousSequencePath({
   const CARD_HALF_WIDTH = CARD_WIDTH / 2
   const CARD_HALF_HEIGHT = CARD_HEIGHT / 2
 
-  // Helper to check if a card is part of the correct prefix (and thus scaled to 50%)
+  // Helper to check if a card is part of the correct prefix or suffix (and thus scaled to 50%)
   const isCardCorrect = (card: SortingCard): boolean => {
     const positionInSequence = sequence.findIndex((c) => c.id === card.id)
     if (positionInSequence < 0) return false
 
-    // Check if all positions from 0 to positionInSequence are correct
+    // Check if card is part of correct prefix
     let isInCorrectPrefix = true
     for (let i = 0; i <= positionInSequence; i++) {
       if (sequence[i]?.id !== correctOrder[i]?.id) {
@@ -174,7 +174,20 @@ function ContinuousSequencePath({
       }
     }
 
-    return isSpectating ? spectatorEducationalMode && isInCorrectPrefix : isInCorrectPrefix
+    // Check if card is part of correct suffix
+    let isInCorrectSuffix = true
+    const offsetFromEnd = sequence.length - 1 - positionInSequence
+    for (let i = 0; i <= offsetFromEnd; i++) {
+      const seqIdx = sequence.length - 1 - i
+      const correctIdx = correctOrder.length - 1 - i
+      if (sequence[seqIdx]?.id !== correctOrder[correctIdx]?.id) {
+        isInCorrectSuffix = false
+        break
+      }
+    }
+
+    const isCorrect = isInCorrectPrefix || isInCorrectSuffix
+    return isSpectating ? spectatorEducationalMode && isCorrect : isCorrect
   }
 
   // Get all card positions (card centers) with scale information
@@ -1884,27 +1897,37 @@ export function PlayingPhaseDrag() {
           // Find the position of this card in the inferred sequence
           const positionInSequence = inferredSequence.findIndex((c) => c.id === card.id)
 
-          // Check if this card is part of the correct prefix
-          // A card is in the correct prefix if:
-          // 1. It's in the inferred sequence
-          // 2. All cards before it (positions 0 to positionInSequence-1) are also correct
-          // 3. This card itself matches the correct order at its position
-          let isInCorrectPrefix = false
+          // Check if this card is part of the correct prefix or suffix
+          let isInCorrectPrefixOrSuffix = false
           if (positionInSequence >= 0) {
-            // Check if all positions from 0 to positionInSequence are correct
-            isInCorrectPrefix = true
+            // Check if all positions from 0 to positionInSequence are correct (prefix)
+            let isInCorrectPrefix = true
             for (let i = 0; i <= positionInSequence; i++) {
               if (inferredSequence[i]?.id !== state.correctOrder[i]?.id) {
                 isInCorrectPrefix = false
                 break
               }
             }
+
+            // Check if all positions from positionInSequence to end are correct (suffix)
+            let isInCorrectSuffix = true
+            const offsetFromEnd = inferredSequence.length - 1 - positionInSequence
+            for (let i = 0; i <= offsetFromEnd; i++) {
+              const seqIdx = inferredSequence.length - 1 - i
+              const correctIdx = state.correctOrder.length - 1 - i
+              if (inferredSequence[seqIdx]?.id !== state.correctOrder[correctIdx]?.id) {
+                isInCorrectSuffix = false
+                break
+              }
+            }
+
+            isInCorrectPrefixOrSuffix = isInCorrectPrefix || isInCorrectSuffix
           }
 
           // Show green border based on educational mode for spectators
           const isCorrect = isSpectating
-            ? spectatorEducationalMode && isInCorrectPrefix
-            : isInCorrectPrefix
+            ? spectatorEducationalMode && isInCorrectPrefixOrSuffix
+            : isInCorrectPrefixOrSuffix
 
           // Get draggedByPlayerId from server state
           const serverPosition = state.cardPositions.find((p) => p.cardId === card.id)
@@ -1919,7 +1942,7 @@ export function PlayingPhaseDrag() {
               isResizing={isResizing}
               isSpectating={isSpectating}
               isCorrect={isCorrect}
-              isCorrectPosition={isInCorrectPrefix}
+              isCorrectPosition={isInCorrectPrefixOrSuffix}
               draggedByPlayerId={draggedByPlayerId}
               localPlayerId={localPlayerId}
               players={players}
