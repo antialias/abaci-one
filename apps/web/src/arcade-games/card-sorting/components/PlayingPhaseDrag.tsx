@@ -1782,37 +1782,40 @@ export function PlayingPhaseDrag() {
         </div>
       )}
 
-      {/* Timer (minimal, top-left) */}
-      <div
-        className={css({
-          position: 'absolute',
-          top: '16px',
-          left: '16px',
-          padding: '8px 16px',
-          background: 'rgba(255, 255, 255, 0.9)',
-          border: '2px solid rgba(59, 130, 246, 0.3)',
-          borderRadius: '20px',
-          fontSize: '16px',
-          fontWeight: '600',
-          color: '#0c4a6e',
-          zIndex: 10,
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-        })}
-      >
-        ⏱️ {formatTime(elapsedTime)}
-      </div>
+      {/* Timer (minimal, top-left) - hidden for spectators since banner shows time */}
+      {!isSpectating && (
+        <div
+          className={css({
+            position: 'absolute',
+            top: '16px',
+            left: '16px',
+            padding: '8px 16px',
+            background: 'rgba(255, 255, 255, 0.9)',
+            border: '2px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '20px',
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#0c4a6e',
+            zIndex: 10,
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          })}
+        >
+          ⏱️ {formatTime(elapsedTime)}
+        </div>
+      )}
 
-      {/* Play area with freely positioned cards - full viewport */}
+      {/* Play area with freely positioned cards - adjust for spectator panels */}
       <div
         ref={containerRef}
         className={css({
-          width: '100vw',
-          height: '100vh',
+          width: isSpectating && !spectatorStatsCollapsed ? 'calc(100vw - 280px)' : '100vw',
+          height: isSpectating ? 'calc(100vh - 56px)' : '100vh',
           position: 'absolute',
-          top: 0,
+          top: isSpectating ? '56px' : 0,
           left: 0,
           background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
           overflow: 'hidden',
+          transition: 'width 0.3s ease, height 0.3s ease, top 0.3s ease',
         })}
       >
         {/* Render continuous curved path through the entire sequence */}
