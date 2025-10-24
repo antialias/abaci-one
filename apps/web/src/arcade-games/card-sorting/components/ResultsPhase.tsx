@@ -106,41 +106,26 @@ export function ResultsPhase() {
     }
   }
 
-  // Create springs for each card - memoize to prevent recreation
+  // Create springs for each card - memoize initial positions
   const initialPositions = useMemo(() => {
     return userSequence.map((card) => getInitialPosition(card.id))
   }, []) // Empty deps - only calculate once on mount
 
-  // Track if animation has completed
-  const hasAnimatedRef = useRef(false)
-
   const [springs, api] = useSprings(
     userSequence.length,
     (index) => {
-      // If already animated, start at grid position
-      if (hasAnimatedRef.current) {
-        const card = userSequence[index]
-        const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
-        return {
-          from: calculateGridPosition(correctIndex),
-          to: calculateGridPosition(correctIndex),
-          config: config.gentle,
-        }
-      }
-      // Otherwise start at initial position
       return {
         from: initialPositions[index],
         to: initialPositions[index],
+        immediate: false,
         config: config.gentle,
       }
     },
-    [] // Empty deps - only create once
+    [] // Empty deps - only create once, never recreate
   )
 
-  // Immediately start animating to grid positions
+  // Immediately start animating to grid positions (only once)
   useEffect(() => {
-    if (hasAnimatedRef.current) return // Don't animate again
-
     // Small delay to ensure mount
     const timer = setTimeout(() => {
       api.start((index) => {
@@ -148,13 +133,13 @@ export function ResultsPhase() {
         const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
         return {
           to: calculateGridPosition(correctIndex),
+          immediate: false,
           config: { ...config.gentle, tension: 120, friction: 26 },
         }
       })
-      hasAnimatedRef.current = true
     }, 100)
     return () => clearTimeout(timer)
-  }, [])
+  }, []) // Empty deps - only run once
 
   // Show corrections after animation completes
   useEffect(() => {
