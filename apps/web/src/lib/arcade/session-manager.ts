@@ -98,6 +98,10 @@ export async function createArcadeSession(
     user = newUser
   }
 
+  // Delete any existing sessions for this user (to handle UNIQUE constraint on userId)
+  // This ensures the user can start a new game session
+  await db.delete(schema.arcadeSessions).where(eq(schema.arcadeSessions.userId, user.id))
+
   const newSession: schema.NewArcadeSession = {
     roomId: options.roomId, // PRIMARY KEY - one session per room
     userId: user.id, // Use the actual database ID, not the guestId
