@@ -1464,6 +1464,15 @@ export function PlayingPhaseDrag() {
   const handlePointerMove = (e: React.PointerEvent, cardId: string) => {
     if (!dragStateRef.current || dragStateRef.current.cardId !== cardId) return
 
+    // Check if card has become locked during drag - if so, end the drag
+    if (isCardLocked(cardId)) {
+      const target = e.currentTarget as HTMLElement
+      target.releasePointerCapture(e.pointerId)
+      dragStateRef.current = null
+      setDraggingCardId(null)
+      return
+    }
+
     const { offsetX, offsetY } = dragStateRef.current
 
     // Calculate new position in pixels
