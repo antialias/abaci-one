@@ -782,10 +782,17 @@ function AnimatedCard({
       // Position and rotation are immediate when dragging or resizing
       return isDragging || isResizing
     },
-    config: {
-      tension: 300,
-      friction: 30,
-    },
+    config: isCorrectPosition
+      ? {
+          // Gentler animation when moving to locked position
+          tension: 120,
+          friction: 26,
+        }
+      : {
+          // Snappier for normal movements
+          tension: 300,
+          friction: 30,
+        },
   })
 
   return (
