@@ -141,33 +141,47 @@ function ContinuousSequencePath({
   correctOrder,
   viewportWidth,
   viewportHeight,
+  spectatorEducationalMode,
+  isSpectating,
 }: {
   cardStates: Map<string, CardState>
   sequence: SortingCard[]
   correctOrder: SortingCard[]
   viewportWidth: number
   viewportHeight: number
+  spectatorEducationalMode: boolean
+  isSpectating: boolean
 }) {
   if (sequence.length < 2) return null
 
-  // Card dimensions
+  // Card dimensions (base size)
   const CARD_WIDTH = 140
   const CARD_HEIGHT = 180
   const CARD_HALF_WIDTH = CARD_WIDTH / 2
   const CARD_HALF_HEIGHT = CARD_HEIGHT / 2
 
-  // Get all card positions (card centers)
+  // Helper to check if a card is in correct position (and thus scaled to 50%)
+  const isCardCorrect = (card: SortingCard): boolean => {
+    const positionInSequence = sequence.findIndex((c) => c.id === card.id)
+    const isCorrectPosition =
+      positionInSequence >= 0 && correctOrder[positionInSequence]?.id === card.id
+    return isSpectating ? spectatorEducationalMode && isCorrectPosition : isCorrectPosition
+  }
+
+  // Get all card positions (card centers) with scale information
   const cardCenters = sequence
     .map((card) => {
       const state = cardStates.get(card.id)
       if (!state) return null
+      const scale = isCardCorrect(card) ? 0.5 : 1
       return {
         x: (state.x / 100) * viewportWidth + CARD_HALF_WIDTH,
         y: (state.y / 100) * viewportHeight + CARD_HALF_HEIGHT,
         cardId: card.id,
+        scale,
       }
     })
-    .filter((p): p is { x: number; y: number; cardId: string } => p !== null)
+    .filter((p): p is { x: number; y: number; cardId: string; scale: number } => p !== null)
 
   if (cardCenters.length < 2) return null
 
@@ -176,18 +190,23 @@ function ContinuousSequencePath({
     centerX: number,
     centerY: number,
     dx: number,
-    dy: number
+    dy: number,
+    scale: number
   ): { x: number; y: number } => {
     // Normalize direction
     const length = Math.sqrt(dx * dx + dy * dy)
     const ndx = dx / length
     const ndy = dy / length
 
+    // Apply scale to card dimensions
+    const scaledHalfWidth = CARD_HALF_WIDTH * scale
+    const scaledHalfHeight = CARD_HALF_HEIGHT * scale
+
     // Find which edge we hit first
-    const txRight = ndx > 0 ? CARD_HALF_WIDTH / ndx : Number.POSITIVE_INFINITY
-    const txLeft = ndx < 0 ? -CARD_HALF_WIDTH / ndx : Number.POSITIVE_INFINITY
-    const tyBottom = ndy > 0 ? CARD_HALF_HEIGHT / ndy : Number.POSITIVE_INFINITY
-    const tyTop = ndy < 0 ? -CARD_HALF_HEIGHT / ndy : Number.POSITIVE_INFINITY
+    const txRight = ndx > 0 ? scaledHalfWidth / ndx : Number.POSITIVE_INFINITY
+    const txLeft = ndx < 0 ? -scaledHalfWidth / ndx : Number.POSITIVE_INFINITY
+    const tyBottom = ndy > 0 ? scaledHalfHeight / ndy : Number.POSITIVE_INFINITY
+    const tyTop = ndy < 0 ? -scaledHalfHeight / ndy : Number.POSITIVE_INFINITY
 
     const t = Math.min(txRight, txLeft, tyBottom, tyTop)
 
@@ -204,21 +223,21 @@ function ContinuousSequencePath({
       const next = cardCenters[i + 1]
       const dx = next.x - center.x
       const dy = next.y - center.y
-      return findCardEdgePoint(center.x, center.y, dx, dy)
+      return findCardEdgePoint(center.x, center.y, dx, dy, center.scale)
     }
     if (i === cardCenters.length - 1) {
       // Last card: direction from previous card
       const prev = cardCenters[i - 1]
       const dx = center.x - prev.x
       const dy = center.y - prev.y
-      return findCardEdgePoint(center.x, center.y, dx, dy)
+      return findCardEdgePoint(center.x, center.y, dx, dy, center.scale)
     }
     // Middle cards: average direction between prev and next
     const prev = cardCenters[i - 1]
     const next = cardCenters[i + 1]
     const dx = next.x - prev.x
     const dy = next.y - prev.y
-    return findCardEdgePoint(center.x, center.y, dx, dy)
+    return findCardEdgePoint(center.x, center.y, dx, dy, center.scale)
   })
 
   if (positions.length < 2) return null
@@ -1763,6 +1782,8 @@ export function PlayingPhaseDrag() {
             correctOrder={state.correctOrder}
             viewportWidth={viewportDimensions.width}
             viewportHeight={viewportDimensions.height}
+            spectatorEducationalMode={spectatorEducationalMode}
+            isSpectating={isSpectating}
           />
         )}
 
