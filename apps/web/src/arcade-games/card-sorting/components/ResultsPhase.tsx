@@ -51,17 +51,19 @@ export function ResultsPhase() {
 
   // Get viewport dimensions for converting percentage positions to pixels
   const containerRef = useRef<HTMLDivElement>(null)
-  const [viewportDimensions, setViewportDimensions] = useState({
+  const viewportDimensionsRef = useRef({
     width: window.innerWidth,
     height: window.innerHeight,
   })
+  const [, forceUpdate] = useState({})
 
   useEffect(() => {
     const updateDimensions = () => {
-      setViewportDimensions({
+      viewportDimensionsRef.current = {
         width: window.innerWidth,
         height: window.innerHeight,
-      })
+      }
+      forceUpdate({}) // Force re-render for viewport updates
     }
     window.addEventListener('resize', updateDimensions)
     return () => window.removeEventListener('resize', updateDimensions)
@@ -104,13 +106,15 @@ export function ResultsPhase() {
     }
   }
 
-  // Create springs for each card - only initialize once
+  // Create springs for each card - use useMemo to prevent recreation on every render
+  const initialPositions = useMemo(() => {
+    return userSequence.map((card) => getInitialPosition(card.id))
+  }, []) // Empty deps - only calculate once on mount
+
   const [springs, api] = useSprings(userSequence.length, (index) => {
-    const card = userSequence[index]
-    const initial = getInitialPosition(card.id)
     return {
-      from: initial,
-      to: initial,
+      from: initialPositions[index],
+      to: initialPositions[index],
       config: config.gentle,
     }
   })
@@ -225,8 +229,8 @@ export function ResultsPhase() {
               key={card.id}
               style={{
                 position: 'absolute',
-                left: spring.x.to((x) => `${(x / 100) * viewportDimensions.width}px`),
-                top: spring.y.to((y) => `${(y / 100) * viewportDimensions.height}px`),
+                left: spring.x.to((x) => `${(x / 100) * viewportDimensionsRef.current.width}px`),
+                top: spring.y.to((y) => `${(y / 100) * viewportDimensionsRef.current.height}px`),
                 transform: spring.rotation.to((r) => `rotate(${r}deg)`),
                 width: '140px',
                 height: '180px',
