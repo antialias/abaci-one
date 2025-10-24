@@ -897,9 +897,28 @@ export function PlayingPhaseDrag() {
   const [nextZIndex, setNextZIndex] = useState(1)
 
   // Track viewport dimensions for responsive positioning
+  // For spectators, reduce dimensions to account for panels
+  const getEffectiveViewportWidth = () => {
+    if (typeof window === 'undefined') return 1000
+    const baseWidth = window.innerWidth
+    if (isSpectating && !spectatorStatsCollapsed) {
+      return baseWidth - 280 // Subtract stats sidebar width
+    }
+    return baseWidth
+  }
+
+  const getEffectiveViewportHeight = () => {
+    if (typeof window === 'undefined') return 800
+    const baseHeight = window.innerHeight
+    if (isSpectating) {
+      return baseHeight - 56 // Subtract banner height
+    }
+    return baseHeight
+  }
+
   const [viewportDimensions, setViewportDimensions] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 1000,
-    height: typeof window !== 'undefined' ? window.innerHeight : 800,
+    width: getEffectiveViewportWidth(),
+    height: getEffectiveViewportHeight(),
   })
 
   // Track if we're currently resizing to disable spring animations
@@ -997,10 +1016,10 @@ export function PlayingPhaseDrag() {
       // Set resizing flag to disable spring animations
       setIsResizing(true)
 
-      // Update viewport dimensions immediately
+      // Update viewport dimensions immediately (accounting for spectator panels)
       setViewportDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: getEffectiveViewportWidth(),
+        height: getEffectiveViewportHeight(),
       })
 
       // Clear any existing timeout
@@ -1021,7 +1040,17 @@ export function PlayingPhaseDrag() {
         clearTimeout(resizeTimeoutRef.current)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Update viewport dimensions when spectator panels change
+  useEffect(() => {
+    setViewportDimensions({
+      width: getEffectiveViewportWidth(),
+      height: getEffectiveViewportHeight(),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSpectating, spectatorStatsCollapsed])
 
   // Initialize card positions when game starts or restarts
   useEffect(() => {
