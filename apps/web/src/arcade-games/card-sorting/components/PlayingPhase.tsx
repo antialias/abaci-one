@@ -13,7 +13,6 @@ export function PlayingPhase() {
     insertCard,
     removeCard,
     checkSolution,
-    revealNumbers,
     goToSetup,
     canCheckSolution,
     placedCount,
