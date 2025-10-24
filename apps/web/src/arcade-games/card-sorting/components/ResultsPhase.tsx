@@ -334,7 +334,11 @@ export function ResultsPhase() {
       <animated.div
         style={panelSpring}
         className={css({
-          flex: '0 0 50%',
+          position: 'fixed',
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: '400px',
           background: 'rgba(255, 255, 255, 0.95)',
           borderLeft: '3px solid rgba(59, 130, 246, 0.3)',
           padding: '40px',
@@ -342,6 +346,7 @@ export function ResultsPhase() {
           display: 'flex',
           flexDirection: 'column',
           gap: '24px',
+          boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.1)',
         })}
       >
         {/* Score Circle */}
