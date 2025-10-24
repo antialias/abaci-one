@@ -877,7 +877,6 @@ export function PlayingPhaseDrag() {
     state,
     insertCard,
     checkSolution,
-    revealNumbers,
     goToSetup,
     updateCardPositions,
     canCheckSolution,

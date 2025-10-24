@@ -509,24 +509,6 @@ export function ResultsPhase() {
           </div>
         </div>
 
-        {/* Warning if numbers revealed */}
-        {scoreBreakdown.numbersRevealed && (
-          <div
-            className={css({
-              padding: '12px 16px',
-              background: 'rgba(251, 146, 60, 0.2)',
-              border: '2px solid rgba(251, 146, 60, 0.4)',
-              borderRadius: '12px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#9a3412',
-              textAlign: 'center',
-            })}
-          >
-            👁️ Numbers were revealed during play
-          </div>
-        )}
-
         {/* Action Buttons */}
         <div
           className={css({
