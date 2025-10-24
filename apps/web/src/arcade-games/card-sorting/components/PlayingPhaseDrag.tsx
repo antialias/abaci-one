@@ -2,7 +2,7 @@
 
 import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSpring, animated, to } from '@react-spring/web'
 import type { SortingCard } from '../types'
 
@@ -1228,8 +1228,26 @@ export function PlayingPhaseDrag() {
     }
   }, [state.cardPositions, draggingCardId, cardStates])
 
-  // Infer sequence from current positions
-  const inferredSequence = inferSequenceFromPositions(cardStates, [
+  // Store locked card positions in a ref to keep them stable during drags
+  const lockedCardPositionsRef = useRef<Map<string, CardState>>(new Map())
+
+  // Create a stable version of cardStates for inference
+  // Use locked positions from ref for cards that were previously locked
+  const stableCardStates = useMemo(() => {
+    const stable = new Map(cardStates)
+
+    // Replace positions of locked cards with their stable positions
+    for (const [cardId, lockedPos] of lockedCardPositionsRef.current.entries()) {
+      if (stable.has(cardId)) {
+        stable.set(cardId, lockedPos)
+      }
+    }
+
+    return stable
+  }, [cardStates])
+
+  // Infer sequence from stable positions
+  const inferredSequence = inferSequenceFromPositions(stableCardStates, [
     ...state.availableCards,
     ...state.placedCards.filter((c): c is SortingCard => c !== null),
   ])
@@ -1271,6 +1289,14 @@ export function PlayingPhaseDrag() {
       const correctIdx = state.correctOrder.length - 1 - offset
       if (inferredSequence[inferredIdx]?.id !== state.correctOrder[correctIdx]?.id) break
       suffixCards.unshift(inferredSequence[inferredIdx])
+    }
+
+    // Clean up locked positions ref - remove cards that are no longer locked
+    const lockedCardIds = new Set([...prefixCards, ...suffixCards].map((c) => c.id))
+    for (const cardId of Array.from(lockedCardPositionsRef.current.keys())) {
+      if (!lockedCardIds.has(cardId)) {
+        lockedCardPositionsRef.current.delete(cardId)
+      }
     }
 
     // Check if prefix and suffix overlap (all cards are correct)
@@ -1339,6 +1365,9 @@ export function PlayingPhaseDrag() {
           newStates.set(card.id, { x, y, rotation, zIndex })
           hasChanges = true
         }
+
+        // Store stable position for locked prefix card
+        lockedCardPositionsRef.current.set(card.id, { x, y, rotation, zIndex })
       })
     } else if (shouldLog) {
       console.log('[AutoArrange] Skipping prefix arrange: viewport too narrow')
@@ -1367,6 +1396,9 @@ export function PlayingPhaseDrag() {
           newStates.set(card.id, { x, y, rotation, zIndex })
           hasChanges = true
         }
+
+        // Store stable position for locked suffix card
+        lockedCardPositionsRef.current.set(card.id, { x, y, rotation, zIndex })
       })
     } else if (shouldLog) {
       console.log('[AutoArrange] Skipping suffix arrange: viewport too narrow')
