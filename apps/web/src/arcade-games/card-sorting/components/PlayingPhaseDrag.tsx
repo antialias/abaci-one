@@ -732,6 +732,7 @@ function AnimatedCard({
   isSpectating,
   isCorrect,
   isCorrectPosition,
+  isLocked,
   draggedByPlayerId,
   localPlayerId,
   players,
@@ -748,6 +749,7 @@ function AnimatedCard({
   isSpectating: boolean
   isCorrect: boolean
   isCorrectPosition: boolean
+  isLocked: boolean
   draggedByPlayerId?: string
   localPlayerId?: string
   players: Map<string, { id: string; name: string; emoji: string }>
@@ -795,7 +797,7 @@ function AnimatedCard({
         position: 'absolute',
         width: '140px',
         height: '180px',
-        cursor: isSpectating ? 'default' : 'grab',
+        cursor: isLocked ? 'not-allowed' : isSpectating ? 'default' : 'grab',
         touchAction: 'none',
         userSelect: 'none',
         transition: 'box-shadow 0.2s ease',
@@ -1310,9 +1312,39 @@ export function PlayingPhaseDrag() {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
+  // Check if a card is locked (in correct prefix or suffix and thus not draggable)
+  const isCardLocked = (cardId: string): boolean => {
+    const cardIndex = inferredSequence.findIndex((c) => c.id === cardId)
+    if (cardIndex < 0) return false
+
+    // Check if card is in correct prefix
+    let isInPrefix = true
+    for (let i = 0; i <= cardIndex; i++) {
+      if (inferredSequence[i]?.id !== state.correctOrder[i]?.id) {
+        isInPrefix = false
+        break
+      }
+    }
+    if (isInPrefix) return true
+
+    // Check if card is in correct suffix
+    let isInSuffix = true
+    const offsetFromEnd = inferredSequence.length - 1 - cardIndex
+    for (let i = 0; i <= offsetFromEnd; i++) {
+      const seqIdx = inferredSequence.length - 1 - i
+      const correctIdx = state.correctOrder.length - 1 - i
+      if (inferredSequence[seqIdx]?.id !== state.correctOrder[correctIdx]?.id) {
+        isInSuffix = false
+        break
+      }
+    }
+    return isInSuffix
+  }
+
   // Handle pointer down (start drag)
   const handlePointerDown = (e: React.PointerEvent, cardId: string) => {
     if (isSpectating) return
+    if (isCardLocked(cardId)) return // Don't allow dragging locked cards
 
     const target = e.currentTarget as HTMLElement
     target.setPointerCapture(e.pointerId)
@@ -2021,6 +2053,7 @@ export function PlayingPhaseDrag() {
               isSpectating={isSpectating}
               isCorrect={isCorrect}
               isCorrectPosition={isInCorrectPrefixOrSuffix}
+              isLocked={isInCorrectPrefixOrSuffix}
               draggedByPlayerId={draggedByPlayerId}
               localPlayerId={localPlayerId}
               players={players}
