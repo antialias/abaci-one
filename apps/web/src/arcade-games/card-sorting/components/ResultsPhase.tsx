@@ -2,8 +2,8 @@
 
 import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
-import { useSpring, animated, config } from '@react-spring/web'
-import { useState, useEffect } from 'react'
+import { useSpring, animated, config, useSprings } from '@react-spring/web'
+import { useState, useEffect, useRef } from 'react'
 import type { SortingCard } from '../types'
 
 // Add result animations
@@ -49,12 +49,26 @@ export function ResultsPhase() {
   // Get user's sequence from placedCards
   const userSequence = state.placedCards.filter((c): c is SortingCard => c !== null)
 
-  // Calculate positions for cards in a compact grid layout
-  const calculateCardPositions = (
-    cards: SortingCard[],
-    shouldCorrect: boolean
-  ): Map<string, CardPosition> => {
-    const positions = new Map<string, CardPosition>()
+  // Get viewport dimensions for converting percentage positions to pixels
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [viewportDimensions, setViewportDimensions] = useState({ width: 1000, height: 800 })
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        setViewportDimensions({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight,
+        })
+      }
+    }
+    updateDimensions()
+    window.addEventListener('resize', updateDimensions)
+    return () => window.removeEventListener('resize', updateDimensions)
+  }, [])
+
+  // Calculate grid positions for cards (final positions)
+  const calculateGridPosition = (cardIndex: number, shouldCorrect: boolean) => {
     const gridCols = 3
     const cardWidth = 100
     const cardHeight = 130
@@ -62,33 +76,62 @@ export function ResultsPhase() {
     const startX = 50
     const startY = 100
 
-    cards.forEach((card, index) => {
-      const correctIndex = shouldCorrect
-        ? state.correctOrder.findIndex((c) => c.id === card.id)
-        : index
+    const effectiveIndex = shouldCorrect ? cardIndex : cardIndex
 
-      const col = correctIndex % gridCols
-      const row = Math.floor(correctIndex / gridCols)
+    const col = effectiveIndex % gridCols
+    const row = Math.floor(effectiveIndex / gridCols)
 
-      positions.set(card.id, {
-        x: startX + col * (cardWidth + gap),
-        y: startY + row * (cardHeight + gap),
-        rotation: 0,
-      })
-    })
-
-    return positions
+    return {
+      x: startX + col * (cardWidth + gap),
+      y: startY + row * (cardHeight + gap),
+      rotation: 0,
+      scale: 1,
+    }
   }
 
-  const [cardPositions, setCardPositions] = useState(() =>
-    calculateCardPositions(userSequence, false)
+  // Get initial positions from game table (percentage-based from state.cardPositions)
+  const getInitialPosition = (cardId: string) => {
+    const cardPos = state.cardPositions.find((p) => p.cardId === cardId)
+    if (!cardPos) {
+      return { x: 0, y: 0, rotation: 0, scale: 1 }
+    }
+    // Convert percentage to pixels relative to container
+    return {
+      x: (cardPos.x / 100) * viewportDimensions.width,
+      y: (cardPos.y / 100) * viewportDimensions.height,
+      rotation: cardPos.rotation,
+      scale: 1,
+    }
+  }
+
+  // Create springs for each card
+  const [springs, api] = useSprings(
+    userSequence.length,
+    (index) => {
+      const card = userSequence[index]
+      const initial = getInitialPosition(card.id)
+      return {
+        from: initial,
+        to: initial,
+        config: { ...config.gentle, duration: 800 },
+      }
+    },
+    [userSequence]
   )
 
-  // Auto-show corrections after 2 seconds
+  // Auto-show corrections and animate to grid after 2 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowCorrections(true)
-      setCardPositions(calculateCardPositions(userSequence, true))
+      // Animate all cards to their grid positions
+      api.start((index) => {
+        const card = userSequence[index]
+        const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
+        return {
+          to: calculateGridPosition(correctIndex, true),
+          config: { ...config.gentle, duration: 800 },
+        }
+      })
     }, 2000)
     return () => clearTimeout(timer)
   }, [])
@@ -155,6 +198,7 @@ export function ResultsPhase() {
     >
       {/* Left side: Card visualization */}
       <div
+        ref={containerRef}
         className={css({
           flex: '0 0 50%',
           position: 'relative',
@@ -178,8 +222,8 @@ export function ResultsPhase() {
 
         {/* Cards with animated positions */}
         {userSequence.map((card, userIndex) => {
-          const position = cardPositions.get(card.id)
-          if (!position) return null
+          const spring = springs[userIndex]
+          if (!spring) return null
 
           // Check if this card is correct for its position in the user's sequence
           // Same logic as during gameplay: does the card at this position match the correct card for this position?
@@ -191,11 +235,11 @@ export function ResultsPhase() {
               key={card.id}
               style={{
                 position: 'absolute',
-                left: `${position.x}px`,
-                top: `${position.y}px`,
+                left: spring.x.to((x) => `${x}px`),
+                top: spring.y.to((y) => `${y}px`),
+                transform: spring.rotation.to((r) => `rotate(${r}deg)`),
                 width: '100px',
                 height: '130px',
-                transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 zIndex: 5,
               }}
             >
