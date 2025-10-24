@@ -97,8 +97,8 @@ COPY --from=deps --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/nod
 COPY --from=builder --chown=nextjs:nodejs /app/packages/core/server ./packages/core/server
 COPY --from=builder --chown=nextjs:nodejs /app/packages/core/requirements.txt ./packages/core/requirements.txt
 
-# Copy ONLY Typst templates from templates package (not entire package)
-COPY --from=builder --chown=nextjs:nodejs /app/packages/templates/typst ./packages/templates/typst
+# Copy ONLY Typst template files from templates package (not entire package)
+COPY --from=builder --chown=nextjs:nodejs /app/packages/templates/*.typ ./packages/templates/
 COPY --from=builder --chown=nextjs:nodejs /app/packages/templates/package.json ./packages/templates/package.json
 
 # Install Python dependencies for flashcard generation
