@@ -19,12 +19,18 @@ yarn-error.log*
 # Testing
 coverage
 .nyc_output
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
 
 # IDE
 .vscode
 .idea
 *.swp
 *.swo
+.claude
 
 # OS
 .DS_Store
@@ -46,7 +52,21 @@ packages/core/.venv/
 
 # Storybook
 storybook-static
+**/*.stories.tsx
+**/*.stories.ts
+.storybook
 
 # Deployment files
 nas-deployment/
 DEPLOYMENT_PLAN.md
+
+# SQLite database files (created at runtime)
+**/data/*.db
+**/data/*.db-shm
+**/data/*.db-wal
+
+# Build artifacts (rebuilt during Docker build)
+**/dist
+**/.next
+**/build
+**/styled-system

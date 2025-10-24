@@ -16,7 +16,7 @@ COPY packages/core/client/node/package.json ./packages/core/client/node/
 COPY packages/abacus-react/package.json ./packages/abacus-react/
 COPY packages/templates/package.json ./packages/templates/
 
-# Install dependencies (will use .npmrc with hoisted mode)
+# Install ALL dependencies for build stage
 RUN pnpm install --frozen-lockfile
 
 # Builder stage
@@ -44,12 +44,32 @@ RUN cd apps/web && npx @pandacss/dev
 # Build using turbo for apps/web and its dependencies
 RUN turbo build --filter=@soroban/web
 
+# Production dependencies stage - install only runtime dependencies
+FROM node:18-alpine AS deps
+WORKDIR /app
+
+# Install build tools temporarily for better-sqlite3 installation
+RUN apk add --no-cache python3 py3-setuptools make g++
+
+# Install pnpm
+RUN npm install -g pnpm@9.15.4
+
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/core/client/node/package.json ./packages/core/client/node/
+COPY packages/abacus-react/package.json ./packages/abacus-react/
+COPY packages/templates/package.json ./packages/templates/
+
+# Install ONLY production dependencies
+RUN pnpm install --frozen-lockfile --prod
+
 # Production image
 FROM node:18-alpine AS runner
 WORKDIR /app
 
-# Install Python, pip, build tools for better-sqlite3, Typst, and qpdf (needed at runtime)
-RUN apk add --no-cache python3 py3-pip py3-setuptools make g++ typst qpdf
+# Install ONLY runtime dependencies (no build tools needed)
+RUN apk add --no-cache python3 py3-pip typst qpdf
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
@@ -69,15 +89,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/dist ./apps/web/dist
 # Copy database migrations
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/drizzle ./apps/web/drizzle
 
-# Copy node_modules (for dependencies)
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/node_modules
+# Copy PRODUCTION node_modules only (no dev dependencies)
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=deps --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/node_modules
 
-# Copy core package (needed for Python flashcard generation scripts)
-COPY --from=builder --chown=nextjs:nodejs /app/packages/core ./packages/core
+# Copy ONLY Python scripts from core package (not entire package)
+COPY --from=builder --chown=nextjs:nodejs /app/packages/core/server ./packages/core/server
+COPY --from=builder --chown=nextjs:nodejs /app/packages/core/requirements.txt ./packages/core/requirements.txt
 
-# Copy templates package (needed for Typst templates)
-COPY --from=builder --chown=nextjs:nodejs /app/packages/templates ./packages/templates
+# Copy ONLY Typst templates from templates package (not entire package)
+COPY --from=builder --chown=nextjs:nodejs /app/packages/templates/typst ./packages/templates/typst
+COPY --from=builder --chown=nextjs:nodejs /app/packages/templates/package.json ./packages/templates/package.json
 
 # Install Python dependencies for flashcard generation
 RUN pip3 install --no-cache-dir --break-system-packages -r packages/core/requirements.txt
