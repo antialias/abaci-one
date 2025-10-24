@@ -41,7 +41,16 @@ export function GameComponent() {
           : undefined
       }
       onNewGame={() => {
-        startGame()
+        // If currently playing, go to setup first to clean up, then start immediately
+        if (state.gamePhase === 'playing') {
+          goToSetup()
+          // Use a small delay to let setup phase render, then start new game
+          setTimeout(() => {
+            startGame()
+          }, 100)
+        } else {
+          startGame()
+        }
       }}
     >
       <StandardGameLayout>
