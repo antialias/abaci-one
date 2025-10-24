@@ -111,21 +111,38 @@ export function ResultsPhase() {
     return userSequence.map((card) => getInitialPosition(card.id))
   }, []) // Empty deps - only calculate once on mount
 
-  const [springs, api] = useSprings(
-    userSequence.length,
-    (index) => {
-      console.log('[ResultsPhase] Creating spring', index, 'from', initialPositions[index])
+  // Use ref to ensure springs are truly only created once
+  const springsInitializedRef = useRef(false)
+  const gridPositionsRef = useRef<{ x: number; y: number; rotation: number }[]>([])
+
+  const [springs, api] = useSprings(userSequence.length, (index) => {
+    // If already initialized (on re-render), use the grid position
+    if (springsInitializedRef.current) {
+      const gridPos = gridPositionsRef.current[index] || calculateGridPosition(index)
+      console.log('[ResultsPhase] Re-creating spring', index, 'at GRID position', gridPos)
       return {
-        from: initialPositions[index],
-        to: initialPositions[index],
-        immediate: false,
+        from: gridPos,
+        to: gridPos,
+        immediate: true, // Already at grid position
         config: config.gentle,
       }
-    },
-    [] // Empty deps - only create once, never recreate
-  )
+    }
+    // First time - use initial game board positions
+    console.log('[ResultsPhase] Creating spring', index, 'from', initialPositions[index])
+    return {
+      from: initialPositions[index],
+      to: initialPositions[index],
+      immediate: false,
+      config: config.gentle,
+    }
+  })
 
-  console.log('[ResultsPhase] Component render, springs.length:', springs.length)
+  console.log(
+    '[ResultsPhase] Component render, springs.length:',
+    springs.length,
+    'initialized:',
+    springsInitializedRef.current
+  )
 
   // Immediately start animating to grid positions (only once)
   useEffect(() => {
@@ -150,6 +167,13 @@ export function ResultsPhase() {
     // After animation completes, lock positions by setting immediate: true
     const lockTimer = setTimeout(() => {
       console.log('[ResultsPhase] Locking positions with immediate: true')
+
+      // Store grid positions in ref
+      gridPositionsRef.current = userSequence.map((card, index) => {
+        const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
+        return calculateGridPosition(correctIndex)
+      })
+
       api.start((index) => {
         const card = userSequence[index]
         const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
@@ -160,6 +184,9 @@ export function ResultsPhase() {
           immediate: true, // No more animations - locked in place
         }
       })
+
+      springsInitializedRef.current = true // Mark as initialized
+      console.log('[ResultsPhase] Springs locked and marked as initialized')
     }, 1100) // Wait for animation to complete (100ms + 1000ms)
 
     return () => {
