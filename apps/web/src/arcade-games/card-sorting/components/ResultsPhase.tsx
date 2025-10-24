@@ -114,6 +114,7 @@ export function ResultsPhase() {
   const [springs, api] = useSprings(
     userSequence.length,
     (index) => {
+      console.log('[ResultsPhase] Creating spring', index, 'from', initialPositions[index])
       return {
         from: initialPositions[index],
         to: initialPositions[index],
@@ -124,15 +125,22 @@ export function ResultsPhase() {
     [] // Empty deps - only create once, never recreate
   )
 
+  console.log('[ResultsPhase] Component render, springs.length:', springs.length)
+
   // Immediately start animating to grid positions (only once)
   useEffect(() => {
+    console.log('[ResultsPhase] Animation effect running')
+
     // Small delay to ensure mount
     const timer = setTimeout(() => {
+      console.log('[ResultsPhase] Starting animation to grid positions')
       api.start((index) => {
         const card = userSequence[index]
         const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
+        const gridPos = calculateGridPosition(correctIndex)
+        console.log('[ResultsPhase] Animating card', index, 'to', gridPos)
         return {
-          to: calculateGridPosition(correctIndex),
+          to: gridPos,
           immediate: false,
           config: { ...config.gentle, tension: 120, friction: 26 },
         }
@@ -141,17 +149,21 @@ export function ResultsPhase() {
 
     // After animation completes, lock positions by setting immediate: true
     const lockTimer = setTimeout(() => {
+      console.log('[ResultsPhase] Locking positions with immediate: true')
       api.start((index) => {
         const card = userSequence[index]
         const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
+        const gridPos = calculateGridPosition(correctIndex)
+        console.log('[ResultsPhase] Locking card', index, 'at', gridPos)
         return {
-          to: calculateGridPosition(correctIndex),
+          to: gridPos,
           immediate: true, // No more animations - locked in place
         }
       })
     }, 1100) // Wait for animation to complete (100ms + 1000ms)
 
     return () => {
+      console.log('[ResultsPhase] Animation effect cleanup')
       clearTimeout(timer)
       clearTimeout(lockTimer)
     }
