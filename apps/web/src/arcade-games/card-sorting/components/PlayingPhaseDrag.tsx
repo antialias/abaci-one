@@ -761,15 +761,30 @@ function AnimatedCard({
     y: (cardState.y / 100) * viewportHeight,
   }
 
-  // Use spring animation for position and rotation
+  // Determine if card is in correct prefix or suffix position
+  // These cards should be scaled down to 50% and faded to 50% opacity
+  const isInCorrectPosition = (() => {
+    // For AnimatedCard, we need to recalculate since we don't have inferredSequence here
+    // This is a simplified check - we'll need to pass this as a prop or recalculate
+    return isCorrect
+  })()
+
+  // Use spring animation for position, rotation, scale, and opacity
   // Disable animation when:
-  // - User is dragging (for immediate response)
+  // - User is dragging (for immediate response on position/rotation)
   // - Viewport is resizing (for instant repositioning)
   const springProps = useSpring({
     left: pixelPos.x,
     top: pixelPos.y,
     rotation: cardState.rotation,
-    immediate: isDragging || isResizing,
+    scale: isInCorrectPosition ? 0.5 : 1,
+    opacity: isInCorrectPosition ? 0.5 : 1,
+    immediate: (key) => {
+      // Scale and opacity always animate smoothly
+      if (key === 'scale' || key === 'opacity') return false
+      // Position and rotation are immediate when dragging or resizing
+      return isDragging || isResizing
+    },
     config: {
       tension: 300,
       friction: 30,
@@ -795,7 +810,11 @@ function AnimatedCard({
       style={{
         left: springProps.left.to((val) => `${val}px`),
         top: springProps.top.to((val) => `${val}px`),
-        transform: springProps.rotation.to((r) => `rotate(${r}deg)`),
+        transform: to(
+          [springProps.rotation, springProps.scale],
+          (r, s) => `rotate(${r}deg) scale(${s})`
+        ),
+        opacity: springProps.opacity,
         zIndex: cardState.zIndex,
         boxShadow: isDragging ? '0 20px 40px rgba(0, 0, 0, 0.3)' : '0 4px 8px rgba(0, 0, 0, 0.15)',
       }}
@@ -1880,8 +1899,39 @@ export function PlayingPhaseDrag() {
 
           const isDragging = draggingCardId === card.id
 
-          // Cards don't show correctness indicators during play
-          const isCorrect = false
+          // Check if card is in correct prefix or suffix position (for scaling/fading)
+          const positionInSequence = inferredSequence.findIndex((c) => c.id === card.id)
+          let isInCorrectPrefixOrSuffix = false
+
+          if (positionInSequence >= 0) {
+            // Check if card is part of correct prefix
+            let isInCorrectPrefix = true
+            for (let i = 0; i <= positionInSequence; i++) {
+              if (inferredSequence[i]?.id !== state.correctOrder[i]?.id) {
+                isInCorrectPrefix = false
+                break
+              }
+            }
+
+            // Check if card is part of correct suffix
+            let isInCorrectSuffix = true
+            const offsetFromEnd = inferredSequence.length - 1 - positionInSequence
+            for (let i = 0; i <= offsetFromEnd; i++) {
+              const seqIdx = inferredSequence.length - 1 - i
+              const correctIdx = state.correctOrder.length - 1 - i
+              if (inferredSequence[seqIdx]?.id !== state.correctOrder[correctIdx]?.id) {
+                isInCorrectSuffix = false
+                break
+              }
+            }
+
+            isInCorrectPrefixOrSuffix = isInCorrectPrefix || isInCorrectSuffix
+          }
+
+          // Show correctness based on educational mode for spectators
+          const isCorrect = isSpectating
+            ? spectatorEducationalMode && isInCorrectPrefixOrSuffix
+            : isInCorrectPrefixOrSuffix
 
           // Get draggedByPlayerId from server state
           const serverPosition = state.cardPositions.find((p) => p.cardId === card.id)
