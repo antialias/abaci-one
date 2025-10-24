@@ -2,7 +2,7 @@
 
 import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSpring, animated, to } from '@react-spring/web'
 import type { SortingCard } from '../types'
 
@@ -731,8 +731,6 @@ function AnimatedCard({
   isResizing,
   isSpectating,
   isCorrect,
-  isCorrectPosition,
-  isLocked,
   draggedByPlayerId,
   localPlayerId,
   players,
@@ -748,8 +746,6 @@ function AnimatedCard({
   isResizing: boolean
   isSpectating: boolean
   isCorrect: boolean
-  isCorrectPosition: boolean
-  isLocked: boolean
   draggedByPlayerId?: string
   localPlayerId?: string
   players: Map<string, { id: string; name: string; emoji: string }>
@@ -765,34 +761,19 @@ function AnimatedCard({
     y: (cardState.y / 100) * viewportHeight,
   }
 
-  // Use spring animation for position, rotation, scale, and opacity
+  // Use spring animation for position and rotation
   // Disable animation when:
-  // - User is dragging (for immediate response on position/rotation)
+  // - User is dragging (for immediate response)
   // - Viewport is resizing (for instant repositioning)
-  // Note: Scale and opacity always animate smoothly, even during dragging
   const springProps = useSpring({
     left: pixelPos.x,
     top: pixelPos.y,
     rotation: cardState.rotation,
-    scale: isCorrectPosition ? 0.5 : 1, // Scale down to 50% when in correct position (for all users)
-    opacity: isCorrectPosition ? 0.5 : 1, // Fade to 50% opacity when in correct position
-    immediate: (key) => {
-      // Scale and opacity always animate smoothly
-      if (key === 'scale' || key === 'opacity') return false
-      // Position and rotation are immediate when dragging or resizing
-      return isDragging || isResizing
+    immediate: isDragging || isResizing,
+    config: {
+      tension: 300,
+      friction: 30,
     },
-    config: isCorrectPosition
-      ? {
-          // Gentler animation when moving to locked position
-          tension: 120,
-          friction: 26,
-        }
-      : {
-          // Snappier for normal movements
-          tension: 300,
-          friction: 30,
-        },
   })
 
   return (
@@ -804,7 +785,7 @@ function AnimatedCard({
         position: 'absolute',
         width: '140px',
         height: '180px',
-        cursor: isLocked ? 'not-allowed' : isSpectating ? 'default' : 'grab',
+        cursor: isSpectating ? 'default' : 'grab',
         touchAction: 'none',
         userSelect: 'none',
         transition: 'box-shadow 0.2s ease',
@@ -814,11 +795,7 @@ function AnimatedCard({
       style={{
         left: springProps.left.to((val) => `${val}px`),
         top: springProps.top.to((val) => `${val}px`),
-        transform: to(
-          [springProps.rotation, springProps.scale],
-          (r, s) => `rotate(${r}deg) scale(${s})`
-        ),
-        opacity: springProps.opacity,
+        transform: springProps.rotation.to((r) => `rotate(${r}deg)`),
         zIndex: cardState.zIndex,
         boxShadow: isDragging ? '0 20px 40px rgba(0, 0, 0, 0.3)' : '0 4px 8px rgba(0, 0, 0, 0.15)',
       }}
@@ -1228,200 +1205,11 @@ export function PlayingPhaseDrag() {
     }
   }, [state.cardPositions, draggingCardId, cardStates])
 
-  // Store locked card positions in a ref to keep them stable during drags
-  const lockedCardPositionsRef = useRef<Map<string, CardState>>(new Map())
-
-  // Create a stable version of cardStates for inference
-  // Use locked positions from ref for cards that were previously locked
-  const stableCardStates = useMemo(() => {
-    const stable = new Map(cardStates)
-
-    // Replace positions of locked cards with their stable positions
-    for (const [cardId, lockedPos] of lockedCardPositionsRef.current.entries()) {
-      if (stable.has(cardId)) {
-        stable.set(cardId, lockedPos)
-      }
-    }
-
-    return stable
-  }, [cardStates])
-
-  // Infer sequence from stable positions
-  const inferredSequence = inferSequenceFromPositions(stableCardStates, [
+  // Infer sequence from card positions
+  const inferredSequence = inferSequenceFromPositions(cardStates, [
     ...state.availableCards,
     ...state.placedCards.filter((c): c is SortingCard => c !== null),
   ])
-
-  // Auto-arrange correct prefix and suffix cards
-  const autoArrangeLoopCount = useRef(0)
-  const lastLogTime = useRef(0)
-
-  useEffect(() => {
-    if (cardStates.size === 0) return
-    if (inferredSequence.length === 0) return
-    if (isSpectating) return // Don't auto-arrange for spectators
-
-    // Track loop iterations
-    autoArrangeLoopCount.current++
-    const now = Date.now()
-    const shouldLog = autoArrangeLoopCount.current > 10 && now - lastLogTime.current > 1000
-
-    const newStates = new Map(cardStates)
-    let hasChanges = false
-
-    // Card dimensions in percentages
-    const CARD_WIDTH_PCT = 14 // ~140px on ~1000px viewport
-    const CARD_HEIGHT_PCT = 22.5 // ~180px on ~800px viewport
-    const SPACING = 2 // spacing between cards
-
-    // Find prefix cards (cards at positions 0, 1, 2... that are all correct)
-    const prefixCards: SortingCard[] = []
-    for (let i = 0; i < inferredSequence.length; i++) {
-      if (inferredSequence[i]?.id !== state.correctOrder[i]?.id) break
-      prefixCards.push(inferredSequence[i])
-    }
-
-    // Find suffix cards (cards at the END of correctOrder that are all correct)
-    // Start from the end of both sequences and work backwards
-    const suffixCards: SortingCard[] = []
-    for (let offset = 0; offset < inferredSequence.length; offset++) {
-      const inferredIdx = inferredSequence.length - 1 - offset
-      const correctIdx = state.correctOrder.length - 1 - offset
-      if (inferredSequence[inferredIdx]?.id !== state.correctOrder[correctIdx]?.id) break
-      suffixCards.unshift(inferredSequence[inferredIdx])
-    }
-
-    // Clean up locked positions ref - remove cards that are no longer locked
-    const lockedCardIds = new Set([...prefixCards, ...suffixCards].map((c) => c.id))
-    for (const cardId of Array.from(lockedCardPositionsRef.current.keys())) {
-      if (!lockedCardIds.has(cardId)) {
-        lockedCardPositionsRef.current.delete(cardId)
-      }
-    }
-
-    // Check if prefix and suffix overlap (all cards are correct)
-    // In this case, prefix and suffix cards are the same, so skip auto-arrange
-    const prefixAndSuffixOverlap =
-      prefixCards.length > 0 &&
-      suffixCards.length > 0 &&
-      prefixCards[prefixCards.length - 1].id === suffixCards[0].id
-
-    if (shouldLog) {
-      console.log('[AutoArrange] Loop count:', autoArrangeLoopCount.current)
-      console.log(
-        '[AutoArrange] Prefix count:',
-        prefixCards.length,
-        'Suffix count:',
-        suffixCards.length
-      )
-      console.log('[AutoArrange] Total cards:', inferredSequence.length)
-      console.log('[AutoArrange] Prefix/suffix overlap:', prefixAndSuffixOverlap)
-      lastLogTime.current = now
-    }
-
-    // Skip auto-arrange if all cards are correct (prefix and suffix are the same cards)
-    if (prefixAndSuffixOverlap) {
-      if (shouldLog) {
-        console.log('[AutoArrange] Skipping auto-arrange: all cards are correct')
-      }
-      return
-    }
-
-    // Tolerance for position comparison (0.1%)
-    const TOLERANCE = 0.1
-
-    // Helper to check if positions differ significantly
-    const positionsDiffer = (
-      current: { x: number; y: number; rotation: number },
-      target: { x: number; y: number; rotation: number }
-    ) => {
-      return (
-        Math.abs(current.x - target.x) > TOLERANCE ||
-        Math.abs(current.y - target.y) > TOLERANCE ||
-        Math.abs(current.rotation - target.rotation) > TOLERANCE
-      )
-    }
-
-    // Arrange prefix cards at top-left, wrapping to multiple rows if needed
-    const maxCardsPerRow = Math.floor((100 - 10) / (CARD_WIDTH_PCT + SPACING)) // 5% margin on each side
-    if (maxCardsPerRow > 0) {
-      prefixCards.forEach((card, index) => {
-        const row = Math.floor(index / maxCardsPerRow)
-        const col = index % maxCardsPerRow
-        const x = 5 + col * (CARD_WIDTH_PCT + SPACING) // Start at 5% margin
-        const y = 5 + row * (CARD_HEIGHT_PCT + SPACING) // Stack rows vertically
-        const rotation = 0 // No rotation for organized cards
-        const zIndex = 1000 + index // Higher z-index so they're on top
-
-        const currentState = newStates.get(card.id)
-        if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
-          if (shouldLog) {
-            console.log('[AutoArrange] Prefix card needs update:', {
-              cardId: card.id.slice(0, 8),
-              current: currentState,
-              target: { x, y, rotation },
-            })
-          }
-          newStates.set(card.id, { x, y, rotation, zIndex })
-          hasChanges = true
-        }
-
-        // Store stable position for locked prefix card
-        lockedCardPositionsRef.current.set(card.id, { x, y, rotation, zIndex })
-      })
-    } else if (shouldLog) {
-      console.log('[AutoArrange] Skipping prefix arrange: viewport too narrow')
-    }
-
-    // Arrange suffix cards at bottom-right, wrapping to multiple rows if needed (right to left)
-    if (maxCardsPerRow > 0) {
-      suffixCards.forEach((card, index) => {
-        const row = Math.floor(index / maxCardsPerRow)
-        const col = index % maxCardsPerRow
-        const fromRight = col
-        const x = 100 - CARD_WIDTH_PCT - 5 - fromRight * (CARD_WIDTH_PCT + SPACING) // From right edge
-        const y = 100 - CARD_HEIGHT_PCT - 5 - row * (CARD_HEIGHT_PCT + SPACING) // Stack rows upward
-        const rotation = 0 // No rotation for organized cards
-        const zIndex = 1000 + index // Higher z-index so they're on top
-
-        const currentState = newStates.get(card.id)
-        if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
-          if (shouldLog) {
-            console.log('[AutoArrange] Suffix card needs update:', {
-              cardId: card.id.slice(0, 8),
-              current: currentState,
-              target: { x, y, rotation },
-            })
-          }
-          newStates.set(card.id, { x, y, rotation, zIndex })
-          hasChanges = true
-        }
-
-        // Store stable position for locked suffix card
-        lockedCardPositionsRef.current.set(card.id, { x, y, rotation, zIndex })
-      })
-    } else if (shouldLog) {
-      console.log('[AutoArrange] Skipping suffix arrange: viewport too narrow')
-    }
-
-    if (hasChanges) {
-      if (shouldLog) {
-        console.log('[AutoArrange] Updating card positions')
-      }
-      setCardStates(newStates)
-      // Send updated positions to server
-      const positions = Array.from(newStates.entries()).map(([id, cardState]) => ({
-        cardId: id,
-        x: cardState.x,
-        y: cardState.y,
-        rotation: cardState.rotation,
-        zIndex: cardState.zIndex,
-      }))
-      updateCardPositions(positions)
-    } else if (shouldLog) {
-      console.log('[AutoArrange] No changes needed')
-    }
-  }, [inferredSequence, state.correctOrder, cardStates, isSpectating, updateCardPositions])
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -1430,39 +1218,9 @@ export function PlayingPhaseDrag() {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
-  // Check if a card is locked (in correct prefix or suffix and thus not draggable)
-  const isCardLocked = (cardId: string): boolean => {
-    const cardIndex = inferredSequence.findIndex((c) => c.id === cardId)
-    if (cardIndex < 0) return false
-
-    // Check if card is in correct prefix
-    let isInPrefix = true
-    for (let i = 0; i <= cardIndex; i++) {
-      if (inferredSequence[i]?.id !== state.correctOrder[i]?.id) {
-        isInPrefix = false
-        break
-      }
-    }
-    if (isInPrefix) return true
-
-    // Check if card is in correct suffix
-    let isInSuffix = true
-    const offsetFromEnd = inferredSequence.length - 1 - cardIndex
-    for (let i = 0; i <= offsetFromEnd; i++) {
-      const seqIdx = inferredSequence.length - 1 - i
-      const correctIdx = state.correctOrder.length - 1 - i
-      if (inferredSequence[seqIdx]?.id !== state.correctOrder[correctIdx]?.id) {
-        isInSuffix = false
-        break
-      }
-    }
-    return isInSuffix
-  }
-
   // Handle pointer down (start drag)
   const handlePointerDown = (e: React.PointerEvent, cardId: string) => {
     if (isSpectating) return
-    if (isCardLocked(cardId)) return // Don't allow dragging locked cards
 
     const target = e.currentTarget as HTMLElement
     target.setPointerCapture(e.pointerId)
@@ -1504,15 +1262,6 @@ export function PlayingPhaseDrag() {
   // Handle pointer move (dragging)
   const handlePointerMove = (e: React.PointerEvent, cardId: string) => {
     if (!dragStateRef.current || dragStateRef.current.cardId !== cardId) return
-
-    // Check if card has become locked during drag - if so, end the drag
-    if (isCardLocked(cardId)) {
-      const target = e.currentTarget as HTMLElement
-      target.releasePointerCapture(e.pointerId)
-      dragStateRef.current = null
-      setDraggingCardId(null)
-      return
-    }
 
     const { offsetX, offsetY } = dragStateRef.current
 
@@ -2131,40 +1880,8 @@ export function PlayingPhaseDrag() {
 
           const isDragging = draggingCardId === card.id
 
-          // Find the position of this card in the inferred sequence
-          const positionInSequence = inferredSequence.findIndex((c) => c.id === card.id)
-
-          // Check if this card is part of the correct prefix or suffix
-          let isInCorrectPrefixOrSuffix = false
-          if (positionInSequence >= 0) {
-            // Check if all positions from 0 to positionInSequence are correct (prefix)
-            let isInCorrectPrefix = true
-            for (let i = 0; i <= positionInSequence; i++) {
-              if (inferredSequence[i]?.id !== state.correctOrder[i]?.id) {
-                isInCorrectPrefix = false
-                break
-              }
-            }
-
-            // Check if all positions from positionInSequence to end are correct (suffix)
-            let isInCorrectSuffix = true
-            const offsetFromEnd = inferredSequence.length - 1 - positionInSequence
-            for (let i = 0; i <= offsetFromEnd; i++) {
-              const seqIdx = inferredSequence.length - 1 - i
-              const correctIdx = state.correctOrder.length - 1 - i
-              if (inferredSequence[seqIdx]?.id !== state.correctOrder[correctIdx]?.id) {
-                isInCorrectSuffix = false
-                break
-              }
-            }
-
-            isInCorrectPrefixOrSuffix = isInCorrectPrefix || isInCorrectSuffix
-          }
-
-          // Show green border based on educational mode for spectators
-          const isCorrect = isSpectating
-            ? spectatorEducationalMode && isInCorrectPrefixOrSuffix
-            : isInCorrectPrefixOrSuffix
+          // Cards don't show correctness indicators during play
+          const isCorrect = false
 
           // Get draggedByPlayerId from server state
           const serverPosition = state.cardPositions.find((p) => p.cardId === card.id)
@@ -2179,8 +1896,6 @@ export function PlayingPhaseDrag() {
               isResizing={isResizing}
               isSpectating={isSpectating}
               isCorrect={isCorrect}
-              isCorrectPosition={isInCorrectPrefixOrSuffix}
-              isLocked={isInCorrectPrefixOrSuffix}
               draggedByPlayerId={draggedByPlayerId}
               localPlayerId={localPlayerId}
               players={players}
