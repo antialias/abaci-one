@@ -51,24 +51,9 @@ export function ResultsPhase() {
 
   // Get viewport dimensions for converting percentage positions to pixels
   const containerRef = useRef<HTMLDivElement>(null)
-  const [viewportDimensions, setViewportDimensions] = useState({ width: 1000, height: 800 })
-
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        setViewportDimensions({
-          width: containerRef.current.offsetWidth,
-          height: containerRef.current.offsetHeight,
-        })
-      }
-    }
-    updateDimensions()
-    window.addEventListener('resize', updateDimensions)
-    return () => window.removeEventListener('resize', updateDimensions)
-  }, [])
 
   // Calculate grid positions for cards (final positions)
-  const calculateGridPosition = (cardIndex: number, shouldCorrect: boolean) => {
+  const calculateGridPosition = (cardIndex: number) => {
     const gridCols = 3
     const cardWidth = 100
     const cardHeight = 130
@@ -76,31 +61,39 @@ export function ResultsPhase() {
     const startX = 50
     const startY = 100
 
-    const effectiveIndex = shouldCorrect ? cardIndex : cardIndex
-
-    const col = effectiveIndex % gridCols
-    const row = Math.floor(effectiveIndex / gridCols)
+    const col = cardIndex % gridCols
+    const row = Math.floor(cardIndex / gridCols)
 
     return {
       x: startX + col * (cardWidth + gap),
       y: startY + row * (cardHeight + gap),
       rotation: 0,
-      scale: 1,
     }
   }
 
   // Get initial positions from game table (percentage-based from state.cardPositions)
+  // These are in percentage of the FULL viewport (window)
   const getInitialPosition = (cardId: string) => {
     const cardPos = state.cardPositions.find((p) => p.cardId === cardId)
     if (!cardPos) {
-      return { x: 0, y: 0, rotation: 0, scale: 1 }
+      return { x: 0, y: 0, rotation: 0 }
     }
-    // Convert percentage to pixels relative to container
+
+    // Convert from percentage of window to pixels relative to the results container
+    // The game board uses the full window, but results container is 50% width
+    const windowWidth = window.innerWidth
+    const windowHeight = window.innerHeight
+
+    // Get absolute position in pixels
+    const absoluteX = (cardPos.x / 100) * windowWidth
+    const absoluteY = (cardPos.y / 100) * windowHeight
+
+    // Convert to position relative to the container (which is 50% of window width)
+    // Container starts at 0, so we just use absolute positions
     return {
-      x: (cardPos.x / 100) * viewportDimensions.width,
-      y: (cardPos.y / 100) * viewportDimensions.height,
+      x: absoluteX,
+      y: absoluteY,
       rotation: cardPos.rotation,
-      scale: 1,
     }
   }
 
@@ -113,26 +106,33 @@ export function ResultsPhase() {
       return {
         from: initial,
         to: initial,
-        config: { ...config.gentle, duration: 800 },
+        config: config.gentle,
       }
     },
     [userSequence]
   )
 
-  // Auto-show corrections and animate to grid after 2 seconds
+  // Immediately start animating to grid positions
   useEffect(() => {
+    // Small delay to ensure mount
     const timer = setTimeout(() => {
-      setShowCorrections(true)
-      // Animate all cards to their grid positions
       api.start((index) => {
         const card = userSequence[index]
         const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
         return {
-          to: calculateGridPosition(correctIndex, true),
-          config: { ...config.gentle, duration: 800 },
+          to: calculateGridPosition(correctIndex),
+          config: { ...config.gentle, tension: 120, friction: 26 },
         }
       })
-    }, 2000)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Show corrections after animation completes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowCorrections(true)
+    }, 1500)
     return () => clearTimeout(timer)
   }, [])
 
