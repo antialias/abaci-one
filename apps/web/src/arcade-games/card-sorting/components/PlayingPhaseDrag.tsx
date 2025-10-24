@@ -741,19 +741,20 @@ function AnimatedCard({
     y: (cardState.y / 100) * viewportHeight,
   }
 
-  // Use spring animation for position, rotation, and scale
+  // Use spring animation for position, rotation, scale, and opacity
   // Disable animation when:
   // - User is dragging (for immediate response on position/rotation)
   // - Viewport is resizing (for instant repositioning)
-  // Note: Scale always animates smoothly, even during dragging
+  // Note: Scale and opacity always animate smoothly, even during dragging
   const springProps = useSpring({
     left: pixelPos.x,
     top: pixelPos.y,
     rotation: cardState.rotation,
     scale: isCorrectPosition ? 0.5 : 1, // Scale down to 50% when in correct position (for all users)
+    opacity: isCorrectPosition ? 0.5 : 1, // Fade to 50% opacity when in correct position
     immediate: (key) => {
-      // Scale always animates smoothly
-      if (key === 'scale') return false
+      // Scale and opacity always animate smoothly
+      if (key === 'scale' || key === 'opacity') return false
       // Position and rotation are immediate when dragging or resizing
       return isDragging || isResizing
     },
@@ -786,6 +787,7 @@ function AnimatedCard({
           [springProps.rotation, springProps.scale],
           (r, s) => `rotate(${r}deg) scale(${s})`
         ),
+        opacity: springProps.opacity,
         zIndex: cardState.zIndex,
         boxShadow: isDragging ? '0 20px 40px rgba(0, 0, 0, 0.3)' : '0 4px 8px rgba(0, 0, 0, 0.15)',
       }}
