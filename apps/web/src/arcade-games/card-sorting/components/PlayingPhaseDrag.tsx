@@ -1228,10 +1228,18 @@ export function PlayingPhaseDrag() {
   ])
 
   // Auto-arrange correct prefix and suffix cards
+  const autoArrangeLoopCount = useRef(0)
+  const lastLogTime = useRef(0)
+
   useEffect(() => {
     if (cardStates.size === 0) return
     if (inferredSequence.length === 0) return
     if (isSpectating) return // Don't auto-arrange for spectators
+
+    // Track loop iterations
+    autoArrangeLoopCount.current++
+    const now = Date.now()
+    const shouldLog = autoArrangeLoopCount.current > 10 && now - lastLogTime.current > 1000
 
     const newStates = new Map(cardStates)
     let hasChanges = false
@@ -1254,6 +1262,18 @@ export function PlayingPhaseDrag() {
       const correctIdx = state.correctOrder.length - 1 - (inferredSequence.length - 1 - i)
       if (inferredSequence[i]?.id !== state.correctOrder[correctIdx]?.id) break
       suffixCards.unshift(inferredSequence[i])
+    }
+
+    if (shouldLog) {
+      console.log('[AutoArrange] Loop count:', autoArrangeLoopCount.current)
+      console.log(
+        '[AutoArrange] Prefix count:',
+        prefixCards.length,
+        'Suffix count:',
+        suffixCards.length
+      )
+      console.log('[AutoArrange] Total cards:', inferredSequence.length)
+      lastLogTime.current = now
     }
 
     // Tolerance for position comparison (0.1%)
@@ -1280,6 +1300,13 @@ export function PlayingPhaseDrag() {
 
       const currentState = newStates.get(card.id)
       if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
+        if (shouldLog) {
+          console.log('[AutoArrange] Prefix card needs update:', {
+            cardId: card.id.slice(0, 8),
+            current: currentState,
+            target: { x, y, rotation },
+          })
+        }
         newStates.set(card.id, { x, y, rotation, zIndex })
         hasChanges = true
       }
@@ -1295,12 +1322,22 @@ export function PlayingPhaseDrag() {
 
       const currentState = newStates.get(card.id)
       if (currentState && positionsDiffer(currentState, { x, y, rotation })) {
+        if (shouldLog) {
+          console.log('[AutoArrange] Suffix card needs update:', {
+            cardId: card.id.slice(0, 8),
+            current: currentState,
+            target: { x, y, rotation },
+          })
+        }
         newStates.set(card.id, { x, y, rotation, zIndex })
         hasChanges = true
       }
     })
 
     if (hasChanges) {
+      if (shouldLog) {
+        console.log('[AutoArrange] Updating card positions')
+      }
       setCardStates(newStates)
       // Send updated positions to server
       const positions = Array.from(newStates.entries()).map(([id, cardState]) => ({
@@ -1311,6 +1348,8 @@ export function PlayingPhaseDrag() {
         zIndex: cardState.zIndex,
       }))
       updateCardPositions(positions)
+    } else if (shouldLog) {
+      console.log('[AutoArrange] No changes needed')
     }
   }, [inferredSequence, state.correctOrder, cardStates, isSpectating, updateCardPositions])
 
