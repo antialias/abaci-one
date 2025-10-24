@@ -138,7 +138,23 @@ export function ResultsPhase() {
         }
       })
     }, 100)
-    return () => clearTimeout(timer)
+
+    // After animation completes, lock positions by setting immediate: true
+    const lockTimer = setTimeout(() => {
+      api.start((index) => {
+        const card = userSequence[index]
+        const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
+        return {
+          to: calculateGridPosition(correctIndex),
+          immediate: true, // No more animations - locked in place
+        }
+      })
+    }, 1100) // Wait for animation to complete (100ms + 1000ms)
+
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(lockTimer)
+    }
   }, []) // Empty deps - only run once
 
   // Show corrections after animation completes
