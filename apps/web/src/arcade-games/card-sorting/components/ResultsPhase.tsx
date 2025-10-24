@@ -106,21 +106,41 @@ export function ResultsPhase() {
     }
   }
 
-  // Create springs for each card - use useMemo to prevent recreation on every render
+  // Create springs for each card - memoize to prevent recreation
   const initialPositions = useMemo(() => {
     return userSequence.map((card) => getInitialPosition(card.id))
   }, []) // Empty deps - only calculate once on mount
 
-  const [springs, api] = useSprings(userSequence.length, (index) => {
-    return {
-      from: initialPositions[index],
-      to: initialPositions[index],
-      config: config.gentle,
-    }
-  })
+  // Track if animation has completed
+  const hasAnimatedRef = useRef(false)
+
+  const [springs, api] = useSprings(
+    userSequence.length,
+    (index) => {
+      // If already animated, start at grid position
+      if (hasAnimatedRef.current) {
+        const card = userSequence[index]
+        const correctIndex = state.correctOrder.findIndex((c) => c.id === card.id)
+        return {
+          from: calculateGridPosition(correctIndex),
+          to: calculateGridPosition(correctIndex),
+          config: config.gentle,
+        }
+      }
+      // Otherwise start at initial position
+      return {
+        from: initialPositions[index],
+        to: initialPositions[index],
+        config: config.gentle,
+      }
+    },
+    [] // Empty deps - only create once
+  )
 
   // Immediately start animating to grid positions
   useEffect(() => {
+    if (hasAnimatedRef.current) return // Don't animate again
+
     // Small delay to ensure mount
     const timer = setTimeout(() => {
       api.start((index) => {
@@ -131,9 +151,10 @@ export function ResultsPhase() {
           config: { ...config.gentle, tension: 120, friction: 26 },
         }
       })
+      hasAnimatedRef.current = true
     }, 100)
     return () => clearTimeout(timer)
-  }, [api, userSequence, state.correctOrder])
+  }, [])
 
   // Show corrections after animation completes
   useEffect(() => {
