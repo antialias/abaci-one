@@ -93,13 +93,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/drizzle ./apps/web/drizz
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=deps --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/node_modules
 
-# Copy ONLY Python scripts from core package (not entire package)
-COPY --from=builder --chown=nextjs:nodejs /app/packages/core/server ./packages/core/server
-COPY --from=builder --chown=nextjs:nodejs /app/packages/core/requirements.txt ./packages/core/requirements.txt
+# Copy core package (needed for Python flashcard generation scripts)
+COPY --from=builder --chown=nextjs:nodejs /app/packages/core ./packages/core
 
-# Copy ONLY Typst template files from templates package (not entire package)
-COPY --from=builder --chown=nextjs:nodejs /app/packages/templates/*.typ ./packages/templates/
-COPY --from=builder --chown=nextjs:nodejs /app/packages/templates/package.json ./packages/templates/package.json
+# Copy templates package (needed for Typst templates)
+COPY --from=builder --chown=nextjs:nodejs /app/packages/templates ./packages/templates
 
 # Install Python dependencies for flashcard generation
 RUN pip3 install --no-cache-dir --break-system-packages -r packages/core/requirements.txt
