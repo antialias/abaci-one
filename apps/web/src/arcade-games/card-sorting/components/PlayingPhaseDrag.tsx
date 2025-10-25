@@ -1175,10 +1175,11 @@ export function PlayingPhaseDrag() {
     if (!state.cardPositions || state.cardPositions.length === 0) return
     if (cardStates.size === 0) return
 
-    // Ignore server updates for 500ms after we send our own update
+    // Ignore server updates for 2000ms after we send our own update
     // This prevents replaying our own movements when they bounce back from server
+    // Increased from 500ms to 2000ms to handle low bandwidth connections
     const timeSinceOurUpdate = Date.now() - lastPositionUpdateRef.current
-    if (timeSinceOurUpdate < 500) return
+    if (timeSinceOurUpdate < 2000) return
 
     // Check if server positions differ from current positions
     let needsUpdate = false
