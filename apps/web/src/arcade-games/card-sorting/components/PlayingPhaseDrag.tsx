@@ -916,8 +916,12 @@ export function PlayingPhaseDrag() {
     initialRotation: number
   } | null>(null)
 
-  // Track timestamp of last position update we sent to avoid re-applying our own updates
-  const lastPositionUpdateRef = useRef<number>(0)
+  // Generate a stable unique ID for this browser window/tab
+  // This allows us to identify our own position updates when they echo back from the server
+  const windowIdRef = useRef<string>()
+  if (!windowIdRef.current) {
+    windowIdRef.current = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  }
 
   // Track card positions and visual states (UI only - not game state)
   const [cardStates, setCardStates] = useState<Map<string, CardState>>(new Map())
@@ -1157,6 +1161,8 @@ export function PlayingPhaseDrag() {
         y: cardState.y,
         rotation: cardState.rotation,
         zIndex: cardState.zIndex,
+        // Mark with our window ID to identify echoes
+        draggedByWindowId: windowIdRef.current,
       }))
       updateCardPositions(positions)
     }
@@ -1175,11 +1181,12 @@ export function PlayingPhaseDrag() {
     if (!state.cardPositions || state.cardPositions.length === 0) return
     if (cardStates.size === 0) return
 
-    // Ignore server updates for 2000ms after we send our own update
-    // This prevents replaying our own movements when they bounce back from server
-    // Increased from 500ms to 2000ms to handle low bandwidth connections
-    const timeSinceOurUpdate = Date.now() - lastPositionUpdateRef.current
-    if (timeSinceOurUpdate < 2000) return
+    // Check if any updates originated from this window - if so, skip the entire batch
+    // This prevents replaying our own movements when they echo back from the server
+    const hasOurUpdates = state.cardPositions.some(
+      (pos) => pos.draggedByWindowId === windowIdRef.current
+    )
+    if (hasOurUpdates) return
 
     // Check if server positions differ from current positions
     let needsUpdate = false
@@ -1303,7 +1310,6 @@ export function PlayingPhaseDrag() {
           const now = Date.now()
           if (now - lastSyncTimeRef.current > 100) {
             lastSyncTimeRef.current = now
-            lastPositionUpdateRef.current = now
             const positions = Array.from(newStates.entries()).map(([id, state]) => ({
               cardId: id,
               x: state.x,
@@ -1312,6 +1318,8 @@ export function PlayingPhaseDrag() {
               zIndex: state.zIndex,
               // Mark this card as being dragged by local player
               draggedByPlayerId: id === cardId ? localPlayerId : undefined,
+              // Mark with our window ID to identify echoes
+              draggedByWindowId: windowIdRef.current,
             }))
             updateCardPositions(positions)
           }
@@ -1348,8 +1356,9 @@ export function PlayingPhaseDrag() {
           zIndex: state.zIndex,
           // Clear draggedByPlayerId when drag ends
           draggedByPlayerId: undefined,
+          // Mark with our window ID to identify echoes
+          draggedByWindowId: windowIdRef.current,
         }))
-        lastPositionUpdateRef.current = Date.now()
         updateCardPositions(positions)
       }
     }
