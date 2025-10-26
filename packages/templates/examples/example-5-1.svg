@@ -1,65 +1,52 @@
 <svg class="typst-doc" viewBox="0 0 300 150" width="300pt" height="150pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:h5="http://www.w3.org/1999/xhtml">
-    <path class="typst-shape" fill="#ffffff" fill-rule="nonzero" d="M 0 0 L 0 150 L 300 150 L 300 0 Z "/>
+    <path class="typst-shape" fill="#ffffff" fill-rule="nonzero" d="M 0 0v 150 h 300 v -150 Z "/>
     <g>
-        <g transform="translate(125 -40)">
-            <g class="typst-group">
-                <g>
-                    <g transform="translate(0 0)">
-                        <g class="typst-group">
+        <g class="typst-group" transform="matrix(1 0 0 1 125 -40)">
+            <g>
+                <g class="typst-group">
+                    <g>
+                        <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" transform="matrix(1 0 0 1 22 35)" d="M 0 0v 136 h 6 v -136 Z "/>
+                        <g class="typst-group" transform="matrix(1 0 0 1 8.200000000000001 35)">
                             <g>
-                                <g transform="translate(22 35)">
-                                    <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" d="M 0 0 L 0 136 L 6 136 L 6 0 Z "/>
-                                </g>
-                                <g transform="translate(8.200000000000001 35)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 16.8 0 L 33.6 12 L 16.8 24 L 0 12 Z "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(8.200000000000001 72)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 16.8 0 L 33.6 12 L 16.8 24 L 0 12 Z "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(8.200000000000001 97)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 16.8 0 L 33.6 12 L 16.8 24 L 0 12 Z "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(8.200000000000001 122)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 16.8 0 L 33.6 12 L 16.8 24 L 0 12 Z "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(8.200000000000001 147)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(0 0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 16.8 0 L 33.6 12 L 16.8 24 L 0 12 Z "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(0 60)">
-                                    <path class="typst-shape" fill="#000000" fill-rule="nonzero" d="M 0 0 L 0 4 L 50 4 L 50 0 Z "/>
-                                </g>
+                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 16.8 0 l 16.8 12 l -16.8 12 l -16.8 -12 Z "/>
                             </g>
                         </g>
+                        <a transform="matrix(1 0 0 1 8.200000000000001 35)" href="bead://heaven-col0-active1" xlink:href="bead://heaven-col0-active1">
+                            <rect width="33.6" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 8.200000000000001 72)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 16.8 0 l 16.8 12 l -16.8 12 l -16.8 -12 Z "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 8.200000000000001 72)" href="bead://earth-col0-pos0-active0" xlink:href="bead://earth-col0-pos0-active0">
+                            <rect width="33.6" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 8.200000000000001 97)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 16.8 0 l 16.8 12 l -16.8 12 l -16.8 -12 Z "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 8.200000000000001 97)" href="bead://earth-col0-pos1-active0" xlink:href="bead://earth-col0-pos1-active0">
+                            <rect width="33.6" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 8.200000000000001 122)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 16.8 0 l 16.8 12 l -16.8 12 l -16.8 -12 Z "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 8.200000000000001 122)" href="bead://earth-col0-pos2-active0" xlink:href="bead://earth-col0-pos2-active0">
+                            <rect width="33.6" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 8.200000000000001 147)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 16.8 0 l 16.8 12 l -16.8 12 l -16.8 -12 Z "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 8.200000000000001 147)" href="bead://earth-col0-pos3-active0" xlink:href="bead://earth-col0-pos3-active0">
+                            <rect width="33.6" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <path class="typst-shape" fill="#000000" fill-rule="nonzero" transform="matrix(1 0 0 1 0 60)" d="M 0 0v 4 h 50 v -4 Z "/>
                     </g>
                 </g>
             </g>

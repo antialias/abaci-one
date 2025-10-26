@@ -1,161 +1,134 @@
 <svg class="typst-doc" viewBox="0 0 400 200" width="400pt" height="200pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:h5="http://www.w3.org/1999/xhtml">
-    <path class="typst-shape" fill="#ffffff" fill-rule="nonzero" d="M 0 0 L 0 200 L 400 200 L 400 0 Z "/>
+    <path class="typst-shape" fill="#ffffff" fill-rule="nonzero" d="M 0 0v 200 h 400 v -200 Z "/>
     <g>
-        <g transform="translate(132.5 -4)">
-            <g class="typst-group">
-                <g>
-                    <g transform="translate(0 0)">
-                        <g class="typst-group">
+        <g class="typst-group" transform="matrix(1 0 0 1 132.5 -4)">
+            <g>
+                <g class="typst-group">
+                    <g>
+                        <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" transform="matrix(1 0 0 1 19.8 24.399999999999995)" d="M 0 0v 130.4 h 5.4 v -130.4 Z "/>
+                        <g class="typst-group" transform="matrix(1 0 0 1 11.7 24.399999999999995)">
                             <g>
-                                <g transform="translate(19.8 24.399999999999995)">
-                                    <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" d="M 0 0 L 0 130.4 L 5.4 130.4 L 5.4 0 Z "/>
-                                </g>
-                                <g transform="translate(11.7 24.399999999999995)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(11.7 58.599999999999994)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(11.7 88.2)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(11.7 110.7)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(11.7 133.20000000000002)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(64.8 24.399999999999995)">
-                                    <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" d="M 0 0 L 0 130.4 L 5.4 130.4 L 5.4 0 Z "/>
-                                </g>
-                                <g transform="translate(56.699999999999996 24.399999999999995)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(56.699999999999996 58.599999999999994)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(56.699999999999996 81.1)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(56.699999999999996 110.7)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(56.699999999999996 133.20000000000002)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(109.8 24.399999999999995)">
-                                    <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" d="M 0 0 L 0 130.4 L 5.4 130.4 L 5.4 0 Z "/>
-                                </g>
-                                <g transform="translate(101.7 24.399999999999995)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(101.7 58.599999999999994)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(101.7 81.1)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(101.7 103.6)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(101.7 133.20000000000002)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 10.8 C 0 4.8407326 4.8407326 0 10.8 0 C 16.759268 0 21.6 4.8407326 21.6 10.8 C 21.6 16.759268 16.759268 21.6 10.8 21.6 C 4.8407326 21.6 0 16.759268 0 10.8 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(0 54)">
-                                    <path class="typst-shape" fill="#000000" fill-rule="nonzero" d="M 0 0 L 0 3.6 L 135 3.6 L 135 0 Z "/>
-                                </g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
                             </g>
                         </g>
+                        <a transform="matrix(1 0 0 1 11.7 24.399999999999995)" href="bead://heaven-col2-active0" xlink:href="bead://heaven-col2-active0">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 11.7 58.599999999999994)">
+                            <g>
+                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 11.7 58.599999999999994)" href="bead://earth-col2-pos0-active1" xlink:href="bead://earth-col2-pos0-active1">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 11.7 88.2)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 11.7 88.2)" href="bead://earth-col2-pos1-active0" xlink:href="bead://earth-col2-pos1-active0">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 11.7 110.7)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 11.7 110.7)" href="bead://earth-col2-pos2-active0" xlink:href="bead://earth-col2-pos2-active0">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 11.7 133.20000000000002)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 11.7 133.20000000000002)" href="bead://earth-col2-pos3-active0" xlink:href="bead://earth-col2-pos3-active0">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" transform="matrix(1 0 0 1 64.8 24.399999999999995)" d="M 0 0v 130.4 h 5.4 v -130.4 Z "/>
+                        <g class="typst-group" transform="matrix(1 0 0 1 56.699999999999996 24.399999999999995)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 56.699999999999996 24.399999999999995)" href="bead://heaven-col1-active0" xlink:href="bead://heaven-col1-active0">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 56.699999999999996 58.599999999999994)">
+                            <g>
+                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 56.699999999999996 58.599999999999994)" href="bead://earth-col1-pos0-active1" xlink:href="bead://earth-col1-pos0-active1">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 56.699999999999996 81.1)">
+                            <g>
+                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 56.699999999999996 81.1)" href="bead://earth-col1-pos1-active1" xlink:href="bead://earth-col1-pos1-active1">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 56.699999999999996 110.7)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 56.699999999999996 110.7)" href="bead://earth-col1-pos2-active0" xlink:href="bead://earth-col1-pos2-active0">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 56.699999999999996 133.20000000000002)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 56.699999999999996 133.20000000000002)" href="bead://earth-col1-pos3-active0" xlink:href="bead://earth-col1-pos3-active0">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" transform="matrix(1 0 0 1 109.8 24.399999999999995)" d="M 0 0v 130.4 h 5.4 v -130.4 Z "/>
+                        <g class="typst-group" transform="matrix(1 0 0 1 101.7 24.399999999999995)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 101.7 24.399999999999995)" href="bead://heaven-col0-active0" xlink:href="bead://heaven-col0-active0">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 101.7 58.599999999999994)">
+                            <g>
+                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 101.7 58.599999999999994)" href="bead://earth-col0-pos0-active1" xlink:href="bead://earth-col0-pos0-active1">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 101.7 81.1)">
+                            <g>
+                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 101.7 81.1)" href="bead://earth-col0-pos1-active1" xlink:href="bead://earth-col0-pos1-active1">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 101.7 103.6)">
+                            <g>
+                                <path class="typst-shape" fill="#2e86ab" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 101.7 103.6)" href="bead://earth-col0-pos2-active1" xlink:href="bead://earth-col0-pos2-active1">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 101.7 133.20000000000002)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 10.8 c 0 -5.9592676 4.8407326 -10.8 10.8 -10.8 c 5.9592676 0 10.8 4.8407326 10.8 10.8 c 0 5.9592676 -4.8407326 10.8 -10.8 10.8 c -5.9592676 0 -10.8 -4.8407326 -10.8 -10.8 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 101.7 133.20000000000002)" href="bead://earth-col0-pos3-active0" xlink:href="bead://earth-col0-pos3-active0">
+                            <rect width="21.6" height="21.6" fill="transparent" stroke="none"/>
+                        </a>
+                        <path class="typst-shape" fill="#000000" fill-rule="nonzero" transform="matrix(1 0 0 1 0 54)" d="M 0 0v 3.6 h 135 v -3.6 Z "/>
                     </g>
                 </g>
             </g>

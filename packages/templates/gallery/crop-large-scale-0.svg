@@ -1,87 +1,86 @@
 <svg class="typst-doc" viewBox="0 0 240 280" width="240pt" height="280pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:h5="http://www.w3.org/1999/xhtml">
-    <path class="typst-shape" fill="#ffffff" fill-rule="nonzero" d="M 0 0 L 0 280 L 240 280 L 240 0 Z "/>
+    <path class="typst-shape" fill="#ffffff" fill-rule="nonzero" d="M 0 0v 280 h 240 v -280 Z "/>
     <g>
-        <g transform="translate(95 25)">
-            <g class="typst-group">
-                <g>
-                    <g transform="translate(0 0)">
+        <g class="typst-group" transform="matrix(1 0 0 1 95 25)">
+            <g>
+                <g class="typst-group">
+                    <g>
+                        <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" transform="matrix(1 0 0 1 22 28)" d="M 0 0v 143 h 6 v -143 Z "/>
+                        <g class="typst-group" transform="matrix(1 0 0 1 13 28)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 12 c 0 -6.621408 5.378592 -12 12 -12 c 6.6214085 0 12 5.378592 12 12 c 0 6.6214085 -5.3785915 12 -12 12 c -6.621408 0 -12 -5.3785915 -12 -12 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 13 28)" href="bead://heaven-col0-active0" xlink:href="bead://heaven-col0-active0">
+                            <rect width="24" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 13 72)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 12 c 0 -6.621408 5.378592 -12 12 -12 c 6.6214085 0 12 5.378592 12 12 c 0 6.6214085 -5.3785915 12 -12 12 c -6.621408 0 -12 -5.3785915 -12 -12 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 13 72)" href="bead://earth-col0-pos0-active0" xlink:href="bead://earth-col0-pos0-active0">
+                            <rect width="24" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 13 97)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 12 c 0 -6.621408 5.378592 -12 12 -12 c 6.6214085 0 12 5.378592 12 12 c 0 6.6214085 -5.3785915 12 -12 12 c -6.621408 0 -12 -5.3785915 -12 -12 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 13 97)" href="bead://earth-col0-pos1-active0" xlink:href="bead://earth-col0-pos1-active0">
+                            <rect width="24" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 13 122)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 12 c 0 -6.621408 5.378592 -12 12 -12 c 6.6214085 0 12 5.378592 12 12 c 0 6.6214085 -5.3785915 12 -12 12 c -6.621408 0 -12 -5.3785915 -12 -12 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 13 122)" href="bead://earth-col0-pos2-active0" xlink:href="bead://earth-col0-pos2-active0">
+                            <rect width="24" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <g class="typst-group" transform="matrix(1 0 0 1 13 147)">
+                            <g>
+                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 0m 0 12 c 0 -6.621408 5.378592 -12 12 -12 c 6.6214085 0 12 5.378592 12 12 c 0 6.6214085 -5.3785915 12 -12 12 c -6.621408 0 -12 -5.3785915 -12 -12 "/>
+                            </g>
+                        </g>
+                        <a transform="matrix(1 0 0 1 13 147)" href="bead://earth-col0-pos3-active0" xlink:href="bead://earth-col0-pos3-active0">
+                            <rect width="24" height="24" fill="transparent" stroke="none"/>
+                        </a>
+                        <path class="typst-shape" fill="#000000" fill-rule="nonzero" transform="matrix(1 0 0 1 0 60)" d="M 0 0v 4 h 50 v -4 Z "/>
+                        <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" transform="matrix(1 0 0 1 -24 0)" d="M 0 0v 196 h 0.5 v -196 Z "/>
+                        <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" transform="matrix(1 0 0 1 74 0)" d="M 0 0v 196 h 0.5 v -196 Z "/>
+                        <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" transform="matrix(1 0 0 1 -24 0)" d="M 0 0v 0.5 h 98 v -0.5 Z "/>
+                        <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" transform="matrix(1 0 0 1 -24 196)" d="M 0 0v 0.5 h 98 v -0.5 Z "/>
                         <g class="typst-group">
                             <g>
-                                <g transform="translate(22 28)">
-                                    <path class="typst-shape" fill="#eeeeee" fill-rule="nonzero" d="M 0 0 L 0 143 L 6 143 L 6 0 Z "/>
-                                </g>
-                                <g transform="translate(13 28)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 12 C 0 5.378592 5.378592 0 12 0 C 18.621408 0 24 5.378592 24 12 C 24 18.621408 18.621408 24 12 24 C 5.378592 24 0 18.621408 0 12 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(13 72)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 12 C 0 5.378592 5.378592 0 12 0 C 18.621408 0 24 5.378592 24 12 C 24 18.621408 18.621408 24 12 24 C 5.378592 24 0 18.621408 0 12 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(13 97)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 12 C 0 5.378592 5.378592 0 12 0 C 18.621408 0 24 5.378592 24 12 C 24 18.621408 18.621408 24 12 24 C 5.378592 24 0 18.621408 0 12 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(13 122)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 12 C 0 5.378592 5.378592 0 12 0 C 18.621408 0 24 5.378592 24 12 C 24 18.621408 18.621408 24 12 24 C 5.378592 24 0 18.621408 0 12 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(13 147)">
-                                    <g class="typst-group">
-                                        <g>
-                                            <g transform="translate(-0 -0)">
-                                                <path class="typst-shape" fill="#e6e6e6" fill-rule="nonzero" stroke="#000000" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" d="M 0 12 C 0 5.378592 5.378592 0 12 0 C 18.621408 0 24 5.378592 24 12 C 24 18.621408 18.621408 24 12 24 C 5.378592 24 0 18.621408 0 12 "/>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </g>
-                                <g transform="translate(0 60)">
-                                    <path class="typst-shape" fill="#000000" fill-rule="nonzero" d="M 0 0 L 0 4 L 50 4 L 50 0 Z "/>
-                                </g>
-                                <g transform="translate(-24 0)">
-                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" d="M 0 0 L 0 196 L 0.5 196 L 0.5 0 Z "/>
-                                </g>
-                                <g transform="translate(74 0)">
-                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" d="M 0 0 L 0 196 L 0.5 196 L 0.5 0 Z "/>
-                                </g>
-                                <g transform="translate(-24 0)">
-                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" d="M 0 0 L 0 0.5 L 98 0.5 L 98 0 Z "/>
-                                </g>
-                                <g transform="translate(-24 196)">
-                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" stroke="#ff4136" stroke-width="0.5" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" stroke-dasharray="3 3" d="M 0 0 L 0 0.5 L 98 0.5 L 98 0 Z "/>
-                                </g>
-                                <g transform="translate(-24 60.5)">
-                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "/>
-                                </g>
-                                <g transform="translate(74 60.5)">
-                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "/>
-                                </g>
-                                <g transform="translate(23.5 0)">
-                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "/>
-                                </g>
-                                <g transform="translate(23.5 196)">
-                                    <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" d="M 0 0 L 0 0.1 L 0.1 0.1 L 0.1 0 Z "/>
-                                </g>
+                                <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" transform="matrix(1 0 0 1 -24 60.5)" d="M 0 0v 0.1 h 0.1 v -0.1 Z "/>
+                                <a transform="matrix(1 0 0 1 -24 60.5)" href="crop-mark://left" xlink:href="crop-mark://left">
+                                    <rect width="0.1" height="0.1" fill="transparent" stroke="none"/>
+                                </a>
+                            </g>
+                        </g>
+                        <g class="typst-group">
+                            <g>
+                                <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" transform="matrix(1 0 0 1 74 60.5)" d="M 0 0v 0.1 h 0.1 v -0.1 Z "/>
+                                <a transform="matrix(1 0 0 1 74 60.5)" href="crop-mark://right" xlink:href="crop-mark://right">
+                                    <rect width="0.1" height="0.1" fill="transparent" stroke="none"/>
+                                </a>
+                            </g>
+                        </g>
+                        <g class="typst-group">
+                            <g>
+                                <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" transform="matrix(1 0 0 1 23.5 0)" d="M 0 0v 0.1 h 0.1 v -0.1 Z "/>
+                                <a transform="matrix(1 0 0 1 23.5 0)" href="crop-mark://top" xlink:href="crop-mark://top">
+                                    <rect width="0.1" height="0.1" fill="transparent" stroke="none"/>
+                                </a>
+                            </g>
+                        </g>
+                        <g class="typst-group">
+                            <g>
+                                <path class="typst-shape" fill="#ff4136" fill-rule="nonzero" transform="matrix(1 0 0 1 23.5 196)" d="M 0 0v 0.1 h 0.1 v -0.1 Z "/>
+                                <a transform="matrix(1 0 0 1 23.5 196)" href="crop-mark://bottom" xlink:href="crop-mark://bottom">
+                                    <rect width="0.1" height="0.1" fill="transparent" stroke="none"/>
+                                </a>
                             </g>
                         </g>
                     </g>
