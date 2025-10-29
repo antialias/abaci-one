@@ -1018,6 +1018,25 @@ function CaptureRelationOptions({
       return relation
     }
 
+    // Relations that don't need helpers - show equation with just mover and target
+    const helperRelations: RelationKind[] = ['SUM', 'DIFF', 'PRODUCT', 'RATIO']
+    const needsHelper = helperRelations.includes(relation)
+
+    if (!needsHelper) {
+      // Generate equation with just mover and target values
+      switch (relation) {
+        case 'EQUAL':
+          return `${moverValue} = ${targetValue}`
+        case 'MULTIPLE':
+          return `${targetValue} is multiple of ${moverValue}`
+        case 'DIVISOR':
+          return `${moverValue} divides ${targetValue}`
+        default:
+          return relation
+      }
+    }
+
+    // Relations that need helpers
     const validHelpers = findValidHelpers(moverValue, targetValue, relation)
     if (validHelpers.length === 0) {
       return `${relation}: No valid helpers`
@@ -1030,7 +1049,7 @@ function CaptureRelationOptions({
       return relation
     }
 
-    // Generate equation with actual numbers
+    // Generate equation with actual numbers including helper
     switch (relation) {
       case 'SUM':
         return `${moverValue} + ${helperValue} = ${targetValue}`
@@ -1040,12 +1059,6 @@ function CaptureRelationOptions({
         return `${moverValue} × ${helperValue} = ${targetValue}`
       case 'RATIO':
         return `${moverValue}/${helperValue} = ${targetValue}/${helperValue}`
-      case 'EQUAL':
-        return `${moverValue} = ${targetValue}`
-      case 'MULTIPLE':
-        return `${targetValue} is multiple of ${moverValue}`
-      case 'DIVISOR':
-        return `${moverValue} divides ${targetValue}`
       default:
         return relation
     }
