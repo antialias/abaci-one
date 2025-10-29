@@ -459,6 +459,7 @@ function AnimatedHelperPiece({
   cellSize,
   onSelectHelper,
   closing,
+  onHover,
 }: {
   piece: Piece
   boardPos: { x: number; y: number }
@@ -467,6 +468,7 @@ function AnimatedHelperPiece({
   cellSize: number
   onSelectHelper: (pieceId: string) => void
   closing: boolean
+  onHover?: (pieceId: string | null) => void
 }) {
   console.log(
     `[AnimatedHelperPiece] Rendering piece ${piece.id}: boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY}), closing=${closing}`
@@ -499,55 +501,28 @@ function AnimatedHelperPiece({
         e.stopPropagation()
         onSelectHelper(piece.id)
       }}
+      onMouseEnter={() => onHover?.(piece.id)}
+      onMouseLeave={() => onHover?.(null)}
     >
-      <Tooltip.Root>
-        <Tooltip.Trigger asChild>
-          <g>
-            {/* Render the actual piece with a highlight ring */}
-            <circle
-              cx={0}
-              cy={0}
-              r={cellSize * 0.5}
-              fill="rgba(250, 204, 21, 0.3)"
-              stroke="rgba(250, 204, 21, 0.9)"
-              strokeWidth={4}
-            />
-            <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
-              <PieceRenderer type={piece.type} color={piece.color} value={value} size={cellSize} />
-            </g>
-          </g>
-        </Tooltip.Trigger>
-        <Tooltip.Portal>
-          <Tooltip.Content asChild sideOffset={8}>
-            <div
-              style={{
-                background: 'rgba(0,0,0,0.95)',
-                color: 'white',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 600,
-                zIndex: 10000,
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-                pointerEvents: 'none',
-              }}
-            >
-              Helper: {piece.type}({value}) at {piece.square}
-              <Tooltip.Arrow
-                style={{
-                  fill: 'rgba(0,0,0,0.95)',
-                }}
-              />
-            </div>
-          </Tooltip.Content>
-        </Tooltip.Portal>
-      </Tooltip.Root>
+      {/* Render the actual piece with a highlight ring */}
+      <circle
+        cx={0}
+        cy={0}
+        r={cellSize * 0.5}
+        fill="rgba(250, 204, 21, 0.3)"
+        stroke="rgba(250, 204, 21, 0.9)"
+        strokeWidth={4}
+      />
+      <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
+        <PieceRenderer type={piece.type} color={piece.color} value={value} size={cellSize} />
+      </g>
     </animated.g>
   )
 }
 
 /**
  * Helper piece selection - pieces fly from board to selection ring
+ * Hovering over a helper shows a preview of the number bond
  */
 function HelperSelectionOptions({
   helpers,
@@ -557,6 +532,9 @@ function HelperSelectionOptions({
   padding,
   onSelectHelper,
   closing = false,
+  moverPiece,
+  targetPiece,
+  relation,
 }: {
   helpers: Array<{ piece: Piece; boardPos: { x: number; y: number } }>
   targetPos: { x: number; y: number }
@@ -565,7 +543,11 @@ function HelperSelectionOptions({
   padding: number
   onSelectHelper: (pieceId: string) => void
   closing?: boolean
+  moverPiece: Piece
+  targetPiece: Piece
+  relation: RelationKind
 }) {
+  const [hoveredHelperId, setHoveredHelperId] = useState<string | null>(null)
   const maxRadius = cellSize * 1.2
   const angleStep = helpers.length > 1 ? 360 / helpers.length : 0
 
@@ -575,43 +557,157 @@ function HelperSelectionOptions({
   console.log('[HelperSelectionOptions] angleStep:', angleStep)
   console.log('[HelperSelectionOptions] helpers.length:', helpers.length)
 
+  // Find the hovered helper and its ring position
+  const hoveredHelperData = helpers.find((h) => h.piece.id === hoveredHelperId)
+  const hoveredHelperIndex = helpers.findIndex((h) => h.piece.id === hoveredHelperId)
+  let hoveredHelperRingPos = null
+  if (hoveredHelperIndex !== -1) {
+    const angle = hoveredHelperIndex * angleStep
+    const rad = (angle * Math.PI) / 180
+    hoveredHelperRingPos = {
+      x: targetPos.x + Math.cos(rad) * maxRadius,
+      y: targetPos.y + Math.sin(rad) * maxRadius,
+    }
+  }
+
+  // Color scheme based on relation type
+  const colorMap: Record<RelationKind, string> = {
+    SUM: '#ef4444', // red
+    DIFF: '#f97316', // orange
+    PRODUCT: '#8b5cf6', // purple
+    RATIO: '#3b82f6', // blue
+    EQUAL: '#10b981', // green
+    MULTIPLE: '#eab308', // yellow
+    DIVISOR: '#06b6d4', // cyan
+  }
+  const color = colorMap[relation] || '#6b7280'
+
+  // Operator symbols
+  const operatorMap: Record<RelationKind, string> = {
+    SUM: '+',
+    DIFF: '−',
+    PRODUCT: '×',
+    RATIO: '÷',
+    EQUAL: '=',
+    MULTIPLE: '×',
+    DIVISOR: '÷',
+  }
+  const operator = operatorMap[relation] || '?'
+
   return (
-    <Tooltip.Provider delayDuration={0} disableHoverableContent>
-      <g>
-        {helpers.map(({ piece, boardPos }, index) => {
-          const angle = index * angleStep
-          const rad = (angle * Math.PI) / 180
+    <g>
+      {helpers.map(({ piece, boardPos }, index) => {
+        const angle = index * angleStep
+        const rad = (angle * Math.PI) / 180
 
-          // Target position in ring
-          const ringX = targetPos.x + Math.cos(rad) * maxRadius
-          const ringY = targetPos.y + Math.sin(rad) * maxRadius
+        // Target position in ring
+        const ringX = targetPos.x + Math.cos(rad) * maxRadius
+        const ringY = targetPos.y + Math.sin(rad) * maxRadius
 
-          console.log(
-            `[HelperSelectionOptions] piece ${piece.id} (${piece.square}): index=${index}, angle=${angle}°, boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY})`
-          )
+        console.log(
+          `[HelperSelectionOptions] piece ${piece.id} (${piece.square}): index=${index}, angle=${angle}°, boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY})`
+        )
 
-          return (
-            <AnimatedHelperPiece
-              key={piece.id}
-              piece={piece}
-              boardPos={boardPos}
-              ringX={ringX}
-              ringY={ringY}
-              cellSize={cellSize}
-              onSelectHelper={onSelectHelper}
-              closing={closing}
-            />
-          )
-        })}
-      </g>
-    </Tooltip.Provider>
+        return (
+          <AnimatedHelperPiece
+            key={piece.id}
+            piece={piece}
+            boardPos={boardPos}
+            ringX={ringX}
+            ringY={ringY}
+            cellSize={cellSize}
+            onSelectHelper={onSelectHelper}
+            closing={closing}
+            onHover={setHoveredHelperId}
+          />
+        )
+      })}
+
+      {/* Show number bond preview when hovering over a helper - draw triangle between actual pieces */}
+      {hoveredHelperData && hoveredHelperRingPos && (
+        <g>
+          {(() => {
+            // Use actual positions of all three pieces
+            const helperPos = hoveredHelperRingPos // Helper is in the ring
+            const moverBoardPos = hoveredHelperData.boardPos // Mover is on the board at its current position
+            const targetBoardPos = targetPos // Target is on the board at capture position
+
+            // Calculate positions from square coordinates
+            const file = moverPiece.square.charCodeAt(0) - 65
+            const rank = Number.parseInt(moverPiece.square.slice(1), 10)
+            const row = 8 - rank
+            const moverPos = {
+              x: padding + file * (cellSize + gap) + cellSize / 2,
+              y: padding + row * (cellSize + gap) + cellSize / 2,
+            }
+
+            const targetFile = targetPiece.square.charCodeAt(0) - 65
+            const targetRank = Number.parseInt(targetPiece.square.slice(1), 10)
+            const targetRow = 8 - targetRank
+            const targetBoardPosition = {
+              x: padding + targetFile * (cellSize + gap) + cellSize / 2,
+              y: padding + targetRow * (cellSize + gap) + cellSize / 2,
+            }
+
+            return (
+              <>
+                {/* Triangle connecting lines between actual piece positions */}
+                <g opacity={0.5}>
+                  <line
+                    x1={moverPos.x}
+                    y1={moverPos.y}
+                    x2={helperPos.x}
+                    y2={helperPos.y}
+                    stroke={color}
+                    strokeWidth={4}
+                  />
+                  <line
+                    x1={moverPos.x}
+                    y1={moverPos.y}
+                    x2={targetBoardPosition.x}
+                    y2={targetBoardPosition.y}
+                    stroke={color}
+                    strokeWidth={4}
+                  />
+                  <line
+                    x1={helperPos.x}
+                    y1={helperPos.y}
+                    x2={targetBoardPosition.x}
+                    y2={targetBoardPosition.y}
+                    stroke={color}
+                    strokeWidth={4}
+                  />
+                </g>
+
+                {/* Operator symbol in center of triangle */}
+                <text
+                  x={(moverPos.x + helperPos.x + targetBoardPosition.x) / 3}
+                  y={(moverPos.y + helperPos.y + targetBoardPosition.y) / 3}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill={color}
+                  fontSize={cellSize * 0.8}
+                  fontWeight="900"
+                  fontFamily="Georgia, 'Times New Roman', serif"
+                  opacity={0.9}
+                >
+                  {operator}
+                </text>
+
+                {/* No cloned pieces - using actual pieces already on board/ring */}
+              </>
+            )
+          })()}
+        </g>
+      )}
+    </g>
   )
 }
 
 /**
- * Number Bond Visualization - shows mathematical relationship with actual piece SVGs
- * Layout: Operands (mover + helper) at top, result (target) at bottom
- * Animation: 2.5s rotation collapse when confirmed
+ * Number Bond Visualization - uses actual piece positions for smooth rotation/collapse
+ * Pieces start at their actual positions (mover on board, helper in ring, target on board)
+ * Animation: Rotate and collapse to target position, only mover remains
  */
 function NumberBondVisualization({
   moverPiece,
@@ -622,6 +718,11 @@ function NumberBondVisualization({
   cellSize,
   onConfirm,
   closing = false,
+  autoAnimate = true,
+  moverStartPos,
+  helperStartPos,
+  padding,
+  gap,
 }: {
   moverPiece: Piece
   helperPiece: Piece
@@ -631,20 +732,34 @@ function NumberBondVisualization({
   cellSize: number
   onConfirm: () => void
   closing?: boolean
+  autoAnimate?: boolean
+  moverStartPos: { x: number; y: number }
+  helperStartPos: { x: number; y: number }
+  padding: number
+  gap: number
 }) {
   const [animating, setAnimating] = useState(false)
+
+  // Auto-trigger animation immediately when component mounts (after helper selection)
+  useEffect(() => {
+    if (!autoAnimate) return
+    const timer = setTimeout(() => {
+      setAnimating(true)
+    }, 300) // Short delay to show the triangle briefly
+    return () => clearTimeout(timer)
+  }, [autoAnimate])
 
   // Color scheme based on relation type
   const colorMap: Record<RelationKind, string> = {
     SUM: '#ef4444', // red
-    DIFF: '#3b82f6', // blue
-    PRODUCT: '#10b981', // green
-    RATIO: '#f59e0b', // amber
-    EQUAL: '#8b5cf6',
-    MULTIPLE: '#a855f7',
-    DIVISOR: '#c084fc',
+    DIFF: '#f97316', // orange
+    PRODUCT: '#8b5cf6', // purple
+    RATIO: '#3b82f6', // blue
+    EQUAL: '#10b981', // green
+    MULTIPLE: '#eab308', // yellow
+    DIVISOR: '#06b6d4', // cyan
   }
-  const color = colorMap[relation] || '#8b5cf6'
+  const color = colorMap[relation] || '#6b7280'
 
   // Operation symbol based on relation
   const operatorMap: Record<RelationKind, string> = {
@@ -658,17 +773,20 @@ function NumberBondVisualization({
   }
   const operator = operatorMap[relation]
 
-  // Layout: operands at top, result at bottom
-  const spacing = cellSize * 1.8
-  const moverPos = { x: targetPos.x - spacing * 0.5, y: targetPos.y - spacing * 0.7 }
-  const helperPos = { x: targetPos.x + spacing * 0.5, y: targetPos.y - spacing * 0.7 }
-  const resultPos = { x: targetPos.x, y: targetPos.y + spacing * 0.5 }
+  // Calculate actual board position for target
+  const targetFile = targetPiece.square.charCodeAt(0) - 65
+  const targetRank = Number.parseInt(targetPiece.square.slice(1), 10)
+  const targetRow = 8 - targetRank
+  const targetBoardPos = {
+    x: padding + targetFile * (cellSize + gap) + cellSize / 2,
+    y: padding + targetRow * (cellSize + gap) + cellSize / 2,
+  }
 
-  // Animation: 2.5s rotate and collapse
+  // Animation: Rotate and collapse from actual positions to target
   const captureAnimation = useSpring({
-    from: { rotation: 0, radius: 1, opacity: 1 },
+    from: { rotation: 0, progress: 0, opacity: 1 },
     rotation: animating ? Math.PI * 20 : 0, // 10 full rotations
-    radius: animating ? 0 : 1,
+    progress: animating ? 1 : 0, // 0 = at start positions, 1 = at target position
     opacity: animating ? 0 : 1,
     config: animating ? { duration: 2500 } : { tension: 280, friction: 20 },
     onRest: () => {
@@ -678,218 +796,164 @@ function NumberBondVisualization({
     },
   })
 
-  // Initial entrance animation
-  const entranceSpring = useSpring({
-    from: { scale: 0, opacity: 0 },
-    scale: closing || animating ? 0 : 1,
-    opacity: closing ? 0 : 1,
-    config: { tension: 280, friction: 20 },
-  })
-
-  const handleConfirm = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setAnimating(true)
-  }
-
   // Get piece values
   const getMoverValue = () => getEffectiveValue(moverPiece)
   const getHelperValue = () => getEffectiveValue(helperPiece)
   const getTargetValue = () => getEffectiveValue(targetPiece)
 
   return (
-    <animated.g
-      style={{
-        opacity: entranceSpring.opacity,
-      }}
-      transform={to(
-        [entranceSpring.scale],
-        (s) => `translate(${targetPos.x}, ${targetPos.y}) scale(${s})`
-      )}
-    >
-      <g transform={`translate(${-targetPos.x}, ${-targetPos.y})`}>
-        {!animating && (
-          <>
-            {/* Triangle connecting lines */}
-            <line
-              x1={moverPos.x}
-              y1={moverPos.y}
-              x2={helperPos.x}
-              y2={helperPos.y}
-              stroke={color}
-              strokeWidth={3}
-              opacity={0.3}
-            />
-            <line
-              x1={moverPos.x}
-              y1={moverPos.y}
-              x2={resultPos.x}
-              y2={resultPos.y}
-              stroke={color}
-              strokeWidth={3}
-              opacity={0.3}
-            />
-            <line
-              x1={helperPos.x}
-              y1={helperPos.y}
-              x2={resultPos.x}
-              y2={resultPos.y}
-              stroke={color}
-              strokeWidth={3}
-              opacity={0.3}
-            />
+    <g>
+      {/* Triangle connecting lines between actual piece positions - fade during animation */}
+      <animated.g opacity={to([captureAnimation.opacity], (op) => (animating ? op * 0.5 : 0.5))}>
+        <line
+          x1={moverStartPos.x}
+          y1={moverStartPos.y}
+          x2={helperStartPos.x}
+          y2={helperStartPos.y}
+          stroke={color}
+          strokeWidth={4}
+        />
+        <line
+          x1={moverStartPos.x}
+          y1={moverStartPos.y}
+          x2={targetBoardPos.x}
+          y2={targetBoardPos.y}
+          stroke={color}
+          strokeWidth={4}
+        />
+        <line
+          x1={helperStartPos.x}
+          y1={helperStartPos.y}
+          x2={targetBoardPos.x}
+          y2={targetBoardPos.y}
+          stroke={color}
+          strokeWidth={4}
+        />
+      </animated.g>
 
-            {/* Operator symbol in center */}
-            <text
-              x={targetPos.x}
-              y={targetPos.y}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill={color}
-              fontSize={cellSize * 0.6}
-              fontWeight="bold"
-              opacity={0.8}
-            >
-              {operator}
-            </text>
-          </>
-        )}
+      {/* Operator symbol in center of triangle - fade during animation */}
+      <animated.text
+        x={(moverStartPos.x + helperStartPos.x + targetBoardPos.x) / 3}
+        y={(moverStartPos.y + helperStartPos.y + targetBoardPos.y) / 3}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={color}
+        fontSize={cellSize * 0.8}
+        fontWeight="900"
+        fontFamily="Georgia, 'Times New Roman', serif"
+        opacity={to([captureAnimation.opacity], (op) => (animating ? op * 0.9 : 0.9))}
+      >
+        {operator}
+      </animated.text>
 
-        {/* Mover piece (top-left operand) */}
-        <animated.g
-          transform={to([captureAnimation.rotation, captureAnimation.radius], (rot, rad) => {
-            if (!animating) {
-              return `translate(${moverPos.x}, ${moverPos.y})`
-            }
-            // During animation: rotate around center and collapse
-            const angle = rot
-            const distance = spacing * 0.7 * rad
-            const x = targetPos.x + Math.cos(angle) * distance
-            const y = targetPos.y + Math.sin(angle) * distance
-            return `translate(${x}, ${y})`
-          })}
-          opacity={animating ? 1 : 1} // Mover stays visible
-        >
-          <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
-            <PieceRenderer
-              type={moverPiece.type}
-              color={moverPiece.color}
-              value={getMoverValue() || 0}
-              size={cellSize}
-            />
-          </g>
-        </animated.g>
+      {/* Mover piece - starts at board position, spirals to target, STAYS VISIBLE */}
+      <animated.g
+        transform={to([captureAnimation.rotation, captureAnimation.progress], (rot, prog) => {
+          // Interpolate from start position to target position
+          const x = moverStartPos.x + (targetBoardPos.x - moverStartPos.x) * prog
+          const y = moverStartPos.y + (targetBoardPos.y - moverStartPos.y) * prog
 
-        {/* Helper piece (top-right operand) */}
-        <animated.g
-          transform={to([captureAnimation.rotation, captureAnimation.radius], (rot, rad) => {
-            if (!animating) {
-              return `translate(${helperPos.x}, ${helperPos.y})`
-            }
-            const angle = rot + (Math.PI * 2) / 3 // Offset by 120 degrees
-            const distance = spacing * 0.7 * rad
-            const x = targetPos.x + Math.cos(angle) * distance
-            const y = targetPos.y + Math.sin(angle) * distance
-            return `translate(${x}, ${y})`
-          })}
-          opacity={to([captureAnimation.opacity], (op) => (animating ? op : 1))}
-        >
-          <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
-            <PieceRenderer
-              type={helperPiece.type}
-              color={helperPiece.color}
-              value={getHelperValue() || 0}
-              size={cellSize}
-            />
-          </g>
-        </animated.g>
+          // Add spiral rotation around the interpolated center
+          const spiralRadius = (1 - prog) * cellSize * 0.5
+          const spiralX = x + Math.cos(rot) * spiralRadius
+          const spiralY = y + Math.sin(rot) * spiralRadius
 
-        {/* Target piece (bottom result) */}
-        <animated.g
-          transform={to([captureAnimation.rotation, captureAnimation.radius], (rot, rad) => {
-            if (!animating) {
-              return `translate(${resultPos.x}, ${resultPos.y})`
-            }
-            const angle = rot + (Math.PI * 4) / 3 // Offset by 240 degrees
-            const distance = spacing * 0.7 * rad
-            const x = targetPos.x + Math.cos(angle) * distance
-            const y = targetPos.y + Math.sin(angle) * distance
-            return `translate(${x}, ${y})`
-          })}
-          opacity={to([captureAnimation.opacity], (op) => (animating ? op : 1))}
-        >
-          <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
-            <PieceRenderer
-              type={targetPiece.type}
-              color={targetPiece.color}
-              value={getTargetValue() || 0}
-              size={cellSize}
-            />
-          </g>
-        </animated.g>
+          return `translate(${spiralX}, ${spiralY})`
+        })}
+        opacity={1} // Mover stays fully visible
+      >
+        <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
+          <PieceRenderer
+            type={moverPiece.type}
+            color={moverPiece.color}
+            value={getMoverValue() || 0}
+            size={cellSize}
+          />
+        </g>
+      </animated.g>
 
-        {/* Confirm button */}
-        {!animating && (
-          <g transform={`translate(${targetPos.x}, ${resultPos.y + cellSize * 1.2})`}>
-            <foreignObject
-              x={-cellSize}
-              y={-cellSize * 0.3}
-              width={cellSize * 2}
-              height={cellSize * 0.6}
-            >
-              <button
-                onClick={handleConfirm}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '12px',
-                  border: `3px solid ${color}`,
-                  backgroundColor: 'white',
-                  color,
-                  fontSize: `${cellSize * 0.28}px`,
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = color
-                  e.currentTarget.style.color = 'white'
-                  e.currentTarget.style.transform = 'scale(1.05)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'white'
-                  e.currentTarget.style.color = color
-                  e.currentTarget.style.transform = 'scale(1)'
-                }}
-              >
-                ✓ Capture
-              </button>
-            </foreignObject>
-          </g>
-        )}
-      </g>
-    </animated.g>
+      {/* Helper piece - starts in ring, spirals to target, FADES OUT */}
+      <animated.g
+        transform={to([captureAnimation.rotation, captureAnimation.progress], (rot, prog) => {
+          const x = helperStartPos.x + (targetBoardPos.x - helperStartPos.x) * prog
+          const y = helperStartPos.y + (targetBoardPos.y - helperStartPos.y) * prog
+
+          const spiralRadius = (1 - prog) * cellSize * 0.5
+          const angle = rot + (Math.PI * 2) / 3 // Offset by 120°
+          const spiralX = x + Math.cos(angle) * spiralRadius
+          const spiralY = y + Math.sin(angle) * spiralRadius
+
+          return `translate(${spiralX}, ${spiralY})`
+        })}
+        opacity={to([captureAnimation.opacity], (op) => (animating ? op : 1))}
+      >
+        <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
+          <PieceRenderer
+            type={helperPiece.type}
+            color={helperPiece.color}
+            value={getHelperValue() || 0}
+            size={cellSize}
+          />
+        </g>
+      </animated.g>
+
+      {/* Target piece - stays at board position, spirals in place, FADES OUT */}
+      <animated.g
+        transform={to([captureAnimation.rotation, captureAnimation.progress], (rot, prog) => {
+          const x = targetBoardPos.x
+          const y = targetBoardPos.y
+
+          const spiralRadius = (1 - prog) * cellSize * 0.5
+          const angle = rot + (Math.PI * 4) / 3 // Offset by 240°
+          const spiralX = x + Math.cos(angle) * spiralRadius
+          const spiralY = y + Math.sin(angle) * spiralRadius
+
+          return `translate(${spiralX}, ${spiralY})`
+        })}
+        opacity={to([captureAnimation.opacity], (op) => (animating ? op : 1))}
+      >
+        <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
+          <PieceRenderer
+            type={targetPiece.type}
+            color={targetPiece.color}
+            value={getTargetValue() || 0}
+            size={cellSize}
+          />
+        </g>
+      </animated.g>
+    </g>
   )
 }
 
 /**
- * Animated floating capture relation options
+ * Animated floating capture relation options with number bond preview on hover
  */
 function CaptureRelationOptions({
   targetPos,
   cellSize,
   gap,
+  padding,
   onSelectRelation,
   closing = false,
   availableRelations,
+  moverPiece,
+  targetPiece,
+  allPieces,
+  findValidHelpers,
 }: {
   targetPos: { x: number; y: number }
   cellSize: number
   gap: number
+  padding: number
   onSelectRelation: (relation: RelationKind) => void
   closing?: boolean
   availableRelations: RelationKind[]
+  moverPiece: Piece
+  targetPiece: Piece
+  allPieces: Piece[]
+  findValidHelpers: (moverValue: number, targetValue: number, relation: RelationKind) => Piece[]
 }) {
+  const [hoveredRelation, setHoveredRelation] = useState<RelationKind | null>(null)
   const allRelations = [
     { relation: 'EQUAL', label: '=', tooltip: 'Equality: a = b', angle: 0, color: '#8b5cf6' },
     {
@@ -1006,10 +1070,12 @@ function CaptureRelationOptions({
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'scale(1.15)'
                         e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.4)'
+                        setHoveredRelation(relation as RelationKind)
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'scale(1)'
                         e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+                        setHoveredRelation(null)
                       }}
                     >
                       {label}
@@ -1045,6 +1111,170 @@ function CaptureRelationOptions({
             </animated.g>
           )
         })}
+
+        {/* Number bond preview when hovering over a relation - show triangles to all valid helpers */}
+        {hoveredRelation &&
+          (() => {
+            const moverValue = getEffectiveValue(moverPiece)
+            const targetValue = getEffectiveValue(targetPiece)
+
+            if (
+              moverValue === undefined ||
+              moverValue === null ||
+              targetValue === undefined ||
+              targetValue === null
+            ) {
+              return null
+            }
+
+            const validHelpers = findValidHelpers(moverValue, targetValue, hoveredRelation)
+
+            // Color scheme based on relation type
+            const colorMap: Record<RelationKind, string> = {
+              SUM: '#ef4444', // red
+              DIFF: '#f97316', // orange
+              PRODUCT: '#8b5cf6', // purple
+              RATIO: '#3b82f6', // blue
+              EQUAL: '#10b981', // green
+              MULTIPLE: '#eab308', // yellow
+              DIVISOR: '#06b6d4', // cyan
+            }
+            const color = colorMap[hoveredRelation] || '#6b7280'
+
+            // Operator symbols
+            const operatorMap: Record<RelationKind, string> = {
+              SUM: '+',
+              DIFF: '−',
+              PRODUCT: '×',
+              RATIO: '÷',
+              EQUAL: '=',
+              MULTIPLE: '×',
+              DIVISOR: '÷',
+            }
+            const operator = operatorMap[hoveredRelation] || '?'
+
+            // Calculate mover position on board
+            const moverFile = moverPiece.square.charCodeAt(0) - 65
+            const moverRank = Number.parseInt(moverPiece.square.slice(1), 10)
+            const moverRow = 8 - moverRank
+            const moverPos = {
+              x: padding + moverFile * (cellSize + gap) + cellSize / 2,
+              y: padding + moverRow * (cellSize + gap) + cellSize / 2,
+            }
+
+            // Calculate target position on board
+            const targetFile = targetPiece.square.charCodeAt(0) - 65
+            const targetRank = Number.parseInt(targetPiece.square.slice(1), 10)
+            const targetRow = 8 - targetRank
+            const targetBoardPos = {
+              x: padding + targetFile * (cellSize + gap) + cellSize / 2,
+              y: padding + targetRow * (cellSize + gap) + cellSize / 2,
+            }
+
+            return (
+              <g>
+                {validHelpers.map((helper) => {
+                  // Calculate helper position on board
+                  const helperFile = helper.square.charCodeAt(0) - 65
+                  const helperRank = Number.parseInt(helper.square.slice(1), 10)
+                  const helperRow = 8 - helperRank
+                  const helperPos = {
+                    x: padding + helperFile * (cellSize + gap) + cellSize / 2,
+                    y: padding + helperRow * (cellSize + gap) + cellSize / 2,
+                  }
+
+                  return (
+                    <g key={helper.id}>
+                      {/* Triangle connecting lines */}
+                      <g opacity={0.5}>
+                        <line
+                          x1={moverPos.x}
+                          y1={moverPos.y}
+                          x2={helperPos.x}
+                          y2={helperPos.y}
+                          stroke={color}
+                          strokeWidth={4}
+                        />
+                        <line
+                          x1={moverPos.x}
+                          y1={moverPos.y}
+                          x2={targetBoardPos.x}
+                          y2={targetBoardPos.y}
+                          stroke={color}
+                          strokeWidth={4}
+                        />
+                        <line
+                          x1={helperPos.x}
+                          y1={helperPos.y}
+                          x2={targetBoardPos.x}
+                          y2={targetBoardPos.y}
+                          stroke={color}
+                          strokeWidth={4}
+                        />
+                      </g>
+
+                      {/* Operator symbol - smart placement to avoid collinear collapse */}
+                      {(() => {
+                        // Calculate center of triangle
+                        const centerX = (moverPos.x + helperPos.x + targetBoardPos.x) / 3
+                        const centerY = (moverPos.y + helperPos.y + targetBoardPos.y) / 3
+
+                        // Check if pieces are nearly collinear using cross product
+                        // Vector from mover to helper
+                        const v1x = helperPos.x - moverPos.x
+                        const v1y = helperPos.y - moverPos.y
+                        // Vector from mover to target
+                        const v2x = targetBoardPos.x - moverPos.x
+                        const v2y = targetBoardPos.y - moverPos.y
+
+                        // Cross product magnitude (2D)
+                        const crossProduct = Math.abs(v1x * v2y - v1y * v2x)
+
+                        // If cross product is small, pieces are nearly collinear
+                        const minTriangleArea = cellSize * cellSize * 0.5 // Minimum triangle area threshold
+                        const isCollinear = crossProduct < minTriangleArea
+
+                        let operatorX = centerX
+                        let operatorY = centerY
+
+                        if (isCollinear) {
+                          // Find the line connecting the three points (use mover to target as reference)
+                          const lineLength = Math.sqrt(v2x * v2x + v2y * v2y)
+
+                          if (lineLength > 0) {
+                            // Perpendicular direction (rotate 90 degrees)
+                            const perpX = -v2y / lineLength
+                            const perpY = v2x / lineLength
+
+                            // Offset operator perpendicular to the line
+                            const offsetDistance = cellSize * 0.8
+                            operatorX = centerX + perpX * offsetDistance
+                            operatorY = centerY + perpY * offsetDistance
+                          }
+                        }
+
+                        return (
+                          <text
+                            x={operatorX}
+                            y={operatorY}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fill={color}
+                            fontSize={cellSize * 0.8}
+                            fontWeight="900"
+                            fontFamily="Georgia, 'Times New Roman', serif"
+                            opacity={0.9}
+                          >
+                            {operator}
+                          </text>
+                        )
+                      })()}
+                    </g>
+                  )
+                })}
+              </g>
+            )
+          })()}
       </g>
     </Tooltip.Provider>
   )
@@ -1313,9 +1543,14 @@ function BoardDisplay() {
         return
       }
 
-      // Set selected relation to show helper selection UI
-      console.log('[handleCaptureWithRelation] Setting selectedRelation to:', relation)
+      // Automatically select the first valid helper (skip helper selection UI)
+      console.log('[handleCaptureWithRelation] Auto-selecting first helper:', validHelpers[0])
       setSelectedRelation(relation)
+      setSelectedHelper({
+        helperPiece: validHelpers[0],
+        moverPiece,
+        targetPiece,
+      })
     } else {
       console.log('[handleCaptureWithRelation] No helper needed, executing capture immediately')
       // No helper needed - execute capture immediately
@@ -1570,15 +1805,17 @@ function BoardDisplay() {
 
         {/* Pieces */}
         {activePieces.map((piece) => {
-          // Show low opacity for pieces currently being shown as helper options
+          // Show low opacity for pieces currently being shown as helper options or in the number bond
           const isBorrowedHelper = helpersWithPositions.some((h) => h.piece.id === piece.id)
+          const isBorrowedMover = selectedHelper && selectedHelper.moverPiece.id === piece.id
+          const isInNumberBond = isBorrowedHelper || isBorrowedMover
           return (
             <SvgPiece
               key={piece.id}
               piece={piece}
               cellSize={cellSize + gap}
               padding={padding}
-              opacity={isBorrowedHelper ? 0.2 : 1}
+              opacity={isInNumberBond ? 0.2 : 1}
             />
           )
         })}
@@ -1595,6 +1832,30 @@ function BoardDisplay() {
           // Phase 3: Show number bond after helper selected
           if (captureDialogOpen && targetPos && selectedRelation && selectedHelper) {
             console.log('[Render] Showing NumberBondVisualization')
+
+            // Calculate mover position on board
+            const moverFile = selectedHelper.moverPiece.square.charCodeAt(0) - 65
+            const moverRank = Number.parseInt(selectedHelper.moverPiece.square.slice(1), 10)
+            const moverRow = 8 - moverRank
+            const moverStartPos = {
+              x: padding + moverFile * (cellSize + gap) + cellSize / 2,
+              y: padding + moverRow * (cellSize + gap) + cellSize / 2,
+            }
+
+            // Find helper position in ring
+            const helperIndex = helpersWithPositions.findIndex(
+              (h) => h.piece.id === selectedHelper.helperPiece.id
+            )
+            const maxRadius = cellSize * 1.2
+            const angleStep =
+              helpersWithPositions.length > 1 ? 360 / helpersWithPositions.length : 0
+            const angle = helperIndex * angleStep
+            const rad = (angle * Math.PI) / 180
+            const helperStartPos = {
+              x: targetPos.x + Math.cos(rad) * maxRadius,
+              y: targetPos.y + Math.sin(rad) * maxRadius,
+            }
+
             return (
               <NumberBondVisualization
                 moverPiece={selectedHelper.moverPiece}
@@ -1605,6 +1866,10 @@ function BoardDisplay() {
                 cellSize={cellSize}
                 onConfirm={handleNumberBondConfirm}
                 closing={closingDialog}
+                moverStartPos={moverStartPos}
+                helperStartPos={helperStartPos}
+                padding={padding}
+                gap={gap}
               />
             )
           }
@@ -1618,6 +1883,20 @@ function BoardDisplay() {
             helpersWithPositions.length > 0
           ) {
             console.log('[Render] Showing HelperSelectionOptions')
+
+            // Extract mover and target pieces for number bond preview
+            const moverPiece = Object.values(state.pieces).find(
+              (p) => p.id === captureTarget?.pieceId
+            )
+            const targetPiece = Object.values(state.pieces).find(
+              (p) => p.square === captureTarget?.to && !p.captured
+            )
+
+            if (!moverPiece || !targetPiece) {
+              console.log('[Render] Missing mover or target piece for helper selection')
+              return null
+            }
+
             return (
               <HelperSelectionOptions
                 helpers={helpersWithPositions}
@@ -1627,6 +1906,9 @@ function BoardDisplay() {
                 padding={padding}
                 onSelectHelper={handleHelperSelection}
                 closing={closingDialog}
+                moverPiece={moverPiece}
+                targetPiece={targetPiece}
+                relation={selectedRelation}
               />
             )
           }
@@ -1635,14 +1917,33 @@ function BoardDisplay() {
           if (captureDialogOpen && targetPos && !selectedRelation) {
             console.log('[Render] Showing CaptureRelationOptions')
             console.log('[Render] availableRelations:', availableRelations)
+
+            // Extract mover and target pieces for number bond preview
+            const moverPiece = Object.values(state.pieces).find(
+              (p) => p.id === captureTarget?.pieceId
+            )
+            const targetPiece = Object.values(state.pieces).find(
+              (p) => p.square === captureTarget?.to && !p.captured
+            )
+
+            if (!moverPiece || !targetPiece) {
+              console.log('[Render] Missing mover or target piece for relation options')
+              return null
+            }
+
             return (
               <CaptureRelationOptions
                 targetPos={targetPos}
                 cellSize={cellSize}
                 gap={gap}
+                padding={padding}
                 onSelectRelation={handleCaptureWithRelation}
                 closing={closingDialog}
                 availableRelations={availableRelations}
+                moverPiece={moverPiece}
+                targetPiece={targetPiece}
+                allPieces={activePieces}
+                findValidHelpers={findValidHelpers}
               />
             )
           }
