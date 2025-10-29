@@ -132,7 +132,11 @@ export function RithmomachiaProvider({ children }: { children: ReactNode }) {
     }
 
     if (localCount === 0) {
-      return { status: 'noLocalControl', activePlayerCount: activeCount, localPlayerCount: localCount }
+      return {
+        status: 'noLocalControl',
+        activePlayerCount: activeCount,
+        localPlayerCount: localCount,
+      }
     }
 
     return { status: 'ok', activePlayerCount: activeCount, localPlayerCount: localCount }

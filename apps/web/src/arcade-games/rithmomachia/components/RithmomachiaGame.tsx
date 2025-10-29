@@ -9,6 +9,8 @@ import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useFullscreen } from '@/contexts/FullscreenContext'
+import { useRoomData, useKickUser } from '@/hooks/useRoomData'
+import { useViewerId } from '@/hooks/useViewerId'
 import { css } from '../../../../styled-system/css'
 import { useRithmomachia } from '../Provider'
 import type { Piece, RelationKind, RithmomachiaConfig } from '../types'
@@ -198,6 +200,9 @@ export function RithmomachiaGame() {
 function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
   const { rosterStatus, whitePlayerId, blackPlayerId } = useRithmomachia()
   const { players: playerMap, activePlayers: activePlayerIds, addPlayer, setActive } = useGameMode()
+  const { roomData } = useRoomData()
+  const { data: viewerId } = useViewerId()
+  const { mutate: kickUser } = useKickUser()
 
   const playersArray = useMemo(() => {
     const list = Array.from(playerMap.values())
@@ -218,137 +223,229 @@ function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
     })
   }, [playerMap])
 
-  const inactiveLocalPlayer = useMemo(
-    () =>
-      playersArray.find(
-        (player) => player.isLocal !== false && !activePlayerIds.has(player.id)
-      ) || null,
-    [playersArray, activePlayerIds]
-  )
+  // Check if current user is room host
+  const isHost = useMemo(() => {
+    if (!roomData || !viewerId) return false
+    const currentMember = roomData.members.find((m) => m.userId === viewerId)
+    return currentMember?.isCreator === true
+  }, [roomData, viewerId])
 
-  const removableLocalPlayer = useMemo(
+  // Find all removable local players (active but not assigned to white/black)
+  const removableLocalPlayers = useMemo(
     () =>
-      playersArray.find(
+      playersArray.filter(
         (player) =>
           player.isLocal !== false &&
           activePlayerIds.has(player.id) &&
           player.id !== whitePlayerId &&
           player.id !== blackPlayerId
-      ) || null,
+      ),
     [playersArray, activePlayerIds, whitePlayerId, blackPlayerId]
   )
 
-  const quickFix = useMemo(() => {
-    if (rosterStatus.status === 'tooFew') {
-      if (inactiveLocalPlayer) {
-        return {
-          label: `Activate ${inactiveLocalPlayer.name}`,
-          action: () => setActive(inactiveLocalPlayer.id, true),
-        }
-      }
+  // Find all kickable remote players (active remote players, if we're host)
+  const kickablePlayers = useMemo(() => {
+    if (!isHost || !roomData) return []
 
-      return {
-        label: 'Create local player',
-        action: () => addPlayer({ isActive: true }),
-      }
-    }
+    return playersArray.filter(
+      (player) =>
+        player.isLocal === false && // Remote player
+        activePlayerIds.has(player.id) && // Active
+        player.id !== whitePlayerId && // Not assigned to white
+        player.id !== blackPlayerId // Not assigned to black
+    )
+  }, [isHost, roomData, playersArray, activePlayerIds, whitePlayerId, blackPlayerId])
 
-    if (rosterStatus.status === 'noLocalControl') {
-      if (inactiveLocalPlayer) {
-        return {
-          label: `Activate ${inactiveLocalPlayer.name}`,
-          action: () => setActive(inactiveLocalPlayer.id, true),
-        }
-      }
-
-      return null
-    }
-
-    if (rosterStatus.status === 'tooMany' && removableLocalPlayer) {
-      return {
-        label: `Deactivate ${removableLocalPlayer.name}`,
-        action: () => setActive(removableLocalPlayer.id, false),
-      }
-    }
-
-    return null
-  }, [rosterStatus.status, inactiveLocalPlayer, removableLocalPlayer, addPlayer, setActive])
+  const inactiveLocalPlayer = useMemo(
+    () =>
+      playersArray.find((player) => player.isLocal !== false && !activePlayerIds.has(player.id)) ||
+      null,
+    [playersArray, activePlayerIds]
+  )
 
   const heading = useMemo(() => {
-    switch (rosterStatus.status) {
-      case 'tooFew':
-        return 'Need two active players'
-      case 'tooMany':
-        return 'Too many active players'
-      case 'noLocalControl':
-        return 'Join the roster from this device'
-      default:
-        return ''
-    }
+    if (rosterStatus.status === 'tooFew') return 'Need two active players'
+    if (rosterStatus.status === 'tooMany') return 'Too many active players'
+    return ''
   }, [rosterStatus.status])
 
   const description = useMemo(() => {
-    switch (rosterStatus.status) {
-      case 'tooFew':
-        return phase === 'setup'
-          ? 'Rithmomachia needs exactly two active players before the match can begin. Use the roster controls in the game nav to activate or add another player.'
-          : 'Gameplay is paused until two players are active. Use the roster controls in the game nav to activate or add another player and resume the match.'
-      case 'tooMany':
-        return 'Rithmomachia supports only two active players. Use the game nav roster to deactivate extras so each color has exactly one seat.'
-      case 'noLocalControl':
-        return phase === 'setup'
-          ? 'All active seats belong to other devices. Activate a local player from the game nav if you want to start from this computer.'
-          : 'All active seats belong to other devices. Activate a local player in the game nav if you want to make moves from this computer.'
-      default:
-        return ''
+    if (rosterStatus.status === 'tooFew') {
+      return phase === 'setup'
+        ? 'Rithmomachia needs exactly two active players before the match can begin.'
+        : 'Gameplay is paused until two players are active.'
     }
+    if (rosterStatus.status === 'tooMany') {
+      return 'Rithmomachia supports only two active players. Deactivate or kick extras below:'
+    }
+    return ''
   }, [phase, rosterStatus.status])
 
-  if (rosterStatus.status === 'ok') {
+  // Don't show notice for 'ok' or 'noLocalControl' (observers are allowed)
+  if (rosterStatus.status === 'ok' || rosterStatus.status === 'noLocalControl') {
     return null
+  }
+
+  const handleKick = (player: any) => {
+    if (!roomData) return
+
+    // Find the user ID for this player
+    for (const [userId, players] of Object.entries(roomData.memberPlayers)) {
+      if (players.some((p) => p.id === player.id)) {
+        kickUser({ roomId: roomData.id, userId })
+        break
+      }
+    }
   }
 
   return (
     <div
       className={css({
-        width: '100%',
+        position: 'fixed',
+        top: '80px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '90%',
+        maxWidth: '800px',
         borderWidth: '2px',
         borderColor: 'amber.400',
         backgroundColor: 'amber.50',
         color: 'amber.900',
         p: '4',
         borderRadius: 'md',
-        display: 'flex',
-        flexDirection: { base: 'column', md: 'row' },
-        gap: '3',
-        justifyContent: 'space-between',
-        alignItems: { base: 'flex-start', md: 'center' },
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        zIndex: 1000,
       })}
     >
       <div>
         <h3 className={css({ fontWeight: 'bold', fontSize: 'lg' })}>{heading}</h3>
         <p className={css({ fontSize: 'sm', lineHeight: '1.5', mt: '1' })}>{description}</p>
       </div>
-      {quickFix && (
-        <button
-          type="button"
-          onClick={quickFix.action}
-          className={css({
-            px: '3',
-            py: '2',
-            bg: 'amber.500',
-            color: 'white',
-            borderRadius: 'md',
-            fontWeight: 'semibold',
-            fontSize: 'sm',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            _hover: { bg: 'amber.600' },
-            flexShrink: 0,
-          })}
-        >
-          {quickFix.label}
-        </button>
+
+      {/* Actions for tooMany status */}
+      {rosterStatus.status === 'tooMany' && (
+        <div className={css({ display: 'flex', flexDirection: 'column', gap: '2', mt: '3' })}>
+          {removableLocalPlayers.length > 0 && (
+            <div>
+              <p
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: 'semibold',
+                  mb: '1',
+                  color: 'amber.700',
+                })}
+              >
+                Your players:
+              </p>
+              <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
+                {removableLocalPlayers.map((player) => (
+                  <button
+                    key={player.id}
+                    type="button"
+                    onClick={() => setActive(player.id, false)}
+                    className={css({
+                      px: '3',
+                      py: '1.5',
+                      bg: 'amber.500',
+                      color: 'white',
+                      borderRadius: 'md',
+                      fontWeight: 'semibold',
+                      fontSize: 'sm',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      _hover: { bg: 'amber.600' },
+                    })}
+                  >
+                    Deactivate {player.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isHost && kickablePlayers.length > 0 && (
+            <div>
+              <p
+                className={css({
+                  fontSize: 'xs',
+                  fontWeight: 'semibold',
+                  mb: '1',
+                  color: 'red.700',
+                })}
+              >
+                Remote players (host can kick):
+              </p>
+              <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
+                {kickablePlayers.map((player) => (
+                  <button
+                    key={player.id}
+                    type="button"
+                    onClick={() => handleKick(player)}
+                    className={css({
+                      px: '3',
+                      py: '1.5',
+                      bg: 'red.500',
+                      color: 'white',
+                      borderRadius: 'md',
+                      fontWeight: 'semibold',
+                      fontSize: 'sm',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      _hover: { bg: 'red.600' },
+                    })}
+                  >
+                    Kick {player.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Actions for tooFew status */}
+      {rosterStatus.status === 'tooFew' && (
+        <div className={css({ display: 'flex', gap: '2', mt: '3', flexWrap: 'wrap' })}>
+          {inactiveLocalPlayer ? (
+            <button
+              type="button"
+              onClick={() => setActive(inactiveLocalPlayer.id, true)}
+              className={css({
+                px: '3',
+                py: '2',
+                bg: 'amber.500',
+                color: 'white',
+                borderRadius: 'md',
+                fontWeight: 'semibold',
+                fontSize: 'sm',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                _hover: { bg: 'amber.600' },
+              })}
+            >
+              Activate {inactiveLocalPlayer.name}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => addPlayer({ isActive: true })}
+              className={css({
+                px: '3',
+                py: '2',
+                bg: 'amber.500',
+                color: 'white',
+                borderRadius: 'md',
+                fontWeight: 'semibold',
+                fontSize: 'sm',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                _hover: { bg: 'amber.600' },
+              })}
+            >
+              Create local player
+            </button>
+          )}
+        </div>
       )}
     </div>
   )

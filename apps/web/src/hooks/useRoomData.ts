@@ -737,3 +737,34 @@ export function useUpdateGameConfig() {
     },
   })
 }
+
+/**
+ * Kick a user from the room (host only)
+ */
+async function kickUserFromRoomApi(params: { roomId: string; userId: string }): Promise<void> {
+  const response = await fetch(`/api/arcade/rooms/${params.roomId}/kick`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: params.userId }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Failed to kick user')
+  }
+}
+
+/**
+ * Hook: Kick a user from the room (host only)
+ */
+export function useKickUser() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: kickUserFromRoomApi,
+    onSuccess: () => {
+      // The socket will handle updating members, but invalidate just in case
+      queryClient.invalidateQueries({ queryKey: roomKeys.current() })
+    },
+  })
+}
