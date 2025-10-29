@@ -16,6 +16,8 @@
 import type { memoryQuizGame } from '@/arcade-games/memory-quiz'
 import type { matchingGame } from '@/arcade-games/matching'
 import type { cardSortingGame } from '@/arcade-games/card-sorting'
+import type { yjsDemoGame } from '@/arcade-games/yjs-demo'
+import type { rithmomachiaGame } from '@/arcade-games/rithmomachia'
 
 /**
  * Utility type: Extract config type from a game definition
@@ -44,6 +46,18 @@ export type MatchingGameConfig = InferGameConfig<typeof matchingGame>
  * INFERRED from cardSortingGame.defaultConfig
  */
 export type CardSortingGameConfig = InferGameConfig<typeof cardSortingGame>
+
+/**
+ * Configuration for yjs-demo (Yjs real-time sync demo) game
+ * INFERRED from yjsDemoGame.defaultConfig
+ */
+export type YjsDemoGameConfig = InferGameConfig<typeof yjsDemoGame>
+
+/**
+ * Configuration for rithmomachia (Battle of Numbers) game
+ * INFERRED from rithmomachiaGame.defaultConfig
+ */
+export type RithmomachiaGameConfig = InferGameConfig<typeof rithmomachiaGame>
 
 // ============================================================================
 // Legacy Games (Manual Type Definitions)
@@ -104,6 +118,8 @@ export type GameConfigByName = {
   'memory-quiz': MemoryQuizGameConfig
   matching: MatchingGameConfig
   'card-sorting': CardSortingGameConfig
+  'yjs-demo': YjsDemoGameConfig
+  rithmomachia: RithmomachiaGameConfig
 
   // Legacy games (manual types)
   'complement-race': ComplementRaceGameConfig
@@ -140,6 +156,20 @@ export const DEFAULT_CARD_SORTING_CONFIG: CardSortingGameConfig = {
   showNumbers: true,
   timeLimit: null,
   gameMode: 'solo',
+}
+
+export const DEFAULT_RITHMOMACHIA_CONFIG: RithmomachiaGameConfig = {
+  pointWinEnabled: false,
+  pointWinThreshold: 30,
+  repetitionRule: true,
+  fiftyMoveRule: true,
+  allowAnySetOnRecheck: true,
+  timeControlMs: null,
+}
+
+export const DEFAULT_YIJS_DEMO_CONFIG: YjsDemoGameConfig = {
+  gridSize: 8,
+  duration: 60,
 }
 
 export const DEFAULT_COMPLEMENT_RACE_CONFIG: ComplementRaceGameConfig = {

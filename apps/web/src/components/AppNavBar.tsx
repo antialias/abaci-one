@@ -504,7 +504,7 @@ function MinimalNav({
             pointerEvents: 'auto',
             maxWidth: 'calc(100% - 128px)', // Leave space for hamburger + margin
             whiteSpace: 'nowrap',
-            overflow: 'hidden',
+            overflow: 'visible',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.opacity = '1'

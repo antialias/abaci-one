@@ -184,7 +184,7 @@ export function GameContextNav({
           alignItems: 'center',
           width: 'auto',
           whiteSpace: 'nowrap',
-          overflow: 'hidden',
+          overflow: 'visible',
         }}
       >
         {/* Game Title Section - Always mounted, hidden when in room */}

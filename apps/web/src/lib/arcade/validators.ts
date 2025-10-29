@@ -14,6 +14,8 @@ import { matchingGameValidator } from '@/arcade-games/matching/Validator'
 import { memoryQuizGameValidator } from '@/arcade-games/memory-quiz/Validator'
 import { complementRaceValidator } from '@/arcade-games/complement-race/Validator'
 import { cardSortingValidator } from '@/arcade-games/card-sorting/Validator'
+import { yjsDemoValidator } from '@/arcade-games/yjs-demo/Validator'
+import { rithmomachiaValidator } from '@/arcade-games/rithmomachia/Validator'
 import type { GameValidator } from './validation/types'
 
 /**
@@ -26,6 +28,8 @@ export const validatorRegistry = {
   'memory-quiz': memoryQuizGameValidator,
   'complement-race': complementRaceValidator,
   'card-sorting': cardSortingValidator,
+  'yjs-demo': yjsDemoValidator,
+  rithmomachia: rithmomachiaValidator,
   // Add new games here - GameName type will auto-update
 } as const
 
@@ -97,4 +101,6 @@ export {
   memoryQuizGameValidator,
   complementRaceValidator,
   cardSortingValidator,
+  yjsDemoValidator,
+  rithmomachiaValidator,
 }

@@ -52,6 +52,18 @@ When asked to make ANY changes:
 
 **Never auto-commit or auto-push after making changes.**
 
+## Dev Server Management
+
+**CRITICAL: The user manages running the dev server, NOT Claude Code.**
+
+- ❌ DO NOT run `npm run dev` or `npm start`
+- ❌ DO NOT attempt to start, stop, or restart the dev server
+- ❌ DO NOT use background Bash processes for the dev server
+- ✅ Make code changes and let the user restart the server when needed
+- ✅ You may run other commands like `npm run type-check`, `npm run lint`, etc.
+
+The user will manually start/restart the dev server after you make changes.
+
 ## Details
 
 See `.claude/CODE_QUALITY_REGIME.md` for complete documentation.
@@ -324,3 +336,29 @@ When monitoring deployments to production (NAS at abaci.one):
    - Ask if manual NAS deployment action is needed
 
 **Common mistake:** Seeing https://abaci.one is online and assuming the new code is deployed. Always verify the commit SHA.
+
+## Rithmomachia Game
+
+When working on the Rithmomachia arcade game, refer to:
+
+- **`src/arcade-games/rithmomachia/SPEC.md`** - Complete game specification
+  - Official implementation spec v1
+  - Board dimensions (8×16), piece types, movement rules
+  - Mathematical capture relations (equality, sum, difference, multiple, divisor, product, ratio)
+  - Harmony (progression) victory conditions
+  - Data models, server protocol, validation logic
+  - Test cases and UI/UX suggestions
+
+**Quick Reference:**
+
+- **Board**: 8 rows × 16 columns (A-P, 1-8)
+- **Pieces per side**: 25 total (12 Circles, 6 Triangles, 6 Squares, 1 Pyramid)
+- **Movement**: Geometric (C=diagonal, T=orthogonal, S=queen, P=king)
+- **Captures**: Mathematical relations between piece values
+- **Victory**: Harmony (3+ pieces in enemy half forming arithmetic/geometric/harmonic progression), exhaustion, or optional point threshold
+
+**Critical Rules**:
+- All piece values are positive integers (use `number`, not `bigint` for game state serialization)
+- No jumping - pieces must have clear paths
+- Captures require valid mathematical relations (use helper pieces for sum/diff/product/ratio)
+- Pyramid pieces have 4 faces - face value must be chosen during relation checks

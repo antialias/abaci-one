@@ -15,6 +15,8 @@ import {
   DEFAULT_MEMORY_QUIZ_CONFIG,
   DEFAULT_COMPLEMENT_RACE_CONFIG,
   DEFAULT_CARD_SORTING_CONFIG,
+  DEFAULT_RITHMOMACHIA_CONFIG,
+  DEFAULT_YIJS_DEMO_CONFIG,
 } from './game-configs'
 
 // Lazy-load game registry to avoid loading React components on server
@@ -52,6 +54,10 @@ function getDefaultGameConfig(gameName: ExtendedGameName): GameConfigByName[Exte
       return DEFAULT_COMPLEMENT_RACE_CONFIG
     case 'card-sorting':
       return DEFAULT_CARD_SORTING_CONFIG
+    case 'rithmomachia':
+      return DEFAULT_RITHMOMACHIA_CONFIG
+    case 'yjs-demo':
+      return DEFAULT_YIJS_DEMO_CONFIG
     default:
       throw new Error(`Unknown game: ${gameName}`)
   }
