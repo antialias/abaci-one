@@ -23,7 +23,10 @@ export function checkEqual(a: number, b: number): RelationCheckResult {
       explanation: `${a} == ${b}`,
     }
   }
-  return { valid: false }
+  return {
+    valid: false,
+    explanation: `${a} ≠ ${b} (values are not equal)`,
+  }
 }
 
 /**
@@ -31,7 +34,7 @@ export function checkEqual(a: number, b: number): RelationCheckResult {
  * a % b == 0 (a is a multiple of b)
  */
 export function checkMultiple(a: number, b: number): RelationCheckResult {
-  if (b === 0) return { valid: false }
+  if (b === 0) return { valid: false, explanation: 'Cannot check multiple with zero' }
   if (a % b === 0) {
     return {
       valid: true,
@@ -39,7 +42,10 @@ export function checkMultiple(a: number, b: number): RelationCheckResult {
       explanation: `${a} is a multiple of ${b} (${a}÷${b}=${a / b})`,
     }
   }
-  return { valid: false }
+  return {
+    valid: false,
+    explanation: `${a} is not a multiple of ${b} (${a}÷${b}=${(a / b).toFixed(2)}...)`,
+  }
 }
 
 /**
@@ -47,7 +53,7 @@ export function checkMultiple(a: number, b: number): RelationCheckResult {
  * b % a == 0 (a is a divisor of b)
  */
 export function checkDivisor(a: number, b: number): RelationCheckResult {
-  if (a === 0) return { valid: false }
+  if (a === 0) return { valid: false, explanation: 'Cannot divide by zero' }
   if (b % a === 0) {
     return {
       valid: true,
@@ -55,7 +61,10 @@ export function checkDivisor(a: number, b: number): RelationCheckResult {
       explanation: `${a} divides ${b} (${b}÷${a}=${b / a})`,
     }
   }
-  return { valid: false }
+  return {
+    valid: false,
+    explanation: `${a} does not divide ${b} evenly (${b}÷${a}=${(b / a).toFixed(2)}...)`,
+  }
 }
 
 /**
@@ -77,7 +86,10 @@ export function checkSum(a: number, b: number, h: number): RelationCheckResult {
       explanation: `${b} + ${h} = ${a}`,
     }
   }
-  return { valid: false }
+  return {
+    valid: false,
+    explanation: `Helper ${h} doesn't satisfy sum (need ${Math.abs(b - a)} but got ${h})`,
+  }
 }
 
 /**
@@ -105,7 +117,10 @@ export function checkDiff(a: number, b: number, h: number): RelationCheckResult 
     }
   }
 
-  return { valid: false }
+  return {
+    valid: false,
+    explanation: `Helper ${h} doesn't satisfy difference (|${a}-${h}|=${diff1}, |${b}-${h}|=${diff2})`,
+  }
 }
 
 /**
@@ -127,7 +142,12 @@ export function checkProduct(a: number, b: number, h: number): RelationCheckResu
       explanation: `${b} × ${h} = ${a}`,
     }
   }
-  return { valid: false }
+  const needed1 = a === 0 ? 'undefined' : (b / a).toFixed(2)
+  const needed2 = b === 0 ? 'undefined' : (a / b).toFixed(2)
+  return {
+    valid: false,
+    explanation: `Helper ${h} doesn't satisfy product (need ${needed1} or ${needed2})`,
+  }
 }
 
 /**
@@ -136,7 +156,7 @@ export function checkProduct(a: number, b: number, h: number): RelationCheckResu
  * This is similar to PRODUCT but with explicit ratio semantics.
  */
 export function checkRatio(a: number, b: number, r: number): RelationCheckResult {
-  if (r === 0) return { valid: false }
+  if (r === 0) return { valid: false, explanation: 'Cannot use zero as ratio helper' }
 
   if (a * r === b) {
     return {
@@ -152,7 +172,12 @@ export function checkRatio(a: number, b: number, r: number): RelationCheckResult
       explanation: `${b} × ${r} = ${a}`,
     }
   }
-  return { valid: false }
+  const needed1 = a === 0 ? 'undefined' : (b / a).toFixed(2)
+  const needed2 = b === 0 ? 'undefined' : (a / b).toFixed(2)
+  return {
+    valid: false,
+    explanation: `Helper ${r} doesn't satisfy ratio (need ${needed1} or ${needed2})`,
+  }
 }
 
 /**
