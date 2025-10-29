@@ -1,16 +1,27 @@
 'use client'
 
+import * as Tooltip from '@radix-ui/react-tooltip'
+import { animated, to, useSpring } from '@react-spring/web'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { animated, useSpring } from '@react-spring/web'
-import * as Tooltip from '@radix-ui/react-tooltip'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
-import { useFullscreen } from '@/contexts/FullscreenContext'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useFullscreen } from '@/contexts/FullscreenContext'
 import { css } from '../../../../styled-system/css'
 import { useRithmomachia } from '../Provider'
-import type { RithmomachiaConfig, Piece } from '../types'
+import type { Piece, RelationKind, RithmomachiaConfig } from '../types'
+import { validateMove } from '../utils/pathValidator'
+import { getEffectiveValue } from '../utils/pieceSetup'
+import {
+  checkDiff,
+  checkDivisor,
+  checkEqual,
+  checkMultiple,
+  checkProduct,
+  checkRatio,
+  checkSum,
+} from '../utils/relationEngine'
 import { PieceRenderer } from './PieceRenderer'
 
 /**
@@ -438,6 +449,166 @@ function PlayingPhase() {
 }
 
 /**
+ * Single animated helper piece
+ */
+function AnimatedHelperPiece({
+  piece,
+  boardPos,
+  ringX,
+  ringY,
+  cellSize,
+  onSelectHelper,
+  closing,
+}: {
+  piece: Piece
+  boardPos: { x: number; y: number }
+  ringX: number
+  ringY: number
+  cellSize: number
+  onSelectHelper: (pieceId: string) => void
+  closing: boolean
+}) {
+  console.log(
+    `[AnimatedHelperPiece] Rendering piece ${piece.id}: boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY}), closing=${closing}`
+  )
+
+  // Animate from board position to ring position
+  const spring = useSpring({
+    from: { x: boardPos.x, y: boardPos.y, opacity: 0 },
+    x: closing ? boardPos.x : ringX,
+    y: closing ? boardPos.y : ringY,
+    opacity: closing ? 0 : 1,
+    config: { tension: 280, friction: 20 },
+  })
+
+  console.log(
+    `[AnimatedHelperPiece] Spring config for ${piece.id}: from=(${boardPos.x}, ${boardPos.y}), to=(${closing ? boardPos.x : ringX}, ${closing ? boardPos.y : ringY})`
+  )
+
+  const value = getEffectiveValue(piece)
+  if (value === undefined || value === null) return null
+
+  return (
+    <animated.g
+      style={{
+        opacity: spring.opacity,
+        cursor: 'pointer',
+      }}
+      transform={to([spring.x, spring.y], (x, y) => `translate(${x}, ${y})`)}
+      onClick={(e) => {
+        e.stopPropagation()
+        onSelectHelper(piece.id)
+      }}
+    >
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <g>
+            {/* Render the actual piece with a highlight ring */}
+            <circle
+              cx={0}
+              cy={0}
+              r={cellSize * 0.5}
+              fill="rgba(250, 204, 21, 0.3)"
+              stroke="rgba(250, 204, 21, 0.9)"
+              strokeWidth={4}
+            />
+            <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
+              <PieceRenderer type={piece.type} color={piece.color} value={value} size={cellSize} />
+            </g>
+          </g>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content asChild sideOffset={8}>
+            <div
+              style={{
+                background: 'rgba(0,0,0,0.95)',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 600,
+                zIndex: 10000,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                pointerEvents: 'none',
+              }}
+            >
+              Helper: {piece.type}({value}) at {piece.square}
+              <Tooltip.Arrow
+                style={{
+                  fill: 'rgba(0,0,0,0.95)',
+                }}
+              />
+            </div>
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </animated.g>
+  )
+}
+
+/**
+ * Helper piece selection - pieces fly from board to selection ring
+ */
+function HelperSelectionOptions({
+  helpers,
+  targetPos,
+  cellSize,
+  gap,
+  padding,
+  onSelectHelper,
+  closing = false,
+}: {
+  helpers: Array<{ piece: Piece; boardPos: { x: number; y: number } }>
+  targetPos: { x: number; y: number }
+  cellSize: number
+  gap: number
+  padding: number
+  onSelectHelper: (pieceId: string) => void
+  closing?: boolean
+}) {
+  const maxRadius = cellSize * 1.2
+  const angleStep = helpers.length > 1 ? 360 / helpers.length : 0
+
+  console.log('[HelperSelectionOptions] targetPos:', targetPos)
+  console.log('[HelperSelectionOptions] cellSize:', cellSize)
+  console.log('[HelperSelectionOptions] maxRadius:', maxRadius)
+  console.log('[HelperSelectionOptions] angleStep:', angleStep)
+  console.log('[HelperSelectionOptions] helpers.length:', helpers.length)
+
+  return (
+    <Tooltip.Provider delayDuration={0} disableHoverableContent>
+      <g>
+        {helpers.map(({ piece, boardPos }, index) => {
+          const angle = index * angleStep
+          const rad = (angle * Math.PI) / 180
+
+          // Target position in ring
+          const ringX = targetPos.x + Math.cos(rad) * maxRadius
+          const ringY = targetPos.y + Math.sin(rad) * maxRadius
+
+          console.log(
+            `[HelperSelectionOptions] piece ${piece.id} (${piece.square}): index=${index}, angle=${angle}°, boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY})`
+          )
+
+          return (
+            <AnimatedHelperPiece
+              key={piece.id}
+              piece={piece}
+              boardPos={boardPos}
+              ringX={ringX}
+              ringY={ringY}
+              cellSize={cellSize}
+              onSelectHelper={onSelectHelper}
+              closing={closing}
+            />
+          )
+        })}
+      </g>
+    </Tooltip.Provider>
+  )
+}
+
+/**
  * Animated floating capture relation options
  */
 function CaptureRelationOptions({
@@ -446,14 +617,16 @@ function CaptureRelationOptions({
   gap,
   onSelectRelation,
   closing = false,
+  availableRelations,
 }: {
   targetPos: { x: number; y: number }
   cellSize: number
   gap: number
-  onSelectRelation: (relation: string) => void
+  onSelectRelation: (relation: RelationKind) => void
   closing?: boolean
+  availableRelations: RelationKind[]
 }) {
-  const relations = [
+  const allRelations = [
     { relation: 'EQUAL', label: '=', tooltip: 'Equality: a = b', angle: 0, color: '#8b5cf6' },
     {
       relation: 'MULTIPLE',
@@ -499,6 +672,16 @@ function CaptureRelationOptions({
     },
   ]
 
+  // Filter to only available relations and redistribute angles evenly
+  const availableRelationDefs = allRelations.filter((r) =>
+    availableRelations.includes(r.relation as RelationKind)
+  )
+  const angleStep = availableRelationDefs.length > 1 ? 360 / availableRelationDefs.length : 0
+  const relations = availableRelationDefs.map((r, index) => ({
+    ...r,
+    angle: index * angleStep,
+  }))
+
   const maxRadius = cellSize * 1.2
   const buttonSize = 64
 
@@ -536,7 +719,7 @@ function CaptureRelationOptions({
                     <animated.button
                       onClick={(e) => {
                         e.stopPropagation()
-                        onSelectRelation(relation)
+                        onSelectRelation(relation as RelationKind)
                       }}
                       style={{
                         width: buttonSize,
@@ -668,6 +851,7 @@ function BoardDisplay() {
     pieceId: string
   } | null>(null)
   const [hoveredRelation, setHoveredRelation] = useState<string | null>(null)
+  const [selectedRelation, setSelectedRelation] = useState<RelationKind | null>(null)
 
   // Handle closing animation completion
   useEffect(() => {
@@ -676,6 +860,7 @@ function BoardDisplay() {
       const timer = setTimeout(() => {
         setCaptureDialogOpen(false)
         setCaptureTarget(null)
+        setSelectedRelation(null)
         setClosingDialog(false)
       }, 400)
       return () => clearTimeout(timer)
@@ -684,6 +869,7 @@ function BoardDisplay() {
 
   // Function to dismiss the dialog with animation
   const dismissDialog = () => {
+    setSelectedRelation(null)
     setClosingDialog(true)
   }
 
@@ -715,6 +901,15 @@ function BoardDisplay() {
       (p) => p.square === selectedSquare && !p.captured
     )
     if (selectedPiece) {
+      // Validate the move is legal before proceeding
+      const validation = validateMove(selectedPiece, selectedSquare, square, state.pieces)
+
+      if (!validation.valid) {
+        // Invalid move - silently ignore or show error
+        // TODO: Could show error message to user
+        return
+      }
+
       // If target square has an enemy piece, open capture dialog
       if (piece && piece.color !== playerColor) {
         setCaptureTarget({ from: selectedSquare, to: square, pieceId: selectedPiece.id })
@@ -727,26 +922,162 @@ function BoardDisplay() {
     }
   }
 
-  const handleCaptureWithRelation = (relation: string) => {
-    if (captureTarget) {
-      // Get target piece ID
+  // Find valid helper pieces for a given relation
+  const findValidHelpers = (
+    moverValue: number,
+    targetValue: number,
+    relation: RelationKind
+  ): Piece[] => {
+    if (!captureTarget) return []
+
+    const validHelpers: Piece[] = []
+    const friendlyPieces = Object.values(state.pieces).filter(
+      (p) => !p.captured && p.color === playerColor && p.id !== captureTarget.pieceId
+    )
+
+    for (const piece of friendlyPieces) {
+      const helperValue = getEffectiveValue(piece)
+      if (helperValue === undefined || helperValue === null) continue
+
+      let isValid = false
+      switch (relation) {
+        case 'SUM':
+          isValid = checkSum(moverValue, targetValue, helperValue).valid
+          break
+        case 'DIFF':
+          isValid = checkDiff(moverValue, targetValue, helperValue).valid
+          break
+        case 'PRODUCT':
+          isValid = checkProduct(moverValue, targetValue, helperValue).valid
+          break
+        case 'RATIO':
+          isValid = checkRatio(moverValue, targetValue, helperValue).valid
+          break
+      }
+
+      if (isValid) {
+        validHelpers.push(piece)
+      }
+    }
+
+    return validHelpers
+  }
+
+  // Find ALL available relations for this capture
+  const findAvailableRelations = (moverValue: number, targetValue: number): RelationKind[] => {
+    const available: RelationKind[] = []
+
+    // Check non-helper relations
+    if (checkEqual(moverValue, targetValue).valid) available.push('EQUAL')
+    if (checkMultiple(moverValue, targetValue).valid) available.push('MULTIPLE')
+    if (checkDivisor(moverValue, targetValue).valid) available.push('DIVISOR')
+
+    // Check helper relations - only include if at least one valid helper exists
+    if (findValidHelpers(moverValue, targetValue, 'SUM').length > 0) available.push('SUM')
+    if (findValidHelpers(moverValue, targetValue, 'DIFF').length > 0) available.push('DIFF')
+    if (findValidHelpers(moverValue, targetValue, 'PRODUCT').length > 0) available.push('PRODUCT')
+    if (findValidHelpers(moverValue, targetValue, 'RATIO').length > 0) available.push('RATIO')
+
+    console.log('[findAvailableRelations] available:', available)
+    return available
+  }
+
+  const handleCaptureWithRelation = (relation: RelationKind) => {
+    console.log('[handleCaptureWithRelation] Called with relation:', relation)
+    console.log('[handleCaptureWithRelation] captureTarget:', captureTarget)
+
+    if (!captureTarget) {
+      console.log('[handleCaptureWithRelation] No capture target, returning')
+      return
+    }
+
+    // Check if this relation requires a helper
+    const helperRelations: RelationKind[] = ['SUM', 'DIFF', 'PRODUCT', 'RATIO']
+    const needsHelper = helperRelations.includes(relation)
+    console.log('[handleCaptureWithRelation] needsHelper:', needsHelper)
+
+    if (needsHelper) {
+      // Get mover and target values
+      const moverPiece = Object.values(state.pieces).find(
+        (p) => p.id === captureTarget.pieceId && !p.captured
+      )
+      const targetPiece = Object.values(state.pieces).find(
+        (p) => p.square === captureTarget.to && !p.captured
+      )
+
+      console.log('[handleCaptureWithRelation] moverPiece:', moverPiece)
+      console.log('[handleCaptureWithRelation] targetPiece:', targetPiece)
+
+      if (!moverPiece || !targetPiece) {
+        console.log('[handleCaptureWithRelation] Missing piece, returning')
+        return
+      }
+
+      const moverValue = getEffectiveValue(moverPiece)
+      const targetValue = getEffectiveValue(targetPiece)
+
+      console.log('[handleCaptureWithRelation] moverValue:', moverValue)
+      console.log('[handleCaptureWithRelation] targetValue:', targetValue)
+
+      if (
+        moverValue === undefined ||
+        moverValue === null ||
+        targetValue === undefined ||
+        targetValue === null
+      ) {
+        console.log('[handleCaptureWithRelation] Undefined/null value, returning')
+        return
+      }
+
+      // Find valid helpers
+      const validHelpers = findValidHelpers(moverValue, targetValue, relation)
+      console.log('[handleCaptureWithRelation] validHelpers:', validHelpers)
+
+      if (validHelpers.length === 0) {
+        // No valid helpers - relation is impossible
+        console.log('[handleCaptureWithRelation] No valid helpers found')
+        return
+      }
+
+      // Set selected relation to show helper selection UI
+      console.log('[handleCaptureWithRelation] Setting selectedRelation to:', relation)
+      setSelectedRelation(relation)
+    } else {
+      console.log('[handleCaptureWithRelation] No helper needed, executing capture immediately')
+      // No helper needed - execute capture immediately
       const targetPiece = Object.values(state.pieces).find(
         (p) => p.square === captureTarget.to && !p.captured
       )
       if (!targetPiece) return
 
       const captureData = {
-        relation: relation as any, // RelationKind
+        relation,
         targetPieceId: targetPiece.id,
-        // TODO: For relations that require helpers (SUM, DIFF, PRODUCT, RATIO),
-        // we need to add UI for selecting helper pieces. For now, just try without helper.
       }
 
       makeMove(captureTarget.from, captureTarget.to, captureTarget.pieceId, undefined, captureData)
-      setCaptureDialogOpen(false)
-      setCaptureTarget(null)
+      dismissDialog()
       setSelectedSquare(null)
     }
+  }
+
+  const handleHelperSelection = (helperPieceId: string) => {
+    if (!captureTarget || !selectedRelation) return
+
+    const targetPiece = Object.values(state.pieces).find(
+      (p) => p.square === captureTarget.to && !p.captured
+    )
+    if (!targetPiece) return
+
+    const captureData = {
+      relation: selectedRelation,
+      targetPieceId: targetPiece.id,
+      helperPieceId,
+    }
+
+    makeMove(captureTarget.from, captureTarget.to, captureTarget.pieceId, undefined, captureData)
+    dismissDialog()
+    setSelectedSquare(null)
   }
 
   // Get all active pieces
@@ -786,18 +1117,111 @@ function BoardDisplay() {
     }
   }
 
-  // Calculate target square position for floating capture options
-  const getTargetSquarePosition = () => {
-    if (!captureTarget) return null
-    const file = captureTarget.to.charCodeAt(0) - 65
-    const rank = Number.parseInt(captureTarget.to.slice(1), 10)
+  // Calculate square position in SVG coordinates
+  const getSquarePosition = (square: string) => {
+    const file = square.charCodeAt(0) - 65
+    const rank = Number.parseInt(square.slice(1), 10)
     const row = 8 - rank
     const x = padding + file * (cellSize + gap) + cellSize / 2
     const y = padding + row * (cellSize + gap) + cellSize / 2
+    console.log(
+      `[getSquarePosition] square: ${square}, file: ${file}, rank: ${rank}, row: ${row}, x: ${x}, y: ${y}, cellSize: ${cellSize}, gap: ${gap}, padding: ${padding}`
+    )
     return { x, y }
   }
 
+  // Calculate target square position for floating capture options
+  const getTargetSquarePosition = () => {
+    if (!captureTarget) return null
+    const pos = getSquarePosition(captureTarget.to)
+    console.log('[getTargetSquarePosition] captureTarget.to:', captureTarget.to, 'position:', pos)
+    return pos
+  }
+
   const targetPos = getTargetSquarePosition()
+  if (targetPos) {
+    console.log('[BoardDisplay] targetPos calculated:', targetPos)
+  }
+
+  // Prepare helper data with board positions (if showing helpers)
+  const helpersWithPositions = (() => {
+    console.log('[helpersWithPositions] selectedRelation:', selectedRelation)
+    console.log('[helpersWithPositions] captureTarget:', captureTarget)
+
+    if (!selectedRelation || !captureTarget) {
+      console.log('[helpersWithPositions] No selectedRelation or captureTarget, returning empty')
+      return []
+    }
+
+    const moverPiece = Object.values(state.pieces).find(
+      (p) => p.id === captureTarget.pieceId && !p.captured
+    )
+    const targetPiece = Object.values(state.pieces).find(
+      (p) => p.square === captureTarget.to && !p.captured
+    )
+
+    console.log('[helpersWithPositions] moverPiece:', moverPiece)
+    console.log('[helpersWithPositions] targetPiece:', targetPiece)
+
+    if (!moverPiece || !targetPiece) {
+      console.log('[helpersWithPositions] Missing pieces, returning empty')
+      return []
+    }
+
+    const moverValue = getEffectiveValue(moverPiece)
+    const targetValue = getEffectiveValue(targetPiece)
+
+    console.log('[helpersWithPositions] moverValue:', moverValue)
+    console.log('[helpersWithPositions] targetValue:', targetValue)
+
+    if (
+      moverValue === undefined ||
+      moverValue === null ||
+      targetValue === undefined ||
+      targetValue === null
+    ) {
+      console.log('[helpersWithPositions] Undefined/null values, returning empty')
+      return []
+    }
+
+    const validHelpers = findValidHelpers(moverValue, targetValue, selectedRelation)
+    console.log('[helpersWithPositions] validHelpers found:', validHelpers.length)
+
+    const helpersWithPos = validHelpers.map((piece) => ({
+      piece,
+      boardPos: getSquarePosition(piece.square),
+    }))
+    console.log('[helpersWithPositions] helpersWithPos:', helpersWithPos)
+
+    return helpersWithPos
+  })()
+
+  // Calculate available relations for this capture
+  const availableRelations = (() => {
+    if (!captureTarget) return []
+
+    const moverPiece = Object.values(state.pieces).find(
+      (p) => p.id === captureTarget.pieceId && !p.captured
+    )
+    const targetPiece = Object.values(state.pieces).find(
+      (p) => p.square === captureTarget.to && !p.captured
+    )
+
+    if (!moverPiece || !targetPiece) return []
+
+    const moverValue = getEffectiveValue(moverPiece)
+    const targetValue = getEffectiveValue(targetPiece)
+
+    if (
+      moverValue === undefined ||
+      moverValue === null ||
+      targetValue === undefined ||
+      targetValue === null
+    )
+      return []
+
+    return findAvailableRelations(moverValue, targetValue)
+  })()
 
   return (
     <div
@@ -856,16 +1280,52 @@ function BoardDisplay() {
           <SvgPiece key={piece.id} piece={piece} cellSize={cellSize + gap} padding={padding} />
         ))}
 
-        {/* Floating capture relation options */}
-        {captureDialogOpen && targetPos && (
-          <CaptureRelationOptions
-            targetPos={targetPos}
-            cellSize={cellSize}
-            gap={gap}
-            onSelectRelation={handleCaptureWithRelation}
-            closing={closingDialog}
-          />
-        )}
+        {/* Floating capture relation options or helper selection */}
+        {(() => {
+          console.log('[Render] captureDialogOpen:', captureDialogOpen)
+          console.log('[Render] targetPos:', targetPos)
+          console.log('[Render] selectedRelation:', selectedRelation)
+          console.log('[Render] helpersWithPositions.length:', helpersWithPositions.length)
+          console.log('[Render] closingDialog:', closingDialog)
+
+          if (captureDialogOpen && targetPos && !selectedRelation) {
+            console.log('[Render] Showing CaptureRelationOptions')
+            console.log('[Render] availableRelations:', availableRelations)
+            return (
+              <CaptureRelationOptions
+                targetPos={targetPos}
+                cellSize={cellSize}
+                gap={gap}
+                onSelectRelation={handleCaptureWithRelation}
+                closing={closingDialog}
+                availableRelations={availableRelations}
+              />
+            )
+          }
+
+          if (
+            captureDialogOpen &&
+            targetPos &&
+            selectedRelation &&
+            helpersWithPositions.length > 0
+          ) {
+            console.log('[Render] Showing HelperSelectionOptions')
+            return (
+              <HelperSelectionOptions
+                helpers={helpersWithPositions}
+                targetPos={targetPos}
+                cellSize={cellSize}
+                gap={gap}
+                padding={padding}
+                onSelectHelper={handleHelperSelection}
+                closing={closingDialog}
+              />
+            )
+          }
+
+          console.log('[Render] Showing nothing')
+          return null
+        })()}
       </svg>
     </div>
   )
