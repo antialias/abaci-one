@@ -21,6 +21,14 @@ import type {
 /**
  * Context value for Rithmomachia game.
  */
+export type RithmomachiaRosterStatus =
+  | { status: 'ok'; activePlayerCount: number; localPlayerCount: number }
+  | {
+      status: 'tooFew' | 'tooMany' | 'noLocalControl'
+      activePlayerCount: number
+      localPlayerCount: number
+    }
+
 interface RithmomachiaContextValue {
   // State
   state: RithmomachiaState
@@ -30,6 +38,11 @@ interface RithmomachiaContextValue {
   viewerId: string | null
   playerColor: Color | null
   isMyTurn: boolean
+  rosterStatus: RithmomachiaRosterStatus
+  localActivePlayerIds: string[]
+  whitePlayerId: string | null
+  blackPlayerId: string | null
+  localTurnPlayerId: string | null
 
   // Game actions
   startGame: () => void
@@ -92,13 +105,38 @@ export function RithmomachiaProvider({ children }: { children: ReactNode }) {
   const { activePlayers: activePlayerIds, players } = useGameMode()
   const { mutate: updateGameConfig } = useUpdateGameConfig()
 
-  // Get local player ID
-  const localPlayerId = useMemo(() => {
-    return Array.from(activePlayerIds).find((id) => {
-      const player = players.get(id)
-      return player?.isLocal !== false
-    })
-  }, [activePlayerIds, players])
+  const activePlayerList = useMemo(() => Array.from(activePlayerIds), [activePlayerIds])
+
+  const whitePlayerId = activePlayerList[0] ?? null
+  const blackPlayerId = activePlayerList[1] ?? null
+
+  const localActivePlayerIds = useMemo(
+    () =>
+      activePlayerList.filter((id) => {
+        const player = players.get(id)
+        return player?.isLocal !== false
+      }),
+    [activePlayerList, players]
+  )
+
+  const rosterStatus = useMemo<RithmomachiaRosterStatus>(() => {
+    const activeCount = activePlayerList.length
+    const localCount = localActivePlayerIds.length
+
+    if (activeCount < 2) {
+      return { status: 'tooFew', activePlayerCount: activeCount, localPlayerCount: localCount }
+    }
+
+    if (activeCount > 2) {
+      return { status: 'tooMany', activePlayerCount: activeCount, localPlayerCount: localCount }
+    }
+
+    if (localCount === 0) {
+      return { status: 'noLocalControl', activePlayerCount: activeCount, localPlayerCount: localCount }
+    }
+
+    return { status: 'ok', activePlayerCount: activeCount, localPlayerCount: localCount }
+  }, [activePlayerList, localActivePlayerIds])
 
   // Merge saved config from room data
   const mergedInitialState = useMemo(() => {
@@ -129,33 +167,46 @@ export function RithmomachiaProvider({ children }: { children: ReactNode }) {
     applyMove: (state) => state, // No optimistic updates for v1 - rely on server validation
   })
 
-  // Determine player color (simplified: first player is White, second is Black)
+  const localTurnPlayerId = useMemo(() => {
+    const currentId = state.turn === 'W' ? whitePlayerId : blackPlayerId
+    if (!currentId) return null
+    return localActivePlayerIds.includes(currentId) ? currentId : null
+  }, [state.turn, whitePlayerId, blackPlayerId, localActivePlayerIds])
+
   const playerColor = useMemo((): Color | null => {
-    if (!localPlayerId) return null
-    const playerIndex = Array.from(activePlayerIds).indexOf(localPlayerId)
-    return playerIndex === 0 ? 'W' : 'B'
-  }, [localPlayerId, activePlayerIds])
+    if (localTurnPlayerId) {
+      return state.turn
+    }
+
+    if (localActivePlayerIds.length === 1) {
+      const soleLocalId = localActivePlayerIds[0]
+      if (soleLocalId === whitePlayerId) return 'W'
+      if (soleLocalId === blackPlayerId) return 'B'
+    }
+
+    return null
+  }, [localTurnPlayerId, localActivePlayerIds, whitePlayerId, blackPlayerId, state.turn])
 
   // Check if it's my turn
   const isMyTurn = useMemo(() => {
-    if (!playerColor) return false
-    return state.turn === playerColor
-  }, [state.turn, playerColor])
+    if (rosterStatus.status !== 'ok') return false
+    return localTurnPlayerId !== null
+  }, [rosterStatus.status, localTurnPlayerId])
 
   // Action: Start game
   const startGame = useCallback(() => {
-    if (!viewerId || !localPlayerId) return
+    if (!viewerId || !localTurnPlayerId) return
 
     sendMove({
       type: 'START_GAME',
-      playerId: localPlayerId,
+      playerId: localTurnPlayerId,
       userId: viewerId,
       data: {
         playerColor: playerColor || 'W',
-        activePlayers: Array.from(activePlayerIds),
+        activePlayers: activePlayerList,
       },
     })
-  }, [sendMove, viewerId, localPlayerId, playerColor, activePlayerIds])
+  }, [sendMove, viewerId, localTurnPlayerId, playerColor, activePlayerList])
 
   // Action: Make a move
   const makeMove = useCallback(
@@ -167,11 +218,11 @@ export function RithmomachiaProvider({ children }: { children: ReactNode }) {
       capture?: CaptureData,
       ambush?: AmbushContext
     ) => {
-      if (!viewerId || !localPlayerId) return
+      if (!viewerId || !localTurnPlayerId) return
 
       sendMove({
         type: 'MOVE',
-        playerId: localPlayerId,
+        playerId: localTurnPlayerId,
         userId: viewerId,
         data: {
           from,
@@ -189,17 +240,17 @@ export function RithmomachiaProvider({ children }: { children: ReactNode }) {
         },
       })
     },
-    [sendMove, viewerId, localPlayerId]
+    [sendMove, viewerId, localTurnPlayerId]
   )
 
   // Action: Declare harmony
   const declareHarmony = useCallback(
     (pieceIds: string[], harmonyType: HarmonyType, params: Record<string, string>) => {
-      if (!viewerId || !localPlayerId) return
+      if (!viewerId || !localTurnPlayerId) return
 
       sendMove({
         type: 'DECLARE_HARMONY',
-        playerId: localPlayerId,
+        playerId: localTurnPlayerId,
         userId: viewerId,
         data: {
           pieceIds,
@@ -208,68 +259,68 @@ export function RithmomachiaProvider({ children }: { children: ReactNode }) {
         },
       })
     },
-    [sendMove, viewerId, localPlayerId]
+    [sendMove, viewerId, localTurnPlayerId]
   )
 
   // Action: Resign
   const resign = useCallback(() => {
-    if (!viewerId || !localPlayerId) return
+    if (!viewerId || !localTurnPlayerId) return
 
     sendMove({
       type: 'RESIGN',
-      playerId: localPlayerId,
+      playerId: localTurnPlayerId,
       userId: viewerId,
       data: {},
     })
-  }, [sendMove, viewerId, localPlayerId])
+  }, [sendMove, viewerId, localTurnPlayerId])
 
   // Action: Offer draw
   const offerDraw = useCallback(() => {
-    if (!viewerId || !localPlayerId) return
+    if (!viewerId || !localTurnPlayerId) return
 
     sendMove({
       type: 'OFFER_DRAW',
-      playerId: localPlayerId,
+      playerId: localTurnPlayerId,
       userId: viewerId,
       data: {},
     })
-  }, [sendMove, viewerId, localPlayerId])
+  }, [sendMove, viewerId, localTurnPlayerId])
 
   // Action: Accept draw
   const acceptDraw = useCallback(() => {
-    if (!viewerId || !localPlayerId) return
+    if (!viewerId || !localTurnPlayerId) return
 
     sendMove({
       type: 'ACCEPT_DRAW',
-      playerId: localPlayerId,
+      playerId: localTurnPlayerId,
       userId: viewerId,
       data: {},
     })
-  }, [sendMove, viewerId, localPlayerId])
+  }, [sendMove, viewerId, localTurnPlayerId])
 
   // Action: Claim repetition
   const claimRepetition = useCallback(() => {
-    if (!viewerId || !localPlayerId) return
+    if (!viewerId || !localTurnPlayerId) return
 
     sendMove({
       type: 'CLAIM_REPETITION',
-      playerId: localPlayerId,
+      playerId: localTurnPlayerId,
       userId: viewerId,
       data: {},
     })
-  }, [sendMove, viewerId, localPlayerId])
+  }, [sendMove, viewerId, localTurnPlayerId])
 
   // Action: Claim fifty-move rule
   const claimFiftyMove = useCallback(() => {
-    if (!viewerId || !localPlayerId) return
+    if (!viewerId || !localTurnPlayerId) return
 
     sendMove({
       type: 'CLAIM_FIFTY_MOVE',
-      playerId: localPlayerId,
+      playerId: localTurnPlayerId,
       userId: viewerId,
       data: {},
     })
-  }, [sendMove, viewerId, localPlayerId])
+  }, [sendMove, viewerId, localTurnPlayerId])
 
   // Action: Set config
   const setConfig = useCallback(
@@ -338,6 +389,11 @@ export function RithmomachiaProvider({ children }: { children: ReactNode }) {
     viewerId: viewerId ?? null,
     playerColor,
     isMyTurn,
+    rosterStatus,
+    localActivePlayerIds,
+    whitePlayerId,
+    blackPlayerId,
+    localTurnPlayerId,
     startGame,
     makeMove,
     declareHarmony,

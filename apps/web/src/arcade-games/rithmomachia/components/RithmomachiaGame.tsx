@@ -3,10 +3,11 @@
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { animated, to, useSpring } from '@react-spring/web'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useGameMode } from '@/contexts/GameModeContext'
 import { useFullscreen } from '@/contexts/FullscreenContext'
 import { css } from '../../../../styled-system/css'
 import { useRithmomachia } from '../Provider'
@@ -194,11 +195,171 @@ export function RithmomachiaGame() {
   )
 }
 
+function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
+  const { rosterStatus, whitePlayerId, blackPlayerId } = useRithmomachia()
+  const { players: playerMap, activePlayers: activePlayerIds, addPlayer, setActive } = useGameMode()
+
+  const playersArray = useMemo(() => {
+    const list = Array.from(playerMap.values())
+    return list.sort((a, b) => {
+      const aTime =
+        typeof a.createdAt === 'number'
+          ? a.createdAt
+          : a.createdAt instanceof Date
+            ? a.createdAt.getTime()
+            : 0
+      const bTime =
+        typeof b.createdAt === 'number'
+          ? b.createdAt
+          : b.createdAt instanceof Date
+            ? b.createdAt.getTime()
+            : 0
+      return aTime - bTime
+    })
+  }, [playerMap])
+
+  const inactiveLocalPlayer = useMemo(
+    () =>
+      playersArray.find(
+        (player) => player.isLocal !== false && !activePlayerIds.has(player.id)
+      ) || null,
+    [playersArray, activePlayerIds]
+  )
+
+  const removableLocalPlayer = useMemo(
+    () =>
+      playersArray.find(
+        (player) =>
+          player.isLocal !== false &&
+          activePlayerIds.has(player.id) &&
+          player.id !== whitePlayerId &&
+          player.id !== blackPlayerId
+      ) || null,
+    [playersArray, activePlayerIds, whitePlayerId, blackPlayerId]
+  )
+
+  const quickFix = useMemo(() => {
+    if (rosterStatus.status === 'tooFew') {
+      if (inactiveLocalPlayer) {
+        return {
+          label: `Activate ${inactiveLocalPlayer.name}`,
+          action: () => setActive(inactiveLocalPlayer.id, true),
+        }
+      }
+
+      return {
+        label: 'Create local player',
+        action: () => addPlayer({ isActive: true }),
+      }
+    }
+
+    if (rosterStatus.status === 'noLocalControl') {
+      if (inactiveLocalPlayer) {
+        return {
+          label: `Activate ${inactiveLocalPlayer.name}`,
+          action: () => setActive(inactiveLocalPlayer.id, true),
+        }
+      }
+
+      return null
+    }
+
+    if (rosterStatus.status === 'tooMany' && removableLocalPlayer) {
+      return {
+        label: `Deactivate ${removableLocalPlayer.name}`,
+        action: () => setActive(removableLocalPlayer.id, false),
+      }
+    }
+
+    return null
+  }, [rosterStatus.status, inactiveLocalPlayer, removableLocalPlayer, addPlayer, setActive])
+
+  const heading = useMemo(() => {
+    switch (rosterStatus.status) {
+      case 'tooFew':
+        return 'Need two active players'
+      case 'tooMany':
+        return 'Too many active players'
+      case 'noLocalControl':
+        return 'Join the roster from this device'
+      default:
+        return ''
+    }
+  }, [rosterStatus.status])
+
+  const description = useMemo(() => {
+    switch (rosterStatus.status) {
+      case 'tooFew':
+        return phase === 'setup'
+          ? 'Rithmomachia needs exactly two active players before the match can begin. Use the roster controls in the game nav to activate or add another player.'
+          : 'Gameplay is paused until two players are active. Use the roster controls in the game nav to activate or add another player and resume the match.'
+      case 'tooMany':
+        return 'Rithmomachia supports only two active players. Use the game nav roster to deactivate extras so each color has exactly one seat.'
+      case 'noLocalControl':
+        return phase === 'setup'
+          ? 'All active seats belong to other devices. Activate a local player from the game nav if you want to start from this computer.'
+          : 'All active seats belong to other devices. Activate a local player in the game nav if you want to make moves from this computer.'
+      default:
+        return ''
+    }
+  }, [phase, rosterStatus.status])
+
+  if (rosterStatus.status === 'ok') {
+    return null
+  }
+
+  return (
+    <div
+      className={css({
+        width: '100%',
+        borderWidth: '2px',
+        borderColor: 'amber.400',
+        backgroundColor: 'amber.50',
+        color: 'amber.900',
+        p: '4',
+        borderRadius: 'md',
+        display: 'flex',
+        flexDirection: { base: 'column', md: 'row' },
+        gap: '3',
+        justifyContent: 'space-between',
+        alignItems: { base: 'flex-start', md: 'center' },
+      })}
+    >
+      <div>
+        <h3 className={css({ fontWeight: 'bold', fontSize: 'lg' })}>{heading}</h3>
+        <p className={css({ fontSize: 'sm', lineHeight: '1.5', mt: '1' })}>{description}</p>
+      </div>
+      {quickFix && (
+        <button
+          type="button"
+          onClick={quickFix.action}
+          className={css({
+            px: '3',
+            py: '2',
+            bg: 'amber.500',
+            color: 'white',
+            borderRadius: 'md',
+            fontWeight: 'semibold',
+            fontSize: 'sm',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            _hover: { bg: 'amber.600' },
+            flexShrink: 0,
+          })}
+        >
+          {quickFix.label}
+        </button>
+      )}
+    </div>
+  )
+}
+
 /**
  * Setup phase: game configuration and start button.
  */
 function SetupPhase() {
-  const { state, startGame, setConfig, lastError, clearError } = useRithmomachia()
+  const { state, startGame, setConfig, lastError, clearError, rosterStatus } = useRithmomachia()
+  const startDisabled = rosterStatus.status !== 'ok'
 
   const toggleSetting = (key: keyof typeof state) => {
     if (typeof state[key] === 'boolean') {
@@ -264,6 +425,8 @@ function SetupPhase() {
           achieving harmony (a mathematical progression) in enemy territory!
         </p>
       </div>
+
+      <RosterStatusNotice phase="setup" />
 
       {/* Game Settings */}
       <div
@@ -426,21 +589,25 @@ function SetupPhase() {
       <button
         type="button"
         onClick={startGame}
+        disabled={startDisabled}
         className={css({
           px: '8',
           py: '4',
-          bg: 'purple.600',
+          bg: startDisabled ? 'gray.400' : 'purple.600',
           color: 'white',
           borderRadius: 'lg',
           fontSize: 'lg',
           fontWeight: 'bold',
-          cursor: 'pointer',
+          cursor: startDisabled ? 'not-allowed' : 'pointer',
+          opacity: startDisabled ? 0.7 : 1,
           transition: 'all 0.2s ease',
-          _hover: {
-            bg: 'purple.700',
-            transform: 'translateY(-2px)',
-            boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
-          },
+          _hover: startDisabled
+            ? undefined
+            : {
+                bg: 'purple.700',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
+              },
         })}
       >
         Start Game
@@ -453,7 +620,7 @@ function SetupPhase() {
  * Playing phase: main game board and controls.
  */
 function PlayingPhase() {
-  const { state, isMyTurn, lastError, clearError } = useRithmomachia()
+  const { state, isMyTurn, lastError, clearError, rosterStatus } = useRithmomachia()
 
   return (
     <div
@@ -498,6 +665,8 @@ function PlayingPhase() {
         </div>
       )}
 
+      <RosterStatusNotice phase="playing" />
+
       <div
         className={css({
           display: 'flex',
@@ -527,6 +696,21 @@ function PlayingPhase() {
             })}
           >
             Your Turn
+          </div>
+        )}
+        {!isMyTurn && rosterStatus.status === 'ok' && (
+          <div
+            className={css({
+              px: '3',
+              py: '1',
+              bg: 'gray.200',
+              color: 'gray.700',
+              borderRadius: 'md',
+              fontSize: 'sm',
+              fontWeight: 'semibold',
+            })}
+          >
+            Waiting for {state.turn === 'W' ? 'White' : 'Black'}
           </div>
         )}
       </div>
