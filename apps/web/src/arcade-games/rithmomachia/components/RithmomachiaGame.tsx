@@ -7,6 +7,7 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { useFullscreen } from '@/contexts/FullscreenContext'
+import { Z_INDEX } from '@/constants/zIndex'
 import { css } from '../../../../styled-system/css'
 import { useRithmomachia } from '../Provider'
 import type { RithmomachiaConfig, Piece } from '../types'
@@ -444,11 +445,13 @@ function CaptureRelationOptions({
   cellSize,
   gap,
   onSelectRelation,
+  closing = false,
 }: {
   targetPos: { x: number; y: number }
   cellSize: number
   gap: number
   onSelectRelation: (relation: string) => void
+  closing?: boolean
 }) {
   const relations = [
     { relation: 'EQUAL', label: '=', tooltip: 'Equality: a = b', angle: 0, color: '#8b5cf6' },
@@ -499,10 +502,11 @@ function CaptureRelationOptions({
   const maxRadius = cellSize * 1.2
   const buttonSize = 64
 
-  // Animate all buttons simultaneously (not trail)
+  // Animate all buttons simultaneously - reverse animation when closing
   const spring = useSpring({
     from: { radius: 0, opacity: 0 },
-    to: { radius: maxRadius, opacity: 0.85 },
+    radius: closing ? 0 : maxRadius,
+    opacity: closing ? 0 : 0.85,
     config: { tension: 280, friction: 20 },
   })
 
@@ -548,17 +552,15 @@ function CaptureRelationOptions({
                         alignItems: 'center',
                         justifyContent: 'center',
                         opacity: spring.opacity,
-                        transition: 'all 0.15s ease',
+                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                         textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.opacity = '1'
                         e.currentTarget.style.transform = 'scale(1.15)'
                         e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.4)'
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.opacity = '0.85'
                         e.currentTarget.style.transform = 'scale(1)'
                         e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
                       }}
@@ -659,12 +661,31 @@ function BoardDisplay() {
   const { state, makeMove, playerColor, isMyTurn } = useRithmomachia()
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
   const [captureDialogOpen, setCaptureDialogOpen] = useState(false)
+  const [closingDialog, setClosingDialog] = useState(false)
   const [captureTarget, setCaptureTarget] = useState<{
     from: string
     to: string
     pieceId: string
   } | null>(null)
   const [hoveredRelation, setHoveredRelation] = useState<string | null>(null)
+
+  // Handle closing animation completion
+  useEffect(() => {
+    if (closingDialog) {
+      // Wait for animation to complete (400ms allows spring to fully settle)
+      const timer = setTimeout(() => {
+        setCaptureDialogOpen(false)
+        setCaptureTarget(null)
+        setClosingDialog(false)
+      }, 400)
+      return () => clearTimeout(timer)
+    }
+  }, [closingDialog])
+
+  // Function to dismiss the dialog with animation
+  const dismissDialog = () => {
+    setClosingDialog(true)
+  }
 
   const handleSquareClick = (square: string, piece: (typeof state.pieces)[string] | undefined) => {
     if (!isMyTurn) return
@@ -743,10 +764,9 @@ function BoardDisplay() {
   const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!isMyTurn) return
 
-    // If capture dialog is open, dismiss it on any click (buttons have stopPropagation)
-    if (captureDialogOpen) {
-      setCaptureDialogOpen(false)
-      setCaptureTarget(null)
+    // If capture dialog is open, dismiss it with animation on any click (buttons have stopPropagation)
+    if (captureDialogOpen && !closingDialog) {
+      dismissDialog()
       return
     }
 
@@ -785,6 +805,8 @@ function BoardDisplay() {
         width: '100%',
         maxWidth: '1200px',
         margin: '0 auto',
+        position: 'relative',
+        zIndex: Z_INDEX.GAME.OVERLAY,
       })}
     >
       {/* Unified SVG Board */}
@@ -841,6 +863,7 @@ function BoardDisplay() {
             cellSize={cellSize}
             gap={gap}
             onSelectRelation={handleCaptureWithRelation}
+            closing={closingDialog}
           />
         )}
       </svg>
