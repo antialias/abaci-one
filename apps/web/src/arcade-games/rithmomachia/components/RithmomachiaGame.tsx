@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { animated, useSpring } from '@react-spring/web'
+import * as Tooltip from '@radix-ui/react-tooltip'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { useFullscreen } from '@/contexts/FullscreenContext'
@@ -436,50 +437,218 @@ function PlayingPhase() {
 }
 
 /**
- * Animated piece component that smoothly transitions between squares.
+ * Animated floating capture relation options
  */
-function AnimatedPiece({
-  piece,
-  gridSize,
+function CaptureRelationOptions({
+  targetPos,
+  cellSize,
+  gap,
+  onSelectRelation,
 }: {
-  piece: Piece
-  gridSize: { width: number; height: number }
+  targetPos: { x: number; y: number }
+  cellSize: number
+  gap: number
+  onSelectRelation: (relation: string) => void
 }) {
-  // Parse square to get column and row
-  const file = piece.square.charCodeAt(0) - 65 // A=0, B=1, etc.
-  const rank = Number.parseInt(piece.square.slice(1), 10) // 1-8
+  const relations = [
+    { relation: 'EQUAL', label: '=', tooltip: 'Equality: a = b', angle: 0, color: '#8b5cf6' },
+    {
+      relation: 'MULTIPLE',
+      label: '×n',
+      tooltip: 'Multiple: b is multiple of a',
+      angle: 51.4,
+      color: '#a855f7',
+    },
+    {
+      relation: 'DIVISOR',
+      label: '÷',
+      tooltip: 'Divisor: a divides b',
+      angle: 102.8,
+      color: '#c084fc',
+    },
+    {
+      relation: 'SUM',
+      label: '+',
+      tooltip: 'Sum: a + h = b (helper)',
+      angle: 154.3,
+      color: '#3b82f6',
+    },
+    {
+      relation: 'DIFF',
+      label: '−',
+      tooltip: 'Difference: |a - h| = b (helper)',
+      angle: 205.7,
+      color: '#06b6d4',
+    },
+    {
+      relation: 'PRODUCT',
+      label: '×',
+      tooltip: 'Product: a × h = b (helper)',
+      angle: 257.1,
+      color: '#10b981',
+    },
+    {
+      relation: 'RATIO',
+      label: '÷÷',
+      tooltip: 'Ratio: a/h = b/h (helper)',
+      angle: 308.6,
+      color: '#f59e0b',
+    },
+  ]
 
-  // Calculate position (inverted rank for display: rank 8 = row 0)
-  const col = file
-  const row = 8 - rank
+  const maxRadius = cellSize * 1.2
+  const buttonSize = 64
 
-  // Animate position changes
+  // Animate all buttons simultaneously (not trail)
   const spring = useSpring({
-    left: `${(col / 16) * 100}%`,
-    top: `${(row / 8) * 100}%`,
-    config: { tension: 280, friction: 60 },
+    from: { radius: 0, opacity: 0 },
+    to: { radius: maxRadius, opacity: 0.85 },
+    config: { tension: 280, friction: 20 },
   })
 
   return (
-    <animated.div
-      style={{
-        ...spring,
-        position: 'absolute',
-        width: `${100 / 16}%`,
-        height: `${100 / 8}%`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        pointerEvents: 'none',
-      }}
-    >
-      <PieceRenderer
-        type={piece.type}
-        color={piece.color}
-        value={piece.type === 'P' ? piece.pyramidFaces?.[0] || 0 : piece.value || 0}
-        size={56}
-      />
-    </animated.div>
+    <Tooltip.Provider delayDuration={0} disableHoverableContent>
+      <g>
+        {relations.map(({ relation, label, tooltip, angle, color }) => {
+          const rad = (angle * Math.PI) / 180
+
+          return (
+            <animated.g
+              key={relation}
+              transform={spring.radius.to(
+                (r) =>
+                  `translate(${targetPos.x + Math.cos(rad) * r}, ${targetPos.y + Math.sin(rad) * r})`
+              )}
+            >
+              <foreignObject
+                x={-buttonSize / 2}
+                y={-buttonSize / 2}
+                width={buttonSize}
+                height={buttonSize}
+                style={{ overflow: 'visible' }}
+              >
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <animated.button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onSelectRelation(relation)
+                      }}
+                      style={{
+                        width: buttonSize,
+                        height: buttonSize,
+                        borderRadius: '50%',
+                        border: '3px solid rgba(255, 255, 255, 0.9)',
+                        backgroundColor: color,
+                        color: 'white',
+                        fontSize: '28px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: spring.opacity,
+                        transition: 'all 0.15s ease',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                        textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '1'
+                        e.currentTarget.style.transform = 'scale(1.15)'
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.4)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '0.85'
+                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+                      }}
+                    >
+                      {label}
+                    </animated.button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content asChild sideOffset={8}>
+                      <div
+                        style={{
+                          background: 'rgba(0,0,0,0.95)',
+                          color: 'white',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          maxWidth: '240px',
+                          zIndex: 10000,
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {tooltip}
+                        <Tooltip.Arrow
+                          style={{
+                            fill: 'rgba(0,0,0,0.95)',
+                          }}
+                        />
+                      </div>
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              </foreignObject>
+            </animated.g>
+          )
+        })}
+      </g>
+    </Tooltip.Provider>
+  )
+}
+
+/**
+ * Render a piece within SVG coordinates
+ */
+function SvgPiece({
+  piece,
+  cellSize,
+  padding,
+}: {
+  piece: Piece
+  cellSize: number
+  padding: number
+}) {
+  const file = piece.square.charCodeAt(0) - 65 // A=0
+  const rank = Number.parseInt(piece.square.slice(1), 10) // 1-8
+  const row = 8 - rank // Invert for display
+
+  const x = padding + file * cellSize
+  const y = padding + row * cellSize
+
+  const spring = useSpring({
+    x,
+    y,
+    config: { tension: 280, friction: 60 },
+  })
+
+  const pieceSize = cellSize * 0.85
+
+  return (
+    <animated.g transform={spring.x.to((xVal) => `translate(${xVal}, ${spring.y.get()})`)}>
+      <foreignObject x={0} y={0} width={cellSize} height={cellSize}>
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <PieceRenderer
+            type={piece.type}
+            color={piece.color}
+            value={piece.type === 'P' ? piece.pyramidFaces?.[0] || 0 : piece.value || 0}
+            size={pieceSize}
+          />
+        </div>
+      </foreignObject>
+    </animated.g>
   )
 }
 
@@ -490,7 +659,12 @@ function BoardDisplay() {
   const { state, makeMove, playerColor, isMyTurn } = useRithmomachia()
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
   const [captureDialogOpen, setCaptureDialogOpen] = useState(false)
-  const [captureTarget, setCaptureTarget] = useState<{ from: string; to: string; pieceId: string } | null>(null)
+  const [captureTarget, setCaptureTarget] = useState<{
+    from: string
+    to: string
+    pieceId: string
+  } | null>(null)
+  const [hoveredRelation, setHoveredRelation] = useState<string | null>(null)
 
   const handleSquareClick = (square: string, piece: (typeof state.pieces)[string] | undefined) => {
     if (!isMyTurn) return
@@ -534,7 +708,20 @@ function BoardDisplay() {
 
   const handleCaptureWithRelation = (relation: string) => {
     if (captureTarget) {
-      makeMove(captureTarget.from, captureTarget.to, captureTarget.pieceId, relation)
+      // Get target piece ID
+      const targetPiece = Object.values(state.pieces).find(
+        (p) => p.square === captureTarget.to && !p.captured
+      )
+      if (!targetPiece) return
+
+      const captureData = {
+        relation: relation as any, // RelationKind
+        targetPieceId: targetPiece.id,
+        // TODO: For relations that require helpers (SUM, DIFF, PRODUCT, RATIO),
+        // we need to add UI for selecting helper pieces. For now, just try without helper.
+      }
+
+      makeMove(captureTarget.from, captureTarget.to, captureTarget.pieceId, undefined, captureData)
       setCaptureDialogOpen(false)
       setCaptureTarget(null)
       setSelectedSquare(null)
@@ -544,247 +731,120 @@ function BoardDisplay() {
   // Get all active pieces
   const activePieces = Object.values(state.pieces).filter((p) => !p.captured)
 
-  return (
-    <>
-      {/* Capture relation dialog */}
-      {captureDialogOpen && (
-        <div
-          className={css({
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bg: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          })}
-          onClick={() => {
-            setCaptureDialogOpen(false)
-            setCaptureTarget(null)
-          }}
-        >
-          <div
-            className={css({
-              bg: 'white',
-              borderRadius: 'lg',
-              p: '6',
-              maxWidth: '500px',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-            })}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className={css({ fontSize: 'xl', fontWeight: 'bold', mb: '4' })}>
-              Select Capture Relation
-            </h2>
-            <p className={css({ mb: '4', color: 'gray.600' })}>
-              Choose the mathematical relation for this capture:
-            </p>
-            <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
-              <button
-                type="button"
-                onClick={() => handleCaptureWithRelation('EQUAL')}
-                className={css({
-                  px: '4',
-                  py: '3',
-                  bg: 'purple.100',
-                  borderRadius: 'md',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  _hover: { bg: 'purple.200' },
-                })}
-              >
-                <strong>Equality:</strong> Mover value = Target value
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCaptureWithRelation('MULTIPLE')}
-                className={css({
-                  px: '4',
-                  py: '3',
-                  bg: 'purple.100',
-                  borderRadius: 'md',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  _hover: { bg: 'purple.200' },
-                })}
-              >
-                <strong>Multiple:</strong> Target is a multiple of Mover
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCaptureWithRelation('DIVISOR')}
-                className={css({
-                  px: '4',
-                  py: '3',
-                  bg: 'purple.100',
-                  borderRadius: 'md',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  _hover: { bg: 'purple.200' },
-                })}
-              >
-                <strong>Divisor:</strong> Mover is a divisor of Target
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCaptureWithRelation('SUM')}
-                className={css({
-                  px: '4',
-                  py: '3',
-                  bg: 'blue.100',
-                  borderRadius: 'md',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  _hover: { bg: 'blue.200' },
-                })}
-              >
-                <strong>Sum:</strong> Mover + Helper = Target (requires helper)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCaptureWithRelation('DIFF')}
-                className={css({
-                  px: '4',
-                  py: '3',
-                  bg: 'blue.100',
-                  borderRadius: 'md',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  _hover: { bg: 'blue.200' },
-                })}
-              >
-                <strong>Difference:</strong> |Mover - Helper| = Target (requires helper)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCaptureWithRelation('PRODUCT')}
-                className={css({
-                  px: '4',
-                  py: '3',
-                  bg: 'blue.100',
-                  borderRadius: 'md',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  _hover: { bg: 'blue.200' },
-                })}
-              >
-                <strong>Product:</strong> Mover × Helper = Target (requires helper)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCaptureWithRelation('RATIO')}
-                className={css({
-                  px: '4',
-                  py: '3',
-                  bg: 'blue.100',
-                  borderRadius: 'md',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  _hover: { bg: 'blue.200' },
-                })}
-              >
-                <strong>Ratio:</strong> Mover / Helper = Target / Helper (requires helper)
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCaptureDialogOpen(false)
-                setCaptureTarget(null)
-              }}
-              className={css({
-                mt: '4',
-                px: '4',
-                py: '2',
-                bg: 'gray.200',
-                borderRadius: 'md',
-                cursor: 'pointer',
-                _hover: { bg: 'gray.300' },
-                width: '100%',
-              })}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+  // SVG dimensions
+  const cols = 16
+  const rows = 8
+  const cellSize = 100 // SVG units per cell
+  const gap = 2
+  const padding = 10
+  const boardWidth = cols * cellSize + (cols - 1) * gap + padding * 2
+  const boardHeight = rows * cellSize + (rows - 1) * gap + padding * 2
 
-      <div
+  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isMyTurn) return
+
+    // If capture dialog is open, dismiss it on any click (buttons have stopPropagation)
+    if (captureDialogOpen) {
+      setCaptureDialogOpen(false)
+      setCaptureTarget(null)
+      return
+    }
+
+    const svg = e.currentTarget
+    const rect = svg.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * boardWidth - padding
+    const y = ((e.clientY - rect.top) / rect.height) * boardHeight - padding
+
+    // Convert to grid coordinates
+    const col = Math.floor(x / (cellSize + gap))
+    const row = Math.floor(y / (cellSize + gap))
+
+    if (col >= 0 && col < cols && row >= 0 && row < rows) {
+      const square = `${String.fromCharCode(65 + col)}${8 - row}`
+      const piece = Object.values(state.pieces).find((p) => p.square === square && !p.captured)
+      handleSquareClick(square, piece)
+    }
+  }
+
+  // Calculate target square position for floating capture options
+  const getTargetSquarePosition = () => {
+    if (!captureTarget) return null
+    const file = captureTarget.to.charCodeAt(0) - 65
+    const rank = Number.parseInt(captureTarget.to.slice(1), 10)
+    const row = 8 - rank
+    const x = padding + file * (cellSize + gap) + cellSize / 2
+    const y = padding + row * (cellSize + gap) + cellSize / 2
+    return { x, y }
+  }
+
+  const targetPos = getTargetSquarePosition()
+
+  return (
+    <div
       className={css({
-        position: 'relative',
         width: '100%',
         maxWidth: '1200px',
         margin: '0 auto',
       })}
     >
-      {/* Board grid */}
-      <div
+      {/* Unified SVG Board */}
+      <svg
+        viewBox={`0 0 ${boardWidth} ${boardHeight}`}
         className={css({
-          display: 'grid',
-          gridTemplateColumns: 'repeat(16, 1fr)',
-          gap: '1',
-          bg: 'gray.300',
-          p: '2',
-          borderRadius: 'md',
-          aspectRatio: '16/8',
+          width: '100%',
+          cursor: isMyTurn ? 'pointer' : 'default',
+          overflow: 'visible',
         })}
+        onClick={handleSvgClick}
       >
-        {Array.from({ length: 8 }, (_, rank) => {
-          const actualRank = 8 - rank
-          return Array.from({ length: 16 }, (_, file) => {
-            const square = `${String.fromCharCode(65 + file)}${actualRank}`
+        {/* Board background */}
+        <rect x={0} y={0} width={boardWidth} height={boardHeight} fill="#d1d5db" rx={8} />
+
+        {/* Board squares */}
+        {Array.from({ length: rows }, (_, row) => {
+          const actualRank = 8 - row
+          return Array.from({ length: cols }, (_, col) => {
+            const square = `${String.fromCharCode(65 + col)}${actualRank}`
             const piece = Object.values(state.pieces).find(
               (p) => p.square === square && !p.captured
             )
-            const isLight = (file + actualRank) % 2 === 0
+            const isLight = (col + actualRank) % 2 === 0
             const isSelected = selectedSquare === square
 
+            const x = padding + col * (cellSize + gap)
+            const y = padding + row * (cellSize + gap)
+
             return (
-              <div
+              <rect
                 key={square}
-                onClick={() => handleSquareClick(square, piece)}
-                className={css({
-                  bg: isSelected ? 'yellow.300' : isLight ? 'gray.100' : 'gray.200',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'column',
-                  fontSize: 'xs',
-                  aspectRatio: '1',
-                  position: 'relative',
-                  cursor: isMyTurn ? 'pointer' : 'default',
-                  _hover: isMyTurn
-                    ? { bg: isSelected ? 'yellow.400' : isLight ? 'purple.100' : 'purple.200' }
-                    : {},
-                  border: isSelected ? '2px solid' : 'none',
-                  borderColor: 'purple.600',
-                })}
+                x={x}
+                y={y}
+                width={cellSize}
+                height={cellSize}
+                fill={isSelected ? '#fde047' : isLight ? '#f3f4f6' : '#e5e7eb'}
+                stroke={isSelected ? '#9333ea' : 'none'}
+                strokeWidth={isSelected ? 2 : 0}
               />
             )
           })
         })}
-      </div>
 
-      {/* Animated pieces layer - matches board padding */}
-      <div
-        className={css({
-          position: 'absolute',
-          top: '0.5rem',
-          left: '0.5rem',
-          right: '0.5rem',
-          bottom: '0.5rem',
-          pointerEvents: 'none',
-        })}
-      >
+        {/* Pieces */}
         {activePieces.map((piece) => (
-          <AnimatedPiece key={piece.id} piece={piece} gridSize={{ width: 16, height: 8 }} />
+          <SvgPiece key={piece.id} piece={piece} cellSize={cellSize + gap} padding={padding} />
         ))}
-      </div>
+
+        {/* Floating capture relation options */}
+        {captureDialogOpen && targetPos && (
+          <CaptureRelationOptions
+            targetPos={targetPos}
+            cellSize={cellSize}
+            gap={gap}
+            onSelectRelation={handleCaptureWithRelation}
+          />
+        )}
+      </svg>
     </div>
-    </>
   )
 }
 

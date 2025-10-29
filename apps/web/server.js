@@ -55,7 +55,7 @@ app.prepare().then(() => {
 
   // Log all upgrade requests to see handler execution order
   const originalEmit = server.emit.bind(server)
-  server.emit = function (event, ...args) {
+  server.emit = (event, ...args) => {
     if (event === 'upgrade') {
       const req = args[0]
       console.log(`\n🔄 UPGRADE REQUEST: ${req.url}`)
