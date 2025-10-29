@@ -609,35 +609,30 @@ function HelperSelectionOptions({
 }
 
 /**
- * Number Bond Triangle Visualization - shows the mathematical relationship
+ * Number Bond Visualization - shows mathematical relationship with actual piece SVGs
+ * Layout: Operands (mover + helper) at top, result (target) at bottom
+ * Animation: 2.5s rotation collapse when confirmed
  */
 function NumberBondVisualization({
-  moverValue,
-  helperValue,
-  targetValue,
+  moverPiece,
+  helperPiece,
+  targetPiece,
   relation,
   targetPos,
   cellSize,
   onConfirm,
   closing = false,
 }: {
-  moverValue: number
-  helperValue: number
-  targetValue: number
+  moverPiece: Piece
+  helperPiece: Piece
+  targetPiece: Piece
   relation: RelationKind
   targetPos: { x: number; y: number }
   cellSize: number
   onConfirm: () => void
   closing?: boolean
 }) {
-  // Triangle layout: target at top, mover and helper at bottom corners
-  const triangleSize = cellSize * 1.5
-  const topPos = { x: targetPos.x, y: targetPos.y - triangleSize * 0.6 }
-  const leftPos = { x: targetPos.x - triangleSize * 0.5, y: targetPos.y + triangleSize * 0.4 }
-  const rightPos = { x: targetPos.x + triangleSize * 0.5, y: targetPos.y + triangleSize * 0.4 }
-
-  const circleRadius = cellSize * 0.4
-  const fontSize = cellSize * 0.35
+  const [animating, setAnimating] = useState(false)
 
   // Color scheme based on relation type
   const colorMap: Record<RelationKind, string> = {
@@ -651,14 +646,6 @@ function NumberBondVisualization({
   }
   const color = colorMap[relation] || '#8b5cf6'
 
-  // Animate in with spring
-  const spring = useSpring({
-    from: { scale: 0, opacity: 0 },
-    scale: closing ? 0 : 1,
-    opacity: closing ? 0 : 1,
-    config: { tension: 280, friction: 20 },
-  })
-
   // Operation symbol based on relation
   const operatorMap: Record<RelationKind, string> = {
     SUM: '+',
@@ -671,163 +658,215 @@ function NumberBondVisualization({
   }
   const operator = operatorMap[relation]
 
+  // Layout: operands at top, result at bottom
+  const spacing = cellSize * 1.8
+  const moverPos = { x: targetPos.x - spacing * 0.5, y: targetPos.y - spacing * 0.7 }
+  const helperPos = { x: targetPos.x + spacing * 0.5, y: targetPos.y - spacing * 0.7 }
+  const resultPos = { x: targetPos.x, y: targetPos.y + spacing * 0.5 }
+
+  // Animation: 2.5s rotate and collapse
+  const captureAnimation = useSpring({
+    from: { rotation: 0, radius: 1, opacity: 1 },
+    rotation: animating ? Math.PI * 20 : 0, // 10 full rotations
+    radius: animating ? 0 : 1,
+    opacity: animating ? 0 : 1,
+    config: animating ? { duration: 2500 } : { tension: 280, friction: 20 },
+    onRest: () => {
+      if (animating) {
+        onConfirm()
+      }
+    },
+  })
+
+  // Initial entrance animation
+  const entranceSpring = useSpring({
+    from: { scale: 0, opacity: 0 },
+    scale: closing || animating ? 0 : 1,
+    opacity: closing ? 0 : 1,
+    config: { tension: 280, friction: 20 },
+  })
+
+  const handleConfirm = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setAnimating(true)
+  }
+
+  // Get piece values
+  const getMoverValue = () => getEffectiveValue(moverPiece)
+  const getHelperValue = () => getEffectiveValue(helperPiece)
+  const getTargetValue = () => getEffectiveValue(targetPiece)
+
   return (
     <animated.g
       style={{
-        opacity: spring.opacity,
+        opacity: entranceSpring.opacity,
       }}
-      transform={to([spring.scale], (s) => `translate(${targetPos.x}, ${targetPos.y}) scale(${s})`)}
+      transform={to(
+        [entranceSpring.scale],
+        (s) => `translate(${targetPos.x}, ${targetPos.y}) scale(${s})`
+      )}
     >
-      {/* Triangle connecting lines */}
       <g transform={`translate(${-targetPos.x}, ${-targetPos.y})`}>
-        <line
-          x1={topPos.x}
-          y1={topPos.y}
-          x2={leftPos.x}
-          y2={leftPos.y}
-          stroke={color}
-          strokeWidth={3}
-          opacity={0.4}
-        />
-        <line
-          x1={topPos.x}
-          y1={topPos.y}
-          x2={rightPos.x}
-          y2={rightPos.y}
-          stroke={color}
-          strokeWidth={3}
-          opacity={0.4}
-        />
-        <line
-          x1={leftPos.x}
-          y1={leftPos.y}
-          x2={rightPos.x}
-          y2={rightPos.y}
-          stroke={color}
-          strokeWidth={3}
-          opacity={0.4}
-        />
+        {!animating && (
+          <>
+            {/* Triangle connecting lines */}
+            <line
+              x1={moverPos.x}
+              y1={moverPos.y}
+              x2={helperPos.x}
+              y2={helperPos.y}
+              stroke={color}
+              strokeWidth={3}
+              opacity={0.3}
+            />
+            <line
+              x1={moverPos.x}
+              y1={moverPos.y}
+              x2={resultPos.x}
+              y2={resultPos.y}
+              stroke={color}
+              strokeWidth={3}
+              opacity={0.3}
+            />
+            <line
+              x1={helperPos.x}
+              y1={helperPos.y}
+              x2={resultPos.x}
+              y2={resultPos.y}
+              stroke={color}
+              strokeWidth={3}
+              opacity={0.3}
+            />
 
-        {/* Target (top) */}
-        <circle
-          cx={topPos.x}
-          cy={topPos.y}
-          r={circleRadius}
-          fill={color}
-          stroke="white"
-          strokeWidth={3}
-        />
-        <text
-          x={topPos.x}
-          y={topPos.y}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="white"
-          fontSize={fontSize}
-          fontWeight="bold"
-          fontFamily="Georgia, 'Times New Roman', serif"
-        >
-          {targetValue}
-        </text>
+            {/* Operator symbol in center */}
+            <text
+              x={targetPos.x}
+              y={targetPos.y}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill={color}
+              fontSize={cellSize * 0.6}
+              fontWeight="bold"
+              opacity={0.8}
+            >
+              {operator}
+            </text>
+          </>
+        )}
 
-        {/* Mover (bottom left) */}
-        <circle
-          cx={leftPos.x}
-          cy={leftPos.y}
-          r={circleRadius}
-          fill={color}
-          stroke="white"
-          strokeWidth={3}
-        />
-        <text
-          x={leftPos.x}
-          y={leftPos.y}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="white"
-          fontSize={fontSize}
-          fontWeight="bold"
-          fontFamily="Georgia, 'Times New Roman', serif"
+        {/* Mover piece (top-left operand) */}
+        <animated.g
+          transform={to([captureAnimation.rotation, captureAnimation.radius], (rot, rad) => {
+            if (!animating) {
+              return `translate(${moverPos.x}, ${moverPos.y})`
+            }
+            // During animation: rotate around center and collapse
+            const angle = rot
+            const distance = spacing * 0.7 * rad
+            const x = targetPos.x + Math.cos(angle) * distance
+            const y = targetPos.y + Math.sin(angle) * distance
+            return `translate(${x}, ${y})`
+          })}
+          opacity={animating ? 1 : 1} // Mover stays visible
         >
-          {moverValue}
-        </text>
+          <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
+            <PieceRenderer
+              type={moverPiece.type}
+              color={moverPiece.color}
+              value={getMoverValue() || 0}
+              size={cellSize}
+            />
+          </g>
+        </animated.g>
 
-        {/* Helper (bottom right) */}
-        <circle
-          cx={rightPos.x}
-          cy={rightPos.y}
-          r={circleRadius}
-          fill={color}
-          stroke="white"
-          strokeWidth={3}
-        />
-        <text
-          x={rightPos.x}
-          y={rightPos.y}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="white"
-          fontSize={fontSize}
-          fontWeight="bold"
-          fontFamily="Georgia, 'Times New Roman', serif"
+        {/* Helper piece (top-right operand) */}
+        <animated.g
+          transform={to([captureAnimation.rotation, captureAnimation.radius], (rot, rad) => {
+            if (!animating) {
+              return `translate(${helperPos.x}, ${helperPos.y})`
+            }
+            const angle = rot + (Math.PI * 2) / 3 // Offset by 120 degrees
+            const distance = spacing * 0.7 * rad
+            const x = targetPos.x + Math.cos(angle) * distance
+            const y = targetPos.y + Math.sin(angle) * distance
+            return `translate(${x}, ${y})`
+          })}
+          opacity={to([captureAnimation.opacity], (op) => (animating ? op : 1))}
         >
-          {helperValue}
-        </text>
+          <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
+            <PieceRenderer
+              type={helperPiece.type}
+              color={helperPiece.color}
+              value={getHelperValue() || 0}
+              size={cellSize}
+            />
+          </g>
+        </animated.g>
 
-        {/* Operator symbol between bottom circles */}
-        <text
-          x={(leftPos.x + rightPos.x) / 2}
-          y={leftPos.y}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill={color}
-          fontSize={fontSize * 1.2}
-          fontWeight="bold"
+        {/* Target piece (bottom result) */}
+        <animated.g
+          transform={to([captureAnimation.rotation, captureAnimation.radius], (rot, rad) => {
+            if (!animating) {
+              return `translate(${resultPos.x}, ${resultPos.y})`
+            }
+            const angle = rot + (Math.PI * 4) / 3 // Offset by 240 degrees
+            const distance = spacing * 0.7 * rad
+            const x = targetPos.x + Math.cos(angle) * distance
+            const y = targetPos.y + Math.sin(angle) * distance
+            return `translate(${x}, ${y})`
+          })}
+          opacity={to([captureAnimation.opacity], (op) => (animating ? op : 1))}
         >
-          {operator}
-        </text>
+          <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
+            <PieceRenderer
+              type={targetPiece.type}
+              color={targetPiece.color}
+              value={getTargetValue() || 0}
+              size={cellSize}
+            />
+          </g>
+        </animated.g>
 
         {/* Confirm button */}
-        <g transform={`translate(${targetPos.x}, ${targetPos.y + triangleSize * 0.9})`}>
-          <foreignObject
-            x={-cellSize}
-            y={-cellSize * 0.3}
-            width={cellSize * 2}
-            height={cellSize * 0.6}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onConfirm()
-              }}
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: '12px',
-                border: `3px solid ${color}`,
-                backgroundColor: 'white',
-                color,
-                fontSize: `${fontSize * 0.8}px`,
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = color
-                e.currentTarget.style.color = 'white'
-                e.currentTarget.style.transform = 'scale(1.05)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white'
-                e.currentTarget.style.color = color
-                e.currentTarget.style.transform = 'scale(1)'
-              }}
+        {!animating && (
+          <g transform={`translate(${targetPos.x}, ${resultPos.y + cellSize * 1.2})`}>
+            <foreignObject
+              x={-cellSize}
+              y={-cellSize * 0.3}
+              width={cellSize * 2}
+              height={cellSize * 0.6}
             >
-              ✓ Capture
-            </button>
-          </foreignObject>
-        </g>
+              <button
+                onClick={handleConfirm}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '12px',
+                  border: `3px solid ${color}`,
+                  backgroundColor: 'white',
+                  color,
+                  fontSize: `${cellSize * 0.28}px`,
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = color
+                  e.currentTarget.style.color = 'white'
+                  e.currentTarget.style.transform = 'scale(1.05)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white'
+                  e.currentTarget.style.color = color
+                  e.currentTarget.style.transform = 'scale(1)'
+                }}
+              >
+                ✓ Capture
+              </button>
+            </foreignObject>
+          </g>
+        )}
       </g>
     </animated.g>
   )
@@ -1081,10 +1120,9 @@ function BoardDisplay() {
   const [hoveredRelation, setHoveredRelation] = useState<string | null>(null)
   const [selectedRelation, setSelectedRelation] = useState<RelationKind | null>(null)
   const [selectedHelper, setSelectedHelper] = useState<{
-    pieceId: string
-    moverValue: number
-    helperValue: number
-    targetValue: number
+    helperPiece: Piece
+    moverPiece: Piece
+    targetPiece: Piece
   } | null>(null)
 
   // Handle closing animation completion
@@ -1300,7 +1338,7 @@ function BoardDisplay() {
   const handleHelperSelection = (helperPieceId: string) => {
     if (!captureTarget || !selectedRelation) return
 
-    // Get piece values for number bond visualization
+    // Get pieces for number bond visualization
     const moverPiece = Object.values(state.pieces).find(
       (p) => p.id === captureTarget.pieceId && !p.captured
     )
@@ -1313,42 +1351,21 @@ function BoardDisplay() {
 
     if (!moverPiece || !targetPiece || !helperPiece) return
 
-    const moverValue = getEffectiveValue(moverPiece)
-    const targetValue = getEffectiveValue(targetPiece)
-    const helperValue = getEffectiveValue(helperPiece)
-
-    if (
-      moverValue === undefined ||
-      moverValue === null ||
-      targetValue === undefined ||
-      targetValue === null ||
-      helperValue === undefined ||
-      helperValue === null
-    ) {
-      return
-    }
-
-    // Show number bond instead of immediately executing
+    // Show number bond visualization
     setSelectedHelper({
-      pieceId: helperPieceId,
-      moverValue,
-      helperValue,
-      targetValue,
+      helperPiece,
+      moverPiece,
+      targetPiece,
     })
   }
 
   const handleNumberBondConfirm = () => {
     if (!captureTarget || !selectedRelation || !selectedHelper) return
 
-    const targetPiece = Object.values(state.pieces).find(
-      (p) => p.square === captureTarget.to && !p.captured
-    )
-    if (!targetPiece) return
-
     const captureData = {
       relation: selectedRelation,
-      targetPieceId: targetPiece.id,
-      helperPieceId: selectedHelper.pieceId,
+      targetPieceId: selectedHelper.targetPiece.id,
+      helperPieceId: selectedHelper.helperPiece.id,
     }
 
     makeMove(captureTarget.from, captureTarget.to, captureTarget.pieceId, undefined, captureData)
@@ -1580,9 +1597,9 @@ function BoardDisplay() {
             console.log('[Render] Showing NumberBondVisualization')
             return (
               <NumberBondVisualization
-                moverValue={selectedHelper.moverValue}
-                helperValue={selectedHelper.helperValue}
-                targetValue={selectedHelper.targetValue}
+                moverPiece={selectedHelper.moverPiece}
+                helperPiece={selectedHelper.helperPiece}
+                targetPiece={selectedHelper.targetPiece}
                 relation={selectedRelation}
                 targetPos={targetPos}
                 cellSize={cellSize}
