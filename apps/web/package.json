@@ -60,6 +60,7 @@
     "emojibase-data": "^16.0.3",
     "jose": "^6.1.0",
     "js-yaml": "^4.1.0",
+    "lib0": "^0.2.114",
     "lucide-react": "^0.294.0",
     "make-plural": "^7.4.0",
     "nanoid": "^5.1.6",
@@ -72,6 +73,9 @@
     "react-resizable-layout": "^0.7.3",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
+    "y-protocols": "^1.0.6",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.27",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -87,6 +91,7 @@
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.0.2",
     "concurrently": "^8.0.0",
     "drizzle-kit": "^0.31.5",

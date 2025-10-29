@@ -1,6 +1,7 @@
-import type { Server as HTTPServer } from 'http'
+import type { Server as HTTPServer, IncomingMessage } from 'http'
 import { Server as SocketIOServer } from 'socket.io'
 import type { Server as SocketIOServerType } from 'socket.io'
+import { WebSocketServer, type WebSocket } from 'ws'
 import {
   applyGameMove,
   createArcadeSession,
@@ -17,10 +18,18 @@ import { getValidator, type GameName } from './lib/arcade/validators'
 import type { GameMove } from './lib/arcade/validation/types'
 import { getGameConfig } from './lib/arcade/game-config-helpers'
 
+// Yjs server-side imports
+import * as Y from 'yjs'
+import * as awarenessProtocol from 'y-protocols/awareness'
+import * as syncProtocol from 'y-protocols/sync'
+import * as encoding from 'lib0/encoding'
+import * as decoding from 'lib0/decoding'
+
 // Use globalThis to store socket.io instance to avoid module isolation issues
 // This ensures the same instance is accessible across dynamic imports
 declare global {
   var __socketIO: SocketIOServerType | undefined
+  var __yjsRooms: Map<string, any> | undefined // Map<roomId, RoomState>
 }
 
 /**
@@ -31,6 +40,283 @@ export function getSocketIO(): SocketIOServerType | null {
   return globalThis.__socketIO || null
 }
 
+/**
+ * Initialize Yjs WebSocket server for real-time collaboration
+ * Server-authoritative approach - maintains Y.Doc per arcade room, handles sync protocol
+ *
+ * IMPORTANT: Yjs rooms map 1:1 with arcade rooms (roomId === arcade room ID)
+ */
+function initializeYjsServer(io: SocketIOServerType) {
+  // Room state storage (keyed by arcade room ID)
+  interface RoomState {
+    doc: Y.Doc
+    awareness: awarenessProtocol.Awareness
+    connections: Set<string> // Socket IDs
+  }
+
+  const rooms = new Map<string, RoomState>() // Map<arcadeRoomId, RoomState>
+  const socketToRoom = new Map<string, string>() // Map<socketId, roomId>
+
+  // Store rooms globally for persistence access
+  globalThis.__yjsRooms = rooms
+
+  function getOrCreateRoom(roomName: string): RoomState {
+    if (!rooms.has(roomName)) {
+      const doc = new Y.Doc()
+      const awareness = new awarenessProtocol.Awareness(doc)
+
+      // Broadcast document updates to all clients via Socket.IO
+      doc.on('update', (update: Uint8Array, origin: any) => {
+        // Origin is the socket ID that sent the update, don't echo back to sender
+        const encoder = encoding.createEncoder()
+        encoding.writeVarUint(encoder, 0) // messageSync
+        syncProtocol.writeUpdate(encoder, update)
+        const message = encoding.toUint8Array(encoder)
+
+        // Broadcast to all sockets in this room except origin
+        io.to(`yjs:${roomName}`)
+          .except(origin as string)
+          .emit('yjs-update', Array.from(message))
+      })
+
+      // Broadcast awareness updates to all clients via Socket.IO
+      awareness.on('update', ({ added, updated, removed }: any, origin: any) => {
+        const changedClients = added.concat(updated).concat(removed)
+        const encoder = encoding.createEncoder()
+        encoding.writeVarUint(encoder, 1) // messageAwareness
+        encoding.writeVarUint8Array(
+          encoder,
+          awarenessProtocol.encodeAwarenessUpdate(awareness, changedClients)
+        )
+        const message = encoding.toUint8Array(encoder)
+
+        // Broadcast to all sockets in this room except origin
+        io.to(`yjs:${roomName}`)
+          .except(origin as string)
+          .emit('yjs-awareness', Array.from(message))
+      })
+
+      const roomState: RoomState = {
+        doc,
+        awareness,
+        connections: new Set(),
+      }
+      rooms.set(roomName, roomState)
+      console.log(`✅ Created Y.Doc for room: ${roomName}`)
+
+      // Load persisted state asynchronously (don't block connection)
+      void loadPersistedYjsState(roomName).catch((err) => {
+        console.error(`Failed to load persisted state for room ${roomName}:`, err)
+      })
+    }
+    return rooms.get(roomName)!
+  }
+
+  // Handle Yjs connections via Socket.IO
+  io.on('connection', (socket) => {
+    // Join Yjs room
+    socket.on('yjs-join', async (roomId: string) => {
+      const room = getOrCreateRoom(roomId)
+
+      // Join Socket.IO room
+      await socket.join(`yjs:${roomId}`)
+      room.connections.add(socket.id)
+      socketToRoom.set(socket.id, roomId)
+
+      console.log(`🔗 Client connected to Yjs room: ${roomId} (${room.connections.size} clients)`)
+
+      // Send initial sync (SyncStep1)
+      const encoder = encoding.createEncoder()
+      encoding.writeVarUint(encoder, 0) // messageSync
+      syncProtocol.writeSyncStep1(encoder, room.doc)
+      socket.emit('yjs-sync', Array.from(encoding.toUint8Array(encoder)))
+
+      // Send current awareness state
+      const awarenessStates = room.awareness.getStates()
+      if (awarenessStates.size > 0) {
+        const awarenessEncoder = encoding.createEncoder()
+        encoding.writeVarUint(awarenessEncoder, 1) // messageAwareness
+        encoding.writeVarUint8Array(
+          awarenessEncoder,
+          awarenessProtocol.encodeAwarenessUpdate(
+            room.awareness,
+            Array.from(awarenessStates.keys())
+          )
+        )
+        socket.emit('yjs-awareness', Array.from(encoding.toUint8Array(awarenessEncoder)))
+      }
+    })
+
+    // Handle Yjs sync messages
+    socket.on('yjs-update', (data: number[]) => {
+      const roomId = socketToRoom.get(socket.id)
+      if (!roomId) return
+
+      const room = rooms.get(roomId)
+      if (!room) return
+
+      const uint8Data = new Uint8Array(data)
+      const decoder = decoding.createDecoder(uint8Data)
+      const messageType = decoding.readVarUint(decoder)
+
+      if (messageType === 0) {
+        // Sync protocol
+        const encoder = encoding.createEncoder()
+        encoding.writeVarUint(encoder, 0)
+        syncProtocol.readSyncMessage(decoder, encoder, room.doc, socket.id)
+
+        // Send response if there's content
+        if (encoding.length(encoder) > 1) {
+          socket.emit('yjs-sync', Array.from(encoding.toUint8Array(encoder)))
+        }
+      }
+    })
+
+    // Handle awareness updates
+    socket.on('yjs-awareness', (data: number[]) => {
+      const roomId = socketToRoom.get(socket.id)
+      if (!roomId) return
+
+      const room = rooms.get(roomId)
+      if (!room) return
+
+      const uint8Data = new Uint8Array(data)
+      const decoder = decoding.createDecoder(uint8Data)
+      const messageType = decoding.readVarUint(decoder)
+
+      if (messageType === 1) {
+        awarenessProtocol.applyAwarenessUpdate(
+          room.awareness,
+          decoding.readVarUint8Array(decoder),
+          socket.id
+        )
+      }
+    })
+
+    // Cleanup on disconnect
+    socket.on('disconnect', () => {
+      const roomId = socketToRoom.get(socket.id)
+      if (roomId) {
+        const room = rooms.get(roomId)
+        if (room) {
+          room.connections.delete(socket.id)
+          console.log(
+            `🔌 Client disconnected from Yjs room: ${roomId} (${room.connections.size} remain)`
+          )
+
+          // Clean up empty rooms after grace period
+          if (room.connections.size === 0) {
+            setTimeout(() => {
+              if (room.connections.size === 0) {
+                room.awareness.destroy()
+                room.doc.destroy()
+                rooms.delete(roomId)
+                console.log(`🗑️  Cleaned up room: ${roomId}`)
+              }
+            }, 30000)
+          }
+        }
+        socketToRoom.delete(socket.id)
+      }
+    })
+  })
+
+  console.log('✅ Yjs over Socket.IO initialized')
+
+  // Periodic persistence: sync Y.Doc state to arcade_sessions every 30 seconds
+  setInterval(async () => {
+    await persistAllYjsRooms()
+  }, 30000)
+}
+
+/**
+ * Get Y.Doc for a specific room (for persistence)
+ * Returns null if room doesn't exist
+ */
+export function getYjsDoc(roomId: string): Y.Doc | null {
+  const rooms = globalThis.__yjsRooms
+  if (!rooms) return null
+
+  const room = rooms.get(roomId)
+  return room ? room.doc : null
+}
+
+/**
+ * Load persisted cells into a Y.Doc
+ * Should be called when creating a new room that has persisted state
+ */
+export async function loadPersistedYjsState(roomId: string): Promise<void> {
+  const { extractCellsFromDoc, populateDocWithCells } = await import('./lib/arcade/yjs-persistence')
+
+  const doc = getYjsDoc(roomId)
+  if (!doc) return
+
+  // Get the arcade session for this room
+  const session = await getArcadeSessionByRoom(roomId)
+  if (!session) return
+
+  const gameState = session.gameState as any
+  if (gameState.cells && Array.isArray(gameState.cells)) {
+    console.log(`📥 Loading ${gameState.cells.length} persisted cells for room: ${roomId}`)
+    populateDocWithCells(doc, gameState.cells)
+  }
+}
+
+/**
+ * Persist Y.Doc cells for a specific room to arcade_sessions
+ */
+export async function persistYjsRoom(roomId: string): Promise<void> {
+  const { extractCellsFromDoc } = await import('./lib/arcade/yjs-persistence')
+  const { db, schema } = await import('@/db')
+  const { eq } = await import('drizzle-orm')
+
+  const doc = getYjsDoc(roomId)
+  if (!doc) return
+
+  const session = await getArcadeSessionByRoom(roomId)
+  if (!session) return
+
+  // Extract cells from Y.Doc
+  const cells = extractCellsFromDoc(doc, 'cells')
+
+  // Update the gameState with current cells
+  const currentState = session.gameState as Record<string, any>
+  const updatedGameState = {
+    ...currentState,
+    cells,
+  }
+
+  // Save to database
+  try {
+    await db
+      .update(schema.arcadeSessions)
+      .set({
+        gameState: updatedGameState as any,
+        lastActivityAt: new Date(),
+      })
+      .where(eq(schema.arcadeSessions.roomId, roomId))
+  } catch (error) {
+    console.error(`Error persisting Yjs room ${roomId}:`, error)
+  }
+}
+
+/**
+ * Persist all active Yjs rooms
+ */
+export async function persistAllYjsRooms(): Promise<void> {
+  const rooms = globalThis.__yjsRooms
+  if (!rooms || rooms.size === 0) return
+
+  const roomIds = Array.from(rooms.keys())
+  for (const roomId of roomIds) {
+    // Only persist rooms with active connections
+    const room = rooms.get(roomId)
+    if (room && room.connections.size > 0) {
+      await persistYjsRoom(roomId)
+    }
+  }
+}
+
 export function initializeSocketServer(httpServer: HTTPServer) {
   const io = new SocketIOServer(httpServer, {
     path: '/api/socket',
@@ -39,6 +325,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       credentials: true,
     },
   })
+
+  // Initialize Yjs server over Socket.IO
+  initializeYjsServer(io)
 
   io.on('connection', (socket) => {
     let currentUserId: string | null = null

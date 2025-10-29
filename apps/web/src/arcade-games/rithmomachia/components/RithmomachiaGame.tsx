@@ -489,6 +489,8 @@ function AnimatedPiece({
 function BoardDisplay() {
   const { state, makeMove, playerColor, isMyTurn } = useRithmomachia()
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
+  const [captureDialogOpen, setCaptureDialogOpen] = useState(false)
+  const [captureTarget, setCaptureTarget] = useState<{ from: string; to: string; pieceId: string } | null>(null)
 
   const handleSquareClick = (square: string, piece: (typeof state.pieces)[string] | undefined) => {
     if (!isMyTurn) return
@@ -518,8 +520,23 @@ function BoardDisplay() {
       (p) => p.square === selectedSquare && !p.captured
     )
     if (selectedPiece) {
-      // Simple move (no capture logic for now - just basic movement)
-      makeMove(selectedSquare, square, selectedPiece.id)
+      // If target square has an enemy piece, open capture dialog
+      if (piece && piece.color !== playerColor) {
+        setCaptureTarget({ from: selectedSquare, to: square, pieceId: selectedPiece.id })
+        setCaptureDialogOpen(true)
+      } else {
+        // Simple move (no capture)
+        makeMove(selectedSquare, square, selectedPiece.id)
+        setSelectedSquare(null)
+      }
+    }
+  }
+
+  const handleCaptureWithRelation = (relation: string) => {
+    if (captureTarget) {
+      makeMove(captureTarget.from, captureTarget.to, captureTarget.pieceId, relation)
+      setCaptureDialogOpen(false)
+      setCaptureTarget(null)
       setSelectedSquare(null)
     }
   }
@@ -528,7 +545,174 @@ function BoardDisplay() {
   const activePieces = Object.values(state.pieces).filter((p) => !p.captured)
 
   return (
-    <div
+    <>
+      {/* Capture relation dialog */}
+      {captureDialogOpen && (
+        <div
+          className={css({
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bg: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          })}
+          onClick={() => {
+            setCaptureDialogOpen(false)
+            setCaptureTarget(null)
+          }}
+        >
+          <div
+            className={css({
+              bg: 'white',
+              borderRadius: 'lg',
+              p: '6',
+              maxWidth: '500px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            })}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className={css({ fontSize: 'xl', fontWeight: 'bold', mb: '4' })}>
+              Select Capture Relation
+            </h2>
+            <p className={css({ mb: '4', color: 'gray.600' })}>
+              Choose the mathematical relation for this capture:
+            </p>
+            <div className={css({ display: 'flex', flexDirection: 'column', gap: '2' })}>
+              <button
+                type="button"
+                onClick={() => handleCaptureWithRelation('EQUAL')}
+                className={css({
+                  px: '4',
+                  py: '3',
+                  bg: 'purple.100',
+                  borderRadius: 'md',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  _hover: { bg: 'purple.200' },
+                })}
+              >
+                <strong>Equality:</strong> Mover value = Target value
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCaptureWithRelation('MULTIPLE')}
+                className={css({
+                  px: '4',
+                  py: '3',
+                  bg: 'purple.100',
+                  borderRadius: 'md',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  _hover: { bg: 'purple.200' },
+                })}
+              >
+                <strong>Multiple:</strong> Target is a multiple of Mover
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCaptureWithRelation('DIVISOR')}
+                className={css({
+                  px: '4',
+                  py: '3',
+                  bg: 'purple.100',
+                  borderRadius: 'md',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  _hover: { bg: 'purple.200' },
+                })}
+              >
+                <strong>Divisor:</strong> Mover is a divisor of Target
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCaptureWithRelation('SUM')}
+                className={css({
+                  px: '4',
+                  py: '3',
+                  bg: 'blue.100',
+                  borderRadius: 'md',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.200' },
+                })}
+              >
+                <strong>Sum:</strong> Mover + Helper = Target (requires helper)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCaptureWithRelation('DIFF')}
+                className={css({
+                  px: '4',
+                  py: '3',
+                  bg: 'blue.100',
+                  borderRadius: 'md',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.200' },
+                })}
+              >
+                <strong>Difference:</strong> |Mover - Helper| = Target (requires helper)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCaptureWithRelation('PRODUCT')}
+                className={css({
+                  px: '4',
+                  py: '3',
+                  bg: 'blue.100',
+                  borderRadius: 'md',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.200' },
+                })}
+              >
+                <strong>Product:</strong> Mover × Helper = Target (requires helper)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCaptureWithRelation('RATIO')}
+                className={css({
+                  px: '4',
+                  py: '3',
+                  bg: 'blue.100',
+                  borderRadius: 'md',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  _hover: { bg: 'blue.200' },
+                })}
+              >
+                <strong>Ratio:</strong> Mover / Helper = Target / Helper (requires helper)
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCaptureDialogOpen(false)
+                setCaptureTarget(null)
+              }}
+              className={css({
+                mt: '4',
+                px: '4',
+                py: '2',
+                bg: 'gray.200',
+                borderRadius: 'md',
+                cursor: 'pointer',
+                _hover: { bg: 'gray.300' },
+                width: '100%',
+              })}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div
       className={css({
         position: 'relative',
         width: '100%',
@@ -600,6 +784,7 @@ function BoardDisplay() {
         ))}
       </div>
     </div>
+    </>
   )
 }
 
