@@ -8,7 +8,6 @@ import { PageWithNav } from '@/components/PageWithNav'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useGameMode } from '@/contexts/GameModeContext'
-import type { Player } from '@/contexts/GameModeContext'
 import { useFullscreen } from '@/contexts/FullscreenContext'
 import { css } from '../../../../styled-system/css'
 import { useRithmomachia } from '../Provider'
@@ -199,7 +198,6 @@ export function RithmomachiaGame() {
 function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
   const { rosterStatus, whitePlayerId, blackPlayerId } = useRithmomachia()
   const { players: playerMap, activePlayers: activePlayerIds, addPlayer, setActive } = useGameMode()
-  const [showManager, setShowManager] = useState(false)
 
   const playersArray = useMemo(() => {
     const list = Array.from(playerMap.values())
@@ -219,16 +217,6 @@ function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
       return aTime - bTime
     })
   }, [playerMap])
-
-  const activePlayerNames = useMemo(
-    () =>
-      playersArray
-        .filter((player) => activePlayerIds.has(player.id))
-        .map((player) =>
-          `${player.emoji} ${player.name}${player.isLocal === false ? ' (remote)' : ''}`
-        ),
-    [playersArray, activePlayerIds]
-  )
 
   const inactiveLocalPlayer = useMemo(
     () =>
@@ -303,14 +291,14 @@ function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
     switch (rosterStatus.status) {
       case 'tooFew':
         return phase === 'setup'
-          ? 'Rithmomachia needs exactly two active players before the match can begin. Activate or add another player to continue.'
-          : 'Gameplay is paused until two players are active. Activate or add another player to resume the match.'
+          ? 'Rithmomachia needs exactly two active players before the match can begin. Use the roster controls in the game nav to activate or add another player.'
+          : 'Gameplay is paused until two players are active. Use the roster controls in the game nav to activate or add another player and resume the match.'
       case 'tooMany':
-        return 'Rithmomachia supports only two active players. Deactivate extra players so each color has exactly one seat.'
+        return 'Rithmomachia supports only two active players. Use the game nav roster to deactivate extras so each color has exactly one seat.'
       case 'noLocalControl':
         return phase === 'setup'
-          ? 'All active seats belong to other devices. Activate a local player to control a side before starting.'
-          : 'All active seats belong to other devices. Activate a local player if you want to make moves from this computer.'
+          ? 'All active seats belong to other devices. Activate a local player from the game nav if you want to start from this computer.'
+          : 'All active seats belong to other devices. Activate a local player in the game nav if you want to make moves from this computer.'
       default:
         return ''
     }
@@ -320,212 +308,48 @@ function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
     return null
   }
 
-  const details: string[] = []
-  if (activePlayerNames.length > 0) {
-    details.push(`Active seats: ${activePlayerNames.join(', ')}`)
-  } else {
-    details.push('No players are currently marked active.')
-  }
-
-  return (
-    <>
-      <div
-        className={css({
-          width: '100%',
-          borderWidth: '2px',
-          borderColor: 'amber.400',
-          backgroundColor: 'amber.50',
-          color: 'amber.900',
-          p: '4',
-          borderRadius: 'md',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '3',
-        })}
-      >
-        <div>
-          <h3 className={css({ fontWeight: 'bold', fontSize: 'lg' })}>{heading}</h3>
-          <p className={css({ fontSize: 'sm', lineHeight: '1.5', mt: '1' })}>{description}</p>
-          {details.map((detail) => (
-            <p key={detail} className={css({ fontSize: 'sm', color: 'amber.800', mt: '2' })}>
-              {detail}
-            </p>
-          ))}
-        </div>
-        <div
-          className={css({
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '2',
-          })}
-        >
-          {quickFix && (
-            <button
-              type="button"
-              onClick={quickFix.action}
-              className={css({
-                px: '3',
-                py: '2',
-                bg: 'amber.500',
-                color: 'white',
-                borderRadius: 'md',
-                fontWeight: 'semibold',
-                fontSize: 'sm',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                _hover: { bg: 'amber.600' },
-              })}
-            >
-              {quickFix.label}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowManager((prev) => !prev)}
-            className={css({
-              px: '3',
-              py: '2',
-              bg: 'white',
-              color: 'amber.900',
-              borderRadius: 'md',
-              fontWeight: 'semibold',
-              fontSize: 'sm',
-              borderWidth: '1px',
-              borderColor: 'amber.300',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              _hover: { bg: 'amber.100' },
-            })}
-          >
-            {showManager ? 'Hide player manager' : 'Manage players'}
-          </button>
-        </div>
-      </div>
-      {showManager && (
-        <InlinePlayerManager
-          players={playersArray}
-          activePlayerIds={activePlayerIds}
-          onToggleActive={setActive}
-          onAddPlayer={() => addPlayer({ isActive: true })}
-        />
-      )}
-    </>
-  )
-}
-
-function InlinePlayerManager({
-  players,
-  activePlayerIds,
-  onToggleActive,
-  onAddPlayer,
-}: {
-  players: Player[]
-  activePlayerIds: Set<string>
-  onToggleActive: (playerId: string, active: boolean) => void
-  onAddPlayer: () => void
-}) {
   return (
     <div
       className={css({
         width: '100%',
-        borderWidth: '1px',
-        borderColor: 'gray.200',
-        borderRadius: 'md',
-        backgroundColor: 'white',
-        boxShadow: '0 6px 16px rgba(15, 23, 42, 0.08)',
+        borderWidth: '2px',
+        borderColor: 'amber.400',
+        backgroundColor: 'amber.50',
+        color: 'amber.900',
         p: '4',
+        borderRadius: 'md',
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: { base: 'column', md: 'row' },
         gap: '3',
+        justifyContent: 'space-between',
+        alignItems: { base: 'flex-start', md: 'center' },
       })}
     >
-      <div
-        className={css({
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        })}
-      >
-        <h4 className={css({ fontWeight: 'bold', fontSize: 'sm', color: 'gray.800' })}>
-          Player seats
-        </h4>
+      <div>
+        <h3 className={css({ fontWeight: 'bold', fontSize: 'lg' })}>{heading}</h3>
+        <p className={css({ fontSize: 'sm', lineHeight: '1.5', mt: '1' })}>{description}</p>
+      </div>
+      {quickFix && (
         <button
           type="button"
-          onClick={onAddPlayer}
+          onClick={quickFix.action}
           className={css({
             px: '3',
-            py: '1',
-            bg: 'purple.600',
+            py: '2',
+            bg: 'amber.500',
             color: 'white',
             borderRadius: 'md',
             fontWeight: 'semibold',
             fontSize: 'sm',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            _hover: { bg: 'purple.700' },
+            _hover: { bg: 'amber.600' },
+            flexShrink: 0,
           })}
         >
-          Add local player
+          {quickFix.label}
         </button>
-      </div>
-      <ul
-        className={css({
-          listStyle: 'none',
-          margin: 0,
-          padding: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '2',
-        })}
-      >
-        {players.map((player) => {
-          const isActive = activePlayerIds.has(player.id)
-          const isLocal = player.isLocal !== false
-
-          return (
-            <li
-              key={player.id}
-              className={css({
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '3',
-                p: '3',
-                borderRadius: 'md',
-                borderWidth: '1px',
-                borderColor: isActive ? 'green.300' : 'gray.200',
-                backgroundColor: isActive ? 'green.50' : 'gray.50',
-              })}
-            >
-              <div className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-                <span className={css({ fontWeight: 'semibold', color: 'gray.900' })}>
-                  {player.emoji} {player.name}
-                </span>
-                <span className={css({ fontSize: 'xs', color: 'gray.600' })}>
-                  {isLocal ? 'Local player' : 'Remote player'}
-                </span>
-              </div>
-              <label
-                className={css({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '2',
-                  fontSize: 'sm',
-                  color: isLocal ? 'gray.800' : 'gray.500',
-                })}
-              >
-                <span>{isActive ? 'Active' : 'Inactive'}</span>
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  disabled={!isLocal}
-                  onChange={(event) => onToggleActive(player.id, event.target.checked)}
-                />
-              </label>
-            </li>
-          )
-        })}
-      </ul>
+      )}
     </div>
   )
 }
