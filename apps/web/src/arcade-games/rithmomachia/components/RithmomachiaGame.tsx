@@ -954,47 +954,138 @@ function CaptureRelationOptions({
   findValidHelpers: (moverValue: number, targetValue: number, relation: RelationKind) => Piece[]
 }) {
   const [hoveredRelation, setHoveredRelation] = useState<RelationKind | null>(null)
+  const [currentHelperIndex, setCurrentHelperIndex] = useState(0)
+
+  // Cycle through valid helpers every 1.5 seconds when hovering
+  useEffect(() => {
+    if (!hoveredRelation) {
+      setCurrentHelperIndex(0)
+      return
+    }
+
+    const moverValue = getEffectiveValue(moverPiece)
+    const targetValue = getEffectiveValue(targetPiece)
+
+    if (
+      moverValue === undefined ||
+      moverValue === null ||
+      targetValue === undefined ||
+      targetValue === null
+    ) {
+      return
+    }
+
+    const validHelpers = findValidHelpers(moverValue, targetValue, hoveredRelation)
+    if (validHelpers.length <= 1) {
+      // No need to cycle if only one or zero helpers
+      setCurrentHelperIndex(0)
+      return
+    }
+
+    // Cycle through helpers every 1.5 seconds
+    const interval = setInterval(() => {
+      setCurrentHelperIndex((prev) => (prev + 1) % validHelpers.length)
+    }, 1500)
+
+    return () => clearInterval(interval)
+  }, [hoveredRelation, moverPiece, targetPiece, findValidHelpers])
+
+  // Generate tooltip text with actual numbers for the currently displayed helper
+  const getTooltipText = (relation: RelationKind): string => {
+    if (relation !== hoveredRelation) {
+      // Not hovered, use generic text
+      const genericMap: Record<RelationKind, string> = {
+        EQUAL: 'Equality: a = b',
+        MULTIPLE: 'Multiple: b is multiple of a',
+        DIVISOR: 'Divisor: a divides b',
+        SUM: 'Sum: a + h = b (helper)',
+        DIFF: 'Difference: |a - h| = b (helper)',
+        PRODUCT: 'Product: a × h = b (helper)',
+        RATIO: 'Ratio: a/h = b/h (helper)',
+      }
+      return genericMap[relation] || relation
+    }
+
+    const moverValue = getEffectiveValue(moverPiece)
+    const targetValue = getEffectiveValue(targetPiece)
+
+    if (
+      moverValue === undefined ||
+      moverValue === null ||
+      targetValue === undefined ||
+      targetValue === null
+    ) {
+      return relation
+    }
+
+    const validHelpers = findValidHelpers(moverValue, targetValue, relation)
+    if (validHelpers.length === 0) {
+      return `${relation}: No valid helpers`
+    }
+
+    const currentHelper = validHelpers[currentHelperIndex]
+    const helperValue = getEffectiveValue(currentHelper)
+
+    if (helperValue === undefined || helperValue === null) {
+      return relation
+    }
+
+    // Generate equation with actual numbers
+    switch (relation) {
+      case 'SUM':
+        return `${moverValue} + ${helperValue} = ${targetValue}`
+      case 'DIFF':
+        return `|${moverValue} - ${helperValue}| = ${targetValue}`
+      case 'PRODUCT':
+        return `${moverValue} × ${helperValue} = ${targetValue}`
+      case 'RATIO':
+        return `${moverValue}/${helperValue} = ${targetValue}/${helperValue}`
+      case 'EQUAL':
+        return `${moverValue} = ${targetValue}`
+      case 'MULTIPLE':
+        return `${targetValue} is multiple of ${moverValue}`
+      case 'DIVISOR':
+        return `${moverValue} divides ${targetValue}`
+      default:
+        return relation
+    }
+  }
+
   const allRelations = [
-    { relation: 'EQUAL', label: '=', tooltip: 'Equality: a = b', angle: 0, color: '#8b5cf6' },
+    { relation: 'EQUAL', label: '=', angle: 0, color: '#8b5cf6' },
     {
       relation: 'MULTIPLE',
       label: '×n',
-      tooltip: 'Multiple: b is multiple of a',
       angle: 51.4,
       color: '#a855f7',
     },
     {
       relation: 'DIVISOR',
       label: '÷',
-      tooltip: 'Divisor: a divides b',
       angle: 102.8,
       color: '#c084fc',
     },
     {
       relation: 'SUM',
       label: '+',
-      tooltip: 'Sum: a + h = b (helper)',
       angle: 154.3,
       color: '#3b82f6',
     },
     {
       relation: 'DIFF',
       label: '−',
-      tooltip: 'Difference: |a - h| = b (helper)',
       angle: 205.7,
       color: '#06b6d4',
     },
     {
       relation: 'PRODUCT',
       label: '×',
-      tooltip: 'Product: a × h = b (helper)',
       angle: 257.1,
       color: '#10b981',
     },
     {
       relation: 'RATIO',
       label: '÷÷',
-      tooltip: 'Ratio: a/h = b/h (helper)',
       angle: 308.6,
       color: '#f59e0b',
     },
@@ -1024,7 +1115,7 @@ function CaptureRelationOptions({
   return (
     <Tooltip.Provider delayDuration={0} disableHoverableContent>
       <g>
-        {relations.map(({ relation, label, tooltip, angle, color }) => {
+        {relations.map(({ relation, label, angle, color }) => {
           const rad = (angle * Math.PI) / 180
 
           return (
@@ -1097,7 +1188,7 @@ function CaptureRelationOptions({
                           pointerEvents: 'none',
                         }}
                       >
-                        {tooltip}
+                        {getTooltipText(relation as RelationKind)}
                         <Tooltip.Arrow
                           style={{
                             fill: 'rgba(0,0,0,0.95)',
@@ -1112,7 +1203,7 @@ function CaptureRelationOptions({
           )
         })}
 
-        {/* Number bond preview when hovering over a relation - show triangles to all valid helpers */}
+        {/* Number bond preview when hovering over a relation - cycle through valid helpers */}
         {hoveredRelation &&
           (() => {
             const moverValue = getEffectiveValue(moverPiece)
@@ -1128,6 +1219,13 @@ function CaptureRelationOptions({
             }
 
             const validHelpers = findValidHelpers(moverValue, targetValue, hoveredRelation)
+
+            if (validHelpers.length === 0) {
+              return null
+            }
+
+            // Show only the current helper
+            const currentHelper = validHelpers[currentHelperIndex]
 
             // Color scheme based on relation type
             const colorMap: Record<RelationKind, string> = {
@@ -1171,107 +1269,101 @@ function CaptureRelationOptions({
               y: padding + targetRow * (cellSize + gap) + cellSize / 2,
             }
 
+            // Calculate current helper position on board
+            const helperFile = currentHelper.square.charCodeAt(0) - 65
+            const helperRank = Number.parseInt(currentHelper.square.slice(1), 10)
+            const helperRow = 8 - helperRank
+            const helperPos = {
+              x: padding + helperFile * (cellSize + gap) + cellSize / 2,
+              y: padding + helperRow * (cellSize + gap) + cellSize / 2,
+            }
+
             return (
-              <g>
-                {validHelpers.map((helper) => {
-                  // Calculate helper position on board
-                  const helperFile = helper.square.charCodeAt(0) - 65
-                  const helperRank = Number.parseInt(helper.square.slice(1), 10)
-                  const helperRow = 8 - helperRank
-                  const helperPos = {
-                    x: padding + helperFile * (cellSize + gap) + cellSize / 2,
-                    y: padding + helperRow * (cellSize + gap) + cellSize / 2,
+              <g key={currentHelper.id}>
+                {/* Triangle connecting lines */}
+                <g opacity={0.5}>
+                  <line
+                    x1={moverPos.x}
+                    y1={moverPos.y}
+                    x2={helperPos.x}
+                    y2={helperPos.y}
+                    stroke={color}
+                    strokeWidth={4}
+                  />
+                  <line
+                    x1={moverPos.x}
+                    y1={moverPos.y}
+                    x2={targetBoardPos.x}
+                    y2={targetBoardPos.y}
+                    stroke={color}
+                    strokeWidth={4}
+                  />
+                  <line
+                    x1={helperPos.x}
+                    y1={helperPos.y}
+                    x2={targetBoardPos.x}
+                    y2={targetBoardPos.y}
+                    stroke={color}
+                    strokeWidth={4}
+                  />
+                </g>
+
+                {/* Operator symbol - smart placement to avoid collinear collapse */}
+                {(() => {
+                  // Calculate center of triangle
+                  const centerX = (moverPos.x + helperPos.x + targetBoardPos.x) / 3
+                  const centerY = (moverPos.y + helperPos.y + targetBoardPos.y) / 3
+
+                  // Check if pieces are nearly collinear using cross product
+                  // Vector from mover to helper
+                  const v1x = helperPos.x - moverPos.x
+                  const v1y = helperPos.y - moverPos.y
+                  // Vector from mover to target
+                  const v2x = targetBoardPos.x - moverPos.x
+                  const v2y = targetBoardPos.y - moverPos.y
+
+                  // Cross product magnitude (2D)
+                  const crossProduct = Math.abs(v1x * v2y - v1y * v2x)
+
+                  // If cross product is small, pieces are nearly collinear
+                  const minTriangleArea = cellSize * cellSize * 0.5 // Minimum triangle area threshold
+                  const isCollinear = crossProduct < minTriangleArea
+
+                  let operatorX = centerX
+                  let operatorY = centerY
+
+                  if (isCollinear) {
+                    // Find the line connecting the three points (use mover to target as reference)
+                    const lineLength = Math.sqrt(v2x * v2x + v2y * v2y)
+
+                    if (lineLength > 0) {
+                      // Perpendicular direction (rotate 90 degrees)
+                      const perpX = -v2y / lineLength
+                      const perpY = v2x / lineLength
+
+                      // Offset operator perpendicular to the line
+                      const offsetDistance = cellSize * 0.8
+                      operatorX = centerX + perpX * offsetDistance
+                      operatorY = centerY + perpY * offsetDistance
+                    }
                   }
 
                   return (
-                    <g key={helper.id}>
-                      {/* Triangle connecting lines */}
-                      <g opacity={0.5}>
-                        <line
-                          x1={moverPos.x}
-                          y1={moverPos.y}
-                          x2={helperPos.x}
-                          y2={helperPos.y}
-                          stroke={color}
-                          strokeWidth={4}
-                        />
-                        <line
-                          x1={moverPos.x}
-                          y1={moverPos.y}
-                          x2={targetBoardPos.x}
-                          y2={targetBoardPos.y}
-                          stroke={color}
-                          strokeWidth={4}
-                        />
-                        <line
-                          x1={helperPos.x}
-                          y1={helperPos.y}
-                          x2={targetBoardPos.x}
-                          y2={targetBoardPos.y}
-                          stroke={color}
-                          strokeWidth={4}
-                        />
-                      </g>
-
-                      {/* Operator symbol - smart placement to avoid collinear collapse */}
-                      {(() => {
-                        // Calculate center of triangle
-                        const centerX = (moverPos.x + helperPos.x + targetBoardPos.x) / 3
-                        const centerY = (moverPos.y + helperPos.y + targetBoardPos.y) / 3
-
-                        // Check if pieces are nearly collinear using cross product
-                        // Vector from mover to helper
-                        const v1x = helperPos.x - moverPos.x
-                        const v1y = helperPos.y - moverPos.y
-                        // Vector from mover to target
-                        const v2x = targetBoardPos.x - moverPos.x
-                        const v2y = targetBoardPos.y - moverPos.y
-
-                        // Cross product magnitude (2D)
-                        const crossProduct = Math.abs(v1x * v2y - v1y * v2x)
-
-                        // If cross product is small, pieces are nearly collinear
-                        const minTriangleArea = cellSize * cellSize * 0.5 // Minimum triangle area threshold
-                        const isCollinear = crossProduct < minTriangleArea
-
-                        let operatorX = centerX
-                        let operatorY = centerY
-
-                        if (isCollinear) {
-                          // Find the line connecting the three points (use mover to target as reference)
-                          const lineLength = Math.sqrt(v2x * v2x + v2y * v2y)
-
-                          if (lineLength > 0) {
-                            // Perpendicular direction (rotate 90 degrees)
-                            const perpX = -v2y / lineLength
-                            const perpY = v2x / lineLength
-
-                            // Offset operator perpendicular to the line
-                            const offsetDistance = cellSize * 0.8
-                            operatorX = centerX + perpX * offsetDistance
-                            operatorY = centerY + perpY * offsetDistance
-                          }
-                        }
-
-                        return (
-                          <text
-                            x={operatorX}
-                            y={operatorY}
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            fill={color}
-                            fontSize={cellSize * 0.8}
-                            fontWeight="900"
-                            fontFamily="Georgia, 'Times New Roman', serif"
-                            opacity={0.9}
-                          >
-                            {operator}
-                          </text>
-                        )
-                      })()}
-                    </g>
+                    <text
+                      x={operatorX}
+                      y={operatorY}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill={color}
+                      fontSize={cellSize * 0.8}
+                      fontWeight="900"
+                      fontFamily="Georgia, 'Times New Roman', serif"
+                      opacity={0.9}
+                    >
+                      {operator}
+                    </text>
                   )
-                })}
+                })()}
               </g>
             )
           })()}
