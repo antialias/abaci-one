@@ -25,7 +25,7 @@ import {
 import { PieceRenderer } from './PieceRenderer'
 
 /**
- * Error dialog when no capture is possible - simple one-liner
+ * Error notification when no capture is possible
  */
 function CaptureErrorDialog({
   targetPos,
@@ -39,10 +39,10 @@ function CaptureErrorDialog({
   closing: boolean
 }) {
   const entranceSpring = useSpring({
-    from: { scale: 0, opacity: 0 },
-    scale: closing ? 0 : 1,
+    from: { opacity: 0, y: -20 },
     opacity: closing ? 0 : 1,
-    config: { tension: 280, friction: 20 },
+    y: closing ? -20 : 0,
+    config: { tension: 300, friction: 25 },
   })
 
   return (
@@ -50,67 +50,78 @@ function CaptureErrorDialog({
       style={{
         opacity: entranceSpring.opacity,
       }}
-      transform={to(
-        [entranceSpring.scale],
-        (s) => `translate(${targetPos.x}, ${targetPos.y}) scale(${s})`
-      )}
+      transform={to([entranceSpring.y], (y) => `translate(${targetPos.x}, ${targetPos.y + y})`)}
     >
       <foreignObject
-        x={-cellSize * 2}
-        y={-cellSize * 0.7}
-        width={cellSize * 4}
-        height={cellSize * 1.4}
+        x={-cellSize * 1.8}
+        y={-cellSize * 0.5}
+        width={cellSize * 3.6}
+        height={cellSize}
+        style={{ overflow: 'visible' }}
       >
         <div
           style={{
-            background: 'rgba(239, 68, 68, 0.95)',
-            color: 'white',
-            padding: `${cellSize * 0.15}px ${cellSize * 0.2}px`,
-            borderRadius: `${cellSize * 0.15}px`,
-            fontSize: `${cellSize * 0.18}px`,
-            fontWeight: 600,
+            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+            color: '#f1f5f9',
+            padding: `${cellSize * 0.12}px ${cellSize * 0.18}px`,
+            borderRadius: `${cellSize * 0.12}px`,
+            fontSize: `${cellSize * 0.16}px`,
+            fontWeight: 500,
             textAlign: 'center',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
-            border: '3px solid rgba(255, 255, 255, 0.9)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
             display: 'flex',
-            flexDirection: 'column',
-            gap: `${cellSize * 0.1}px`,
             alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            height: '100%',
-            boxSizing: 'border-box',
+            justifyContent: 'space-between',
+            gap: `${cellSize * 0.15}px`,
+            backdropFilter: 'blur(8px)',
+            letterSpacing: '0.01em',
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div style={{ whiteSpace: 'nowrap' }}>No valid mathematical relation</div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: `${cellSize * 0.1}px`,
+              flex: 1,
+            }}
+          >
+            <span
+              style={{
+                fontSize: `${cellSize * 0.2}px`,
+                opacity: 0.7,
+              }}
+            >
+              ⚠
+            </span>
+            <span>No valid relation</span>
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation()
               onClose()
             }}
             style={{
-              padding: `${cellSize * 0.08}px ${cellSize * 0.2}px`,
-              borderRadius: `${cellSize * 0.1}px`,
-              border: '2px solid white',
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              fontSize: `${cellSize * 0.16}px`,
-              fontWeight: 'bold',
+              padding: `${cellSize * 0.06}px ${cellSize * 0.12}px`,
+              borderRadius: `${cellSize * 0.08}px`,
+              border: 'none',
+              background: 'rgba(148, 163, 184, 0.2)',
+              color: '#cbd5e1',
+              fontSize: `${cellSize * 0.13}px`,
+              fontWeight: 600,
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'
-              e.currentTarget.style.transform = 'scale(1.05)'
+              e.currentTarget.style.background = 'rgba(148, 163, 184, 0.3)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
-              e.currentTarget.style.transform = 'scale(1)'
+              e.currentTarget.style.background = 'rgba(148, 163, 184, 0.2)'
             }}
           >
-            Close
+            OK
           </button>
         </div>
       </foreignObject>
