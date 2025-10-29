@@ -609,6 +609,231 @@ function HelperSelectionOptions({
 }
 
 /**
+ * Number Bond Triangle Visualization - shows the mathematical relationship
+ */
+function NumberBondVisualization({
+  moverValue,
+  helperValue,
+  targetValue,
+  relation,
+  targetPos,
+  cellSize,
+  onConfirm,
+  closing = false,
+}: {
+  moverValue: number
+  helperValue: number
+  targetValue: number
+  relation: RelationKind
+  targetPos: { x: number; y: number }
+  cellSize: number
+  onConfirm: () => void
+  closing?: boolean
+}) {
+  // Triangle layout: target at top, mover and helper at bottom corners
+  const triangleSize = cellSize * 1.5
+  const topPos = { x: targetPos.x, y: targetPos.y - triangleSize * 0.6 }
+  const leftPos = { x: targetPos.x - triangleSize * 0.5, y: targetPos.y + triangleSize * 0.4 }
+  const rightPos = { x: targetPos.x + triangleSize * 0.5, y: targetPos.y + triangleSize * 0.4 }
+
+  const circleRadius = cellSize * 0.4
+  const fontSize = cellSize * 0.35
+
+  // Color scheme based on relation type
+  const colorMap: Record<RelationKind, string> = {
+    SUM: '#ef4444', // red
+    DIFF: '#3b82f6', // blue
+    PRODUCT: '#10b981', // green
+    RATIO: '#f59e0b', // amber
+    EQUAL: '#8b5cf6',
+    MULTIPLE: '#a855f7',
+    DIVISOR: '#c084fc',
+  }
+  const color = colorMap[relation] || '#8b5cf6'
+
+  // Animate in with spring
+  const spring = useSpring({
+    from: { scale: 0, opacity: 0 },
+    scale: closing ? 0 : 1,
+    opacity: closing ? 0 : 1,
+    config: { tension: 280, friction: 20 },
+  })
+
+  // Operation symbol based on relation
+  const operatorMap: Record<RelationKind, string> = {
+    SUM: '+',
+    DIFF: '−',
+    PRODUCT: '×',
+    RATIO: '÷',
+    EQUAL: '=',
+    MULTIPLE: '×',
+    DIVISOR: '÷',
+  }
+  const operator = operatorMap[relation]
+
+  return (
+    <animated.g
+      style={{
+        opacity: spring.opacity,
+      }}
+      transform={to([spring.scale], (s) => `translate(${targetPos.x}, ${targetPos.y}) scale(${s})`)}
+    >
+      {/* Triangle connecting lines */}
+      <g transform={`translate(${-targetPos.x}, ${-targetPos.y})`}>
+        <line
+          x1={topPos.x}
+          y1={topPos.y}
+          x2={leftPos.x}
+          y2={leftPos.y}
+          stroke={color}
+          strokeWidth={3}
+          opacity={0.4}
+        />
+        <line
+          x1={topPos.x}
+          y1={topPos.y}
+          x2={rightPos.x}
+          y2={rightPos.y}
+          stroke={color}
+          strokeWidth={3}
+          opacity={0.4}
+        />
+        <line
+          x1={leftPos.x}
+          y1={leftPos.y}
+          x2={rightPos.x}
+          y2={rightPos.y}
+          stroke={color}
+          strokeWidth={3}
+          opacity={0.4}
+        />
+
+        {/* Target (top) */}
+        <circle
+          cx={topPos.x}
+          cy={topPos.y}
+          r={circleRadius}
+          fill={color}
+          stroke="white"
+          strokeWidth={3}
+        />
+        <text
+          x={topPos.x}
+          y={topPos.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="white"
+          fontSize={fontSize}
+          fontWeight="bold"
+          fontFamily="Georgia, 'Times New Roman', serif"
+        >
+          {targetValue}
+        </text>
+
+        {/* Mover (bottom left) */}
+        <circle
+          cx={leftPos.x}
+          cy={leftPos.y}
+          r={circleRadius}
+          fill={color}
+          stroke="white"
+          strokeWidth={3}
+        />
+        <text
+          x={leftPos.x}
+          y={leftPos.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="white"
+          fontSize={fontSize}
+          fontWeight="bold"
+          fontFamily="Georgia, 'Times New Roman', serif"
+        >
+          {moverValue}
+        </text>
+
+        {/* Helper (bottom right) */}
+        <circle
+          cx={rightPos.x}
+          cy={rightPos.y}
+          r={circleRadius}
+          fill={color}
+          stroke="white"
+          strokeWidth={3}
+        />
+        <text
+          x={rightPos.x}
+          y={rightPos.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill="white"
+          fontSize={fontSize}
+          fontWeight="bold"
+          fontFamily="Georgia, 'Times New Roman', serif"
+        >
+          {helperValue}
+        </text>
+
+        {/* Operator symbol between bottom circles */}
+        <text
+          x={(leftPos.x + rightPos.x) / 2}
+          y={leftPos.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={color}
+          fontSize={fontSize * 1.2}
+          fontWeight="bold"
+        >
+          {operator}
+        </text>
+
+        {/* Confirm button */}
+        <g transform={`translate(${targetPos.x}, ${targetPos.y + triangleSize * 0.9})`}>
+          <foreignObject
+            x={-cellSize}
+            y={-cellSize * 0.3}
+            width={cellSize * 2}
+            height={cellSize * 0.6}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onConfirm()
+              }}
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '12px',
+                border: `3px solid ${color}`,
+                backgroundColor: 'white',
+                color,
+                fontSize: `${fontSize * 0.8}px`,
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = color
+                e.currentTarget.style.color = 'white'
+                e.currentTarget.style.transform = 'scale(1.05)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'white'
+                e.currentTarget.style.color = color
+                e.currentTarget.style.transform = 'scale(1)'
+              }}
+            >
+              ✓ Capture
+            </button>
+          </foreignObject>
+        </g>
+      </g>
+    </animated.g>
+  )
+}
+
+/**
  * Animated floating capture relation options
  */
 function CaptureRelationOptions({
@@ -793,10 +1018,12 @@ function SvgPiece({
   piece,
   cellSize,
   padding,
+  opacity = 1,
 }: {
   piece: Piece
   cellSize: number
   padding: number
+  opacity?: number
 }) {
   const file = piece.square.charCodeAt(0) - 65 // A=0
   const rank = Number.parseInt(piece.square.slice(1), 10) // 1-8
@@ -823,6 +1050,7 @@ function SvgPiece({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            opacity,
           }}
         >
           <PieceRenderer
@@ -852,6 +1080,12 @@ function BoardDisplay() {
   } | null>(null)
   const [hoveredRelation, setHoveredRelation] = useState<string | null>(null)
   const [selectedRelation, setSelectedRelation] = useState<RelationKind | null>(null)
+  const [selectedHelper, setSelectedHelper] = useState<{
+    pieceId: string
+    moverValue: number
+    helperValue: number
+    targetValue: number
+  } | null>(null)
 
   // Handle closing animation completion
   useEffect(() => {
@@ -861,6 +1095,7 @@ function BoardDisplay() {
         setCaptureDialogOpen(false)
         setCaptureTarget(null)
         setSelectedRelation(null)
+        setSelectedHelper(null)
         setClosingDialog(false)
       }, 400)
       return () => clearTimeout(timer)
@@ -870,6 +1105,7 @@ function BoardDisplay() {
   // Function to dismiss the dialog with animation
   const dismissDialog = () => {
     setSelectedRelation(null)
+    setSelectedHelper(null)
     setClosingDialog(true)
   }
 
@@ -1064,6 +1300,46 @@ function BoardDisplay() {
   const handleHelperSelection = (helperPieceId: string) => {
     if (!captureTarget || !selectedRelation) return
 
+    // Get piece values for number bond visualization
+    const moverPiece = Object.values(state.pieces).find(
+      (p) => p.id === captureTarget.pieceId && !p.captured
+    )
+    const targetPiece = Object.values(state.pieces).find(
+      (p) => p.square === captureTarget.to && !p.captured
+    )
+    const helperPiece = Object.values(state.pieces).find(
+      (p) => p.id === helperPieceId && !p.captured
+    )
+
+    if (!moverPiece || !targetPiece || !helperPiece) return
+
+    const moverValue = getEffectiveValue(moverPiece)
+    const targetValue = getEffectiveValue(targetPiece)
+    const helperValue = getEffectiveValue(helperPiece)
+
+    if (
+      moverValue === undefined ||
+      moverValue === null ||
+      targetValue === undefined ||
+      targetValue === null ||
+      helperValue === undefined ||
+      helperValue === null
+    ) {
+      return
+    }
+
+    // Show number bond instead of immediately executing
+    setSelectedHelper({
+      pieceId: helperPieceId,
+      moverValue,
+      helperValue,
+      targetValue,
+    })
+  }
+
+  const handleNumberBondConfirm = () => {
+    if (!captureTarget || !selectedRelation || !selectedHelper) return
+
     const targetPiece = Object.values(state.pieces).find(
       (p) => p.square === captureTarget.to && !p.captured
     )
@@ -1072,7 +1348,7 @@ function BoardDisplay() {
     const captureData = {
       relation: selectedRelation,
       targetPieceId: targetPiece.id,
-      helperPieceId,
+      helperPieceId: selectedHelper.pieceId,
     }
 
     makeMove(captureTarget.from, captureTarget.to, captureTarget.pieceId, undefined, captureData)
@@ -1276,37 +1552,52 @@ function BoardDisplay() {
         })}
 
         {/* Pieces */}
-        {activePieces.map((piece) => (
-          <SvgPiece key={piece.id} piece={piece} cellSize={cellSize + gap} padding={padding} />
-        ))}
+        {activePieces.map((piece) => {
+          // Show low opacity for pieces currently being shown as helper options
+          const isBorrowedHelper = helpersWithPositions.some((h) => h.piece.id === piece.id)
+          return (
+            <SvgPiece
+              key={piece.id}
+              piece={piece}
+              cellSize={cellSize + gap}
+              padding={padding}
+              opacity={isBorrowedHelper ? 0.2 : 1}
+            />
+          )
+        })}
 
-        {/* Floating capture relation options or helper selection */}
+        {/* Floating capture relation options, helper selection, or number bond */}
         {(() => {
           console.log('[Render] captureDialogOpen:', captureDialogOpen)
           console.log('[Render] targetPos:', targetPos)
           console.log('[Render] selectedRelation:', selectedRelation)
+          console.log('[Render] selectedHelper:', selectedHelper)
           console.log('[Render] helpersWithPositions.length:', helpersWithPositions.length)
           console.log('[Render] closingDialog:', closingDialog)
 
-          if (captureDialogOpen && targetPos && !selectedRelation) {
-            console.log('[Render] Showing CaptureRelationOptions')
-            console.log('[Render] availableRelations:', availableRelations)
+          // Phase 3: Show number bond after helper selected
+          if (captureDialogOpen && targetPos && selectedRelation && selectedHelper) {
+            console.log('[Render] Showing NumberBondVisualization')
             return (
-              <CaptureRelationOptions
+              <NumberBondVisualization
+                moverValue={selectedHelper.moverValue}
+                helperValue={selectedHelper.helperValue}
+                targetValue={selectedHelper.targetValue}
+                relation={selectedRelation}
                 targetPos={targetPos}
                 cellSize={cellSize}
-                gap={gap}
-                onSelectRelation={handleCaptureWithRelation}
+                onConfirm={handleNumberBondConfirm}
                 closing={closingDialog}
-                availableRelations={availableRelations}
               />
             )
           }
 
+          // Phase 2: Show helper selection
           if (
             captureDialogOpen &&
             targetPos &&
             selectedRelation &&
+            !selectedHelper &&
             helpersWithPositions.length > 0
           ) {
             console.log('[Render] Showing HelperSelectionOptions')
@@ -1319,6 +1610,22 @@ function BoardDisplay() {
                 padding={padding}
                 onSelectHelper={handleHelperSelection}
                 closing={closingDialog}
+              />
+            )
+          }
+
+          // Phase 1: Show relation options
+          if (captureDialogOpen && targetPos && !selectedRelation) {
+            console.log('[Render] Showing CaptureRelationOptions')
+            console.log('[Render] availableRelations:', availableRelations)
+            return (
+              <CaptureRelationOptions
+                targetPos={targetPos}
+                cellSize={cellSize}
+                gap={gap}
+                onSelectRelation={handleCaptureWithRelation}
+                closing={closingDialog}
+                availableRelations={availableRelations}
               />
             )
           }
