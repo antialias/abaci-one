@@ -56,45 +56,50 @@ function CaptureErrorDialog({
       )}
     >
       <foreignObject
-        x={-cellSize * 1.5}
-        y={-cellSize * 0.8}
-        width={cellSize * 3}
-        height={cellSize * 1.6}
+        x={-cellSize * 2}
+        y={-cellSize * 0.7}
+        width={cellSize * 4}
+        height={cellSize * 1.4}
       >
         <div
           style={{
             background: 'rgba(239, 68, 68, 0.95)',
             color: 'white',
-            padding: `${cellSize * 0.25}px`,
-            borderRadius: `${cellSize * 0.2}px`,
-            fontSize: `${cellSize * 0.28}px`,
+            padding: `${cellSize * 0.15}px ${cellSize * 0.2}px`,
+            borderRadius: `${cellSize * 0.15}px`,
+            fontSize: `${cellSize * 0.18}px`,
             fontWeight: 600,
             textAlign: 'center',
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
             border: '3px solid rgba(255, 255, 255, 0.9)',
             display: 'flex',
             flexDirection: 'column',
-            gap: `${cellSize * 0.15}px`,
+            gap: `${cellSize * 0.1}px`,
             alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            height: '100%',
+            boxSizing: 'border-box',
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div>No valid mathematical relation</div>
+          <div style={{ whiteSpace: 'nowrap' }}>No valid mathematical relation</div>
           <button
             onClick={(e) => {
               e.stopPropagation()
               onClose()
             }}
             style={{
-              padding: `${cellSize * 0.12}px ${cellSize * 0.25}px`,
-              borderRadius: `${cellSize * 0.12}px`,
+              padding: `${cellSize * 0.08}px ${cellSize * 0.2}px`,
+              borderRadius: `${cellSize * 0.1}px`,
               border: '2px solid white',
               background: 'rgba(255, 255, 255, 0.2)',
               color: 'white',
-              fontSize: `${cellSize * 0.22}px`,
+              fontSize: `${cellSize * 0.16}px`,
               fontWeight: 'bold',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
+              whiteSpace: 'nowrap',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'
