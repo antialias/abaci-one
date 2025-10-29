@@ -25,43 +25,19 @@ import {
 import { PieceRenderer } from './PieceRenderer'
 
 /**
- * Error dialog when no capture is possible
+ * Error dialog when no capture is possible - simple one-liner
  */
 function CaptureErrorDialog({
   targetPos,
   cellSize,
-  moverPiece,
-  targetPiece,
   onClose,
   closing,
 }: {
   targetPos: { x: number; y: number }
   cellSize: number
-  moverPiece: Piece
-  targetPiece: Piece
   onClose: () => void
   closing: boolean
 }) {
-  const moverValue = getEffectiveValue(moverPiece)
-  const targetValue = getEffectiveValue(targetPiece)
-
-  // Get explanations for why each relation failed
-  const explanations: string[] = []
-  if (
-    moverValue !== undefined &&
-    moverValue !== null &&
-    targetValue !== undefined &&
-    targetValue !== null
-  ) {
-    explanations.push(checkEqual(moverValue, targetValue).explanation || '')
-    explanations.push(checkMultiple(moverValue, targetValue).explanation || '')
-    explanations.push(checkDivisor(moverValue, targetValue).explanation || '')
-    explanations.push('SUM: No friendly piece can serve as helper')
-    explanations.push('DIFF: No friendly piece can serve as helper')
-    explanations.push('PRODUCT: No friendly piece can serve as helper')
-    explanations.push('RATIO: No friendly piece can serve as helper')
-  }
-
   const entranceSpring = useSpring({
     from: { scale: 0, opacity: 0 },
     scale: closing ? 0 : 1,
@@ -80,66 +56,38 @@ function CaptureErrorDialog({
       )}
     >
       <foreignObject
-        x={-cellSize * 2.5}
-        y={-cellSize * 2}
-        width={cellSize * 5}
-        height={cellSize * 4}
+        x={-cellSize * 1.5}
+        y={-cellSize * 0.8}
+        width={cellSize * 3}
+        height={cellSize * 1.6}
       >
         <div
           style={{
             background: 'rgba(239, 68, 68, 0.95)',
             color: 'white',
-            padding: `${cellSize * 0.3}px`,
+            padding: `${cellSize * 0.25}px`,
             borderRadius: `${cellSize * 0.2}px`,
-            fontSize: `${cellSize * 0.25}px`,
+            fontSize: `${cellSize * 0.28}px`,
             fontWeight: 600,
             textAlign: 'center',
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)',
             border: '3px solid rgba(255, 255, 255, 0.9)',
-            maxHeight: `${cellSize * 3.5}px`,
-            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: `${cellSize * 0.15}px`,
+            alignItems: 'center',
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div
-            style={{
-              fontSize: `${cellSize * 0.35}px`,
-              marginBottom: `${cellSize * 0.2}px`,
-              fontWeight: 'bold',
-            }}
-          >
-            ❌ Capture Not Possible
-          </div>
-          <div
-            style={{
-              fontSize: `${cellSize * 0.22}px`,
-              marginBottom: `${cellSize * 0.15}px`,
-            }}
-          >
-            No mathematical relation works:
-          </div>
-          <div
-            style={{
-              fontSize: `${cellSize * 0.18}px`,
-              textAlign: 'left',
-              lineHeight: 1.4,
-            }}
-          >
-            {explanations.filter(Boolean).map((exp, i) => (
-              <div key={i} style={{ marginBottom: `${cellSize * 0.1}px` }}>
-                • {exp}
-              </div>
-            ))}
-          </div>
+          <div>No valid mathematical relation</div>
           <button
             onClick={(e) => {
               e.stopPropagation()
               onClose()
             }}
             style={{
-              marginTop: `${cellSize * 0.2}px`,
-              padding: `${cellSize * 0.15}px ${cellSize * 0.3}px`,
-              borderRadius: `${cellSize * 0.15}px`,
+              padding: `${cellSize * 0.12}px ${cellSize * 0.25}px`,
+              borderRadius: `${cellSize * 0.12}px`,
               border: '2px solid white',
               background: 'rgba(255, 255, 255, 0.2)',
               color: 'white',
@@ -2183,8 +2131,6 @@ function BoardDisplay() {
                 <CaptureErrorDialog
                   targetPos={targetPos}
                   cellSize={cellSize}
-                  moverPiece={moverPiece}
-                  targetPiece={targetPiece}
                   onClose={dismissDialog}
                   closing={closingDialog}
                 />
