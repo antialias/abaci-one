@@ -22,8 +22,102 @@ export function DeploymentInfoModal({ children }: DeploymentInfoModalProps) {
       }
     }
 
+    const gesture = {
+      tracking: false,
+      startX: 0,
+      startY: 0,
+      startTime: 0,
+      lastX: 0,
+      lastY: 0,
+    }
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) {
+        gesture.tracking = false
+        return
+      }
+
+      const touch = event.touches[0]
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const cornerThresholdX = viewportWidth * 0.15
+      const cornerThresholdY = viewportHeight * 0.15
+
+      if (touch.clientX <= cornerThresholdX && touch.clientY <= cornerThresholdY) {
+        gesture.tracking = true
+        gesture.startX = touch.clientX
+        gesture.startY = touch.clientY
+        gesture.startTime = performance.now()
+        gesture.lastX = touch.clientX
+        gesture.lastY = touch.clientY
+      } else {
+        gesture.tracking = false
+      }
+    }
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (!gesture.tracking) {
+        return
+      }
+
+      if (event.touches.length !== 1) {
+        gesture.tracking = false
+        return
+      }
+
+      const touch = event.touches[0]
+      gesture.lastX = touch.clientX
+      gesture.lastY = touch.clientY
+    }
+
+    const handleTouchCancel = () => {
+      gesture.tracking = false
+    }
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (!gesture.tracking) {
+        return
+      }
+
+      const { startX, startY, startTime } = gesture
+      const touch = event.changedTouches[0]
+      const endX = touch?.clientX ?? gesture.lastX
+      const endY = touch?.clientY ?? gesture.lastY
+      const elapsed = performance.now() - startTime
+
+      gesture.tracking = false
+
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const bottomThresholdX = viewportWidth * 0.85
+      const bottomThresholdY = viewportHeight * 0.85
+      const minimumDistance = Math.hypot(endX - startX, endY - startY)
+      const diagonal = Math.hypot(viewportWidth, viewportHeight)
+      const minimumRequiredDistance = diagonal * 0.25
+
+      if (
+        endX >= bottomThresholdX &&
+        endY >= bottomThresholdY &&
+        minimumDistance >= minimumRequiredDistance &&
+        elapsed <= 1500
+      ) {
+        setOpen((prev) => !prev)
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd)
+    window.addEventListener('touchcancel', handleTouchCancel)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+      window.removeEventListener('touchcancel', handleTouchCancel)
+    }
   }, [])
 
   return (
