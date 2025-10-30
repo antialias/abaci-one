@@ -65,25 +65,18 @@ export async function POST(req: NextRequest, context: RouteContext) {
       members.map((m) => m.userId)
     )
 
-    // Find which user owns this player
-    const playerOwnerMember = members.find((m) => m.userId === player.userId)
-    console.log('[Deactivate Player API] Player owner member:', playerOwnerMember)
-
-    if (!playerOwnerMember) {
-      console.log('[Deactivate Player API] ERROR: Player userId does not match any room member')
-      return NextResponse.json(
-        { error: 'Player does not belong to a room member' },
-        { status: 404 }
-      )
-    }
-
     // Can't deactivate your own players (use the regular player controls for that)
     if (player.userId === viewerId) {
+      console.log('[Deactivate Player API] ERROR: Cannot deactivate your own players')
       return NextResponse.json(
         { error: 'Cannot deactivate your own players. Use the player controls in the nav.' },
         { status: 400 }
       )
     }
+
+    // Note: We don't check if the player belongs to a current room member
+    // because players from users who have left the room may still need to be cleaned up
+    console.log('[Deactivate Player API] Player validation passed, proceeding with deactivation')
 
     // Deactivate the player
     await setPlayerActiveStatus(body.playerId, false)
