@@ -259,10 +259,22 @@ function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined
         })
       }
 
+      // If guest has no actions available, show waiting message
+      if (actions.length === 0 && !isHost) {
+        return {
+          heading: 'Too many active players',
+          description:
+            'Rithmomachia supports only two active players. Waiting for the room host to deactivate or remove extras...',
+        }
+      }
+
       return {
         heading: 'Too many active players',
-        description: 'Rithmomachia supports only two active players. Deactivate or kick extras:',
-        actions,
+        description:
+          actions.length > 0
+            ? 'Rithmomachia supports only two active players. Deactivate or kick extras:'
+            : 'Rithmomachia supports only two active players.',
+        actions: actions.length > 0 ? actions : undefined,
       }
     }
 
