@@ -246,7 +246,14 @@ function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined
         actions.push({
           label: `Deactivate ${player.name}`,
           onClick: () => {
+            console.log('[RithmomachiaGame] Deactivating player:', player)
+            console.log('[RithmomachiaGame] Player ID:', player.id)
+            console.log('[RithmomachiaGame] Player userId:', (player as any).userId)
+            console.log('[RithmomachiaGame] Player isLocal:', player.isLocal)
             if (roomData) {
+              console.log('[RithmomachiaGame] Room ID:', roomData.id)
+              console.log('[RithmomachiaGame] Room members:', roomData.members)
+              console.log('[RithmomachiaGame] Member players:', roomData.memberPlayers)
               deactivatePlayer({ roomId: roomData.id, playerId: player.id })
             }
           },

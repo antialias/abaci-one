@@ -50,14 +50,27 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
 
     // Get the player
+    console.log('[Deactivate Player API] Looking up player with ID:', body.playerId)
     const player = await getPlayer(body.playerId)
+    console.log('[Deactivate Player API] Player found:', player)
+
     if (!player) {
+      console.log('[Deactivate Player API] Player not found in database')
       return NextResponse.json({ error: 'Player not found' }, { status: 404 })
     }
 
+    console.log('[Deactivate Player API] Player userId:', player.userId)
+    console.log(
+      '[Deactivate Player API] Room member userIds:',
+      members.map((m) => m.userId)
+    )
+
     // Find which user owns this player
     const playerOwnerMember = members.find((m) => m.userId === player.userId)
+    console.log('[Deactivate Player API] Player owner member:', playerOwnerMember)
+
     if (!playerOwnerMember) {
+      console.log('[Deactivate Player API] ERROR: Player userId does not match any room member')
       return NextResponse.json(
         { error: 'Player does not belong to a room member' },
         { status: 404 }
