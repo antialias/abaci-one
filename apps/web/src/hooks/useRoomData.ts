@@ -796,16 +796,27 @@ async function deactivatePlayerInRoomApi(params: {
   roomId: string
   playerId: string
 }): Promise<void> {
-  const response = await fetch(`/api/arcade/rooms/${params.roomId}/deactivate-player`, {
+  const url = `/api/arcade/rooms/${params.roomId}/deactivate-player`
+  console.log('[useRoomData] deactivatePlayerInRoomApi called')
+  console.log('[useRoomData] URL:', url)
+  console.log('[useRoomData] params:', params)
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ playerId: params.playerId }),
   })
 
+  console.log('[useRoomData] Response status:', response.status)
+  console.log('[useRoomData] Response ok:', response.ok)
+
   if (!response.ok) {
     const errorData = await response.json()
+    console.error('[useRoomData] Error response:', errorData)
     throw new Error(errorData.error || 'Failed to deactivate player')
   }
+
+  console.log('[useRoomData] deactivatePlayerInRoomApi success')
 }
 
 /**

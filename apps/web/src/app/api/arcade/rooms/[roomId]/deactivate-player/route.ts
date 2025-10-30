@@ -15,19 +15,31 @@ type RouteContext = {
  *   - playerId: string - The player to deactivate
  */
 export async function POST(req: NextRequest, context: RouteContext) {
+  console.log('[Deactivate Player API] POST request received')
+
   try {
     const { roomId } = await context.params
+    console.log('[Deactivate Player API] roomId:', roomId)
+
     const viewerId = await getViewerId()
+    console.log('[Deactivate Player API] viewerId:', viewerId)
+
     const body = await req.json()
+    console.log('[Deactivate Player API] body:', body)
 
     // Validate required fields
     if (!body.playerId) {
+      console.log('[Deactivate Player API] Missing playerId in body')
       return NextResponse.json({ error: 'Missing required field: playerId' }, { status: 400 })
     }
 
     // Check if user is the host
+    console.log('[Deactivate Player API] Fetching room members for roomId:', roomId)
     const members = await getRoomMembers(roomId)
+    console.log('[Deactivate Player API] members count:', members.length)
+
     const currentMember = members.find((m) => m.userId === viewerId)
+    console.log('[Deactivate Player API] currentMember:', currentMember)
 
     if (!currentMember) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
@@ -93,9 +105,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
     }
 
+    console.log('[Deactivate Player API] Success - returning 200')
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error: any) {
-    console.error('Failed to deactivate player:', error)
+    console.error('[Deactivate Player API] ERROR:', error)
+    console.error('[Deactivate Player API] Error stack:', error.stack)
     return NextResponse.json({ error: 'Failed to deactivate player' }, { status: 500 })
   }
 }
