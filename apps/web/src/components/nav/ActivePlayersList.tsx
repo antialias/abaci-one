@@ -174,7 +174,9 @@ export function ActivePlayersList({
                       boxShadow: badge.shadowColor
                         ? `0 4px 12px ${badge.shadowColor}`
                         : '0 4px 12px rgba(15, 23, 42, 0.25)',
-                      border: badge.borderColor ? `2px solid ${badge.borderColor}` : '2px solid rgba(255,255,255,0.4)',
+                      border: badge.borderColor
+                        ? `2px solid ${badge.borderColor}`
+                        : '2px solid rgba(255,255,255,0.4)',
                       backdropFilter: 'blur(4px)',
                       marginTop: '6px',
                       whiteSpace: 'nowrap',
@@ -183,7 +185,10 @@ export function ActivePlayersList({
                     {badge.icon && (
                       <span
                         aria-hidden
-                        style={{ fontSize: '14px', filter: 'drop-shadow(0 2px 4px rgba(15,23,42,0.35))' }}
+                        style={{
+                          fontSize: '14px',
+                          filter: 'drop-shadow(0 2px 4px rgba(15,23,42,0.35))',
+                        }}
                       >
                         {badge.icon}
                       </span>

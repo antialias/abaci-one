@@ -284,20 +284,20 @@ export function GameContextNav({
                   margin: '0 4px',
                 }}
               />
-          {networkPlayers.map((player) => (
-            <NetworkPlayerIndicator
-              key={player.id}
-              player={player}
-              shouldEmphasize={shouldEmphasize}
-              currentPlayerId={currentPlayerId}
-              playerScores={playerScores}
-              playerStreaks={playerStreaks}
-              playerBadges={playerBadges}
-              roomId={roomInfo?.roomId}
-              currentUserId={currentUserId ?? undefined}
-              isCurrentUserHost={isCurrentUserHost}
-            />
-          ))}
+              {networkPlayers.map((player) => (
+                <NetworkPlayerIndicator
+                  key={player.id}
+                  player={player}
+                  shouldEmphasize={shouldEmphasize}
+                  currentPlayerId={currentPlayerId}
+                  playerScores={playerScores}
+                  playerStreaks={playerStreaks}
+                  playerBadges={playerBadges}
+                  roomId={roomInfo?.roomId}
+                  currentUserId={currentUserId ?? undefined}
+                  isCurrentUserHost={isCurrentUserHost}
+                />
+              ))}
             </>
           )}
         </div>

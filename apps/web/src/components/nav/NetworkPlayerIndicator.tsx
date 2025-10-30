@@ -256,45 +256,47 @@ export function NetworkPlayerIndicator({
           `,
               }}
             />
+          </div>
+
+          {badge && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                background: badge.background ?? 'rgba(148, 163, 184, 0.25)',
+                color: badge.color ?? '#0f172a',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                boxShadow: badge.shadowColor
+                  ? `0 4px 12px ${badge.shadowColor}`
+                  : '0 4px 12px rgba(15, 23, 42, 0.25)',
+                border: badge.borderColor
+                  ? `2px solid ${badge.borderColor}`
+                  : '2px solid rgba(255,255,255,0.4)',
+                backdropFilter: 'blur(4px)',
+                marginTop: '6px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {badge.icon && (
+                <span
+                  aria-hidden
+                  style={{ fontSize: '14px', filter: 'drop-shadow(0 2px 4px rgba(15,23,42,0.35))' }}
+                >
+                  {badge.icon}
+                </span>
+              )}
+              <span>{badge.label}</span>
             </div>
+          )}
 
-            {badge && (
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 10px',
-                  borderRadius: '999px',
-                  background: badge.background ?? 'rgba(148, 163, 184, 0.25)',
-                  color: badge.color ?? '#0f172a',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  boxShadow: badge.shadowColor
-                    ? `0 4px 12px ${badge.shadowColor}`
-                    : '0 4px 12px rgba(15, 23, 42, 0.25)',
-                  border: badge.borderColor ? `2px solid ${badge.borderColor}` : '2px solid rgba(255,255,255,0.4)',
-                  backdropFilter: 'blur(4px)',
-                  marginTop: '6px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {badge.icon && (
-                  <span
-                    aria-hidden
-                    style={{ fontSize: '14px', filter: 'drop-shadow(0 2px 4px rgba(15,23,42,0.35))' }}
-                  >
-                    {badge.icon}
-                  </span>
-                )}
-                <span>{badge.label}</span>
-              </div>
-            )}
-
-            {/* Turn label */}
-            {isCurrentPlayer && hasGameState && (
+          {/* Turn label */}
+          {isCurrentPlayer && hasGameState && (
             <div
               style={{
                 fontSize: '12px',

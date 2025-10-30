@@ -340,7 +340,7 @@ function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
     <div
       className={css({
         position: 'fixed',
-        top: '80px',
+        top: '180px',
         left: '50%',
         transform: 'translateX(-50%)',
         width: '90%',
@@ -352,7 +352,7 @@ function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
         p: '4',
         borderRadius: 'md',
         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        zIndex: 1000,
+        zIndex: Z_INDEX.GAME.OVERLAY,
       })}
     >
       <div>

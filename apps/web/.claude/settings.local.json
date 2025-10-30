@@ -111,13 +111,12 @@
       "mcp__sqlite__list_tables",
       "mcp__sqlite__describe_table",
       "mcp__sqlite__read_query",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "Bash(gh run watch:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "sqlite"
-  ]
+  "enabledMcpjsonServers": ["sqlite"]
 }

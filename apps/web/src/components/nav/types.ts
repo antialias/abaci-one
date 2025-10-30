@@ -6,4 +6,3 @@ export interface PlayerBadge {
   borderColor?: string
   shadowColor?: string
 }
-
