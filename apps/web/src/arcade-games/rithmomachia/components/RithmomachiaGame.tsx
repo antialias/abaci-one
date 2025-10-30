@@ -10,7 +10,7 @@ import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useFullscreen } from '@/contexts/FullscreenContext'
-import { useRoomData, useKickUser } from '@/hooks/useRoomData'
+import { useRoomData, useKickUser, useDeactivatePlayer } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
 import type { RosterWarning } from '@/components/nav/GameContextNav'
 import { css } from '../../../../styled-system/css'
@@ -143,6 +143,7 @@ function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined
   const { roomData } = useRoomData()
   const { data: viewerId } = useViewerId()
   const { mutate: kickUser } = useKickUser()
+  const { mutate: deactivatePlayer } = useDeactivatePlayer()
 
   return useMemo(() => {
     // Don't show notice for 'ok' or 'noLocalControl' (observers are allowed)
@@ -239,10 +240,20 @@ function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined
         })
       }
 
-      // Add kick actions for remote players (if host)
+      // Add deactivate and kick actions for remote players (if host)
       for (const player of kickablePlayers) {
+        // Add deactivate button (softer action)
         actions.push({
-          label: `Kick ${player.name}`,
+          label: `Deactivate ${player.name}`,
+          onClick: () => {
+            if (roomData) {
+              deactivatePlayer({ roomId: roomData.id, playerId: player.id })
+            }
+          },
+        })
+        // Add kick button (removes entire user)
+        actions.push({
+          label: `Kick ${player.name}'s user`,
           onClick: () => handleKick(player),
           variant: 'danger' as const,
         })
@@ -268,6 +279,7 @@ function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined
     addPlayer,
     setActive,
     kickUser,
+    deactivatePlayer,
   ])
 }
 

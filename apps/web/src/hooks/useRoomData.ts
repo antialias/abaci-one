@@ -351,6 +351,24 @@ export function useRoomData() {
       }
     }
 
+    const handlePlayerDeactivated = (data: {
+      roomId: string
+      playerId: string
+      playerName: string
+      deactivatedBy: string
+      memberPlayers: Record<string, RoomPlayer[]>
+    }) => {
+      if (data.roomId === roomData?.id) {
+        queryClient.setQueryData<RoomData | null>(roomKeys.current(), (prev) => {
+          if (!prev) return null
+          return {
+            ...prev,
+            memberPlayers: data.memberPlayers,
+          }
+        })
+      }
+    }
+
     // Moderation event handlers
     const handleKickedFromRoom = (data: { roomId: string; kickedBy: string; reason?: string }) => {
       setModerationEvent({
@@ -486,6 +504,7 @@ export function useRoomData() {
     socket.on('member-joined', handleMemberJoined)
     socket.on('member-left', handleMemberLeft)
     socket.on('room-players-updated', handleRoomPlayersUpdated)
+    socket.on('player-deactivated', handlePlayerDeactivated)
     socket.on('kicked-from-room', handleKickedFromRoom)
     socket.on('banned-from-room', handleBannedFromRoom)
     socket.on('report-submitted', handleReportSubmitted)
@@ -499,6 +518,7 @@ export function useRoomData() {
       socket.off('member-joined', handleMemberJoined)
       socket.off('member-left', handleMemberLeft)
       socket.off('room-players-updated', handleRoomPlayersUpdated)
+      socket.off('player-deactivated', handlePlayerDeactivated)
       socket.off('kicked-from-room', handleKickedFromRoom)
       socket.off('banned-from-room', handleBannedFromRoom)
       socket.off('report-submitted', handleReportSubmitted)
@@ -764,6 +784,40 @@ export function useKickUser() {
     mutationFn: kickUserFromRoomApi,
     onSuccess: () => {
       // The socket will handle updating members, but invalidate just in case
+      queryClient.invalidateQueries({ queryKey: roomKeys.current() })
+    },
+  })
+}
+
+/**
+ * Deactivate a specific player in the room (host only)
+ */
+async function deactivatePlayerInRoomApi(params: {
+  roomId: string
+  playerId: string
+}): Promise<void> {
+  const response = await fetch(`/api/arcade/rooms/${params.roomId}/deactivate-player`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerId: params.playerId }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Failed to deactivate player')
+  }
+}
+
+/**
+ * Hook: Deactivate a specific player in the room (host only)
+ */
+export function useDeactivatePlayer() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deactivatePlayerInRoomApi,
+    onSuccess: () => {
+      // The socket will handle updating players, but invalidate just in case
       queryClient.invalidateQueries({ queryKey: roomKeys.current() })
     },
   })

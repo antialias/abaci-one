@@ -134,3 +134,18 @@ export async function getPlayers(playerIds: string[]): Promise<Player[]> {
 
   return players
 }
+
+/**
+ * Set a player's active status
+ * @param playerId - The player ID
+ * @param isActive - The new active status
+ * @returns The updated player
+ */
+export async function setPlayerActiveStatus(
+  playerId: string,
+  isActive: boolean
+): Promise<Player | undefined> {
+  await db.update(schema.players).set({ isActive }).where(eq(schema.players.id, playerId))
+
+  return await getPlayer(playerId)
+}
