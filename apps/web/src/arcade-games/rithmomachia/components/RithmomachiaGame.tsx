@@ -416,9 +416,9 @@ function SetupPhase() {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.5vh',
+          gap: '1vh',
           overflow: 'hidden',
-          p: '2vh',
+          p: '1.5vh',
         })}
       >
         {lastError && (
@@ -458,93 +458,95 @@ function SetupPhase() {
           </div>
         )}
 
-        {/* Title Section - Dramatic medieval manuscript style */}
+        {/* Title Section - Compact medieval manuscript style */}
         <div
           data-element="title-section"
           className={css({
             textAlign: 'center',
             bg: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '2vh',
-            p: '3vh',
-            boxShadow: '0 2vh 6vh rgba(0,0,0,0.5)',
+            borderRadius: '1.5vh',
+            p: '1.5vh',
+            boxShadow: '0 1vh 3vh rgba(0,0,0,0.5)',
             width: '100%',
             position: 'relative',
-            border: '0.5vh solid',
+            border: '0.3vh solid',
             borderColor: 'rgba(251, 191, 36, 0.6)',
             backdropFilter: 'blur(10px)',
+            flexShrink: 0,
           })}
         >
-          {/* Ornamental corners */}
+          {/* Ornamental corners - smaller */}
           <div
             className={css({
               position: 'absolute',
-              top: '-1vh',
-              left: '-1vh',
-              width: '8vh',
-              height: '8vh',
-              borderTop: '0.5vh solid',
-              borderLeft: '0.5vh solid',
+              top: '-0.5vh',
+              left: '-0.5vh',
+              width: '2.5vh',
+              height: '2.5vh',
+              borderTop: '0.3vh solid',
+              borderLeft: '0.3vh solid',
               borderColor: 'rgba(251, 191, 36, 0.8)',
-              borderRadius: '2vh 0 0 0',
+              borderRadius: '1.5vh 0 0 0',
             })}
           />
           <div
             className={css({
               position: 'absolute',
-              top: '-1vh',
-              right: '-1vh',
-              width: '8vh',
-              height: '8vh',
-              borderTop: '0.5vh solid',
-              borderRight: '0.5vh solid',
+              top: '-0.5vh',
+              right: '-0.5vh',
+              width: '2.5vh',
+              height: '2.5vh',
+              borderTop: '0.3vh solid',
+              borderRight: '0.3vh solid',
               borderColor: 'rgba(251, 191, 36, 0.8)',
-              borderRadius: '0 2vh 0 0',
+              borderRadius: '0 1.5vh 0 0',
             })}
           />
           <div
             className={css({
               position: 'absolute',
-              bottom: '-1vh',
-              left: '-1vh',
-              width: '8vh',
-              height: '8vh',
-              borderBottom: '0.5vh solid',
-              borderLeft: '0.5vh solid',
+              bottom: '-0.5vh',
+              left: '-0.5vh',
+              width: '2.5vh',
+              height: '2.5vh',
+              borderBottom: '0.3vh solid',
+              borderLeft: '0.3vh solid',
               borderColor: 'rgba(251, 191, 36, 0.8)',
-              borderRadius: '0 0 0 2vh',
+              borderRadius: '0 0 0 1.5vh',
             })}
           />
           <div
             className={css({
               position: 'absolute',
-              bottom: '-1vh',
-              right: '-1vh',
-              width: '8vh',
-              height: '8vh',
-              borderBottom: '0.5vh solid',
-              borderRight: '0.5vh solid',
+              bottom: '-0.5vh',
+              right: '-0.5vh',
+              width: '2.5vh',
+              height: '2.5vh',
+              borderBottom: '0.3vh solid',
+              borderRight: '0.3vh solid',
               borderColor: 'rgba(251, 191, 36, 0.8)',
-              borderRadius: '0 0 2vh 0',
+              borderRadius: '0 0 1.5vh 0',
             })}
           />
 
           <h1
             className={css({
-              fontSize: '6vh',
+              fontSize: '3.5vh',
               fontWeight: 'bold',
-              mb: '1.5vh',
+              mb: '0.5vh',
               color: '#7c2d12',
-              textShadow: '0.3vh 0.3vh 0 rgba(251, 191, 36, 0.5), 0.6vh 0.6vh 1vh rgba(0,0,0,0.3)',
-              letterSpacing: '0.3vh',
+              textShadow:
+                '0.15vh 0.15vh 0 rgba(251, 191, 36, 0.5), 0.3vh 0.3vh 0.5vh rgba(0,0,0,0.3)',
+              letterSpacing: '0.2vh',
             })}
           >
             ⚔️ RITHMOMACHIA ⚔️
           </h1>
           <div
             className={css({
-              height: '0.3vh',
+              height: '0.2vh',
               width: '60%',
-              margin: '0 auto 1.5vh',
+              margin: '0 auto 0.5vh',
               background:
                 'linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.8), transparent)',
             })}
@@ -552,9 +554,9 @@ function SetupPhase() {
           <p
             className={css({
               color: '#92400e',
-              fontSize: '3vh',
+              fontSize: '1.8vh',
               fontWeight: 'bold',
-              mb: '1.5vh',
+              mb: '0.3vh',
               fontStyle: 'italic',
             })}
           >
@@ -563,14 +565,12 @@ function SetupPhase() {
           <p
             className={css({
               color: '#78350f',
-              fontSize: '1.8vh',
-              lineHeight: '1.4',
+              fontSize: '1.2vh',
+              lineHeight: '1.3',
               fontWeight: '500',
             })}
           >
-            A medieval strategy game of mathematical combat.
-            <br />
-            Capture through relations • Win through harmony
+            Medieval strategy • Mathematical combat
           </p>
         </div>
 
@@ -582,10 +582,10 @@ function SetupPhase() {
             flex: 1,
             minHeight: 0,
             bg: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '2vh',
-            p: '2vh',
-            boxShadow: '0 2vh 6vh rgba(0,0,0,0.5)',
-            border: '0.3vh solid',
+            borderRadius: '1.5vh',
+            p: '1.5vh',
+            boxShadow: '0 1vh 3vh rgba(0,0,0,0.5)',
+            border: '0.2vh solid',
             borderColor: 'rgba(251, 191, 36, 0.4)',
             backdropFilter: 'blur(10px)',
             display: 'flex',
@@ -595,13 +595,13 @@ function SetupPhase() {
         >
           <h2
             className={css({
-              fontSize: '2.5vh',
+              fontSize: '2vh',
               fontWeight: 'bold',
-              mb: '1.5vh',
+              mb: '1vh',
               color: '#7c2d12',
               display: 'flex',
               alignItems: 'center',
-              gap: '1vh',
+              gap: '0.5vh',
               flexShrink: 0,
             })}
           >
@@ -613,7 +613,7 @@ function SetupPhase() {
             className={css({
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(35%, 1fr))',
-              gap: '1.5vh',
+              gap: '1vh',
               flex: 1,
               minHeight: 0,
               alignContent: 'start',
@@ -701,12 +701,12 @@ function SetupPhase() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    pt: '1vh',
-                    borderTop: '0.2vh solid',
+                    pt: '0.8vh',
+                    borderTop: '0.15vh solid',
                     borderColor: 'rgba(251, 191, 36, 0.3)',
                   })}
                 >
-                  <div className={css({ fontSize: '1.4vh', fontWeight: 'bold', color: '#92400e' })}>
+                  <div className={css({ fontSize: '1.2vh', fontWeight: 'bold', color: '#92400e' })}>
                     Threshold:
                   </div>
                   <input
@@ -716,15 +716,16 @@ function SetupPhase() {
                     onClick={(e) => e.stopPropagation()}
                     min="1"
                     className={css({
-                      width: '10vh',
-                      px: '1vh',
-                      py: '0.5vh',
+                      width: '6vh',
+                      minHeight: '2.5vh',
+                      px: '0.5vh',
+                      py: '0.3vh',
                       borderRadius: '0.5vh',
-                      border: '0.2vh solid',
+                      border: '0.15vh solid',
                       borderColor: 'rgba(251, 191, 36, 0.6)',
                       bg: 'rgba(255, 255, 255, 0.9)',
                       textAlign: 'center',
-                      fontSize: '1.6vh',
+                      fontSize: '1.4vh',
                       fontWeight: 'bold',
                       color: '#7c2d12',
                       _focus: {
@@ -932,7 +933,7 @@ function SetupPhase() {
           </div>
         </div>
 
-        {/* Start Button - Dramatic and always visible */}
+        {/* Start Button - Compact but dramatic */}
         <button
           type="button"
           data-action="start-game"
@@ -940,41 +941,41 @@ function SetupPhase() {
           disabled={startDisabled}
           className={css({
             width: '100%',
-            py: '3vh',
+            py: '2vh',
             bg: startDisabled
               ? 'rgba(100, 100, 100, 0.5)'
               : 'linear-gradient(135deg, rgba(251, 191, 36, 0.95) 0%, rgba(245, 158, 11, 0.95) 100%)',
             color: startDisabled ? 'rgba(200, 200, 200, 0.7)' : '#7c2d12',
-            borderRadius: '2vh',
-            fontSize: '4vh',
+            borderRadius: '1.5vh',
+            fontSize: '2.5vh',
             fontWeight: 'bold',
             cursor: startDisabled ? 'not-allowed' : 'pointer',
             transition: 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
             boxShadow: startDisabled
-              ? '0 1vh 3vh rgba(0,0,0,0.2)'
-              : '0 2vh 6vh rgba(251, 191, 36, 0.6), inset 0 -0.5vh 1vh rgba(124, 45, 18, 0.3)',
-            border: '0.5vh solid',
+              ? '0 0.5vh 1.5vh rgba(0,0,0,0.2)'
+              : '0 1vh 3vh rgba(251, 191, 36, 0.6), inset 0 -0.3vh 0.5vh rgba(124, 45, 18, 0.3)',
+            border: '0.3vh solid',
             borderColor: startDisabled ? 'rgba(100, 100, 100, 0.3)' : 'rgba(245, 158, 11, 0.8)',
             textTransform: 'uppercase',
-            letterSpacing: '0.5vh',
+            letterSpacing: '0.3vh',
             textShadow: startDisabled
               ? 'none'
-              : '0.2vh 0.2vh 0.5vh rgba(124, 45, 18, 0.5), 0 0 2vh rgba(255, 255, 255, 0.3)',
+              : '0.1vh 0.1vh 0.3vh rgba(124, 45, 18, 0.5), 0 0 1vh rgba(255, 255, 255, 0.3)',
             flexShrink: 0,
             position: 'relative',
             overflow: 'hidden',
             _hover: startDisabled
               ? undefined
               : {
-                  transform: 'translateY(-1vh) scale(1.02)',
+                  transform: 'translateY(-0.5vh) scale(1.02)',
                   boxShadow:
-                    '0 3vh 8vh rgba(251, 191, 36, 0.8), inset 0 -0.5vh 1vh rgba(124, 45, 18, 0.4)',
+                    '0 1.5vh 4vh rgba(251, 191, 36, 0.8), inset 0 -0.3vh 0.5vh rgba(124, 45, 18, 0.4)',
                   borderColor: 'rgba(251, 191, 36, 1)',
                 },
             _active: startDisabled
               ? undefined
               : {
-                  transform: 'translateY(-0.3vh) scale(0.98)',
+                  transform: 'translateY(-0.2vh) scale(0.98)',
                 },
             _before: startDisabled
               ? undefined
