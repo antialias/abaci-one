@@ -6,6 +6,7 @@ import { useRoomData } from '../hooks/useRoomData'
 import { useViewerId } from '../hooks/useViewerId'
 import { AppNavBar } from './AppNavBar'
 import { GameContextNav } from './nav/GameContextNav'
+import type { PlayerBadge } from './nav/types'
 import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
 import { ModerationNotifications } from './nav/ModerationNotifications'
 
@@ -22,6 +23,7 @@ interface PageWithNavProps {
   currentPlayerId?: string
   playerScores?: Record<string, number>
   playerStreaks?: Record<string, number>
+  playerBadges?: Record<string, PlayerBadge>
 }
 
 export function PageWithNav({
@@ -36,6 +38,7 @@ export function PageWithNav({
   currentPlayerId,
   playerScores,
   playerStreaks,
+  playerBadges,
 }: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const { roomData, isInRoom, moderationEvent, clearModerationEvent } = useRoomData()
@@ -168,6 +171,7 @@ export function PageWithNav({
       currentPlayerId={currentPlayerId}
       playerScores={playerScores}
       playerStreaks={playerStreaks}
+      playerBadges={playerBadges}
       showPopover={showPopover}
       setShowPopover={setShowPopover}
       activeTab={activeTab}

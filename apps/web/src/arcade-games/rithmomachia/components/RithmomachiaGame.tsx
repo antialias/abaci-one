@@ -5,6 +5,7 @@ import { animated, to, useSpring } from '@react-spring/web'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
+import type { PlayerBadge } from '@/components/nav/types'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useGameMode } from '@/contexts/GameModeContext'
@@ -136,7 +137,7 @@ function CaptureErrorDialog({
  */
 export function RithmomachiaGame() {
   const router = useRouter()
-  const { state, resetGame, goToSetup } = useRithmomachia()
+  const { state, resetGame, goToSetup, whitePlayerId, blackPlayerId } = useRithmomachia()
   const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
 
@@ -146,6 +147,41 @@ export function RithmomachiaGame() {
       setFullscreenElement(gameRef.current)
     }
   }, [setFullscreenElement])
+
+  const currentPlayerId = useMemo(() => {
+    if (state.turn === 'W') {
+      return whitePlayerId ?? undefined
+    }
+    if (state.turn === 'B') {
+      return blackPlayerId ?? undefined
+    }
+    return undefined
+  }, [state.turn, whitePlayerId, blackPlayerId])
+
+  const playerBadges = useMemo<Record<string, PlayerBadge>>(() => {
+    const badges: Record<string, PlayerBadge> = {}
+    if (whitePlayerId) {
+      badges[whitePlayerId] = {
+        label: 'White',
+        icon: '⚪',
+        background: 'linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(226, 232, 240, 0.9))',
+        color: '#0f172a',
+        borderColor: 'rgba(226, 232, 240, 0.8)',
+        shadowColor: 'rgba(148, 163, 184, 0.35)',
+      }
+    }
+    if (blackPlayerId) {
+      badges[blackPlayerId] = {
+        label: 'Black',
+        icon: '⚫',
+        background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.94))',
+        color: '#f8fafc',
+        borderColor: 'rgba(30, 41, 59, 0.9)',
+        shadowColor: 'rgba(15, 23, 42, 0.45)',
+      }
+    }
+    return badges
+  }, [whitePlayerId, blackPlayerId])
 
   return (
     <PageWithNav
@@ -157,6 +193,8 @@ export function RithmomachiaGame() {
       }}
       onNewGame={resetGame}
       onSetup={goToSetup}
+      currentPlayerId={currentPlayerId}
+      playerBadges={playerBadges}
     >
       <StandardGameLayout>
         <div
