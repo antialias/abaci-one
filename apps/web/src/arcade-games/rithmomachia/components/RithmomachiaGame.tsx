@@ -625,8 +625,8 @@ function SetupPhase() {
               onClick={() => toggleSetting('pointWinEnabled')}
               className={css({
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                flexDirection: 'column',
+                gap: '1vh',
                 p: '1.5vh',
                 bg: state.pointWinEnabled ? 'rgba(251, 191, 36, 0.25)' : 'rgba(139, 92, 246, 0.1)',
                 borderRadius: '1vh',
@@ -655,74 +655,88 @@ function SetupPhase() {
                 },
               })}
             >
-              <div className={css({ flex: 1, pointerEvents: 'none' })}>
-                <div
-                  className={css({
-                    fontWeight: 'bold',
-                    fontSize: '1.6vh',
-                    color: state.pointWinEnabled ? '#92400e' : '#7c2d12',
-                  })}
-                >
-                  {state.pointWinEnabled && '✓ '}Point Victory
-                </div>
-                <div className={css({ fontSize: '1.3vh', color: '#78350f' })}>
-                  Win at {state.pointWinThreshold}pts
-                </div>
-              </div>
-              {state.pointWinEnabled && (
-                <div
-                  className={css({
-                    position: 'absolute',
-                    top: 0,
-                    right: 0,
-                    width: '4vh',
-                    height: '4vh',
-                    borderRadius: '0 1vh 0 100%',
-                    bg: 'rgba(251, 191, 36, 0.4)',
-                    pointerEvents: 'none',
-                  })}
-                />
-              )}
-            </div>
-
-            {/* Point Threshold (only visible if point win enabled) */}
-            {state.pointWinEnabled && (
               <div
-                data-setting="point-threshold"
                 className={css({
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  p: '1.5vh',
-                  bg: 'rgba(168, 85, 247, 0.15)',
-                  borderRadius: '1vh',
-                  border: '0.2vh solid',
-                  borderColor: 'rgba(168, 85, 247, 0.4)',
                 })}
               >
-                <div className={css({ fontWeight: 'bold', fontSize: '1.6vh', color: '#7c2d12' })}>
-                  Threshold
+                <div className={css({ flex: 1, pointerEvents: 'none' })}>
+                  <div
+                    className={css({
+                      fontWeight: 'bold',
+                      fontSize: '1.6vh',
+                      color: state.pointWinEnabled ? '#92400e' : '#7c2d12',
+                    })}
+                  >
+                    {state.pointWinEnabled && '✓ '}Point Victory
+                  </div>
+                  <div className={css({ fontSize: '1.3vh', color: '#78350f' })}>
+                    Win at {state.pointWinThreshold}pts
+                  </div>
                 </div>
-                <input
-                  type="number"
-                  value={state.pointWinThreshold}
-                  onChange={(e) => updateThreshold(Number.parseInt(e.target.value, 10))}
-                  min="1"
-                  className={css({
-                    width: '10vh',
-                    px: '1vh',
-                    py: '0.5vh',
-                    borderRadius: '0.5vh',
-                    border: '0.2vh solid',
-                    borderColor: 'rgba(124, 45, 18, 0.5)',
-                    textAlign: 'center',
-                    fontSize: '1.6vh',
-                    fontWeight: 'bold',
-                    color: '#7c2d12',
-                  })}
-                />
+                {state.pointWinEnabled && (
+                  <div
+                    className={css({
+                      position: 'absolute',
+                      top: 0,
+                      right: 0,
+                      width: '4vh',
+                      height: '4vh',
+                      borderRadius: '0 1vh 0 100%',
+                      bg: 'rgba(251, 191, 36, 0.4)',
+                      pointerEvents: 'none',
+                    })}
+                  />
+                )}
               </div>
-            )}
+
+              {/* Threshold input - only visible when enabled */}
+              {state.pointWinEnabled && (
+                <div
+                  data-element="threshold-input-container"
+                  onClick={(e) => e.stopPropagation()}
+                  className={css({
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    pt: '1vh',
+                    borderTop: '0.2vh solid',
+                    borderColor: 'rgba(251, 191, 36, 0.3)',
+                  })}
+                >
+                  <div className={css({ fontSize: '1.4vh', fontWeight: 'bold', color: '#92400e' })}>
+                    Threshold:
+                  </div>
+                  <input
+                    type="number"
+                    value={state.pointWinThreshold}
+                    onChange={(e) => updateThreshold(Number.parseInt(e.target.value, 10))}
+                    onClick={(e) => e.stopPropagation()}
+                    min="1"
+                    className={css({
+                      width: '10vh',
+                      px: '1vh',
+                      py: '0.5vh',
+                      borderRadius: '0.5vh',
+                      border: '0.2vh solid',
+                      borderColor: 'rgba(251, 191, 36, 0.6)',
+                      bg: 'rgba(255, 255, 255, 0.9)',
+                      textAlign: 'center',
+                      fontSize: '1.6vh',
+                      fontWeight: 'bold',
+                      color: '#7c2d12',
+                      _focus: {
+                        outline: 'none',
+                        borderColor: 'rgba(251, 191, 36, 1)',
+                        boxShadow: '0 0 0.5vh rgba(251, 191, 36, 0.5)',
+                      },
+                    })}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Threefold Repetition */}
             <div
