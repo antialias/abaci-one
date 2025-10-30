@@ -21,6 +21,16 @@ interface ActivePlayersListProps {
   playerScores?: Record<string, number>
   playerStreaks?: Record<string, number>
   playerBadges?: Record<string, PlayerBadge>
+  // Side assignments (for 2-player games)
+  whitePlayerId?: string | null
+  blackPlayerId?: string | null
+  onAssignWhitePlayer?: (playerId: string | null) => void
+  onAssignBlackPlayer?: (playerId: string | null) => void
+  // Room/host context for assignment permissions
+  isInRoom?: boolean
+  isCurrentUserHost?: boolean
+  // Game phase (for showing spectating vs assign)
+  gamePhase?: 'setup' | 'playing' | 'results'
 }
 
 export function ActivePlayersList({
@@ -32,8 +42,64 @@ export function ActivePlayersList({
   playerScores = {},
   playerStreaks = {},
   playerBadges = {},
+  whitePlayerId,
+  blackPlayerId,
+  onAssignWhitePlayer,
+  onAssignBlackPlayer,
+  isInRoom = false,
+  isCurrentUserHost = false,
+  gamePhase,
 }: ActivePlayersListProps) {
   const [hoveredPlayerId, setHoveredPlayerId] = React.useState<string | null>(null)
+  const [hoveredBadge, setHoveredBadge] = React.useState<string | null>(null)
+  const [clickCooldown, setClickCooldown] = React.useState<string | null>(null)
+
+  // Determine if user can assign players
+  // Can assign if: not in room (local play) OR in room and is host
+  const canAssignPlayers = !isInRoom || isCurrentUserHost
+
+  // Handler to assign to white
+  const handleAssignWhite = React.useCallback(
+    (playerId: string, e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (!onAssignWhitePlayer) return
+      onAssignWhitePlayer(playerId)
+      setClickCooldown(playerId)
+    },
+    [onAssignWhitePlayer]
+  )
+
+  // Handler to assign to black
+  const handleAssignBlack = React.useCallback(
+    (playerId: string, e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (!onAssignBlackPlayer) return
+      onAssignBlackPlayer(playerId)
+      setClickCooldown(playerId)
+    },
+    [onAssignBlackPlayer]
+  )
+
+  // Handler to swap sides
+  const handleSwap = React.useCallback(
+    (playerId: string, e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (!onAssignWhitePlayer || !onAssignBlackPlayer) return
+
+      if (whitePlayerId === playerId) {
+        // Currently white, swap with black player
+        const currentBlack = blackPlayerId ?? null
+        onAssignWhitePlayer(currentBlack)
+        onAssignBlackPlayer(playerId)
+      } else if (blackPlayerId === playerId) {
+        // Currently black, swap with white player
+        const currentWhite = whitePlayerId ?? null
+        onAssignBlackPlayer(currentWhite)
+        onAssignWhitePlayer(playerId)
+      }
+    },
+    [whitePlayerId, blackPlayerId, onAssignWhitePlayer, onAssignBlackPlayer]
+  )
 
   // Helper to get celebration level based on consecutive matches
   const getCelebrationLevel = (consecutiveMatches: number) => {
@@ -313,6 +379,283 @@ export function ActivePlayersList({
                   }}
                 >
                   Your turn
+                </div>
+              )}
+
+              {/* Side assignment badge (white/black for 2-player games) */}
+              {onAssignWhitePlayer && onAssignBlackPlayer && (
+                <div
+                  style={{
+                    marginTop: '8px',
+                    width: '88px', // Fixed width to prevent layout shift
+                    transition: 'none', // Prevent any inherited transitions
+                  }}
+                  onMouseEnter={() => canAssignPlayers && setHoveredBadge(player.id)}
+                  onMouseLeave={() => {
+                    setHoveredBadge(null)
+                    setClickCooldown(null)
+                  }}
+                >
+                  {/* Unassigned player - show split button on hover */}
+                  {whitePlayerId !== player.id && blackPlayerId !== player.id && (
+                    <>
+                      {canAssignPlayers ? (
+                        // Host/local play: show interactive assignment buttons
+                        <>
+                          {hoveredBadge === player.id && clickCooldown !== player.id ? (
+                            // Hover state: split button
+                            <div style={{ display: 'flex', width: '100%' }}>
+                              <div
+                                onClick={(e) => handleAssignWhite(player.id, e)}
+                                style={{
+                                  flex: 1,
+                                  padding: '4px 0',
+                                  borderRadius: '12px 0 0 12px',
+                                  fontSize: '10px',
+                                  fontWeight: '800',
+                                  letterSpacing: '0.5px',
+                                  textTransform: 'uppercase',
+                                  cursor: 'pointer',
+                                  background: 'linear-gradient(135deg, #f0f0f0, #ffffff)',
+                                  color: '#1a202c',
+                                  border: '2px solid #cbd5e0',
+                                  borderRight: 'none',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                W
+                              </div>
+                              <div
+                                onClick={(e) => handleAssignBlack(player.id, e)}
+                                style={{
+                                  flex: 1,
+                                  padding: '4px 0',
+                                  borderRadius: '0 12px 12px 0',
+                                  fontSize: '10px',
+                                  fontWeight: '800',
+                                  letterSpacing: '0.5px',
+                                  textTransform: 'uppercase',
+                                  cursor: 'pointer',
+                                  background: 'linear-gradient(135deg, #2d3748, #1a202c)',
+                                  color: '#ffffff',
+                                  border: '2px solid #4a5568',
+                                  borderLeft: 'none',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                B
+                              </div>
+                            </div>
+                          ) : (
+                            // Normal state: ASSIGN or SPECTATING button
+                            <div
+                              style={{
+                                width: '100%',
+                                padding: '4px 0',
+                                borderRadius: '12px',
+                                fontSize: '10px',
+                                fontWeight: '800',
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                                background: 'linear-gradient(135deg, #e5e7eb, #d1d5db)',
+                                color: '#6b7280',
+                                border: '2px solid #9ca3af',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                textAlign: 'center',
+                                transition: 'none',
+                              }}
+                            >
+                              {gamePhase === 'playing' ? 'SPECTATING' : 'ASSIGN'}
+                            </div>
+                          )}
+                        </>
+                      ) : // Guest in room: show SPECTATING during gameplay, nothing during setup
+                      gamePhase === 'playing' ? (
+                        <div
+                          style={{
+                            width: '100%',
+                            padding: '4px 0',
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                            background: 'transparent',
+                            color: '#9ca3af',
+                            border: '2px solid transparent',
+                            textAlign: 'center',
+                            opacity: 0.5,
+                          }}
+                        >
+                          SPECTATING
+                        </div>
+                      ) : (
+                        // During setup/results: show nothing
+                        <div style={{ width: '100%', height: '28px' }} />
+                      )}
+                    </>
+                  )}
+
+                  {/* White player - show SWAP to black on hover */}
+                  {whitePlayerId === player.id && (
+                    <>
+                      {canAssignPlayers ? (
+                        // Host/local play: show interactive swap
+                        <>
+                          {hoveredBadge === player.id && clickCooldown !== player.id ? (
+                            // Hover state: SWAP with black styling
+                            <div
+                              onClick={(e) => handleSwap(player.id, e)}
+                              style={{
+                                width: '100%',
+                                padding: '4px 0',
+                                borderRadius: '12px',
+                                fontSize: '10px',
+                                fontWeight: '800',
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: 'linear-gradient(135deg, #2d3748, #1a202c)',
+                                color: '#ffffff',
+                                border: '2px solid #4a5568',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                                textAlign: 'center',
+                              }}
+                            >
+                              SWAP
+                            </div>
+                          ) : (
+                            // Normal state: WHITE
+                            <div
+                              style={{
+                                width: '100%',
+                                padding: '4px 0',
+                                borderRadius: '12px',
+                                fontSize: '10px',
+                                fontWeight: '800',
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: 'linear-gradient(135deg, #f0f0f0, #ffffff)',
+                                color: '#1a202c',
+                                border: '2px solid #cbd5e0',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                textAlign: 'center',
+                              }}
+                            >
+                              WHITE
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        // Guest in room: show static WHITE label
+                        <div
+                          style={{
+                            width: '100%',
+                            padding: '4px 0',
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                            cursor: 'default',
+                            background: 'linear-gradient(135deg, #f0f0f0, #ffffff)',
+                            color: '#1a202c',
+                            border: '2px solid #cbd5e0',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            textAlign: 'center',
+                            opacity: 0.8,
+                          }}
+                        >
+                          WHITE
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Black player - show SWAP to white on hover */}
+                  {blackPlayerId === player.id && (
+                    <>
+                      {canAssignPlayers ? (
+                        // Host/local play: show interactive swap
+                        <>
+                          {hoveredBadge === player.id && clickCooldown !== player.id ? (
+                            // Hover state: SWAP with white styling
+                            <div
+                              onClick={(e) => handleSwap(player.id, e)}
+                              style={{
+                                width: '100%',
+                                padding: '4px 0',
+                                borderRadius: '12px',
+                                fontSize: '10px',
+                                fontWeight: '800',
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: 'linear-gradient(135deg, #f0f0f0, #ffffff)',
+                                color: '#1a202c',
+                                border: '2px solid #cbd5e0',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                                textAlign: 'center',
+                              }}
+                            >
+                              SWAP
+                            </div>
+                          ) : (
+                            // Normal state: BLACK
+                            <div
+                              style={{
+                                width: '100%',
+                                padding: '4px 0',
+                                borderRadius: '12px',
+                                fontSize: '10px',
+                                fontWeight: '800',
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: 'linear-gradient(135deg, #2d3748, #1a202c)',
+                                color: '#ffffff',
+                                border: '2px solid #4a5568',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                textAlign: 'center',
+                              }}
+                            >
+                              BLACK
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        // Guest in room: show static BLACK label
+                        <div
+                          style={{
+                            width: '100%',
+                            padding: '4px 0',
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                            cursor: 'default',
+                            background: 'linear-gradient(135deg, #2d3748, #1a202c)',
+                            color: '#ffffff',
+                            border: '2px solid #4a5568',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            textAlign: 'center',
+                            opacity: 0.8,
+                          }}
+                        >
+                          BLACK
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>

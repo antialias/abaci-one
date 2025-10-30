@@ -166,6 +166,7 @@ export function useOptimisticGameState<TState>(
 
   const handleMoveRejected = useCallback((error: string, rejectedMove: GameMove) => {
     // Set the error for UI display
+    console.warn(`[ErrorState] SET_ERROR error="${error}" move=${rejectedMove.type}`)
     setLastError(error)
 
     // Remove the rejected move and all subsequent moves from pending queue
@@ -186,6 +187,7 @@ export function useOptimisticGameState<TState>(
   }, [])
 
   const syncWithServer = useCallback((newServerState: TState, newServerVersion: number) => {
+    console.log(`[ErrorState] SYNC_WITH_SERVER version=${newServerVersion}`)
     setServerState(newServerState)
     setServerVersion(newServerVersion)
     // Clear pending moves on sync (new authoritative state from server)
@@ -193,6 +195,7 @@ export function useOptimisticGameState<TState>(
   }, [])
 
   const clearError = useCallback(() => {
+    console.log('[ErrorState] CLEAR_ERROR')
     setLastError(null)
   }, [])
 

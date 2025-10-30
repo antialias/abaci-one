@@ -76,6 +76,13 @@ interface GameContextNavProps {
   setActiveTab?: (tab: 'add' | 'invite') => void
   // Game-specific roster warnings
   rosterWarning?: RosterWarning
+  // Side assignments (for 2-player games)
+  whitePlayerId?: string | null
+  blackPlayerId?: string | null
+  onAssignWhitePlayer?: (playerId: string | null) => void
+  onAssignBlackPlayer?: (playerId: string | null) => void
+  // Game phase (for showing spectating vs assign)
+  gamePhase?: 'setup' | 'playing' | 'results'
 }
 
 export function GameContextNav({
@@ -104,6 +111,11 @@ export function GameContextNav({
   activeTab,
   setActiveTab,
   rosterWarning,
+  whitePlayerId,
+  blackPlayerId,
+  onAssignWhitePlayer,
+  onAssignBlackPlayer,
+  gamePhase,
 }: GameContextNavProps) {
   // Get current user info for moderation
   const { data: currentUserId } = useViewerId()
@@ -258,6 +270,14 @@ export function GameContextNav({
                     e.currentTarget.style.background =
                       action.variant === 'danger' ? '#dc2626' : '#f59e0b'
                   }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.background =
+                      action.variant === 'danger' ? '#b91c1c' : '#d97706'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.background =
+                      action.variant === 'danger' ? '#dc2626' : '#f59e0b'
+                  }}
                   type="button"
                 >
                   {action.label}
@@ -384,6 +404,12 @@ export function GameContextNav({
                   roomId={roomInfo?.roomId}
                   currentUserId={currentUserId ?? undefined}
                   isCurrentUserHost={isCurrentUserHost}
+                  whitePlayerId={whitePlayerId}
+                  blackPlayerId={blackPlayerId}
+                  onAssignWhitePlayer={onAssignWhitePlayer}
+                  onAssignBlackPlayer={onAssignBlackPlayer}
+                  isInRoom={!!roomInfo}
+                  gamePhase={gamePhase}
                 />
               ))}
             </>
@@ -420,6 +446,13 @@ export function GameContextNav({
             playerScores={playerScores}
             playerStreaks={playerStreaks}
             playerBadges={playerBadges}
+            whitePlayerId={whitePlayerId}
+            blackPlayerId={blackPlayerId}
+            onAssignWhitePlayer={onAssignWhitePlayer}
+            onAssignBlackPlayer={onAssignBlackPlayer}
+            isInRoom={!!roomInfo}
+            isCurrentUserHost={isCurrentUserHost}
+            gamePhase={gamePhase}
           />
 
           <AddPlayerButton

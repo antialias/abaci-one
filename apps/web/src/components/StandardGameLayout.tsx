@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { css } from '../../styled-system/css'
 
 interface StandardGameLayoutProps {
@@ -14,19 +14,46 @@ interface StandardGameLayoutProps {
  * 2. Navigation never covers game elements (safe area padding)
  * 3. Perfect viewport fit on all devices
  * 4. Consistent experience across all games
+ * 5. Dynamically calculates nav height for proper spacing
  */
 export function StandardGameLayout({ children, className }: StandardGameLayoutProps) {
+  const [navHeight, setNavHeight] = useState(80) // Default fallback
+
+  useEffect(() => {
+    // Measure the actual nav height from the fixed header
+    const measureNavHeight = () => {
+      const header = document.querySelector('header')
+      if (header) {
+        const rect = header.getBoundingClientRect()
+        // Add extra spacing for safety (nav top position + nav height + margin)
+        const calculatedHeight = rect.top + rect.height + 20
+        setNavHeight(calculatedHeight)
+      }
+    }
+
+    // Measure on mount and when window resizes
+    measureNavHeight()
+    window.addEventListener('resize', measureNavHeight)
+
+    // Also measure after a short delay to catch any late-rendering nav elements
+    const timer = setTimeout(measureNavHeight, 100)
+
+    return () => {
+      window.removeEventListener('resize', measureNavHeight)
+      clearTimeout(timer)
+    }
+  }, [])
+
   return (
     <div
+      data-layout="standard-game-layout"
+      data-nav-height={navHeight}
       className={`${css({
         // Exact viewport sizing - no scrolling ever
         height: '100vh',
         width: '100vw',
         overflow: 'hidden',
 
-        // Safe area for navigation (fixed at top: 4px, right: 4px)
-        // Navigation is ~60px tall, so we need padding-top of ~80px to be safe
-        paddingTop: '80px',
         paddingRight: '4px', // Ensure nav doesn't overlap content on right side
         paddingBottom: '4px',
         paddingLeft: '4px',
@@ -41,6 +68,10 @@ export function StandardGameLayout({ children, className }: StandardGameLayoutPr
         // Transparent background - themes will be applied at nav level
         background: 'transparent',
       })} ${className || ''}`}
+      style={{
+        // Dynamic padding based on measured nav height
+        paddingTop: `${navHeight}px`,
+      }}
     >
       {children}
     </div>

@@ -504,6 +504,11 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           await updateSessionActivity(data.userId)
         } else {
           // Send rejection only to the requesting socket
+          if (result.versionConflict) {
+            console.warn(
+              `[SocketServer] VERSION_CONFLICT_REJECTED room=${data.roomId} move=${data.move.type} user=${data.userId} socket=${socket.id}`
+            )
+          }
           socket.emit('move-rejected', {
             error: result.error,
             move: data.move,

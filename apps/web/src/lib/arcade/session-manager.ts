@@ -262,6 +262,17 @@ export async function applyGameMove(
 
     if (!updatedSession) {
       // Version conflict - another move was processed first
+      // Query the current state to see what version we're at now
+      const [currentSession] = await db
+        .select()
+        .from(schema.arcadeSessions)
+        .where(eq(schema.arcadeSessions.roomId, session.roomId))
+        .limit(1)
+
+      const versionDiff = currentSession ? currentSession.version - session.version : 'unknown'
+      console.warn(
+        `[SessionManager] VERSION_CONFLICT room=${session.roomId} game=${session.currentGame} expected_v=${session.version} actual_v=${currentSession?.version} diff=${versionDiff} move=${move.type} user=${internalUserId || userId}`
+      )
       return {
         success: false,
         error: 'Version conflict - please retry',

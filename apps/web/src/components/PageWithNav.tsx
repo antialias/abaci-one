@@ -15,6 +15,7 @@ interface PageWithNavProps {
   navEmoji?: string
   gameName?: 'matching' | 'memory-quiz' | 'complement-race' // Internal game name for API
   emphasizePlayerSelection?: boolean
+  disableFullscreenSelection?: boolean // Disable "Select Your Champions" overlay
   onExitSession?: () => void
   onSetup?: () => void
   onNewGame?: () => void
@@ -26,6 +27,13 @@ interface PageWithNavProps {
   playerBadges?: Record<string, PlayerBadge>
   // Game-specific roster warnings
   rosterWarning?: RosterWarning
+  // Side assignments (for 2-player games like Rithmomachia)
+  whitePlayerId?: string | null
+  blackPlayerId?: string | null
+  onAssignWhitePlayer?: (playerId: string | null) => void
+  onAssignBlackPlayer?: (playerId: string | null) => void
+  // Game phase (for showing spectating vs assign)
+  gamePhase?: 'setup' | 'playing' | 'results'
 }
 
 export function PageWithNav({
@@ -33,6 +41,7 @@ export function PageWithNav({
   navEmoji,
   gameName,
   emphasizePlayerSelection = false,
+  disableFullscreenSelection = false,
   onExitSession,
   onSetup,
   onNewGame,
@@ -42,6 +51,11 @@ export function PageWithNav({
   playerStreaks,
   playerBadges,
   rosterWarning,
+  whitePlayerId,
+  blackPlayerId,
+  onAssignWhitePlayer,
+  onAssignBlackPlayer,
+  gamePhase,
 }: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const { roomData, isInRoom, moderationEvent, clearModerationEvent } = useRoomData()
@@ -110,7 +124,8 @@ export function PageWithNav({
             : 'none'
 
   const shouldEmphasize = emphasizePlayerSelection && mounted
-  const showFullscreenSelection = shouldEmphasize && activePlayerCount === 0
+  const showFullscreenSelection =
+    !disableFullscreenSelection && shouldEmphasize && activePlayerCount === 0
 
   // Compute arcade session info for display
   // Memoized to prevent unnecessary re-renders
@@ -180,6 +195,11 @@ export function PageWithNav({
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       rosterWarning={rosterWarning}
+      whitePlayerId={whitePlayerId}
+      blackPlayerId={blackPlayerId}
+      onAssignWhitePlayer={onAssignWhitePlayer}
+      onAssignBlackPlayer={onAssignBlackPlayer}
+      gamePhase={gamePhase}
     />
   ) : null
 

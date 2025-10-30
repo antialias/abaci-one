@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useCreateRoom, useRoomData } from '@/hooks/useRoomData'
 import { RoomShareButtons } from './RoomShareButtons'
+import { HistoricalPlayersInvite } from './HistoricalPlayersInvite'
 
 /**
  * Tab content for inviting players to a room
@@ -176,6 +177,11 @@ export function InvitePlayersTab() {
           Share to invite players
         </div>
         <RoomShareButtons joinCode={roomData.code} shareUrl={shareUrl} />
+
+        {/* Historical players who can be invited back */}
+        <div style={{ marginTop: '8px' }}>
+          <HistoricalPlayersInvite />
+        </div>
       </div>
     )
   }

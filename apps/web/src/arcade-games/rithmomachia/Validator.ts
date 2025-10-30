@@ -44,6 +44,8 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
       fiftyMoveRule: config.fiftyMoveRule,
       allowAnySetOnRecheck: config.allowAnySetOnRecheck,
       timeControlMs: config.timeControlMs ?? null,
+      whitePlayerId: config.whitePlayerId ?? null,
+      blackPlayerId: config.blackPlayerId ?? null,
 
       // Game phase
       gamePhase: 'setup',
@@ -756,6 +758,8 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
       'fiftyMoveRule',
       'allowAnySetOnRecheck',
       'timeControlMs',
+      'whitePlayerId',
+      'blackPlayerId',
     ]
 
     if (!validFields.includes(field as keyof RithmomachiaConfig)) {
@@ -783,6 +787,12 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
     if (field === 'timeControlMs') {
       if (value !== null && (typeof value !== 'number' || value < 0)) {
         return { valid: false, error: 'timeControlMs must be null or a non-negative number' }
+      }
+    }
+
+    if (field === 'whitePlayerId' || field === 'blackPlayerId') {
+      if (value !== null && typeof value !== 'string') {
+        return { valid: false, error: `${field} must be a string or null` }
       }
     }
 
@@ -915,6 +925,8 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
       fiftyMoveRule: state.fiftyMoveRule,
       allowAnySetOnRecheck: state.allowAnySetOnRecheck,
       timeControlMs: state.timeControlMs,
+      whitePlayerId: state.whitePlayerId ?? null,
+      blackPlayerId: state.blackPlayerId ?? null,
     }
   }
 }

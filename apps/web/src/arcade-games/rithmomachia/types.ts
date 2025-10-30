@@ -87,6 +87,8 @@ export interface RithmomachiaState extends GameState {
   fiftyMoveRule: boolean
   allowAnySetOnRecheck: boolean
   timeControlMs: number | null
+  whitePlayerId?: string | null
+  blackPlayerId?: string | null
 
   // Game phase
   gamePhase: 'setup' | 'playing' | 'results'
@@ -148,6 +150,10 @@ export interface RithmomachiaConfig extends GameConfig {
 
   // Optional time controls (not implemented in v1)
   timeControlMs?: number | null
+
+  // Player assignments (null = auto-assign)
+  whitePlayerId?: string | null // default: null (auto-assign first active player)
+  blackPlayerId?: string | null // default: null (auto-assign second active player)
 }
 
 // === GAME MOVES ===

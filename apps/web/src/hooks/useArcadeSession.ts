@@ -1,10 +1,11 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GameMove } from '@/lib/arcade/validation'
 import { useArcadeSocket } from './useArcadeSocket'
 import {
   type UseOptimisticGameStateOptions,
   useOptimisticGameState,
 } from './useOptimisticGameState'
+import type { RetryState } from '@/lib/arcade/error-handling'
 
 export interface UseArcadeSessionOptions<TState> extends UseOptimisticGameStateOptions<TState> {
   /**
@@ -50,6 +51,11 @@ export interface UseArcadeSessionReturn<TState> {
    * Last error from server (move rejection)
    */
   lastError: string | null
+
+  /**
+   * Current retry state (for showing UI indicators)
+   */
+  retryState: RetryState
 
   /**
    * Send a game move (applies optimistically and sends to server)
@@ -98,6 +104,14 @@ export function useArcadeSession<TState>(
   // Optimistic state management
   const optimistic = useOptimisticGameState<TState>(optimisticOptions)
 
+  // Track retry state (exposed to UI for indicators)
+  const [retryState, setRetryState] = useState<RetryState>({
+    isRetrying: false,
+    retryCount: 0,
+    move: null,
+    timestamp: null,
+  })
+
   // WebSocket connection
   const {
     socket,
@@ -111,18 +125,75 @@ export function useArcadeSession<TState>(
     },
 
     onMoveAccepted: (data) => {
+      const isRetry = retryState.move?.timestamp === data.move.timestamp
+      console.log(
+        `[AutoRetry] ACCEPTED move=${data.move.type} ts=${data.move.timestamp} isRetry=${isRetry} retryCount=${retryState.retryCount || 0}`
+      )
+
+      // Check if this was a retried move
+      if (isRetry && retryState.isRetrying) {
+        console.log(
+          `[AutoRetry] SUCCESS after ${retryState.retryCount} retries move=${data.move.type}`
+        )
+        // Clear retry state
+        setRetryState({
+          isRetrying: false,
+          retryCount: 0,
+          move: null,
+          timestamp: null,
+        })
+      }
       optimistic.handleMoveAccepted(data.gameState as TState, data.version, data.move)
     },
 
     onMoveRejected: (data) => {
+      const isRetry = retryState.move?.timestamp === data.move.timestamp
+      console.warn(
+        `[AutoRetry] REJECTED move=${data.move.type} ts=${data.move.timestamp} isRetry=${isRetry} versionConflict=${!!data.versionConflict} error="${data.error}"`
+      )
+
       // For version conflicts, automatically retry the move
       if (data.versionConflict) {
+        const retryCount = isRetry && retryState.isRetrying ? retryState.retryCount + 1 : 1
+
+        if (retryCount > 5) {
+          console.error(`[AutoRetry] FAILED after 5 retries move=${data.move.type}`)
+          // Clear retry state and show error
+          setRetryState({
+            isRetrying: false,
+            retryCount: 0,
+            move: null,
+            timestamp: null,
+          })
+          optimistic.handleMoveRejected(data.error, data.move)
+          return
+        }
+
+        console.warn(
+          `[AutoRetry] SCHEDULE_RETRY_${retryCount} room=${roomId || 'none'} move=${data.move.type} ts=${data.move.timestamp} delay=${10 * retryCount}ms`
+        )
+
+        // Update retry state
+        setRetryState({
+          isRetrying: true,
+          retryCount,
+          move: data.move,
+          timestamp: data.move.timestamp,
+        })
+
         // Wait a tiny bit for server state to propagate, then retry
         setTimeout(() => {
+          console.warn(
+            `[AutoRetry] SENDING_RETRY_${retryCount} move=${data.move.type} ts=${data.move.timestamp}`
+          )
           socketSendMove(userId, data.move, roomId)
-        }, 10)
+        }, 10 * retryCount)
+
+        // Don't show error to user - we're handling it automatically
+        return
       }
 
+      // Non-version-conflict errors: show to user
       optimistic.handleMoveRejected(data.error, data.move)
     },
 
@@ -186,6 +257,7 @@ export function useArcadeSession<TState>(
     connected,
     hasPendingMoves: optimistic.hasPendingMoves,
     lastError: optimistic.lastError,
+    retryState,
     sendMove,
     exitSession,
     clearError: optimistic.clearError,

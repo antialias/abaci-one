@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { PlayerTooltip } from './PlayerTooltip'
 import { ReportPlayerModal } from './ReportPlayerModal'
 import type { PlayerBadge } from './types'
+import { useDeactivatePlayer } from '@/hooks/useRoomData'
 
 interface NetworkPlayer {
   id: string
@@ -25,6 +26,15 @@ interface NetworkPlayerIndicatorProps {
   roomId?: string
   currentUserId?: string
   isCurrentUserHost?: boolean
+  // Side assignments (for 2-player games)
+  whitePlayerId?: string | null
+  blackPlayerId?: string | null
+  onAssignWhitePlayer?: (playerId: string | null) => void
+  onAssignBlackPlayer?: (playerId: string | null) => void
+  // Room context for assignment permissions
+  isInRoom?: boolean
+  // Game phase (for showing spectating vs assign)
+  gamePhase?: 'setup' | 'playing' | 'results'
 }
 
 /**
@@ -41,8 +51,22 @@ export function NetworkPlayerIndicator({
   roomId,
   currentUserId,
   isCurrentUserHost,
+  whitePlayerId,
+  blackPlayerId,
+  onAssignWhitePlayer,
+  onAssignBlackPlayer,
+  isInRoom = true, // Network players are always in a room
+  gamePhase,
 }: NetworkPlayerIndicatorProps) {
   const [showReportModal, setShowReportModal] = useState(false)
+  const [hoveredPlayerId, setHoveredPlayerId] = useState<string | null>(null)
+  const [hoveredBadge, setHoveredBadge] = useState(false)
+  const [clickCooldown, setClickCooldown] = useState(false)
+  const { mutate: deactivatePlayer } = useDeactivatePlayer()
+
+  // Determine if user can assign players
+  // For network players: Can assign only if user is host (always in a room)
+  const canAssignPlayers = isCurrentUserHost
 
   const playerName = player.name || `Network Player ${player.id.slice(0, 8)}`
   const extraInfo = player.memberName ? `Controlled by ${player.memberName}` : undefined
@@ -77,6 +101,46 @@ export function NetworkPlayerIndicator({
   const celebrationLevel = getCelebrationLevel(streak)
   const badge = playerBadges[player.id]
 
+  // Handler for deactivating player (host only)
+  const handleDeactivate = () => {
+    if (!roomId || !isCurrentUserHost) return
+    deactivatePlayer({ roomId, playerId: player.id })
+  }
+
+  // Handler to assign to white
+  const handleAssignWhite = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!onAssignWhitePlayer) return
+    onAssignWhitePlayer(player.id)
+    setClickCooldown(true)
+  }
+
+  // Handler to assign to black
+  const handleAssignBlack = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!onAssignBlackPlayer) return
+    onAssignBlackPlayer(player.id)
+    setClickCooldown(true)
+  }
+
+  // Handler to swap sides
+  const handleSwap = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!onAssignWhitePlayer || !onAssignBlackPlayer) return
+
+    if (whitePlayerId === player.id) {
+      // Currently white, swap with black player
+      const currentBlack = blackPlayerId ?? null
+      onAssignWhitePlayer(currentBlack)
+      onAssignBlackPlayer(player.id)
+    } else if (blackPlayerId === player.id) {
+      // Currently black, swap with white player
+      const currentWhite = whitePlayerId ?? null
+      onAssignBlackPlayer(currentWhite)
+      onAssignWhitePlayer(player.id)
+    }
+  }
+
   return (
     <>
       <PlayerTooltip
@@ -108,6 +172,8 @@ export function NetworkPlayerIndicator({
               justifyContent: 'center',
               opacity: hasGameState ? (isCurrentPlayer ? 1 : 0.65) : 1,
             }}
+            onMouseEnter={() => setHoveredPlayerId(player.id)}
+            onMouseLeave={() => setHoveredPlayerId(null)}
           >
             {/* Turn indicator border ring - show when current player */}
             {isCurrentPlayer && hasGameState && (
@@ -198,6 +264,61 @@ export function NetworkPlayerIndicator({
               >
                 🔥
               </div>
+            )}
+
+            {/* Close button - top left (host only, on hover) */}
+            {shouldEmphasize && isCurrentUserHost && hoveredPlayerId === player.id && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeactivate()
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  left: '-6px',
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '50%',
+                  border: '3px solid white',
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                  transition: 'all 0.2s ease',
+                  padding: 0,
+                  lineHeight: 1,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626, #b91c1c)'
+                  e.currentTarget.style.transform = 'scale(1.15)'
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.5)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)'
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626, #b91c1c)'
+                  e.currentTarget.style.transform = 'scale(1.15)'
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.5)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)'
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)'
+                }}
+                aria-label={`Deactivate ${playerName}`}
+              >
+                ×
+              </button>
             )}
 
             <style
@@ -317,6 +438,283 @@ export function NetworkPlayerIndicator({
               }}
             >
               Their turn
+            </div>
+          )}
+
+          {/* Side assignment badge (white/black for 2-player games) */}
+          {onAssignWhitePlayer && onAssignBlackPlayer && (
+            <div
+              style={{
+                marginTop: '8px',
+                width: '88px', // Fixed width to prevent layout shift
+                transition: 'none', // Prevent any inherited transitions
+              }}
+              onMouseEnter={() => canAssignPlayers && setHoveredBadge(true)}
+              onMouseLeave={() => {
+                setHoveredBadge(false)
+                setClickCooldown(false)
+              }}
+            >
+              {/* Unassigned player - show split button on hover */}
+              {whitePlayerId !== player.id && blackPlayerId !== player.id && (
+                <>
+                  {canAssignPlayers ? (
+                    // Host: show interactive assignment buttons
+                    <>
+                      {hoveredBadge && !clickCooldown ? (
+                        // Hover state: split button
+                        <div style={{ display: 'flex', width: '100%' }}>
+                          <div
+                            onClick={handleAssignWhite}
+                            style={{
+                              flex: 1,
+                              padding: '4px 0',
+                              borderRadius: '12px 0 0 12px',
+                              fontSize: '10px',
+                              fontWeight: '800',
+                              letterSpacing: '0.5px',
+                              textTransform: 'uppercase',
+                              cursor: 'pointer',
+                              background: 'linear-gradient(135deg, #f0f0f0, #ffffff)',
+                              color: '#1a202c',
+                              border: '2px solid #cbd5e0',
+                              borderRight: 'none',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                              textAlign: 'center',
+                            }}
+                          >
+                            W
+                          </div>
+                          <div
+                            onClick={handleAssignBlack}
+                            style={{
+                              flex: 1,
+                              padding: '4px 0',
+                              borderRadius: '0 12px 12px 0',
+                              fontSize: '10px',
+                              fontWeight: '800',
+                              letterSpacing: '0.5px',
+                              textTransform: 'uppercase',
+                              cursor: 'pointer',
+                              background: 'linear-gradient(135deg, #2d3748, #1a202c)',
+                              color: '#ffffff',
+                              border: '2px solid #4a5568',
+                              borderLeft: 'none',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                              textAlign: 'center',
+                            }}
+                          >
+                            B
+                          </div>
+                        </div>
+                      ) : (
+                        // Normal state: ASSIGN or SPECTATING button
+                        <div
+                          style={{
+                            width: '100%',
+                            padding: '4px 0',
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                            cursor: 'pointer',
+                            background: 'linear-gradient(135deg, #e5e7eb, #d1d5db)',
+                            color: '#6b7280',
+                            border: '2px solid #9ca3af',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            textAlign: 'center',
+                            transition: 'none',
+                          }}
+                        >
+                          {gamePhase === 'playing' ? 'SPECTATING' : 'ASSIGN'}
+                        </div>
+                      )}
+                    </>
+                  ) : // Guest: show SPECTATING during gameplay, nothing during setup
+                  gamePhase === 'playing' ? (
+                    <div
+                      style={{
+                        width: '100%',
+                        padding: '4px 0',
+                        borderRadius: '12px',
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        letterSpacing: '0.5px',
+                        textTransform: 'uppercase',
+                        background: 'transparent',
+                        color: '#9ca3af',
+                        border: '2px solid transparent',
+                        textAlign: 'center',
+                        opacity: 0.5,
+                      }}
+                    >
+                      SPECTATING
+                    </div>
+                  ) : (
+                    // During setup/results: show nothing
+                    <div style={{ width: '100%', height: '28px' }} />
+                  )}
+                </>
+              )}
+
+              {/* White player - show SWAP to black on hover */}
+              {whitePlayerId === player.id && (
+                <>
+                  {canAssignPlayers ? (
+                    // Host: show interactive swap
+                    <>
+                      {hoveredBadge && !clickCooldown ? (
+                        // Hover state: SWAP with black styling
+                        <div
+                          onClick={handleSwap}
+                          style={{
+                            width: '100%',
+                            padding: '4px 0',
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            background: 'linear-gradient(135deg, #2d3748, #1a202c)',
+                            color: '#ffffff',
+                            border: '2px solid #4a5568',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                            textAlign: 'center',
+                          }}
+                        >
+                          SWAP
+                        </div>
+                      ) : (
+                        // Normal state: WHITE
+                        <div
+                          style={{
+                            width: '100%',
+                            padding: '4px 0',
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            background: 'linear-gradient(135deg, #f0f0f0, #ffffff)',
+                            color: '#1a202c',
+                            border: '2px solid #cbd5e0',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            textAlign: 'center',
+                          }}
+                        >
+                          WHITE
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    // Guest: show static WHITE label
+                    <div
+                      style={{
+                        width: '100%',
+                        padding: '4px 0',
+                        borderRadius: '12px',
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        letterSpacing: '0.5px',
+                        textTransform: 'uppercase',
+                        cursor: 'default',
+                        background: 'linear-gradient(135deg, #f0f0f0, #ffffff)',
+                        color: '#1a202c',
+                        border: '2px solid #cbd5e0',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        textAlign: 'center',
+                        opacity: 0.8,
+                      }}
+                    >
+                      WHITE
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Black player - show SWAP to white on hover */}
+              {blackPlayerId === player.id && (
+                <>
+                  {canAssignPlayers ? (
+                    // Host: show interactive swap
+                    <>
+                      {hoveredBadge && !clickCooldown ? (
+                        // Hover state: SWAP with white styling
+                        <div
+                          onClick={handleSwap}
+                          style={{
+                            width: '100%',
+                            padding: '4px 0',
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            background: 'linear-gradient(135deg, #f0f0f0, #ffffff)',
+                            color: '#1a202c',
+                            border: '2px solid #cbd5e0',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                            textAlign: 'center',
+                          }}
+                        >
+                          SWAP
+                        </div>
+                      ) : (
+                        // Normal state: BLACK
+                        <div
+                          style={{
+                            width: '100%',
+                            padding: '4px 0',
+                            borderRadius: '12px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            background: 'linear-gradient(135deg, #2d3748, #1a202c)',
+                            color: '#ffffff',
+                            border: '2px solid #4a5568',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            textAlign: 'center',
+                          }}
+                        >
+                          BLACK
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    // Guest: show static BLACK label
+                    <div
+                      style={{
+                        width: '100%',
+                        padding: '4px 0',
+                        borderRadius: '12px',
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        letterSpacing: '0.5px',
+                        textTransform: 'uppercase',
+                        cursor: 'default',
+                        background: 'linear-gradient(135deg, #2d3748, #1a202c)',
+                        color: '#ffffff',
+                        border: '2px solid #4a5568',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        textAlign: 'center',
+                        opacity: 0.8,
+                      }}
+                    >
+                      BLACK
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { type NextRequest, NextResponse } from 'next/server'
 import { getActivePlayers, getRoomActivePlayers } from '@/lib/arcade/player-manager'
-import { getInvitation } from '@/lib/arcade/room-invitations'
+import { getInvitation, acceptInvitation } from '@/lib/arcade/room-invitations'
 import { getJoinRequest } from '@/lib/arcade/room-join-requests'
 import { getRoomById, touchRoom } from '@/lib/arcade/room-manager'
 import { addRoomMember, getRoomMembers } from '@/lib/arcade/room-membership'
@@ -26,11 +26,18 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const viewerId = await getViewerId()
     const body = await req.json().catch(() => ({}))
 
+    console.log(`[Join API] User ${viewerId} attempting to join room ${roomId}`)
+
     // Get room
     const room = await getRoomById(roomId)
     if (!room) {
+      console.log(`[Join API] Room ${roomId} not found`)
       return NextResponse.json({ error: 'Room not found' }, { status: 404 })
     }
+
+    console.log(
+      `[Join API] Room ${roomId} found: name="${room.name}" accessMode="${room.accessMode}" game="${room.gameName}"`
+    )
 
     // Check if user is banned
     const banned = await isUserBanned(roomId, viewerId)
@@ -42,6 +49,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const members = await getRoomMembers(roomId)
     const isExistingMember = members.some((m) => m.userId === viewerId)
     const isRoomCreator = room.createdBy === viewerId
+
+    // Track invitation/join request to mark as accepted after successful join
+    let invitationToAccept: string | null = null
+    let joinRequestToAccept: string | null = null
+
+    // Check for pending invitation (regardless of access mode)
+    // This ensures invitations are marked as accepted when user joins ANY room type
+    const invitation = await getInvitation(roomId, viewerId)
+    if (invitation && invitation.status === 'pending') {
+      invitationToAccept = invitation.id
+      console.log(
+        `[Join API] Found pending invitation ${invitation.id} for user ${viewerId} in room ${roomId}`
+      )
+    }
 
     // Validate access mode
     switch (room.accessMode) {
@@ -83,16 +104,20 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
 
       case 'restricted': {
+        console.log(`[Join API] Room is restricted, checking invitation for user ${viewerId}`)
         // Room creator can always rejoin their own room
         if (!isRoomCreator) {
-          // Check for valid pending invitation
-          const invitation = await getInvitation(roomId, viewerId)
-          if (!invitation || invitation.status !== 'pending') {
+          // For restricted rooms, invitation is REQUIRED
+          if (!invitationToAccept) {
+            console.log(`[Join API] No valid pending invitation, rejecting join`)
             return NextResponse.json(
               { error: 'You need a valid invitation to join this room' },
               { status: 403 }
             )
           }
+          console.log(`[Join API] Valid invitation found, will accept after member added`)
+        } else {
+          console.log(`[Join API] User is room creator, skipping invitation check`)
         }
         break
       }
@@ -108,6 +133,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
               { status: 403 }
             )
           }
+          // Note: Join request stays in "approved" status after join
+          // (No need to update it - "approved" indicates they were allowed in)
+          joinRequestToAccept = joinRequest.id
         }
         break
       }
@@ -134,6 +162,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
       displayName,
       isCreator: false,
     })
+
+    // Mark invitation as accepted (if applicable)
+    if (invitationToAccept) {
+      await acceptInvitation(invitationToAccept)
+      console.log(`[Join API] Accepted invitation ${invitationToAccept} for user ${viewerId}`)
+    }
+    // Note: Join requests stay in "approved" status (no need to update)
 
     // Fetch user's active players (these will participate in the game)
     const activePlayers = await getActivePlayers(viewerId)
@@ -170,6 +205,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
 
     // Build response with auto-leave info if applicable
+    console.log(
+      `[Join API] Successfully added user ${viewerId} to room ${roomId} (invitation=${invitationToAccept ? 'accepted' : 'N/A'})`
+    )
+
     return NextResponse.json(
       {
         member,

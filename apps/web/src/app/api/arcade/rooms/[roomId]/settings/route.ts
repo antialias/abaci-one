@@ -17,12 +17,17 @@ type RouteContext = {
 
 /**
  * PATCH /api/arcade/rooms/:roomId/settings
- * Update room settings (host only)
+ * Update room settings
+ *
+ * Authorization:
+ *   - gameConfig: Any room member can update
+ *   - All other settings: Host only
+ *
  * Body:
- *   - accessMode?: 'open' | 'locked' | 'retired' | 'password' | 'restricted' | 'approval-only'
- *   - password?: string (plain text, will be hashed)
- *   - gameName?: string | null (any game with a registered validator)
- *   - gameConfig?: object (game-specific settings)
+ *   - accessMode?: 'open' | 'locked' | 'retired' | 'password' | 'restricted' | 'approval-only' (host only)
+ *   - password?: string (plain text, will be hashed) (host only)
+ *   - gameName?: string | null (any game with a registered validator) (host only)
+ *   - gameConfig?: object (game-specific settings) (any member)
  *
  * Note: gameName is validated at runtime against the validator registry.
  * No need to update this file when adding new games!
@@ -63,7 +68,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       )
     )
 
-    // Check if user is the host
+    // Check if user is a room member
     const members = await getRoomMembers(roomId)
     const currentMember = members.find((m) => m.userId === viewerId)
 
@@ -71,8 +76,24 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'You are not in this room' }, { status: 403 })
     }
 
-    if (!currentMember.isCreator) {
-      return NextResponse.json({ error: 'Only the host can change room settings' }, { status: 403 })
+    // Determine which settings are being changed
+    const changingRoomSettings = !!(
+      body.accessMode !== undefined ||
+      body.password !== undefined ||
+      body.gameName !== undefined ||
+      body.name !== undefined ||
+      body.description !== undefined
+    )
+
+    // Only gameConfig can be changed by any member
+    // All other settings require host privileges
+    if (changingRoomSettings && !currentMember.isCreator) {
+      return NextResponse.json(
+        {
+          error: 'Only the host can change room settings (name, access mode, game selection, etc.)',
+        },
+        { status: 403 }
+      )
     }
 
     // Validate accessMode if provided

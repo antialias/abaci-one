@@ -229,62 +229,6 @@ function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined
       }
     }
 
-    if (rosterStatus.status === 'tooMany') {
-      const actions = []
-
-      // Add deactivate actions for local players
-      for (const player of removableLocalPlayers) {
-        actions.push({
-          label: `Deactivate ${player.name}`,
-          onClick: () => setActive(player.id, false),
-        })
-      }
-
-      // Add deactivate and kick actions for remote players (if host)
-      for (const player of kickablePlayers) {
-        // Add deactivate button (softer action)
-        actions.push({
-          label: `Deactivate ${player.name}`,
-          onClick: () => {
-            console.log('[RithmomachiaGame] Deactivating player:', player)
-            console.log('[RithmomachiaGame] Player ID:', player.id)
-            console.log('[RithmomachiaGame] Player userId:', (player as any).userId)
-            console.log('[RithmomachiaGame] Player isLocal:', player.isLocal)
-            if (roomData) {
-              console.log('[RithmomachiaGame] Room ID:', roomData.id)
-              console.log('[RithmomachiaGame] Room members:', roomData.members)
-              console.log('[RithmomachiaGame] Member players:', roomData.memberPlayers)
-              deactivatePlayer({ roomId: roomData.id, playerId: player.id })
-            }
-          },
-        })
-        // Add kick button (removes entire user)
-        actions.push({
-          label: `Kick ${player.name}'s user`,
-          onClick: () => handleKick(player),
-          variant: 'danger' as const,
-        })
-      }
-
-      // If guest has no actions available, show waiting message
-      if (actions.length === 0 && !isHost) {
-        return {
-          heading: 'Too many active players',
-          description:
-            'Rithmomachia supports only two active players. Waiting for the room host to deactivate or remove extras...',
-        }
-      }
-
-      return {
-        heading: 'Too many active players',
-        description:
-          actions.length > 0
-            ? 'Rithmomachia supports only two active players. Deactivate or kick extras:'
-            : 'Rithmomachia supports only two active players.',
-        actions: actions.length > 0 ? actions : undefined,
-      }
-    }
-
     return undefined
   }, [
     rosterStatus.status,
@@ -394,6 +338,7 @@ export function RithmomachiaGame() {
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
+              position: 'relative',
             })}
           >
             {state.gamePhase === 'setup' && <SetupPhase />}
@@ -425,243 +370,616 @@ function SetupPhase() {
 
   return (
     <div
+      data-component="setup-phase-container"
       className={css({
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: 'hidden',
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        gap: '6',
-        p: '6',
-        maxWidth: '800px',
-        margin: '0 auto',
+        justifyContent: 'center',
       })}
     >
-      {lastError && (
-        <div
-          className={css({
-            width: '100%',
-            p: '4',
-            bg: 'red.100',
-            borderColor: 'red.400',
-            borderWidth: '2px',
-            borderRadius: 'md',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          })}
-        >
-          <span className={css({ color: 'red.800', fontWeight: 'semibold' })}>⚠️ {lastError}</span>
-          <button
-            type="button"
-            onClick={clearError}
-            className={css({
-              px: '3',
-              py: '1',
-              bg: 'red.200',
-              color: 'red.800',
-              borderRadius: 'sm',
-              fontWeight: 'semibold',
-              cursor: 'pointer',
-              _hover: { bg: 'red.300' },
-            })}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      <div className={css({ textAlign: 'center' })}>
-        <h1 className={css({ fontSize: '3xl', fontWeight: 'bold', mb: '2' })}>Rithmomachia</h1>
-        <p className={css({ color: 'gray.600', fontSize: 'lg' })}>The Battle of Numbers</p>
-        <p className={css({ color: 'gray.500', fontSize: 'sm', mt: '2', maxWidth: '600px' })}>
-          A medieval strategy game where pieces capture through mathematical relations. Win by
-          achieving harmony (a mathematical progression) in enemy territory!
-        </p>
-      </div>
-
-      {/* Game Settings */}
+      {/* Animated mathematical symbols background */}
       <div
+        data-element="background-symbols"
         className={css({
-          width: '100%',
-          bg: 'white',
-          borderRadius: 'lg',
-          p: '6',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          position: 'absolute',
+          inset: 0,
+          opacity: 0.1,
+          fontSize: '20vh',
+          color: 'white',
+          pointerEvents: 'none',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-around',
+          alignItems: 'center',
         })}
       >
-        <h2 className={css({ fontSize: 'xl', fontWeight: 'bold', mb: '4' })}>Game Rules</h2>
+        <span>∑</span>
+        <span>π</span>
+        <span>∞</span>
+        <span>±</span>
+        <span>∫</span>
+        <span>√</span>
+      </div>
 
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>
-          {/* Point Victory */}
+      {/* Main content container - uses full viewport */}
+      <div
+        data-element="main-content"
+        className={css({
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5vh',
+          overflow: 'hidden',
+          p: '2vh',
+        })}
+      >
+        {lastError && (
           <div
+            data-element="error-banner"
             className={css({
+              width: '100%',
+              p: '2vh',
+              bg: 'rgba(220, 38, 38, 0.9)',
+              borderRadius: 'lg',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              p: '3',
-              bg: 'gray.50',
-              borderRadius: 'md',
+              backdropFilter: 'blur(10px)',
             })}
           >
-            <div>
-              <div className={css({ fontWeight: 'semibold' })}>Point Victory</div>
-              <div className={css({ fontSize: 'sm', color: 'gray.600' })}>
-                Win by capturing pieces worth {state.pointWinThreshold} points
-              </div>
-            </div>
-            <label className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-              <input
-                type="checkbox"
-                checked={state.pointWinEnabled}
-                onChange={() => toggleSetting('pointWinEnabled')}
-                className={css({ cursor: 'pointer', width: '18px', height: '18px' })}
-              />
-            </label>
+            <span className={css({ color: 'white', fontWeight: 'bold', fontSize: '1.8vh' })}>
+              ⚠️ {lastError}
+            </span>
+            <button
+              type="button"
+              onClick={clearError}
+              className={css({
+                px: '2vh',
+                py: '1vh',
+                bg: 'rgba(255, 255, 255, 0.3)',
+                color: 'white',
+                borderRadius: 'md',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontSize: '1.6vh',
+                _hover: { bg: 'rgba(255, 255, 255, 0.5)' },
+              })}
+            >
+              Dismiss
+            </button>
           </div>
+        )}
 
-          {/* Point Threshold (only visible if point win enabled) */}
-          {state.pointWinEnabled && (
+        {/* Title Section - Dramatic medieval manuscript style */}
+        <div
+          data-element="title-section"
+          className={css({
+            textAlign: 'center',
+            bg: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '2vh',
+            p: '3vh',
+            boxShadow: '0 2vh 6vh rgba(0,0,0,0.5)',
+            width: '100%',
+            position: 'relative',
+            border: '0.5vh solid',
+            borderColor: 'rgba(251, 191, 36, 0.6)',
+            backdropFilter: 'blur(10px)',
+          })}
+        >
+          {/* Ornamental corners */}
+          <div
+            className={css({
+              position: 'absolute',
+              top: '-1vh',
+              left: '-1vh',
+              width: '8vh',
+              height: '8vh',
+              borderTop: '0.5vh solid',
+              borderLeft: '0.5vh solid',
+              borderColor: 'rgba(251, 191, 36, 0.8)',
+              borderRadius: '2vh 0 0 0',
+            })}
+          />
+          <div
+            className={css({
+              position: 'absolute',
+              top: '-1vh',
+              right: '-1vh',
+              width: '8vh',
+              height: '8vh',
+              borderTop: '0.5vh solid',
+              borderRight: '0.5vh solid',
+              borderColor: 'rgba(251, 191, 36, 0.8)',
+              borderRadius: '0 2vh 0 0',
+            })}
+          />
+          <div
+            className={css({
+              position: 'absolute',
+              bottom: '-1vh',
+              left: '-1vh',
+              width: '8vh',
+              height: '8vh',
+              borderBottom: '0.5vh solid',
+              borderLeft: '0.5vh solid',
+              borderColor: 'rgba(251, 191, 36, 0.8)',
+              borderRadius: '0 0 0 2vh',
+            })}
+          />
+          <div
+            className={css({
+              position: 'absolute',
+              bottom: '-1vh',
+              right: '-1vh',
+              width: '8vh',
+              height: '8vh',
+              borderBottom: '0.5vh solid',
+              borderRight: '0.5vh solid',
+              borderColor: 'rgba(251, 191, 36, 0.8)',
+              borderRadius: '0 0 2vh 0',
+            })}
+          />
+
+          <h1
+            className={css({
+              fontSize: '6vh',
+              fontWeight: 'bold',
+              mb: '1.5vh',
+              color: '#7c2d12',
+              textShadow: '0.3vh 0.3vh 0 rgba(251, 191, 36, 0.5), 0.6vh 0.6vh 1vh rgba(0,0,0,0.3)',
+              letterSpacing: '0.3vh',
+            })}
+          >
+            ⚔️ RITHMOMACHIA ⚔️
+          </h1>
+          <div
+            className={css({
+              height: '0.3vh',
+              width: '60%',
+              margin: '0 auto 1.5vh',
+              background:
+                'linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.8), transparent)',
+            })}
+          />
+          <p
+            className={css({
+              color: '#92400e',
+              fontSize: '3vh',
+              fontWeight: 'bold',
+              mb: '1.5vh',
+              fontStyle: 'italic',
+            })}
+          >
+            The Battle of Numbers
+          </p>
+          <p
+            className={css({
+              color: '#78350f',
+              fontSize: '1.8vh',
+              lineHeight: '1.4',
+              fontWeight: '500',
+            })}
+          >
+            A medieval strategy game of mathematical combat.
+            <br />
+            Capture through relations • Win through harmony
+          </p>
+        </div>
+
+        {/* Game Settings - Compact with flex: 1 to take remaining space */}
+        <div
+          data-element="game-settings"
+          className={css({
+            width: '100%',
+            flex: 1,
+            minHeight: 0,
+            bg: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '2vh',
+            p: '2vh',
+            boxShadow: '0 2vh 6vh rgba(0,0,0,0.5)',
+            border: '0.3vh solid',
+            borderColor: 'rgba(251, 191, 36, 0.4)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          })}
+        >
+          <h2
+            className={css({
+              fontSize: '2.5vh',
+              fontWeight: 'bold',
+              mb: '1.5vh',
+              color: '#7c2d12',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1vh',
+              flexShrink: 0,
+            })}
+          >
+            <span>⚙️</span>
+            <span>Game Rules</span>
+          </h2>
+
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(35%, 1fr))',
+              gap: '1.5vh',
+              flex: 1,
+              minHeight: 0,
+              alignContent: 'start',
+            })}
+          >
+            {/* Point Victory */}
             <div
+              data-setting="point-victory"
+              onClick={() => toggleSetting('pointWinEnabled')}
               className={css({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                p: '3',
-                bg: 'purple.50',
-                borderRadius: 'md',
-                ml: '4',
+                p: '1.5vh',
+                bg: state.pointWinEnabled ? 'rgba(251, 191, 36, 0.25)' : 'rgba(139, 92, 246, 0.1)',
+                borderRadius: '1vh',
+                border: '0.3vh solid',
+                borderColor: state.pointWinEnabled
+                  ? 'rgba(251, 191, 36, 0.8)'
+                  : 'rgba(139, 92, 246, 0.3)',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: state.pointWinEnabled
+                  ? '0 0.5vh 2vh rgba(251, 191, 36, 0.4)'
+                  : '0 0.2vh 0.5vh rgba(0,0,0,0.1)',
+                _hover: {
+                  bg: state.pointWinEnabled
+                    ? 'rgba(251, 191, 36, 0.35)'
+                    : 'rgba(139, 92, 246, 0.2)',
+                  borderColor: state.pointWinEnabled
+                    ? 'rgba(251, 191, 36, 1)'
+                    : 'rgba(139, 92, 246, 0.5)',
+                  transform: 'translateY(-0.2vh)',
+                },
+                _active: {
+                  transform: 'scale(0.98)',
+                },
               })}
             >
-              <div className={css({ fontWeight: 'semibold' })}>Point Threshold</div>
-              <input
-                type="number"
-                value={state.pointWinThreshold}
-                onChange={(e) => updateThreshold(Number.parseInt(e.target.value, 10))}
-                min="1"
+              <div className={css({ flex: 1, pointerEvents: 'none' })}>
+                <div
+                  className={css({
+                    fontWeight: 'bold',
+                    fontSize: '1.6vh',
+                    color: state.pointWinEnabled ? '#92400e' : '#7c2d12',
+                  })}
+                >
+                  {state.pointWinEnabled && '✓ '}Point Victory
+                </div>
+                <div className={css({ fontSize: '1.3vh', color: '#78350f' })}>
+                  Win at {state.pointWinThreshold}pts
+                </div>
+              </div>
+              {state.pointWinEnabled && (
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '4vh',
+                    height: '4vh',
+                    borderRadius: '0 1vh 0 100%',
+                    bg: 'rgba(251, 191, 36, 0.4)',
+                    pointerEvents: 'none',
+                  })}
+                />
+              )}
+            </div>
+
+            {/* Point Threshold (only visible if point win enabled) */}
+            {state.pointWinEnabled && (
+              <div
+                data-setting="point-threshold"
                 className={css({
-                  width: '80px',
-                  px: '3',
-                  py: '2',
-                  borderRadius: 'md',
-                  border: '1px solid',
-                  borderColor: 'purple.300',
-                  textAlign: 'center',
-                  fontSize: 'md',
-                  fontWeight: 'semibold',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: '1.5vh',
+                  bg: 'rgba(168, 85, 247, 0.15)',
+                  borderRadius: '1vh',
+                  border: '0.2vh solid',
+                  borderColor: 'rgba(168, 85, 247, 0.4)',
                 })}
-              />
-            </div>
-          )}
-
-          {/* Threefold Repetition */}
-          <div
-            className={css({
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              p: '3',
-              bg: 'gray.50',
-              borderRadius: 'md',
-            })}
-          >
-            <div>
-              <div className={css({ fontWeight: 'semibold' })}>Threefold Repetition Draw</div>
-              <div className={css({ fontSize: 'sm', color: 'gray.600' })}>
-                Draw if same position occurs 3 times
+              >
+                <div className={css({ fontWeight: 'bold', fontSize: '1.6vh', color: '#7c2d12' })}>
+                  Threshold
+                </div>
+                <input
+                  type="number"
+                  value={state.pointWinThreshold}
+                  onChange={(e) => updateThreshold(Number.parseInt(e.target.value, 10))}
+                  min="1"
+                  className={css({
+                    width: '10vh',
+                    px: '1vh',
+                    py: '0.5vh',
+                    borderRadius: '0.5vh',
+                    border: '0.2vh solid',
+                    borderColor: 'rgba(124, 45, 18, 0.5)',
+                    textAlign: 'center',
+                    fontSize: '1.6vh',
+                    fontWeight: 'bold',
+                    color: '#7c2d12',
+                  })}
+                />
               </div>
-            </div>
-            <label className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-              <input
-                type="checkbox"
-                checked={state.repetitionRule}
-                onChange={() => toggleSetting('repetitionRule')}
-                className={css({ cursor: 'pointer', width: '18px', height: '18px' })}
-              />
-            </label>
-          </div>
+            )}
 
-          {/* Fifty Move Rule */}
-          <div
-            className={css({
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              p: '3',
-              bg: 'gray.50',
-              borderRadius: 'md',
-            })}
-          >
-            <div>
-              <div className={css({ fontWeight: 'semibold' })}>Fifty-Move Rule</div>
-              <div className={css({ fontSize: 'sm', color: 'gray.600' })}>
-                Draw if 50 moves with no capture or harmony
+            {/* Threefold Repetition */}
+            <div
+              data-setting="threefold-repetition"
+              onClick={() => toggleSetting('repetitionRule')}
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                p: '1.5vh',
+                bg: state.repetitionRule ? 'rgba(251, 191, 36, 0.25)' : 'rgba(139, 92, 246, 0.1)',
+                borderRadius: '1vh',
+                border: '0.3vh solid',
+                borderColor: state.repetitionRule
+                  ? 'rgba(251, 191, 36, 0.8)'
+                  : 'rgba(139, 92, 246, 0.3)',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: state.repetitionRule
+                  ? '0 0.5vh 2vh rgba(251, 191, 36, 0.4)'
+                  : '0 0.2vh 0.5vh rgba(0,0,0,0.1)',
+                _hover: {
+                  bg: state.repetitionRule ? 'rgba(251, 191, 36, 0.35)' : 'rgba(139, 92, 246, 0.2)',
+                  borderColor: state.repetitionRule
+                    ? 'rgba(251, 191, 36, 1)'
+                    : 'rgba(139, 92, 246, 0.5)',
+                  transform: 'translateY(-0.2vh)',
+                },
+                _active: {
+                  transform: 'scale(0.98)',
+                },
+              })}
+            >
+              <div className={css({ flex: 1, pointerEvents: 'none' })}>
+                <div
+                  className={css({
+                    fontWeight: 'bold',
+                    fontSize: '1.6vh',
+                    color: state.repetitionRule ? '#92400e' : '#7c2d12',
+                  })}
+                >
+                  {state.repetitionRule && '✓ '}Threefold Draw
+                </div>
+                <div className={css({ fontSize: '1.3vh', color: '#78350f' })}>Same position 3x</div>
               </div>
+              {state.repetitionRule && (
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '4vh',
+                    height: '4vh',
+                    borderRadius: '0 1vh 0 100%',
+                    bg: 'rgba(251, 191, 36, 0.4)',
+                    pointerEvents: 'none',
+                  })}
+                />
+              )}
             </div>
-            <label className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-              <input
-                type="checkbox"
-                checked={state.fiftyMoveRule}
-                onChange={() => toggleSetting('fiftyMoveRule')}
-                className={css({ cursor: 'pointer', width: '18px', height: '18px' })}
-              />
-            </label>
-          </div>
 
-          {/* Harmony Persistence */}
-          <div
-            className={css({
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              p: '3',
-              bg: 'gray.50',
-              borderRadius: 'md',
-            })}
-          >
-            <div>
-              <div className={css({ fontWeight: 'semibold' })}>Flexible Harmony</div>
-              <div className={css({ fontSize: 'sm', color: 'gray.600' })}>
-                Allow any valid harmony for persistence (not just the declared one)
+            {/* Fifty Move Rule */}
+            <div
+              data-setting="fifty-move-rule"
+              onClick={() => toggleSetting('fiftyMoveRule')}
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                p: '1.5vh',
+                bg: state.fiftyMoveRule ? 'rgba(251, 191, 36, 0.25)' : 'rgba(139, 92, 246, 0.1)',
+                borderRadius: '1vh',
+                border: '0.3vh solid',
+                borderColor: state.fiftyMoveRule
+                  ? 'rgba(251, 191, 36, 0.8)'
+                  : 'rgba(139, 92, 246, 0.3)',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: state.fiftyMoveRule
+                  ? '0 0.5vh 2vh rgba(251, 191, 36, 0.4)'
+                  : '0 0.2vh 0.5vh rgba(0,0,0,0.1)',
+                _hover: {
+                  bg: state.fiftyMoveRule ? 'rgba(251, 191, 36, 0.35)' : 'rgba(139, 92, 246, 0.2)',
+                  borderColor: state.fiftyMoveRule
+                    ? 'rgba(251, 191, 36, 1)'
+                    : 'rgba(139, 92, 246, 0.5)',
+                  transform: 'translateY(-0.2vh)',
+                },
+                _active: {
+                  transform: 'scale(0.98)',
+                },
+              })}
+            >
+              <div className={css({ flex: 1, pointerEvents: 'none' })}>
+                <div
+                  className={css({
+                    fontWeight: 'bold',
+                    fontSize: '1.6vh',
+                    color: state.fiftyMoveRule ? '#92400e' : '#7c2d12',
+                  })}
+                >
+                  {state.fiftyMoveRule && '✓ '}Fifty-Move Draw
+                </div>
+                <div className={css({ fontSize: '1.3vh', color: '#78350f' })}>
+                  50 moves no event
+                </div>
               </div>
+              {state.fiftyMoveRule && (
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '4vh',
+                    height: '4vh',
+                    borderRadius: '0 1vh 0 100%',
+                    bg: 'rgba(251, 191, 36, 0.4)',
+                    pointerEvents: 'none',
+                  })}
+                />
+              )}
             </div>
-            <label className={css({ display: 'flex', alignItems: 'center', gap: '2' })}>
-              <input
-                type="checkbox"
-                checked={state.allowAnySetOnRecheck}
-                onChange={() => toggleSetting('allowAnySetOnRecheck')}
-                className={css({ cursor: 'pointer', width: '18px', height: '18px' })}
-              />
-            </label>
+
+            {/* Harmony Persistence */}
+            <div
+              data-setting="flexible-harmony"
+              onClick={() => toggleSetting('allowAnySetOnRecheck')}
+              className={css({
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                p: '1.5vh',
+                bg: state.allowAnySetOnRecheck
+                  ? 'rgba(251, 191, 36, 0.25)'
+                  : 'rgba(139, 92, 246, 0.1)',
+                borderRadius: '1vh',
+                border: '0.3vh solid',
+                borderColor: state.allowAnySetOnRecheck
+                  ? 'rgba(251, 191, 36, 0.8)'
+                  : 'rgba(139, 92, 246, 0.3)',
+                transition: 'all 0.3s ease',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: state.allowAnySetOnRecheck
+                  ? '0 0.5vh 2vh rgba(251, 191, 36, 0.4)'
+                  : '0 0.2vh 0.5vh rgba(0,0,0,0.1)',
+                _hover: {
+                  bg: state.allowAnySetOnRecheck
+                    ? 'rgba(251, 191, 36, 0.35)'
+                    : 'rgba(139, 92, 246, 0.2)',
+                  borderColor: state.allowAnySetOnRecheck
+                    ? 'rgba(251, 191, 36, 1)'
+                    : 'rgba(139, 92, 246, 0.5)',
+                  transform: 'translateY(-0.2vh)',
+                },
+                _active: {
+                  transform: 'scale(0.98)',
+                },
+              })}
+            >
+              <div className={css({ flex: 1, pointerEvents: 'none' })}>
+                <div
+                  className={css({
+                    fontWeight: 'bold',
+                    fontSize: '1.6vh',
+                    color: state.allowAnySetOnRecheck ? '#92400e' : '#7c2d12',
+                  })}
+                >
+                  {state.allowAnySetOnRecheck && '✓ '}Flexible Harmony
+                </div>
+                <div className={css({ fontSize: '1.3vh', color: '#78350f' })}>Any valid set</div>
+              </div>
+              {state.allowAnySetOnRecheck && (
+                <div
+                  className={css({
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: '4vh',
+                    height: '4vh',
+                    borderRadius: '0 1vh 0 100%',
+                    bg: 'rgba(251, 191, 36, 0.4)',
+                    pointerEvents: 'none',
+                  })}
+                />
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Start Button */}
-      <button
-        type="button"
-        onClick={startGame}
-        disabled={startDisabled}
-        className={css({
-          px: '8',
-          py: '4',
-          bg: startDisabled ? 'gray.400' : 'purple.600',
-          color: 'white',
-          borderRadius: 'lg',
-          fontSize: 'lg',
-          fontWeight: 'bold',
-          cursor: startDisabled ? 'not-allowed' : 'pointer',
-          opacity: startDisabled ? 0.7 : 1,
-          transition: 'all 0.2s ease',
-          _hover: startDisabled
-            ? undefined
-            : {
-                bg: 'purple.700',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 12px rgba(139, 92, 246, 0.4)',
-              },
-        })}
-      >
-        Start Game
-      </button>
+        {/* Start Button - Dramatic and always visible */}
+        <button
+          type="button"
+          data-action="start-game"
+          onClick={startGame}
+          disabled={startDisabled}
+          className={css({
+            width: '100%',
+            py: '3vh',
+            bg: startDisabled
+              ? 'rgba(100, 100, 100, 0.5)'
+              : 'linear-gradient(135deg, rgba(251, 191, 36, 0.95) 0%, rgba(245, 158, 11, 0.95) 100%)',
+            color: startDisabled ? 'rgba(200, 200, 200, 0.7)' : '#7c2d12',
+            borderRadius: '2vh',
+            fontSize: '4vh',
+            fontWeight: 'bold',
+            cursor: startDisabled ? 'not-allowed' : 'pointer',
+            transition: 'all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+            boxShadow: startDisabled
+              ? '0 1vh 3vh rgba(0,0,0,0.2)'
+              : '0 2vh 6vh rgba(251, 191, 36, 0.6), inset 0 -0.5vh 1vh rgba(124, 45, 18, 0.3)',
+            border: '0.5vh solid',
+            borderColor: startDisabled ? 'rgba(100, 100, 100, 0.3)' : 'rgba(245, 158, 11, 0.8)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5vh',
+            textShadow: startDisabled
+              ? 'none'
+              : '0.2vh 0.2vh 0.5vh rgba(124, 45, 18, 0.5), 0 0 2vh rgba(255, 255, 255, 0.3)',
+            flexShrink: 0,
+            position: 'relative',
+            overflow: 'hidden',
+            _hover: startDisabled
+              ? undefined
+              : {
+                  transform: 'translateY(-1vh) scale(1.02)',
+                  boxShadow:
+                    '0 3vh 8vh rgba(251, 191, 36, 0.8), inset 0 -0.5vh 1vh rgba(124, 45, 18, 0.4)',
+                  borderColor: 'rgba(251, 191, 36, 1)',
+                },
+            _active: startDisabled
+              ? undefined
+              : {
+                  transform: 'translateY(-0.3vh) scale(0.98)',
+                },
+            _before: startDisabled
+              ? undefined
+              : {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: '-100%',
+                  width: '100%',
+                  height: '100%',
+                  background:
+                    'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)',
+                  animation: 'shimmer 3s infinite',
+                },
+          })}
+        >
+          ⚔️ BEGIN BATTLE ⚔️
+        </button>
+      </div>
     </div>
   )
 }

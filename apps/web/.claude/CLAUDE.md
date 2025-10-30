@@ -132,6 +132,51 @@ className="bg-blue-200 border-gray-300 text-brand-600"
 
 See `.claude/GAME_THEMES.md` for standardized color theme usage in arcade games.
 
+## Data Attributes for All Elements
+
+**MANDATORY: All new elements MUST have data attributes for easy reference.**
+
+When creating ANY new HTML/JSX element (div, button, section, etc.), add appropriate data attributes:
+
+**Required patterns:**
+- `data-component="component-name"` - For top-level component containers
+- `data-element="element-name"` - For major UI elements
+- `data-section="section-name"` - For page sections
+- `data-action="action-name"` - For interactive elements (buttons, links)
+- `data-setting="setting-name"` - For game settings/config elements
+- `data-status="status-value"` - For status indicators
+
+**Why this matters:**
+- Allows easy element selection for testing, debugging, and automation
+- Makes it simple to reference elements by name in discussions
+- Provides semantic meaning beyond CSS classes
+- Enables reliable E2E testing selectors
+
+**Examples:**
+```typescript
+// Component container
+<div data-component="game-board" className={css({...})}>
+
+// Interactive button
+<button data-action="start-game" onClick={handleStart}>
+
+// Settings toggle
+<div data-setting="sound-enabled">
+
+// Status indicator
+<div data-status={isOnline ? 'online' : 'offline'}>
+```
+
+**DO NOT:**
+- ❌ Skip data attributes on new elements
+- ❌ Use generic names like `data-element="div"`
+- ❌ Use data attributes for styling (use CSS classes instead)
+
+**DO:**
+- ✅ Use descriptive, kebab-case names
+- ✅ Add data attributes to ALL significant elements
+- ✅ Make names semantic and self-documenting
+
 ## Abacus Visualizations
 
 **CRITICAL: This project uses @soroban/abacus-react for all abacus visualizations.**
