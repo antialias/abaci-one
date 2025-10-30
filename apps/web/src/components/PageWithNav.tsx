@@ -5,7 +5,7 @@ import { useGameMode } from '../contexts/GameModeContext'
 import { useRoomData } from '../hooks/useRoomData'
 import { useViewerId } from '../hooks/useViewerId'
 import { AppNavBar } from './AppNavBar'
-import { GameContextNav } from './nav/GameContextNav'
+import { GameContextNav, type RosterWarning } from './nav/GameContextNav'
 import type { PlayerBadge } from './nav/types'
 import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
 import { ModerationNotifications } from './nav/ModerationNotifications'
@@ -24,6 +24,8 @@ interface PageWithNavProps {
   playerScores?: Record<string, number>
   playerStreaks?: Record<string, number>
   playerBadges?: Record<string, PlayerBadge>
+  // Game-specific roster warnings
+  rosterWarning?: RosterWarning
 }
 
 export function PageWithNav({
@@ -39,6 +41,7 @@ export function PageWithNav({
   playerScores,
   playerStreaks,
   playerBadges,
+  rosterWarning,
 }: PageWithNavProps) {
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const { roomData, isInRoom, moderationEvent, clearModerationEvent } = useRoomData()
@@ -176,6 +179,7 @@ export function PageWithNav({
       setShowPopover={setShowPopover}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
+      rosterWarning={rosterWarning}
     />
   ) : null
 

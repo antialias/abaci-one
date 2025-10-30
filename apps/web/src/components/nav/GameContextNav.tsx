@@ -34,6 +34,18 @@ interface ArcadeRoomInfo {
   joinCode?: string
 }
 
+export interface RosterWarningAction {
+  label: string
+  onClick: () => void
+  variant?: 'primary' | 'danger'
+}
+
+export interface RosterWarning {
+  heading: string
+  description: string
+  actions?: RosterWarningAction[]
+}
+
 interface GameContextNavProps {
   navTitle: string
   navEmoji?: string
@@ -62,6 +74,8 @@ interface GameContextNavProps {
   setShowPopover?: (show: boolean) => void
   activeTab?: 'add' | 'invite'
   setActiveTab?: (tab: 'add' | 'invite') => void
+  // Game-specific roster warnings
+  rosterWarning?: RosterWarning
 }
 
 export function GameContextNav({
@@ -89,6 +103,7 @@ export function GameContextNav({
   setShowPopover,
   activeTab,
   setActiveTab,
+  rosterWarning,
 }: GameContextNavProps) {
   // Get current user info for moderation
   const { data: currentUserId } = useViewerId()
@@ -179,6 +194,79 @@ export function GameContextNav({
         currentRoomId={roomInfo?.roomId}
         onInvitationChange={() => refetchRoomData()}
       />
+
+      {/* Roster Warning Banner - Game-specific warnings (e.g., too many players) */}
+      {rosterWarning && (
+        <div
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            background:
+              'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.1))',
+            borderLeft: '4px solid #f59e0b',
+            borderRadius: '8px',
+            marginBottom: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}
+        >
+          <div>
+            <h4
+              style={{
+                margin: 0,
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#92400e',
+              }}
+            >
+              {rosterWarning.heading}
+            </h4>
+            <p
+              style={{
+                margin: '4px 0 0 0',
+                fontSize: '13px',
+                color: '#78350f',
+                lineHeight: '1.4',
+              }}
+            >
+              {rosterWarning.description}
+            </p>
+          </div>
+          {rosterWarning.actions && rosterWarning.actions.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {rosterWarning.actions.map((action, index) => (
+                <button
+                  key={index}
+                  onClick={action.onClick}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: action.variant === 'danger' ? '#dc2626' : '#f59e0b',
+                    color: 'white',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background =
+                      action.variant === 'danger' ? '#b91c1c' : '#d97706'
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background =
+                      action.variant === 'danger' ? '#dc2626' : '#f59e0b'
+                  }}
+                  type="button"
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div
         style={{

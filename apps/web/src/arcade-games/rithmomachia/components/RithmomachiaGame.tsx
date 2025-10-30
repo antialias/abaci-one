@@ -12,6 +12,7 @@ import { useGameMode } from '@/contexts/GameModeContext'
 import { useFullscreen } from '@/contexts/FullscreenContext'
 import { useRoomData, useKickUser } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
+import type { RosterWarning } from '@/components/nav/GameContextNav'
 import { css } from '../../../../styled-system/css'
 import { useRithmomachia } from '../Provider'
 import type { Piece, RelationKind, RithmomachiaConfig } from '../types'
@@ -134,6 +135,143 @@ function CaptureErrorDialog({
 }
 
 /**
+ * Hook to compute roster warning based on game state
+ */
+function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined {
+  const { rosterStatus, whitePlayerId, blackPlayerId } = useRithmomachia()
+  const { players: playerMap, activePlayers: activePlayerIds, addPlayer, setActive } = useGameMode()
+  const { roomData } = useRoomData()
+  const { data: viewerId } = useViewerId()
+  const { mutate: kickUser } = useKickUser()
+
+  return useMemo(() => {
+    // Don't show notice for 'ok' or 'noLocalControl' (observers are allowed)
+    if (rosterStatus.status === 'ok' || rosterStatus.status === 'noLocalControl') {
+      return undefined
+    }
+
+    const playersArray = Array.from(playerMap.values()).sort((a, b) => {
+      const aTime =
+        typeof a.createdAt === 'number'
+          ? a.createdAt
+          : a.createdAt instanceof Date
+            ? a.createdAt.getTime()
+            : 0
+      const bTime =
+        typeof b.createdAt === 'number'
+          ? b.createdAt
+          : b.createdAt instanceof Date
+            ? b.createdAt.getTime()
+            : 0
+      return aTime - bTime
+    })
+
+    const isHost =
+      roomData && viewerId
+        ? roomData.members.find((m) => m.userId === viewerId)?.isCreator === true
+        : false
+
+    const removableLocalPlayers = playersArray.filter(
+      (player) =>
+        player.isLocal !== false &&
+        activePlayerIds.has(player.id) &&
+        player.id !== whitePlayerId &&
+        player.id !== blackPlayerId
+    )
+
+    const kickablePlayers =
+      isHost && roomData
+        ? playersArray.filter(
+            (player) =>
+              player.isLocal === false &&
+              activePlayerIds.has(player.id) &&
+              player.id !== whitePlayerId &&
+              player.id !== blackPlayerId
+          )
+        : []
+
+    const inactiveLocalPlayer = playersArray.find(
+      (player) => player.isLocal !== false && !activePlayerIds.has(player.id)
+    )
+
+    const handleKick = (player: any) => {
+      if (!roomData) return
+      for (const [userId, players] of Object.entries(roomData.memberPlayers)) {
+        if (players.some((p) => p.id === player.id)) {
+          kickUser({ roomId: roomData.id, userId })
+          break
+        }
+      }
+    }
+
+    if (rosterStatus.status === 'tooFew') {
+      const actions = []
+      if (inactiveLocalPlayer) {
+        actions.push({
+          label: `Activate ${inactiveLocalPlayer.name}`,
+          onClick: () => setActive(inactiveLocalPlayer.id, true),
+        })
+      } else {
+        actions.push({
+          label: 'Create local player',
+          onClick: () => addPlayer({ isActive: true }),
+        })
+      }
+
+      return {
+        heading: 'Need two active players',
+        description:
+          phase === 'setup'
+            ? 'Rithmomachia needs exactly two active players before the match can begin.'
+            : 'Gameplay is paused until two players are active.',
+        actions,
+      }
+    }
+
+    if (rosterStatus.status === 'tooMany') {
+      const actions = []
+
+      // Add deactivate actions for local players
+      for (const player of removableLocalPlayers) {
+        actions.push({
+          label: `Deactivate ${player.name}`,
+          onClick: () => setActive(player.id, false),
+        })
+      }
+
+      // Add kick actions for remote players (if host)
+      for (const player of kickablePlayers) {
+        actions.push({
+          label: `Kick ${player.name}`,
+          onClick: () => handleKick(player),
+          variant: 'danger' as const,
+        })
+      }
+
+      return {
+        heading: 'Too many active players',
+        description: 'Rithmomachia supports only two active players. Deactivate or kick extras:',
+        actions,
+      }
+    }
+
+    return undefined
+  }, [
+    rosterStatus.status,
+    phase,
+    playerMap,
+    activePlayerIds,
+    whitePlayerId,
+    blackPlayerId,
+    roomData,
+    viewerId,
+    addPlayer,
+    setActive,
+    kickUser,
+  ])
+}
+
+/**
  * Main Rithmomachia game component.
  * Orchestrates the game phases and UI.
  */
@@ -142,6 +280,7 @@ export function RithmomachiaGame() {
   const { state, resetGame, goToSetup, whitePlayerId, blackPlayerId } = useRithmomachia()
   const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
+  const rosterWarning = useRosterWarning(state.gamePhase === 'setup' ? 'setup' : 'playing')
 
   useEffect(() => {
     // Register this component's main div as the fullscreen element
@@ -197,6 +336,7 @@ export function RithmomachiaGame() {
       onSetup={goToSetup}
       currentPlayerId={currentPlayerId}
       playerBadges={playerBadges}
+      rosterWarning={rosterWarning}
     >
       <StandardGameLayout>
         <div
@@ -232,260 +372,6 @@ export function RithmomachiaGame() {
         </div>
       </StandardGameLayout>
     </PageWithNav>
-  )
-}
-
-function RosterStatusNotice({ phase }: { phase: 'setup' | 'playing' }) {
-  const { rosterStatus, whitePlayerId, blackPlayerId } = useRithmomachia()
-  const { players: playerMap, activePlayers: activePlayerIds, addPlayer, setActive } = useGameMode()
-  const { roomData } = useRoomData()
-  const { data: viewerId } = useViewerId()
-  const { mutate: kickUser } = useKickUser()
-
-  const playersArray = useMemo(() => {
-    const list = Array.from(playerMap.values())
-    return list.sort((a, b) => {
-      const aTime =
-        typeof a.createdAt === 'number'
-          ? a.createdAt
-          : a.createdAt instanceof Date
-            ? a.createdAt.getTime()
-            : 0
-      const bTime =
-        typeof b.createdAt === 'number'
-          ? b.createdAt
-          : b.createdAt instanceof Date
-            ? b.createdAt.getTime()
-            : 0
-      return aTime - bTime
-    })
-  }, [playerMap])
-
-  // Check if current user is room host
-  const isHost = useMemo(() => {
-    if (!roomData || !viewerId) return false
-    const currentMember = roomData.members.find((m) => m.userId === viewerId)
-    return currentMember?.isCreator === true
-  }, [roomData, viewerId])
-
-  // Find all removable local players (active but not assigned to white/black)
-  const removableLocalPlayers = useMemo(
-    () =>
-      playersArray.filter(
-        (player) =>
-          player.isLocal !== false &&
-          activePlayerIds.has(player.id) &&
-          player.id !== whitePlayerId &&
-          player.id !== blackPlayerId
-      ),
-    [playersArray, activePlayerIds, whitePlayerId, blackPlayerId]
-  )
-
-  // Find all kickable remote players (active remote players, if we're host)
-  const kickablePlayers = useMemo(() => {
-    if (!isHost || !roomData) return []
-
-    return playersArray.filter(
-      (player) =>
-        player.isLocal === false && // Remote player
-        activePlayerIds.has(player.id) && // Active
-        player.id !== whitePlayerId && // Not assigned to white
-        player.id !== blackPlayerId // Not assigned to black
-    )
-  }, [isHost, roomData, playersArray, activePlayerIds, whitePlayerId, blackPlayerId])
-
-  const inactiveLocalPlayer = useMemo(
-    () =>
-      playersArray.find((player) => player.isLocal !== false && !activePlayerIds.has(player.id)) ||
-      null,
-    [playersArray, activePlayerIds]
-  )
-
-  const heading = useMemo(() => {
-    if (rosterStatus.status === 'tooFew') return 'Need two active players'
-    if (rosterStatus.status === 'tooMany') return 'Too many active players'
-    return ''
-  }, [rosterStatus.status])
-
-  const description = useMemo(() => {
-    if (rosterStatus.status === 'tooFew') {
-      return phase === 'setup'
-        ? 'Rithmomachia needs exactly two active players before the match can begin.'
-        : 'Gameplay is paused until two players are active.'
-    }
-    if (rosterStatus.status === 'tooMany') {
-      return 'Rithmomachia supports only two active players. Deactivate or kick extras below:'
-    }
-    return ''
-  }, [phase, rosterStatus.status])
-
-  // Don't show notice for 'ok' or 'noLocalControl' (observers are allowed)
-  if (rosterStatus.status === 'ok' || rosterStatus.status === 'noLocalControl') {
-    return null
-  }
-
-  const handleKick = (player: any) => {
-    if (!roomData) return
-
-    // Find the user ID for this player
-    for (const [userId, players] of Object.entries(roomData.memberPlayers)) {
-      if (players.some((p) => p.id === player.id)) {
-        kickUser({ roomId: roomData.id, userId })
-        break
-      }
-    }
-  }
-
-  return (
-    <div
-      className={css({
-        position: 'fixed',
-        top: '180px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '90%',
-        maxWidth: '800px',
-        borderWidth: '2px',
-        borderColor: 'amber.400',
-        backgroundColor: 'amber.50',
-        color: 'amber.900',
-        p: '4',
-        borderRadius: 'md',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        zIndex: Z_INDEX.GAME.OVERLAY,
-      })}
-    >
-      <div>
-        <h3 className={css({ fontWeight: 'bold', fontSize: 'lg' })}>{heading}</h3>
-        <p className={css({ fontSize: 'sm', lineHeight: '1.5', mt: '1' })}>{description}</p>
-      </div>
-
-      {/* Actions for tooMany status */}
-      {rosterStatus.status === 'tooMany' && (
-        <div className={css({ display: 'flex', flexDirection: 'column', gap: '2', mt: '3' })}>
-          {removableLocalPlayers.length > 0 && (
-            <div>
-              <p
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'semibold',
-                  mb: '1',
-                  color: 'amber.700',
-                })}
-              >
-                Your players:
-              </p>
-              <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
-                {removableLocalPlayers.map((player) => (
-                  <button
-                    key={player.id}
-                    type="button"
-                    onClick={() => setActive(player.id, false)}
-                    className={css({
-                      px: '3',
-                      py: '1.5',
-                      bg: 'amber.500',
-                      color: 'white',
-                      borderRadius: 'md',
-                      fontWeight: 'semibold',
-                      fontSize: 'sm',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      _hover: { bg: 'amber.600' },
-                    })}
-                  >
-                    Deactivate {player.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isHost && kickablePlayers.length > 0 && (
-            <div>
-              <p
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'semibold',
-                  mb: '1',
-                  color: 'red.700',
-                })}
-              >
-                Remote players (host can kick):
-              </p>
-              <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '2' })}>
-                {kickablePlayers.map((player) => (
-                  <button
-                    key={player.id}
-                    type="button"
-                    onClick={() => handleKick(player)}
-                    className={css({
-                      px: '3',
-                      py: '1.5',
-                      bg: 'red.500',
-                      color: 'white',
-                      borderRadius: 'md',
-                      fontWeight: 'semibold',
-                      fontSize: 'sm',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      _hover: { bg: 'red.600' },
-                    })}
-                  >
-                    Kick {player.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Actions for tooFew status */}
-      {rosterStatus.status === 'tooFew' && (
-        <div className={css({ display: 'flex', gap: '2', mt: '3', flexWrap: 'wrap' })}>
-          {inactiveLocalPlayer ? (
-            <button
-              type="button"
-              onClick={() => setActive(inactiveLocalPlayer.id, true)}
-              className={css({
-                px: '3',
-                py: '2',
-                bg: 'amber.500',
-                color: 'white',
-                borderRadius: 'md',
-                fontWeight: 'semibold',
-                fontSize: 'sm',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                _hover: { bg: 'amber.600' },
-              })}
-            >
-              Activate {inactiveLocalPlayer.name}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => addPlayer({ isActive: true })}
-              className={css({
-                px: '3',
-                py: '2',
-                bg: 'amber.500',
-                color: 'white',
-                borderRadius: 'md',
-                fontWeight: 'semibold',
-                fontSize: 'sm',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                _hover: { bg: 'amber.600' },
-              })}
-            >
-              Create local player
-            </button>
-          )}
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -560,8 +446,6 @@ function SetupPhase() {
           achieving harmony (a mathematical progression) in enemy territory!
         </p>
       </div>
-
-      <RosterStatusNotice phase="setup" />
 
       {/* Game Settings */}
       <div
@@ -799,8 +683,6 @@ function PlayingPhase() {
           </button>
         </div>
       )}
-
-      <RosterStatusNotice phase="playing" />
 
       <div
         className={css({
