@@ -8,6 +8,7 @@ import { GameTitleMenu } from './GameTitleMenu'
 import { NetworkPlayerIndicator } from './NetworkPlayerIndicator'
 import { PendingInvitations } from './PendingInvitations'
 import { RoomInfo } from './RoomInfo'
+import type { PlayerBadge } from './types'
 
 type GameMode = 'none' | 'single' | 'battle' | 'tournament'
 
@@ -55,6 +56,7 @@ interface GameContextNavProps {
   currentPlayerId?: string
   playerScores?: Record<string, number>
   playerStreaks?: Record<string, number>
+  playerBadges?: Record<string, PlayerBadge>
   // Lifted popover state from PageWithNav
   showPopover?: boolean
   setShowPopover?: (show: boolean) => void
@@ -82,6 +84,7 @@ export function GameContextNav({
   currentPlayerId,
   playerScores,
   playerStreaks,
+  playerBadges,
   showPopover,
   setShowPopover,
   activeTab,
@@ -281,19 +284,20 @@ export function GameContextNav({
                   margin: '0 4px',
                 }}
               />
-              {networkPlayers.map((player) => (
-                <NetworkPlayerIndicator
-                  key={player.id}
-                  player={player}
-                  shouldEmphasize={shouldEmphasize}
-                  currentPlayerId={currentPlayerId}
-                  playerScores={playerScores}
-                  playerStreaks={playerStreaks}
-                  roomId={roomInfo?.roomId}
-                  currentUserId={currentUserId ?? undefined}
-                  isCurrentUserHost={isCurrentUserHost}
-                />
-              ))}
+          {networkPlayers.map((player) => (
+            <NetworkPlayerIndicator
+              key={player.id}
+              player={player}
+              shouldEmphasize={shouldEmphasize}
+              currentPlayerId={currentPlayerId}
+              playerScores={playerScores}
+              playerStreaks={playerStreaks}
+              playerBadges={playerBadges}
+              roomId={roomInfo?.roomId}
+              currentUserId={currentUserId ?? undefined}
+              isCurrentUserHost={isCurrentUserHost}
+            />
+          ))}
             </>
           )}
         </div>
@@ -327,6 +331,7 @@ export function GameContextNav({
             currentPlayerId={currentPlayerId}
             playerScores={playerScores}
             playerStreaks={playerStreaks}
+            playerBadges={playerBadges}
           />
 
           <AddPlayerButton
