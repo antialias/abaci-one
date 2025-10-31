@@ -115,13 +115,15 @@
     },
     "capture": {
       "title": "How to Capture",
-      "description": "You can capture an enemy piece only if your piece's value relates mathematically to theirs:",
+      "description": "You can only capture an enemy piece if your piece value has a mathematical relation to theirs:",
       "intro": "You can capture an enemy piece <strong>only if your piece's value relates mathematically</strong> to theirs:",
       "simpleTitle": "Simple Relations (no helper needed)",
       "equality": "Equal",
       "equalityExample": "Your 25 captures their 25",
+      "equalityCaption": "White Circle (25) can capture Black Circle (25) by equality",
       "multiple": "Multiple / Divisor",
       "multipleExample": "Your 64 captures their 16 (64 ÷ 16 = 4)",
+      "multipleCaption": "White Square (64) can capture Black Triangle (16) because 64 ÷ 16 = 4",
       "simpleEqual": {
         "name": "Equal",
         "desc": "Your 25 captures their 25"
@@ -133,10 +135,13 @@
       "advancedTitle": "Advanced Relations (need one helper piece)",
       "sum": "Sum",
       "sumExample": "Your 9 + helper 16 = enemy 25",
+      "sumCaption": "White Circle (9) can capture Black Circle (25) using helper Triangle (16): 9 + 16 = 25",
       "difference": "Difference",
       "differenceExample": "Your 30 - helper 10 = enemy 20",
+      "differenceCaption": "White Triangle (30) can capture Black Triangle (20) using helper Circle (10): 30 - 10 = 20",
       "product": "Product",
       "productExample": "Your 5 × helper 5 = enemy 25",
+      "productCaption": "White Circle (5) can capture Black Circle (25) using helper Circle (5): 5 × 5 = 25",
       "advancedSum": {
         "name": "Sum",
         "desc": "Your 9 + helper 16 = enemy 25"
@@ -150,7 +155,7 @@
         "desc": "Your 5 × helper 5 = enemy 25"
       },
       "helpersTitle": "💡 What are helpers?",
-      "helpersDescription": "Helpers are your other pieces still on the board — they don't move, just provide their value for the math. The game will show you valid captures when you select a piece.",
+      "helpersDescription": "Helpers are your other pieces still on the board. They stay where they are and just provide their value for the math. The game shows you valid captures when you select a piece.",
       "helpersDesc": "Helpers are your other pieces still on the board — they don't move, just provide their value for the math. The game will show you valid captures when you select a piece.",
       "example1Title": "Example: Multiple/Divisor Capture",
       "example1Desc": "White's 64 (square) can capture Black's 16 (triangle) because 64 is a multiple of 16",

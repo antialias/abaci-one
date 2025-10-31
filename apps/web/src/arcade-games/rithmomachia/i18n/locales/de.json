@@ -58,17 +58,22 @@
       "simpleTitle": "Einfache Beziehungen (kein Helfer nötig)",
       "equality": "Gleich",
       "equalityExample": "Ihre 25 schlägt deren 25",
+      "equalityCaption": "Weißer Kreis (25) kann schwarzen Kreis (25) durch Gleichheit schlagen",
       "multiple": "Vielfaches / Teiler",
       "multipleExample": "Ihre 64 schlägt deren 16 (64 ÷ 16 = 4)",
+      "multipleCaption": "Weißes Quadrat (64) kann schwarzes Dreieck (16) schlagen, weil 64 ÷ 16 = 4",
       "advancedTitle": "Erweiterte Beziehungen (ein Helferstein nötig)",
       "sum": "Summe",
       "sumExample": "Ihre 9 + Helfer 16 = Gegner 25",
+      "sumCaption": "Weißer Kreis (9) kann schwarzen Kreis (25) mit Helfer-Dreieck (16) schlagen: 9 + 16 = 25",
       "difference": "Differenz",
       "differenceExample": "Ihre 30 - Helfer 10 = Gegner 20",
+      "differenceCaption": "Weißes Dreieck (30) kann schwarzes Dreieck (20) mit Helfer-Kreis (10) schlagen: 30 - 10 = 20",
       "product": "Produkt",
       "productExample": "Ihre 5 × Helfer 5 = Gegner 25",
+      "productCaption": "Weißer Kreis (5) kann schwarzen Kreis (25) mit Helfer-Kreis (5) schlagen: 5 × 5 = 25",
       "helpersTitle": "💡 Was sind Helfer?",
-      "helpersDescription": "Helfer sind Ihre anderen Steine, die noch auf dem Brett sind – sie bewegen sich nicht, sondern stellen nur ihren Wert für die Mathematik zur Verfügung. Das Spiel zeigt Ihnen gültige Schlagzüge, wenn Sie einen Stein auswählen."
+      "helpersDescription": "Helfer sind Ihre anderen Steine, die noch auf dem Brett sind. Sie bleiben, wo sie sind, und stellen nur ihren Wert für die Mathematik zur Verfügung. Das Spiel zeigt Ihnen gültige Schlagzüge, wenn Sie einen Stein auswählen."
     },
     "harmony": {
       "title": "Harmonien (Progressionen)",
