@@ -112,7 +112,20 @@
       "mcp__sqlite__describe_table",
       "mcp__sqlite__read_query",
       "Bash(git rebase:*)",
-      "Bash(gh run watch:*)"
+      "Bash(gh run watch:*)",
+      "Bash(git reflog:*)",
+      "Bash(do echo -e \"\\n$hash:\")",
+      "Bash(git fsck:*)",
+      "Bash(do echo \"=== Stash @{$i} ===\")",
+      "Bash(git diff-tree:*)",
+      "Bash(git merge-base:*)",
+      "Bash(sed:*)",
+      "Bash(while read file)",
+      "Bash(do if git show HEAD:\"$file\")",
+      "Bash(/dev/null)",
+      "Bash(then echo \"✓ $file\")",
+      "Bash(git rev-parse:*)",
+      "Bash(node scripts/parseBoardCSV.js:*)"
     ],
     "deny": [],
     "ask": []

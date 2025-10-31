@@ -29,6 +29,7 @@ import {
   checkSum,
 } from '../utils/relationEngine'
 import { PieceRenderer } from './PieceRenderer'
+import { PlayingGuideModal } from './PlayingGuideModal'
 
 /**
  * Error notification when no capture is possible
@@ -268,6 +269,7 @@ export function RithmomachiaGame() {
   const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
   const rosterWarning = useRosterWarning(state.gamePhase === 'setup' ? 'setup' : 'playing')
+  const [isGuideOpen, setIsGuideOpen] = useState(false)
 
   useEffect(() => {
     // Register this component's main div as the fullscreen element
@@ -358,8 +360,10 @@ export function RithmomachiaGame() {
               position: 'relative',
             })}
           >
-            {state.gamePhase === 'setup' && <SetupPhase />}
-            {state.gamePhase === 'playing' && <PlayingPhase />}
+            {state.gamePhase === 'setup' && <SetupPhase onOpenGuide={() => setIsGuideOpen(true)} />}
+            {state.gamePhase === 'playing' && (
+              <PlayingPhase onOpenGuide={() => setIsGuideOpen(true)} />
+            )}
             {state.gamePhase === 'results' && <ResultsPhase />}
           </main>
         </div>
@@ -371,7 +375,7 @@ export function RithmomachiaGame() {
 /**
  * Setup phase: game configuration and start button.
  */
-function SetupPhase() {
+function SetupPhase({ onOpenGuide }: { onOpenGuide: () => void }) {
   const { state, startGame, setConfig, lastError, clearError, rosterStatus } = useRithmomachia()
   const { players: playerMap, activePlayers: activePlayerIds, addPlayer, setActive } = useGameMode()
   const startDisabled = rosterStatus.status !== 'ok'
@@ -627,18 +631,49 @@ function SetupPhase() {
                   fontStyle: 'italic',
                 })}
               >
-                The Battle of Numbers
+                The Philosopher's Game
               </p>
               <p
                 className={css({
                   color: '#78350f',
                   fontSize: '1.2vh',
-                  lineHeight: '1.3',
+                  lineHeight: '1.4',
                   fontWeight: '500',
+                  mb: '0.8vh',
                 })}
               >
-                Medieval strategy • Mathematical combat
+                Win by forming mathematical progressions in enemy territory
               </p>
+              <button
+                type="button"
+                data-action="open-guide"
+                onClick={onOpenGuide}
+                className={css({
+                  bg: 'linear-gradient(135deg, #7c2d12, #92400e)',
+                  color: 'white',
+                  border: '2px solid rgba(251, 191, 36, 0.6)',
+                  borderRadius: '0.8vh',
+                  px: '1.5vh',
+                  py: '0.8vh',
+                  fontSize: '1.3vh',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5vh',
+                  mx: 'auto',
+                  boxShadow: '0 0.3vh 0.8vh rgba(0, 0, 0, 0.3)',
+                  _hover: {
+                    bg: 'linear-gradient(135deg, #92400e, #7c2d12)',
+                    transform: 'translateY(-0.2vh)',
+                    boxShadow: '0 0.5vh 1.2vh rgba(0, 0, 0, 0.4)',
+                  },
+                })}
+              >
+                <span>📖</span>
+                <span>How to Play</span>
+              </button>
             </div>
 
             {/* Game Settings - Compact with flex: 1 to take remaining space */}
@@ -1087,7 +1122,7 @@ function SetupPhase() {
 /**
  * Playing phase: main game board and controls.
  */
-function PlayingPhase() {
+function PlayingPhase({ onOpenGuide }: { onOpenGuide: () => void }) {
   const { state, isMyTurn, lastError, clearError, rosterStatus } = useRithmomachia()
 
   return (
@@ -1141,6 +1176,7 @@ function PlayingPhase() {
           p: '4',
           bg: 'gray.100',
           borderRadius: 'md',
+          gap: '3',
         })}
       >
         <div>
@@ -1149,36 +1185,65 @@ function PlayingPhase() {
             {state.turn === 'W' ? 'White' : 'Black'}
           </span>
         </div>
-        {isMyTurn && (
-          <div
+        <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
+          <button
+            type="button"
+            data-action="open-guide-playing"
+            onClick={onOpenGuide}
             className={css({
               px: '3',
               py: '1',
-              bg: 'green.100',
-              color: 'green.800',
+              bg: 'linear-gradient(135deg, #7c2d12, #92400e)',
+              color: 'white',
+              border: '1px solid rgba(251, 191, 36, 0.6)',
               borderRadius: 'md',
               fontSize: 'sm',
               fontWeight: 'semibold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1',
+              transition: 'all 0.2s',
+              _hover: {
+                bg: 'linear-gradient(135deg, #92400e, #7c2d12)',
+                transform: 'translateY(-1px)',
+              },
             })}
           >
-            Your Turn
-          </div>
-        )}
-        {!isMyTurn && rosterStatus.status === 'ok' && (
-          <div
-            className={css({
-              px: '3',
-              py: '1',
-              bg: 'gray.200',
-              color: 'gray.700',
-              borderRadius: 'md',
-              fontSize: 'sm',
-              fontWeight: 'semibold',
-            })}
-          >
-            Waiting for {state.turn === 'W' ? 'White' : 'Black'}
-          </div>
-        )}
+            <span>📖</span>
+            <span>Guide</span>
+          </button>
+          {isMyTurn && (
+            <div
+              className={css({
+                px: '3',
+                py: '1',
+                bg: 'green.100',
+                color: 'green.800',
+                borderRadius: 'md',
+                fontSize: 'sm',
+                fontWeight: 'semibold',
+              })}
+            >
+              Your Turn
+            </div>
+          )}
+          {!isMyTurn && rosterStatus.status === 'ok' && (
+            <div
+              className={css({
+                px: '3',
+                py: '1',
+                bg: 'gray.200',
+                color: 'gray.700',
+                borderRadius: 'md',
+                fontSize: 'sm',
+                fontWeight: 'semibold',
+              })}
+            >
+              Waiting for {state.turn === 'W' ? 'White' : 'Black'}
+            </div>
+          )}
+        </div>
       </div>
 
       <BoardDisplay />
@@ -3005,6 +3070,9 @@ function ResultsPhase() {
           🚪 Exit
         </button>
       </div>
+
+      {/* Playing Guide Modal - persists across all phases */}
+      <PlayingGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
     </div>
   )
 }

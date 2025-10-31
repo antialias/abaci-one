@@ -1,0 +1,290 @@
+[
+  {
+    "color": "B",
+    "type": "S",
+    "value": 28,
+    "square": "A1"
+  },
+  {
+    "color": "B",
+    "type": "S",
+    "value": 66,
+    "square": "A2"
+  },
+  {
+    "color": "B",
+    "type": "S",
+    "value": 225,
+    "square": "A7"
+  },
+  {
+    "color": "B",
+    "type": "S",
+    "value": 361,
+    "square": "A8"
+  },
+  {
+    "color": "B",
+    "type": "S",
+    "value": 28,
+    "square": "B1"
+  },
+  {
+    "color": "B",
+    "type": "S",
+    "value": 66,
+    "square": "B2"
+  },
+  {
+    "color": "B",
+    "type": "T",
+    "value": 36,
+    "square": "B3"
+  },
+  {
+    "color": "B",
+    "type": "T",
+    "value": 30,
+    "square": "B4"
+  },
+  {
+    "color": "B",
+    "type": "T",
+    "value": 56,
+    "square": "B5"
+  },
+  {
+    "color": "B",
+    "type": "T",
+    "value": 64,
+    "square": "B6"
+  },
+  {
+    "color": "B",
+    "type": "S",
+    "value": 120,
+    "square": "B7"
+  },
+  {
+    "color": "B",
+    "type": "P",
+    "pyramidFaces": [36, 25, 16, 4],
+    "square": "B8"
+  },
+  {
+    "color": "B",
+    "type": "T",
+    "value": 16,
+    "square": "C1"
+  },
+  {
+    "color": "B",
+    "type": "T",
+    "value": 12,
+    "square": "C2"
+  },
+  {
+    "color": "B",
+    "type": "C",
+    "value": 9,
+    "square": "C3"
+  },
+  {
+    "color": "B",
+    "type": "C",
+    "value": 25,
+    "square": "C4"
+  },
+  {
+    "color": "B",
+    "type": "C",
+    "value": 49,
+    "square": "C5"
+  },
+  {
+    "color": "B",
+    "type": "C",
+    "value": 81,
+    "square": "C6"
+  },
+  {
+    "color": "B",
+    "type": "T",
+    "value": 90,
+    "square": "C7"
+  },
+  {
+    "color": "B",
+    "type": "T",
+    "value": 100,
+    "square": "C8"
+  },
+  {
+    "color": "B",
+    "type": "C",
+    "value": 3,
+    "square": "D3"
+  },
+  {
+    "color": "B",
+    "type": "C",
+    "value": 5,
+    "square": "D4"
+  },
+  {
+    "color": "B",
+    "type": "C",
+    "value": 7,
+    "square": "D5"
+  },
+  {
+    "color": "B",
+    "type": "C",
+    "value": 9,
+    "square": "D6"
+  },
+  {
+    "color": "W",
+    "type": "C",
+    "value": 8,
+    "square": "M3"
+  },
+  {
+    "color": "W",
+    "type": "C",
+    "value": 6,
+    "square": "M4"
+  },
+  {
+    "color": "W",
+    "type": "C",
+    "value": 4,
+    "square": "M5"
+  },
+  {
+    "color": "W",
+    "type": "C",
+    "value": 2,
+    "square": "M6"
+  },
+  {
+    "color": "W",
+    "type": "T",
+    "value": 81,
+    "square": "N1"
+  },
+  {
+    "color": "W",
+    "type": "T",
+    "value": 72,
+    "square": "N2"
+  },
+  {
+    "color": "W",
+    "type": "C",
+    "value": 64,
+    "square": "N3"
+  },
+  {
+    "color": "W",
+    "type": "C",
+    "value": 16,
+    "square": "N4"
+  },
+  {
+    "color": "W",
+    "type": "C",
+    "value": 16,
+    "square": "N5"
+  },
+  {
+    "color": "W",
+    "type": "C",
+    "value": 4,
+    "square": "N6"
+  },
+  {
+    "color": "W",
+    "type": "T",
+    "value": 6,
+    "square": "N7"
+  },
+  {
+    "color": "W",
+    "type": "T",
+    "value": 9,
+    "square": "N8"
+  },
+  {
+    "color": "W",
+    "type": "S",
+    "value": 153,
+    "square": "O1"
+  },
+  {
+    "color": "W",
+    "type": "P",
+    "pyramidFaces": [64, 49, 36, 25],
+    "square": "O2"
+  },
+  {
+    "color": "W",
+    "type": "T",
+    "value": 72,
+    "square": "O3"
+  },
+  {
+    "color": "W",
+    "type": "T",
+    "value": 20,
+    "square": "O4"
+  },
+  {
+    "color": "W",
+    "type": "T",
+    "value": 20,
+    "square": "O5"
+  },
+  {
+    "color": "W",
+    "type": "T",
+    "value": 25,
+    "square": "O6"
+  },
+  {
+    "color": "W",
+    "type": "S",
+    "value": 45,
+    "square": "O7"
+  },
+  {
+    "color": "W",
+    "type": "S",
+    "value": 15,
+    "square": "O8"
+  },
+  {
+    "color": "W",
+    "type": "S",
+    "value": 289,
+    "square": "P1"
+  },
+  {
+    "color": "W",
+    "type": "S",
+    "value": 169,
+    "square": "P2"
+  },
+  {
+    "color": "W",
+    "type": "S",
+    "value": 81,
+    "square": "P7"
+  },
+  {
+    "color": "W",
+    "type": "S",
+    "value": 25,
+    "square": "P8"
+  }
+]
