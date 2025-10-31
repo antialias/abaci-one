@@ -28,13 +28,13 @@ This spec aims for: fully deterministic setup, no ambiguities, consistent networ
 
 ## 2) Pieces and movement
 
-Each side has **25 pieces**:
+Each side has **24 pieces**:
 
-* **12 Circles (C)** — "light" pieces
+* **8 Circles (C)** — "light" pieces
   Movement: **diagonal, any distance**, no jumping (like a bishop).
-* **6 Triangles (T)** — "medium" pieces
+* **8 Triangles (T)** — "medium" pieces
   Movement: **orthogonal, any distance**, no jumping (like a rook).
-* **6 Squares (S)** — "heavy" pieces
+* **7 Squares (S)** — "heavy" pieces
   Movement: **queen-like, any distance**, no jumping (orthogonal or diagonal).
 * **1 Pyramid (P)** — "royal" piece
   Movement: **king-like, 1 step** in any direction (8-neighborhood).
@@ -54,20 +54,20 @@ This is the **traditional Rithmomachia** ("The Philosophers' Game") setup, where
 * **Squares** → Square numbers and composites; move like **queens** (orthogonal + diagonal)
 * **Pyramids** → Composite/sum pieces with multiple faces; move like **kings** (1 step any direction)
 
-### 3.2 Black values (higher descending values)
+### 3.2 Black values (traditional layout)
 
-**Total: 25 pieces**
-* **Squares (6):** `361` (19²), `225` (15²), `121` (11²), `120`, `64` (8²), `49` (7²)
-* **Triangles (9):** `90`, `66` (11th triangular), `64`, `56` (7th triangular), `36` (6²), `30` (5th triangular), `16`, `12`, `9`
-* **Circles (9):** `81` (9²), `49` (7²), `25` (5²), `16`, `12`, `9`, `4`, `3`, `2`
+**Total: 24 pieces**
+* **Squares (7):** `28` (×2), `66` (×2), `120`, `225` (15²), `361` (19²)
+* **Triangles (8):** `12`, `16` (4²), `30`, `36` (6²), `56`, `64` (8²), `90`, `100` (10²)
+* **Circles (8):** `3`, `5`, `7`, `9` (×2), `25` (5²), `49` (7²), `81` (9²)
 * **Pyramid (1):** `[36, 25, 16, 4]` (faces: 6², 5², 4², 2²)
 
-### 3.3 White values (smaller units, geometric harmony)
+### 3.3 White values (traditional layout)
 
-**Total: 25 pieces**
-* **Squares (8):** `289` (17²), `169` (13²), `153`, `81` (9²), `45`, `25` (5²), `18`, `15`
-* **Triangles (8):** `72`, `49` (7²), `42` (6th triangular), `20` (4th triangular), `9`, `6`, `5`, `4`
-* **Circles (8):** `64` (8²), `36` (6²), `25`, `16` (4²), `8`, `6`, `4` (×2), `2` (×2)
+**Total: 24 pieces**
+* **Squares (7):** `15`, `25` (5²), `45`, `81` (9²), `153`, `169` (13²), `289` (17²)
+* **Triangles (8):** `6`, `9`, `20` (×2), `25` (5²), `72`, `81` (9²) (note: one T with value 72 appears twice in column O)
+* **Circles (8):** `2`, `4` (×2), `6`, `8`, `16` (×2), `64` (8²)
 * **Pyramid (1):** `[64, 49, 36, 25]` (faces: 8², 7², 6², 5²)
 
 > **Philosophical note:** The initial layout visually encodes proportionality—large composite figurates on outer edges, smaller simple numbers inside. Numbers on each side form progressions that enable arithmetical, geometrical, and harmonical victories. For relations and Pyramid captures, the Pyramid's **face value** is chosen by the owner at capture time.
@@ -77,65 +77,78 @@ This is the **traditional Rithmomachia** ("The Philosophers' Game") setup, where
 ## 4) Initial setup — Traditional formation
 
 **SYMMETRIC VERTICAL LAYOUT** — The board is **8 rows × 16 columns** with:
-- **BLACK (left side)**: Columns **A, B, C** (outer to inner)
-- **WHITE (right side)**: Columns **N, O, P** (inner to outer)
-- **Battlefield (middle)**: Columns **D through M** (10 empty columns)
+- **BLACK (left side)**: Columns **A, B, C, D**
+- **WHITE (right side)**: Columns **M, N, O, P**
+- **Battlefield (middle)**: Columns **E through L** (8 empty columns)
 
-This is the **classical symmetric formation** where large composite numbers occupy the outer edges, progressing to smaller geometric bases toward the inside. The layout encodes the mathematical philosophy: larger figurates command the flanks, while nimble units infiltrate the center.
+This is the **classical symmetric formation** from authoritative historical sources. The layout places larger values on outer edges (columns A and P) with smaller values toward the interior, encoding mathematical progressions that enable harmony victories.
 
-### BLACK Setup (Left side — columns A, B, C)
+### BLACK Setup (Left side — columns A, B, C, D)
 
-**Column A** (Outer edge — Large squares and triangles):
+**Column A** (Outer edge — Sparse squares):
 ```
-A1: S(49)   A2: S(121)  A3: T(36)   A4: T(30)
-A5: T(56)   A6: S(120)  A7: S(225)  A8: S(361)
-```
-
-**Column B** (Middle — Mixed pieces + Pyramid):
-```
-B1: empty   B2: T(66)   B3: C(9)    B4: C(25)
-B5: C(49)   B6: T(64)   B7: C(81)   B8: P[36,25,16,4]
+A1: S(28)    A2: S(66)    A3: empty   A4: empty
+A5: empty    A6: empty    A7: S(225)  A8: S(361)
 ```
 
-**Column C** (Inner edge — Small units):
+**Column B** (Mixed with Pyramid at B8):
 ```
-C1: T(16)   C2: T(12)   C3: C(9)    C4: C(7)
-C5: C(5)    C6: C(3)    C7: T(90)   C8: T(9)
-```
-
-### WHITE Setup (Right side — columns N, O, P)
-
-**Column N** (Inner edge — Small units):
-```
-N1: T(4)    N2: C(2)    N3: C(6)    N4: C(8)
-N5: C(4)    N6: C(2)    N7: T(6)    N8: T(9)
+B1: S(28)    B2: S(66)    B3: T(36)   B4: T(30)
+B5: T(56)    B6: T(64)    B7: S(120)  B8: P[36,25,16,4]
 ```
 
-**Column O** (Middle — Mixed pieces + Pyramid):
+**Column C** (Triangles and circles):
 ```
-O1: S(153)  O2: P[64,49,36,25]  O3: C(25)   O4: C(36)
-O5: C(64)   O6: C(16)   O7: C(4)    O8: S(169)
+C1: T(16)    C2: T(12)    C3: C(9)    C4: C(25)
+C5: C(49)    C6: C(81)    C7: T(90)   C8: T(100)
 ```
 
-**Column P** (Outer edge — Large squares and triangles):
+**Column D** (Inner edge — Small circles, sparse):
 ```
-P1: S(289)  P2: S(81)   P3: T(20)   P4: T(42)
-P5: T(49)   P6: T(72)   P7: S(45)   P8: S(25)
+D1: empty    D2: empty    D3: C(3)    D4: C(5)
+D5: C(7)     D6: C(9)     D7: empty   D8: empty
+```
+
+### WHITE Setup (Right side — columns M, N, O, P)
+
+**Column M** (Inner edge — Small circles, sparse):
+```
+M1: empty    M2: empty    M3: C(8)    M4: C(6)
+M5: C(4)     M6: C(2)     M7: empty   M8: empty
+```
+
+**Column N** (Triangles and circles):
+```
+N1: T(81)    N2: T(72)    N3: C(64)   N4: C(16)
+N5: C(16)    N6: C(4)     N7: T(6)    N8: T(9)
+```
+
+**Column O** (Mixed with Pyramid at O2):
+```
+O1: S(153)   O2: P[64,49,36,25]  O3: T(72)   O4: T(20)
+O5: T(20)    O6: T(25)           O7: S(45)   O8: S(15)
+```
+
+**Column P** (Outer edge — Sparse squares):
+```
+P1: S(289)   P2: S(169)   P3: empty   P4: empty
+P5: empty    P6: empty    P7: S(81)   P8: S(25)
 ```
 
 ### Piece Count Summary
 
-**BLACK**: 6 Squares, 9 Triangles, 9 Circles, 1 Pyramid = **25 pieces**
-**WHITE**: 8 Squares, 8 Triangles, 8 Circles, 1 Pyramid = **25 pieces**
+**BLACK**: 7 Squares, 8 Triangles, 8 Circles, 1 Pyramid = **24 pieces**
+**WHITE**: 7 Squares, 8 Triangles, 8 Circles, 1 Pyramid = **24 pieces**
 
 ### Strategic layout philosophy
 
-* **Outer edges (A and P)**: Heavy squares (361, 289, 225, 169, etc.) command the flanks
-* **Middle columns (B and O)**: Mix of powers with the Pyramids (royal pieces) at B8 (Black) and O2 (White)
-* **Inner edges (C and N)**: Nimble circles and small triangles (2–16) for rapid infiltration
-* **Central battlefield (D–M)**: 10 empty columns provide space for mathematical maneuvering
+* **Outer edges (A and P)**: Heavy squares (361, 289, 225, 169, etc.) command the flanks with sparse placement
+* **Secondary columns (B and O)**: Dense formations with Pyramids (royal pieces) at B8 (Black) and O2 (White)
+* **Tertiary columns (C and N)**: Full ranks of mixed triangles and circles
+* **Inner edges (D and M)**: Small circles (2–9) for tactical infiltration, sparse placement
+* **Central battlefield (E–L)**: 8 empty columns provide space for mathematical maneuvering
 
-The alternating dark/light visual pattern is purely aesthetic; movement is grid-based, not color-based. White moves first.
+Some pieces appear with duplicate values (e.g., A1 and B1 both have S(28)), reflecting the traditional layout's mathematical symmetries. White moves first.
 
 ---
 
@@ -532,15 +545,18 @@ interface HarmonyDeclaration {
 
 ## Implementation Status
 
-Last updated: 2025-10-29
+Last updated: 2025-10-31
 
 The current implementation in `src/arcade-games/rithmomachia/` follows this spec:
 
-- **Board setup**: ✅ VERTICAL layout (§4) - BLACK on left (columns A-C), WHITE on right (columns M-P)
+- **Board setup**: ✅ VERTICAL layout (§4) - BLACK on left (columns A-D), WHITE on right (columns M-P)
+  - Authoritative CSV-derived layout (parsed from historical sources)
+  - 24 pieces per side (7 Squares, 8 Triangles, 8 Circles, 1 Pyramid)
+  - Black Pyramid at B8, White Pyramid at O2
 - **Piece rendering**: ✅ SVG-based with precise color control (PieceRenderer.tsx)
   - BLACK pieces: Dark fill (#1a1a1a) with black stroke
   - WHITE pieces: Light fill (#ffffff) with gray stroke
-- **Piece values**: ✅ Match reference board image exactly (24 pieces per side)
+- **Piece values**: ✅ Match authoritative CSV exactly (§3.2, §3.3)
 - **Movement validation**: ✅ Implemented in `Validator.ts` following geometric rules
 - **Capture system**: ✅ Relation-based captures per §6
 - **Harmony system**: ✅ Progression detection and validation per §7
