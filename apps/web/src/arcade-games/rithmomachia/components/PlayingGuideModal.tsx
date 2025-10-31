@@ -325,12 +325,10 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
         className={css({
           bg: '#f9fafb',
           borderBottom: '1px solid #e5e7eb',
-          p: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          p: '24px',
           userSelect: 'none',
           flexShrink: 0,
+          position: 'relative',
         })}
         onMouseDown={handleMouseDown}
         style={{
@@ -341,45 +339,17 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
               : 'default',
         }}
       >
-        <h2
+        {/* Close and utility buttons - top right */}
+        <div
           className={css({
-            fontSize: '20px',
-            fontWeight: 'bold',
-            color: '#111827',
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           })}
         >
-          {t('guide.title', 'Rithmomachia Playing Guide')}
-        </h2>
-
-        <div className={css({ display: 'flex', alignItems: 'center', gap: '12px' })}>
-          {/* Language switcher */}
-          <div className={css({ display: 'flex', gap: '8px' })}>
-            {['en', 'de'].map((lang) => (
-              <button
-                key={lang}
-                type="button"
-                data-action={`language-${lang}`}
-                onClick={() => i18n.changeLanguage(lang)}
-                className={css({
-                  px: '8px',
-                  py: '4px',
-                  fontSize: '12px',
-                  fontWeight: i18n.language === lang ? 'bold' : 'normal',
-                  bg: i18n.language === lang ? '#3b82f6' : '#e5e7eb',
-                  color: i18n.language === lang ? 'white' : '#374151',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  _hover: {
-                    bg: i18n.language === lang ? '#2563eb' : '#d1d5db',
-                  },
-                })}
-              >
-                {lang.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
           {/* Bust-out button (only if not already standalone) */}
           {!standalone && (
             <button
@@ -430,6 +400,70 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
           >
             ✕
           </button>
+        </div>
+
+        {/* Centered title and subtitle */}
+        <div className={css({ textAlign: 'center' })}>
+          <h1
+            className={css({
+              fontSize: { base: '24px', md: '28px' },
+              fontWeight: 'bold',
+              color: '#111827',
+              mb: '8px',
+            })}
+          >
+            {t('guide.title', 'Rithmomachia Playing Guide')}
+          </h1>
+          <p
+            className={css({
+              fontSize: { base: '14px', md: '16px' },
+              color: '#6b7280',
+              mb: '16px',
+            })}
+          >
+            {t('guide.subtitle', "Rithmomachia – The Philosophers' Game")}
+          </p>
+
+          {/* Language selector */}
+          <div
+            className={css({
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            })}
+          >
+            <label
+              htmlFor="language-select"
+              className={css({ fontSize: '14px', color: '#374151' })}
+            >
+              {t('guide.languageSelector.label', 'Language')}:
+            </label>
+            <select
+              id="language-select"
+              value={i18n.language}
+              onChange={(e) => i18n.changeLanguage(e.target.value)}
+              className={css({
+                px: '12px',
+                py: '6px',
+                fontSize: '14px',
+                bg: 'white',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: '#111827',
+                _hover: { borderColor: '#9ca3af' },
+                _focus: {
+                  outline: 'none',
+                  borderColor: '#3b82f6',
+                  boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                },
+              })}
+            >
+              <option value="en">{t('guide.languageSelector.en', 'English')}</option>
+              <option value="de">{t('guide.languageSelector.de', 'Deutsch')}</option>
+            </select>
+          </div>
         </div>
       </div>
 
