@@ -1,64 +1,59 @@
 import type { Color, Piece } from '../types'
 
 /**
- * Generate the initial board setup per the Rithmomachia reference image.
+ * Generate the initial board setup for traditional Rithmomachia.
  * Returns a Record of piece.id → Piece.
  *
- * Layout: VERTICAL - BLACK on left (columns A-C), WHITE on right (columns M-P)
- * Follows the authoritative reference board image exactly.
+ * Layout: VERTICAL - BLACK on left (columns A-C), WHITE on right (columns N-P)
+ * This is the classical symmetric formation with 25 pieces per side.
  */
 export function createInitialBoard(): Record<string, Piece> {
   const pieces: Record<string, Piece> = {}
 
-  // === BLACK PIECES (Left side: columns A, B, C - filled/dark) ===
-  // Note: Rows 3-6 (middle) are "cinched in" - column A is empty for these rows
+  // === BLACK PIECES (Left side: columns A, B, C) ===
+  // Traditional setup: large figurates on outer edges, small units inside
 
-  // Column A (squares only - rows 1, 2, 7, 8)
+  // Column A (Outer edge - Large squares and triangles)
   const blackColumnA = [
     { type: 'S', value: 49, square: 'A1' },
     { type: 'S', value: 121, square: 'A2' },
-    // A3, A4, A5, A6 are EMPTY (middle rows cinched in)
+    { type: 'T', value: 36, square: 'A3' },
+    { type: 'T', value: 30, square: 'A4' },
+    { type: 'T', value: 56, square: 'A5' },
+    { type: 'T', value: 64, square: 'A6' },
     { type: 'S', value: 225, square: 'A7' },
     { type: 'S', value: 361, square: 'A8' },
   ] as const
 
-  // Column B (squares, triangles, circles, and pyramid)
+  // Column B (Middle - Mixed pieces + Pyramid)
   const blackColumnB = [
-    { type: 'S', value: 28, square: 'B1' },
-    { type: 'S', value: 66, square: 'B2' },
-    { type: 'T', value: 64, square: 'B3' }, // Middle rows start here
-    { type: 'T', value: 56, square: 'B4' },
-    { type: 'T', value: 30, square: 'B5' },
-    { type: 'T', value: 36, square: 'B6' },
+    // B1: empty
+    { type: 'T', value: 66, square: 'B2' },
+    { type: 'C', value: 9, square: 'B3' },
+    { type: 'C', value: 25, square: 'B4' },
+    { type: 'C', value: 49, square: 'B5' },
+    { type: 'C', value: 81, square: 'B6' },
     { type: 'S', value: 120, square: 'B7' },
     // B8 is Pyramid (see below)
   ] as const
 
-  // Column C (triangles and circles)
+  // Column C (Inner edge - Small units)
   const blackColumnC = [
     { type: 'T', value: 16, square: 'C1' },
     { type: 'T', value: 12, square: 'C2' },
-    { type: 'C', value: 81, square: 'C3' },
-    { type: 'C', value: 49, square: 'C4' },
-    { type: 'C', value: 25, square: 'C5' },
-    { type: 'C', value: 9, square: 'C6' },
+    { type: 'C', value: 3, square: 'C3' },
+    { type: 'C', value: 4, square: 'C4' },
+    { type: 'C', value: 2, square: 'C5' },
+    { type: 'C', value: 12, square: 'C6' },
     { type: 'T', value: 90, square: 'C7' },
-    { type: 'T', value: 100, square: 'C8' },
-  ] as const
-
-  // Column D (circles only - middle rows)
-  const blackColumnD = [
-    { type: 'C', value: 9, square: 'D3' },
-    { type: 'C', value: 7, square: 'D4' },
-    { type: 'C', value: 5, square: 'D5' },
-    { type: 'C', value: 3, square: 'D6' },
+    { type: 'T', value: 9, square: 'C8' },
   ] as const
 
   let blackSquareCount = 0
   let blackTriangleCount = 0
   let blackCircleCount = 0
 
-  for (const piece of [...blackColumnA, ...blackColumnB, ...blackColumnC, ...blackColumnD]) {
+  for (const piece of [...blackColumnA, ...blackColumnB, ...blackColumnC]) {
     let id: string
     let count: number
     if (piece.type === 'S') {
@@ -86,53 +81,48 @@ export function createInitialBoard(): Record<string, Piece> {
     id: 'B_P_01',
     color: 'B',
     type: 'P',
-    pyramidFaces: [9, 32, 125, 1],
+    pyramidFaces: [36, 25, 16, 4],
     activePyramidFace: null,
     square: 'B8',
     captured: false,
   }
 
-  // === WHITE PIECES (Right side: columns M, N, O, P - outline/light) ===
-  // Note: Rows 3-6 (middle) are "cinched in" - column P is empty for these rows
+  // === WHITE PIECES (Right side: columns N, O, P) ===
+  // Traditional setup mirrors Black with inverse ratios
 
-  // Column M (circles only - middle rows)
-  const whiteColumnM = [
-    { type: 'C', value: 2, square: 'M3' },
-    { type: 'C', value: 4, square: 'M4' },
-    { type: 'C', value: 6, square: 'M5' },
-    { type: 'C', value: 8, square: 'M6' },
-  ] as const
-
-  // Column N (pyramid, circles, and triangles)
+  // Column N (Inner edge - Small units)
   const whiteColumnN = [
     { type: 'T', value: 4, square: 'N1' },
-    // N2 is Pyramid (see below)
-    { type: 'C', value: 64, square: 'N3' },
-    { type: 'C', value: 36, square: 'N4' },
-    { type: 'C', value: 16, square: 'N5' },
-    { type: 'C', value: 4, square: 'N6' },
-    { type: 'T', value: 5, square: 'N7' },
-    { type: 'T', value: 6, square: 'N8' },
+    { type: 'C', value: 2, square: 'N2' },
+    { type: 'C', value: 6, square: 'N3' },
+    { type: 'C', value: 8, square: 'N4' },
+    { type: 'C', value: 4, square: 'N5' },
+    { type: 'C', value: 2, square: 'N6' },
+    { type: 'T', value: 6, square: 'N7' },
+    { type: 'T', value: 5, square: 'N8' },
   ] as const
 
-  // Column O (squares, circles, and triangles)
+  // Column O (Middle - Mixed pieces + Pyramid)
   const whiteColumnO = [
     { type: 'S', value: 153, square: 'O1' },
-    { type: 'S', value: 169, square: 'O2' },
-    { type: 'T', value: 4, square: 'O3' },
-    { type: 'T', value: 2, square: 'O4' },
-    { type: 'T', value: 2, square: 'O5' },
-    { type: 'T', value: 5, square: 'O6' },
-    { type: 'S', value: 45, square: 'O7' },
-    { type: 'S', value: 15, square: 'O8' },
+    { type: 'C', value: 25, square: 'O2' },
+    { type: 'C', value: 36, square: 'O3' },
+    { type: 'C', value: 64, square: 'O4' },
+    { type: 'C', value: 16, square: 'O5' },
+    { type: 'C', value: 4, square: 'O6' },
+    // O7 is Pyramid (see below)
+    { type: 'S', value: 169, square: 'O8' },
   ] as const
 
-  // Column P (squares only - rows 1, 2, 7, 8)
+  // Column P (Outer edge - Large squares and triangles)
   const whiteColumnP = [
     { type: 'S', value: 289, square: 'P1' },
-    { type: 'T', value: 7, square: 'P2' },
-    // P3, P4, P5, P6 are EMPTY (middle rows cinched in)
-    { type: 'S', value: 18, square: 'P7' },
+    { type: 'S', value: 81, square: 'P2' },
+    { type: 'T', value: 20, square: 'P3' },
+    { type: 'T', value: 42, square: 'P4' },
+    { type: 'T', value: 49, square: 'P5' },
+    { type: 'T', value: 72, square: 'P6' },
+    { type: 'S', value: 45, square: 'P7' },
     { type: 'S', value: 25, square: 'P8' },
   ] as const
 
@@ -140,7 +130,7 @@ export function createInitialBoard(): Record<string, Piece> {
   let whiteTriangleCount = 0
   let whiteCircleCount = 0
 
-  for (const piece of [...whiteColumnM, ...whiteColumnN, ...whiteColumnO, ...whiteColumnP]) {
+  for (const piece of [...whiteColumnN, ...whiteColumnO, ...whiteColumnP]) {
     let id: string
     let count: number
     if (piece.type === 'S') {
@@ -163,14 +153,14 @@ export function createInitialBoard(): Record<string, Piece> {
     }
   }
 
-  // White Pyramid at N2
+  // White Pyramid at O7
   pieces.W_P_01 = {
     id: 'W_P_01',
     color: 'W',
     type: 'P',
-    pyramidFaces: [8, 27, 64, 1],
+    pyramidFaces: [64, 49, 36, 25],
     activePyramidFace: null,
-    square: 'N2',
+    square: 'O7',
     captured: false,
   }
 

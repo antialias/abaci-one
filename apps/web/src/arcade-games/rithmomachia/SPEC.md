@@ -43,90 +43,99 @@ Each side has **25 pieces**:
 
 ---
 
-## 3) Values (numbers printed on pieces)
+## 3) Values and piece philosophy
 
-To keep the classic "number theory" flavor without historical inconsistencies, we use **balanced, deterministic sets** for both sides.
+This is the **traditional Rithmomachia** ("The Philosophers' Game") setup, where numbers encode **arithmetical, geometrical, and harmonical progressions**.
 
-### 3.1 White values
+### 3.1 Piece types and their numerical associations
 
-* **Circles (12):** `2, 4, 6, …, 24` (even 2–24)
-* **Triangles (6):** `3, 9, 27, 81, 243, 729` (`3^1…3^6`)
-* **Squares (6):** `4, 16, 64, 256, 1024, 4096` (`4^1…4^6`)
-* **Pyramid (1):** multi-face tuple `[8, 27, 64, 1]`
+* **Circles** → Units and squares (low geometric bases); move **diagonally** like bishops
+* **Triangles** → Triangular numbers and figurates; move **orthogonally** like rooks
+* **Squares** → Square numbers and composites; move like **queens** (orthogonal + diagonal)
+* **Pyramids** → Composite/sum pieces with multiple faces; move like **kings** (1 step any direction)
 
-  * For relations, the Pyramid's **face value** is chosen by the owner at relation-check time (see §5.5).
+### 3.2 Black values (higher descending values)
 
-### 3.2 Black values
+**Total: 25 pieces**
+* **Squares (6):** `361` (19²), `225` (15²), `121` (11²), `120`, `64` (8²), `49` (7²)
+* **Triangles (9):** `90`, `66` (11th triangular), `64`, `56` (7th triangular), `36` (6²), `30` (5th triangular), `16`, `12`, `9`
+* **Circles (9):** `81` (9²), `49` (7²), `25` (5²), `16`, `12`, `9`, `4`, `3`, `2`
+* **Pyramid (1):** `[36, 25, 16, 4]` (faces: 6², 5², 4², 2²)
 
-* **Circles (12):** `3, 6, 9, …, 36` (multiples of 3 from 3–36)
-* **Triangles (6):** `2, 8, 32, 128, 512, 2048` (`2^1…2^11 skipping^? → exact set above`)
-* **Squares (6):** `5, 25, 125, 625, 3125, 15625` (`5^1…5^6`)
-* **Pyramid (1):** `[9, 32, 125, 1]`
+### 3.3 White values (smaller units, geometric harmony)
 
-> Rationale: Both sides get arithmetic + geometric "families" and a pyramid with four canonical faces. These sets are intentionally asymmetric but **balanced by geometry and victory routes**. You can swap or extend presets later without changing logic.
+**Total: 25 pieces**
+* **Squares (8):** `289` (17²), `169` (13²), `153`, `81` (9²), `45`, `25` (5²), `18`, `15`
+* **Triangles (8):** `72`, `49` (7²), `42` (6th triangular), `20` (4th triangular), `9`, `6`, `5`, `4`
+* **Circles (8):** `64` (8²), `36` (6²), `25`, `16` (4²), `8`, `6`, `4` (×2), `2` (×2)
+* **Pyramid (1):** `[64, 49, 36, 25]` (faces: 8², 7², 6², 5²)
+
+> **Philosophical note:** The initial layout visually encodes proportionality—large composite figurates on outer edges, smaller simple numbers inside. Numbers on each side form progressions that enable arithmetical, geometrical, and harmonical victories. For relations and Pyramid captures, the Pyramid's **face value** is chosen by the owner at capture time.
 
 ---
 
-## 4) Initial setup
+## 4) Initial setup — Traditional formation
 
-**VERTICAL LAYOUT** - Place pieces in **vertical columns** on opposite sides of the board:
-- **BLACK pieces (filled/dark)**: Columns A, B, C (left side)
-- **WHITE pieces (outline/light)**: Columns M, N, O, P (right side)
-- **Playing area**: Columns D through L (middle 9 columns)
+**SYMMETRIC VERTICAL LAYOUT** — The board is **8 rows × 16 columns** with:
+- **BLACK (left side)**: Columns **A, B, C** (outer to inner)
+- **WHITE (right side)**: Columns **N, O, P** (inner to outer)
+- **Battlefield (middle)**: Columns **D through M** (10 empty columns)
 
-This follows the authoritative reference board image.
+This is the **classical symmetric formation** where large composite numbers occupy the outer edges, progressing to smaller geometric bases toward the inside. The layout encodes the mathematical philosophy: larger figurates command the flanks, while nimble units infiltrate the center.
 
-### BLACK Setup (Left side - columns A, B, C)
+### BLACK Setup (Left side — columns A, B, C)
 
-**Column A** (Squares and Triangles):
+**Column A** (Outer edge — Large squares and triangles):
 ```
 A1: S(49)   A2: S(121)  A3: T(36)   A4: T(30)
 A5: T(56)   A6: T(64)   A7: S(225)  A8: S(361)
 ```
 
-**Column B** (Squares, Circles, and Pyramid):
+**Column B** (Middle — Mixed pieces + Pyramid):
 ```
-B1: S(28)   B2: S(66)   B3: C(9)    B4: C(25)
-B5: C(49)   B6: C(81)   B7: S(120)  B8: P[9,32,125,1]
-```
-
-**Column C** (Triangles and Circles):
-```
-C1: T(16)   C2: T(12)   C3: C(3)    C4: C(5)
-C5: C(7)    C6: C(9)    C7: T(90)   C8: T(100)
+B1: empty   B2: T(66)   B3: C(9)    B4: C(25)
+B5: C(49)   B6: C(81)   B7: S(120)  B8: P[36,25,16,4]
 ```
 
-### WHITE Setup (Right side - columns M, N, O, P)
-
-**Column M** (Sparse):
+**Column C** (Inner edge — Small units):
 ```
-M1: empty   M2: T(7)    M3-M8: empty
-```
-
-**Column N** (Triangles, Circles, and Pyramid):
-```
-N1: T(4)    N2: P[8,27,64,1]  N3: C(8)    N4: C(6)
-N5: C(4)    N6: C(2)          N7: T(5)    N8: T(6)
+C1: T(16)   C2: T(12)   C3: C(3)    C4: C(4)
+C5: C(2)    C6: C(12)   C7: T(90)   C8: T(9)
 ```
 
-**Column O** (Squares and Circles):
+### WHITE Setup (Right side — columns N, O, P)
+
+**Column N** (Inner edge — Small units):
 ```
-O1: S(153)  O2: S(169)  O3: C(64)   O4: C(36)
-O5: C(16)   O6: C(4)    O7: S(45)   O8: S(15)
+N1: T(4)    N2: C(2)    N3: C(6)    N4: C(8)
+N5: C(4)    N6: C(2)    N7: T(6)    N8: T(5)
 ```
 
-**Column P** (Squares and Triangles):
+**Column O** (Middle — Mixed pieces + Pyramid):
 ```
-P1: S(289)  P2: S(289)  P3: T(5)    P4: T(2)
-P5: T(2)    P6: T(4)    P7: S(18)   P8: S(25)
+O1: S(153)  O2: C(25)   O3: C(36)   O4: C(64)
+O5: C(16)   O6: C(4)    O7: P[64,49,36,25]  O8: S(169)
+```
+
+**Column P** (Outer edge — Large squares and triangles):
+```
+P1: S(289)  P2: S(81)   P3: T(20)   P4: T(42)
+P5: T(49)   P6: T(72)   P7: S(45)   P8: S(25)
 ```
 
 ### Piece Count Summary
 
-**BLACK**: 7 Squares, 8 Triangles, 8 Circles, 1 Pyramid = **24 pieces**
-**WHITE**: 7 Squares, 8 Triangles, 8 Circles, 1 Pyramid = **24 pieces**
+**BLACK**: 6 Squares, 9 Triangles, 9 Circles, 1 Pyramid = **25 pieces**
+**WHITE**: 8 Squares, 8 Triangles, 8 Circles, 1 Pyramid = **25 pieces**
 
-> Note: This is a streamlined variant with 24 pieces per side instead of the traditional 25. The vertical layout emphasizes the positional strategy and mathematical relations across the wide board.
+### Strategic layout philosophy
+
+* **Outer edges (A and P)**: Heavy squares (361, 289, 225, 169, etc.) command the flanks
+* **Middle columns (B and O)**: Mix of powers with the Pyramids (royal pieces) anchoring rows 8 and 7
+* **Inner edges (C and N)**: Nimble circles and small triangles (2–16) for rapid infiltration
+* **Central battlefield (D–M)**: 10 empty columns provide space for mathematical maneuvering
+
+The alternating dark/light visual pattern is purely aesthetic; movement is grid-based, not color-based. White moves first.
 
 ---
 

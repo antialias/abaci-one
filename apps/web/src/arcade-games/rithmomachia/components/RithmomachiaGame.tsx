@@ -495,8 +495,8 @@ function SetupPhase() {
                 '& h2': {
                   fontSize: '2vh',
                   background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                  color: 'transparent',
                   backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
                 },
                 '& p': {
                   fontSize: '1.4vh',
