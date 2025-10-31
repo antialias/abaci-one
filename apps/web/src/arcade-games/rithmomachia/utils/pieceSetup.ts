@@ -20,7 +20,7 @@ export function createInitialBoard(): Record<string, Piece> {
     { type: 'T', value: 36, square: 'A3' },
     { type: 'T', value: 30, square: 'A4' },
     { type: 'T', value: 56, square: 'A5' },
-    { type: 'T', value: 64, square: 'A6' },
+    { type: 'S', value: 120, square: 'A6' }, // was T(64) - moved to outer rim
     { type: 'S', value: 225, square: 'A7' },
     { type: 'S', value: 361, square: 'A8' },
   ] as const
@@ -32,8 +32,8 @@ export function createInitialBoard(): Record<string, Piece> {
     { type: 'C', value: 9, square: 'B3' },
     { type: 'C', value: 25, square: 'B4' },
     { type: 'C', value: 49, square: 'B5' },
-    { type: 'C', value: 81, square: 'B6' },
-    { type: 'S', value: 120, square: 'B7' },
+    { type: 'T', value: 64, square: 'B6' }, // was C(81) - now has T(64) from A6
+    { type: 'C', value: 81, square: 'B7' }, // was S(120) - now has C(81) from B6
     // B8 is Pyramid (see below)
   ] as const
 
@@ -41,10 +41,10 @@ export function createInitialBoard(): Record<string, Piece> {
   const blackColumnC = [
     { type: 'T', value: 16, square: 'C1' },
     { type: 'T', value: 12, square: 'C2' },
-    { type: 'C', value: 3, square: 'C3' },
-    { type: 'C', value: 4, square: 'C4' },
-    { type: 'C', value: 2, square: 'C5' },
-    { type: 'C', value: 12, square: 'C6' },
+    { type: 'C', value: 9, square: 'C3' }, // was 3 - corrected to match reference
+    { type: 'C', value: 7, square: 'C4' }, // was 4 - corrected to match reference
+    { type: 'C', value: 5, square: 'C5' }, // was 2 - corrected to match reference
+    { type: 'C', value: 3, square: 'C6' }, // was 12 - corrected to match reference
     { type: 'T', value: 90, square: 'C7' },
     { type: 'T', value: 9, square: 'C8' },
   ] as const
@@ -99,18 +99,18 @@ export function createInitialBoard(): Record<string, Piece> {
     { type: 'C', value: 4, square: 'N5' },
     { type: 'C', value: 2, square: 'N6' },
     { type: 'T', value: 6, square: 'N7' },
-    { type: 'T', value: 5, square: 'N8' },
+    { type: 'T', value: 9, square: 'N8' }, // was 5 - corrected to match reference
   ] as const
 
   // Column O (Middle - Mixed pieces + Pyramid)
   const whiteColumnO = [
     { type: 'S', value: 153, square: 'O1' },
-    { type: 'C', value: 25, square: 'O2' },
-    { type: 'C', value: 36, square: 'O3' },
-    { type: 'C', value: 64, square: 'O4' },
-    { type: 'C', value: 16, square: 'O5' },
-    { type: 'C', value: 4, square: 'O6' },
-    // O7 is Pyramid (see below)
+    // O2 is Pyramid (see below) - moved from O7
+    { type: 'C', value: 25, square: 'O3' }, // shifted down from O2
+    { type: 'C', value: 36, square: 'O4' }, // shifted down from O3
+    { type: 'C', value: 64, square: 'O5' }, // shifted down from O4
+    { type: 'C', value: 16, square: 'O6' }, // shifted down from O5
+    { type: 'C', value: 4, square: 'O7' }, // shifted down from O6
     { type: 'S', value: 169, square: 'O8' },
   ] as const
 
@@ -153,14 +153,14 @@ export function createInitialBoard(): Record<string, Piece> {
     }
   }
 
-  // White Pyramid at O7
+  // White Pyramid at O2 (moved lower to match reference image)
   pieces.W_P_01 = {
     id: 'W_P_01',
     color: 'W',
     type: 'P',
     pyramidFaces: [64, 49, 36, 25],
     activePyramidFace: null,
-    square: 'O7',
+    square: 'O2',
     captured: false,
   }
 

@@ -88,19 +88,19 @@ This is the **classical symmetric formation** where large composite numbers occu
 **Column A** (Outer edge — Large squares and triangles):
 ```
 A1: S(49)   A2: S(121)  A3: T(36)   A4: T(30)
-A5: T(56)   A6: T(64)   A7: S(225)  A8: S(361)
+A5: T(56)   A6: S(120)  A7: S(225)  A8: S(361)
 ```
 
 **Column B** (Middle — Mixed pieces + Pyramid):
 ```
 B1: empty   B2: T(66)   B3: C(9)    B4: C(25)
-B5: C(49)   B6: C(81)   B7: S(120)  B8: P[36,25,16,4]
+B5: C(49)   B6: T(64)   B7: C(81)   B8: P[36,25,16,4]
 ```
 
 **Column C** (Inner edge — Small units):
 ```
-C1: T(16)   C2: T(12)   C3: C(3)    C4: C(4)
-C5: C(2)    C6: C(12)   C7: T(90)   C8: T(9)
+C1: T(16)   C2: T(12)   C3: C(9)    C4: C(7)
+C5: C(5)    C6: C(3)    C7: T(90)   C8: T(9)
 ```
 
 ### WHITE Setup (Right side — columns N, O, P)
@@ -108,13 +108,13 @@ C5: C(2)    C6: C(12)   C7: T(90)   C8: T(9)
 **Column N** (Inner edge — Small units):
 ```
 N1: T(4)    N2: C(2)    N3: C(6)    N4: C(8)
-N5: C(4)    N6: C(2)    N7: T(6)    N8: T(5)
+N5: C(4)    N6: C(2)    N7: T(6)    N8: T(9)
 ```
 
 **Column O** (Middle — Mixed pieces + Pyramid):
 ```
-O1: S(153)  O2: C(25)   O3: C(36)   O4: C(64)
-O5: C(16)   O6: C(4)    O7: P[64,49,36,25]  O8: S(169)
+O1: S(153)  O2: P[64,49,36,25]  O3: C(25)   O4: C(36)
+O5: C(64)   O6: C(16)   O7: C(4)    O8: S(169)
 ```
 
 **Column P** (Outer edge — Large squares and triangles):
@@ -131,7 +131,7 @@ P5: T(49)   P6: T(72)   P7: S(45)   P8: S(25)
 ### Strategic layout philosophy
 
 * **Outer edges (A and P)**: Heavy squares (361, 289, 225, 169, etc.) command the flanks
-* **Middle columns (B and O)**: Mix of powers with the Pyramids (royal pieces) anchoring rows 8 and 7
+* **Middle columns (B and O)**: Mix of powers with the Pyramids (royal pieces) at B8 (Black) and O2 (White)
 * **Inner edges (C and N)**: Nimble circles and small triangles (2–16) for rapid infiltration
 * **Central battlefield (D–M)**: 10 empty columns provide space for mathematical maneuvering
 
