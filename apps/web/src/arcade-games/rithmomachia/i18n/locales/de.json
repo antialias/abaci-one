@@ -100,6 +100,8 @@
       "title": "Wie man gewinnt",
       "harmony": "Sieg #1: Harmonie (Progression)",
       "harmonyDesc": "Bilden Sie eine mathematische Progression mit 3 Steinen im gegnerischen Gebiet. Wenn sie den nächsten Zug Ihres Gegners übersteht, gewinnen Sie!",
+      "exampleTitle": "Beispiel: Weiß gewinnt!",
+      "exampleCaption": "Weiße Steine 4, 8, 16 bilden eine geometrische Progression im gegnerischen Gebiet. Schwarz kann sie nicht brechen - Weiß gewinnt!",
       "harmonyNote": "Dies ist die primäre Siegbedingung in Rithmomachia",
       "exhaustion": "Sieg #2: Erschöpfung",
       "exhaustionDesc": "Wenn Ihr Gegner zu Beginn seines Zuges keine legalen Züge hat, verliert er.",

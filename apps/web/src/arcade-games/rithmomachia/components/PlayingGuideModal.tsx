@@ -1440,6 +1440,18 @@ function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: bo
 
 function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
   const { t } = useTranslation()
+
+  // Example winning position: White has formed a geometric progression in Black's territory
+  const winningExample: ExamplePiece[] = [
+    // White's winning progression in enemy territory (rows 5-8)
+    { square: 'E6', type: 'C', color: 'W', value: 4 },
+    { square: 'F6', type: 'C', color: 'W', value: 8 },
+    { square: 'G6', type: 'T', color: 'W', value: 16 },
+    // Some Black pieces remaining (unable to break the harmony)
+    { square: 'C7', type: 'S', color: 'B', value: 49 },
+    { square: 'J6', type: 'T', color: 'B', value: 30 },
+  ]
+
   return (
     <div data-section="victory">
       <h3
@@ -1475,6 +1487,53 @@ function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: bo
               "Form a mathematical progression with 3 pieces in enemy territory. If it survives your opponent's next turn, you win!"
             )}
           </p>
+
+          {/* Visual example of winning harmony */}
+          <div
+            className={css({
+              mb: '16px',
+              p: '16px',
+              bg: '#f9fafb',
+              borderRadius: '8px',
+              border: '2px solid #86efac',
+            })}
+          >
+            <p
+              className={css({
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: '#15803d',
+                mb: '12px',
+                textAlign: 'center',
+              })}
+            >
+              {t('guide.victory.exampleTitle', 'Example: White Wins!')}
+            </p>
+            <div className={css({ display: 'flex', justifyContent: 'center' })}>
+              <RithmomachiaBoard
+                pieces={winningExample}
+                scale={0.4}
+                cropToSquares={['B5', 'K8']}
+                showLabels={true}
+                useNativeAbacusNumbers={useNativeAbacusNumbers}
+              />
+            </div>
+            <p
+              className={css({
+                fontSize: '12px',
+                color: '#166534',
+                mt: '12px',
+                textAlign: 'center',
+                fontStyle: 'italic',
+              })}
+            >
+              {t(
+                'guide.victory.exampleCaption',
+                'White pieces 4, 8, 16 form a geometric progression in enemy territory. Black cannot break it - White wins!'
+              )}
+            </p>
+          </div>
+
           <div
             className={css({
               p: '12px',

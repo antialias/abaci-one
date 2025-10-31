@@ -265,6 +265,8 @@
       "title": "How to Win",
       "harmony": "Victory #1: Harmony (Progression)",
       "harmonyDesc": "Form a mathematical progression with 3 pieces in enemy territory. If it survives your opponent's next turn, you win!",
+      "exampleTitle": "Example: White Wins!",
+      "exampleCaption": "White pieces 4, 8, 16 form a geometric progression in enemy territory. Black cannot break it - White wins!",
       "harmonyNote": "This is the primary victory condition in Rithmomachia",
       "exhaustion": "Victory #2: Exhaustion",
       "exhaustionDesc": "If your opponent has no legal moves at the start of their turn, they lose.",
