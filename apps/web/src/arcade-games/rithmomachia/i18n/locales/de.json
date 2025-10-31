@@ -34,19 +34,23 @@
       "step5": "Gewinnen Sie durch eine Progression, die eine Runde übersteht!"
     },
     "pieces": {
-      "title": "Ihre Spielfiguren (24 insgesamt)",
-      "description": "Jede Figur hat einen Zahlenwert und bewegt sich anders:",
+      "title": "Ihre Spielfiguren (25 insgesamt)",
+      "description": "Jede Seite hat 25 Figuren mit unterschiedlichen Bewegungsmustern. Die Form zeigt, wie sie sich bewegt:",
       "count": "Anzahl",
       "circle": "Kreis",
-      "circleMove": "Diagonal (wie ein Läufer)",
+      "circleMove": "Bewegt sich diagonal",
       "triangle": "Dreieck",
-      "triangleMove": "Geradeaus (wie ein Turm)",
+      "triangleMove": "Bewegt sich in geraden Linien",
       "square": "Quadrat",
-      "squareMove": "In alle Richtungen (wie eine Dame)",
+      "squareMove": "Bewegt sich in alle Richtungen",
       "pyramid": "Pyramide",
       "pyramidMove": "Ein Feld in alle Richtungen (wie ein König)",
+      "exampleValues": "Beispielwerte",
+      "blackPyramid": "Schwarze Pyramide",
+      "whitePyramid": "Weiße Pyramide",
+      "pyramidValues": "Werte",
       "pyramidTitle": "⭐ Pyramiden sind besonders",
-      "pyramidDescription": "Pyramiden haben 4 Seitenwerte. Beim Schlagen wählen Sie, welche Seite Sie verwenden."
+      "pyramidDescription": "Jede Seite hat 1 Pyramide. Pyramiden haben 4 Seitenwerte - beim Schlagen wählen Sie, welchen Wert Sie verwenden. Sie bewegen sich einen Schritt in jede Richtung."
     },
     "capture": {
       "title": "Wie man schlägt",
