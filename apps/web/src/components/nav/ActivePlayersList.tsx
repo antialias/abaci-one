@@ -223,7 +223,8 @@ export function ActivePlayersList({
                   </div>
                 )}
 
-                {badge && (
+                {/* Show playerBadge only if assignment UI is not present */}
+                {badge && !onAssignWhitePlayer && !onAssignBlackPlayer && (
                   <div
                     style={{
                       display: 'inline-flex',

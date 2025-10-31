@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import type { PlayerBadge } from '@/components/nav/types'
+import { SetupPlayerRequirement } from '@/components/nav/SetupPlayerRequirement'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useGameMode } from '@/contexts/GameModeContext'
@@ -206,6 +207,12 @@ function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined
     }
 
     if (rosterStatus.status === 'tooFew') {
+      // During setup, don't show nav banner - SetupPlayerRequirement panel handles this
+      if (phase === 'setup') {
+        return undefined
+      }
+
+      // During playing phase, show nav warning banner
       const actions = []
       if (inactiveLocalPlayer) {
         actions.push({
@@ -221,10 +228,7 @@ function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined
 
       return {
         heading: 'Need two active players',
-        description:
-          phase === 'setup'
-            ? 'Rithmomachia needs exactly two active players before the match can begin.'
-            : 'Gameplay is paused until two players are active.',
+        description: 'Gameplay is paused until two players are active.',
         actions,
       }
     }
@@ -252,7 +256,8 @@ function useRosterWarning(phase: 'setup' | 'playing'): RosterWarning | undefined
  */
 export function RithmomachiaGame() {
   const router = useRouter()
-  const { state, resetGame, goToSetup, whitePlayerId, blackPlayerId } = useRithmomachia()
+  const { state, resetGame, goToSetup, whitePlayerId, blackPlayerId, assignWhitePlayer, assignBlackPlayer } =
+    useRithmomachia()
   const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
   const rosterWarning = useRosterWarning(state.gamePhase === 'setup' ? 'setup' : 'playing')
@@ -312,6 +317,11 @@ export function RithmomachiaGame() {
       currentPlayerId={currentPlayerId}
       playerBadges={playerBadges}
       rosterWarning={rosterWarning}
+      whitePlayerId={whitePlayerId}
+      blackPlayerId={blackPlayerId}
+      onAssignWhitePlayer={assignWhitePlayer}
+      onAssignBlackPlayer={assignBlackPlayer}
+      gamePhase={state.gamePhase}
     >
       <StandardGameLayout>
         <div
@@ -356,6 +366,7 @@ export function RithmomachiaGame() {
  */
 function SetupPhase() {
   const { state, startGame, setConfig, lastError, clearError, rosterStatus } = useRithmomachia()
+  const { players: playerMap, activePlayers: activePlayerIds, addPlayer, setActive } = useGameMode()
   const startDisabled = rosterStatus.status !== 'ok'
 
   const toggleSetting = (key: keyof typeof state) => {
@@ -367,6 +378,10 @@ function SetupPhase() {
   const updateThreshold = (value: number) => {
     setConfig('pointWinThreshold', Math.max(1, value))
   }
+
+  // Prepare data for SetupPlayerRequirement
+  const activePlayers = Array.from(playerMap.values()).filter((p) => activePlayerIds.has(p.id))
+  const inactivePlayers = Array.from(playerMap.values()).filter((p) => !activePlayerIds.has(p.id))
 
   return (
     <div
@@ -458,23 +473,68 @@ function SetupPhase() {
           </div>
         )}
 
-        {/* Title Section - Compact medieval manuscript style */}
-        <div
-          data-element="title-section"
-          className={css({
-            textAlign: 'center',
-            bg: 'rgba(255, 255, 255, 0.95)',
-            borderRadius: '1.5vh',
-            p: '1.5vh',
-            boxShadow: '0 1vh 3vh rgba(0,0,0,0.5)',
-            width: '100%',
-            position: 'relative',
-            border: '0.3vh solid',
-            borderColor: 'rgba(251, 191, 36, 0.6)',
-            backdropFilter: 'blur(10px)',
-            flexShrink: 0,
-          })}
-        >
+        {/* Player requirement panel - styled for medieval theme */}
+        {rosterStatus.status === 'tooFew' && (
+          <div
+            className={css({
+              '& > div': {
+                maxWidth: '100%',
+                margin: '0',
+                padding: '1.5vh',
+                background: 'rgba(30, 27, 75, 0.85)',
+                border: '0.3vh solid rgba(251, 191, 36, 0.6)',
+                borderRadius: '1.5vh',
+                backdropFilter: 'blur(10px)',
+                '& h2': {
+                  fontSize: '2vh',
+                  background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                },
+                '& p': {
+                  fontSize: '1.4vh',
+                  color: 'rgba(255, 255, 255, 0.8)',
+                },
+                '& button': {
+                  fontSize: '1.4vh',
+                  padding: '0.8vh 1.5vh',
+                },
+              },
+            })}
+          >
+            <SetupPlayerRequirement
+              minPlayers={2}
+              currentPlayers={activePlayers}
+              inactivePlayers={inactivePlayers}
+              onAddPlayer={(playerId) => setActive(playerId, true)}
+              onConfigurePlayer={() => {
+                /* TODO: Add configure player handler */
+              }}
+              gameTitle="Rithmomachia"
+            />
+          </div>
+        )}
+
+        {/* Only show setup config when we have enough players */}
+        {rosterStatus.status !== 'tooFew' && (
+          <>
+            {/* Title Section - Compact medieval manuscript style */}
+            <div
+              data-element="title-section"
+              className={css({
+                textAlign: 'center',
+                bg: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: '1.5vh',
+                p: '1.5vh',
+                boxShadow: '0 1vh 3vh rgba(0,0,0,0.5)',
+                width: '100%',
+                position: 'relative',
+                border: '0.3vh solid',
+                borderColor: 'rgba(251, 191, 36, 0.6)',
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0,
+              })}
+            >
           {/* Ornamental corners - smaller */}
           <div
             className={css({
@@ -994,6 +1054,8 @@ function SetupPhase() {
         >
           ⚔️ BEGIN BATTLE ⚔️
         </button>
+          </>
+        )}
       </div>
     </div>
   )
