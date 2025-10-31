@@ -1,0 +1,309 @@
+{
+  "guide": {
+    "title": "Guía de Juego",
+    "subtitle": "Rithmomachia – El Juego del Filósofo",
+    "close": "Cerrar",
+    "maximize": "Maximizar",
+    "restore": "Restaurar",
+    "sections": {
+      "overview": "Inicio Rápido",
+      "pieces": "Piezas",
+      "capture": "Captura",
+      "strategy": "Estrategia",
+      "harmony": "Armonía",
+      "victory": "Victoria"
+    },
+    "languageSelector": {
+      "label": "Idioma",
+      "en": "English",
+      "ja": "日本語",
+      "hi": "हिन्दी",
+      "es": "Español"
+    },
+    "overview": {
+      "goalTitle": "Objetivo del Juego",
+      "goalDesc": "Organiza <strong>3 de tus piezas en territorio enemigo</strong> para formar una <strong>progresión matemática</strong>, sobrevive un turno del oponente y gana.",
+      "boardTitle": "El Tablero",
+      "boardItems": [
+        "8 filas × 16 columnas (columnas A-P, filas 1-8)",
+        "<strong>Tu mitad:</strong> Negro controla filas 5-8, Blanco controla filas 1-4",
+        "<strong>Territorio enemigo:</strong> Donde necesitas construir tu progresión ganadora"
+      ],
+      "howToPlayTitle": "Cómo Jugar",
+      "howToPlayItems": [
+        "Comienza moviendo piezas hacia el centro",
+        "Busca oportunidades de captura usando relaciones matemáticas",
+        "Avanza hacia territorio enemigo (filas 1-4 para Negro, filas 5-8 para Blanco)",
+        "Busca oportunidades de armonía con tus piezas avanzadas",
+        "¡Gana formando una progresión que sobreviva un turno!"
+      ]
+    },
+    "pieces": {
+      "title": "Tus Piezas (24 en total)",
+      "intro": "Cada pieza tiene un <strong>valor numérico</strong> y se mueve de manera diferente:",
+      "pieceTypes": {
+        "circle": {
+          "name": "Círculo",
+          "movement": "Diagonal (como un alfil)",
+          "count": "Cantidad: 8"
+        },
+        "triangle": {
+          "name": "Triángulo",
+          "movement": "Líneas rectas (como una torre)",
+          "count": "Cantidad: 8"
+        },
+        "square": {
+          "name": "Cuadrado",
+          "movement": "Cualquier dirección (como una reina)",
+          "count": "Cantidad: 7"
+        },
+        "pyramid": {
+          "name": "Pirámide",
+          "movement": "Un paso en cualquier dirección (como un rey)",
+          "count": "Cantidad: 1"
+        }
+      },
+      "pyramidSpecial": {
+        "title": "⭐ Pirámides: Las Piezas Multifacéticas",
+        "intro": "A diferencia de otras piezas con un solo valor, las pirámides contienen <strong>4 valores de cara</strong> que representan cuadrados perfectos. Al capturar una pieza enemiga, eliges qué cara usar para la relación matemática.",
+        "blackFaces": "Caras de Pirámide Negra:",
+        "blackValues": "36 (6²), 25 (5²), 16 (4²), 4 (2²)",
+        "whiteFaces": "Caras de Pirámide Blanca:",
+        "whiteValues": "64 (8²), 49 (7²), 36 (6²), 25 (5²)",
+        "howItWorks": "Cómo funciona la selección de caras:",
+        "rules": [
+          "Cuando tu Pirámide intenta una captura, debes declarar qué valor de cara estás usando antes de que se verifique la relación",
+          "El valor de cara elegido se convierte en \"el valor de tu pieza\" para todas las relaciones matemáticas (igualdad, múltiplo/divisor, suma, diferencia, producto, ratio)",
+          "Puedes elegir diferentes caras para diferentes capturas: la Pirámide no se \"bloquea\" en un valor",
+          "Esta flexibilidad hace que las Pirámides sean excelentes para crear oportunidades de captura inesperadas y ayudantes versátiles"
+        ],
+        "example": "<strong>Ejemplo:</strong> La Pirámide Blanca puede capturar el 16 Negro usando cara 64 (múltiplo: 64÷16=4), cara 36 (múltiplo: 36÷9=4, con el 9 Negro), o cara 25 con igualdad si captura el 25 Negro.",
+        "visualTitle": "Ejemplo Visual: Múltiples Opciones de Captura de la Pirámide",
+        "visualDesc": "La Pirámide Blanca (caras: 64, 49, 36, 25) está posicionada para capturar piezas Negras. Nota la flexibilidad:",
+        "captureOptions": "<strong>Opciones de captura desde H5:</strong>",
+        "option1": "Mover a I5: Elegir cara <strong>64</strong> → captura 16 por múltiplo (64÷16=4)",
+        "option2": "Mover a H6: Elegir cara <strong>49</strong> → captura 49 por igualdad (49=49)",
+        "option3": "Mover a G5: Elegir cara <strong>25</strong> → captura 25 por igualdad (25=25)"
+      }
+    },
+    "capture": {
+      "title": "Cómo Capturar",
+      "intro": "Puedes capturar una pieza enemiga <strong>solo si el valor de tu pieza se relaciona matemáticamente</strong> con la suya:",
+      "simpleTitle": "Relaciones Simples (no se necesita ayudante)",
+      "simpleEqual": {
+        "name": "Igual",
+        "desc": "Tu 25 captura su 25"
+      },
+      "simpleMultiple": {
+        "name": "Múltiplo / Divisor",
+        "desc": "Tu 64 captura su 16 (64 ÷ 16 = 4)"
+      },
+      "advancedTitle": "Relaciones Avanzadas (se necesita una pieza ayudante)",
+      "advancedSum": {
+        "name": "Suma",
+        "desc": "Tu 9 + ayudante 16 = enemigo 25"
+      },
+      "advancedDifference": {
+        "name": "Diferencia",
+        "desc": "Tu 30 - ayudante 10 = enemigo 20"
+      },
+      "advancedProduct": {
+        "name": "Producto",
+        "desc": "Tu 5 × ayudante 5 = enemigo 25"
+      },
+      "helpersTitle": "💡 ¿Qué son los ayudantes?",
+      "helpersDesc": "Los ayudantes son tus otras piezas que aún están en el tablero: no se mueven, solo proporcionan su valor para las matemáticas. El juego te mostrará capturas válidas cuando selecciones una pieza.",
+      "example1Title": "Ejemplo: Captura de Múltiplo/Divisor",
+      "example1Desc": "El 64 de Blanco (cuadrado) puede capturar el 16 de Negro (triángulo) porque 64 es múltiplo de 16",
+      "example2Title": "Ejemplo: Captura de Suma con Ayudante",
+      "example2Desc": "El 9 de Blanco + ayudante 16 = el 25 de Negro (9 + 16 = 25)",
+      "example3Title": "Ejemplo: Captura de Diferencia con Ayudante",
+      "example3Desc": "El 30 de Blanco - ayudante 10 = el 20 de Negro (30 - 10 = 20)",
+      "example4Title": "Ejemplo: Captura de Producto con Ayudante",
+      "example4Desc": "El 4 de Blanco × ayudante 5 = el 20 de Negro (4 × 5 = 20)",
+      "example5Title": "Ejemplo: Captura de Ratio con Ayudante",
+      "example5Desc": "El 20 de Blanco ÷ ayudante 4 = el 5 de Negro (20 ÷ 4 = 5)",
+      "pyramidTitle": "Especial: Capturas de Pirámide",
+      "pyramidIntro": "Las pirámides tienen 4 valores de cara, haciéndolas increíblemente versátiles. Eliges qué cara usar al intentar una captura, permitiendo que una Pirámide amenace múltiples piezas enemigas.",
+      "pyramidEx1Title": "Ejemplo: Selección de Cara de Pirámide (Igualdad)",
+      "pyramidEx1Desc": "La Pirámide de Blanco (caras: 64, 49, 36, 25) puede capturar el 49 de Negro eligiendo cara 49 para igualdad (49 = 49)",
+      "pyramidEx1Note": "<strong>Selección de cara:</strong> Blanco declara cara 49 → 49 = 49 (igualdad) → ¡Captura exitosa! La Pirámide también podría capturar piezas con valores 64, 36 o 25 usando las caras correspondientes.",
+      "pyramidEx2Title": "Ejemplo: Pirámide con Ayudante (Suma)",
+      "pyramidEx2Desc": "La Pirámide de Blanco usa cara 25 + ayudante 20 = el 45 de Negro (25 + 20 = 45)",
+      "pyramidEx2Note": "<strong>Selección de cara:</strong> Blanco elige cara 25 y declara ayudante en D4 (valor 20) → 25 + 20 = 45 (suma) → ¡Captura exitosa! Al seleccionar diferentes caras, la misma Pirámide podría capturar otros valores usando varios ayudantes.",
+      "pyramidEx3Title": "Ejemplo: Flexibilidad de Pirámide (Múltiplo/Divisor)",
+      "pyramidEx3Desc": "La Pirámide de Negro (caras: 36, 25, 16, 4) puede capturar el 9 de Blanco usando cara 36 (múltiplo: 36 ÷ 9 = 4)",
+      "pyramidEx3Note": "<strong>Selección de cara:</strong> Negro elige cara 36 → 36 ÷ 9 = 4 (múltiplo) → ¡Captura exitosa! Nota: Negro también podría usar cara 4 con un ayudante 5 para suma (4 + 5 = 9), mostrando múltiples enfoques válidos."
+    },
+    "harmony": {
+      "title": "Armonías: La Victoria Elegante",
+      "intro1": "Una <strong>Armonía</strong> (también llamada \"Victoria Propia\") es la forma más sofisticada de ganar. Lleva <strong>3 de tus piezas al territorio enemigo</strong> dispuestas en línea recta donde sus valores forman un patrón matemático.",
+      "intro2": "Piensa en ello como obtener tres números en una secuencia, pero las secuencias siguen reglas matemáticas especiales de la filosofía antigua y la teoría musical.",
+      "typesTitle": "Los Tres Tipos de Armonía",
+      "arithmetic": {
+        "title": "1. Progresión Aritmética (La Más Fácil de Entender)",
+        "desc": "El número del medio está exactamente a medio camino entre los otros dos. En otras palabras, las <strong>diferencias son iguales</strong>.",
+        "formula": "Cómo verificar: Medio × 2 = Primero + Último",
+        "ex1": "<strong>Ejemplo 1:</strong> 6, 9, 12",
+        "ex1Check": "Diferencias: 9−6=3, 12−9=3 (¡iguales!) • Verificar: 9×2 = 18 = 6+12 ✓",
+        "ex2": "<strong>Ejemplo 2:</strong> 5, 7, 9",
+        "ex2Check": "Diferencias: 7−5=2, 9−7=2 • Verificar: 7×2 = 14 = 5+9 ✓",
+        "ex3": "<strong>Ejemplo 3:</strong> 8, 12, 16",
+        "ex3Check": "Diferencias: 12−8=4, 16−12=4 • Verificar: 12×2 = 24 = 8+16 ✓",
+        "tip": "<strong>Consejo de estrategia:</strong> Tus círculos pequeños (2-9) y muchos triángulos forman naturalmente progresiones aritméticas. ¡Busca tres piezas donde los espacios sean iguales!"
+      },
+      "geometric": {
+        "title": "2. Progresión Geométrica (Potencias y Múltiplos)",
+        "desc": "Cada número se multiplica por la misma cantidad para obtener el siguiente. Los <strong>ratios son iguales</strong>.",
+        "formula": "Cómo verificar: Medio² = Primero × Último",
+        "ex1": "<strong>Ejemplo 1:</strong> 4, 8, 16",
+        "ex1Check": "Ratios: 8÷4=2, 16÷8=2 (¡iguales!) • Verificar: 8² = 64 = 4×16 ✓",
+        "ex2": "<strong>Ejemplo 2:</strong> 3, 9, 27",
+        "ex2Check": "Ratios: 9÷3=3, 27÷9=3 • Verificar: 9² = 81 = 3×27 ✓",
+        "ex3": "<strong>Ejemplo 3:</strong> 2, 8, 32",
+        "ex3Check": "Ratios: 8÷2=4, 32÷8=4 • Verificar: 8² = 64 = 2×32 ✓",
+        "tip": "<strong>Consejo de estrategia:</strong> ¡Los valores cuadrados (4, 9, 16, 25, 36, 49, 64, 81) funcionan genial aquí! Por ejemplo, 4-16-64 (cuadrados de 2, 4, 8)."
+      },
+      "harmonic": {
+        "title": "3. Progresión Armónica (Basada en Música, La Más Complicada)",
+        "desc": "Nombrada por las armonías musicales. El patrón es: el ratio de los números exteriores iguala el ratio de sus diferencias desde el medio.",
+        "formula": "Cómo verificar: 2 × Primero × Último = Medio × (Primero + Último)",
+        "ex1": "<strong>Ejemplo 1:</strong> 6, 8, 12",
+        "ex1Check": "Verificar: 2×6×12 = 144 = 8×(6+12) = 8×18 ✓",
+        "ex2": "<strong>Ejemplo 2:</strong> 10, 12, 15",
+        "ex2Check": "Verificar: 2×10×15 = 300 = 12×(10+15) = 12×25 ✓",
+        "ex3": "<strong>Ejemplo 3:</strong> 6, 10, 15",
+        "ex3Check": "Verificar: 2×6×15 = 180 = 10×(6+15) = 10×18 ✓",
+        "tip": "<strong>Consejo de estrategia:</strong> Las progresiones armónicas son más raras. Memoriza tríadas comunes: (3,4,6), (4,6,12), (6,8,12), (6,10,15), (8,12,24)."
+      },
+      "rulesTitle": "⚠️ Reglas de Armonía que Debes Seguir",
+      "rules": [
+        "<strong>Solo Territorio Enemigo:</strong> Las 3 piezas deben estar en la mitad de tu oponente (Blanco necesita filas 5-8, Negro necesita filas 1-4)",
+        "<strong>Línea Recta:</strong> Las 3 piezas deben formar una fila, columna o diagonal, sin formaciones dispersas",
+        "<strong>Colocación Adyacente:</strong> En esta implementación, las 3 piezas deben estar una al lado de la otra (sin espacios)",
+        "<strong>Regla de Supervivencia:</strong> Cuando declaras una armonía, tu oponente tiene UN turno para romperla capturando o moviendo una pieza",
+        "<strong>Victoria:</strong> Si tu armonía sobrevive hasta que comience tu siguiente turno, ¡ganas!"
+      ],
+      "strategyTitle": "Estrategia: Cómo Construir Armonías",
+      "strategy1Title": "Comienza con 2, Añade la Tercera",
+      "strategy1Desc": "Primero lleva dos piezas al territorio enemigo. Calcula qué tercera pieza completaría una progresión, luego avanza esa pieza. ¡Tu oponente puede no notar la amenaza hasta que sea demasiado tarde!",
+      "strategy2Title": "Usa Valores Comunes",
+      "strategy2Desc": "Piezas como 6, 8, 9, 12, 16 aparecen en múltiples progresiones. Si tienes estas en territorio enemigo, calcula todas las posibles terceras piezas que completarían un patrón.",
+      "strategy3Title": "Protege la Línea",
+      "strategy3Desc": "Mientras construyes tu armonía, posiciona otras piezas para defender tus piezas avanzadas. ¡Una captura rompe la progresión!",
+      "strategy4Title": "Bloquea las Armonías del Oponente",
+      "strategy4Desc": "Si tu oponente tiene 2 piezas en tu territorio formando parte de una progresión, identifica qué tercera pieza la completaría. Bloquea esa casilla o captura una de las dos piezas inmediatamente.",
+      "strategy5Title": "Calcula Antes de Declarar",
+      "strategy5Desc": "Antes de declarar armonía, examina si tu oponente puede capturar cualquiera de las 3 piezas en su turno. Si puede, protege esas piezas primero o espera un momento más seguro.",
+      "quickRefTitle": "💡 Referencia Rápida: Armonías Comunes en Tu Ejército",
+      "exampleTitle": "Ejemplo: Victoria por Progresión Aritmética",
+      "exampleDesc": "Blanco ha formado 6, 9, 12 en una fila en el territorio de Negro (filas 5-8). Dado que 9 = (6+12)/2, esta es una progresión aritmética. Si sobrevive al siguiente turno de Negro, ¡Blanco gana!",
+      "exampleNote": "Las piezas resaltadas forman la progresión ganadora en territorio enemigo"
+    },
+    "victory": {
+      "title": "Cómo Ganar",
+      "harmony": {
+        "title": "Victoria #1: Armonía (Progresión)",
+        "desc": "Forma una progresión matemática con 3 piezas en territorio enemigo. Si sobrevive al siguiente turno de tu oponente, ¡ganas!",
+        "note": "Esta es la condición de victoria principal en Rithmomachia"
+      },
+      "exhaustion": {
+        "title": "Victoria #2: Agotamiento",
+        "desc": "Si tu oponente no tiene movimientos legales al comienzo de su turno, pierde."
+      },
+      "exampleTitle": "Ejemplo Visual: Ganar por Armonía",
+      "exampleDesc": "Las piezas de Blanco en E6, F6, G6 forman 6, 9, 12 - una progresión aritmética en territorio de Negro. Si Negro no puede romper esto en su siguiente turno, ¡Blanco gana!",
+      "exampleNote": "✓ Las 3 piezas resaltadas están en territorio enemigo (filas 5-8 para Blanco)\n✓ Forman una línea recta (fila horizontal 6)\n✓ Satisfacen la progresión aritmética: 9 = (6+12)/2",
+      "tipsTitle": "Consejos Rápidos de Estrategia",
+      "tips": [
+        "<strong>Controla el centro</strong> — más fácil para invadir territorio enemigo",
+        "<strong>Las piezas pequeñas son rápidas</strong> — los círculos (3, 5, 7, 9) pueden deslizarse rápidamente a la mitad enemiga",
+        "<strong>Las piezas grandes son poderosas</strong> — más difíciles de capturar debido a su tamaño",
+        "<strong>Vigila las amenazas de armonía</strong> — no dejes que el oponente coloque 3 piezas en lo profundo de tu territorio",
+        "<strong>Las pirámides son flexibles</strong> — elige el valor de cara correcto para cada situación"
+      ]
+    },
+    "strategy": {
+      "title": "Estrategia y Tácticas",
+      "intro": "Rithmomachia recompensa tanto la perspicacia matemática como la planificación estratégica. El éxito requiere equilibrar el control territorial, la preservación de piezas y las oportunidades matemáticas.",
+      "openingPrinciples": {
+        "title": "Principios de Apertura",
+        "controlCenter": {
+          "title": "Controla el Centro",
+          "desc": "Avanza piezas hacia el centro vacío de 8 columnas (columnas E–L). Esto proporciona movilidad y crea oportunidades de captura desde múltiples ángulos."
+        },
+        "developCircles": {
+          "title": "Desarrolla Primero los Círculos Pequeños",
+          "desc": "Tus círculos pequeños (2-9) en las columnas D y M son móviles y versátiles. Muévelos hacia el centro temprano para establecer presencia y crear redes de ayudantes."
+        },
+        "protectPyramid": {
+          "title": "Protege Tu Pirámide",
+          "desc": "La Pirámide es tu pieza más flexible (4 valores de cara) pero solo se mueve 1 casilla. Mantenla detrás de las líneas que avanzan hasta el medio juego cuando las amenazas matemáticas sean claras."
+        },
+        "knowNumbers": {
+          "title": "Conoce Tus Números",
+          "desc": "Memoriza las relaciones matemáticas clave en tu ejército. Identifica qué piezas forman factores, múltiplos y sumas: esto acelera el cálculo táctico."
+        }
+      },
+      "midGame": {
+        "title": "Tácticas de Medio Juego",
+        "helperNetworks": {
+          "title": "Construye Redes de Ayudantes",
+          "desc": "Posiciona piezas para que múltiples ayudantes puedan apoyar capturas. Por ejemplo, si tienes piezas valoradas en 5 y 10, puedes capturar 15 (suma), 5 (diferencia) o 50 (producto) cuando tu pieza móvil esté posicionada correctamente."
+        },
+        "createThreats": {
+          "title": "Crea Amenazas de Captura",
+          "desc": "Obliga a tu oponente a defender múltiples piezas simultáneamente. Incluso si no puedes ejecutar todas las capturas, la amenaza limita sus opciones y controla el tempo."
+        },
+        "thinkDefensively": {
+          "title": "Piensa Defensivamente",
+          "desc": "Después de cada movimiento, verifica cuáles de tus piezas pueden ser capturadas. Las piezas de alto valor como los cuadrados (169, 225, 289, 361) son vulnerables a muchas relaciones: colócalas detrás de defensores o en casillas protegidas."
+        },
+        "exchangeWhenAhead": {
+          "title": "Intercambia Cuando Estés Adelante",
+          "desc": "Si has capturado más piezas o valores más altos, simplifica la posición intercambiando piezas. Esto reduce las opciones de ataque de tu oponente y te acerca a la victoria por agotamiento."
+        }
+      },
+      "victoryPaths": {
+        "title": "Caminos a la Victoria",
+        "harmony": {
+          "title": "Victoria por Armonía (Más Elegante)",
+          "desc": "Coloca 3 piezas en territorio enemigo formando una progresión aritmética, geométrica o armónica. Tríadas comunes:",
+          "arithmetic": "<strong>Aritmética:</strong> (6, 9, 12), (5, 7, 9), (8, 12, 16)",
+          "geometric": "<strong>Geométrica:</strong> (4, 8, 16), (3, 9, 27), (2, 8, 32)",
+          "harmonic": "<strong>Armónica:</strong> (6, 8, 12), (10, 12, 15), (6, 10, 15)"
+        },
+        "exhaustion": {
+          "title": "Victoria por Agotamiento (Desgaste)",
+          "desc": "Captura piezas sistemáticamente hasta que tu oponente no tenga movimientos legales. Enfócate en: eliminar piezas móviles (Cuadrados y Triángulos), bloquear diagonales y filas, y forzar la Pirámide a una esquina."
+        },
+        "points": {
+          "title": "Victoria por Puntos (Regla Opcional)",
+          "desc": "Si está habilitado, captura 30 puntos en piezas (C=1, T=2, S=3, P=5). Caza objetivos de alto valor y preserva tus propias piezas pesadas. Intercambia ventajosamente."
+        }
+      },
+      "commonMistakes": {
+        "title": "⚠️ Errores Comunes a Evitar",
+        "movingWithoutCalc": "<strong>Moverse sin calcular:</strong> Siempre verifica si tu casilla de destino puede ser capturada por piezas enemigas",
+        "ignoringGeometry": "<strong>Ignorar la geometría del ayudante:</strong> Los ayudantes pueden estar en cualquier lugar, pero aún necesitas un camino de movimiento legal para capturar",
+        "neglectingHarmony": "<strong>Descuidar las amenazas de armonía:</strong> Si tu oponente tiene 2 piezas en tu territorio formando parte de una progresión, bloquea su tercera",
+        "exposingPyramid": "<strong>Dejar la Pirámide expuesta:</strong> Solo se mueve 1 casilla y tiene opciones de escape limitadas: protégela temprano"
+      },
+      "advanced": {
+        "title": "Conceptos Avanzados",
+        "sacrifices": {
+          "title": "Sacrificios Posicionales",
+          "desc": "A veces sacrificar una pieza abre líneas para tus otras piezas o fuerza a tu oponente a una posición peor. Calcula el desequilibrio resultante antes de sacrificar."
+        },
+        "pyramidFaces": {
+          "title": "Selección de Caras de Pirámide",
+          "desc": "Tu Pirámide tiene 4 valores de cara. En capturas, elige la cara que maximice la flexibilidad futura. En declaraciones de armonía, elige la cara que complete el tipo de progresión más valioso."
+        },
+        "tempo": {
+          "title": "Tempo e Iniciativa",
+          "desc": "Cada movimiento que fuerza una respuesta defensiva gana tempo. Encadena movimientos forzados (capturas, amenazas) para dictar el ritmo e impedir que tu oponente ejecute su plan."
+        }
+      }
+    }
+  }
+}
