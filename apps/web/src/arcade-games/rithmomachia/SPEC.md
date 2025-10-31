@@ -180,20 +180,68 @@ If, **after your movement**, an **enemy piece** sits on a square such that a rel
 
 ## 7) Harmony (progression) victory
 
-On your turn (after movement/captures), you may **declare Harmony** if you have **≥ 3** of your pieces **entirely within the opponent's half** (White in rows 5–8, Black in rows 1–4) whose **values form an exact progression** of one of these types:
+**Harmony** is both the theme of Rithmomachia and a special way to win. On your turn (after movement/captures), you may **declare Harmony** if you arrange three of your pieces in the **opponent's half** (White in rows 5–8, Black in rows 1–4) so their **values stand in a classical proportion**.
 
-* **Arithmetic:** values `v, v+d, v+2d, …` with `d > 0`
-* **Geometric:** values `v, v·r, v·r², …` with integer `r ≥ 2`
-* **Harmonic:** reciprocals form an arithmetic progression (i.e., `1/v` is arithmetic); equivalently, `v, v·(n/(n-1)), v·(n/(n-2)), …` for some integer `n` (server should validate via reciprocals to avoid rounding)
+### 7.1 Three types of harmony (three-piece structure: A–M–B)
+
+All harmonies use **three pieces** where M is the middle piece (spatially between A and B on the board):
+
+* **Arithmetic Proportion (AP)**: the middle is the arithmetic mean
+  - **Condition:** `2M = A + B`
+  - **Example:** 6, 9, 12 (since 2·9 = 6 + 12 = 18)
+
+* **Geometric Proportion (GP)**: the middle is the geometric mean
+  - **Condition:** `M² = A · B`
+  - **Example:** 6, 12, 24 (since 12² = 6·24 = 144)
+
+* **Harmonic Proportion (HP)**: the middle is the harmonic mean
+  - **Condition:** `2AB = M(A + B)` (equivalently, 1/A, 1/M, 1/B forms an AP)
+  - **Examples:**
+    - 6, 8, 12 (since 2·6·12 = 8·(6+12) = 144)
+    - 10, 12, 15 (since 2·10·15 = 12·(10+15) = 300)
+    - 8, 12, 24 (since 2·8·24 = 12·(8+24) = 384)
+
+> **Tip:** Use these integer equalities for validation—no division or rounding needed!
+
+### 7.2 Board layout constraints
+
+The three pieces must be arranged in a **straight line** (row, column, or diagonal) with one of these spacing rules:
+
+1. **Straight & adjacent** (default): Three consecutive squares in order A–M–B
+2. **Straight with equal spacing**: Same as above, but one empty square between each neighbor (still collinear)
+3. **Collinear anywhere**: Pieces on the same line in correct numeric order, with any spacing
+
+**Default for this implementation:** Straight & adjacent (option 1)
+
+### 7.3 Common harmony triads (for reference)
+
+**Arithmetic:**
+- (6, 9, 12), (8, 12, 16), (5, 7, 9), (4, 6, 8)
+
+**Geometric:**
+- (4, 8, 16), (3, 9, 27), (2, 8, 32), (5, 25, 125)
+
+**Harmonic:**
+- (3, 4, 6), (4, 6, 12), (6, 8, 12), (10, 12, 15), (8, 12, 24), (6, 10, 15)
+
+### 7.4 Declaring and winning
 
 **Rules:**
 
-* Pieces in the set must be **distinct** and **on distinct squares**.
-* Order doesn't matter; the set must be **exact** (no extra elements required).
-* **Pyramid face**: When a Pyramid is included, you must **fix** a face value for the duration of the check.
-* **Persistence:** Your declared Harmony must **survive the opponent's next full turn** (they can try to break it by moving/capturing). If, when your next turn begins, the Harmony still exists (same set or **any valid set** of ≥3 on the enemy half), **you win immediately**.
+* Pieces must be **distinct** and on **distinct squares**
+* All three must be **entirely within opponent's half**
+* **Pyramid face**: When a Pyramid is included, you must **fix** a face value for the duration of the check
+* **Persistence:** Your declared Harmony must **survive the opponent's next full turn** (they can try to break it by moving/capturing). If, when your next turn begins, the Harmony still exists (same set or **any valid set** of ≥3), **you win immediately**
 
-> Implementation: On declare, snapshot the **set of piece IDs** and the **progression type + parameters** (e.g., `(AP, v=6,d=6)`). On the next time it becomes the declarer's turn, **re-validate** either the same set OR allow **any** new valid ≥3 set controlled by the declarer in enemy half (choose one policy now: we pick **any valid set** to reward dynamic play).
+**Procedure:**
+
+1. On your turn, complete the arrangement (by moving one piece)
+2. **Announce** the proportion (e.g., "harmonic 6–8–12 on column D")
+3. Opponent verifies the numeric relation and board condition
+4. If valid, harmony is **pending**—opponent gets one turn to break it
+5. If still valid at start of your next turn, you **win**
+
+> **Implementation:** On declare, snapshot the **set of piece IDs**, **proportion type**, and **parameters**. On the declarer's next turn start, **re-validate** either the same set OR allow **any** new valid harmony (we choose **any valid set** to reward dynamic play).
 
 ---
 

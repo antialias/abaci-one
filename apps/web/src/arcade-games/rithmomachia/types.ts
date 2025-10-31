@@ -48,13 +48,12 @@ export type HarmonyType = 'ARITH' | 'GEOM' | 'HARM'
 
 export interface HarmonyDeclaration {
   by: Color
-  pieceIds: string[] // ≥3
+  pieceIds: string[] // exactly 3 for classical three-piece proportions
   type: HarmonyType
   params: {
-    v?: string // store as strings for bigints
-    d?: string // difference (ARITH)
-    r?: string // ratio (GEOM)
-    n?: string // harmonic parameter
+    a?: string // first value in proportion (A-M-B structure)
+    m?: string // middle value in proportion
+    b?: string // last value in proportion
   }
   declaredAtPly: number
 }
