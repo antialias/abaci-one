@@ -84,9 +84,6 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
         const deltaX = e.clientX - dragStart.x
         const deltaY = e.clientY - dragStart.y
 
-        let actualDeltaX = 0
-        let actualDeltaY = 0
-
         setSize((prev) => {
           let newWidth = prev.width
           let newHeight = prev.height
@@ -95,28 +92,22 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
 
           // Handle different resize directions
           if (resizeDirection.includes('e')) {
-            const desiredWidth = prev.width + deltaX
-            newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, desiredWidth))
-            actualDeltaX = newWidth - prev.width
+            newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, prev.width + deltaX))
           }
           if (resizeDirection.includes('w')) {
             const desiredWidth = prev.width - deltaX
             newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, desiredWidth))
             const widthDiff = newWidth - prev.width
             newX = position.x - widthDiff
-            actualDeltaX = -widthDiff
           }
           if (resizeDirection.includes('s')) {
-            const desiredHeight = prev.height + deltaY
-            newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, desiredHeight))
-            actualDeltaY = newHeight - prev.height
+            newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, prev.height + deltaY))
           }
           if (resizeDirection.includes('n')) {
             const desiredHeight = prev.height - deltaY
             newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, desiredHeight))
             const heightDiff = newHeight - prev.height
             newY = position.y - heightDiff
-            actualDeltaY = -heightDiff
           }
 
           if (newX !== position.x || newY !== position.y) {
@@ -126,11 +117,8 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
           return { width: newWidth, height: newHeight }
         })
 
-        // Only update dragStart by the amount that was actually applied
-        setDragStart({
-          x: dragStart.x + actualDeltaX,
-          y: dragStart.y + actualDeltaY,
-        })
+        // Reset dragStart to current mouse position for next delta calculation
+        setDragStart({ x: e.clientX, y: e.clientY })
       }
     }
 
