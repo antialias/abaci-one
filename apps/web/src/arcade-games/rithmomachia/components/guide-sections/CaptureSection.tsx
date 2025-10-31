@@ -34,6 +34,12 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
     { square: 'G4', type: 'C', color: 'B', value: 25 }, // Black's 25 (target: 5×5=25)
   ]
 
+  const ratioExample: ExamplePiece[] = [
+    { square: 'F4', type: 'T', color: 'W', value: 20 }, // White's 20 (attacker)
+    { square: 'E5', type: 'C', color: 'W', value: 4 }, // White's 4 (helper)
+    { square: 'G4', type: 'C', color: 'B', value: 5 }, // Black's 5 (target: 20÷4=5)
+  ]
+
   return (
     <div data-section="capture">
       <h3
@@ -278,6 +284,47 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           {t(
             'guide.capture.productCaption',
             'White Circle (5) can capture Black Circle (25) using helper Circle (5): 5 × 5 = 25'
+          )}
+        </p>
+      </div>
+
+      {/* Ratio */}
+      <div
+        className={css({
+          mb: '20px',
+          p: '16px',
+          bg: '#f9fafb',
+          borderRadius: '8px',
+          border: '2px solid #e5e7eb',
+        })}
+      >
+        <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
+          {t('guide.capture.ratio', 'Ratio')}
+        </p>
+        <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
+          {t('guide.capture.ratioExample', 'Your 20 ÷ helper 4 = enemy 5')}
+        </p>
+        <div className={css({ display: 'flex', justifyContent: 'center' })}>
+          <RithmomachiaBoard
+            pieces={ratioExample}
+            scale={0.4}
+            cropToSquares={['D3', 'H6']}
+            showLabels={true}
+            useNativeAbacusNumbers={useNativeAbacusNumbers}
+          />
+        </div>
+        <p
+          className={css({
+            fontSize: '12px',
+            color: '#9ca3af',
+            mt: '8px',
+            textAlign: 'center',
+            fontStyle: 'italic',
+          })}
+        >
+          {t(
+            'guide.capture.ratioCaption',
+            'White Triangle (20) can capture Black Circle (5) using helper Circle (4): 20 ÷ 4 = 5'
           )}
         </p>
       </div>

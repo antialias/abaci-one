@@ -86,6 +86,9 @@
       "product": "Produkt",
       "productExample": "Ihre 5 × Helfer 5 = Gegner 25",
       "productCaption": "Weißer Kreis (5) kann schwarzen Kreis (25) mit Helfer-Kreis (5) schlagen: 5 × 5 = 25",
+      "ratio": "Verhältnis",
+      "ratioExample": "Ihre 20 ÷ Helfer 4 = Gegner 5",
+      "ratioCaption": "Weißes Dreieck (20) kann schwarzen Kreis (5) mit Helfer-Kreis (4) schlagen: 20 ÷ 4 = 5",
       "helpersTitle": "💡 Was sind Helfer?",
       "helpersDescription": "Helfer sind Ihre anderen Steine, die noch auf dem Brett sind. Sie bleiben, wo sie sind, und stellen nur ihren Wert für die Mathematik zur Verfügung. Das Spiel zeigt Ihnen gültige Schlagzüge, wenn Sie einen Stein auswählen."
     },

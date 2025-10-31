@@ -134,6 +134,9 @@
       "product": "Product",
       "productExample": "Your 5 × helper 5 = enemy 25",
       "productCaption": "White Circle (5) can capture Black Circle (25) using helper Circle (5): 5 × 5 = 25",
+      "ratio": "Ratio",
+      "ratioExample": "Your 20 ÷ helper 4 = enemy 5",
+      "ratioCaption": "White Triangle (20) can capture Black Circle (5) using helper Circle (4): 20 ÷ 4 = 5",
       "advancedSum": {
         "name": "Sum",
         "desc": "Your 9 + helper 16 = enemy 25"
