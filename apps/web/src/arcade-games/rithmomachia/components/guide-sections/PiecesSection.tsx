@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { css } from '../../../../../styled-system/css'
 import { PieceRenderer } from '../PieceRenderer'
+import { RithmomachiaBoard, } from '../RithmomachiaBoard'
 import type { PieceType } from '../../types'
 
 export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
@@ -145,16 +146,24 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
         })}
       >
         <h4 className={css({ fontSize: '18px', fontWeight: 'bold', color: '#92400e', mb: '12px' })}>
-          {t('guide.pieces.pyramidTitle', '⭐ Pyramids are special')}
+          {t('guide.pieces.pyramidTitle', '⭐ Pyramids: The Multi-Faced Pieces')}
         </h4>
         <p className={css({ fontSize: '14px', color: '#78350f', lineHeight: '1.6', mb: '16px' })}>
           {t(
-            'guide.pieces.pyramidDescription',
-            'Each side has 1 Pyramid. Pyramids have 4 face values - when capturing, you choose which value to use. They move one step in any direction.'
+            'guide.pieces.pyramidIntro',
+            'Unlike other pieces with a single value, Pyramids contain 4 face values representing perfect squares. When capturing an enemy piece, you choose which face to use for the mathematical relation.'
           )}
         </p>
 
-        <div className={css({ display: 'flex', gap: '32px', flexWrap: 'wrap', mt: '16px' })}>
+        <div
+          className={css({
+            display: 'flex',
+            gap: '32px',
+            flexWrap: 'wrap',
+            mt: '16px',
+            mb: '20px',
+          })}
+        >
           {/* Black Pyramid */}
           <div>
             <p
@@ -166,9 +175,9 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                 textAlign: 'center',
               })}
             >
-              {t('guide.pieces.blackPyramid', 'Black Pyramid')}
+              {t('guide.pieces.blackPyramid', 'Black Pyramid Faces')}:
             </p>
-            <div className={css({ width: '80px', height: '80px' })}>
+            <div className={css({ width: '80px', height: '80px', margin: '0 auto' })}>
               <PieceRenderer
                 type="P"
                 color="B"
@@ -179,14 +188,14 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
             </div>
             <p
               className={css({
-                fontSize: '12px',
+                fontSize: '13px',
                 color: '#78350f',
                 mt: '8px',
                 textAlign: 'center',
-                fontStyle: 'italic',
+                fontWeight: 'bold',
               })}
             >
-              {t('guide.pieces.pyramidValues', 'Values')}: 36, 25, 16, 4
+              {t('guide.pieces.blackPyramidValues', '36 (6²), 25 (5²), 16 (4²), 4 (2²)')}
             </p>
           </div>
 
@@ -201,9 +210,9 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                 textAlign: 'center',
               })}
             >
-              {t('guide.pieces.whitePyramid', 'White Pyramid')}
+              {t('guide.pieces.whitePyramid', 'White Pyramid Faces')}:
             </p>
-            <div className={css({ width: '80px', height: '80px' })}>
+            <div className={css({ width: '80px', height: '80px', margin: '0 auto' })}>
               <PieceRenderer
                 type="P"
                 color="W"
@@ -214,15 +223,165 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
             </div>
             <p
               className={css({
-                fontSize: '12px',
+                fontSize: '13px',
                 color: '#78350f',
                 mt: '8px',
                 textAlign: 'center',
-                fontStyle: 'italic',
+                fontWeight: 'bold',
               })}
             >
-              {t('guide.pieces.pyramidValues', 'Values')}: 64, 49, 36, 25
+              {t('guide.pieces.whitePyramidValues', '64 (8²), 49 (7²), 36 (6²), 25 (5²)')}
             </p>
+          </div>
+        </div>
+
+        {/* How face selection works */}
+        <div
+          className={css({
+            bg: 'white',
+            p: '16px',
+            borderRadius: '6px',
+            mb: '16px',
+            border: '1px solid #fbbf24',
+          })}
+        >
+          <p
+            className={css({
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#92400e',
+              mb: '12px',
+            })}
+          >
+            {t('guide.pieces.pyramidHowItWorks', 'How face selection works:')}
+          </p>
+          <ul
+            className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.8', pl: '20px' })}
+          >
+            <li>
+              {t(
+                'guide.pieces.pyramidRule1',
+                "When your Pyramid attempts a capture, you must declare which face value you're using before the relation is checked"
+              )}
+            </li>
+            <li>
+              {t(
+                'guide.pieces.pyramidRule2',
+                'The chosen face value becomes "your piece\'s value" for all mathematical relations (equality, multiple/divisor, sum, difference, product, ratio)'
+              )}
+            </li>
+            <li>
+              {t(
+                'guide.pieces.pyramidRule3',
+                'You can choose different faces for different captures—the Pyramid doesn\'t "lock in" to one value'
+              )}
+            </li>
+            <li>
+              {t(
+                'guide.pieces.pyramidRule4',
+                'This flexibility makes Pyramids excellent for creating unexpected capture opportunities and versatile helpers'
+              )}
+            </li>
+          </ul>
+        </div>
+
+        {/* Example */}
+        <div
+          className={css({
+            bg: 'rgba(146, 64, 14, 0.1)',
+            p: '12px',
+            borderRadius: '6px',
+            mb: '20px',
+          })}
+        >
+          <p className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.6' })}>
+            <strong>{t('guide.pieces.example', 'Example:')}</strong>{' '}
+            {t(
+              'guide.pieces.pyramidExample',
+              "White's Pyramid can capture Black's 16 using face 64 (multiple: 64÷16=4), face 36 (multiple: 36÷9=4, with Black's 9), or face 25 with equality if capturing Black's 25."
+            )}
+          </p>
+        </div>
+
+        {/* Visual Example */}
+        <div>
+          <h5
+            className={css({
+              fontSize: '15px',
+              fontWeight: 'bold',
+              color: '#92400e',
+              mb: '12px',
+            })}
+          >
+            {t(
+              'guide.pieces.pyramidVisualTitle',
+              "Visual Example: Pyramid's Multiple Capture Options"
+            )}
+          </h5>
+          <p className={css({ fontSize: '13px', color: '#78350f', mb: '12px', lineHeight: '1.6' })}>
+            {t(
+              'guide.pieces.pyramidVisualDesc',
+              "White's Pyramid (faces: 64, 49, 36, 25) is positioned to capture Black pieces. Notice the flexibility:"
+            )}
+          </p>
+
+          <div className={css({ display: 'flex', justifyContent: 'center', mb: '12px' })}>
+            <RithmomachiaBoard
+              pieces={[
+                // White Pyramid at H5
+                { square: 'H5', type: 'P', color: 'W', value: 'P' },
+                // Black pieces that can be captured
+                { square: 'I5', type: 'T', color: 'B', value: 16 },
+                { square: 'H6', type: 'S', color: 'B', value: 49 },
+                { square: 'G5', type: 'C', color: 'B', value: 25 },
+              ]}
+              scale={0.4}
+              cropToSquares={['F4', 'J7']}
+              showLabels={true}
+              useNativeAbacusNumbers={useNativeAbacusNumbers}
+            />
+          </div>
+
+          <div
+            className={css({
+              bg: 'white',
+              p: '12px',
+              borderRadius: '6px',
+              border: '1px solid #fbbf24',
+            })}
+          >
+            <p
+              className={css({
+                fontSize: '13px',
+                fontWeight: 'bold',
+                color: '#92400e',
+                mb: '8px',
+              })}
+            >
+              {t('guide.pieces.pyramidCaptureOptions', 'Capture options from H5:')}
+            </p>
+            <ul
+              className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.8', pl: '20px' })}
+            >
+              <li>
+                {t(
+                  'guide.pieces.pyramidOption1',
+                  'Move to I5: Choose face 64 → captures 16 by multiple (64÷16=4)'
+                )}
+              </li>
+              <li>
+                {t(
+                  'guide.pieces.pyramidOption2',
+                  'Move to H6: Choose face 49 → captures 49 by equality (49=49)'
+                )}
+              </li>
+              <li>
+                {t(
+                  'guide.pieces.pyramidOption3',
+                  'Move to G5: Choose face 25 → captures 25 by equality (25=25)'
+                )}
+              </li>
+            </ul>
           </div>
         </div>
       </div>

@@ -63,11 +63,25 @@
       "pyramid": "Pyramid",
       "pyramidMove": "One step any way (like a king)",
       "exampleValues": "Example values",
-      "blackPyramid": "Black Pyramid",
-      "whitePyramid": "White Pyramid",
-      "pyramidValues": "Values",
-      "pyramidTitle": "⭐ Pyramids are special",
-      "pyramidDescription": "Each side has 1 Pyramid. Pyramids have 4 face values - when capturing, you choose which value to use. They move one step in any direction.",
+      "pyramidTitle": "⭐ Pyramids: The Multi-Faced Pieces",
+      "pyramidIntro": "Unlike other pieces with a single value, Pyramids contain 4 face values representing perfect squares. When capturing an enemy piece, you choose which face to use for the mathematical relation.",
+      "blackPyramid": "Black Pyramid Faces",
+      "blackPyramidValues": "36 (6²), 25 (5²), 16 (4²), 4 (2²)",
+      "whitePyramid": "White Pyramid Faces",
+      "whitePyramidValues": "64 (8²), 49 (7²), 36 (6²), 25 (5²)",
+      "pyramidHowItWorks": "How face selection works:",
+      "pyramidRule1": "When your Pyramid attempts a capture, you must declare which face value you're using before the relation is checked",
+      "pyramidRule2": "The chosen face value becomes \"your piece's value\" for all mathematical relations (equality, multiple/divisor, sum, difference, product, ratio)",
+      "pyramidRule3": "You can choose different faces for different captures—the Pyramid doesn't \"lock in\" to one value",
+      "pyramidRule4": "This flexibility makes Pyramids excellent for creating unexpected capture opportunities and versatile helpers",
+      "example": "Example:",
+      "pyramidExample": "White's Pyramid can capture Black's 16 using face 64 (multiple: 64÷16=4), face 36 (multiple: 36÷9=4, with Black's 9), or face 25 with equality if capturing Black's 25.",
+      "pyramidVisualTitle": "Visual Example: Pyramid's Multiple Capture Options",
+      "pyramidVisualDesc": "White's Pyramid (faces: 64, 49, 36, 25) is positioned to capture Black pieces. Notice the flexibility:",
+      "pyramidCaptureOptions": "Capture options from H5:",
+      "pyramidOption1": "Move to I5: Choose face 64 → captures 16 by multiple (64÷16=4)",
+      "pyramidOption2": "Move to H6: Choose face 49 → captures 49 by equality (49=49)",
+      "pyramidOption3": "Move to G5: Choose face 25 → captures 25 by equality (25=25)",
       "pieceTypes": {
         "circle": {
           "name": "Circle",
@@ -89,28 +103,6 @@
           "movement": "One step any way (like a king)",
           "count": "Count: 1"
         }
-      },
-      "pyramidSpecial": {
-        "title": "⭐ Pyramids: The Multi-Faced Pieces",
-        "intro": "Unlike other pieces with a single value, Pyramids contain <strong>4 face values</strong> representing perfect squares. When capturing an enemy piece, you choose which face to use for the mathematical relation.",
-        "blackFaces": "Black Pyramid Faces:",
-        "blackValues": "36 (6²), 25 (5²), 16 (4²), 4 (2²)",
-        "whiteFaces": "White Pyramid Faces:",
-        "whiteValues": "64 (8²), 49 (7²), 36 (6²), 25 (5²)",
-        "howItWorks": "How face selection works:",
-        "rules": [
-          "When your Pyramid attempts a capture, you must declare which face value you're using before the relation is checked",
-          "The chosen face value becomes \"your piece's value\" for all mathematical relations (equality, multiple/divisor, sum, difference, product, ratio)",
-          "You can choose different faces for different captures—the Pyramid doesn't \"lock in\" to one value",
-          "This flexibility makes Pyramids excellent for creating unexpected capture opportunities and versatile helpers"
-        ],
-        "example": "<strong>Example:</strong> White's Pyramid can capture Black's 16 using face 64 (multiple: 64÷16=4), face 36 (multiple: 36÷9=4, with Black's 9), or face 25 with equality if capturing Black's 25.",
-        "visualTitle": "Visual Example: Pyramid's Multiple Capture Options",
-        "visualDesc": "White's Pyramid (faces: 64, 49, 36, 25) is positioned to capture Black pieces. Notice the flexibility:",
-        "captureOptions": "<strong>Capture options from H5:</strong>",
-        "option1": "Move to I5: Choose face <strong>64</strong> → captures 16 by multiple (64÷16=4)",
-        "option2": "Move to H6: Choose face <strong>49</strong> → captures 49 by equality (49=49)",
-        "option3": "Move to G5: Choose face <strong>25</strong> → captures 25 by equality (25=25)"
       }
     },
     "capture": {
