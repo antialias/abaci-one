@@ -1,0 +1,102 @@
+{
+  "guide": {
+    "title": "Rithmomachia Spielanleitung",
+    "subtitle": "Rithmomachia – Das Spiel der Philosophen",
+    "close": "Schließen",
+    "maximize": "Maximieren",
+    "restore": "Wiederherstellen",
+    "bustOut": "In neuem Fenster öffnen",
+    "sections": {
+      "overview": "Schnellstart",
+      "pieces": "Spielfiguren",
+      "capture": "Schlagen",
+      "strategy": "Strategie",
+      "harmony": "Harmonie",
+      "victory": "Sieg"
+    },
+    "languageSelector": {
+      "label": "Sprache",
+      "en": "English",
+      "de": "Deutsch"
+    },
+    "overview": {
+      "goalTitle": "Spielziel",
+      "goal": "Bringen Sie 3 Ihrer Steine ins gegnerische Gebiet, um eine mathematische Progression zu bilden, überstehen Sie eine Runde des Gegners und gewinnen Sie.",
+      "boardTitle": "Das Spielbrett",
+      "boardSize": "8 Reihen × 16 Spalten (Spalten A-P, Reihen 1-8)",
+      "territory": "Ihre Hälfte: Schwarz kontrolliert Reihen 5-8, Weiß kontrolliert Reihen 1-4",
+      "enemyTerritory": "Gegnerisches Gebiet: Wo Sie Ihre Siegprogression aufbauen müssen",
+      "howToPlayTitle": "Spielablauf",
+      "step1": "Bewegen Sie Steine zunächst zur Mitte",
+      "step2": "Suchen Sie nach Schlagmöglichkeiten durch mathematische Beziehungen",
+      "step3": "Dringen Sie ins gegnerische Gebiet vor (Reihen 1-4 für Schwarz, Reihen 5-8 für Weiß)",
+      "step4": "Achten Sie auf Harmoniemöglichkeiten mit Ihren vorderen Steinen",
+      "step5": "Gewinnen Sie durch eine Progression, die eine Runde übersteht!"
+    },
+    "pieces": {
+      "title": "Ihre Spielfiguren (24 insgesamt)",
+      "description": "Jede Figur hat einen Zahlenwert und bewegt sich anders:",
+      "count": "Anzahl",
+      "circle": "Kreis",
+      "circleMove": "Diagonal (wie ein Läufer)",
+      "triangle": "Dreieck",
+      "triangleMove": "Geradeaus (wie ein Turm)",
+      "square": "Quadrat",
+      "squareMove": "In alle Richtungen (wie eine Dame)",
+      "pyramid": "Pyramide",
+      "pyramidMove": "Ein Feld in alle Richtungen (wie ein König)",
+      "pyramidTitle": "⭐ Pyramiden sind besonders",
+      "pyramidDescription": "Pyramiden haben 4 Seitenwerte. Beim Schlagen wählen Sie, welche Seite Sie verwenden."
+    },
+    "capture": {
+      "title": "Wie man schlägt",
+      "description": "Sie können einen gegnerischen Stein nur schlagen, wenn der Wert Ihres Steins in einer mathematischen Beziehung zu ihm steht:",
+      "simpleTitle": "Einfache Beziehungen (kein Helfer nötig)",
+      "equality": "Gleich",
+      "equalityExample": "Ihre 25 schlägt deren 25",
+      "multiple": "Vielfaches / Teiler",
+      "multipleExample": "Ihre 64 schlägt deren 16 (64 ÷ 16 = 4)",
+      "advancedTitle": "Erweiterte Beziehungen (ein Helferstein nötig)",
+      "sum": "Summe",
+      "sumExample": "Ihre 9 + Helfer 16 = Gegner 25",
+      "difference": "Differenz",
+      "differenceExample": "Ihre 30 - Helfer 10 = Gegner 20",
+      "product": "Produkt",
+      "productExample": "Ihre 5 × Helfer 5 = Gegner 25",
+      "helpersTitle": "💡 Was sind Helfer?",
+      "helpersDescription": "Helfer sind Ihre anderen Steine, die noch auf dem Brett sind – sie bewegen sich nicht, sondern stellen nur ihren Wert für die Mathematik zur Verfügung. Das Spiel zeigt Ihnen gültige Schlagzüge, wenn Sie einen Stein auswählen."
+    },
+    "harmony": {
+      "title": "Harmonien (Progressionen)",
+      "description": "Bringen Sie 3 Ihrer Steine ins gegnerische Gebiet und bilden Sie eine dieser Progressionen:",
+      "arithmetic": "Arithmetische Progression",
+      "arithmeticDesc": "Mittlerer Wert ist der Durchschnitt",
+      "arithmeticExample": "Beispiel: 6, 9, 12 (weil 9 = (6+12)/2)",
+      "geometric": "Geometrische Progression",
+      "geometricDesc": "Mittlerer Wert ist das geometrische Mittel",
+      "geometricExample": "Beispiel: 4, 8, 16 (weil 8² = 4×16)",
+      "harmonic": "Harmonische Progression",
+      "harmonicDesc": "Spezielle Proportion (Formel: 2AB = M(A+B))",
+      "harmonicExample": "Beispiel: 6, 8, 12 (weil 2×6×12 = 8×(6+12))",
+      "rulesTitle": "⚠️ Wichtige Regeln",
+      "rule1": "Ihre 3 Steine müssen in einer geraden Linie stehen (Reihe, Spalte oder Diagonale)",
+      "rule2": "Alle 3 müssen im gegnerischen Gebiet sein",
+      "rule3": "Wenn Sie eine Harmonie bilden, hat Ihr Gegner einen Zug, um sie zu zerstören",
+      "rule4": "Wenn sie übersteht, gewinnen Sie!"
+    },
+    "victory": {
+      "title": "Wie man gewinnt",
+      "harmony": "Sieg #1: Harmonie (Progression)",
+      "harmonyDesc": "Bilden Sie eine mathematische Progression mit 3 Steinen im gegnerischen Gebiet. Wenn sie den nächsten Zug Ihres Gegners übersteht, gewinnen Sie!",
+      "harmonyNote": "Dies ist die primäre Siegbedingung in Rithmomachia",
+      "exhaustion": "Sieg #2: Erschöpfung",
+      "exhaustionDesc": "Wenn Ihr Gegner zu Beginn seines Zuges keine legalen Züge hat, verliert er.",
+      "strategyTitle": "Schnelle Strategietipps",
+      "tip1": "Kontrollieren Sie die Mitte – leichter ins gegnerische Gebiet vorzudringen",
+      "tip2": "Kleine Steine sind schnell – Kreise (3, 5, 7, 9) können schnell in die gegnerische Hälfte schlüpfen",
+      "tip3": "Große Steine sind mächtig – schwerer zu schlagen aufgrund ihrer Größe",
+      "tip4": "Achten Sie auf Harmoniebedrohungen – lassen Sie den Gegner nicht 3 Steine tief in Ihr Gebiet bringen",
+      "tip5": "Pyramiden sind flexibel – wählen Sie den richtigen Seitenwert für jede Situation"
+    }
+  }
+}

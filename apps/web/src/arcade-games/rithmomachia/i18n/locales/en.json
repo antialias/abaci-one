@@ -1,0 +1,369 @@
+{
+  "guide": {
+    "title": "Rithmomachia Playing Guide",
+    "subtitle": "Rithmomachia – The Philosopher's Game",
+    "close": "Close",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "bustOut": "Open in new window",
+    "sections": {
+      "overview": "Quick Start",
+      "pieces": "Pieces",
+      "capture": "Capture",
+      "strategy": "Strategy",
+      "harmony": "Harmony",
+      "victory": "Victory"
+    },
+    "languageSelector": {
+      "label": "Language",
+      "en": "English",
+      "de": "Deutsch",
+      "ja": "日本語",
+      "hi": "हिन्दी",
+      "es": "Español"
+    },
+    "overview": {
+      "goalTitle": "Goal of the Game",
+      "goal": "Arrange 3 of your pieces in enemy territory to form a mathematical progression, survive one opponent turn, and win.",
+      "goalDesc": "Arrange <strong>3 of your pieces in enemy territory</strong> to form a <strong>mathematical progression</strong>, survive one opponent turn, and win.",
+      "boardTitle": "The Board",
+      "boardSize": "8 rows × 16 columns (columns A-P, rows 1-8)",
+      "territory": "Your half: Black controls rows 5-8, White controls rows 1-4",
+      "enemyTerritory": "Enemy territory: Where you need to build your winning progression",
+      "boardItems": [
+        "8 rows × 16 columns (columns A-P, rows 1-8)",
+        "<strong>Your half:</strong> Black controls rows 5-8, White controls rows 1-4",
+        "<strong>Enemy territory:</strong> Where you need to build your winning progression"
+      ],
+      "howToPlayTitle": "How to Play",
+      "step1": "Start by moving pieces toward the center",
+      "step2": "Look for capture opportunities using mathematical relations",
+      "step3": "Push into enemy territory (rows 1-4 for Black, rows 5-8 for White)",
+      "step4": "Watch for harmony opportunities with your forward pieces",
+      "step5": "Win by forming a progression that survives one turn!",
+      "howToPlayItems": [
+        "Start by moving pieces toward the center",
+        "Look for capture opportunities using mathematical relations",
+        "Push into enemy territory (rows 1-4 for Black, rows 5-8 for White)",
+        "Watch for harmony opportunities with your forward pieces",
+        "Win by forming a progression that survives one turn!"
+      ]
+    },
+    "pieces": {
+      "title": "Your Pieces (24 total)",
+      "description": "Each piece has a number value and moves differently:",
+      "intro": "Each piece has a <strong>number value</strong> and moves differently:",
+      "count": "Count",
+      "circle": "Circle",
+      "circleMove": "Diagonal (like a bishop)",
+      "triangle": "Triangle",
+      "triangleMove": "Straight lines (like a rook)",
+      "square": "Square",
+      "squareMove": "Any direction (like a queen)",
+      "pyramid": "Pyramid",
+      "pyramidMove": "One step any way (like a king)",
+      "pyramidTitle": "⭐ Pyramids are special",
+      "pyramidDescription": "Pyramids have 4 face values. When capturing, you choose which face to use.",
+      "pieceTypes": {
+        "circle": {
+          "name": "Circle",
+          "movement": "Diagonal (like a bishop)",
+          "count": "Count: 8"
+        },
+        "triangle": {
+          "name": "Triangle",
+          "movement": "Straight lines (like a rook)",
+          "count": "Count: 8"
+        },
+        "square": {
+          "name": "Square",
+          "movement": "Any direction (like a queen)",
+          "count": "Count: 7"
+        },
+        "pyramid": {
+          "name": "Pyramid",
+          "movement": "One step any way (like a king)",
+          "count": "Count: 1"
+        }
+      },
+      "pyramidSpecial": {
+        "title": "⭐ Pyramids: The Multi-Faced Pieces",
+        "intro": "Unlike other pieces with a single value, Pyramids contain <strong>4 face values</strong> representing perfect squares. When capturing an enemy piece, you choose which face to use for the mathematical relation.",
+        "blackFaces": "Black Pyramid Faces:",
+        "blackValues": "36 (6²), 25 (5²), 16 (4²), 4 (2²)",
+        "whiteFaces": "White Pyramid Faces:",
+        "whiteValues": "64 (8²), 49 (7²), 36 (6²), 25 (5²)",
+        "howItWorks": "How face selection works:",
+        "rules": [
+          "When your Pyramid attempts a capture, you must declare which face value you're using before the relation is checked",
+          "The chosen face value becomes \"your piece's value\" for all mathematical relations (equality, multiple/divisor, sum, difference, product, ratio)",
+          "You can choose different faces for different captures—the Pyramid doesn't \"lock in\" to one value",
+          "This flexibility makes Pyramids excellent for creating unexpected capture opportunities and versatile helpers"
+        ],
+        "example": "<strong>Example:</strong> White's Pyramid can capture Black's 16 using face 64 (multiple: 64÷16=4), face 36 (multiple: 36÷9=4, with Black's 9), or face 25 with equality if capturing Black's 25.",
+        "visualTitle": "Visual Example: Pyramid's Multiple Capture Options",
+        "visualDesc": "White's Pyramid (faces: 64, 49, 36, 25) is positioned to capture Black pieces. Notice the flexibility:",
+        "captureOptions": "<strong>Capture options from H5:</strong>",
+        "option1": "Move to I5: Choose face <strong>64</strong> → captures 16 by multiple (64÷16=4)",
+        "option2": "Move to H6: Choose face <strong>49</strong> → captures 49 by equality (49=49)",
+        "option3": "Move to G5: Choose face <strong>25</strong> → captures 25 by equality (25=25)"
+      }
+    },
+    "capture": {
+      "title": "How to Capture",
+      "description": "You can capture an enemy piece only if your piece's value relates mathematically to theirs:",
+      "intro": "You can capture an enemy piece <strong>only if your piece's value relates mathematically</strong> to theirs:",
+      "simpleTitle": "Simple Relations (no helper needed)",
+      "equality": "Equal",
+      "equalityExample": "Your 25 captures their 25",
+      "multiple": "Multiple / Divisor",
+      "multipleExample": "Your 64 captures their 16 (64 ÷ 16 = 4)",
+      "simpleEqual": {
+        "name": "Equal",
+        "desc": "Your 25 captures their 25"
+      },
+      "simpleMultiple": {
+        "name": "Multiple / Divisor",
+        "desc": "Your 64 captures their 16 (64 ÷ 16 = 4)"
+      },
+      "advancedTitle": "Advanced Relations (need one helper piece)",
+      "sum": "Sum",
+      "sumExample": "Your 9 + helper 16 = enemy 25",
+      "difference": "Difference",
+      "differenceExample": "Your 30 - helper 10 = enemy 20",
+      "product": "Product",
+      "productExample": "Your 5 × helper 5 = enemy 25",
+      "advancedSum": {
+        "name": "Sum",
+        "desc": "Your 9 + helper 16 = enemy 25"
+      },
+      "advancedDifference": {
+        "name": "Difference",
+        "desc": "Your 30 - helper 10 = enemy 20"
+      },
+      "advancedProduct": {
+        "name": "Product",
+        "desc": "Your 5 × helper 5 = enemy 25"
+      },
+      "helpersTitle": "💡 What are helpers?",
+      "helpersDescription": "Helpers are your other pieces still on the board — they don't move, just provide their value for the math. The game will show you valid captures when you select a piece.",
+      "helpersDesc": "Helpers are your other pieces still on the board — they don't move, just provide their value for the math. The game will show you valid captures when you select a piece.",
+      "example1Title": "Example: Multiple/Divisor Capture",
+      "example1Desc": "White's 64 (square) can capture Black's 16 (triangle) because 64 is a multiple of 16",
+      "example2Title": "Example: Sum Capture with Helper",
+      "example2Desc": "White's 9 + helper 16 = Black's 25 (9 + 16 = 25)",
+      "example3Title": "Example: Difference Capture with Helper",
+      "example3Desc": "White's 30 - helper 10 = Black's 20 (30 - 10 = 20)",
+      "example4Title": "Example: Product Capture with Helper",
+      "example4Desc": "White's 4 × helper 5 = Black's 20 (4 × 5 = 20)",
+      "example5Title": "Example: Ratio Capture with Helper",
+      "example5Desc": "White's 20 ÷ helper 4 = Black's 5 (20 ÷ 4 = 5)",
+      "pyramidTitle": "Special: Pyramid Captures",
+      "pyramidIntro": "Pyramids have 4 face values, making them incredibly versatile. You choose which face to use when attempting a capture, allowing one Pyramid to threaten multiple enemy pieces.",
+      "pyramidEx1Title": "Example: Pyramid Face Selection (Equality)",
+      "pyramidEx1Desc": "White's Pyramid (faces: 64, 49, 36, 25) can capture Black's 49 by choosing face 49 for equality (49 = 49)",
+      "pyramidEx1Note": "<strong>Face selection:</strong> White declares face 49 → 49 = 49 (equality) → Capture succeeds! The Pyramid could also capture pieces valued 64, 36, or 25 using the corresponding faces.",
+      "pyramidEx2Title": "Example: Pyramid with Helper (Sum)",
+      "pyramidEx2Desc": "White's Pyramid uses face 25 + helper 20 = Black's 45 (25 + 20 = 45)",
+      "pyramidEx2Note": "<strong>Face selection:</strong> White chooses face 25 and declares helper at D4 (value 20) → 25 + 20 = 45 (sum) → Capture succeeds! By selecting different faces, the same Pyramid could capture other values using various helpers.",
+      "pyramidEx3Title": "Example: Pyramid Flexibility (Multiple/Divisor)",
+      "pyramidEx3Desc": "Black's Pyramid (faces: 36, 25, 16, 4) can capture White's 9 using face 36 (multiple: 36 ÷ 9 = 4)",
+      "pyramidEx3Note": "<strong>Face selection:</strong> Black chooses face 36 → 36 ÷ 9 = 4 (multiple) → Capture succeeds! Note: Black could also use face 4 with a helper 5 for sum (4 + 5 = 9), showing multiple valid approaches."
+    },
+    "harmony": {
+      "title": "Harmonies (Progressions)",
+      "description": "Get 3 of your pieces into enemy territory forming one of these progressions:",
+      "intro1": "A <strong>Harmony</strong> (also called a \"Proper Victory\") is the most sophisticated way to win. Get <strong>3 of your pieces into enemy territory</strong> arranged in a straight line where their values form a mathematical pattern.",
+      "intro2": "Think of it like getting three numbers in a sequence—but the sequences follow special mathematical rules from ancient philosophy and music theory.",
+      "typesTitle": "The Three Types of Harmony",
+      "arithmetic": "Arithmetic Progression",
+      "arithmeticDesc": "Middle value is the average",
+      "arithmeticExample": "Example: 6, 9, 12 (because 9 = (6+12)/2)",
+      "geometric": "Geometric Progression",
+      "geometricDesc": "Middle value is geometric mean",
+      "geometricExample": "Example: 4, 8, 16 (because 8² = 4×16)",
+      "harmonic": "Harmonic Progression",
+      "harmonicDesc": "Special proportion (formula: 2AB = M(A+B))",
+      "harmonicExample": "Example: 6, 8, 12 (because 2×6×12 = 8×(6+12))",
+      "rulesTitle": "⚠️ Important Rules",
+      "rule1": "Your 3 pieces must be in a straight line (row, column, or diagonal)",
+      "rule2": "All 3 must be in enemy territory",
+      "rule3": "When you form a harmony, your opponent gets one turn to break it",
+      "rule4": "If it survives, you win!",
+      "arithmeticOld": {
+        "title": "1. Arithmetic Progression (Easiest to Understand)",
+        "desc": "The middle number is exactly halfway between the other two. In other words, the <strong>differences are equal</strong>.",
+        "formula": "How to check: Middle × 2 = First + Last",
+        "ex1": "<strong>Example 1:</strong> 6, 9, 12",
+        "ex1Check": "Differences: 9−6=3, 12−9=3 (equal!) • Check: 9×2 = 18 = 6+12 ✓",
+        "ex2": "<strong>Example 2:</strong> 5, 7, 9",
+        "ex2Check": "Differences: 7−5=2, 9−7=2 • Check: 7×2 = 14 = 5+9 ✓",
+        "ex3": "<strong>Example 3:</strong> 8, 12, 16",
+        "ex3Check": "Differences: 12−8=4, 16−12=4 • Check: 12×2 = 24 = 8+16 ✓",
+        "tip": "<strong>Strategy tip:</strong> Your small circles (2-9) and many triangles naturally form arithmetic progressions. Look for three pieces where the gaps are equal!"
+      },
+      "geometricOld": {
+        "title": "2. Geometric Progression (Powers and Multiples)",
+        "desc": "Each number is multiplied by the same amount to get the next. The <strong>ratios are equal</strong>.",
+        "formula": "How to check: Middle² = First × Last",
+        "ex1": "<strong>Example 1:</strong> 4, 8, 16",
+        "ex1Check": "Ratios: 8÷4=2, 16÷8=2 (equal!) • Check: 8² = 64 = 4×16 ✓",
+        "ex2": "<strong>Example 2:</strong> 3, 9, 27",
+        "ex2Check": "Ratios: 9÷3=3, 27÷9=3 • Check: 9² = 81 = 3×27 ✓",
+        "ex3": "<strong>Example 3:</strong> 2, 8, 32",
+        "ex3Check": "Ratios: 8÷2=4, 32÷8=4 • Check: 8² = 64 = 2×32 ✓",
+        "tip": "<strong>Strategy tip:</strong> Square values (4, 9, 16, 25, 36, 49, 64, 81) work great here! For example, 4-16-64 (squares of 2, 4, 8)."
+      },
+      "harmonicOld": {
+        "title": "3. Harmonic Progression (Music-Based, Trickiest)",
+        "desc": "Named after musical harmonies. The pattern is: the ratio of the outer numbers equals the ratio of their differences from the middle.",
+        "formula": "How to check: 2 × First × Last = Middle × (First + Last)",
+        "ex1": "<strong>Example 1:</strong> 6, 8, 12",
+        "ex1Check": "Check: 2×6×12 = 144 = 8×(6+12) = 8×18 ✓",
+        "ex2": "<strong>Example 2:</strong> 10, 12, 15",
+        "ex2Check": "Check: 2×10×15 = 300 = 12×(10+15) = 12×25 ✓",
+        "ex3": "<strong>Example 3:</strong> 6, 10, 15",
+        "ex3Check": "Check: 2×6×15 = 180 = 10×(6+15) = 10×18 ✓",
+        "tip": "<strong>Strategy tip:</strong> Harmonic progressions are rarer. Memorize common triads: (3,4,6), (4,6,12), (6,8,12), (6,10,15), (8,12,24)."
+      },
+      "rulesOld": [
+        "<strong>Enemy Territory Only:</strong> All 3 pieces must be in your opponent's half (White needs rows 5-8, Black needs rows 1-4)",
+        "<strong>Straight Line:</strong> The 3 pieces must form a row, column, or diagonal—no scattered formations",
+        "<strong>Adjacent Placement:</strong> In this implementation, the 3 pieces must be next to each other (no gaps)",
+        "<strong>Survival Rule:</strong> When you declare a harmony, your opponent gets ONE turn to break it by capturing or moving a piece",
+        "<strong>Victory:</strong> If your harmony survives until your next turn starts—you win!"
+      ],
+      "strategyTitle": "Strategy: How to Build Harmonies",
+      "strategy1Title": "Start with 2, Add the Third",
+      "strategy1Desc": "Get two pieces into enemy territory first. Calculate which third piece would complete a progression, then advance that piece. Your opponent may not notice the threat until it's too late!",
+      "strategy2Title": "Use Common Values",
+      "strategy2Desc": "Pieces like 6, 8, 9, 12, 16 appear in multiple progressions. If you have these in enemy territory, calculate all possible third pieces that would complete a pattern.",
+      "strategy3Title": "Protect the Line",
+      "strategy3Desc": "While building your harmony, position other pieces to defend your advancing pieces. One capture breaks the progression!",
+      "strategy4Title": "Block Opponent's Harmonies",
+      "strategy4Desc": "If your opponent has 2 pieces in your territory forming part of a progression, identify which third piece would complete it. Block that square or capture one of the two pieces immediately.",
+      "strategy5Title": "Calculate Before You Declare",
+      "strategy5Desc": "Before declaring harmony, examine if your opponent can capture any of the 3 pieces on their turn. If they can, either protect those pieces first or wait for a safer moment.",
+      "quickRefTitle": "💡 Quick Reference: Common Harmonies in Your Army",
+      "exampleTitle": "Example: Arithmetic Progression Victory",
+      "exampleDesc": "White has formed 6, 9, 12 in a row in Black's territory (rows 5-8). Since 9 = (6+12)/2, this is an arithmetic progression. If it survives Black's next turn, White wins!",
+      "exampleNote": "The highlighted pieces form the winning progression in enemy territory"
+    },
+    "victory": {
+      "title": "How to Win",
+      "harmony": "Victory #1: Harmony (Progression)",
+      "harmonyDesc": "Form a mathematical progression with 3 pieces in enemy territory. If it survives your opponent's next turn, you win!",
+      "harmonyNote": "This is the primary victory condition in Rithmomachia",
+      "exhaustion": "Victory #2: Exhaustion",
+      "exhaustionDesc": "If your opponent has no legal moves at the start of their turn, they lose.",
+      "strategyTitle": "Quick Strategy Tips",
+      "tip1": "Control the center — easier to invade enemy territory",
+      "tip2": "Small pieces are fast — circles (3, 5, 7, 9) can slip into enemy half quickly",
+      "tip3": "Large pieces are powerful — harder to capture due to their size",
+      "tip4": "Watch for harmony threats — don't let opponent get 3 pieces deep in your territory",
+      "tip5": "Pyramids are flexible — choose the right face value for each situation",
+      "harmonyOld": {
+        "title": "Victory #1: Harmony (Progression)",
+        "desc": "Form a mathematical progression with 3 pieces in enemy territory. If it survives your opponent's next turn, you win!",
+        "note": "This is the primary victory condition in Rithmomachia"
+      },
+      "exhaustionOld": {
+        "title": "Victory #2: Exhaustion",
+        "desc": "If your opponent has no legal moves at the start of their turn, they lose."
+      },
+      "exampleTitle": "Visual Example: Winning by Harmony",
+      "exampleDesc": "White's pieces at E6, F6, G6 form 6, 9, 12 - an arithmetic progression in Black's territory. If Black cannot break this on their next turn, White wins!",
+      "exampleNote": "✓ All 3 highlighted pieces are in enemy territory (rows 5-8 for White)\n✓ They form a straight line (horizontal row 6)\n✓ They satisfy arithmetic progression: 9 = (6+12)/2",
+      "tipsTitle": "Quick Strategy Tips",
+      "tips": [
+        "<strong>Control the center</strong> — easier to invade enemy territory",
+        "<strong>Small pieces are fast</strong> — circles (3, 5, 7, 9) can slip into enemy half quickly",
+        "<strong>Large pieces are powerful</strong> — harder to capture due to their size",
+        "<strong>Watch for harmony threats</strong> — don't let opponent get 3 pieces deep in your territory",
+        "<strong>Pyramids are flexible</strong> — choose the right face value for each situation"
+      ]
+    },
+    "strategy": {
+      "title": "Strategy & Tactics",
+      "intro": "Rithmomachia rewards both mathematical insight and strategic planning. Success requires balancing territorial control, piece preservation, and mathematical opportunities.",
+      "openingPrinciples": {
+        "title": "Opening Principles",
+        "controlCenter": {
+          "title": "Control the Center",
+          "desc": "Advance pieces toward the 8-column empty center (columns E–L). This provides mobility and creates capturing opportunities from multiple angles."
+        },
+        "developCircles": {
+          "title": "Develop Small Circles First",
+          "desc": "Your small circles (2–9) in columns D and M are mobile and versatile. Move them toward the center early to establish presence and create helper networks."
+        },
+        "protectPyramid": {
+          "title": "Protect Your Pyramid",
+          "desc": "The Pyramid is your most flexible piece (4 face values) but moves only 1 square. Keep it behind advancing lines until mid-game when mathematical threats are clear."
+        },
+        "knowNumbers": {
+          "title": "Know Your Numbers",
+          "desc": "Memorize key mathematical relationships in your army. Identify which pieces form factors, multiples, and sums—this speeds up tactical calculation."
+        }
+      },
+      "midGame": {
+        "title": "Mid-Game Tactics",
+        "helperNetworks": {
+          "title": "Build Helper Networks",
+          "desc": "Position pieces so multiple helpers can support captures. For example, if you have pieces valued 5 and 10, you can capture 15 (sum), 5 (difference), or 50 (product) when your mover is positioned correctly."
+        },
+        "createThreats": {
+          "title": "Create Capture Threats",
+          "desc": "Force your opponent to defend multiple pieces simultaneously. Even if you can't execute all captures, the threat constrains their options and controls the tempo."
+        },
+        "thinkDefensively": {
+          "title": "Think Defensively",
+          "desc": "After each move, check which of your pieces can be captured. High-value pieces like squares (169, 225, 289, 361) are vulnerable to many relations—position them behind defenders or in protected squares."
+        },
+        "exchangeWhenAhead": {
+          "title": "Exchange When Ahead",
+          "desc": "If you've captured more pieces or higher values, simplify the position by trading pieces. This reduces your opponent's attacking options and brings you closer to exhaustion victory."
+        }
+      },
+      "victoryPaths": {
+        "title": "Paths to Victory",
+        "harmony": {
+          "title": "Harmony Victory (Most Elegant)",
+          "desc": "Place 3 pieces in enemy territory forming an arithmetic, geometric, or harmonic progression. Common triads:",
+          "arithmetic": "<strong>Arithmetic:</strong> (6, 9, 12), (5, 7, 9), (8, 12, 16)",
+          "geometric": "<strong>Geometric:</strong> (4, 8, 16), (3, 9, 27), (2, 8, 32)",
+          "harmonic": "<strong>Harmonic:</strong> (6, 8, 12), (10, 12, 15), (6, 10, 15)"
+        },
+        "exhaustion": {
+          "title": "Exhaustion Victory (Attrition)",
+          "desc": "Capture pieces systematically until your opponent has no legal moves. Focus on: eliminating mobile pieces (Squares and Triangles), blocking diagonals and ranks, and forcing the Pyramid into a corner."
+        },
+        "points": {
+          "title": "Point Victory (Optional Rule)",
+          "desc": "If enabled, capture 30 points worth of pieces (C=1, T=2, S=3, P=5). Hunt high-value targets and preserve your own heavy pieces. Trade advantageously."
+        }
+      },
+      "commonMistakes": {
+        "title": "⚠️ Common Mistakes to Avoid",
+        "movingWithoutCalc": "<strong>Moving without calculation:</strong> Always check if your destination square is capturable by enemy pieces",
+        "ignoringGeometry": "<strong>Ignoring helper geometry:</strong> Helpers can be anywhere, but you still need a legal move path to capture",
+        "neglectingHarmony": "<strong>Neglecting harmony threats:</strong> If your opponent has 2 pieces in your territory forming part of a progression, block their third",
+        "exposingPyramid": "<strong>Leaving the Pyramid exposed:</strong> It moves only 1 square and has limited escape options—protect it early"
+      },
+      "advanced": {
+        "title": "Advanced Concepts",
+        "sacrifices": {
+          "title": "Positional Sacrifices",
+          "desc": "Sometimes sacrificing a piece opens lines for your other pieces or forces your opponent into a worse position. Calculate the resulting imbalance before sacrificing."
+        },
+        "pyramidFaces": {
+          "title": "Pyramid Face Selection",
+          "desc": "Your Pyramid has 4 face values. In captures, choose the face that maximizes future flexibility. In harmony declarations, choose the face that completes the most valuable progression type."
+        },
+        "tempo": {
+          "title": "Tempo and Initiative",
+          "desc": "Each move that forces a defensive response gains tempo. String together forcing moves (captures, threats) to dictate the pace and prevent your opponent from executing their plan."
+        }
+      }
+    }
+  }
+}

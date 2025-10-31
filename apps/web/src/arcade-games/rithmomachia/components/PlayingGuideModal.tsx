@@ -1,39 +1,52 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { css } from '../../../../styled-system/css'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useAbacusSettings } from '@/hooks/useAbacusSettings'
 import { PieceRenderer } from './PieceRenderer'
+import { RithmomachiaBoard, type ExamplePiece } from './RithmomachiaBoard'
 import type { PieceType, Color } from '../types'
+import '../i18n/config' // Initialize i18n
 
 interface PlayingGuideModalProps {
   isOpen: boolean
   onClose: () => void
+  standalone?: boolean // True when opened in popup window
 }
 
-type Section = 'overview' | 'pieces' | 'capture' | 'harmony' | 'victory'
+type Section = 'overview' | 'pieces' | 'capture' | 'strategy' | 'harmony' | 'victory'
 
-export function PlayingGuideModal({ isOpen, onClose }: PlayingGuideModalProps) {
+export function PlayingGuideModal({ isOpen, onClose, standalone = false }: PlayingGuideModalProps) {
+  const { t, i18n } = useTranslation()
+  const { data: abacusSettings } = useAbacusSettings()
+  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
+
   const [activeSection, setActiveSection] = useState<Section>('overview')
   const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [size, setSize] = useState({ width: 800, height: 600 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [isResizing, setIsResizing] = useState(false)
+  const [resizeDirection, setResizeDirection] = useState<string>('')
+  const [isHovered, setIsHovered] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
 
-  // Center modal on mount
+  // Center modal on mount (not in standalone mode)
   useEffect(() => {
-    if (isOpen && modalRef.current) {
+    if (isOpen && modalRef.current && !standalone) {
       const rect = modalRef.current.getBoundingClientRect()
       setPosition({
         x: (window.innerWidth - rect.width) / 2,
         y: Math.max(50, (window.innerHeight - rect.height) / 2),
       })
     }
-  }, [isOpen])
+  }, [isOpen, standalone])
 
   // Handle dragging
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (window.innerWidth < 768) return // No dragging on mobile
+    if (window.innerWidth < 768 || standalone) return // No dragging on mobile or standalone
     setIsDragging(true)
     setDragStart({
       x: e.clientX - position.x,
@@ -41,20 +54,91 @@ export function PlayingGuideModal({ isOpen, onClose }: PlayingGuideModalProps) {
     })
   }
 
+  // Handle resize start
+  const handleResizeStart = (e: React.MouseEvent, direction: string) => {
+    if (window.innerWidth < 768 || standalone) return
+    e.stopPropagation()
+    setIsResizing(true)
+    setResizeDirection(direction)
+    setDragStart({ x: e.clientX, y: e.clientY })
+  }
+
+  // Bust-out button handler
+  const handleBustOut = () => {
+    const url = `${window.location.origin}/arcade/rithmomachia/guide`
+    const features = 'width=600,height=800,menubar=no,toolbar=no,location=no,status=no'
+    window.open(url, 'RithmomachiaGuide', features)
+  }
+
+  // Mouse move effect for dragging and resizing
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
-      })
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y,
+        })
+      } else if (isResizing) {
+        const deltaX = e.clientX - dragStart.x
+        const deltaY = e.clientY - dragStart.y
+
+        let actualDeltaX = 0
+        let actualDeltaY = 0
+
+        setSize((prev) => {
+          let newWidth = prev.width
+          let newHeight = prev.height
+          let newX = position.x
+          let newY = position.y
+
+          // Handle different resize directions
+          if (resizeDirection.includes('e')) {
+            const desiredWidth = prev.width + deltaX
+            newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, desiredWidth))
+            actualDeltaX = newWidth - prev.width
+          }
+          if (resizeDirection.includes('w')) {
+            const desiredWidth = prev.width - deltaX
+            newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, desiredWidth))
+            const widthDiff = newWidth - prev.width
+            newX = position.x - widthDiff
+            actualDeltaX = -widthDiff
+          }
+          if (resizeDirection.includes('s')) {
+            const desiredHeight = prev.height + deltaY
+            newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, desiredHeight))
+            actualDeltaY = newHeight - prev.height
+          }
+          if (resizeDirection.includes('n')) {
+            const desiredHeight = prev.height - deltaY
+            newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, desiredHeight))
+            const heightDiff = newHeight - prev.height
+            newY = position.y - heightDiff
+            actualDeltaY = -heightDiff
+          }
+
+          if (newX !== position.x || newY !== position.y) {
+            setPosition({ x: newX, y: newY })
+          }
+
+          return { width: newWidth, height: newHeight }
+        })
+
+        // Only update dragStart by the amount that was actually applied
+        setDragStart({
+          x: dragStart.x + actualDeltaX,
+          y: dragStart.y + actualDeltaY,
+        })
+      }
     }
 
     const handleMouseUp = () => {
       setIsDragging(false)
+      setIsResizing(false)
+      setResizeDirection('')
     }
 
-    if (isDragging) {
+    if (isDragging || isResizing) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
     }
@@ -63,183 +147,435 @@ export function PlayingGuideModal({ isOpen, onClose }: PlayingGuideModalProps) {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isDragging, dragStart])
+  }, [isDragging, isResizing, dragStart, position, resizeDirection])
 
-  if (!isOpen) return null
+  if (!isOpen && !standalone) return null
 
   const sections: { id: Section; label: string; icon: string }[] = [
-    { id: 'overview', label: 'Quick Start', icon: '🎯' },
-    { id: 'pieces', label: 'Pieces', icon: '♟️' },
-    { id: 'capture', label: 'Capture', icon: '⚔️' },
-    { id: 'harmony', label: 'Harmony', icon: '🎵' },
-    { id: 'victory', label: 'Victory', icon: '👑' },
+    { id: 'overview', label: t('guide.sections.overview', 'Quick Start'), icon: '🎯' },
+    { id: 'pieces', label: t('guide.sections.pieces', 'Pieces'), icon: '♟️' },
+    { id: 'capture', label: t('guide.sections.capture', 'Capture'), icon: '⚔️' },
+    { id: 'harmony', label: t('guide.sections.harmony', 'Harmony'), icon: '🎵' },
+    { id: 'victory', label: t('guide.sections.victory', 'Victory'), icon: '👑' },
   ]
 
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        data-element="guide-backdrop"
-        className={css({
-          position: 'fixed',
-          inset: 0,
-          bg: 'rgba(0, 0, 0, 0.5)',
-          zIndex: Z_INDEX.MODAL,
-          backdropFilter: 'blur(4px)',
-        })}
-        onClick={onClose}
-      />
+  const renderResizeHandles = () => {
+    if (!isHovered || window.innerWidth < 768 || standalone) return null
 
-      {/* Modal */}
+    const handleStyle = {
+      position: 'absolute' as const,
+      bg: 'transparent',
+      zIndex: 1,
+      _hover: { borderColor: '#3b82f6' },
+    }
+
+    return (
+      <>
+        {/* North */}
+        <div
+          data-element="resize-n"
+          className={css({
+            ...handleStyle,
+            top: 0,
+            left: '8px',
+            right: '8px',
+            height: '8px',
+            cursor: 'ns-resize',
+            borderTop: '2px solid transparent',
+          })}
+          onMouseDown={(e) => handleResizeStart(e, 'n')}
+        />
+        {/* South */}
+        <div
+          data-element="resize-s"
+          className={css({
+            ...handleStyle,
+            bottom: 0,
+            left: '8px',
+            right: '8px',
+            height: '8px',
+            cursor: 'ns-resize',
+            borderBottom: '2px solid transparent',
+          })}
+          onMouseDown={(e) => handleResizeStart(e, 's')}
+        />
+        {/* East */}
+        <div
+          data-element="resize-e"
+          className={css({
+            ...handleStyle,
+            right: 0,
+            top: '8px',
+            bottom: '8px',
+            width: '8px',
+            cursor: 'ew-resize',
+            borderRight: '2px solid transparent',
+          })}
+          onMouseDown={(e) => handleResizeStart(e, 'e')}
+        />
+        {/* West */}
+        <div
+          data-element="resize-w"
+          className={css({
+            ...handleStyle,
+            left: 0,
+            top: '8px',
+            bottom: '8px',
+            width: '8px',
+            cursor: 'ew-resize',
+            borderLeft: '2px solid transparent',
+          })}
+          onMouseDown={(e) => handleResizeStart(e, 'w')}
+        />
+        {/* NorthEast */}
+        <div
+          data-element="resize-ne"
+          className={css({
+            ...handleStyle,
+            top: 0,
+            right: 0,
+            width: '8px',
+            height: '8px',
+            cursor: 'nesw-resize',
+            border: '2px solid transparent',
+          })}
+          onMouseDown={(e) => handleResizeStart(e, 'ne')}
+        />
+        {/* NorthWest */}
+        <div
+          data-element="resize-nw"
+          className={css({
+            ...handleStyle,
+            top: 0,
+            left: 0,
+            width: '8px',
+            height: '8px',
+            cursor: 'nwse-resize',
+            border: '2px solid transparent',
+          })}
+          onMouseDown={(e) => handleResizeStart(e, 'nw')}
+        />
+        {/* SouthEast */}
+        <div
+          data-element="resize-se"
+          className={css({
+            ...handleStyle,
+            bottom: 0,
+            right: 0,
+            width: '8px',
+            height: '8px',
+            cursor: 'nwse-resize',
+            border: '2px solid transparent',
+          })}
+          onMouseDown={(e) => handleResizeStart(e, 'se')}
+        />
+        {/* SouthWest */}
+        <div
+          data-element="resize-sw"
+          className={css({
+            ...handleStyle,
+            bottom: 0,
+            left: 0,
+            width: '8px',
+            height: '8px',
+            cursor: 'nesw-resize',
+            border: '2px solid transparent',
+          })}
+          onMouseDown={(e) => handleResizeStart(e, 'sw')}
+        />
+      </>
+    )
+  }
+
+  const modalContent = (
+    <div
+      ref={modalRef}
+      data-component="playing-guide-modal"
+      className={css({
+        position: 'fixed',
+        bg: 'white',
+        borderRadius: standalone ? 0 : '12px',
+        boxShadow: standalone ? 'none' : '0 20px 60px rgba(0, 0, 0, 0.3)',
+        border: standalone ? 'none' : '1px solid #e5e7eb',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      })}
+      style={{
+        ...(standalone
+          ? { top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1 }
+          : {
+              left: `${position.x}px`,
+              top: `${position.y}px`,
+              width: `${size.width}px`,
+              height: `${size.height}px`,
+              zIndex: Z_INDEX.MODAL,
+            }),
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {renderResizeHandles()}
+
+      {/* Header */}
       <div
-        ref={modalRef}
-        data-component="playing-guide-modal"
+        data-element="modal-header"
         className={css({
-          position: 'fixed',
-          zIndex: Z_INDEX.MODAL + 1,
-          bg: 'white',
-          borderRadius: { base: '0', md: '12px' },
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
-          width: { base: '100%', md: '90%', lg: '800px' },
-          maxWidth: { base: '100%', md: '90vw' },
-          height: { base: '100%', md: 'auto' },
-          maxHeight: { base: '100%', md: '90vh' },
+          bg: '#f9fafb',
+          borderBottom: '1px solid #e5e7eb',
+          p: '16px',
           display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          userSelect: 'none',
+          flexShrink: 0,
         })}
+        onMouseDown={handleMouseDown}
         style={{
-          left: window.innerWidth >= 768 ? `${position.x}px` : '0',
-          top: window.innerWidth >= 768 ? `${position.y}px` : '0',
-          cursor: isDragging ? 'grabbing' : 'auto',
+          cursor: isDragging
+            ? 'grabbing'
+            : !standalone && window.innerWidth >= 768
+              ? 'grab'
+              : 'default',
         }}
       >
-        {/* Header */}
-        <div
-          data-element="modal-header"
+        <h2
           className={css({
-            bg: 'linear-gradient(135deg, #7c2d12 0%, #92400e 100%)',
-            color: 'white',
-            p: { base: '16px', md: '20px' },
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: { base: 'default', md: 'grab' },
-            userSelect: 'none',
-            borderBottom: '3px solid rgba(251, 191, 36, 0.6)',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            color: '#111827',
           })}
-          onMouseDown={handleMouseDown}
-          style={{
-            cursor: isDragging ? 'grabbing' : window.innerWidth >= 768 ? 'grab' : 'default',
-          }}
         >
-          <div className={css({ display: 'flex', alignItems: 'center', gap: '12px' })}>
-            <span className={css({ fontSize: '28px' })}>📖</span>
-            <div>
-              <h2
+          {t('guide.title', 'Rithmomachia Playing Guide')}
+        </h2>
+
+        <div className={css({ display: 'flex', alignItems: 'center', gap: '12px' })}>
+          {/* Language switcher */}
+          <div className={css({ display: 'flex', gap: '8px' })}>
+            {['en', 'de'].map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                data-action={`language-${lang}`}
+                onClick={() => i18n.changeLanguage(lang)}
                 className={css({
-                  fontSize: { base: '20px', md: '24px' },
-                  fontWeight: 'bold',
-                  letterSpacing: '0.5px',
+                  px: '8px',
+                  py: '4px',
+                  fontSize: '12px',
+                  fontWeight: i18n.language === lang ? 'bold' : 'normal',
+                  bg: i18n.language === lang ? '#3b82f6' : '#e5e7eb',
+                  color: i18n.language === lang ? 'white' : '#374151',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  _hover: {
+                    bg: i18n.language === lang ? '#2563eb' : '#d1d5db',
+                  },
                 })}
               >
-                Playing Guide
-              </h2>
-              <p className={css({ fontSize: '14px', opacity: 0.9, mt: '2px' })}>
-                Rithmomachia – The Philosopher's Game
-              </p>
-            </div>
+                {lang.toUpperCase()}
+              </button>
+            ))}
           </div>
+
+          {/* Bust-out button (only if not already standalone) */}
+          {!standalone && (
+            <button
+              type="button"
+              data-action="bust-out-guide"
+              onClick={handleBustOut}
+              className={css({
+                bg: '#e5e7eb',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: '16px',
+                transition: 'background 0.2s',
+                _hover: { bg: '#d1d5db' },
+              })}
+              title={t('guide.bustOut', 'Open in new window')}
+            >
+              ↗
+            </button>
+          )}
+
+          {/* Close button */}
           <button
             type="button"
             data-action="close-guide"
             onClick={onClose}
             className={css({
-              bg: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
+              bg: '#e5e7eb',
+              color: '#374151',
               border: 'none',
               borderRadius: '6px',
-              width: '36px',
-              height: '36px',
+              width: '32px',
+              height: '32px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              fontSize: '20px',
+              fontSize: '18px',
               transition: 'background 0.2s',
-              _hover: { bg: 'rgba(255, 255, 255, 0.3)' },
+              _hover: { bg: '#d1d5db' },
             })}
           >
             ✕
           </button>
         </div>
-
-        {/* Navigation Tabs */}
-        <div
-          data-element="guide-nav"
-          className={css({
-            display: 'flex',
-            borderBottom: '2px solid #e5e7eb',
-            bg: '#f9fafb',
-            overflow: 'auto',
-            flexShrink: 0,
-          })}
-        >
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              data-action={`navigate-${section.id}`}
-              onClick={() => setActiveSection(section.id)}
-              className={css({
-                flex: 1,
-                minWidth: 'fit-content',
-                p: { base: '12px 16px', md: '14px 20px' },
-                fontSize: { base: '13px', md: '14px' },
-                fontWeight: activeSection === section.id ? 'bold' : '500',
-                color: activeSection === section.id ? '#7c2d12' : '#6b7280',
-                bg: activeSection === section.id ? 'white' : 'transparent',
-                borderBottom: '3px solid',
-                borderBottomColor: activeSection === section.id ? '#7c2d12' : 'transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                border: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                _hover: {
-                  bg: activeSection === section.id ? 'white' : '#f3f4f6',
-                },
-              })}
-            >
-              <span>{section.icon}</span>
-              <span>{section.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div
-          data-element="guide-content"
-          className={css({
-            flex: 1,
-            overflow: 'auto',
-            p: { base: '20px', md: '32px' },
-          })}
-        >
-          {activeSection === 'overview' && <OverviewSection />}
-          {activeSection === 'pieces' && <PiecesSection />}
-          {activeSection === 'capture' && <CaptureSection />}
-          {activeSection === 'harmony' && <HarmonySection />}
-          {activeSection === 'victory' && <VictorySection />}
-        </div>
       </div>
-    </>
+
+      {/* Navigation Tabs */}
+      <div
+        data-element="guide-nav"
+        className={css({
+          display: 'flex',
+          borderBottom: '2px solid #e5e7eb',
+          bg: '#f9fafb',
+          overflow: 'auto',
+          flexShrink: 0,
+        })}
+      >
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            data-action={`navigate-${section.id}`}
+            onClick={() => setActiveSection(section.id)}
+            className={css({
+              flex: 1,
+              minWidth: 'fit-content',
+              p: { base: '12px 16px', md: '14px 20px' },
+              fontSize: { base: '13px', md: '14px' },
+              fontWeight: activeSection === section.id ? 'bold' : '500',
+              color: activeSection === section.id ? '#7c2d12' : '#6b7280',
+              bg: activeSection === section.id ? 'white' : 'transparent',
+              borderBottom: '3px solid',
+              borderBottomColor: activeSection === section.id ? '#7c2d12' : 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              _hover: {
+                bg: activeSection === section.id ? 'white' : '#f3f4f6',
+              },
+            })}
+          >
+            <span>{section.icon}</span>
+            <span>{section.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div
+        data-element="guide-content"
+        className={css({
+          flex: 1,
+          overflow: 'auto',
+          p: '24px',
+        })}
+      >
+        {activeSection === 'overview' && (
+          <OverviewSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+        )}
+        {activeSection === 'pieces' && (
+          <PiecesSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+        )}
+        {activeSection === 'capture' && (
+          <CaptureSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+        )}
+        {activeSection === 'harmony' && (
+          <HarmonySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+        )}
+        {activeSection === 'victory' && (
+          <VictorySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+        )}
+      </div>
+    </div>
   )
+
+  // If standalone, just render the content without Dialog wrapper
+  if (standalone) {
+    return modalContent
+  }
+
+  // Otherwise, just render the modal (no backdrop so game is visible)
+  return modalContent
 }
 
-function OverviewSection() {
+function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
+  const { t } = useTranslation()
+
+  // Initial board setup - full starting position
+  const initialSetup: ExamplePiece[] = [
+    // BLACK - Column A
+    { square: 'A1', type: 'S', color: 'B', value: 28 },
+    { square: 'A2', type: 'S', color: 'B', value: 66 },
+    { square: 'A7', type: 'S', color: 'B', value: 225 },
+    { square: 'A8', type: 'S', color: 'B', value: 361 },
+    // BLACK - Column B
+    { square: 'B1', type: 'S', color: 'B', value: 28 },
+    { square: 'B2', type: 'S', color: 'B', value: 66 },
+    { square: 'B3', type: 'T', color: 'B', value: 36 },
+    { square: 'B4', type: 'T', color: 'B', value: 30 },
+    { square: 'B5', type: 'T', color: 'B', value: 56 },
+    { square: 'B6', type: 'T', color: 'B', value: 64 },
+    { square: 'B7', type: 'S', color: 'B', value: 120 },
+    { square: 'B8', type: 'P', color: 'B', value: 36 },
+    // BLACK - Column C
+    { square: 'C1', type: 'T', color: 'B', value: 16 },
+    { square: 'C2', type: 'T', color: 'B', value: 12 },
+    { square: 'C3', type: 'C', color: 'B', value: 9 },
+    { square: 'C4', type: 'C', color: 'B', value: 25 },
+    { square: 'C5', type: 'C', color: 'B', value: 49 },
+    { square: 'C6', type: 'C', color: 'B', value: 81 },
+    { square: 'C7', type: 'T', color: 'B', value: 90 },
+    { square: 'C8', type: 'T', color: 'B', value: 100 },
+    // BLACK - Column D
+    { square: 'D3', type: 'C', color: 'B', value: 3 },
+    { square: 'D4', type: 'C', color: 'B', value: 5 },
+    { square: 'D5', type: 'C', color: 'B', value: 7 },
+    { square: 'D6', type: 'C', color: 'B', value: 9 },
+    // WHITE - Column M
+    { square: 'M3', type: 'C', color: 'W', value: 8 },
+    { square: 'M4', type: 'C', color: 'W', value: 6 },
+    { square: 'M5', type: 'C', color: 'W', value: 4 },
+    { square: 'M6', type: 'C', color: 'W', value: 2 },
+    // WHITE - Column N
+    { square: 'N1', type: 'T', color: 'W', value: 81 },
+    { square: 'N2', type: 'T', color: 'W', value: 72 },
+    { square: 'N3', type: 'C', color: 'W', value: 64 },
+    { square: 'N4', type: 'C', color: 'W', value: 16 },
+    { square: 'N5', type: 'C', color: 'W', value: 16 },
+    { square: 'N6', type: 'C', color: 'W', value: 4 },
+    { square: 'N7', type: 'T', color: 'W', value: 6 },
+    { square: 'N8', type: 'T', color: 'W', value: 9 },
+    // WHITE - Column O
+    { square: 'O1', type: 'S', color: 'W', value: 153 },
+    { square: 'O2', type: 'P', color: 'W', value: 64 },
+    { square: 'O3', type: 'T', color: 'W', value: 72 },
+    { square: 'O4', type: 'T', color: 'W', value: 20 },
+    { square: 'O5', type: 'T', color: 'W', value: 20 },
+    { square: 'O6', type: 'T', color: 'W', value: 25 },
+    { square: 'O7', type: 'S', color: 'W', value: 45 },
+    { square: 'O8', type: 'S', color: 'W', value: 15 },
+    // WHITE - Column P
+    { square: 'P1', type: 'S', color: 'W', value: 289 },
+    { square: 'P2', type: 'S', color: 'W', value: 169 },
+    { square: 'P7', type: 'S', color: 'W', value: 81 },
+    { square: 'P8', type: 'S', color: 'W', value: 25 },
+  ]
+
   return (
     <div data-section="overview">
       <h3
@@ -250,11 +586,13 @@ function OverviewSection() {
           mb: '16px',
         })}
       >
-        Goal of the Game
+        {t('guide.overview.goalTitle', 'Goal of the Game')}
       </h3>
       <p className={css({ fontSize: '16px', lineHeight: '1.6', mb: '20px', color: '#374151' })}>
-        Arrange <strong>3 of your pieces in enemy territory</strong> to form a{' '}
-        <strong>mathematical progression</strong>, survive one opponent turn, and win.
+        {t(
+          'guide.overview.goal',
+          'Arrange 3 of your pieces in enemy territory to form a mathematical progression, survive one opponent turn, and win.'
+        )}
       </p>
 
       <h3
@@ -266,8 +604,25 @@ function OverviewSection() {
           mt: '24px',
         })}
       >
-        The Board
+        {t('guide.overview.boardTitle', 'The Board')}
       </h3>
+
+      <div className={css({ mb: '20px' })}>
+        <RithmomachiaBoard
+          pieces={initialSetup}
+          scale={0.6}
+          showLabels={true}
+          useNativeAbacusNumbers={useNativeAbacusNumbers}
+        />
+      </div>
+
+      <p className={css({ fontSize: '14px', color: '#6b7280', mb: '20px', fontStyle: 'italic' })}>
+        {t(
+          'guide.overview.boardCaption',
+          'The starting position - Black on the left, White on the right'
+        )}
+      </p>
+
       <ul
         className={css({
           fontSize: '15px',
@@ -277,12 +632,18 @@ function OverviewSection() {
           color: '#374151',
         })}
       >
-        <li>8 rows × 16 columns (columns A-P, rows 1-8)</li>
+        <li>{t('guide.overview.boardSize', '8 rows × 16 columns (columns A-P, rows 1-8)')}</li>
         <li>
-          <strong>Your half:</strong> Black controls rows 5-8, White controls rows 1-4
+          {t(
+            'guide.overview.territory',
+            'Your half: Black controls rows 5-8, White controls rows 1-4'
+          )}
         </li>
         <li>
-          <strong>Enemy territory:</strong> Where you need to build your winning progression
+          {t(
+            'guide.overview.enemyTerritory',
+            'Enemy territory: Where you need to build your winning progression'
+          )}
         </li>
       </ul>
 
@@ -295,7 +656,7 @@ function OverviewSection() {
           mt: '24px',
         })}
       >
-        How to Play
+        {t('guide.overview.howToPlayTitle', 'How to Play')}
       </h3>
       <ol
         className={css({
@@ -305,22 +666,43 @@ function OverviewSection() {
           color: '#374151',
         })}
       >
-        <li>Start by moving pieces toward the center</li>
-        <li>Look for capture opportunities using mathematical relations</li>
-        <li>Push into enemy territory (rows 1-4 for Black, rows 5-8 for White)</li>
-        <li>Watch for harmony opportunities with your forward pieces</li>
-        <li>Win by forming a progression that survives one turn!</li>
+        <li>{t('guide.overview.step1', 'Move your pieces toward the center')}</li>
+        <li>{t('guide.overview.step2', 'Look for ways to capture using math')}</li>
+        <li>{t('guide.overview.step3', 'Push into enemy territory')}</li>
+        <li>{t('guide.overview.step4', 'Watch for chances to make a progression')}</li>
+        <li>{t('guide.overview.step5', 'Win by forming a progression that survives one turn!')}</li>
       </ol>
     </div>
   )
 }
 
-function PiecesSection() {
+function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
+  const { t } = useTranslation()
   const pieces: { type: PieceType; name: string; movement: string; count: number }[] = [
-    { type: 'C', name: 'Circle', movement: 'Diagonal (like a bishop)', count: 8 },
-    { type: 'T', name: 'Triangle', movement: 'Straight lines (like a rook)', count: 8 },
-    { type: 'S', name: 'Square', movement: 'Any direction (like a queen)', count: 7 },
-    { type: 'P', name: 'Pyramid', movement: 'One step any way (like a king)', count: 1 },
+    {
+      type: 'C',
+      name: t('guide.pieces.circle', 'Circle'),
+      movement: t('guide.pieces.circleMove', 'Diagonal (like a bishop)'),
+      count: 8,
+    },
+    {
+      type: 'T',
+      name: t('guide.pieces.triangle', 'Triangle'),
+      movement: t('guide.pieces.triangleMove', 'Straight lines (like a rook)'),
+      count: 8,
+    },
+    {
+      type: 'S',
+      name: t('guide.pieces.square', 'Square'),
+      movement: t('guide.pieces.squareMove', 'Any direction (like a queen)'),
+      count: 7,
+    },
+    {
+      type: 'P',
+      name: t('guide.pieces.pyramid', 'Pyramid'),
+      movement: t('guide.pieces.pyramidMove', 'One step any way (like a king)'),
+      count: 1,
+    },
   ]
 
   return (
@@ -333,10 +715,10 @@ function PiecesSection() {
           mb: '16px',
         })}
       >
-        Your Pieces (24 total)
+        {t('guide.pieces.title', 'Your Pieces (24 total)')}
       </h3>
       <p className={css({ fontSize: '15px', mb: '24px', color: '#374151' })}>
-        Each piece has a <strong>number value</strong> and moves differently:
+        {t('guide.pieces.description', 'Each piece has a number value and moves differently:')}
       </p>
 
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '20px' })}>
@@ -360,14 +742,13 @@ function PiecesSection() {
                 flexShrink: 0,
               })}
             >
-              <svg viewBox="0 0 100 100" width="100%" height="100%">
-                <PieceRenderer
-                  type={piece.type}
-                  color="W"
-                  value={piece.type === 'P' ? 'P' : 64}
-                  size={70}
-                />
-              </svg>
+              <PieceRenderer
+                type={piece.type}
+                color="W"
+                value={piece.type === 'P' ? 'P' : 64}
+                size={80}
+                useNativeAbacusNumbers={useNativeAbacusNumbers}
+              />
             </div>
             <div className={css({ flex: 1 })}>
               <h4
@@ -384,7 +765,7 @@ function PiecesSection() {
                 {piece.movement}
               </p>
               <p className={css({ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' })}>
-                Count: {piece.count}
+                {t('guide.pieces.count', 'Count')}: {piece.count}
               </p>
             </div>
           </div>
@@ -401,17 +782,21 @@ function PiecesSection() {
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#92400e', mb: '8px' })}>
-          ⭐ Pyramids are special
+          {t('guide.pieces.pyramidTitle', '⭐ Pyramids are special')}
         </p>
         <p className={css({ fontSize: '14px', color: '#78350f', lineHeight: '1.6' })}>
-          Pyramids have 4 face values. When capturing, you choose which face to use.
+          {t(
+            'guide.pieces.pyramidDescription',
+            'Pyramids have 4 face values. When capturing, you choose which face to use.'
+          )}
         </p>
       </div>
     </div>
   )
 }
 
-function CaptureSection() {
+function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
+  const { t } = useTranslation()
   return (
     <div data-section="capture">
       <h3
@@ -422,11 +807,13 @@ function CaptureSection() {
           mb: '16px',
         })}
       >
-        How to Capture
+        {t('guide.capture.title', 'How to Capture')}
       </h3>
       <p className={css({ fontSize: '15px', lineHeight: '1.6', mb: '24px', color: '#374151' })}>
-        You can capture an enemy piece{' '}
-        <strong>only if your piece's value relates mathematically</strong> to theirs:
+        {t(
+          'guide.capture.description',
+          "You can capture an enemy piece only if your piece's value relates mathematically to theirs:"
+        )}
       </p>
 
       <h4
@@ -438,21 +825,23 @@ function CaptureSection() {
           mt: '20px',
         })}
       >
-        Simple Relations (no helper needed)
+        {t('guide.capture.simpleTitle', 'Simple Relations (no helper needed)')}
       </h4>
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px', mb: '24px' })}>
         <div className={css({ p: '12px', bg: '#f3f4f6', borderRadius: '6px' })}>
           <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '4px' })}>
-            Equal
+            {t('guide.capture.equality', 'Equal')}
           </p>
-          <p className={css({ fontSize: '13px', color: '#6b7280' })}>Your 25 captures their 25</p>
+          <p className={css({ fontSize: '13px', color: '#6b7280' })}>
+            {t('guide.capture.equalityExample', 'Your 25 captures their 25')}
+          </p>
         </div>
         <div className={css({ p: '12px', bg: '#f3f4f6', borderRadius: '6px' })}>
           <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '4px' })}>
-            Multiple / Divisor
+            {t('guide.capture.multiple', 'Multiple / Divisor')}
           </p>
           <p className={css({ fontSize: '13px', color: '#6b7280' })}>
-            Your 64 captures their 16 (64 ÷ 16 = 4)
+            {t('guide.capture.multipleExample', 'Your 64 captures their 16 (64 ÷ 16 = 4)')}
           </p>
         </div>
       </div>
@@ -466,31 +855,31 @@ function CaptureSection() {
           mt: '20px',
         })}
       >
-        Advanced Relations (need one helper piece)
+        {t('guide.capture.advancedTitle', 'Advanced Relations (need one helper piece)')}
       </h4>
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '12px' })}>
         <div className={css({ p: '12px', bg: '#f3f4f6', borderRadius: '6px' })}>
           <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '4px' })}>
-            Sum
+            {t('guide.capture.sum', 'Sum')}
           </p>
           <p className={css({ fontSize: '13px', color: '#6b7280' })}>
-            Your 9 + helper 16 = enemy 25
+            {t('guide.capture.sumExample', 'Your 9 + helper 16 = enemy 25')}
           </p>
         </div>
         <div className={css({ p: '12px', bg: '#f3f4f6', borderRadius: '6px' })}>
           <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '4px' })}>
-            Difference
+            {t('guide.capture.difference', 'Difference')}
           </p>
           <p className={css({ fontSize: '13px', color: '#6b7280' })}>
-            Your 30 - helper 10 = enemy 20
+            {t('guide.capture.differenceExample', 'Your 30 - helper 10 = enemy 20')}
           </p>
         </div>
         <div className={css({ p: '12px', bg: '#f3f4f6', borderRadius: '6px' })}>
           <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '4px' })}>
-            Product
+            {t('guide.capture.product', 'Product')}
           </p>
           <p className={css({ fontSize: '13px', color: '#6b7280' })}>
-            Your 5 × helper 5 = enemy 25
+            {t('guide.capture.productExample', 'Your 5 × helper 5 = enemy 25')}
           </p>
         </div>
       </div>
@@ -505,18 +894,21 @@ function CaptureSection() {
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', mb: '8px' })}>
-          💡 What are helpers?
+          {t('guide.capture.helpersTitle', '💡 What are helpers?')}
         </p>
         <p className={css({ fontSize: '14px', color: '#1e3a8a', lineHeight: '1.6' })}>
-          Helpers are your other pieces still on the board — they don't move, just provide their
-          value for the math. The game will show you valid captures when you select a piece.
+          {t(
+            'guide.capture.helpersDescription',
+            "Helpers are your other pieces still on the board — they don't move, just provide their value for the math. The game will show you valid captures when you select a piece."
+          )}
         </p>
       </div>
     </div>
   )
 }
 
-function HarmonySection() {
+function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
+  const { t } = useTranslation()
   return (
     <div data-section="harmony">
       <h3
@@ -527,11 +919,13 @@ function HarmonySection() {
           mb: '16px',
         })}
       >
-        Harmonies (Progressions)
+        {t('guide.harmony.title', 'Harmonies (Progressions)')}
       </h3>
       <p className={css({ fontSize: '15px', lineHeight: '1.6', mb: '24px', color: '#374151' })}>
-        Get <strong>3 of your pieces into enemy territory</strong> forming one of these
-        progressions:
+        {t(
+          'guide.harmony.description',
+          'Get 3 of your pieces into enemy territory forming one of these progressions:'
+        )}
       </p>
 
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '20px' })}>
@@ -546,13 +940,13 @@ function HarmonySection() {
           <h4
             className={css({ fontSize: '16px', fontWeight: 'bold', color: '#15803d', mb: '8px' })}
           >
-            Arithmetic Progression
+            {t('guide.harmony.arithmetic', 'Arithmetic Progression')}
           </h4>
           <p className={css({ fontSize: '14px', color: '#166534', mb: '8px' })}>
-            Middle value is the average
+            {t('guide.harmony.arithmeticDesc', 'Middle value is the average')}
           </p>
           <p className={css({ fontSize: '13px', color: '#16a34a', fontFamily: 'monospace' })}>
-            Example: 6, 9, 12 (because 9 = (6+12)/2)
+            {t('guide.harmony.arithmeticExample', 'Example: 6, 9, 12 (because 9 = (6+12)/2)')}
           </p>
         </div>
 
@@ -567,13 +961,13 @@ function HarmonySection() {
           <h4
             className={css({ fontSize: '16px', fontWeight: 'bold', color: '#92400e', mb: '8px' })}
           >
-            Geometric Progression
+            {t('guide.harmony.geometric', 'Geometric Progression')}
           </h4>
           <p className={css({ fontSize: '14px', color: '#78350f', mb: '8px' })}>
-            Middle value is geometric mean
+            {t('guide.harmony.geometricDesc', 'Middle value is geometric mean')}
           </p>
           <p className={css({ fontSize: '13px', color: '#a16207', fontFamily: 'monospace' })}>
-            Example: 4, 8, 16 (because 8² = 4×16)
+            {t('guide.harmony.geometricExample', 'Example: 4, 8, 16 (because 8² = 4×16)')}
           </p>
         </div>
 
@@ -588,13 +982,13 @@ function HarmonySection() {
           <h4
             className={css({ fontSize: '16px', fontWeight: 'bold', color: '#1e40af', mb: '8px' })}
           >
-            Harmonic Progression
+            {t('guide.harmony.harmonic', 'Harmonic Progression')}
           </h4>
           <p className={css({ fontSize: '14px', color: '#1e3a8a', mb: '8px' })}>
-            Special proportion (formula: 2AB = M(A+B))
+            {t('guide.harmony.harmonicDesc', 'Special proportion (formula: 2AB = M(A+B))')}
           </p>
           <p className={css({ fontSize: '13px', color: '#2563eb', fontFamily: 'monospace' })}>
-            Example: 6, 8, 12 (because 2×6×12 = 8×(6+12))
+            {t('guide.harmony.harmonicExample', 'Example: 6, 8, 12 (because 2×6×12 = 8×(6+12))')}
           </p>
         </div>
       </div>
@@ -609,20 +1003,31 @@ function HarmonySection() {
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#991b1b', mb: '8px' })}>
-          ⚠️ Important Rules
+          {t('guide.harmony.rulesTitle', '⚠️ Important Rules')}
         </p>
         <ul className={css({ fontSize: '14px', color: '#7f1d1d', lineHeight: '1.8', pl: '20px' })}>
-          <li>Your 3 pieces must be in a straight line (row, column, or diagonal)</li>
-          <li>All 3 must be in enemy territory</li>
-          <li>When you form a harmony, your opponent gets one turn to break it</li>
-          <li>If it survives, you win!</li>
+          <li>
+            {t(
+              'guide.harmony.rule1',
+              'Your 3 pieces must be in a straight line (row, column, or diagonal)'
+            )}
+          </li>
+          <li>{t('guide.harmony.rule2', 'All 3 must be in enemy territory')}</li>
+          <li>
+            {t(
+              'guide.harmony.rule3',
+              'When you form a harmony, your opponent gets one turn to break it'
+            )}
+          </li>
+          <li>{t('guide.harmony.rule4', 'If it survives, you win!')}</li>
         </ul>
       </div>
     </div>
   )
 }
 
-function VictorySection() {
+function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
+  const { t } = useTranslation()
   return (
     <div data-section="victory">
       <h3
@@ -633,7 +1038,7 @@ function VictorySection() {
           mb: '16px',
         })}
       >
-        How to Win
+        {t('guide.victory.title', 'How to Win')}
       </h3>
 
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '24px' })}>
@@ -650,11 +1055,13 @@ function VictorySection() {
             })}
           >
             <span>👑</span>
-            <span>Victory #1: Harmony (Progression)</span>
+            <span>{t('guide.victory.harmony', 'Victory #1: Harmony (Progression)')}</span>
           </h4>
           <p className={css({ fontSize: '15px', lineHeight: '1.6', color: '#374151', mb: '12px' })}>
-            Form a mathematical progression with 3 pieces in enemy territory. If it survives your
-            opponent's next turn, you win!
+            {t(
+              'guide.victory.harmonyDesc',
+              "Form a mathematical progression with 3 pieces in enemy territory. If it survives your opponent's next turn, you win!"
+            )}
           </p>
           <div
             className={css({
@@ -665,7 +1072,10 @@ function VictorySection() {
             })}
           >
             <p className={css({ fontSize: '13px', color: '#15803d' })}>
-              This is the primary victory condition in Rithmomachia
+              {t(
+                'guide.victory.harmonyNote',
+                'This is the primary victory condition in Rithmomachia'
+              )}
             </p>
           </div>
         </div>
@@ -683,10 +1093,13 @@ function VictorySection() {
             })}
           >
             <span>🚫</span>
-            <span>Victory #2: Exhaustion</span>
+            <span>{t('guide.victory.exhaustion', 'Victory #2: Exhaustion')}</span>
           </h4>
           <p className={css({ fontSize: '15px', lineHeight: '1.6', color: '#374151' })}>
-            If your opponent has no legal moves at the start of their turn, they lose.
+            {t(
+              'guide.victory.exhaustionDesc',
+              'If your opponent has no legal moves at the start of their turn, they lose.'
+            )}
           </p>
         </div>
       </div>
@@ -700,7 +1113,7 @@ function VictorySection() {
           mt: '32px',
         })}
       >
-        Quick Strategy Tips
+        {t('guide.victory.strategyTitle', 'Quick Strategy Tips')}
       </h3>
       <ul
         className={css({
@@ -710,22 +1123,30 @@ function VictorySection() {
           color: '#374151',
         })}
       >
+        <li>{t('guide.victory.tip1', 'Control the center — easier to invade enemy territory')}</li>
         <li>
-          <strong>Control the center</strong> — easier to invade enemy territory
+          {t(
+            'guide.victory.tip2',
+            'Small pieces are fast — circles (3, 5, 7, 9) can slip into enemy half quickly'
+          )}
         </li>
         <li>
-          <strong>Small pieces are fast</strong> — circles (3, 5, 7, 9) can slip into enemy half
-          quickly
+          {t(
+            'guide.victory.tip3',
+            'Large pieces are powerful — harder to capture due to their size'
+          )}
         </li>
         <li>
-          <strong>Large pieces are powerful</strong> — harder to capture due to their size
+          {t(
+            'guide.victory.tip4',
+            "Watch for harmony threats — don't let opponent get 3 pieces deep in your territory"
+          )}
         </li>
         <li>
-          <strong>Watch for harmony threats</strong> — don't let opponent get 3 pieces deep in your
-          territory
-        </li>
-        <li>
-          <strong>Pyramids are flexible</strong> — choose the right face value for each situation
+          {t(
+            'guide.victory.tip5',
+            'Pyramids are flexible — choose the right face value for each situation'
+          )}
         </li>
       </ul>
     </div>
