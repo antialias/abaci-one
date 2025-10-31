@@ -2,6 +2,19 @@ import { useTranslation } from 'react-i18next'
 import { css } from '../../../../../styled-system/css'
 import { RithmomachiaBoard, type ExamplePiece } from '../RithmomachiaBoard'
 
+/**
+ * Helper to convert square names to crop area coordinates
+ * @param topLeft - e.g. 'D3'
+ * @param bottomRight - e.g. 'H6'
+ */
+function squaresToCropArea(topLeft: string, bottomRight: string) {
+  const minCol = topLeft.charCodeAt(0) - 65 // A=0
+  const maxCol = bottomRight.charCodeAt(0) - 65
+  const maxRow = Number.parseInt(topLeft.slice(1), 10)
+  const minRow = Number.parseInt(bottomRight.slice(1), 10)
+  return { minCol, maxCol, minRow, maxRow }
+}
+
 export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
   const { t } = useTranslation()
 
@@ -77,7 +90,8 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
               <RithmomachiaBoard
                 pieces={winningExample}
                 scale={0.4}
-                cropToSquares={['B5', 'K8']}
+                cropArea={squaresToCropArea('B8', 'K5')}
+                highlightSquares={['E6', 'F6', 'G6']}
                 showLabels={true}
                 useNativeAbacusNumbers={useNativeAbacusNumbers}
               />

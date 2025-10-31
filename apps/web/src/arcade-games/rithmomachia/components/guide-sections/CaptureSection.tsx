@@ -2,6 +2,19 @@ import { useTranslation } from 'react-i18next'
 import { css } from '../../../../../styled-system/css'
 import { RithmomachiaBoard, type ExamplePiece } from '../RithmomachiaBoard'
 
+/**
+ * Helper to convert square names to crop area coordinates
+ * @param topLeft - e.g. 'D3'
+ * @param bottomRight - e.g. 'H6'
+ */
+function squaresToCropArea(topLeft: string, bottomRight: string) {
+  const minCol = topLeft.charCodeAt(0) - 65 // A=0
+  const maxCol = bottomRight.charCodeAt(0) - 65
+  const maxRow = Number.parseInt(topLeft.slice(1), 10)
+  const minRow = Number.parseInt(bottomRight.slice(1), 10)
+  return { minCol, maxCol, minRow, maxRow }
+}
+
 export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
   const { t } = useTranslation()
 
@@ -91,7 +104,8 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <RithmomachiaBoard
             pieces={equalityExample}
             scale={0.4}
-            cropToSquares={['F3', 'I5']}
+            cropArea={squaresToCropArea('F5', 'I3')}
+            highlightSquares={['G4', 'H4']}
             showLabels={true}
             useNativeAbacusNumbers={useNativeAbacusNumbers}
           />
@@ -132,7 +146,8 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <RithmomachiaBoard
             pieces={multipleExample}
             scale={0.4}
-            cropToSquares={['D4', 'G6']}
+            cropArea={squaresToCropArea('D6', 'G4')}
+            highlightSquares={['E5', 'F5']}
             showLabels={true}
             useNativeAbacusNumbers={useNativeAbacusNumbers}
           />
@@ -185,7 +200,8 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <RithmomachiaBoard
             pieces={sumExample}
             scale={0.4}
-            cropToSquares={['D3', 'H6']}
+            cropArea={squaresToCropArea('D6', 'H3')}
+            highlightSquares={['F4', 'E5', 'G4']}
             showLabels={true}
             useNativeAbacusNumbers={useNativeAbacusNumbers}
           />
@@ -226,7 +242,8 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <RithmomachiaBoard
             pieces={differenceExample}
             scale={0.4}
-            cropToSquares={['D3', 'H6']}
+            cropArea={squaresToCropArea('D6', 'H3')}
+            highlightSquares={['F4', 'E5', 'G4']}
             showLabels={true}
             useNativeAbacusNumbers={useNativeAbacusNumbers}
           />
@@ -267,7 +284,8 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <RithmomachiaBoard
             pieces={productExample}
             scale={0.4}
-            cropToSquares={['D3', 'H6']}
+            cropArea={squaresToCropArea('D6', 'H3')}
+            highlightSquares={['F4', 'E5', 'G4']}
             showLabels={true}
             useNativeAbacusNumbers={useNativeAbacusNumbers}
           />
@@ -308,7 +326,8 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <RithmomachiaBoard
             pieces={ratioExample}
             scale={0.4}
-            cropToSquares={['D3', 'H6']}
+            cropArea={squaresToCropArea('D6', 'H3')}
+            highlightSquares={['F4', 'E5', 'G4']}
             showLabels={true}
             useNativeAbacusNumbers={useNativeAbacusNumbers}
           />

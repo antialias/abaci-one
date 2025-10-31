@@ -1,8 +1,21 @@
 import { useTranslation } from 'react-i18next'
 import { css } from '../../../../../styled-system/css'
 import { PieceRenderer } from '../PieceRenderer'
-import { RithmomachiaBoard, } from '../RithmomachiaBoard'
+import { RithmomachiaBoard } from '../RithmomachiaBoard'
 import type { PieceType } from '../../types'
+
+/**
+ * Helper to convert square names to crop area coordinates
+ * @param topLeft - e.g. 'D3'
+ * @param bottomRight - e.g. 'H6'
+ */
+function squaresToCropArea(topLeft: string, bottomRight: string) {
+  const minCol = topLeft.charCodeAt(0) - 65 // A=0
+  const maxCol = bottomRight.charCodeAt(0) - 65
+  const maxRow = Number.parseInt(topLeft.slice(1), 10)
+  const minRow = Number.parseInt(bottomRight.slice(1), 10)
+  return { minCol, maxCol, minRow, maxRow }
+}
 
 export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
   const { t } = useTranslation()
@@ -336,7 +349,8 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                 { square: 'G5', type: 'C', color: 'B', value: 25 },
               ]}
               scale={0.4}
-              cropToSquares={['F4', 'J7']}
+              cropArea={squaresToCropArea('F7', 'J4')}
+              highlightSquares={['H5', 'I5', 'H6', 'G5']}
               showLabels={true}
               useNativeAbacusNumbers={useNativeAbacusNumbers}
             />
