@@ -362,19 +362,10 @@ function PiecesSection() {
             >
               <svg viewBox="0 0 100 100" width="100%" height="100%">
                 <PieceRenderer
-                  piece={{
-                    id: `guide-${piece.type}`,
-                    color: 'W',
-                    type: piece.type,
-                    value: piece.type === 'P' ? undefined : 64,
-                    pyramidFaces: piece.type === 'P' ? [64, 49, 36, 25] : undefined,
-                    activePyramidFace: null,
-                    square: 'A1',
-                    captured: false,
-                  }}
-                  x={50}
-                  y={50}
-                  size={35}
+                  type={piece.type}
+                  color="W"
+                  value={piece.type === 'P' ? 'P' : 64}
+                  size={70}
                 />
               </svg>
             </div>

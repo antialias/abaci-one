@@ -368,6 +368,9 @@ export function RithmomachiaGame() {
           </main>
         </div>
       </StandardGameLayout>
+
+      {/* Playing Guide Modal - persists across all phases */}
+      <PlayingGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
     </PageWithNav>
   )
 }
@@ -3070,9 +3073,6 @@ function ResultsPhase() {
           🚪 Exit
         </button>
       </div>
-
-      {/* Playing Guide Modal - persists across all phases */}
-      <PlayingGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
     </div>
   )
 }
