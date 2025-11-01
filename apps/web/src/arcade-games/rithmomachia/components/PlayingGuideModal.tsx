@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../styled-system/css'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useAbacusSettings } from '@/hooks/useAbacusSettings'
-import { resources } from '../i18n/config'
 import { OverviewSection } from './guide-sections/OverviewSection'
 import { PiecesSection } from './guide-sections/PiecesSection'
 import { CaptureSection } from './guide-sections/CaptureSection'
@@ -21,7 +20,7 @@ interface PlayingGuideModalProps {
 type Section = 'overview' | 'pieces' | 'capture' | 'strategy' | 'harmony' | 'victory'
 
 export function PlayingGuideModal({ isOpen, onClose, standalone = false }: PlayingGuideModalProps) {
-  const { t, i18n } = useTranslation()
+  const t = useTranslations('rithmomachia.guide')
   const { data: abacusSettings } = useAbacusSettings()
   const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
 
@@ -142,11 +141,11 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
   if (!isOpen && !standalone) return null
 
   const sections: { id: Section; label: string; icon: string }[] = [
-    { id: 'overview', label: t('guide.sections.overview', 'Quick Start'), icon: '🎯' },
-    { id: 'pieces', label: t('guide.sections.pieces', 'Pieces'), icon: '♟️' },
-    { id: 'capture', label: t('guide.sections.capture', 'Capture'), icon: '⚔️' },
-    { id: 'harmony', label: t('guide.sections.harmony', 'Harmony'), icon: '🎵' },
-    { id: 'victory', label: t('guide.sections.victory', 'Victory'), icon: '👑' },
+    { id: 'overview', label: t('sections.overview'), icon: '🎯' },
+    { id: 'pieces', label: t('sections.pieces'), icon: '♟️' },
+    { id: 'capture', label: t('sections.capture'), icon: '⚔️' },
+    { id: 'harmony', label: t('sections.harmony'), icon: '🎵' },
+    { id: 'victory', label: t('sections.victory'), icon: '👑' },
   ]
 
   const renderResizeHandles = () => {
@@ -359,7 +358,7 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
                 transition: 'background 0.2s',
                 _hover: { bg: '#d1d5db' },
               })}
-              title={t('guide.bustOut', 'Open in new window')}
+              title={t('bustOut')}
             >
               ↗
             </button>
@@ -400,7 +399,7 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
               mb: '8px',
             })}
           >
-            {t('guide.title', 'Rithmomachia Playing Guide')}
+            {t('title')}
           </h1>
           <p
             className={css({
@@ -409,52 +408,8 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
               mb: '16px',
             })}
           >
-            {t('guide.subtitle', "Rithmomachia – The Philosophers' Game")}
+            {t('subtitle')}
           </p>
-
-          {/* Language selector */}
-          <div
-            className={css({
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-            })}
-          >
-            <label
-              htmlFor="language-select"
-              className={css({ fontSize: '14px', color: '#374151' })}
-            >
-              {t('guide.languageSelector.label', 'Language')}:
-            </label>
-            <select
-              id="language-select"
-              value={i18n.language}
-              onChange={(e) => i18n.changeLanguage(e.target.value)}
-              className={css({
-                px: '12px',
-                py: '6px',
-                fontSize: '14px',
-                bg: 'white',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                color: '#111827',
-                _hover: { borderColor: '#9ca3af' },
-                _focus: {
-                  outline: 'none',
-                  borderColor: '#3b82f6',
-                  boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-                },
-              })}
-            >
-              {Object.keys(resources).map((langCode) => (
-                <option key={langCode} value={langCode}>
-                  {t(`guide.languageSelector.${langCode}`, langCode.toUpperCase())}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       </div>
 
