@@ -1,6 +1,7 @@
 'use client'
 
 import * as HoverCard from '@radix-ui/react-hover-card'
+import { useTranslations } from 'next-intl'
 import type React from 'react'
 import { useMemo, useState } from 'react'
 import type { TermProvenance, UnifiedStepData } from '../../utils/unifiedStepGenerator'
@@ -61,114 +62,106 @@ export function ReasonTooltip({
   const [showDetails, setShowDetails] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const ui = useTutorialUIGate()
+  const t = useTranslations('tutorial.reasonTooltip')
   const rule = reason?.rule ?? segment?.plan[0]?.rule
 
   // Use readable format from segment, enhanced with provenance
   const readable = segment?.readable
 
-  // Generate enhanced tooltip content using provenance
-  const getEnhancedTooltipContent = () => {
+  const enhancedContent = useMemo(() => {
     if (!provenance) return null
 
-    // For Direct operations, use the enhanced provenance title
     if (rule === 'Direct') {
-      const title = `Add the ${provenance.rhsPlaceName} digit — ${provenance.rhsDigit} ${provenance.rhsPlaceName} (${provenance.rhsValue})`
-      const subtitle = `From addend ${provenance.rhs}`
+      const rodChip = readable?.chips.find((c) => /^(this )?rod shows$/i.test(c.label))
 
-      const enhancedChips = [
-        {
-          label: "Digit we're using",
-          value: `${provenance.rhsDigit} (${provenance.rhsPlaceName})`,
-        },
-        ...(() => {
-          const rodChip = readable?.chips.find((c) => /^(this )?rod shows$/i.test(c.label))
-          return rodChip ? [{ label: 'Rod shows', value: rodChip.value }] : []
-        })(),
-        {
-          label: 'So we add here',
-          value: `+${provenance.rhsDigit} ${provenance.rhsPlaceName} → ${provenance.rhsValue}`,
-        },
-      ]
-
-      return { title, subtitle, chips: enhancedChips }
+      return {
+        title: t('directTitle', {
+          place: provenance.rhsPlaceName,
+          digit: provenance.rhsDigit,
+          value: provenance.rhsValue,
+        }),
+        subtitle: t('directSubtitle', { addend: provenance.rhs }),
+        chips: [
+          {
+            label: t('digitChip'),
+            value: `${provenance.rhsDigit} (${provenance.rhsPlaceName})`,
+          },
+          ...(rodChip ? [{ label: t('rodChip'), value: rodChip.value }] : []),
+          {
+            label: t('addHereChip'),
+            value: `+${provenance.rhsDigit} ${provenance.rhsPlaceName} → ${provenance.rhsValue}`,
+          },
+        ],
+      }
     }
 
-    // For complement operations, enhance the existing readable content with provenance context
     if (readable) {
-      // Keep the readable title but add provenance context to subtitle
-      const title = readable.title
-      const subtitle =
-        `${readable.subtitle || ''} • From ${provenance.rhsPlaceName} digit ${provenance.rhsDigit} of ${provenance.rhs}`.trim()
+      const subtitleParts = [
+        readable.subtitle,
+        t('subtitleContext', {
+          addend: provenance.rhs,
+          place: provenance.rhsPlaceName,
+          digit: provenance.rhsDigit,
+        }),
+      ].filter(Boolean)
 
-      // Enhance the chips by adding provenance context at the beginning
-      const enhancedChips = [
-        {
-          label: 'Source digit',
-          value: `${provenance.rhsDigit} from ${provenance.rhs} (${provenance.rhsPlaceName} place)`,
-        },
-        ...readable.chips,
-      ]
-
-      return { title, subtitle, chips: enhancedChips }
+      return {
+        title: readable.title,
+        subtitle: subtitleParts.join(' • '),
+        chips: [
+          {
+            label: t('sourceDigit'),
+            value: `${provenance.rhsDigit} from ${provenance.rhs} (${provenance.rhsPlaceName} place)`,
+          },
+          ...readable.chips,
+        ],
+      }
     }
 
     return null
-  }
+  }, [provenance, readable, rule, t])
 
-  const enhancedContent = useMemo(getEnhancedTooltipContent, [])
-
-  const getRuleInfo = (ruleName: PedagogicalRule) => {
-    switch (ruleName) {
+  const ruleInfo = useMemo(() => {
+    switch (rule) {
       case 'Direct':
         return {
           emoji: '✨',
-          name: 'Direct Move',
-          description: 'Simple bead movement',
+          name: t('ruleInfo.Direct.name'),
+          description: t('ruleInfo.Direct.description'),
           color: 'green',
         }
       case 'FiveComplement':
         return {
           emoji: '🤝',
-          name: 'Five Friend',
-          description: 'Using pairs that make 5',
+          name: t('ruleInfo.FiveComplement.name'),
+          description: t('ruleInfo.FiveComplement.description'),
           color: 'blue',
         }
       case 'TenComplement':
         return {
           emoji: '🔟',
-          name: 'Ten Friend',
-          description: 'Using pairs that make 10',
+          name: t('ruleInfo.TenComplement.name'),
+          description: t('ruleInfo.TenComplement.description'),
           color: 'purple',
         }
       case 'Cascade':
         return {
           emoji: '🌊',
-          name: 'Chain Reaction',
-          description: 'One move triggers another',
+          name: t('ruleInfo.Cascade.name'),
+          description: t('ruleInfo.Cascade.description'),
           color: 'orange',
         }
       default:
         return {
           emoji: '💭',
-          name: 'Strategy',
-          description: 'Abacus technique',
+          name: t('ruleInfo.Fallback.name'),
+          description: t('ruleInfo.Fallback.description'),
           color: 'gray',
         }
     }
-  }
+  }, [rule, t])
 
-  const ruleInfo = useMemo(
-    () =>
-      rule
-        ? getRuleInfo(rule)
-        : {
-            emoji: '💭',
-            name: 'Strategy',
-            description: 'Abacus technique',
-            color: 'gray',
-          },
-    [rule, getRuleInfo]
-  )
+  const fromPrefix = t('fromPrefix')
 
   if (!rule) {
     return <>{children}</>
@@ -226,12 +219,14 @@ export function ReasonTooltip({
 
             {/* Optional provenance nudge (avoid duplicating subtitle) */}
             {provenance &&
-              !(enhancedContent?.subtitle || readable?.subtitle || '').includes('From ') && (
+              !(enhancedContent?.subtitle || readable?.subtitle || '').includes(`${fromPrefix} `) && (
                 <div className="reason-tooltip__reasoning">
                   <p className="reason-tooltip__explanation-text">
-                    From <strong>{provenance.rhs}</strong>: use the{' '}
-                    <strong>{provenance.rhsPlaceName}</strong> digit (
-                    <strong>{provenance.rhsDigit}</strong>).
+                    {t('reasoning', {
+                      addend: provenance.rhs,
+                      place: provenance.rhsPlaceName,
+                      digit: provenance.rhsDigit,
+                    })}
                   </p>
                 </div>
               )}
@@ -250,7 +245,7 @@ export function ReasonTooltip({
                   type="button"
                 >
                   <span className="reason-tooltip__details-label">
-                    More details
+                    {t('details.toggle')}
                     <span
                       className="reason-tooltip__chevron"
                       style={{
@@ -282,7 +277,7 @@ export function ReasonTooltip({
                     {segment?.plan?.some((p) => p.rule === 'Cascade') && readable?.carryPath && (
                       <div className="reason-tooltip__carry-path">
                         <p className="reason-tooltip__carry-description">
-                          <strong>Carry path:</strong> {readable.carryPath}
+                          <strong>{t('details.carryPath')}</strong> {readable.carryPath}
                         </p>
                       </div>
                     )}
@@ -297,7 +292,7 @@ export function ReasonTooltip({
                           type="button"
                         >
                           <span className="reason-tooltip__math-label">
-                            Show the math
+                            {t('details.showMath')}
                             <span
                               className="reason-tooltip__chevron"
                               style={{
@@ -338,7 +333,7 @@ export function ReasonTooltip({
                           type="button"
                         >
                           <span className="reason-tooltip__section-title">
-                            Step-by-step breakdown
+                            {t('details.steps')}
                             <span
                               className="reason-tooltip__chevron"
                               style={{
@@ -373,7 +368,9 @@ export function ReasonTooltip({
               segment?.readable?.validation &&
               !segment.readable.validation.ok && (
                 <div className="reason-tooltip__dev-warn">
-                  ⚠ Summary/guard mismatch: {segment.readable.validation.issues.join('; ')}
+                  {t('devWarning', {
+                    issues: segment.readable.validation.issues.join('; '),
+                  })}
                 </div>
               )}
 
@@ -386,7 +383,7 @@ export function ReasonTooltip({
                   <code className="reason-tooltip__expanded">{segment.expression}</code>
                 </div>
                 <div className="reason-tooltip__label">
-                  {originalValue} becomes {segment.expression}
+                  {t('formula', { original: originalValue, expanded: segment.expression })}
                 </div>
               </div>
             )}

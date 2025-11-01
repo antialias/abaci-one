@@ -1,5 +1,6 @@
 import { rithmomachiaMessages } from '@/arcade-games/rithmomachia/messages'
 import { homeMessages } from '@/i18n/locales/home/messages'
+import { tutorialMessages } from '@/i18n/locales/tutorial/messages'
 
 export type Locale = 'en' | 'de' | 'ja' | 'hi' | 'es' | 'la'
 
@@ -31,5 +32,10 @@ export async function getMessages(locale: Locale) {
   }
 
   // Merge all co-located feature messages
-  return mergeMessages(common, { home: homeMessages[locale] }, rithmomachiaMessages[locale])
+  return mergeMessages(
+    common,
+    { home: homeMessages[locale] },
+    { tutorial: tutorialMessages[locale] },
+    rithmomachiaMessages[locale]
+  )
 }

@@ -7,6 +7,7 @@ import {
   type StepBeadHighlight,
   useAbacusDisplay,
 } from '@soroban/abacus-react'
+import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { css } from '../../../styled-system/css'
 import { hstack, stack, vstack } from '../../../styled-system/patterns'
@@ -243,6 +244,7 @@ function TutorialPlayerContent({
   onEvent,
   className,
 }: TutorialPlayerProps) {
+  const t = useTranslations('tutorial.player')
   const [_startTime] = useState(Date.now())
   const isProgrammaticChange = useRef(false)
   const [showHelpForCurrentStep, setShowHelpForCurrentStep] = useState(false)
@@ -912,7 +914,7 @@ function TutorialPlayerContent({
         })
 
         if (!isCorrectBead && !silentErrors) {
-          const errorMessage = "That's not the highlighted bead. Try clicking the highlighted bead."
+          const errorMessage = t('error.highlight')
           dispatch({
             type: 'SET_ERROR',
             error: errorMessage,
@@ -932,7 +934,7 @@ function TutorialPlayerContent({
         }
       }
     },
-    [currentStep, dispatch]
+    [currentStep, dispatch, silentErrors, t]
   )
 
   const handleBeadRef = useCallback((bead: any, element: SVGElement | null) => {
@@ -1125,7 +1127,7 @@ function TutorialPlayerContent({
   }, [currentStep.highlightBeads, dynamicColumnHighlights, abacusColumns, theme])
 
   if (!currentStep) {
-    return <div>No steps available</div>
+    return <div>{t('noSteps')}</div>
   }
 
   return (
@@ -1156,7 +1158,11 @@ function TutorialPlayerContent({
             <div>
               <h1 className={css({ fontSize: 'xl', fontWeight: 'bold' })}>{tutorial.title}</h1>
               <p className={css({ fontSize: 'sm', color: 'gray.600' })}>
-                Step {currentStepIndex + 1} of {tutorial.steps.length}: {currentStep.title}
+                {t('header.step', {
+                  current: currentStepIndex + 1,
+                  total: tutorial.steps.length,
+                  title: currentStep.title,
+                })}
               </p>
             </div>
 
@@ -1178,7 +1184,7 @@ function TutorialPlayerContent({
                       _hover: { bg: 'blue.50' },
                     })}
                   >
-                    Debug
+                    {t('controls.debug')}
                   </button>
                   <button
                     onClick={toggleStepList}
@@ -1194,7 +1200,7 @@ function TutorialPlayerContent({
                       _hover: { bg: 'gray.50' },
                     })}
                   >
-                    Steps
+                    {t('controls.steps')}
                   </button>
 
                   {/* Multi-step navigation controls */}
@@ -1212,8 +1218,10 @@ function TutorialPlayerContent({
                             pl: 3,
                           })}
                         >
-                          Multi-Step: {currentMultiStep + 1} /{' '}
-                          {currentStep.multiStepInstructions.length}
+                          {t('controls.multiStep.label', {
+                            current: currentMultiStep + 1,
+                            total: currentStep.multiStepInstructions.length,
+                          })}
                         </div>
                         <button
                           onClick={() => dispatch({ type: 'RESET_MULTI_STEP' })}
@@ -1231,7 +1239,7 @@ function TutorialPlayerContent({
                             _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' },
                           })}
                         >
-                          ⏮ First
+                          {t('controls.multiStep.first')}
                         </button>
                         <button
                           onClick={() => previousMultiStep()}
@@ -1249,7 +1257,7 @@ function TutorialPlayerContent({
                             _hover: currentMultiStep === 0 ? {} : { bg: 'orange.50' },
                           })}
                         >
-                          ⏪ Prev
+                          {t('controls.multiStep.prev')}
                         </button>
                         <button
                           onClick={() => advanceMultiStep()}
@@ -1284,7 +1292,7 @@ function TutorialPlayerContent({
                                 : { bg: 'green.50' },
                           })}
                         >
-                          Next ⏩
+                          {t('controls.multiStep.next')}
                         </button>
                       </>
                     )}
@@ -1294,7 +1302,7 @@ function TutorialPlayerContent({
                       checked={uiState.autoAdvance}
                       onChange={toggleAutoAdvance}
                     />
-                    Auto-advance
+                    {t('controls.autoAdvance')}
                   </label>
                 </>
               )}
@@ -1329,7 +1337,7 @@ function TutorialPlayerContent({
               overflowY: 'auto',
             })}
           >
-            <h3 className={css({ fontWeight: 'bold', mb: 3 })}>Tutorial Steps</h3>
+            <h3 className={css({ fontWeight: 'bold', mb: 3 })}>{t('sidebar.title')}</h3>
             <div className={stack({ gap: 2 })}>
               {tutorial.steps && Array.isArray(tutorial.steps) ? (
                 tutorial.steps.map((step, index) => (
@@ -1371,7 +1379,7 @@ function TutorialPlayerContent({
                     py: 4,
                   })}
                 >
-                  No tutorial steps available
+                  {t('sidebar.empty')}
                 </div>
               )}
             </div>
@@ -1459,7 +1467,7 @@ function TutorialPlayerContent({
                         textShadow: theme === 'dark' ? 'none' : '0 1px 2px rgba(0,0,0,0.1)',
                       })}
                     >
-                      Guidance
+                      {t('guidance.title')}
                     </p>
 
                     {/* Pedagogical decomposition with interactive reasoning */}
@@ -1725,11 +1733,14 @@ function TutorialPlayerContent({
                     _hover: navigationState.canGoPrevious ? { bg: 'gray.50' } : {},
                   })}
                 >
-                  ← Previous
+                  {t('navigation.previous')}
                 </button>
 
                 <div className={css({ fontSize: 'sm', color: 'gray.600' })}>
-                  Step {currentStepIndex + 1} of {navigationState.totalSteps}
+                  {t('navigation.stepCounter', {
+                    current: currentStepIndex + 1,
+                    total: navigationState.totalSteps,
+                  })}
                 </div>
 
                 <button
@@ -1749,7 +1760,9 @@ function TutorialPlayerContent({
                     _hover: navigationState.canGoNext || isStepCompleted ? { bg: 'blue.600' } : {},
                   })}
                 >
-                  {navigationState.canGoNext ? 'Next →' : 'Complete Tutorial'}
+                  {navigationState.canGoNext
+                    ? t('navigation.next')
+                    : t('navigation.complete')}
                 </button>
               </div>
             </div>
@@ -1768,12 +1781,12 @@ function TutorialPlayerContent({
               overflowY: 'auto',
             })}
           >
-            <h3 className={css({ fontWeight: 'bold', mb: 3 })}>Debug Panel</h3>
+            <h3 className={css({ fontWeight: 'bold', mb: 3 })}>{t('debugPanel.title')}</h3>
 
             <div className={stack({ gap: 4 })}>
               {/* Current state */}
               <div>
-                <h4 className={css({ fontWeight: 'medium', mb: 2 })}>Current State</h4>
+                <h4 className={css({ fontWeight: 'medium', mb: 2 })}>{t('debugPanel.currentState')}</h4>
                 <div
                   className={css({
                     fontSize: 'sm',
@@ -1784,18 +1797,31 @@ function TutorialPlayerContent({
                   })}
                 >
                   <div>
-                    Step: {currentStepIndex + 1}/{navigationState.totalSteps}
+                    {t('debugPanel.step', {
+                      current: currentStepIndex + 1,
+                      total: navigationState.totalSteps,
+                    })}
                   </div>
-                  <div>Value: {currentValue}</div>
-                  <div>Target: {currentStep.targetValue}</div>
-                  <div>Completed: {isStepCompleted ? 'Yes' : 'No'}</div>
-                  <div>Time: {Math.round((Date.now() - stepStartTime) / 1000)}s</div>
+                  <div>{t('debugPanel.value', { value: currentValue })}</div>
+                  <div>{t('debugPanel.target', { value: currentStep.targetValue })}</div>
+                  <div>
+                    {t('debugPanel.completed', {
+                      status: t(
+                        `debugPanel.completedStatus.${isStepCompleted ? 'yes' : 'no'}`
+                      ),
+                    })}
+                  </div>
+                  <div>
+                    {t('debugPanel.time', {
+                      seconds: Math.round((Date.now() - stepStartTime) / 1000),
+                    })}
+                  </div>
                 </div>
               </div>
 
               {/* Event log */}
               <div>
-                <h4 className={css({ fontWeight: 'medium', mb: 2 })}>Event Log</h4>
+                <h4 className={css({ fontWeight: 'medium', mb: 2 })}>{t('debugPanel.eventLog')}</h4>
                 <div
                   className={css({
                     maxH: '300px',

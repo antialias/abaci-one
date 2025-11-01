@@ -1,0 +1,96 @@
+{
+  "tutorial": {
+    "player": {
+      "noSteps": "Passus nulli praesto sunt",
+      "header": {
+        "step": "Gradus {current} ex {total}: {title}"
+      },
+      "controls": {
+        "debug": "Exploratio",
+        "steps": "Passus",
+        "multiStep": {
+          "label": "Gradus multi: {current} / {total}",
+          "first": "⏮ Primus",
+          "prev": "⏪ Prius",
+          "next": "Posterius ⏩"
+        },
+        "autoAdvance": "Sponte procedere"
+      },
+      "sidebar": {
+        "title": "Passus praeceptorii",
+        "empty": "Nulli passus praeceptorii praesto sunt"
+      },
+      "guidance": {
+        "title": "Directio"
+      },
+      "error": {
+        "highlight": "Illa non est gemma illustrata. Gemmam illustratam preme."
+      },
+      "navigation": {
+        "previous": "← Prius",
+        "next": "Posterius →",
+        "complete": "Praeceptorium confice",
+        "stepCounter": "Gradus {current} ex {total}"
+      },
+      "debugPanel": {
+        "title": "Tabula explorationis",
+        "currentState": "Status praesens",
+        "eventLog": "Index eventuum",
+        "step": "Gradus: {current}/{total}",
+        "value": "Valor: {value}",
+        "target": "Meta: {value}",
+        "completed": "Perfectum: {status}",
+        "completedStatus": {
+          "yes": "Ita",
+          "no": "Non"
+        },
+        "time": "Tempus: {seconds}s"
+      }
+    },
+    "coachBar": {
+      "titleFallback": "Gradus",
+      "hideAria": "Directionem late"
+    },
+    "reasonTooltip": {
+      "fromPrefix": "Ab",
+      "directTitle": "Adde numerum loci {place} — {digit} {place} ({value})",
+      "directSubtitle": "Ab addendo {addend}",
+      "subtitleContext": "Ex numero loci {place} {digit} de {addend}",
+      "digitChip": "Numerus quo utimur",
+      "rodChip": "Tignum ostendit",
+      "addHereChip": "Hic addimus",
+      "sourceDigit": "Numerus fons",
+      "reasoning": "Ab {addend}: utere numero loci {place} ({digit}).",
+      "details": {
+        "toggle": "Plura indicia",
+        "carryPath": "Iter translationis:",
+        "showMath": "Calculum ostende",
+        "steps": "Explicatio gradatim"
+      },
+      "ruleInfo": {
+        "Direct": {
+          "name": "Motus directus",
+          "description": "Simplex motus globuli"
+        },
+        "FiveComplement": {
+          "name": "Amicus quinque",
+          "description": "Paria quae quinque efficiunt"
+        },
+        "TenComplement": {
+          "name": "Amicus decem",
+          "description": "Paria quae decem efficiunt"
+        },
+        "Cascade": {
+          "name": "Cataracta",
+          "description": "Unus motus alium movet"
+        },
+        "Fallback": {
+          "name": "Consilium",
+          "description": "Ars abaci"
+        }
+      },
+      "formula": "{original} fit {expanded}",
+      "devWarning": "⚠ Summarium cum custodia non congruit: {issues}"
+    }
+  }
+}
