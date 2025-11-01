@@ -125,11 +125,28 @@
       "Bash(/dev/null)",
       "Bash(then echo \"✓ $file\")",
       "Bash(git rev-parse:*)",
-      "Bash(node scripts/parseBoardCSV.js:*)"
+      "Bash(node scripts/parseBoardCSV.js:*)",
+      "Bash(do echo \"=== HEAD~$i ===\")",
+      "Read(//private/tmp/**)",
+      "Bash(do echo \"=== $commit ===\")",
+      "Bash(do echo \"=== stash@{$i} ===\")",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(jq:*)",
+      "Bash(src/arcade-games/rithmomachia/components/guide-sections/OverviewSection.tsx )",
+      "Bash(src/arcade-games/rithmomachia/components/guide-sections/PiecesSection.tsx )",
+      "Bash(src/arcade-games/rithmomachia/components/guide-sections/CaptureSection.tsx )",
+      "Bash(src/arcade-games/rithmomachia/components/guide-sections/HarmonySection.tsx )",
+      "Bash(src/arcade-games/rithmomachia/components/guide-sections/VictorySection.tsx)",
+      "Bash(pnpm remove:*)",
+      "Bash(__NEW_LINE__ sed -n '68,73p' CaptureSection.tsx.bak)",
+      "WebFetch(domain:hub.docker.com)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }
