@@ -11,6 +11,7 @@ import { Z_INDEX } from '../constants/zIndex'
 import { useFullscreen } from '../contexts/FullscreenContext'
 import { getRandomSubtitle } from '../data/abaciOneSubtitles'
 import { AbacusDisplayDropdown } from './AbacusDisplayDropdown'
+import { LanguageSelector } from './LanguageSelector'
 
 // Import HomeHeroContext for optional usage
 import type { Subtitle } from '../data/abaciOneSubtitles'
@@ -411,6 +412,34 @@ function HamburgerMenu({
               onOpenChange={handleNestedDropdownChange}
             />
           </div>
+
+          <DropdownMenu.Separator
+            style={{
+              height: '1px',
+              background: 'rgba(75, 85, 99, 0.5)',
+              margin: '6px 0',
+            }}
+          />
+
+          {/* Language Section */}
+          <div
+            style={{
+              fontSize: '10px',
+              fontWeight: '600',
+              color: 'rgba(196, 181, 253, 0.7)',
+              marginBottom: '6px',
+              marginLeft: '12px',
+              marginTop: '6px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}
+          >
+            Language
+          </div>
+
+          <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+            <LanguageSelector variant="dropdown-item" isFullscreen={isFullscreen} />
+          </div>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
 
@@ -679,6 +708,9 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
 
               {/* Abacus Style Dropdown */}
               <AbacusDisplayDropdown isFullscreen={false} />
+
+              {/* Language Selector */}
+              <LanguageSelector variant="inline" isFullscreen={false} />
             </div>
           </div>
         </div>
