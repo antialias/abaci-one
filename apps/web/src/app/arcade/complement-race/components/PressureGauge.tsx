@@ -2,12 +2,16 @@
 
 import { animated, useSpring } from '@react-spring/web'
 import { AbacusReact } from '@soroban/abacus-react'
+import { useAbacusSettings } from '@/hooks/useAbacusSettings'
 
 interface PressureGaugeProps {
   pressure: number // 0-150 PSI
 }
 
 export function PressureGauge({ pressure }: PressureGaugeProps) {
+  // Get native abacus numbers setting
+  const { data: abacusSettings } = useAbacusSettings()
+  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
   const maxPressure = 150
 
   // Animate pressure value smoothly with spring physics
@@ -107,17 +111,29 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
                     lineHeight: 0,
                   }}
                 >
-                  <AbacusReact
-                    value={psi}
-                    columns={3}
-                    interactive={false}
-                    showNumbers={false}
-                    hideInactiveBeads={false}
-                    scaleFactor={0.6}
-                    customStyles={{
-                      columnPosts: { opacity: 0 },
-                    }}
-                  />
+                  {useNativeAbacusNumbers ? (
+                    <AbacusReact
+                      value={psi}
+                      columns={3}
+                      interactive={false}
+                      showNumbers={false}
+                      hideInactiveBeads={false}
+                      scaleFactor={0.6}
+                      customStyles={{
+                        columnPosts: { opacity: 0 },
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        color: '#1f2937',
+                      }}
+                    >
+                      {psi}
+                    </div>
+                  )}
                 </div>
               </foreignObject>
             </g>
@@ -142,7 +158,7 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
         />
       </svg>
 
-      {/* Abacus readout */}
+      {/* Pressure readout */}
       <div
         style={{
           textAlign: 'center',
@@ -153,27 +169,35 @@ export function PressureGauge({ pressure }: PressureGaugeProps) {
           minHeight: '32px',
         }}
       >
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            lineHeight: 0,
-          }}
-        >
-          <AbacusReact
-            value={Math.round(pressure)}
-            columns={3}
-            interactive={false}
-            showNumbers={false}
-            hideInactiveBeads={true}
-            scaleFactor={0.35}
-            customStyles={{
-              columnPosts: { opacity: 0 },
-            }}
-          />
-        </div>
-        <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 'bold' }}>PSI</span>
+        {useNativeAbacusNumbers ? (
+          <>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 0,
+              }}
+            >
+              <AbacusReact
+                value={Math.round(pressure)}
+                columns={3}
+                interactive={false}
+                showNumbers={false}
+                hideInactiveBeads={true}
+                scaleFactor={0.35}
+                customStyles={{
+                  columnPosts: { opacity: 0 },
+                }}
+              />
+            </div>
+            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 'bold' }}>PSI</span>
+          </>
+        ) : (
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }}>
+            {Math.round(pressure)} <span style={{ fontSize: '12px', color: '#6b7280' }}>PSI</span>
+          </div>
+        )}
       </div>
     </div>
   )
