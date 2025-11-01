@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useMessages } from 'next-intl'
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { HeroAbacus } from '@/components/HeroAbacus'
 import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
@@ -76,9 +76,9 @@ function MiniAbacus({
 
 export default function HomePage() {
   const t = useTranslations('home')
-  const tutorialT = useTranslations('tutorial')
+  const messages = useMessages() as any
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(1) // Default to "Friends techniques"
-  const fullTutorial = getTutorialForEditor(tutorialT.raw(''))
+  const fullTutorial = getTutorialForEditor(messages.tutorial || {})
 
   // Create different tutorials for each skill level
   const skillTutorials = [

@@ -232,7 +232,10 @@ export function convertGuidedAdditionTutorial(tutorialMessages: Record<string, a
       // Use translated strings if available, otherwise keep original
       title: stepTranslations.title || step.title,
       description: stepTranslations.description || step.description,
-      actionDescription: generatedInstruction.actionDescription, // Keep generated for now
+      actionDescription:
+        stepTranslations.actionDescription ||
+        step.actionDescription ||
+        generatedInstruction.actionDescription,
       tooltip: {
         content: stepTranslations.tooltip?.content || step.tooltip.content,
         explanation: stepTranslations.tooltip?.explanation || step.tooltip.explanation,

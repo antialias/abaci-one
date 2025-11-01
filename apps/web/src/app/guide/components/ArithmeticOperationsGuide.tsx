@@ -2,6 +2,7 @@
 
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import Link from 'next/link'
+import { useMessages } from 'next-intl'
 import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
 import { getTutorialForEditor } from '@/utils/tutorialConverter'
 import { css } from '../../../../styled-system/css'
@@ -9,6 +10,7 @@ import { grid } from '../../../../styled-system/patterns'
 
 export function ArithmeticOperationsGuide() {
   const appConfig = useAbacusConfig()
+  const messages = useMessages() as any
 
   return (
     <div className={css({ maxW: '4xl', mx: 'auto' })}>
@@ -257,7 +259,7 @@ export function ArithmeticOperationsGuide() {
         </div>
 
         <TutorialPlayer
-          tutorial={getTutorialForEditor()}
+          tutorial={getTutorialForEditor(messages.tutorial || {})}
           isDebugMode={false}
           showDebugPanel={false}
         />
