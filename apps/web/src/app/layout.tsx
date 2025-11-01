@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ClientProviders } from '@/components/ClientProviders'
+import { getRequestLocale } from '@/i18n/request'
+import { getMessages } from '@/i18n/messages'
 
 export const metadata: Metadata = {
   title: 'Soroban Flashcard Generator',
@@ -15,11 +17,16 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getRequestLocale()
+  const messages = await getMessages(locale)
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body>
-        <ClientProviders>{children}</ClientProviders>
+        <ClientProviders initialLocale={locale} initialMessages={messages}>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   )
