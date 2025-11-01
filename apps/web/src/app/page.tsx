@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { HeroAbacus } from '@/components/HeroAbacus'
 import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
@@ -74,6 +75,7 @@ function MiniAbacus({
 }
 
 export default function HomePage() {
+  const t = useTranslations('home')
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(1) // Default to "Friends techniques"
   const fullTutorial = getTutorialForEditor()
 
@@ -83,32 +85,32 @@ export default function HomePage() {
     {
       ...fullTutorial,
       id: 'read-numbers-demo',
-      title: 'Read and Set Numbers',
-      description: 'Master abacus number representation from zero to thousands',
+      title: t('skills.readNumbers.tutorialTitle'),
+      description: t('skills.readNumbers.tutorialDesc'),
       steps: fullTutorial.steps.filter((step) => step.id.startsWith('basic-')),
     },
     // Skill 1: Friends techniques (5 = 2+3)
     {
       ...fullTutorial,
       id: 'friends-of-5-demo',
-      title: 'Friends of 5',
-      description: 'Add and subtract using complement pairs: 5 = 2+3',
+      title: t('skills.friends.tutorialTitle'),
+      description: t('skills.friends.tutorialDesc'),
       steps: fullTutorial.steps.filter((step) => step.id === 'complement-2'),
     },
     // Skill 2: Multiply & divide (12×34)
     {
       ...fullTutorial,
       id: 'multiply-demo',
-      title: 'Multiplication',
-      description: 'Fluent multi-digit calculations with advanced techniques',
+      title: t('skills.multiply.tutorialTitle'),
+      description: t('skills.multiply.tutorialDesc'),
       steps: fullTutorial.steps.filter((step) => step.id.includes('complement')).slice(0, 3),
     },
     // Skill 3: Mental calculation (Speed math)
     {
       ...fullTutorial,
       id: 'mental-calc-demo',
-      title: 'Mental Calculation',
-      description: 'Visualize and compute without the physical tool (Anzan)',
+      title: t('skills.mental.tutorialTitle'),
+      description: t('skills.mental.tutorialDesc'),
       steps: fullTutorial.steps.slice(-3),
     },
   ]
@@ -133,10 +135,10 @@ export default function HomePage() {
                   mb: '2',
                 })}
               >
-                Learn by Doing
+                {t('learnByDoing.title')}
               </h2>
               <p className={css({ color: 'gray.400', fontSize: 'md', maxW: '2xl', mx: 'auto' })}>
-                Interactive tutorials teach you step-by-step. Try this example right now:
+                {t('learnByDoing.subtitle')}
               </p>
             </div>
 
@@ -197,39 +199,39 @@ export default function HomePage() {
                       mb: '6',
                     })}
                   >
-                    What You'll Learn
+                    {t('whatYouLearn.title')}
                   </h3>
                   <div className={grid({ columns: { base: 1, lg: 2 }, gap: '5' })}>
                     {[
                       {
-                        title: '📖 Read and set numbers',
-                        desc: 'Master abacus number representation from zero to thousands',
-                        example: '0-9999',
-                        badge: 'Foundation',
+                        title: t('skills.readNumbers.title'),
+                        desc: t('skills.readNumbers.desc'),
+                        example: t('skills.readNumbers.example'),
+                        badge: t('skills.readNumbers.badge'),
                         values: [0, 1, 2, 3, 4, 5, 10, 50, 100, 500, 999],
                         columns: 3,
                       },
                       {
-                        title: '🤝 Friends techniques',
-                        desc: 'Add and subtract using complement pairs and mental shortcuts',
-                        example: '5 = 2+3',
-                        badge: 'Core',
+                        title: t('skills.friends.title'),
+                        desc: t('skills.friends.desc'),
+                        example: t('skills.friends.example'),
+                        badge: t('skills.friends.badge'),
                         values: [2, 5, 3],
                         columns: 1,
                       },
                       {
-                        title: '✖️ Multiply & divide',
-                        desc: 'Fluent multi-digit calculations with advanced techniques',
-                        example: '12×34',
-                        badge: 'Advanced',
+                        title: t('skills.multiply.title'),
+                        desc: t('skills.multiply.desc'),
+                        example: t('skills.multiply.example'),
+                        badge: t('skills.multiply.badge'),
                         values: [12, 24, 36, 48],
                         columns: 2,
                       },
                       {
-                        title: '🧠 Mental calculation',
-                        desc: 'Visualize and compute without the physical tool (Anzan)',
-                        example: 'Speed math',
-                        badge: 'Expert',
+                        title: t('skills.mental.title'),
+                        desc: t('skills.mental.desc'),
+                        example: t('skills.mental.example'),
+                        badge: t('skills.mental.badge'),
                         values: [7, 14, 21, 28, 35],
                         columns: 2,
                       },
@@ -366,20 +368,17 @@ export default function HomePage() {
                     mb: '2',
                   })}
                 >
-                  The Arcade
+                  {t('arcade.title')}
                 </h2>
-                <p className={css({ color: 'gray.400', fontSize: 'md' })}>
-                  Single-player challenges and multiplayer battles in networked rooms. Invite
-                  friends to play or watch live.
-                </p>
+                <p className={css({ color: 'gray.400', fontSize: 'md' })}>{t('arcade.subtitle')}</p>
               </div>
 
               <div className={grid({ columns: { base: 1, sm: 2, lg: 4 }, gap: '5' })}>
                 {getAvailableGames().map((game) => {
                   const playersText =
                     game.manifest.maxPlayers === 1
-                      ? 'Solo challenge'
-                      : `1-${game.manifest.maxPlayers} players`
+                      ? t('arcade.soloChallenge')
+                      : t('arcade.playersCount', { min: 1, max: game.manifest.maxPlayers })
                   return (
                     <GameCard
                       key={game.manifest.name}
@@ -407,11 +406,9 @@ export default function HomePage() {
                     mb: '2',
                   })}
                 >
-                  Your Journey
+                  {t('journey.title')}
                 </h2>
-                <p style={{ color: '#e5e7eb', fontSize: '16px' }}>
-                  Progress from beginner to master
-                </p>
+                <p style={{ color: '#e5e7eb', fontSize: '16px' }}>{t('journey.subtitle')}</p>
               </div>
 
               <LevelSliderDisplay />
@@ -428,10 +425,10 @@ export default function HomePage() {
                     mb: '2',
                   })}
                 >
-                  Create Custom Flashcards
+                  {t('flashcards.title')}
                 </h2>
                 <p className={css({ color: 'gray.400', fontSize: 'md', maxW: '2xl', mx: 'auto' })}>
-                  Design beautiful flashcards for learning and practice
+                  {t('flashcards.subtitle')}
                 </p>
               </div>
 
@@ -457,19 +454,19 @@ export default function HomePage() {
                 <div className={grid({ columns: { base: 1, md: 3 }, gap: '4', mb: '6' })}>
                   {[
                     {
-                      icon: '📄',
-                      title: 'Multiple Formats',
-                      desc: 'PDF, PNG, SVG, HTML',
+                      icon: t('flashcards.features.formats.icon'),
+                      title: t('flashcards.features.formats.title'),
+                      desc: t('flashcards.features.formats.desc'),
                     },
                     {
-                      icon: '🎨',
-                      title: 'Customizable',
-                      desc: 'Bead shapes, colors, layouts',
+                      icon: t('flashcards.features.customizable.icon'),
+                      title: t('flashcards.features.customizable.title'),
+                      desc: t('flashcards.features.customizable.desc'),
                     },
                     {
-                      icon: '📐',
-                      title: 'All Paper Sizes',
-                      desc: 'A3, A4, A5, US Letter',
+                      icon: t('flashcards.features.paperSizes.icon'),
+                      title: t('flashcards.features.paperSizes.title'),
+                      desc: t('flashcards.features.paperSizes.desc'),
                     },
                   ].map((feature, i) => (
                     <div
@@ -519,7 +516,7 @@ export default function HomePage() {
                       },
                     })}
                   >
-                    <span>Create Flashcards</span>
+                    <span>{t('flashcards.cta')}</span>
                     <span>→</span>
                   </Link>
                 </div>
