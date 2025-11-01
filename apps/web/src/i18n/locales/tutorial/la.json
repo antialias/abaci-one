@@ -91,6 +91,113 @@
       },
       "formula": "{original} fit {expanded}",
       "devWarning": "⚠ Summarium cum custodia non congruit: {issues}"
+    },
+    "steps": {
+      "basic-1": {
+        "title": "Additio Simplex: 0 + 1",
+        "description": "Incipe addendo primam gemmam terrestrem",
+        "actionDescription": "Preme primam gemmam terrestrem ut sursum moveatur",
+        "tooltip": {
+          "content": "Gemmas terrestres addere",
+          "explanation": "Gemmae terrestres (infra) singulae valent 1. Trudie eas SURSUM ut activentur."
+        }
+      },
+      "basic-2": {
+        "title": "Additio Simplex: 1 + 1",
+        "description": "Adde secundam gemmam terrestrem ut 2 fiat",
+        "actionDescription": "Preme secundam gemmam terrestrem ut sursum moveatur",
+        "tooltip": {
+          "content": "Gemmas terrestres aedificare",
+          "explanation": "Perge addere gemmas terrestres singulas pro numeris 2, 3, et 4"
+        }
+      },
+      "basic-3": {
+        "title": "Additio Simplex: 2 + 1",
+        "description": "Adde tertiam gemmam terrestrem ut 3 fiat",
+        "actionDescription": "Preme tertiam gemmam terrestrem ut sursum moveatur",
+        "tooltip": {
+          "content": "Gemmas terrestres per ordinem addere",
+          "explanation": "Perge addere gemmas terrestres singulas donec ad 4 pervenias"
+        }
+      },
+      "basic-4": {
+        "title": "Additio Simplex: 3 + 1",
+        "description": "Adde quartam gemmam terrestrem ut 4 fiat",
+        "actionDescription": "Preme quartam gemmam terrestrem ut 4 compleatur",
+        "tooltip": {
+          "content": "Maximum gemmarum terrestrium",
+          "explanation": "Quattuor gemmae terrestres maximum sunt - deinde nobis opus est ratione diversa"
+        }
+      },
+      "heaven-intro": {
+        "title": "Gemma Caelestis: 0 + 5",
+        "description": "Utere gemma caelesti ut 5 repraesentet",
+        "actionDescription": "Preme gemmam caelestem ut activetur",
+        "tooltip": {
+          "content": "Gemma caelestis = 5",
+          "explanation": "Gemma unica supra tignum 5 repraesentat"
+        }
+      },
+      "heaven-plus-earth": {
+        "title": "Coniunctio: 5 + 1",
+        "description": "Adde 1 ad 5 activando unam gemmam terrestrem",
+        "actionDescription": "Preme primam gemmam terrestrem ut 6 fiat",
+        "tooltip": {
+          "content": "Caelum + Terra = 6",
+          "explanation": "Cum spatium in sectione terrestri habes, simpliciter adde directe"
+        }
+      },
+      "complement-intro": {
+        "title": "Complementum Quinque: 3 + 4",
+        "description": "Opus est 4 addere, sed tantum 1 spatium gemmae terrestris habes. Utere complemento: 4 = 5 - 1",
+        "actionDescription": "Primum adde gemmam caelestem (5), tum remove 1 gemmam terrestrem",
+        "tooltip": {
+          "content": "Complementum Quinque: 4 = 5 - 1",
+          "explanation": "Cum opus est 4 addere sed tantum 1 spatium habes, utere: adde 5, remove 1"
+        },
+        "multiStepInstructions": [
+          "Preme gemmam caelestem ut 5 addas",
+          "Preme primam gemmam terrestrem ut 1 removes"
+        ]
+      },
+      "complement-2": {
+        "title": "Complementum Quinque: 2 + 3",
+        "description": "Adde 3 ut 5 fiat utendo complemento: 3 = 5 - 2",
+        "actionDescription": "Adde gemmam caelestem (5), tum remove 2 gemmas terrestres",
+        "tooltip": {
+          "content": "Complementum Quinque: 3 = 5 - 2",
+          "explanation": "Ut 3 addas, cogita: 3 = 5 - 2, ergo adde 5 et aufer 2"
+        },
+        "multiStepInstructions": [
+          "Preme gemmam caelestem ut 5 addas",
+          "Preme primam gemmam terrestrem ut removeatur",
+          "Preme secundam gemmam terrestrem ut removeatur"
+        ]
+      },
+      "complex-1": {
+        "title": "Complexus: 6 + 2",
+        "description": "Adde 2 plura ad 6 (quod habet caelum + 1 terram)",
+        "actionDescription": "Adde duas gemmas terrestres plures",
+        "tooltip": {
+          "content": "Additio directa cum possibilis",
+          "explanation": "Cum spatium in sectione terrestri habes, simpliciter adde directe"
+        }
+      },
+      "complex-2": {
+        "title": "Complexus: 7 + 4",
+        "description": "Adde 4 ad 7, sed non est spatium pro 4 gemmis terrestribus. Iterum utere complemento",
+        "actionDescription": "Adde caelum decadum, tum purga locum unitatum: remove caelum + 2 terras",
+        "tooltip": {
+          "content": "Translatio ad locum decadum",
+          "explanation": "7 + 4 = 11, quod opus est gemma caelesti columnae decadum"
+        },
+        "multiStepInstructions": [
+          "Preme gemmam caelestem in columna decadum (sinistra)",
+          "Preme gemmam caelestem in columna unitatum ut removeatur",
+          "Preme primam gemmam terrestrem ut removeatur",
+          "Preme secundam gemmam terrestrem ut removeatur"
+        ]
+      }
     }
   }
 }

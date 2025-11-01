@@ -1,4 +1,5 @@
 import { rithmomachiaMessages } from '@/arcade-games/rithmomachia/messages'
+import { gamesMessages } from '@/i18n/locales/games/messages'
 import { homeMessages } from '@/i18n/locales/home/messages'
 import { tutorialMessages } from '@/i18n/locales/tutorial/messages'
 
@@ -35,6 +36,7 @@ export async function getMessages(locale: Locale) {
   return mergeMessages(
     common,
     { home: homeMessages[locale] },
+    { games: gamesMessages[locale] },
     { tutorial: tutorialMessages[locale] },
     rithmomachiaMessages[locale]
   )

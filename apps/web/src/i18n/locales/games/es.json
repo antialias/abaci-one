@@ -1,0 +1,65 @@
+{
+  "games": {
+    "hero": {
+      "title": "🕹️ Arcade Soroban",
+      "subtitle": "¡Mejora tus poderes de cálculo mental de la manera más divertida posible!",
+      "xpBadge": "+100 EXP",
+      "streakBadge": "¡RACHA!",
+      "features": {
+        "challenge": "🎯 Desafía tu cerebro",
+        "speed": "⚡ Aumenta la velocidad",
+        "achievements": "🏆 Desbloquea logros"
+      }
+    },
+    "enterArcade": {
+      "title": "🏟️ ¿Listo para la arena?",
+      "description": "¡Selecciona tus campeones, elige tus batallas y sumérgete en la acción arcade de pantalla completa!",
+      "button": "🚀 ENTRAR AL ARCADE",
+      "subtitle": "Experiencia de pantalla completa con juego inmersivo"
+    },
+    "champions": {
+      "title": "🏆 Tus campeones del arcade",
+      "subtitle": "¡Rastrea tu progreso y logros!",
+      "stats": {
+        "gamesPlayed": "JUEGOS JUGADOS",
+        "victories": "VICTORIAS",
+        "level": "Nivel {level}",
+        "xp": "{current}/{total} EXP"
+      }
+    },
+    "dashboard": {
+      "headToHead": {
+        "title": "🥊 Cara a cara",
+        "subtitle": "Récord de batallas",
+        "vs": "VS",
+        "wins": "VICTORIAS",
+        "lastPlayed": "Último juego: Relámpago de memoria ⚡"
+      },
+      "achievements": {
+        "title": "🏆 Logros recientes",
+        "subtitle": "Últimos desbloqueados",
+        "firstWin": {
+          "title": "🔥 ¡Primera victoria!",
+          "description": "Victoria en la arena de batalla"
+        },
+        "speedDemon": {
+          "title": "⚡ Demonio de velocidad",
+          "description": "Memoria de menos de 5 segundos"
+        }
+      },
+      "challenges": {
+        "title": "⚔️ Desafíos activos",
+        "subtitle": "Competencia amistosa",
+        "challengesText": "desafía",
+        "exampleChallenge": "¡Supera mi puntuación de Relámpago de memoria!",
+        "currentBest": "Mejor actual: {score} puntos",
+        "createButton": "🎯 Crear nuevo desafío"
+      }
+    },
+    "callToAction": {
+      "title": "🚀 ¿Listo para comenzar tu viaje?",
+      "description": "¡Comienza con nuestra guía interactiva y desbloquea los secretos de la calculadora antigua!",
+      "button": "Comenzar a aprender →"
+    }
+  }
+}

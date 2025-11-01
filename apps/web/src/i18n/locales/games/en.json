@@ -1,0 +1,65 @@
+{
+  "games": {
+    "hero": {
+      "title": "🕹️ Soroban Arcade",
+      "subtitle": "Level up your mental math powers in the most fun way possible!",
+      "xpBadge": "+100 XP",
+      "streakBadge": "STREAK!",
+      "features": {
+        "challenge": "🎯 Challenge Your Brain",
+        "speed": "⚡ Build Speed",
+        "achievements": "🏆 Unlock Achievements"
+      }
+    },
+    "enterArcade": {
+      "title": "🏟️ Ready for the Arena?",
+      "description": "Select your champions, choose your battles, and dive into full-screen arcade action!",
+      "button": "🚀 ENTER ARCADE",
+      "subtitle": "Full-screen experience with immersive gameplay"
+    },
+    "champions": {
+      "title": "🏆 Your Arcade Champions",
+      "subtitle": "Track your progress and achievements!",
+      "stats": {
+        "gamesPlayed": "GAMES PLAYED",
+        "victories": "VICTORIES",
+        "level": "Level {level}",
+        "xp": "{current}/{total} XP"
+      }
+    },
+    "dashboard": {
+      "headToHead": {
+        "title": "🥊 Head-to-Head",
+        "subtitle": "Battle Record",
+        "vs": "VS",
+        "wins": "WINS",
+        "lastPlayed": "Last played: Memory Lightning ⚡"
+      },
+      "achievements": {
+        "title": "🏆 Recent Achievements",
+        "subtitle": "Latest unlocks",
+        "firstWin": {
+          "title": "🔥 First Win!",
+          "description": "Victory in Battle Arena"
+        },
+        "speedDemon": {
+          "title": "⚡ Speed Demon",
+          "description": "Sub-5 second memory"
+        }
+      },
+      "challenges": {
+        "title": "⚔️ Active Challenges",
+        "subtitle": "Friendly competition",
+        "challengesText": "challenges",
+        "exampleChallenge": "Beat my Memory Lightning score!",
+        "currentBest": "Current best: {score} points",
+        "createButton": "🎯 Create New Challenge"
+      }
+    },
+    "callToAction": {
+      "title": "🚀 Ready to Begin Your Journey?",
+      "description": "Start with our interactive guide and unlock the secrets of the ancient calculator!",
+      "button": "Start Learning →"
+    }
+  }
+}

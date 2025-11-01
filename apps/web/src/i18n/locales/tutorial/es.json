@@ -91,6 +91,113 @@
       },
       "formula": "{original} se convierte en {expanded}",
       "devWarning": "⚠ Resumen y verificación no coinciden: {issues}"
+    },
+    "steps": {
+      "basic-1": {
+        "title": "Suma básica: 0 + 1",
+        "description": "Comienza añadiendo tu primera cuenta de tierra",
+        "actionDescription": "Haz clic en la primera cuenta de tierra para moverla hacia arriba",
+        "tooltip": {
+          "content": "Añadiendo cuentas de tierra",
+          "explanation": "Las cuentas de tierra (abajo) valen 1 cada una. Empújalas HACIA ARRIBA para activarlas."
+        }
+      },
+      "basic-2": {
+        "title": "Suma básica: 1 + 1",
+        "description": "Añade la segunda cuenta de tierra para hacer 2",
+        "actionDescription": "Haz clic en la segunda cuenta de tierra para moverla hacia arriba",
+        "tooltip": {
+          "content": "Acumulando cuentas de tierra",
+          "explanation": "Continúa añadiendo cuentas de tierra una por una para los números 2, 3 y 4"
+        }
+      },
+      "basic-3": {
+        "title": "Suma básica: 2 + 1",
+        "description": "Añade la tercera cuenta de tierra para hacer 3",
+        "actionDescription": "Haz clic en la tercera cuenta de tierra para moverla hacia arriba",
+        "tooltip": {
+          "content": "Añadiendo cuentas de tierra en secuencia",
+          "explanation": "Continúa añadiendo cuentas de tierra una por una hasta llegar a 4"
+        }
+      },
+      "basic-4": {
+        "title": "Suma básica: 3 + 1",
+        "description": "Añade la cuarta cuenta de tierra para hacer 4",
+        "actionDescription": "Haz clic en la cuarta cuenta de tierra para completar 4",
+        "tooltip": {
+          "content": "Máximo de cuentas de tierra",
+          "explanation": "Cuatro cuentas de tierra es el máximo - a continuación necesitamos un enfoque diferente"
+        }
+      },
+      "heaven-intro": {
+        "title": "Cuenta del cielo: 0 + 5",
+        "description": "Usa la cuenta del cielo para representar 5",
+        "actionDescription": "Haz clic en la cuenta del cielo para activarla",
+        "tooltip": {
+          "content": "Cuenta del cielo = 5",
+          "explanation": "La cuenta única arriba de la barra representa 5"
+        }
+      },
+      "heaven-plus-earth": {
+        "title": "Combinando: 5 + 1",
+        "description": "Suma 1 a 5 activando una cuenta de tierra",
+        "actionDescription": "Haz clic en la primera cuenta de tierra para hacer 6",
+        "tooltip": {
+          "content": "Cielo + Tierra = 6",
+          "explanation": "Cuando tienes espacio en la sección de tierra, simplemente suma directamente"
+        }
+      },
+      "complement-intro": {
+        "title": "Complemento de cinco: 3 + 4",
+        "description": "Necesitas sumar 4, pero solo tienes 1 espacio de cuenta de tierra. Usa el complemento: 4 = 5 - 1",
+        "actionDescription": "Primero suma la cuenta del cielo (5), luego quita 1 cuenta de tierra",
+        "tooltip": {
+          "content": "Complemento de cinco: 4 = 5 - 1",
+          "explanation": "Cuando necesitas sumar 4 pero solo tienes 1 espacio, usa: suma 5, quita 1"
+        },
+        "multiStepInstructions": [
+          "Haz clic en la cuenta del cielo para sumar 5",
+          "Haz clic en la primera cuenta de tierra para quitar 1"
+        ]
+      },
+      "complement-2": {
+        "title": "Complemento de cinco: 2 + 3",
+        "description": "Suma 3 para hacer 5 usando el complemento: 3 = 5 - 2",
+        "actionDescription": "Suma la cuenta del cielo (5), luego quita 2 cuentas de tierra",
+        "tooltip": {
+          "content": "Complemento de cinco: 3 = 5 - 2",
+          "explanation": "Para sumar 3, piensa: 3 = 5 - 2, así que suma 5 y quita 2"
+        },
+        "multiStepInstructions": [
+          "Haz clic en la cuenta del cielo para sumar 5",
+          "Haz clic en la primera cuenta de tierra para quitarla",
+          "Haz clic en la segunda cuenta de tierra para quitarla"
+        ]
+      },
+      "complex-1": {
+        "title": "Complejo: 6 + 2",
+        "description": "Suma 2 más a 6 (que tiene cielo + 1 tierra)",
+        "actionDescription": "Añade dos cuentas de tierra más",
+        "tooltip": {
+          "content": "Suma directa cuando es posible",
+          "explanation": "Cuando tienes espacio en la sección de tierra, simplemente suma directamente"
+        }
+      },
+      "complex-2": {
+        "title": "Complejo: 7 + 4",
+        "description": "Suma 4 a 7, pero no hay espacio para 4 cuentas de tierra. Usa el complemento de nuevo",
+        "actionDescription": "Suma el cielo de las decenas, luego limpia las unidades: quita cielo + 2 tierra",
+        "tooltip": {
+          "content": "Llevando a las decenas",
+          "explanation": "7 + 4 = 11, que necesita la cuenta del cielo de la columna de las decenas"
+        },
+        "multiStepInstructions": [
+          "Haz clic en la cuenta del cielo en la columna de las decenas (izquierda)",
+          "Haz clic en la cuenta del cielo en la columna de las unidades para quitarla",
+          "Haz clic en la primera cuenta de tierra para quitarla",
+          "Haz clic en la segunda cuenta de tierra para quitarla"
+        ]
+      }
     }
   }
 }

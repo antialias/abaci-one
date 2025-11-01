@@ -1,0 +1,65 @@
+{
+  "games": {
+    "hero": {
+      "title": "🕹️ そろばんアーケード",
+      "subtitle": "最も楽しい方法で暗算力をレベルアップしましょう！",
+      "xpBadge": "+100 経験値",
+      "streakBadge": "連勝！",
+      "features": {
+        "challenge": "🎯 脳に挑戦",
+        "speed": "⚡ スピードを磨く",
+        "achievements": "🏆 実績を解除"
+      }
+    },
+    "enterArcade": {
+      "title": "🏟️ アリーナの準備はできましたか？",
+      "description": "チャンピオンを選び、戦いを選び、フルスクリーンアクションに飛び込もう！",
+      "button": "🚀 アーケードに入る",
+      "subtitle": "没入型ゲームプレイのフルスクリーン体験"
+    },
+    "champions": {
+      "title": "🏆 あなたのアーケードチャンピオン",
+      "subtitle": "進捗と実績を追跡しましょう！",
+      "stats": {
+        "gamesPlayed": "プレイしたゲーム",
+        "victories": "勝利",
+        "level": "レベル {level}",
+        "xp": "{current}/{total} 経験値"
+      }
+    },
+    "dashboard": {
+      "headToHead": {
+        "title": "🥊 一騎打ち",
+        "subtitle": "対戦記録",
+        "vs": "対",
+        "wins": "勝利",
+        "lastPlayed": "最後のプレイ: メモリーライトニング ⚡"
+      },
+      "achievements": {
+        "title": "🏆 最近の実績",
+        "subtitle": "最新の解除",
+        "firstWin": {
+          "title": "🔥 初勝利！",
+          "description": "バトルアリーナでの勝利"
+        },
+        "speedDemon": {
+          "title": "⚡ スピード魔神",
+          "description": "5秒以下の記憶"
+        }
+      },
+      "challenges": {
+        "title": "⚔️ アクティブなチャレンジ",
+        "subtitle": "友好的な競争",
+        "challengesText": "が挑戦",
+        "exampleChallenge": "私のメモリーライトニングスコアを破れ！",
+        "currentBest": "現在のベスト: {score}ポイント",
+        "createButton": "🎯 新しいチャレンジを作成"
+      }
+    },
+    "callToAction": {
+      "title": "🚀 旅を始める準備はできましたか？",
+      "description": "インタラクティブガイドから始めて、古代の計算機の秘密を解き明かしましょう！",
+      "button": "学習を開始 →"
+    }
+  }
+}

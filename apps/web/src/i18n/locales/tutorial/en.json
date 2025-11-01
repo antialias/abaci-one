@@ -91,6 +91,113 @@
       },
       "formula": "{original} becomes {expanded}",
       "devWarning": "⚠ Summary/guard mismatch: {issues}"
+    },
+    "steps": {
+      "basic-1": {
+        "title": "Basic Addition: 0 + 1",
+        "description": "Start by adding your first earth bead",
+        "actionDescription": "Click the first earth bead to move it up",
+        "tooltip": {
+          "content": "Adding earth beads",
+          "explanation": "Earth beads (bottom) are worth 1 each. Push them UP to activate them."
+        }
+      },
+      "basic-2": {
+        "title": "Basic Addition: 1 + 1",
+        "description": "Add the second earth bead to make 2",
+        "actionDescription": "Click the second earth bead to move it up",
+        "tooltip": {
+          "content": "Building up earth beads",
+          "explanation": "Continue adding earth beads one by one for numbers 2, 3, and 4"
+        }
+      },
+      "basic-3": {
+        "title": "Basic Addition: 2 + 1",
+        "description": "Add the third earth bead to make 3",
+        "actionDescription": "Click the third earth bead to move it up",
+        "tooltip": {
+          "content": "Adding earth beads in sequence",
+          "explanation": "Continue adding earth beads one by one until you reach 4"
+        }
+      },
+      "basic-4": {
+        "title": "Basic Addition: 3 + 1",
+        "description": "Add the fourth earth bead to make 4",
+        "actionDescription": "Click the fourth earth bead to complete 4",
+        "tooltip": {
+          "content": "Maximum earth beads",
+          "explanation": "Four earth beads is the maximum - next we need a different approach"
+        }
+      },
+      "heaven-intro": {
+        "title": "Heaven Bead: 0 + 5",
+        "description": "Use the heaven bead to represent 5",
+        "actionDescription": "Click the heaven bead to activate it",
+        "tooltip": {
+          "content": "Heaven bead = 5",
+          "explanation": "The single bead above the bar represents 5"
+        }
+      },
+      "heaven-plus-earth": {
+        "title": "Combining: 5 + 1",
+        "description": "Add 1 to 5 by activating one earth bead",
+        "actionDescription": "Click the first earth bead to make 6",
+        "tooltip": {
+          "content": "Heaven + Earth = 6",
+          "explanation": "When you have room in the earth section, simply add directly"
+        }
+      },
+      "complement-intro": {
+        "title": "Five Complement: 3 + 4",
+        "description": "Need to add 4, but only have 1 earth bead space. Use complement: 4 = 5 - 1",
+        "actionDescription": "First add heaven bead (5), then remove 1 earth bead",
+        "tooltip": {
+          "content": "Five Complement: 4 = 5 - 1",
+          "explanation": "When you need to add 4 but only have 1 space, use: add 5, remove 1"
+        },
+        "multiStepInstructions": [
+          "Click the heaven bead to add 5",
+          "Click the first earth bead to remove 1"
+        ]
+      },
+      "complement-2": {
+        "title": "Five Complement: 2 + 3",
+        "description": "Add 3 to make 5 by using complement: 3 = 5 - 2",
+        "actionDescription": "Add heaven bead (5), then remove 2 earth beads",
+        "tooltip": {
+          "content": "Five Complement: 3 = 5 - 2",
+          "explanation": "To add 3, think: 3 = 5 - 2, so add 5 and take away 2"
+        },
+        "multiStepInstructions": [
+          "Click the heaven bead to add 5",
+          "Click the first earth bead to remove it",
+          "Click the second earth bead to remove it"
+        ]
+      },
+      "complex-1": {
+        "title": "Complex: 6 + 2",
+        "description": "Add 2 more to 6 (which has heaven + 1 earth)",
+        "actionDescription": "Add two more earth beads",
+        "tooltip": {
+          "content": "Direct addition when possible",
+          "explanation": "When you have space in the earth section, just add directly"
+        }
+      },
+      "complex-2": {
+        "title": "Complex: 7 + 4",
+        "description": "Add 4 to 7, but no room for 4 earth beads. Use complement again",
+        "actionDescription": "Add tens heaven, then clear ones place: remove heaven + 2 earth",
+        "tooltip": {
+          "content": "Carrying to tens place",
+          "explanation": "7 + 4 = 11, which needs the tens column heaven bead"
+        },
+        "multiStepInstructions": [
+          "Click the heaven bead in the tens column (left)",
+          "Click the heaven bead in the ones column to remove it",
+          "Click the first earth bead to remove it",
+          "Click the second earth bead to remove it"
+        ]
+      }
     }
   }
 }

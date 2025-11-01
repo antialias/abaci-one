@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import React from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
@@ -10,6 +11,7 @@ import { useGameMode } from '../../contexts/GameModeContext'
 import { useUserProfile } from '../../contexts/UserProfileContext'
 
 function GamesPageContent() {
+  const t = useTranslations('games')
   const { profile } = useUserProfile()
   const { gameMode, getAllPlayers } = useGameMode()
   const { enterFullscreen } = useFullscreen()
@@ -78,7 +80,7 @@ function GamesPageContent() {
                 display: 'inline-block',
               })}
             >
-              🕹️ Soroban Arcade
+              {t('hero.title')}
             </h1>
 
             {/* Floating score indicators */}
@@ -105,7 +107,7 @@ function GamesPageContent() {
                   boxShadow: '0 4px 15px rgba(251, 191, 36, 0.3)',
                 })}
               >
-                +100 XP
+                {t('hero.xpBadge')}
               </div>
               <div
                 className={css({
@@ -123,7 +125,7 @@ function GamesPageContent() {
                   boxShadow: '0 3px 10px rgba(239, 68, 68, 0.3)',
                 })}
               >
-                STREAK!
+                {t('hero.streakBadge')}
               </div>
             </div>
           </div>
@@ -138,7 +140,7 @@ function GamesPageContent() {
               mb: '6',
             })}
           >
-            Level up your mental math powers in the most fun way possible!
+            {t('hero.subtitle')}
           </p>
 
           {/* Playful stats */}
@@ -172,7 +174,7 @@ function GamesPageContent() {
                   color: 'gray.700',
                 })}
               >
-                Challenge Your Brain
+                {t('hero.features.challenge')}
               </span>
             </div>
             <div
@@ -196,7 +198,7 @@ function GamesPageContent() {
                   color: 'gray.700',
                 })}
               >
-                Build Speed
+                {t('hero.features.speed')}
               </span>
             </div>
             <div
@@ -220,7 +222,7 @@ function GamesPageContent() {
                   color: 'gray.700',
                 })}
               >
-                Unlock Achievements
+                {t('hero.features.achievements')}
               </span>
             </div>
           </div>
@@ -272,7 +274,7 @@ function GamesPageContent() {
                   mb: '4',
                 })}
               >
-                🏟️ Ready for the Arena?
+                {t('enterArcade.title')}
               </h2>
 
               <p
@@ -284,7 +286,7 @@ function GamesPageContent() {
                   mx: 'auto',
                 })}
               >
-                Select your champions, choose your battles, and dive into full-screen arcade action!
+                {t('enterArcade.description')}
               </p>
 
               <button
@@ -348,7 +350,9 @@ function GamesPageContent() {
                   })} button-glow`}
                 />
 
-                <span className={css({ position: 'relative', zIndex: 1 })}>🚀 ENTER ARCADE</span>
+                <span className={css({ position: 'relative', zIndex: 1 })}>
+                  {t('enterArcade.button')}
+                </span>
               </button>
 
               <p
@@ -358,7 +362,7 @@ function GamesPageContent() {
                   mt: '4',
                 })}
               >
-                Full-screen experience with immersive gameplay
+                {t('enterArcade.subtitle')}
               </p>
             </div>
           </div>
@@ -384,7 +388,7 @@ function GamesPageContent() {
                 mb: '2',
               })}
             >
-              🏆 Your Arcade Champions
+              {t('champions.title')}
             </h2>
             <p
               className={css({
@@ -392,7 +396,7 @@ function GamesPageContent() {
                 fontSize: 'lg',
               })}
             >
-              Track your progress and achievements!
+              {t('champions.subtitle')}
             </p>
           </div>
 
@@ -551,7 +555,7 @@ function GamesPageContent() {
                         })}
                         style={{ color: theme.statColor }}
                       >
-                        GAMES PLAYED
+                        {t('champions.stats.gamesPlayed')}
                       </div>
                     </div>
 
@@ -581,7 +585,7 @@ function GamesPageContent() {
                           fontWeight: 'semibold',
                         })}
                       >
-                        VICTORIES
+                        {t('champions.stats.victories')}
                       </div>
                     </div>
                   </div>
@@ -607,7 +611,9 @@ function GamesPageContent() {
                         })}
                         style={{ color: theme.levelColor }}
                       >
-                        Level {Math.floor(profile.gamesPlayed / 5) + 1}
+                        {t('champions.stats.level', {
+                          level: Math.floor(profile.gamesPlayed / 5) + 1,
+                        })}
                       </span>
                       <span
                         className={css({
@@ -615,7 +621,10 @@ function GamesPageContent() {
                         })}
                         style={{ color: theme.levelColor }}
                       >
-                        {profile.gamesPlayed % 5}/5 XP
+                        {t('champions.stats.xp', {
+                          current: profile.gamesPlayed % 5,
+                          total: 5,
+                        })}
                       </span>
                     </div>
                     <div
@@ -726,7 +735,7 @@ function GamesPageContent() {
                     mb: '2',
                   })}
                 >
-                  🥊 Head-to-Head
+                  {t('dashboard.headToHead.title')}
                 </h3>
                 <p
                   className={css({
@@ -734,7 +743,7 @@ function GamesPageContent() {
                     color: 'gray.600',
                   })}
                 >
-                  Battle Record
+                  {t('dashboard.headToHead.subtitle')}
                 </p>
               </div>
 
@@ -777,7 +786,7 @@ function GamesPageContent() {
                         })}
                         style={{ color: player.color }}
                       >
-                        WINS
+                        {t('dashboard.headToHead.wins')}
                       </div>
                     </div>
 
@@ -795,7 +804,7 @@ function GamesPageContent() {
                             fontWeight: 'semibold',
                           })}
                         >
-                          VS
+                          {t('dashboard.headToHead.vs')}
                         </div>
                       </div>
                     )}
@@ -810,7 +819,7 @@ function GamesPageContent() {
                   color: 'gray.600',
                 })}
               >
-                Last played: Memory Lightning ⚡
+                {t('dashboard.headToHead.lastPlayed')}
               </div>
             </div>
 
@@ -845,7 +854,7 @@ function GamesPageContent() {
                     mb: '2',
                   })}
                 >
-                  🏆 Recent Achievements
+                  {t('dashboard.achievements.title')}
                 </h3>
                 <p
                   className={css({
@@ -853,7 +862,7 @@ function GamesPageContent() {
                     color: 'gray.600',
                   })}
                 >
-                  Latest unlocks
+                  {t('dashboard.achievements.subtitle')}
                 </p>
               </div>
 
@@ -892,7 +901,9 @@ function GamesPageContent() {
                         })}
                         style={{ color: idx === 0 ? '#92400e' : '#581c87' }}
                       >
-                        {idx === 0 ? '🔥 First Win!' : '⚡ Speed Demon'}
+                        {idx === 0
+                          ? t('dashboard.achievements.firstWin.title')
+                          : t('dashboard.achievements.speedDemon.title')}
                       </div>
                       <div
                         className={css({
@@ -900,7 +911,9 @@ function GamesPageContent() {
                         })}
                         style={{ color: idx === 0 ? '#a16207' : '#6b21a8' }}
                       >
-                        {idx === 0 ? 'Victory in Battle Arena' : 'Sub-5 second memory'}
+                        {idx === 0
+                          ? t('dashboard.achievements.firstWin.description')
+                          : t('dashboard.achievements.speedDemon.description')}
                       </div>
                     </div>
                   </div>
@@ -939,7 +952,7 @@ function GamesPageContent() {
                     mb: '2',
                   })}
                 >
-                  ⚔️ Active Challenges
+                  {t('dashboard.challenges.title')}
                 </h3>
                 <p
                   className={css({
@@ -947,7 +960,7 @@ function GamesPageContent() {
                     color: 'gray.600',
                   })}
                 >
-                  Friendly competition
+                  {t('dashboard.challenges.subtitle')}
                 </p>
               </div>
 
@@ -978,7 +991,7 @@ function GamesPageContent() {
                         fontWeight: 'semibold',
                       })}
                     >
-                      challenges
+                      {t('dashboard.challenges.challengesText')}
                     </span>
                     <span className={css({ fontSize: 'lg' })}>{allPlayers[1].emoji}</span>
                   </div>
@@ -989,7 +1002,7 @@ function GamesPageContent() {
                       fontWeight: 'medium',
                     })}
                   >
-                    "Beat my Memory Lightning score!"
+                    "{t('dashboard.challenges.exampleChallenge')}"
                   </div>
                   <div
                     className={css({
@@ -998,7 +1011,7 @@ function GamesPageContent() {
                       mt: '1',
                     })}
                   >
-                    Current best: 850 points
+                    {t('dashboard.challenges.currentBest', { score: 850 })}
                   </div>
                 </div>
               )}
@@ -1023,7 +1036,7 @@ function GamesPageContent() {
                   },
                 })}
               >
-                🎯 Create New Challenge
+                {t('dashboard.challenges.createButton')}
               </button>
             </div>
           </div>
@@ -1047,7 +1060,7 @@ function GamesPageContent() {
               mb: '4',
             })}
           >
-            🚀 Ready to Begin Your Journey?
+            {t('callToAction.title')}
           </h2>
           <p
             className={css({
@@ -1055,7 +1068,7 @@ function GamesPageContent() {
               mb: '6',
             })}
           >
-            Start with our interactive guide and unlock the secrets of the ancient calculator!
+            {t('callToAction.description')}
           </p>
           <Link
             href="/guide"
@@ -1072,7 +1085,7 @@ function GamesPageContent() {
               _hover: { bg: 'blue.700', transform: 'translateY(-1px)' },
             })}
           >
-            Start Learning →
+            {t('callToAction.button')}
           </Link>
         </div>
       </div>

@@ -1,0 +1,65 @@
+{
+  "games": {
+    "hero": {
+      "title": "🕹️ Porticus Sorobani",
+      "subtitle": "Eleva potentias calculationis mentalis modo iucundissimo!",
+      "xpBadge": "+100 EP",
+      "streakBadge": "SERIES!",
+      "features": {
+        "challenge": "🎯 Provoca Mentem Tuam",
+        "speed": "⚡ Celerita Aedifica",
+        "achievements": "🏆 Res Gestas Resera"
+      }
+    },
+    "enterArcade": {
+      "title": "🏟️ Paratus es ad Arenam?",
+      "description": "Elige campiones tuos, certamina tua elige, et immergere in actionem porticis pleni visus!",
+      "button": "🚀 INTRA PORTICUM",
+      "subtitle": "Experientia pleni visus cum ludo immersivo"
+    },
+    "champions": {
+      "title": "🏆 Campiones Tui Porticis",
+      "subtitle": "Sequere progressum et res gestas tuas!",
+      "stats": {
+        "gamesPlayed": "LUDI ACTI",
+        "victories": "VICTORIAE",
+        "level": "Gradus {level}",
+        "xp": "{current}/{total} EP"
+      }
+    },
+    "dashboard": {
+      "headToHead": {
+        "title": "🥊 Caput ad Caput",
+        "subtitle": "Acta Certaminum",
+        "vs": "CONTRA",
+        "wins": "VICTORIAE",
+        "lastPlayed": "Ultimum lusum: Memoria Fulminis ⚡"
+      },
+      "achievements": {
+        "title": "🏆 Res Gestae Recentes",
+        "subtitle": "Novissime reserata",
+        "firstWin": {
+          "title": "🔥 Prima Victoria!",
+          "description": "Victoria in Arena Pugnae"
+        },
+        "speedDemon": {
+          "title": "⚡ Daemon Celeritatis",
+          "description": "Memoria sub 5 secundis"
+        }
+      },
+      "challenges": {
+        "title": "⚔️ Provocationes Activae",
+        "subtitle": "Contentio amica",
+        "challengesText": "provocat",
+        "exampleChallenge": "Supera puncta mea Memoriae Fulminis!",
+        "currentBest": "Optimum nunc: {score} puncta",
+        "createButton": "🎯 Crea Provocationem Novam"
+      }
+    },
+    "callToAction": {
+      "title": "🚀 Paratus Incipere Iter Tuum?",
+      "description": "Incipe cum duce nostro interactivo et resera arcana calculatoris antiqui!",
+      "button": "Incipe Discere →"
+    }
+  }
+}

@@ -91,6 +91,113 @@
       },
       "formula": "{original} wird zu {expanded}",
       "devWarning": "⚠ Zusammenfassung/Wächter stimmen nicht überein: {issues}"
+    },
+    "steps": {
+      "basic-1": {
+        "title": "Grundlegende Addition: 0 + 1",
+        "description": "Beginne, indem du deine erste Erdperle hinzufügst",
+        "actionDescription": "Klicke auf die erste Erdperle, um sie nach oben zu bewegen",
+        "tooltip": {
+          "content": "Erdperlen hinzufügen",
+          "explanation": "Erdperlen (unten) sind jeweils 1 wert. Schiebe sie NACH OBEN, um sie zu aktivieren."
+        }
+      },
+      "basic-2": {
+        "title": "Grundlegende Addition: 1 + 1",
+        "description": "Füge die zweite Erdperle hinzu, um 2 zu erhalten",
+        "actionDescription": "Klicke auf die zweite Erdperle, um sie nach oben zu bewegen",
+        "tooltip": {
+          "content": "Erdperlen aufbauen",
+          "explanation": "Füge Erdperlen nacheinander für die Zahlen 2, 3 und 4 hinzu"
+        }
+      },
+      "basic-3": {
+        "title": "Grundlegende Addition: 2 + 1",
+        "description": "Füge die dritte Erdperle hinzu, um 3 zu erhalten",
+        "actionDescription": "Klicke auf die dritte Erdperle, um sie nach oben zu bewegen",
+        "tooltip": {
+          "content": "Erdperlen der Reihe nach hinzufügen",
+          "explanation": "Füge Erdperlen nacheinander hinzu, bis du 4 erreichst"
+        }
+      },
+      "basic-4": {
+        "title": "Grundlegende Addition: 3 + 1",
+        "description": "Füge die vierte Erdperle hinzu, um 4 zu erhalten",
+        "actionDescription": "Klicke auf die vierte Erdperle, um 4 zu vervollständigen",
+        "tooltip": {
+          "content": "Maximale Erdperlen",
+          "explanation": "Vier Erdperlen sind das Maximum - als nächstes brauchen wir einen anderen Ansatz"
+        }
+      },
+      "heaven-intro": {
+        "title": "Himmelsperle: 0 + 5",
+        "description": "Verwende die Himmelsperle, um 5 darzustellen",
+        "actionDescription": "Klicke auf die Himmelsperle, um sie zu aktivieren",
+        "tooltip": {
+          "content": "Himmelsperle = 5",
+          "explanation": "Die einzelne Perle über dem Stab stellt 5 dar"
+        }
+      },
+      "heaven-plus-earth": {
+        "title": "Kombination: 5 + 1",
+        "description": "Addiere 1 zu 5, indem du eine Erdperle aktivierst",
+        "actionDescription": "Klicke auf die erste Erdperle, um 6 zu erhalten",
+        "tooltip": {
+          "content": "Himmel + Erde = 6",
+          "explanation": "Wenn du Platz im Erdbereich hast, füge einfach direkt hinzu"
+        }
+      },
+      "complement-intro": {
+        "title": "Fünferkomplement: 3 + 4",
+        "description": "Du musst 4 addieren, hast aber nur 1 Erdperlenplatz. Verwende Komplement: 4 = 5 - 1",
+        "actionDescription": "Füge zuerst die Himmelsperle (5) hinzu, dann entferne 1 Erdperle",
+        "tooltip": {
+          "content": "Fünferkomplement: 4 = 5 - 1",
+          "explanation": "Wenn du 4 addieren musst, aber nur 1 Platz hast, verwende: addiere 5, entferne 1"
+        },
+        "multiStepInstructions": [
+          "Klicke auf die Himmelsperle, um 5 hinzuzufügen",
+          "Klicke auf die erste Erdperle, um 1 zu entfernen"
+        ]
+      },
+      "complement-2": {
+        "title": "Fünferkomplement: 2 + 3",
+        "description": "Addiere 3, um 5 zu erhalten, indem du das Komplement verwendest: 3 = 5 - 2",
+        "actionDescription": "Füge die Himmelsperle (5) hinzu, dann entferne 2 Erdperlen",
+        "tooltip": {
+          "content": "Fünferkomplement: 3 = 5 - 2",
+          "explanation": "Um 3 zu addieren, denke: 3 = 5 - 2, also addiere 5 und nimm 2 weg"
+        },
+        "multiStepInstructions": [
+          "Klicke auf die Himmelsperle, um 5 hinzuzufügen",
+          "Klicke auf die erste Erdperle, um sie zu entfernen",
+          "Klicke auf die zweite Erdperle, um sie zu entfernen"
+        ]
+      },
+      "complex-1": {
+        "title": "Komplex: 6 + 2",
+        "description": "Addiere 2 weitere zu 6 (das Himmel + 1 Erde hat)",
+        "actionDescription": "Füge zwei weitere Erdperlen hinzu",
+        "tooltip": {
+          "content": "Direkte Addition, wenn möglich",
+          "explanation": "Wenn du Platz im Erdbereich hast, füge einfach direkt hinzu"
+        }
+      },
+      "complex-2": {
+        "title": "Komplex: 7 + 4",
+        "description": "Addiere 4 zu 7, aber kein Platz für 4 Erdperlen. Verwende wieder Komplement",
+        "actionDescription": "Füge Zehnerhimmel hinzu, dann leere die Einerstelle: entferne Himmel + 2 Erde",
+        "tooltip": {
+          "content": "Übertrag zur Zehnerstelle",
+          "explanation": "7 + 4 = 11, das benötigt die Himmelsperle der Zehnerspalte"
+        },
+        "multiStepInstructions": [
+          "Klicke auf die Himmelsperle in der Zehnerspalte (links)",
+          "Klicke auf die Himmelsperle in der Einerspalte, um sie zu entfernen",
+          "Klicke auf die erste Erdperle, um sie zu entfernen",
+          "Klicke auf die zweite Erdperle, um sie zu entfernen"
+        ]
+      }
     }
   }
 }

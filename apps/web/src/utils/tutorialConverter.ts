@@ -1,5 +1,6 @@
 // Utility to extract and convert the existing GuidedAdditionTutorial data
 import type { Tutorial } from '../types/tutorial'
+import type { Locale } from '../i18n/messages'
 import { generateAbacusInstructions } from './abacusInstructionGenerator'
 
 // Import the existing tutorial step interface to match the current structure
@@ -217,25 +218,34 @@ export const guidedAdditionSteps: ExistingTutorialStep[] = [
 ]
 
 // Convert the existing tutorial format to our new format
-export function convertGuidedAdditionTutorial(): Tutorial {
+export function convertGuidedAdditionTutorial(tutorialMessages: Record<string, any>): Tutorial {
   // Convert existing static steps to progressive step data
   const convertedSteps = guidedAdditionSteps.map((step) => {
     // Generate progressive instruction data
     const generatedInstruction = generateAbacusInstructions(step.startValue, step.targetValue)
 
-    // Progressive instruction data generated successfully
+    // Get translated strings for this step
+    const stepTranslations = tutorialMessages.steps?.[step.id] || {}
 
     return {
       ...step,
+      // Use translated strings if available, otherwise keep original
+      title: stepTranslations.title || step.title,
+      description: stepTranslations.description || step.description,
+      actionDescription: generatedInstruction.actionDescription, // Keep generated for now
+      tooltip: {
+        content: stepTranslations.tooltip?.content || step.tooltip.content,
+        explanation: stepTranslations.tooltip?.explanation || step.tooltip.explanation,
+      },
+      multiStepInstructions:
+        stepTranslations.multiStepInstructions ||
+        step.multiStepInstructions ||
+        generatedInstruction.multiStepInstructions,
       // Override with generated step-based highlighting and instructions
       stepBeadHighlights: generatedInstruction.stepBeadHighlights,
       totalSteps: generatedInstruction.totalSteps,
-      // Keep existing multi-step instructions if available, otherwise use generated ones
-      multiStepInstructions:
-        step.multiStepInstructions || generatedInstruction.multiStepInstructions,
       // Update action description if multi-step was generated
       expectedAction: generatedInstruction.expectedAction,
-      actionDescription: generatedInstruction.actionDescription,
     }
   })
 
@@ -271,14 +281,14 @@ export function convertGuidedAdditionTutorial(): Tutorial {
 }
 
 // Helper to validate that the existing tutorial steps work with our new interfaces
-export function validateTutorialConversion(): {
+export function validateTutorialConversion(tutorialMessages: Record<string, any>): {
   isValid: boolean
   errors: string[]
 } {
   const errors: string[] = []
 
   try {
-    const tutorial = convertGuidedAdditionTutorial()
+    const tutorial = convertGuidedAdditionTutorial(tutorialMessages)
 
     // Basic validation
     if (!tutorial.id || !tutorial.title || !tutorial.steps.length) {
@@ -319,12 +329,12 @@ export function validateTutorialConversion(): {
 }
 
 // Helper to export tutorial data for use in the editor
-export function getTutorialForEditor(): Tutorial {
-  const validation = validateTutorialConversion()
+export function getTutorialForEditor(tutorialMessages: Record<string, any>): Tutorial {
+  const validation = validateTutorialConversion(tutorialMessages)
 
   if (!validation.isValid) {
     console.warn('Tutorial validation errors:', validation.errors)
   }
 
-  return convertGuidedAdditionTutorial()
+  return convertGuidedAdditionTutorial(tutorialMessages)
 }

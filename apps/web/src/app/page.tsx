@@ -76,8 +76,9 @@ function MiniAbacus({
 
 export default function HomePage() {
   const t = useTranslations('home')
+  const tutorialT = useTranslations('tutorial')
   const [selectedSkillIndex, setSelectedSkillIndex] = useState(1) // Default to "Friends techniques"
-  const fullTutorial = getTutorialForEditor()
+  const fullTutorial = getTutorialForEditor(tutorialT.raw(''))
 
   // Create different tutorials for each skill level
   const skillTutorials = [

@@ -91,6 +91,113 @@
       },
       "formula": "{original} は {expanded} になる",
       "devWarning": "⚠ 要約とガードが一致しません: {issues}"
+    },
+    "steps": {
+      "basic-1": {
+        "title": "基本的な足し算：0 + 1",
+        "description": "最初の地珠を入れてみましょう",
+        "actionDescription": "最初の地珠をクリックして上に動かします",
+        "tooltip": {
+          "content": "地珠を入れる",
+          "explanation": "地珠（下の珠）は1つで1を表します。上に上げて有効にします。"
+        }
+      },
+      "basic-2": {
+        "title": "基本的な足し算：1 + 1",
+        "description": "2つ目の地珠を入れて2を作ります",
+        "actionDescription": "2つ目の地珠をクリックして上に動かします",
+        "tooltip": {
+          "content": "地珠を積み上げる",
+          "explanation": "2、3、4の数字のために地珠を1つずつ入れていきます"
+        }
+      },
+      "basic-3": {
+        "title": "基本的な足し算：2 + 1",
+        "description": "3つ目の地珠を入れて3を作ります",
+        "actionDescription": "3つ目の地珠をクリックして上に動かします",
+        "tooltip": {
+          "content": "地珠を順番に入れる",
+          "explanation": "4になるまで地珠を1つずつ入れていきます"
+        }
+      },
+      "basic-4": {
+        "title": "基本的な足し算：3 + 1",
+        "description": "4つ目の地珠を入れて4を作ります",
+        "actionDescription": "4つ目の地珠をクリックして4を完成させます",
+        "tooltip": {
+          "content": "地珠の最大値",
+          "explanation": "4つの地珠が最大です。次は別の方法が必要です"
+        }
+      },
+      "heaven-intro": {
+        "title": "天珠：0 + 5",
+        "description": "天珠を使って5を表します",
+        "actionDescription": "天珠をクリックして有効にします",
+        "tooltip": {
+          "content": "天珠 = 5",
+          "explanation": "桁の上にある1つの珠は5を表します"
+        }
+      },
+      "heaven-plus-earth": {
+        "title": "組み合わせ：5 + 1",
+        "description": "地珠を1つ入れて5に1を足します",
+        "actionDescription": "最初の地珠をクリックして6を作ります",
+        "tooltip": {
+          "content": "天 + 地 = 6",
+          "explanation": "地珠の欄に空きがあれば、そのまま足します"
+        }
+      },
+      "complement-intro": {
+        "title": "五の補数：3 + 4",
+        "description": "4を足したいが地珠の空きは1つだけ。補数を使います：4 = 5 - 1",
+        "actionDescription": "まず天珠（5）を入れて、それから地珠を1つ外します",
+        "tooltip": {
+          "content": "五の補数：4 = 5 - 1",
+          "explanation": "4を足したいが空きが1つの時は、5を足して1を引きます"
+        },
+        "multiStepInstructions": [
+          "天珠をクリックして5を足します",
+          "最初の地珠をクリックして1を引きます"
+        ]
+      },
+      "complement-2": {
+        "title": "五の補数：2 + 3",
+        "description": "補数を使って3を足して5にします：3 = 5 - 2",
+        "actionDescription": "天珠（5）を入れて、それから地珠を2つ外します",
+        "tooltip": {
+          "content": "五の補数：3 = 5 - 2",
+          "explanation": "3を足すには、3 = 5 - 2と考えて、5を足して2を引きます"
+        },
+        "multiStepInstructions": [
+          "天珠をクリックして5を足します",
+          "最初の地珠をクリックして外します",
+          "2つ目の地珠をクリックして外します"
+        ]
+      },
+      "complex-1": {
+        "title": "複雑：6 + 2",
+        "description": "6（天珠 + 地珠1つ）に2を足します",
+        "actionDescription": "地珠を2つ追加します",
+        "tooltip": {
+          "content": "可能なら直接足す",
+          "explanation": "地珠の欄に空きがあれば、そのまま足します"
+        }
+      },
+      "complex-2": {
+        "title": "複雑：7 + 4",
+        "description": "7に4を足すが、地珠の空きは4つありません。再び補数を使います",
+        "actionDescription": "十の位の天珠を入れて、一の位をクリア：天珠と地珠2つを外します",
+        "tooltip": {
+          "content": "十の位への繰り上がり",
+          "explanation": "7 + 4 = 11なので、十の位の天珠が必要です"
+        },
+        "multiStepInstructions": [
+          "十の位（左）の天珠をクリックします",
+          "一の位の天珠をクリックして外します",
+          "最初の地珠をクリックして外します",
+          "2つ目の地珠をクリックして外します"
+        ]
+      }
     }
   }
 }

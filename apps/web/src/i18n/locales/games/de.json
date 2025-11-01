@@ -1,0 +1,65 @@
+{
+  "games": {
+    "hero": {
+      "title": "🕹️ Soroban Spielhalle",
+      "subtitle": "Verbessern Sie Ihre mentalen Mathematikfähigkeiten auf die unterhaltsamste Weise!",
+      "xpBadge": "+100 EP",
+      "streakBadge": "SERIE!",
+      "features": {
+        "challenge": "🎯 Fordern Sie Ihr Gehirn heraus",
+        "speed": "⚡ Geschwindigkeit aufbauen",
+        "achievements": "🏆 Erfolge freischalten"
+      }
+    },
+    "enterArcade": {
+      "title": "🏟️ Bereit für die Arena?",
+      "description": "Wählen Sie Ihre Champions, wählen Sie Ihre Kämpfe und tauchen Sie ein in Vollbild-Action!",
+      "button": "🚀 SPIELHALLE BETRETEN",
+      "subtitle": "Vollbild-Erlebnis mit immersivem Gameplay"
+    },
+    "champions": {
+      "title": "🏆 Ihre Spielhallen-Champions",
+      "subtitle": "Verfolgen Sie Ihren Fortschritt und Ihre Erfolge!",
+      "stats": {
+        "gamesPlayed": "GESPIELTE SPIELE",
+        "victories": "SIEGE",
+        "level": "Stufe {level}",
+        "xp": "{current}/{total} EP"
+      }
+    },
+    "dashboard": {
+      "headToHead": {
+        "title": "🥊 Kopf-an-Kopf",
+        "subtitle": "Kampfbilanz",
+        "vs": "GEGEN",
+        "wins": "SIEGE",
+        "lastPlayed": "Zuletzt gespielt: Memory Blitz ⚡"
+      },
+      "achievements": {
+        "title": "🏆 Neueste Erfolge",
+        "subtitle": "Neueste Freischaltungen",
+        "firstWin": {
+          "title": "🔥 Erster Sieg!",
+          "description": "Sieg in der Kampfarena"
+        },
+        "speedDemon": {
+          "title": "⚡ Geschwindigkeitsdämon",
+          "description": "Unter 5 Sekunden Gedächtnis"
+        }
+      },
+      "challenges": {
+        "title": "⚔️ Aktive Herausforderungen",
+        "subtitle": "Freundschaftlicher Wettbewerb",
+        "challengesText": "fordert heraus",
+        "exampleChallenge": "Schlagen Sie meinen Memory Blitz-Rekord!",
+        "currentBest": "Aktueller Bestwert: {score} Punkte",
+        "createButton": "🎯 Neue Herausforderung erstellen"
+      }
+    },
+    "callToAction": {
+      "title": "🚀 Bereit, Ihre Reise zu beginnen?",
+      "description": "Beginnen Sie mit unserem interaktiven Leitfaden und enthüllen Sie die Geheimnisse des antiken Rechners!",
+      "button": "Lernen beginnen →"
+    }
+  }
+}
