@@ -2,11 +2,13 @@
 
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../styled-system/css'
 import { grid, hstack, stack } from '../../../../styled-system/patterns'
 
 export function ReadingNumbersGuide() {
   const appConfig = useAbacusConfig()
+  const t = useTranslations('guide.reading')
 
   return (
     <div className={stack({ gap: '12' })}>
@@ -20,7 +22,7 @@ export function ReadingNumbersGuide() {
             mb: '4',
           })}
         >
-          🔍 Learning to Read Soroban Numbers
+          {t('title')}
         </h2>
         <p
           className={css({
@@ -31,8 +33,7 @@ export function ReadingNumbersGuide() {
             lineHeight: 'relaxed',
           })}
         >
-          Master the fundamentals of reading numbers on the soroban with step-by-step visual
-          tutorials
+          {t('subtitle')}
         </p>
       </div>
 
@@ -61,7 +62,7 @@ export function ReadingNumbersGuide() {
                 fontSize: 'lg',
               })}
             >
-              1
+              {t('structure.number')}
             </div>
             <h3
               className={css({
@@ -70,7 +71,7 @@ export function ReadingNumbersGuide() {
                 color: 'gray.900',
               })}
             >
-              Understanding the Structure
+              {t('structure.title')}
             </h3>
           </div>
 
@@ -82,8 +83,7 @@ export function ReadingNumbersGuide() {
                 lineHeight: 'relaxed',
               })}
             >
-              The soroban consists of two main sections divided by a horizontal bar. Understanding
-              this structure is fundamental to reading any number.
+              {t('structure.description')}
             </p>
 
             <div className={grid({ columns: { base: 1, md: 2 }, gap: '8' })}>
@@ -104,7 +104,7 @@ export function ReadingNumbersGuide() {
                     mb: '3',
                   })}
                 >
-                  🌅 Heaven Beads (Top)
+                  {t('structure.heaven.title')}
                 </h4>
                 <ul
                   className={css({
@@ -114,10 +114,11 @@ export function ReadingNumbersGuide() {
                     pl: '4',
                   })}
                 >
-                  <li className={css({ mb: '2' })}>• Located above the horizontal bar</li>
-                  <li className={css({ mb: '2' })}>• Each bead represents 5</li>
-                  <li className={css({ mb: '2' })}>• Only one bead per column</li>
-                  <li>• When pushed down = active/counted</li>
+                  {(t.raw('structure.heaven.points') as string[]).map((point, i) => (
+                    <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                      • {point}
+                    </li>
+                  ))}
                 </ul>
               </div>
 
@@ -138,7 +139,7 @@ export function ReadingNumbersGuide() {
                     mb: '3',
                   })}
                 >
-                  🌍 Earth Beads (Bottom)
+                  {t('structure.earth.title')}
                 </h4>
                 <ul
                   className={css({
@@ -148,10 +149,11 @@ export function ReadingNumbersGuide() {
                     pl: '4',
                   })}
                 >
-                  <li className={css({ mb: '2' })}>• Located below the horizontal bar</li>
-                  <li className={css({ mb: '2' })}>• Each bead represents 1</li>
-                  <li className={css({ mb: '2' })}>• Four beads per column</li>
-                  <li>• When pushed up = active/counted</li>
+                  {(t.raw('structure.earth.points') as string[]).map((point, i) => (
+                    <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                      • {point}
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -173,7 +175,7 @@ export function ReadingNumbersGuide() {
                   fontWeight: 'medium',
                 })}
               >
-                💡 Key Concept: Active beads are those touching the horizontal bar
+                {t('structure.keyConcept')}
               </p>
             </div>
           </div>
@@ -205,7 +207,7 @@ export function ReadingNumbersGuide() {
                 fontSize: 'lg',
               })}
             >
-              2
+              {t('singleDigits.number')}
             </div>
             <h3
               className={css({
@@ -214,7 +216,7 @@ export function ReadingNumbersGuide() {
                 color: 'gray.900',
               })}
             >
-              Reading Single Digits (1-9)
+              {t('singleDigits.title')}
             </h3>
           </div>
 
@@ -225,17 +227,16 @@ export function ReadingNumbersGuide() {
               lineHeight: 'relaxed',
             })}
           >
-            Let's learn to read single digits by understanding how heaven and earth beads combine to
-            represent numbers 1 through 9.
+            {t('singleDigits.description')}
           </p>
 
           <div className={grid({ columns: { base: 1, lg: 5 }, gap: '6' })}>
             {[
-              { num: 0, desc: 'No beads active - all away from bar' },
-              { num: 1, desc: 'One earth bead pushed up' },
-              { num: 3, desc: 'Three earth beads pushed up' },
-              { num: 5, desc: 'Heaven bead pushed down' },
-              { num: 7, desc: 'Heaven bead + two earth beads' },
+              { num: 0, descKey: '0' },
+              { num: 1, descKey: '1' },
+              { num: 3, descKey: '3' },
+              { num: 5, descKey: '5' },
+              { num: 7, descKey: '7' },
             ].map((example) => (
               <div
                 key={example.num}
@@ -301,7 +302,7 @@ export function ReadingNumbersGuide() {
                     mt: 'auto',
                   })}
                 >
-                  {example.desc}
+                  {t(`singleDigits.examples.${example.descKey}`)}
                 </p>
               </div>
             ))}
@@ -334,7 +335,7 @@ export function ReadingNumbersGuide() {
                 fontSize: 'lg',
               })}
             >
-              3
+              {t('multiDigit.number')}
             </div>
             <h3
               className={css({
@@ -343,7 +344,7 @@ export function ReadingNumbersGuide() {
                 color: 'gray.900',
               })}
             >
-              Multi-Digit Numbers
+              {t('multiDigit.title')}
             </h3>
           </div>
 
@@ -354,8 +355,7 @@ export function ReadingNumbersGuide() {
               lineHeight: 'relaxed',
             })}
           >
-            Reading larger numbers is simply a matter of reading each column from left to right,
-            with each column representing a different place value.
+            {t('multiDigit.description')}
           </p>
 
           <div
@@ -376,7 +376,7 @@ export function ReadingNumbersGuide() {
                 textAlign: 'center',
               })}
             >
-              📍 Reading Direction & Place Values
+              {t('multiDigit.readingDirection.title')}
             </h4>
             <div className={grid({ columns: { base: 1, md: 2 }, gap: '6' })}>
               <div>
@@ -387,7 +387,7 @@ export function ReadingNumbersGuide() {
                     color: 'purple.800',
                   })}
                 >
-                  Reading Order:
+                  {t('multiDigit.readingDirection.readingOrder.title')}
                 </h5>
                 <ul
                   className={css({
@@ -396,9 +396,13 @@ export function ReadingNumbersGuide() {
                     pl: '4',
                   })}
                 >
-                  <li className={css({ mb: '1' })}>• Always read from LEFT to RIGHT</li>
-                  <li className={css({ mb: '1' })}>• Each column is one digit</li>
-                  <li>• Combine digits to form the complete number</li>
+                  {(t.raw('multiDigit.readingDirection.readingOrder.points') as string[]).map(
+                    (point, i) => (
+                      <li key={i} className={css({ mb: i < 2 ? '1' : '0' })}>
+                        • {point}
+                      </li>
+                    )
+                  )}
                 </ul>
               </div>
               <div>
@@ -409,7 +413,7 @@ export function ReadingNumbersGuide() {
                     color: 'purple.800',
                   })}
                 >
-                  Place Values:
+                  {t('multiDigit.readingDirection.placeValues.title')}
                 </h5>
                 <ul
                   className={css({
@@ -418,9 +422,13 @@ export function ReadingNumbersGuide() {
                     pl: '4',
                   })}
                 >
-                  <li className={css({ mb: '1' })}>• Rightmost = Ones (1s)</li>
-                  <li className={css({ mb: '1' })}>• Next left = Tens (10s)</li>
-                  <li>• Continue for hundreds, thousands, etc.</li>
+                  {(t.raw('multiDigit.readingDirection.placeValues.points') as string[]).map(
+                    (point, i) => (
+                      <li key={i} className={css({ mb: i < 2 ? '1' : '0' })}>
+                        • {point}
+                      </li>
+                    )
+                  )}
                 </ul>
               </div>
             </div>
@@ -445,20 +453,14 @@ export function ReadingNumbersGuide() {
                 textAlign: 'center',
               })}
             >
-              🔢 Multi-Digit Examples
+              {t('multiDigit.examples.title')}
             </h4>
 
             <div className={grid({ columns: { base: 1, md: 3 }, gap: '8' })}>
               {[
-                {
-                  num: 23,
-                  desc: 'Two-digit: 2 in tens place + 3 in ones place',
-                },
-                {
-                  num: 58,
-                  desc: 'Heaven bead in tens (5) + heaven + earth beads in ones (8)',
-                },
-                { num: 147, desc: 'Three-digit: 1 hundred + 4 tens + 7 ones' },
+                { num: 23, descKey: '23' },
+                { num: 58, descKey: '58' },
+                { num: 147, descKey: '147' },
               ].map((example) => (
                 <div
                   key={example.num}
@@ -523,7 +525,7 @@ export function ReadingNumbersGuide() {
                       textAlign: 'center',
                     })}
                   >
-                    {example.desc}
+                    {t(`multiDigit.examples.${example.descKey}`)}
                   </p>
                 </div>
               ))}
@@ -557,7 +559,7 @@ export function ReadingNumbersGuide() {
                 fontSize: 'lg',
               })}
             >
-              4
+              {t('practice.number')}
             </div>
             <h3
               className={css({
@@ -566,7 +568,7 @@ export function ReadingNumbersGuide() {
                 color: 'gray.900',
               })}
             >
-              Practice Strategy
+              {t('practice.title')}
             </h3>
           </div>
 
@@ -588,7 +590,7 @@ export function ReadingNumbersGuide() {
                   mb: '4',
                 })}
               >
-                🎯 Learning Tips
+                {t('practice.learningTips.title')}
               </h4>
               <ul
                 className={css({
@@ -598,12 +600,11 @@ export function ReadingNumbersGuide() {
                   pl: '4',
                 })}
               >
-                <li className={css({ mb: '2' })}>• Start with single digits (0-9)</li>
-                <li className={css({ mb: '2' })}>
-                  • Practice identifying active vs. inactive beads
-                </li>
-                <li className={css({ mb: '2' })}>• Work on speed recognition</li>
-                <li>• Progress to multi-digit numbers gradually</li>
+                {(t.raw('practice.learningTips.points') as string[]).map((point, i) => (
+                  <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                    • {point}
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -624,7 +625,7 @@ export function ReadingNumbersGuide() {
                   mb: '4',
                 })}
               >
-                ⚡ Quick Recognition
+                {t('practice.quickRecognition.title')}
               </h4>
               <ul
                 className={css({
@@ -634,10 +635,11 @@ export function ReadingNumbersGuide() {
                   pl: '4',
                 })}
               >
-                <li className={css({ mb: '2' })}>• Numbers 1-4: Only earth beads</li>
-                <li className={css({ mb: '2' })}>• Number 5: Only heaven bead</li>
-                <li className={css({ mb: '2' })}>• Numbers 6-9: Heaven + earth beads</li>
-                <li>• Zero: All beads away from bar</li>
+                {(t.raw('practice.quickRecognition.points') as string[]).map((point, i) => (
+                  <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                    • {point}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
@@ -658,7 +660,7 @@ export function ReadingNumbersGuide() {
                 mb: '3',
               })}
             >
-              🚀 Ready to Practice?
+              {t('practice.readyToPractice.title')}
             </h4>
             <p
               className={css({
@@ -666,7 +668,7 @@ export function ReadingNumbersGuide() {
                 opacity: '0.9',
               })}
             >
-              Test your newfound knowledge with interactive flashcards
+              {t('practice.readyToPractice.description')}
             </p>
             <Link
               href="/create"
@@ -683,7 +685,7 @@ export function ReadingNumbersGuide() {
                 _hover: { transform: 'translateY(-1px)', shadow: 'lg' },
               })}
             >
-              Create Practice Flashcards →
+              {t('practice.readyToPractice.button')}
             </Link>
           </div>
         </div>
@@ -714,7 +716,7 @@ export function ReadingNumbersGuide() {
                 fontSize: 'lg',
               })}
             >
-              5
+              {t('interactive.number')}
             </div>
             <h3
               className={css({
@@ -723,7 +725,7 @@ export function ReadingNumbersGuide() {
                 color: 'gray.900',
               })}
             >
-              Interactive Practice
+              {t('interactive.title')}
             </h3>
           </div>
 
@@ -734,8 +736,7 @@ export function ReadingNumbersGuide() {
               lineHeight: 'relaxed',
             })}
           >
-            Try the interactive abacus below! Click on the beads to activate them and watch the
-            number change in real-time.
+            {t('interactive.description')}
           </p>
 
           <div
@@ -756,7 +757,7 @@ export function ReadingNumbersGuide() {
                 textAlign: 'center',
               })}
             >
-              🎮 How to Use the Interactive Abacus
+              {t('interactive.howToUse.title')}
             </h4>
             <div className={grid({ columns: { base: 1, md: 2 }, gap: '6' })}>
               <div>
@@ -767,7 +768,7 @@ export function ReadingNumbersGuide() {
                     color: 'orange.800',
                   })}
                 >
-                  Heaven Beads (Top):
+                  {t('interactive.howToUse.heaven.title')}
                 </h5>
                 <ul
                   className={css({
@@ -776,9 +777,11 @@ export function ReadingNumbersGuide() {
                     pl: '4',
                   })}
                 >
-                  <li className={css({ mb: '1' })}>• Worth 5 points each</li>
-                  <li className={css({ mb: '1' })}>• Click to toggle on/off</li>
-                  <li>• Blue when active, gray when inactive</li>
+                  {(t.raw('interactive.howToUse.heaven.points') as string[]).map((point, i) => (
+                    <li key={i} className={css({ mb: i < 2 ? '1' : '0' })}>
+                      • {point}
+                    </li>
+                  ))}
                 </ul>
               </div>
               <div>
@@ -789,7 +792,7 @@ export function ReadingNumbersGuide() {
                     color: 'orange.800',
                   })}
                 >
-                  Earth Beads (Bottom):
+                  {t('interactive.howToUse.earth.title')}
                 </h5>
                 <ul
                   className={css({
@@ -798,9 +801,11 @@ export function ReadingNumbersGuide() {
                     pl: '4',
                   })}
                 >
-                  <li className={css({ mb: '1' })}>• Worth 1 point each</li>
-                  <li className={css({ mb: '1' })}>• Click to activate groups</li>
-                  <li>• Green when active, gray when inactive</li>
+                  {(t.raw('interactive.howToUse.earth.points') as string[]).map((point, i) => (
+                    <li key={i} className={css({ mb: i < 2 ? '1' : '0' })}>
+                      • {point}
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -849,7 +854,7 @@ export function ReadingNumbersGuide() {
                 mb: '3',
               })}
             >
-              🚀 Ready to Practice?
+              {t('interactive.readyToPractice.title')}
             </h4>
             <p
               className={css({
@@ -857,7 +862,7 @@ export function ReadingNumbersGuide() {
                 opacity: '0.9',
               })}
             >
-              Test your newfound knowledge with interactive flashcards
+              {t('interactive.readyToPractice.description')}
             </p>
             <Link
               href="/create"
@@ -874,7 +879,7 @@ export function ReadingNumbersGuide() {
                 _hover: { transform: 'translateY(-1px)', shadow: 'lg' },
               })}
             >
-              Create Practice Flashcards →
+              {t('interactive.readyToPractice.button')}
             </Link>
           </div>
         </div>

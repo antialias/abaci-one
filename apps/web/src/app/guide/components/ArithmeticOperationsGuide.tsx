@@ -2,7 +2,7 @@
 
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import Link from 'next/link'
-import { useMessages } from 'next-intl'
+import { useMessages, useTranslations } from 'next-intl'
 import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
 import { getTutorialForEditor } from '@/utils/tutorialConverter'
 import { css } from '../../../../styled-system/css'
@@ -11,6 +11,7 @@ import { grid } from '../../../../styled-system/patterns'
 export function ArithmeticOperationsGuide() {
   const appConfig = useAbacusConfig()
   const messages = useMessages() as any
+  const t = useTranslations('guide.arithmetic')
 
   return (
     <div className={css({ maxW: '4xl', mx: 'auto' })}>
@@ -33,7 +34,7 @@ export function ArithmeticOperationsGuide() {
             mb: '4',
           })}
         >
-          🧮 Arithmetic Operations
+          {t('title')}
         </h2>
         <p
           className={css({
@@ -41,7 +42,7 @@ export function ArithmeticOperationsGuide() {
             opacity: '0.9',
           })}
         >
-          Master addition, subtraction, multiplication, and division on the soroban
+          {t('subtitle')}
         </p>
       </div>
 
@@ -68,13 +69,10 @@ export function ArithmeticOperationsGuide() {
             gap: '2',
           })}
         >
-          <span>➕</span> Addition
+          {t('addition.title')}
         </h3>
 
-        <p className={css({ mb: '6', color: 'gray.700' })}>
-          Addition on the soroban follows the principle of moving beads toward the bar to increase
-          values.
-        </p>
+        <p className={css({ mb: '6', color: 'gray.700' })}>{t('addition.description')}</p>
 
         <div className={css({ mb: '6' })}>
           <h4
@@ -85,7 +83,7 @@ export function ArithmeticOperationsGuide() {
               color: 'green.600',
             })}
           >
-            Basic Steps:
+            {t('addition.basicSteps.title')}
           </h4>
           <ol
             className={css({
@@ -94,12 +92,11 @@ export function ArithmeticOperationsGuide() {
               color: 'gray.700',
             })}
           >
-            <li className={css({ mb: '2' })}>1. Set the first number on the soroban</li>
-            <li className={css({ mb: '2' })}>
-              2. Add the second number by moving beads toward the bar
-            </li>
-            <li className={css({ mb: '2' })}>3. Handle carries when a column exceeds 9</li>
-            <li>4. Read the final result</li>
+            {(t.raw('addition.basicSteps.steps') as string[]).map((step, i) => (
+              <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                {i + 1}. {step}
+              </li>
+            ))}
           </ol>
         </div>
 
@@ -120,11 +117,13 @@ export function ArithmeticOperationsGuide() {
               mb: '2',
             })}
           >
-            Example: 3 + 4 = 7
+            {t('addition.example.title')}
           </h5>
           <div className={grid({ columns: 3, gap: '4', alignItems: 'center' })}>
             <div className={css({ textAlign: 'center' })}>
-              <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>Start: 3</p>
+              <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>
+                {t('addition.example.start')}
+              </p>
               <div
                 className={css({
                   width: '160px',
@@ -156,7 +155,9 @@ export function ArithmeticOperationsGuide() {
             </div>
             <div className={css({ textAlign: 'center', fontSize: '2xl' })}>+</div>
             <div className={css({ textAlign: 'center' })}>
-              <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>Result: 7</p>
+              <p className={css({ fontSize: 'sm', mb: '2', color: 'green.700' })}>
+                {t('addition.example.result')}
+              </p>
               <div
                 className={css({
                   width: '160px',
@@ -213,12 +214,10 @@ export function ArithmeticOperationsGuide() {
             gap: '2',
           })}
         >
-          <span>🎯</span> Guided Addition Tutorial
+          {t('guidedTutorial.title')}
         </h3>
 
-        <p className={css({ mb: '6', color: 'gray.700' })}>
-          Learn addition step-by-step with interactive guidance, tooltips, and error correction.
-        </p>
+        <p className={css({ mb: '6', color: 'gray.700' })}>{t('guidedTutorial.description')}</p>
 
         <div
           className={css({
@@ -241,10 +240,10 @@ export function ArithmeticOperationsGuide() {
             })}
           >
             <span>✏️</span>
-            <strong>This tutorial is now editable!</strong>
+            <strong>{t('guidedTutorial.editableNote')}</strong>
           </p>
           <p className={css({ fontSize: 'xs', color: 'blue.600' })}>
-            You can customize this tutorial using our new tutorial editor system.{' '}
+            {t('guidedTutorial.editableDesc')}{' '}
             <a
               href="/tutorial-editor"
               className={css({
@@ -253,7 +252,7 @@ export function ArithmeticOperationsGuide() {
                 _hover: { color: 'blue.800' },
               })}
             >
-              Open in Editor →
+              {t('guidedTutorial.editableLink')}
             </a>
           </p>
         </div>
@@ -288,12 +287,10 @@ export function ArithmeticOperationsGuide() {
             gap: '2',
           })}
         >
-          <span>➖</span> Subtraction
+          {t('subtraction.title')}
         </h3>
 
-        <p className={css({ mb: '6', color: 'gray.700' })}>
-          Subtraction involves moving beads away from the bar to decrease values.
-        </p>
+        <p className={css({ mb: '6', color: 'gray.700' })}>{t('subtraction.description')}</p>
 
         <div className={css({ mb: '6' })}>
           <h4
@@ -304,7 +301,7 @@ export function ArithmeticOperationsGuide() {
               color: 'red.600',
             })}
           >
-            Basic Steps:
+            {t('subtraction.basicSteps.title')}
           </h4>
           <ol
             className={css({
@@ -313,10 +310,11 @@ export function ArithmeticOperationsGuide() {
               color: 'gray.700',
             })}
           >
-            <li className={css({ mb: '2' })}>1. Set the minuend (first number) on the soroban</li>
-            <li className={css({ mb: '2' })}>2. Subtract by moving beads away from the bar</li>
-            <li className={css({ mb: '2' })}>3. Handle borrowing when needed</li>
-            <li>4. Read the final result</li>
+            {(t.raw('subtraction.basicSteps.steps') as string[]).map((step, i) => (
+              <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                {i + 1}. {step}
+              </li>
+            ))}
           </ol>
         </div>
 
@@ -337,11 +335,13 @@ export function ArithmeticOperationsGuide() {
               mb: '2',
             })}
           >
-            Example: 8 - 3 = 5
+            {t('subtraction.example.title')}
           </h5>
           <div className={grid({ columns: 3, gap: '4', alignItems: 'center' })}>
             <div className={css({ textAlign: 'center' })}>
-              <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>Start: 8</p>
+              <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>
+                {t('subtraction.example.start')}
+              </p>
               <div
                 className={css({
                   width: '160px',
@@ -373,7 +373,9 @@ export function ArithmeticOperationsGuide() {
             </div>
             <div className={css({ textAlign: 'center', fontSize: '2xl' })}>-</div>
             <div className={css({ textAlign: 'center' })}>
-              <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>Result: 5</p>
+              <p className={css({ fontSize: 'sm', mb: '2', color: 'red.700' })}>
+                {t('subtraction.example.result')}
+              </p>
               <div
                 className={css({
                   width: '160px',
@@ -430,11 +432,11 @@ export function ArithmeticOperationsGuide() {
             gap: '2',
           })}
         >
-          <span>✖️➗</span> Multiplication & Division
+          {t('multiplicationDivision.title')}
         </h3>
 
         <p className={css({ mb: '6', color: 'gray.700' })}>
-          Advanced operations that combine addition/subtraction with position shifting.
+          {t('multiplicationDivision.description')}
         </p>
 
         <div className={grid({ columns: { base: 1, md: 2 }, gap: '6' })}>
@@ -455,7 +457,7 @@ export function ArithmeticOperationsGuide() {
                 mb: '3',
               })}
             >
-              Multiplication
+              {t('multiplicationDivision.multiplication.title')}
             </h4>
             <ul
               className={css({
@@ -464,10 +466,13 @@ export function ArithmeticOperationsGuide() {
                 pl: '4',
               })}
             >
-              <li className={css({ mb: '2' })}>• Break down into repeated addition</li>
-              <li className={css({ mb: '2' })}>• Use position shifts for place values</li>
-              <li className={css({ mb: '2' })}>• Master multiplication tables</li>
-              <li>• Practice with single digits first</li>
+              {(t.raw('multiplicationDivision.multiplication.points') as string[]).map(
+                (point, i) => (
+                  <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                    • {point}
+                  </li>
+                )
+              )}
             </ul>
           </div>
 
@@ -488,7 +493,7 @@ export function ArithmeticOperationsGuide() {
                 mb: '3',
               })}
             >
-              Division
+              {t('multiplicationDivision.division.title')}
             </h4>
             <ul
               className={css({
@@ -497,10 +502,11 @@ export function ArithmeticOperationsGuide() {
                 pl: '4',
               })}
             >
-              <li className={css({ mb: '2' })}>• Use repeated subtraction method</li>
-              <li className={css({ mb: '2' })}>• Estimate quotients carefully</li>
-              <li className={css({ mb: '2' })}>• Handle remainders properly</li>
-              <li>• Check results by multiplication</li>
+              {(t.raw('multiplicationDivision.division.points') as string[]).map((point, i) => (
+                <li key={i} className={css({ mb: i < 3 ? '2' : '0' })}>
+                  • {point}
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -525,7 +531,7 @@ export function ArithmeticOperationsGuide() {
             mb: '3',
           })}
         >
-          💡 Master the Fundamentals
+          {t('practiceTips.title')}
         </h4>
         <p
           className={css({
@@ -533,7 +539,7 @@ export function ArithmeticOperationsGuide() {
             opacity: '0.9',
           })}
         >
-          Start with simple problems and gradually increase complexity
+          {t('practiceTips.description')}
         </p>
         <Link
           href="/create"
@@ -550,7 +556,7 @@ export function ArithmeticOperationsGuide() {
             _hover: { transform: 'translateY(-1px)', shadow: 'lg' },
           })}
         >
-          Practice Arithmetic Operations →
+          {t('practiceTips.button')}
         </Link>
       </div>
     </div>

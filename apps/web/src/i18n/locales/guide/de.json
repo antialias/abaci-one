@@ -1,0 +1,215 @@
+{
+  "guide": {
+    "page": {
+      "navTitle": "Interaktiver Leitfaden",
+      "hero": {
+        "title": "📚 Vollständiger Soroban-Meisterschafts-Leitfaden",
+        "subtitle": "Vom grundlegenden Lesen bis zur fortgeschrittenen Arithmetik - alles, was du brauchst, um den japanischen Abakus zu meistern"
+      },
+      "tabs": {
+        "reading": "📖 Zahlen Lesen",
+        "arithmetic": "🧮 Rechenoperationen"
+      }
+    },
+    "reading": {
+      "title": "🔍 Soroban-Zahlen Lesen Lernen",
+      "subtitle": "Meistere die Grundlagen des Zahlenlesens auf dem Soroban mit Schritt-für-Schritt-Visualisierungen",
+      "structure": {
+        "number": "1",
+        "title": "Die Struktur Verstehen",
+        "description": "Der Soroban besteht aus zwei Hauptabschnitten, die durch einen horizontalen Balken geteilt sind. Das Verständnis dieser Struktur ist grundlegend für das Lesen jeder Zahl.",
+        "heaven": {
+          "title": "🌅 Himmelsperlen (Oben)",
+          "points": [
+            "Befinden sich über dem horizontalen Balken",
+            "Jede Perle repräsentiert 5",
+            "Nur eine Perle pro Spalte",
+            "Wenn nach unten geschoben = aktiv/gezählt"
+          ]
+        },
+        "earth": {
+          "title": "🌍 Erdperlen (Unten)",
+          "points": [
+            "Befinden sich unter dem horizontalen Balken",
+            "Jede Perle repräsentiert 1",
+            "Vier Perlen pro Spalte",
+            "Wenn nach oben geschoben = aktiv/gezählt"
+          ]
+        },
+        "keyConcept": "💡 Schlüsselkonzept: Aktive Perlen sind diejenigen, die den horizontalen Balken berühren"
+      },
+      "singleDigits": {
+        "number": "2",
+        "title": "Einzelne Ziffern Lesen (1-9)",
+        "description": "Lass uns einzelne Ziffern lesen lernen, indem wir verstehen, wie Himmels- und Erdperlen kombiniert werden, um die Zahlen 1 bis 9 darzustellen.",
+        "examples": {
+          "0": "Keine Perlen aktiv - alle vom Balken entfernt",
+          "1": "Eine Erdperle nach oben geschoben",
+          "3": "Drei Erdperlen nach oben geschoben",
+          "5": "Himmelsperle nach unten geschoben",
+          "7": "Himmelsperle + zwei Erdperlen"
+        }
+      },
+      "multiDigit": {
+        "number": "3",
+        "title": "Mehrstellige Zahlen",
+        "description": "Das Lesen größerer Zahlen ist einfach eine Frage des Lesens jeder Spalte von links nach rechts, wobei jede Spalte einen anderen Stellenwert darstellt.",
+        "readingDirection": {
+          "title": "📍 Leserichtung & Stellenwerte",
+          "readingOrder": {
+            "title": "Lesereihenfolge:",
+            "points": [
+              "Immer von LINKS nach RECHTS lesen",
+              "Jede Spalte ist eine Ziffer",
+              "Ziffern kombinieren, um die vollständige Zahl zu bilden"
+            ]
+          },
+          "placeValues": {
+            "title": "Stellenwerte:",
+            "points": [
+              "Ganz rechts = Einer (1en)",
+              "Nächste links = Zehner (10er)",
+              "Fortsetzen für Hunderter, Tausender, etc."
+            ]
+          }
+        },
+        "examples": {
+          "title": "🔢 Mehrstellige Beispiele",
+          "23": "Zweistellig: 2 an Zehnerstelle + 3 an Einerstelle",
+          "58": "Himmelsperle an Zehnern (5) + Himmels- + Erdperlen an Einern (8)",
+          "147": "Dreistellig: 1 Hundert + 4 Zehner + 7 Einer"
+        }
+      },
+      "practice": {
+        "number": "4",
+        "title": "Übungsstrategie",
+        "learningTips": {
+          "title": "🎯 Lerntipps",
+          "points": [
+            "Beginne mit einzelnen Ziffern (0-9)",
+            "Übe das Erkennen von aktiven vs. inaktiven Perlen",
+            "Arbeite an Geschwindigkeitserkennung",
+            "Schreite allmählich zu mehrstelligen Zahlen fort"
+          ]
+        },
+        "quickRecognition": {
+          "title": "⚡ Schnellerkennung",
+          "points": [
+            "Zahlen 1-4: Nur Erdperlen",
+            "Zahl 5: Nur Himmelsperle",
+            "Zahlen 6-9: Himmels- + Erdperlen",
+            "Null: Alle Perlen vom Balken entfernt"
+          ]
+        },
+        "readyToPractice": {
+          "title": "🚀 Bereit zum Üben?",
+          "description": "Teste dein neues Wissen mit interaktiven Lernkarten",
+          "button": "Übungs-Lernkarten Erstellen →"
+        }
+      },
+      "interactive": {
+        "number": "5",
+        "title": "Interaktive Übung",
+        "description": "Probiere den interaktiven Abakus unten aus! Klicke auf die Perlen, um sie zu aktivieren und beobachte, wie sich die Zahl in Echtzeit ändert.",
+        "howToUse": {
+          "title": "🎮 So Verwendest du den Interaktiven Abakus",
+          "heaven": {
+            "title": "Himmelsperlen (Oben):",
+            "points": [
+              "Wert 5 Punkte pro Perle",
+              "Klicken zum Ein-/Ausschalten",
+              "Blau wenn aktiv, grau wenn inaktiv"
+            ]
+          },
+          "earth": {
+            "title": "Erdperlen (Unten):",
+            "points": [
+              "Wert 1 Punkt pro Perle",
+              "Klicken zum Aktivieren von Gruppen",
+              "Grün wenn aktiv, grau wenn inaktiv"
+            ]
+          }
+        },
+        "readyToPractice": {
+          "title": "🚀 Bereit zum Üben?",
+          "description": "Teste dein neues Wissen mit interaktiven Lernkarten",
+          "button": "Übungs-Lernkarten Erstellen →"
+        }
+      }
+    },
+    "arithmetic": {
+      "title": "🧮 Rechenoperationen",
+      "subtitle": "Meistere Addition, Subtraktion, Multiplikation und Division auf dem Soroban",
+      "addition": {
+        "title": "➕ Addition",
+        "description": "Addition auf dem Soroban folgt dem Prinzip, Perlen zum Balken hin zu bewegen, um Werte zu erhöhen.",
+        "basicSteps": {
+          "title": "Grundlegende Schritte:",
+          "steps": [
+            "Stelle die erste Zahl auf dem Soroban ein",
+            "Addiere die zweite Zahl durch Bewegen von Perlen zum Balken hin",
+            "Behandle Überträge, wenn eine Spalte 9 überschreitet",
+            "Lies das Endergebnis ab"
+          ]
+        },
+        "example": {
+          "title": "Beispiel: 3 + 4 = 7",
+          "start": "Start: 3",
+          "result": "Ergebnis: 7"
+        }
+      },
+      "guidedTutorial": {
+        "title": "🎯 Geführtes Additions-Tutorial",
+        "description": "Lerne Addition Schritt für Schritt mit interaktiver Anleitung, Tooltips und Fehlerkorrektur.",
+        "editableNote": "Dieses Tutorial ist jetzt bearbeitbar!",
+        "editableDesc": "Du kannst dieses Tutorial mit unserem neuen Tutorial-Editor-System anpassen.",
+        "editableLink": "Im Editor Öffnen →"
+      },
+      "subtraction": {
+        "title": "➖ Subtraktion",
+        "description": "Subtraktion beinhaltet das Bewegen von Perlen vom Balken weg, um Werte zu verringern.",
+        "basicSteps": {
+          "title": "Grundlegende Schritte:",
+          "steps": [
+            "Stelle den Minuenden (erste Zahl) auf dem Soroban ein",
+            "Subtrahiere durch Bewegen von Perlen vom Balken weg",
+            "Behandle Borgen bei Bedarf",
+            "Lies das Endergebnis ab"
+          ]
+        },
+        "example": {
+          "title": "Beispiel: 8 - 3 = 5",
+          "start": "Start: 8",
+          "result": "Ergebnis: 5"
+        }
+      },
+      "multiplicationDivision": {
+        "title": "✖️➗ Multiplikation & Division",
+        "description": "Fortgeschrittene Operationen, die Addition/Subtraktion mit Positionsverschiebung kombinieren.",
+        "multiplication": {
+          "title": "Multiplikation",
+          "points": [
+            "In wiederholte Addition zerlegen",
+            "Positionsverschiebungen für Stellenwerte verwenden",
+            "Multiplikationstabellen meistern",
+            "Zuerst mit einzelnen Ziffern üben"
+          ]
+        },
+        "division": {
+          "title": "Division",
+          "points": [
+            "Wiederholte Subtraktionsmethode verwenden",
+            "Quotienten sorgfältig schätzen",
+            "Reste richtig behandeln",
+            "Ergebnisse durch Multiplikation überprüfen"
+          ]
+        }
+      },
+      "practiceTips": {
+        "title": "💡 Meistere die Grundlagen",
+        "description": "Beginne mit einfachen Aufgaben und erhöhe allmählich die Komplexität",
+        "button": "Rechenoperationen Üben →"
+      }
+    }
+  }
+}

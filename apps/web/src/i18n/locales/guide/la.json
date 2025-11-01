@@ -1,0 +1,215 @@
+{
+  "guide": {
+    "page": {
+      "navTitle": "Ductus Interactiv us",
+      "hero": {
+        "title": "📚 Ductus Plenus Magisterii Sorobani",
+        "subtitle": "A lectione basica ad arithmeticam progressam - omnia quae tibi opus sunt ut abacum Iaponicum perfecte discas"
+      },
+      "tabs": {
+        "reading": "📖 Numeros Legere",
+        "arithmetic": "🧮 Operationes Arithmeticae"
+      }
+    },
+    "reading": {
+      "title": "🔍 Numeros Sorobani Legere Disco",
+      "subtitle": "Fundamenta numerorum in sorobano legendi cum inductionibus visualibus gradatim perfice",
+      "structure": {
+        "number": "1",
+        "title": "Structuram Intellegere",
+        "description": "Sorobanus ex duabus sectionibus principalibus constat tigno horizontali divisis. Haec structura intellecta fundamentalis est ad quemvis numerum legendum.",
+        "heaven": {
+          "title": "🌅 Gemmae Caelestes (Supra)",
+          "points": [
+            "Supra tignum horizontale sitae",
+            "Quaeque gemma 5 repraesentat",
+            "Tantum una gemma per columnam",
+            "Cum deorsum truditur = activa/numerata"
+          ]
+        },
+        "earth": {
+          "title": "🌍 Gemmae Terrestres (Infra)",
+          "points": [
+            "Infra tignum horizontale sitae",
+            "Quaeque gemma 1 repraesentat",
+            "Quattuor gemmae per columnam",
+            "Cum sursum truditur = activa/numerata"
+          ]
+        },
+        "keyConcept": "💡 Conceptus Clavius: Gemmae activae sunt illae quae tignum horizontale tangunt"
+      },
+      "singleDigits": {
+        "number": "2",
+        "title": "Digitos Singulos Legere (1-9)",
+        "description": "Discamus digitos singulos legere intelligendo quomodo gemmae caelestes et terrestres coniunctae numeros 1 usque ad 9 repraesentent.",
+        "examples": {
+          "0": "Nullae gemmae activae - omnes a tigno remotae",
+          "1": "Una gemma terrestris sursum trusa",
+          "3": "Tres gemmae terrestres sursum trusae",
+          "5": "Gemma caelestis deorsum trusa",
+          "7": "Gemma caelestis + duae gemmae terrestres"
+        }
+      },
+      "multiDigit": {
+        "number": "3",
+        "title": "Numeri Plurium Digitorum",
+        "description": "Numeros maiores legere simpliciter est unamquamque columnam a sinstra ad dextram legere, cum quaeque columna diversum valorem loci repraesentet.",
+        "readingDirection": {
+          "title": "📍 Directio Lectionis et Valores Locorum",
+          "readingOrder": {
+            "title": "Ordo Lectionis:",
+            "points": [
+              "Semper a SINISTRA ad DEXTRAM lege",
+              "Quaeque columna unus digitus est",
+              "Digitos coniunge ut numerum completum formes"
+            ]
+          },
+          "placeValues": {
+            "title": "Valores Locorum:",
+            "points": [
+              "Dextrimus = Unitates (1)",
+              "Proximus sinister = Decem (10)",
+              "Perge pro centenis, milibus, etc."
+            ]
+          }
+        },
+        "examples": {
+          "title": "🔢 Exempla Plurium Digitorum",
+          "23": "Duo digiti: 2 in loco decadum + 3 in loco unitatum",
+          "58": "Gemma caelestis in decadis (5) + gemma caelestis + gemmae terrestres in unitatibus (8)",
+          "147": "Tres digiti: 1 centum + 4 decem + 7 unum"
+        }
+      },
+      "practice": {
+        "number": "4",
+        "title": "Consilium Exercitationis",
+        "learningTips": {
+          "title": "🎯 Consilia Discendi",
+          "points": [
+            "Incipe cum digitis singulis (0-9)",
+            "Exercita agnitionem gemmarum activarum vs. inactivarum",
+            "Labora in agnitione celeritatis",
+            "Gradatim progredere ad numeros plurium digitorum"
+          ]
+        },
+        "quickRecognition": {
+          "title": "⚡ Agnitio Celeris",
+          "points": [
+            "Numeri 1-4: Tantum gemmae terrestres",
+            "Numerus 5: Tantum gemma caelestis",
+            "Numeri 6-9: Caelestes + gemmae terrestres",
+            "Nihil: Omnes gemmae a tigno remotae"
+          ]
+        },
+        "readyToPractice": {
+          "title": "🚀 Paratus Exercere?",
+          "description": "Proba scientiam tuam novam cum chartis interactivis",
+          "button": "Chartas Exercitationis Crea →"
+        }
+      },
+      "interactive": {
+        "number": "5",
+        "title": "Exercitatio Interactiva",
+        "description": "Proba abacum interactivum infra! Preme gemmas ut eas actives et vide numerum in tempore reali mutari.",
+        "howToUse": {
+          "title": "🎮 Quomodo Abaco Interactivo Utaris",
+          "heaven": {
+            "title": "Gemmae Caelestes (Supra):",
+            "points": [
+              "Valent 5 puncta quaeque",
+              "Preme ut actives/inactives",
+              "Caeruleae cum activae, cinerae cum inactivae"
+            ]
+          },
+          "earth": {
+            "title": "Gemmae Terrestres (Infra):",
+            "points": [
+              "Valent 1 punctum quaeque",
+              "Preme ut greges actives",
+              "Virides cum activae, cinerae cum inactivae"
+            ]
+          }
+        },
+        "readyToPractice": {
+          "title": "🚀 Paratus Exercere?",
+          "description": "Proba scientiam tuam novam cum chartis interactivis",
+          "button": "Chartas Exercitationis Crea →"
+        }
+      }
+    },
+    "arithmetic": {
+      "title": "🧮 Operationes Arithmeticae",
+      "subtitle": "Perfice additionem, subtractionem, multiplicationem et divisionem in sorobano",
+      "addition": {
+        "title": "➕ Additio",
+        "description": "Additio in sorobano principio gemmas ad tignum movendi ut valores augeantur sequitur.",
+        "basicSteps": {
+          "title": "Gradus Basici:",
+          "steps": [
+            "Pone primum numerum in sorobano",
+            "Adde secundum numerum gemmas ad tignum movendo",
+            "Tracta translationes cum columna 9 excedit",
+            "Lege resultatum finale"
+          ]
+        },
+        "example": {
+          "title": "Exemplum: 3 + 4 = 7",
+          "start": "Initium: 3",
+          "result": "Resultatum: 7"
+        }
+      },
+      "guidedTutorial": {
+        "title": "🎯 Praeceptorium Additionis Ductum",
+        "description": "Disce additionem gradatim cum directione interactiva, subsidiis et correctione errorum.",
+        "editableNote": "Hoc praeceptorium nunc edibile est!",
+        "editableDesc": "Potes hoc praeceptorium nostro novo systemate editoris praeceptoriorum accommodare.",
+        "editableLink": "Aperi in Editore →"
+      },
+      "subtraction": {
+        "title": "➖ Subtractio",
+        "description": "Subtractio gemmas a tigno removendo ut valores minuantur continet.",
+        "basicSteps": {
+          "title": "Gradus Basici:",
+          "steps": [
+            "Pone minuendum (primum numerum) in sorobano",
+            "Subtrahe gemmas a tigno removendo",
+            "Tracta mutuum cum necesse sit",
+            "Lege resultatum finale"
+          ]
+        },
+        "example": {
+          "title": "Exemplum: 8 - 3 = 5",
+          "start": "Initium: 8",
+          "result": "Resultatum: 5"
+        }
+      },
+      "multiplicationDivision": {
+        "title": "✖️➗ Multiplicatio et Divisio",
+        "description": "Operationes progressae quae additionem/subtractionem cum mutatione positionis coniungunt.",
+        "multiplication": {
+          "title": "Multiplicatio",
+          "points": [
+            "Divide in additionem repetitam",
+            "Utere mutationibus positionis pro valoribus locorum",
+            "Perfice tabulas multiplicationis",
+            "Primum cum digitis singulis exerce"
+          ]
+        },
+        "division": {
+          "title": "Divisio",
+          "points": [
+            "Utere methodo subtractionis repetitae",
+            "Aestima quotientes caute",
+            "Tracta residua recte",
+            "Verifica resultata per multiplicationem"
+          ]
+        }
+      },
+      "practiceTips": {
+        "title": "💡 Perfice Fundamenta",
+        "description": "Incipe cum problematis simplicibus et gradatim complexitatem augeas",
+        "button": "Operationes Arithmeticas Exerce →"
+      }
+    }
+  }
+}

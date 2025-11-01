@@ -1,0 +1,215 @@
+{
+  "guide": {
+    "page": {
+      "navTitle": "Guía Interactiva",
+      "hero": {
+        "title": "📚 Guía Completa de Maestría del Soroban",
+        "subtitle": "Desde la lectura básica hasta la aritmética avanzada - todo lo que necesitas para dominar el ábaco japonés"
+      },
+      "tabs": {
+        "reading": "📖 Leer Números",
+        "arithmetic": "🧮 Operaciones Aritméticas"
+      }
+    },
+    "reading": {
+      "title": "🔍 Aprender a Leer Números del Soroban",
+      "subtitle": "Domina los fundamentos de leer números en el soroban con tutoriales visuales paso a paso",
+      "structure": {
+        "number": "1",
+        "title": "Entender la Estructura",
+        "description": "El soroban consta de dos secciones principales divididas por una barra horizontal. Entender esta estructura es fundamental para leer cualquier número.",
+        "heaven": {
+          "title": "🌅 Cuentas del Cielo (Arriba)",
+          "points": [
+            "Ubicadas sobre la barra horizontal",
+            "Cada cuenta representa 5",
+            "Solo una cuenta por columna",
+            "Cuando se empuja hacia abajo = activa/contada"
+          ]
+        },
+        "earth": {
+          "title": "🌍 Cuentas de la Tierra (Abajo)",
+          "points": [
+            "Ubicadas debajo de la barra horizontal",
+            "Cada cuenta representa 1",
+            "Cuatro cuentas por columna",
+            "Cuando se empuja hacia arriba = activa/contada"
+          ]
+        },
+        "keyConcept": "💡 Concepto Clave: Las cuentas activas son aquellas que tocan la barra horizontal"
+      },
+      "singleDigits": {
+        "number": "2",
+        "title": "Leer Dígitos Individuales (1-9)",
+        "description": "Aprendamos a leer dígitos individuales entendiendo cómo las cuentas del cielo y la tierra se combinan para representar los números del 1 al 9.",
+        "examples": {
+          "0": "No hay cuentas activas - todas lejos de la barra",
+          "1": "Una cuenta de tierra empujada hacia arriba",
+          "3": "Tres cuentas de tierra empujadas hacia arriba",
+          "5": "Cuenta del cielo empujada hacia abajo",
+          "7": "Cuenta del cielo + dos cuentas de tierra"
+        }
+      },
+      "multiDigit": {
+        "number": "3",
+        "title": "Números de Múltiples Dígitos",
+        "description": "Leer números más grandes es simplemente cuestión de leer cada columna de izquierda a derecha, donde cada columna representa un valor posicional diferente.",
+        "readingDirection": {
+          "title": "📍 Dirección de Lectura y Valores Posicionales",
+          "readingOrder": {
+            "title": "Orden de Lectura:",
+            "points": [
+              "Siempre leer de IZQUIERDA a DERECHA",
+              "Cada columna es un dígito",
+              "Combinar dígitos para formar el número completo"
+            ]
+          },
+          "placeValues": {
+            "title": "Valores Posicionales:",
+            "points": [
+              "Más a la derecha = Unidades (1s)",
+              "Siguiente a la izquierda = Decenas (10s)",
+              "Continuar para centenas, miles, etc."
+            ]
+          }
+        },
+        "examples": {
+          "title": "🔢 Ejemplos de Múltiples Dígitos",
+          "23": "Dos dígitos: 2 en lugar de las decenas + 3 en lugar de las unidades",
+          "58": "Cuenta del cielo en decenas (5) + cuenta del cielo + cuentas de tierra en unidades (8)",
+          "147": "Tres dígitos: 1 centena + 4 decenas + 7 unidades"
+        }
+      },
+      "practice": {
+        "number": "4",
+        "title": "Estrategia de Práctica",
+        "learningTips": {
+          "title": "🎯 Consejos de Aprendizaje",
+          "points": [
+            "Comienza con dígitos individuales (0-9)",
+            "Practica identificar cuentas activas vs. inactivas",
+            "Trabaja en el reconocimiento de velocidad",
+            "Progresa gradualmente a números de múltiples dígitos"
+          ]
+        },
+        "quickRecognition": {
+          "title": "⚡ Reconocimiento Rápido",
+          "points": [
+            "Números 1-4: Solo cuentas de tierra",
+            "Número 5: Solo cuenta del cielo",
+            "Números 6-9: Cielo + cuentas de tierra",
+            "Cero: Todas las cuentas lejos de la barra"
+          ]
+        },
+        "readyToPractice": {
+          "title": "🚀 ¿Listo para Practicar?",
+          "description": "Pon a prueba tu nuevo conocimiento con tarjetas interactivas",
+          "button": "Crear Tarjetas de Práctica →"
+        }
+      },
+      "interactive": {
+        "number": "5",
+        "title": "Práctica Interactiva",
+        "description": "¡Prueba el ábaco interactivo a continuación! Haz clic en las cuentas para activarlas y observa cómo cambia el número en tiempo real.",
+        "howToUse": {
+          "title": "🎮 Cómo Usar el Ábaco Interactivo",
+          "heaven": {
+            "title": "Cuentas del Cielo (Arriba):",
+            "points": [
+              "Valen 5 puntos cada una",
+              "Haz clic para activar/desactivar",
+              "Azul cuando está activa, gris cuando está inactiva"
+            ]
+          },
+          "earth": {
+            "title": "Cuentas de la Tierra (Abajo):",
+            "points": [
+              "Valen 1 punto cada una",
+              "Haz clic para activar grupos",
+              "Verde cuando está activa, gris cuando está inactiva"
+            ]
+          }
+        },
+        "readyToPractice": {
+          "title": "🚀 ¿Listo para Practicar?",
+          "description": "Pon a prueba tu nuevo conocimiento con tarjetas interactivas",
+          "button": "Crear Tarjetas de Práctica →"
+        }
+      }
+    },
+    "arithmetic": {
+      "title": "🧮 Operaciones Aritméticas",
+      "subtitle": "Domina la suma, resta, multiplicación y división en el soroban",
+      "addition": {
+        "title": "➕ Suma",
+        "description": "La suma en el soroban sigue el principio de mover las cuentas hacia la barra para aumentar valores.",
+        "basicSteps": {
+          "title": "Pasos Básicos:",
+          "steps": [
+            "Establece el primer número en el soroban",
+            "Suma el segundo número moviendo cuentas hacia la barra",
+            "Maneja los acarreos cuando una columna exceda 9",
+            "Lee el resultado final"
+          ]
+        },
+        "example": {
+          "title": "Ejemplo: 3 + 4 = 7",
+          "start": "Inicio: 3",
+          "result": "Resultado: 7"
+        }
+      },
+      "guidedTutorial": {
+        "title": "🎯 Tutorial de Suma Guiada",
+        "description": "Aprende suma paso a paso con orientación interactiva, información sobre herramientas y corrección de errores.",
+        "editableNote": "¡Este tutorial ahora es editable!",
+        "editableDesc": "Puedes personalizar este tutorial usando nuestro nuevo sistema de editor de tutoriales.",
+        "editableLink": "Abrir en el Editor →"
+      },
+      "subtraction": {
+        "title": "➖ Resta",
+        "description": "La resta implica mover las cuentas lejos de la barra para disminuir valores.",
+        "basicSteps": {
+          "title": "Pasos Básicos:",
+          "steps": [
+            "Establece el minuendo (primer número) en el soroban",
+            "Resta moviendo cuentas lejos de la barra",
+            "Maneja los préstamos cuando sea necesario",
+            "Lee el resultado final"
+          ]
+        },
+        "example": {
+          "title": "Ejemplo: 8 - 3 = 5",
+          "start": "Inicio: 8",
+          "result": "Resultado: 5"
+        }
+      },
+      "multiplicationDivision": {
+        "title": "✖️➗ Multiplicación y División",
+        "description": "Operaciones avanzadas que combinan suma/resta con desplazamiento de posición.",
+        "multiplication": {
+          "title": "Multiplicación",
+          "points": [
+            "Descomponer en suma repetida",
+            "Usar desplazamientos de posición para valores posicionales",
+            "Dominar las tablas de multiplicar",
+            "Practicar primero con dígitos individuales"
+          ]
+        },
+        "division": {
+          "title": "División",
+          "points": [
+            "Usar el método de resta repetida",
+            "Estimar cocientes cuidadosamente",
+            "Manejar residuos correctamente",
+            "Verificar resultados mediante multiplicación"
+          ]
+        }
+      },
+      "practiceTips": {
+        "title": "💡 Domina los Fundamentos",
+        "description": "Comienza con problemas simples y aumenta gradualmente la complejidad",
+        "button": "Practicar Operaciones Aritméticas →"
+      }
+    }
+  }
+}

@@ -1,0 +1,215 @@
+{
+  "guide": {
+    "page": {
+      "navTitle": "Interactive Guide",
+      "hero": {
+        "title": "📚 Complete Soroban Mastery Guide",
+        "subtitle": "From basic reading to advanced arithmetic - everything you need to master the Japanese abacus"
+      },
+      "tabs": {
+        "reading": "📖 Reading Numbers",
+        "arithmetic": "🧮 Arithmetic Operations"
+      }
+    },
+    "reading": {
+      "title": "🔍 Learning to Read Soroban Numbers",
+      "subtitle": "Master the fundamentals of reading numbers on the soroban with step-by-step visual tutorials",
+      "structure": {
+        "number": "1",
+        "title": "Understanding the Structure",
+        "description": "The soroban consists of two main sections divided by a horizontal bar. Understanding this structure is fundamental to reading any number.",
+        "heaven": {
+          "title": "🌅 Heaven Beads (Top)",
+          "points": [
+            "Located above the horizontal bar",
+            "Each bead represents 5",
+            "Only one bead per column",
+            "When pushed down = active/counted"
+          ]
+        },
+        "earth": {
+          "title": "🌍 Earth Beads (Bottom)",
+          "points": [
+            "Located below the horizontal bar",
+            "Each bead represents 1",
+            "Four beads per column",
+            "When pushed up = active/counted"
+          ]
+        },
+        "keyConcept": "💡 Key Concept: Active beads are those touching the horizontal bar"
+      },
+      "singleDigits": {
+        "number": "2",
+        "title": "Reading Single Digits (1-9)",
+        "description": "Let's learn to read single digits by understanding how heaven and earth beads combine to represent numbers 1 through 9.",
+        "examples": {
+          "0": "No beads active - all away from bar",
+          "1": "One earth bead pushed up",
+          "3": "Three earth beads pushed up",
+          "5": "Heaven bead pushed down",
+          "7": "Heaven bead + two earth beads"
+        }
+      },
+      "multiDigit": {
+        "number": "3",
+        "title": "Multi-Digit Numbers",
+        "description": "Reading larger numbers is simply a matter of reading each column from left to right, with each column representing a different place value.",
+        "readingDirection": {
+          "title": "📍 Reading Direction & Place Values",
+          "readingOrder": {
+            "title": "Reading Order:",
+            "points": [
+              "Always read from LEFT to RIGHT",
+              "Each column is one digit",
+              "Combine digits to form the complete number"
+            ]
+          },
+          "placeValues": {
+            "title": "Place Values:",
+            "points": [
+              "Rightmost = Ones (1s)",
+              "Next left = Tens (10s)",
+              "Continue for hundreds, thousands, etc."
+            ]
+          }
+        },
+        "examples": {
+          "title": "🔢 Multi-Digit Examples",
+          "23": "Two-digit: 2 in tens place + 3 in ones place",
+          "58": "Heaven bead in tens (5) + heaven + earth beads in ones (8)",
+          "147": "Three-digit: 1 hundred + 4 tens + 7 ones"
+        }
+      },
+      "practice": {
+        "number": "4",
+        "title": "Practice Strategy",
+        "learningTips": {
+          "title": "🎯 Learning Tips",
+          "points": [
+            "Start with single digits (0-9)",
+            "Practice identifying active vs. inactive beads",
+            "Work on speed recognition",
+            "Progress to multi-digit numbers gradually"
+          ]
+        },
+        "quickRecognition": {
+          "title": "⚡ Quick Recognition",
+          "points": [
+            "Numbers 1-4: Only earth beads",
+            "Number 5: Only heaven bead",
+            "Numbers 6-9: Heaven + earth beads",
+            "Zero: All beads away from bar"
+          ]
+        },
+        "readyToPractice": {
+          "title": "🚀 Ready to Practice?",
+          "description": "Test your newfound knowledge with interactive flashcards",
+          "button": "Create Practice Flashcards →"
+        }
+      },
+      "interactive": {
+        "number": "5",
+        "title": "Interactive Practice",
+        "description": "Try the interactive abacus below! Click on the beads to activate them and watch the number change in real-time.",
+        "howToUse": {
+          "title": "🎮 How to Use the Interactive Abacus",
+          "heaven": {
+            "title": "Heaven Beads (Top):",
+            "points": [
+              "Worth 5 points each",
+              "Click to toggle on/off",
+              "Blue when active, gray when inactive"
+            ]
+          },
+          "earth": {
+            "title": "Earth Beads (Bottom):",
+            "points": [
+              "Worth 1 point each",
+              "Click to activate groups",
+              "Green when active, gray when inactive"
+            ]
+          }
+        },
+        "readyToPractice": {
+          "title": "🚀 Ready to Practice?",
+          "description": "Test your newfound knowledge with interactive flashcards",
+          "button": "Create Practice Flashcards →"
+        }
+      }
+    },
+    "arithmetic": {
+      "title": "🧮 Arithmetic Operations",
+      "subtitle": "Master addition, subtraction, multiplication, and division on the soroban",
+      "addition": {
+        "title": "➕ Addition",
+        "description": "Addition on the soroban follows the principle of moving beads toward the bar to increase values.",
+        "basicSteps": {
+          "title": "Basic Steps:",
+          "steps": [
+            "Set the first number on the soroban",
+            "Add the second number by moving beads toward the bar",
+            "Handle carries when a column exceeds 9",
+            "Read the final result"
+          ]
+        },
+        "example": {
+          "title": "Example: 3 + 4 = 7",
+          "start": "Start: 3",
+          "result": "Result: 7"
+        }
+      },
+      "guidedTutorial": {
+        "title": "🎯 Guided Addition Tutorial",
+        "description": "Learn addition step-by-step with interactive guidance, tooltips, and error correction.",
+        "editableNote": "This tutorial is now editable!",
+        "editableDesc": "You can customize this tutorial using our new tutorial editor system.",
+        "editableLink": "Open in Editor →"
+      },
+      "subtraction": {
+        "title": "➖ Subtraction",
+        "description": "Subtraction involves moving beads away from the bar to decrease values.",
+        "basicSteps": {
+          "title": "Basic Steps:",
+          "steps": [
+            "Set the minuend (first number) on the soroban",
+            "Subtract by moving beads away from the bar",
+            "Handle borrowing when needed",
+            "Read the final result"
+          ]
+        },
+        "example": {
+          "title": "Example: 8 - 3 = 5",
+          "start": "Start: 8",
+          "result": "Result: 5"
+        }
+      },
+      "multiplicationDivision": {
+        "title": "✖️➗ Multiplication & Division",
+        "description": "Advanced operations that combine addition/subtraction with position shifting.",
+        "multiplication": {
+          "title": "Multiplication",
+          "points": [
+            "Break down into repeated addition",
+            "Use position shifts for place values",
+            "Master multiplication tables",
+            "Practice with single digits first"
+          ]
+        },
+        "division": {
+          "title": "Division",
+          "points": [
+            "Use repeated subtraction method",
+            "Estimate quotients carefully",
+            "Handle remainders properly",
+            "Check results by multiplication"
+          ]
+        }
+      },
+      "practiceTips": {
+        "title": "💡 Master the Fundamentals",
+        "description": "Start with simple problems and gradually increase complexity",
+        "button": "Practice Arithmetic Operations →"
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
 import { container, hstack } from '../../../styled-system/patterns'
@@ -10,10 +11,11 @@ import { ReadingNumbersGuide } from './components/ReadingNumbersGuide'
 type TabType = 'reading' | 'arithmetic'
 
 export default function GuidePage() {
+  const t = useTranslations('guide.page')
   const [activeTab, setActiveTab] = useState<TabType>('reading')
 
   return (
-    <PageWithNav navTitle="Interactive Guide" navEmoji="📖">
+    <PageWithNav navTitle={t('navTitle')} navEmoji="📖">
       <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
         {/* Hero Section */}
         <div
@@ -33,7 +35,7 @@ export default function GuidePage() {
                 textShadow: '0 4px 20px rgba(0,0,0,0.3)',
               })}
             >
-              📚 Complete Soroban Mastery Guide
+              {t('hero.title')}
             </h1>
             <p
               className={css({
@@ -44,8 +46,7 @@ export default function GuidePage() {
                 lineHeight: 'relaxed',
               })}
             >
-              From basic reading to advanced arithmetic - everything you need to master the Japanese
-              abacus
+              {t('hero.subtitle')}
             </p>
           </div>
         </div>
@@ -78,7 +79,7 @@ export default function GuidePage() {
                   },
                 })}
               >
-                📖 Reading Numbers
+                {t('tabs.reading')}
               </button>
               <button
                 onClick={() => setActiveTab('arithmetic')}
@@ -98,7 +99,7 @@ export default function GuidePage() {
                   },
                 })}
               >
-                🧮 Arithmetic Operations
+                {t('tabs.arithmetic')}
               </button>
             </div>
           </div>
