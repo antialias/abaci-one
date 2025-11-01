@@ -342,7 +342,7 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
             <RithmomachiaBoard
               pieces={[
                 // White Pyramid at H5
-                { square: 'H5', type: 'P', color: 'W', value: 'P' },
+                { square: 'H5', type: 'P', color: 'W', value: 49 },
                 // Black pieces that can be captured
                 { square: 'I5', type: 'T', color: 'B', value: 16 },
                 { square: 'H6', type: 'S', color: 'B', value: 49 },

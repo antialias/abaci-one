@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { css } from '../../../../styled-system/css'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useAbacusSettings } from '@/hooks/useAbacusSettings'
-import '../i18n/config' // Initialize i18n
+import { resources } from '../i18n/config'
 import { OverviewSection } from './guide-sections/OverviewSection'
 import { PiecesSection } from './guide-sections/PiecesSection'
 import { CaptureSection } from './guide-sections/CaptureSection'
@@ -448,8 +448,11 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
                 },
               })}
             >
-              <option value="en">{t('guide.languageSelector.en', 'English')}</option>
-              <option value="de">{t('guide.languageSelector.de', 'Deutsch')}</option>
+              {Object.keys(resources).map((langCode) => (
+                <option key={langCode} value={langCode}>
+                  {t(`guide.languageSelector.${langCode}`, langCode.toUpperCase())}
+                </option>
+              ))}
             </select>
           </div>
         </div>

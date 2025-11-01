@@ -1,0 +1,327 @@
+{
+  "guide": {
+    "title": "Libellus Ludi Rithmomachia",
+    "subtitle": "Rithmomachia – Ludus Philosophorum",
+    "close": "Claudere",
+    "maximize": "Maximizare",
+    "restore": "Restituere",
+    "bustOut": "Aperire in fenestra nova",
+    "sections": {
+      "overview": "Initium Celeriter",
+      "pieces": "Tabulae",
+      "capture": "Captura",
+      "strategy": "Ratio",
+      "harmony": "Harmonia",
+      "victory": "Victoria"
+    },
+    "languageSelector": {
+      "label": "Lingua",
+      "en": "English",
+      "de": "Deutsch",
+      "ja": "日本語",
+      "hi": "हिन्दी",
+      "es": "Español",
+      "la": "Latina"
+    },
+    "overview": {
+      "goalTitle": "Finis Ludi",
+      "goal": "Dispone 3 tabulas tuas in territorio hostium ut progressionem mathematicam faciant, unum tempus adversarii superesse, et vincere.",
+      "goalDesc": "Dispone <strong>3 tabulas tuas in territorio hostium</strong> ut <strong>progressionem mathematicam</strong> faciant, unum tempus adversarii superesse, et vincere.",
+      "boardTitle": "Tabula",
+      "boardSize": "8 ordines × 16 columnae (columnae A-P, ordines 1-8)",
+      "territory": "Tua pars: Niger regit ordines 5-8, Albus regit ordines 1-4",
+      "enemyTerritory": "Territorium hostium: Ubi progressionem victoriae tuae aedificare debes",
+      "boardItems": [
+        "8 ordines × 16 columnae (columnae A-P, ordines 1-8)",
+        "<strong>Tua pars:</strong> Niger regit ordines 5-8, Albus regit ordines 1-4",
+        "<strong>Territorium hostium:</strong> Ubi progressionem victoriae tuae aedificare debes"
+      ],
+      "howToPlayTitle": "Quomodo Ludere",
+      "step1": "Incipe tabulas ad centrum movendo",
+      "step2": "Occasiones capturae quaere relationibus mathematicis utendo",
+      "step3": "In territorium hostium impelle (ordines 1-4 pro Nigro, ordines 5-8 pro Albo)",
+      "step4": "Occasiones harmoniae cum tabulis tuis anterioribus specta",
+      "step5": "Vince progressionem faciendo quae unum tempus supersit!",
+      "howToPlayItems": [
+        "Incipe tabulas ad centrum movendo",
+        "Occasiones capturae quaere relationibus mathematicis utendo",
+        "In territorium hostium impelle (ordines 1-4 pro Nigro, ordines 5-8 pro Albo)",
+        "Occasiones harmoniae cum tabulis tuis anterioribus specta",
+        "Vince progressionem faciendo quae unum tempus supersit!"
+      ]
+    },
+    "pieces": {
+      "title": "Tabulae Tuae (25 in summa)",
+      "description": "Utraque pars 25 tabulas habet cum diversis modis movendi. Forma tibi dicit quomodo movetur:",
+      "intro": "Quaeque tabula <strong>valorem numericum</strong> habet et diversimode movetur:",
+      "circle": "Circulus",
+      "circleMove": "Diagonaliter movetur",
+      "triangle": "Triangulum",
+      "triangleMove": "Lineae rectae movetur",
+      "square": "Quadratum",
+      "squareMove": "Quaque directione movetur",
+      "pyramid": "Pyramis",
+      "pyramidMove": "Unus gradus quaque via",
+      "count": "Numerus",
+      "exampleValues": "Valores exempli",
+      "example": "Exemplum:",
+      "pieceTypes": {
+        "circle": {
+          "name": "Circulus",
+          "movement": "Diagonaliter (sicut episcopus)",
+          "count": "Numerus: 8"
+        },
+        "triangle": {
+          "name": "Triangulum",
+          "movement": "Lineae rectae (sicut turris)",
+          "count": "Numerus: 8"
+        },
+        "square": {
+          "name": "Quadratum",
+          "movement": "Quaque directione (sicut regina)",
+          "count": "Numerus: 7"
+        },
+        "pyramid": {
+          "name": "Pyramis",
+          "movement": "Unus gradus quaque via (sicut rex)",
+          "count": "Numerus: 1"
+        }
+      },
+      "pyramidTitle": "⭐ Pyramides: Tabula Specialis",
+      "pyramidIntro": "Pyramides speciales sunt. 4 valores diversos habeant quos eligere potes cum capias. Hoc eas valde flexibiles facit!",
+      "pyramidExample": "Pyramis Albi 16 Nigri capere potest faciem 64 utendo (multiplex: 64÷16=4), faciem 36 (multiplex: 36÷9=4, cum 9 Nigri), vel faciem 25 cum aequalitate si 25 Nigri capit.",
+      "blackPyramid": "Facies Pyramidis Nigrae",
+      "blackPyramidValues": "36 (6²), 25 (5²), 16 (4²), 4 (2²)",
+      "whitePyramid": "Facies Pyramidis Albae",
+      "whitePyramidValues": "64 (8²), 49 (7²), 36 (6²), 25 (5²)",
+      "pyramidHowItWorks": "Quomodo operatur:",
+      "pyramidRule1": "Elige quem valorem uti antequam capias",
+      "pyramidRule2": "Ille valor fit numerus tabulae tuae pro mathematica",
+      "pyramidRule3": "Valores diversos eligere potes singulis vicibus - nihil fixum est",
+      "pyramidRule4": "Hoc Pyramides optimas facit ad impetus subitos aliasque tabulas adiuvandas",
+      "pyramidVisualTitle": "Exemplum Visuale: Multae Optiones Capturae Pyramidis",
+      "pyramidVisualDesc": "Pyramis Alba (facies: 64, 49, 36, 25) posita est ad tabulas Nigras capiendas. Nota flexibilitatem:",
+      "pyramidCaptureOptions": "Optiones capturae ex H5:",
+      "pyramidOption1": "Move ad I5: Elige faciem 64 → capit 16 per multiplum (64÷16=4)",
+      "pyramidOption2": "Move ad H6: Elige faciem 49 → capit 49 per aequalitatem (49=49)",
+      "pyramidOption3": "Move ad G5: Elige faciem 25 → capit 25 per aequalitatem (25=25)"
+    },
+    "capture": {
+      "title": "Quomodo Capere",
+      "description": "Tabulam hostilem capere potes solum si valor tabulae tuae relationem mathematicam ad eam habet:",
+      "intro": "Tabulam hostilem capere potes <strong>solum si valor tabulae tuae mathematice se refert</strong> ad eam:",
+      "equality": "Aequale",
+      "equalityExample": "Tuum 25 capit eorum 25",
+      "equalityCaption": "Circulus Albus (25) capere potest Circulum Nigrum (25) per aequalitatem",
+      "multiple": "Multiplex / Divisor",
+      "multipleExample": "Tuum 64 capit eorum 16 (64 ÷ 16 = 4)",
+      "multipleCaption": "Quadratum Album (64) capere potest Triangulum Nigrum (16) quia 64 ÷ 16 = 4",
+      "sum": "Summa",
+      "sumExample": "Tuum 9 + adiutor 16 = hostis 25",
+      "sumCaption": "Circulus Albus (9) capere potest Circulum Nigrum (25) adiutore Triangulo (16) utendo: 9 + 16 = 25",
+      "difference": "Differentia",
+      "differenceExample": "Tuum 30 - adiutor 10 = hostis 20",
+      "differenceCaption": "Triangulum Album (30) capere potest Triangulum Nigrum (20) adiutore Circulo (10) utendo: 30 - 10 = 20",
+      "product": "Productum",
+      "productExample": "Tuum 5 × adiutor 5 = hostis 25",
+      "productCaption": "Circulus Albus (5) capere potest Circulum Nigrum (25) adiutore Circulo (5) utendo: 5 × 5 = 25",
+      "ratio": "Ratio",
+      "ratioExample": "Tuum 20 ÷ adiutor 4 = hostis 5",
+      "ratioCaption": "Triangulum Album (20) capere potest Circulum Nigrum (5) adiutore Circulo (4) utendo: 20 ÷ 4 = 5",
+      "simpleTitle": "Relationes Simplices (adiutor non necessarius)",
+      "simpleEqual": {
+        "name": "Aequale",
+        "desc": "Tuum 25 capit eorum 25"
+      },
+      "simpleMultiple": {
+        "name": "Multiplex / Divisor",
+        "desc": "Tuum 64 capit eorum 16 (64 ÷ 16 = 4)"
+      },
+      "advancedTitle": "Relationes Provectae (una tabula adiutrix necessaria)",
+      "advancedSum": {
+        "name": "Summa",
+        "desc": "Tuum 9 + adiutor 16 = hostis 25"
+      },
+      "advancedDifference": {
+        "name": "Differentia",
+        "desc": "Tuum 30 - adiutor 10 = hostis 20"
+      },
+      "advancedProduct": {
+        "name": "Productum",
+        "desc": "Tuum 5 × adiutor 5 = hostis 25"
+      },
+      "helpersTitle": "💡 Quid sunt adiutores?",
+      "helpersDescription": "Adiutores sunt aliae tabulae tuae in tabula. Non movent - tantum numerum suum mathematicae addunt. Ludus tibi ostendet quae capturae operentur cum tabulam eligas.",
+      "helpersDesc": "Adiutores sunt aliae tabulae tuae adhuc in tabula — non movent, tantum valorem suum mathematicae praebent. Ludus capturas validas tibi ostendet cum tabulam eligas.",
+      "example1Title": "Exemplum: Captura Multiplicis/Divisoris",
+      "example1Desc": "64 Albi (quadratum) capere potest 16 Nigri (triangulum) quia 64 multiplex 16 est",
+      "example2Title": "Exemplum: Captura Summae cum Adiutore",
+      "example2Desc": "9 Albi + adiutor 16 = 25 Nigri (9 + 16 = 25)",
+      "example3Title": "Exemplum: Captura Differentiae cum Adiutore",
+      "example3Desc": "30 Albi - adiutor 10 = 20 Nigri (30 - 10 = 20)",
+      "example4Title": "Exemplum: Captura Producti cum Adiutore",
+      "example4Desc": "4 Albi × adiutor 5 = 20 Nigri (4 × 5 = 20)",
+      "example5Title": "Exemplum: Captura Rationis cum Adiutore",
+      "example5Desc": "20 Albi ÷ adiutor 4 = 5 Nigri (20 ÷ 4 = 5)",
+      "pyramidTitle": "Speciale: Capturae Pyramidis",
+      "pyramidIntro": "Pyramides 4 valores faciei habent, eas incredibiliter versatiles faciendo. Eligis quam faciem uti cum capturam tentes, permittendo unam Pyramidem multas tabulas hostiles minari.",
+      "pyramidEx1Title": "Exemplum: Electio Faciei Pyramidis (Aequalitas)",
+      "pyramidEx1Desc": "Pyramis Albi (facies: 64, 49, 36, 25) capere potest 49 Nigri eligendo faciem 49 pro aequalitate (49 = 49)",
+      "pyramidEx1Note": "<strong>Electio faciei:</strong> Albus faciem 49 declarat → 49 = 49 (aequalitas) → Captura succedit! Pyramis quoque tabulas valoris 64, 36, vel 25 capere posset faciebus correspondentibus utendo.",
+      "pyramidEx2Title": "Exemplum: Pyramis cum Adiutore (Summa)",
+      "pyramidEx2Desc": "Pyramis Albi faciem 25 + adiutorem 20 = 45 Nigri utitur (25 + 20 = 45)",
+      "pyramidEx2Note": "<strong>Electio faciei:</strong> Albus faciem 25 eligit et adiutorem in D4 (valor 20) declarat → 25 + 20 = 45 (summa) → Captura succedit! Facies diversas eligendo, eadem Pyramis valores alios variis adiutoribus utendo capere posset.",
+      "pyramidEx3Title": "Exemplum: Flexibilitas Pyramidis (Multiplex/Divisor)",
+      "pyramidEx3Desc": "Pyramis Nigri (facies: 36, 25, 16, 4) capere potest 9 Albi faciem 36 utendo (multiplex: 36 ÷ 9 = 4)",
+      "pyramidEx3Note": "<strong>Electio faciei:</strong> Niger faciem 36 eligit → 36 ÷ 9 = 4 (multiplex) → Captura succedit! Nota: Niger quoque faciem 4 cum adiutore 5 pro summa uti posset (4 + 5 = 9), multas vias validas ostendens."
+    },
+    "harmony": {
+      "title": "Harmoniae: Via Optima Vincendi",
+      "intro": "Harmonia est quomodo ludum vincas. 3 tabulas tuas in territorium hostium in lineam rectam pone. Earum valores formam mathematicam facere debent.",
+      "introDetail": "Cogita de eo sicut de serie numerorum. Sunt 3 genera formarum quas facere potes:",
+      "arithmetic": "1. Arithmetica (Facillima)",
+      "arithmeticDesc": "Numerus medius exacte inter alios duos est. Spatia aequalia.",
+      "arithmeticFormula": "Medius × 2 = Primus + Ultimus",
+      "arithmeticTip": "Circuli parvi (2-9) hic optime operantur. Hiatus aequales quaere! Exemplum: 6, 9, 12",
+      "arithmeticCaption": "Tabulae Albae 6, 9, 12 in ordine in territorio hostium progressionem arithmeticam faciunt",
+      "geometric": "2. Geometrica (Eodem Numero Multiplica)",
+      "geometricDesc": "Eodem numero semper multiplica. Rationes aequales.",
+      "geometricFormula": "Medius² = Primus × Ultimus",
+      "geometricTip": "Numeri quadrati optime operantur! Exemplum: 4, 8, 16 (per 2 semper multiplica)",
+      "geometricCaption": "Tabulae Albae 4, 8, 16 in ordine in territorio hostium progressionem geometricam faciunt",
+      "harmonic": "3. Harmonica (Difficilis!)",
+      "harmonicDesc": "Ex harmoniis musicalibus. Difficillima invenienda.",
+      "harmonicFormula": "2 × Primus × Ultimus = Medius × (Primus + Ultimus)",
+      "harmonicTip": "Hae rarae sunt. Tantum haec memoriza: 3-4-6, 4-6-12, 6-8-12, 6-10-15",
+      "harmonicCaption": "Tabulae Albae 6, 8, 12 in ordine in territorio hostium progressionem harmonicam faciunt",
+      "howToCheck": "Quomodo verificare:",
+      "example": "Exemplum:",
+      "check": "Verifica:",
+      "differences": "Differentiae:",
+      "equal": "(aequales!)",
+      "ratios": "Rationes:",
+      "strategyTip": "Consilium:",
+      "rulesTitle": "⚠️ Regulae Importantes",
+      "enemyTerritoryTitle": "In territorio hostium esse debent:",
+      "enemyTerritory": "Omnes 3 tabulae in parte adversarii esse debent (Albus: ordines 5-8, Niger: ordines 1-4)",
+      "straightLineTitle": "In linea esse debent:",
+      "straightLine": "Ordo, columna, vel diagonalis. Nullae tabulae dispersae!",
+      "adjacentTitle": "Contingentes esse debent:",
+      "adjacent": "3 tabulae proximae inter se esse debent sine hiatu",
+      "survivalTitle": "Unum tempus superesse debent:",
+      "survival": "Postquam harmoniam declaras, adversarius UNUM tempus accipit ad eam frangendum",
+      "victoryTitle": "Tunc vincis:",
+      "victoryRule": "Si supersit, in tuo proximo tempore vincis!",
+      "strategyTitle": "Quomodo Harmoniis Vincere",
+      "startWith2Title": "Incipe cum 2, tunc adde tertiam",
+      "startWith2": "Primum 2 tabulas profunde pone. Cogita quae tertia tabula formam complet. Tunc eam tabulam impelle. Forsitan non venientem videant!",
+      "useCommonTitle": "Numeros communes utere",
+      "useCommon": "Numeri sicut 6, 8, 9, 12, 16 in multis formis operantur. Si hos profunde habes, vide quae tertia tabula laborem perficit.",
+      "protectTitle": "Tabulas tuas protege",
+      "protect": "Dum aedificas, alias tabulas prope tene ad defendendum. Una captura omnia perdit!",
+      "blockTitle": "Harmonias eorum obstrue",
+      "block": "Si adversarius 2 tabulas profunde habet, cogita quam tertiam tabulam necessitant. Eum locum obstrue vel unam ex tabulis eorum STATIM cape.",
+      "calculateTitle": "Verifica antequam declares",
+      "calculate": "Antequam declarare, certa quod adversarius nullam ex 3 tabulis tuis capere possit. Si potest, primum protege vel exspecta.",
+      "quickRefTitle": "💡 Referentia Celera: Harmoniae Communes in Exercitu Tuo"
+    },
+    "victory": {
+      "title": "Quomodo Vincere",
+      "harmony": "Victoria #1: Harmonia (Progressio)",
+      "harmonyDesc": "Fac progressionem mathematicam cum 3 tabulis in territorio hostium. Si proximum tempus adversarii tui supersit, vincis!",
+      "exampleTitle": "Exemplum: Albus Vincit!",
+      "exampleCaption": "Tabulae Albae 4, 8, 16 progressionem geometricam in territorio hostium faciunt. Niger eam frangere non potest - Albus vincit!",
+      "harmonyNote": "Haec est condicio victoriae primaria in Rithmomachia",
+      "exhaustion": "Victoria #2: Exhaustio",
+      "exhaustionDesc": "Si adversarius tuus nullos motus legales in initio sui temporis habet, perdit.",
+      "strategyTitle": "Consilia Celera",
+      "tip1": "Centrum rege - facilius impellere",
+      "tip2": "Tabulae parvae celeres sunt - circuli in partem hostilem celeriter labi possunt",
+      "tip3": "Tabulae magnae potentes sunt - difficilius capere",
+      "tip4": "Harmonias eorum specta - noli 3 tabulas profunde ire sinere",
+      "tip5": "Pyramides flexibiles sunt - valorem rectum pro singula captura elige"
+    },
+    "strategy": {
+      "title": "Ratio et Tactica",
+      "intro": "Rithmomachia et perspicaciam mathematicam et consilium strategicum remuneratur. Successus requirit temperantiam inter imperium territoriale, conservationem tabularum, et occasiones mathematicas.",
+      "openingPrinciples": {
+        "title": "Principia Aperturae",
+        "controlCenter": {
+          "title": "Centrum Rege",
+          "desc": "Tabulas ad vacuum centrum 8-columnarum (columnae E–L) impelle. Hoc mobilitatem praebet et occasiones capiendi ex multis angulis creat."
+        },
+        "developCircles": {
+          "title": "Circulos Parvos Primum Evolve",
+          "desc": "Circuli tui parvi (2–9) in columnis D et M mobiles et versatiles sunt. Eos ad centrum mature move ut praesentiam stabilias et retia adiutorum crees."
+        },
+        "protectPyramid": {
+          "title": "Pyramidem Tuam Protege",
+          "desc": "Pyramis est tabula tua flexibilissima (4 valores faciei) sed tantum 1 quadratum movetur. Eam post lineas impellentes tene usque ad medium ludum cum minae mathematicae clarae sint."
+        },
+        "knowNumbers": {
+          "title": "Numeros Tuos Cognosce",
+          "desc": "Relationes mathematicas principales in exercitu tuo memoriza. Cognosce quae tabulae factores, multiplices, et summas faciunt—hoc computationem tacticam accelerat."
+        }
+      },
+      "midGame": {
+        "title": "Tactica Medii Ludi",
+        "helperNetworks": {
+          "title": "Retia Adiutorum Aedifica",
+          "desc": "Tabulas dispone ut multi adiutores capturas sustinere possint. Exempli gratia, si tabulas valoris 5 et 10 habes, 15 (summa), 5 (differentia), vel 50 (productum) capere potes cum tabula tua mobilis recte posita sit."
+        },
+        "createThreats": {
+          "title": "Minas Capturae Crea",
+          "desc": "Adversarium tuum coge ut multas tabulas simul defendat. Etsi omnes capturas exsequi non potes, mina optiones eorum constringit et tempus regit."
+        },
+        "thinkDefensively": {
+          "title": "Defensive Cogita",
+          "desc": "Post singulos motus, verifica quae ex tabulis tuis capi possint. Tabulae magni valoris sicut quadrata (169, 225, 289, 361) multis relationibus vulnerabiles sunt—eas post defensores vel in quadratis protectis pone."
+        },
+        "exchangeWhenAhead": {
+          "title": "Permuta Cum Praecedis",
+          "desc": "Si plures tabulas vel valores altiores cepisti, positionem simplifica tabulas permutando. Hoc optiones oppugnationis adversarii tui reducit et te ad victoriam exhaustionis propius ducit."
+        }
+      },
+      "victoryPaths": {
+        "title": "Viae ad Victoriam",
+        "harmony": {
+          "title": "Victoria Harmoniae (Elegantissima)",
+          "desc": "Pone 3 tabulas in territorio hostium progressionem arithmeticam, geometricam, vel harmonicam facientes. Triades communes:",
+          "arithmetic": "<strong>Arithmetica:</strong> (6, 9, 12), (5, 7, 9), (8, 12, 16)",
+          "geometric": "<strong>Geometrica:</strong> (4, 8, 16), (3, 9, 27), (2, 8, 32)",
+          "harmonic": "<strong>Harmonica:</strong> (6, 8, 12), (10, 12, 15), (6, 10, 15)"
+        },
+        "exhaustion": {
+          "title": "Victoria Exhaustionis (Attritio)",
+          "desc": "Tabulas systematice cape donec adversarius tuus nullos motus legales habeat. Attende ad: tabulas mobiles (Quadrata et Triangula) eliminandas, diagonales et ordines obstruendos, et Pyramidem in angulum cogendam."
+        },
+        "points": {
+          "title": "Victoria Punctorum (Regula Optionalis)",
+          "desc": "Si habilitata, 30 puncta tabularum cape (C=1, T=2, S=3, P=5). Scopos magni valoris vena et tabulas tuas graves conserva. Utiliter permuta."
+        }
+      },
+      "commonMistakes": {
+        "title": "⚠️ Errores Communes Vitandi",
+        "movingWithoutCalc": "<strong>Movere sine computatione:</strong> Semper verifica si quadratum tuum destinationis a tabulis hostilibus capi potest",
+        "ignoringGeometry": "<strong>Geometriam adiutoris ignorare:</strong> Adiutores ubicumque esse possunt, sed adhuc viam motus legalem ad capiendum necessitas",
+        "neglectingHarmony": "<strong>Minas harmoniae neglegere:</strong> Si adversarius tuus 2 tabulas in tuo territorio habet partem progressionis facientes, tertiam eorum obstrue",
+        "exposingPyramid": "<strong>Pyramidem expositam relinquere:</strong> Tantum 1 quadratum movetur et optiones fugae limitatas habet—eam mature protege"
+      },
+      "advanced": {
+        "title": "Conceptus Provecti",
+        "sacrifices": {
+          "title": "Sacrificia Positionalia",
+          "desc": "Interdum tabulam sacrificare lineas pro aliis tabulis tuis aperit vel adversarium tuum in positionem peiorem cogit. Inaequalitatem resultantem computa antequam sacrifices."
+        },
+        "pyramidFaces": {
+          "title": "Electio Facierum Pyramidis",
+          "desc": "Pyramis tua 4 valores faciei habet. In capturis, faciem elige quae flexibilitatem futuram maximizat. In declarationibus harmoniae, faciem elige quae genus progressionis pretiosissimum complet."
+        },
+        "tempo": {
+          "title": "Tempus et Initium",
+          "desc": "Quilibet motus qui responsum defensivum cogit tempus acquirit. Motus cogentes (capturas, minas) constringe ut cursum dictes et adversarium tuum consilium suum exsequi prohibeas."
+        }
+      }
+    }
+  }
+}

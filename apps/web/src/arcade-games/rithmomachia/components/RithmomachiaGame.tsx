@@ -13,6 +13,7 @@ import { useGameMode } from '@/contexts/GameModeContext'
 import { useFullscreen } from '@/contexts/FullscreenContext'
 import { useRoomData, useKickUser, useDeactivatePlayer } from '@/hooks/useRoomData'
 import { useViewerId } from '@/hooks/useViewerId'
+import { useAbacusSettings } from '@/hooks/useAbacusSettings'
 import type { RosterWarning } from '@/components/nav/GameContextNav'
 import { css } from '../../../../styled-system/css'
 import { useRithmomachia } from '../Provider'
@@ -266,6 +267,10 @@ export function RithmomachiaGame() {
     assignWhitePlayer,
     assignBlackPlayer,
   } = useRithmomachia()
+
+  // Get abacus settings for native abacus numbers
+  const { data: abacusSettings } = useAbacusSettings()
+  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
   const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
   const rosterWarning = useRosterWarning(state.gamePhase === 'setup' ? 'setup' : 'playing')
@@ -1128,6 +1133,10 @@ function SetupPhase({ onOpenGuide }: { onOpenGuide: () => void }) {
 function PlayingPhase({ onOpenGuide }: { onOpenGuide: () => void }) {
   const { state, isMyTurn, lastError, clearError, rosterStatus } = useRithmomachia()
 
+  // Get abacus settings for native abacus numbers
+  const { data: abacusSettings } = useAbacusSettings()
+  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
+
   return (
     <div
       className={css({
@@ -1283,6 +1292,7 @@ function AnimatedHelperPiece({
   onSelectHelper,
   closing,
   onHover,
+  useNativeAbacusNumbers = false,
 }: {
   piece: Piece
   boardPos: { x: number; y: number }
@@ -1292,6 +1302,7 @@ function AnimatedHelperPiece({
   onSelectHelper: (pieceId: string) => void
   closing: boolean
   onHover?: (pieceId: string | null) => void
+  useNativeAbacusNumbers?: boolean
 }) {
   console.log(
     `[AnimatedHelperPiece] Rendering piece ${piece.id}: boardPos=(${boardPos.x}, ${boardPos.y}), ringPos=(${ringX}, ${ringY}), closing=${closing}`
@@ -1337,7 +1348,13 @@ function AnimatedHelperPiece({
         strokeWidth={4}
       />
       <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
-        <PieceRenderer type={piece.type} color={piece.color} value={value} size={cellSize} />
+        <PieceRenderer
+          type={piece.type}
+          color={piece.color}
+          value={value}
+          size={cellSize}
+          useNativeAbacusNumbers={useNativeAbacusNumbers}
+        />
       </g>
     </animated.g>
   )
@@ -1358,6 +1375,7 @@ function HelperSelectionOptions({
   moverPiece,
   targetPiece,
   relation,
+  useNativeAbacusNumbers = false,
 }: {
   helpers: Array<{ piece: Piece; boardPos: { x: number; y: number } }>
   targetPos: { x: number; y: number }
@@ -1369,6 +1387,7 @@ function HelperSelectionOptions({
   moverPiece: Piece
   targetPiece: Piece
   relation: RelationKind
+  useNativeAbacusNumbers?: boolean
 }) {
   const [hoveredHelperId, setHoveredHelperId] = useState<string | null>(null)
   const maxRadius = cellSize * 1.2
@@ -1441,6 +1460,7 @@ function HelperSelectionOptions({
             cellSize={cellSize}
             onSelectHelper={onSelectHelper}
             closing={closing}
+            useNativeAbacusNumbers={useNativeAbacusNumbers}
             onHover={setHoveredHelperId}
           />
         )
@@ -1546,6 +1566,7 @@ function NumberBondVisualization({
   helperStartPos,
   padding,
   gap,
+  useNativeAbacusNumbers = false,
 }: {
   moverPiece: Piece
   helperPiece: Piece
@@ -1558,6 +1579,7 @@ function NumberBondVisualization({
   autoAnimate?: boolean
   moverStartPos: { x: number; y: number }
   helperStartPos: { x: number; y: number }
+  useNativeAbacusNumbers?: boolean
   padding: number
   gap: number
 }) {
@@ -1691,6 +1713,7 @@ function NumberBondVisualization({
             color={moverPiece.color}
             value={getMoverValue() || 0}
             size={cellSize}
+            useNativeAbacusNumbers={useNativeAbacusNumbers}
           />
         </g>
       </animated.g>
@@ -1716,6 +1739,7 @@ function NumberBondVisualization({
             color={helperPiece.color}
             value={getHelperValue() || 0}
             size={cellSize}
+            useNativeAbacusNumbers={useNativeAbacusNumbers}
           />
         </g>
       </animated.g>
@@ -1738,6 +1762,7 @@ function NumberBondVisualization({
         <g transform={`translate(${-cellSize / 2}, ${-cellSize / 2})`}>
           <PieceRenderer
             type={targetPiece.type}
+            useNativeAbacusNumbers={useNativeAbacusNumbers}
             color={targetPiece.color}
             value={getTargetValue() || 0}
             size={cellSize}
@@ -2215,18 +2240,22 @@ function SvgPiece({
   piece,
   cellSize,
   padding,
+  labelMargin = 0,
   opacity = 1,
+  useNativeAbacusNumbers = false,
 }: {
   piece: Piece
   cellSize: number
   padding: number
+  labelMargin?: number
   opacity?: number
+  useNativeAbacusNumbers?: boolean
 }) {
   const file = piece.square.charCodeAt(0) - 65 // A=0
   const rank = Number.parseInt(piece.square.slice(1), 10) // 1-8
   const row = 8 - rank // Invert for display
 
-  const x = padding + file * cellSize
+  const x = labelMargin + padding + file * cellSize
   const y = padding + row * cellSize
 
   const spring = useSpring({
@@ -2255,6 +2284,7 @@ function SvgPiece({
             color={piece.color}
             value={piece.type === 'P' ? piece.pyramidFaces?.[0] || 0 : piece.value || 0}
             size={pieceSize}
+            useNativeAbacusNumbers={useNativeAbacusNumbers}
           />
         </div>
       </foreignObject>
@@ -2267,6 +2297,11 @@ function SvgPiece({
  */
 function BoardDisplay() {
   const { state, makeMove, playerColor, isMyTurn } = useRithmomachia()
+
+  // Get abacus settings for native abacus numbers
+  const { data: abacusSettings } = useAbacusSettings()
+  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
+
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
   const [captureDialogOpen, setCaptureDialogOpen] = useState(false)
   const [closingDialog, setClosingDialog] = useState(false)
@@ -2545,8 +2580,11 @@ function BoardDisplay() {
   const cellSize = 100 // SVG units per cell
   const gap = 2
   const padding = 10
-  const boardWidth = cols * cellSize + (cols - 1) * gap + padding * 2
-  const boardHeight = rows * cellSize + (rows - 1) * gap + padding * 2
+  const labelMargin = 30 // Space for row/column labels
+  const boardInnerWidth = cols * cellSize + (cols - 1) * gap
+  const boardInnerHeight = rows * cellSize + (rows - 1) * gap
+  const boardWidth = boardInnerWidth + padding * 2 + labelMargin
+  const boardHeight = boardInnerHeight + padding * 2 + labelMargin
 
   const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!isMyTurn) return
@@ -2559,7 +2597,7 @@ function BoardDisplay() {
 
     const svg = e.currentTarget
     const rect = svg.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width) * boardWidth - padding
+    const x = ((e.clientX - rect.left) / rect.width) * boardWidth - labelMargin - padding
     const y = ((e.clientY - rect.top) / rect.height) * boardHeight - padding
 
     // Convert to grid coordinates
@@ -2578,7 +2616,7 @@ function BoardDisplay() {
     const file = square.charCodeAt(0) - 65
     const rank = Number.parseInt(square.slice(1), 10)
     const row = 8 - rank
-    const x = padding + file * (cellSize + gap) + cellSize / 2
+    const x = labelMargin + padding + file * (cellSize + gap) + cellSize / 2
     const y = padding + row * (cellSize + gap) + cellSize / 2
     console.log(
       `[getSquarePosition] square: ${square}, file: ${file}, rank: ${rank}, row: ${row}, x: ${x}, y: ${y}, cellSize: ${cellSize}, gap: ${gap}, padding: ${padding}`
@@ -2713,7 +2751,7 @@ function BoardDisplay() {
             const isLight = (col + actualRank) % 2 === 0
             const isSelected = selectedSquare === square
 
-            const x = padding + col * (cellSize + gap)
+            const x = labelMargin + padding + col * (cellSize + gap)
             const y = padding + row * (cellSize + gap)
 
             return (
@@ -2731,6 +2769,52 @@ function BoardDisplay() {
           })
         })}
 
+        {/* Column labels (A-P) at the bottom */}
+        {Array.from({ length: cols }, (_, col) => {
+          const colLabel = String.fromCharCode(65 + col)
+          const x = labelMargin + padding + col * (cellSize + gap) + cellSize / 2
+          const y = boardHeight - 10
+
+          return (
+            <text
+              key={`col-${colLabel}`}
+              x={x}
+              y={y}
+              fontSize="20"
+              fontWeight="bold"
+              fill="#374151"
+              fontFamily="sans-serif"
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              {colLabel}
+            </text>
+          )
+        })}
+
+        {/* Row labels (1-8) on the left */}
+        {Array.from({ length: rows }, (_, row) => {
+          const actualRank = 8 - row
+          const x = 15
+          const y = padding + row * (cellSize + gap) + cellSize / 2
+
+          return (
+            <text
+              key={`row-${actualRank}`}
+              x={x}
+              y={y}
+              fontSize="20"
+              fontWeight="bold"
+              fill="#374151"
+              fontFamily="sans-serif"
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              {actualRank}
+            </text>
+          )
+        })}
+
         {/* Pieces */}
         {activePieces.map((piece) => {
           // Show low opacity for pieces currently being shown as helper options or in the number bond
@@ -2743,7 +2827,9 @@ function BoardDisplay() {
               piece={piece}
               cellSize={cellSize + gap}
               padding={padding}
+              labelMargin={labelMargin}
               opacity={isInNumberBond ? 0.2 : 1}
+              useNativeAbacusNumbers={useNativeAbacusNumbers}
             />
           )
         })}
@@ -2798,6 +2884,7 @@ function BoardDisplay() {
                 helperStartPos={helperStartPos}
                 padding={padding}
                 gap={gap}
+                useNativeAbacusNumbers={useNativeAbacusNumbers}
               />
             )
           }
@@ -2837,6 +2924,7 @@ function BoardDisplay() {
                 moverPiece={moverPiece}
                 targetPiece={targetPiece}
                 relation={selectedRelation}
+                useNativeAbacusNumbers={useNativeAbacusNumbers}
               />
             )
           }

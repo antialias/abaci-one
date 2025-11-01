@@ -1,3 +1,4 @@
+import { AbacusReact, useAbacusDisplay } from '@soroban/abacus-react'
 import type { Color, PieceType } from '../types'
 
 interface PieceRendererProps {
@@ -5,6 +6,7 @@ interface PieceRendererProps {
   color: Color
   value: number | string
   size?: number
+  useNativeAbacusNumbers?: boolean
 }
 
 /**
@@ -12,8 +14,15 @@ interface PieceRendererProps {
  * BLACK pieces: dark gradient fill with light border, point RIGHT (towards white)
  * WHITE pieces: light gradient fill with dark border, point LEFT (towards black)
  */
-export function PieceRenderer({ type, color, value, size = 48 }: PieceRendererProps) {
+export function PieceRenderer({
+  type,
+  color,
+  value,
+  size = 48,
+  useNativeAbacusNumbers = false,
+}: PieceRendererProps) {
   const isDark = color === 'B'
+  const { config } = useAbacusDisplay()
 
   // Gradient IDs
   const gradientId = `gradient-${type}-${color}-${size}`
@@ -217,56 +226,99 @@ export function PieceRenderer({ type, color, value, size = 48 }: PieceRendererPr
       {renderShape()}
 
       {/* Pyramids don't show numbers */}
-      {type !== 'P' && (
-        <g>
-          {/* Outer glow/shadow for emphasis */}
-          {isDark ? (
-            <text
-              x={size / 2}
-              y={size / 2}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.4)"
-              strokeWidth={fontSize * 0.2}
-              fontSize={fontSize}
-              fontWeight="900"
-              fontFamily="Georgia, 'Times New Roman', serif"
-            >
-              {value}
-            </text>
-          ) : (
-            <text
-              x={size / 2}
-              y={size / 2}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill="none"
-              stroke="rgba(255, 255, 255, 0.95)"
-              strokeWidth={fontSize * 0.25}
-              fontSize={fontSize}
-              fontWeight="900"
-              fontFamily="Georgia, 'Times New Roman', serif"
-            >
-              {value}
-            </text>
-          )}
-          {/* Main text */}
-          <text
-            x={size / 2}
-            y={size / 2}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill={textColor}
-            fontSize={fontSize}
-            fontWeight="900"
-            fontFamily="Georgia, 'Times New Roman', serif"
-            filter={isDark ? `url(#text-shadow-${color})` : undefined}
+      {type !== 'P' &&
+        (useNativeAbacusNumbers && typeof value === 'number' ? (
+          // Render mini abacus
+          <foreignObject
+            x={size * 0.1}
+            y={size * 0.1}
+            width={size * 0.8}
+            height={size * 0.8}
+            style={{ overflow: 'visible' }}
           >
-            {value}
-          </text>
-        </g>
-      )}
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <AbacusReact
+                value={value}
+                columns={Math.max(1, Math.ceil(Math.log10(value + 1)))}
+                scaleFactor={0.35}
+                showNumbers={false}
+                beadShape={config.beadShape}
+                colorScheme={config.colorScheme}
+                hideInactiveBeads={config.hideInactiveBeads}
+                customStyles={{
+                  columnPosts: {
+                    fill: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)',
+                    stroke: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+                    strokeWidth: 1,
+                  },
+                  reckoningBar: {
+                    fill: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.2)',
+                    stroke: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)',
+                    strokeWidth: 1,
+                  },
+                }}
+              />
+            </div>
+          </foreignObject>
+        ) : (
+          // Render traditional text number
+          <g>
+            {/* Outer glow/shadow for emphasis */}
+            {isDark ? (
+              <text
+                x={size / 2}
+                y={size / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.4)"
+                strokeWidth={fontSize * 0.2}
+                fontSize={fontSize}
+                fontWeight="900"
+                fontFamily="Georgia, 'Times New Roman', serif"
+              >
+                {value}
+              </text>
+            ) : (
+              <text
+                x={size / 2}
+                y={size / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="none"
+                stroke="rgba(255, 255, 255, 0.95)"
+                strokeWidth={fontSize * 0.25}
+                fontSize={fontSize}
+                fontWeight="900"
+                fontFamily="Georgia, 'Times New Roman', serif"
+              >
+                {value}
+              </text>
+            )}
+            {/* Main text */}
+            <text
+              x={size / 2}
+              y={size / 2}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill={textColor}
+              fontSize={fontSize}
+              fontWeight="900"
+              fontFamily="Georgia, 'Times New Roman', serif"
+              filter={isDark ? `url(#text-shadow-${color})` : undefined}
+            >
+              {value}
+            </text>
+          </g>
+        ))}
     </svg>
   )
 }

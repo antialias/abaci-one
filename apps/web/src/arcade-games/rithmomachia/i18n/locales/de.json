@@ -17,7 +17,11 @@
     "languageSelector": {
       "label": "Sprache",
       "en": "English",
-      "de": "Deutsch"
+      "de": "Deutsch",
+      "ja": "日本語",
+      "hi": "हिन्दी",
+      "es": "Español",
+      "la": "Latina"
     },
     "overview": {
       "goalTitle": "Spielziel",
@@ -31,7 +35,20 @@
       "step2": "Suchen Sie nach Schlagmöglichkeiten durch mathematische Beziehungen",
       "step3": "Dringen Sie ins gegnerische Gebiet vor (Reihen 1-4 für Schwarz, Reihen 5-8 für Weiß)",
       "step4": "Achten Sie auf Harmoniemöglichkeiten mit Ihren vorderen Steinen",
-      "step5": "Gewinnen Sie durch eine Progression, die eine Runde übersteht!"
+      "step5": "Gewinnen Sie durch eine Progression, die eine Runde übersteht!",
+      "goalDesc": "Ordnen Sie <strong>3 Ihrer Steine im gegnerischen Gebiet</strong> an, um eine <strong>mathematische Progression</strong> zu bilden, überstehen Sie eine Gegnerrunde und gewinnen Sie.",
+      "boardItems": [
+        "8 Reihen × 16 Spalten (Spalten A-P, Reihen 1-8)",
+        "<strong>Ihre Hälfte:</strong> Schwarz kontrolliert Reihen 5-8, Weiß kontrolliert Reihen 1-4",
+        "<strong>Gegnerisches Gebiet:</strong> Wo Sie Ihre Siegprogression aufbauen müssen"
+      ],
+      "howToPlayItems": [
+        "Bewegen Sie Steine zunächst zur Mitte",
+        "Suchen Sie nach Schlagmöglichkeiten durch mathematische Beziehungen",
+        "Dringen Sie ins gegnerische Gebiet vor (Reihen 1-4 für Schwarz, Reihen 5-8 für Weiß)",
+        "Achten Sie auf Harmoniemöglichkeiten mit Ihren vorderen Steinen",
+        "Gewinnen Sie durch eine Progression, die eine Runde übersteht!"
+      ]
     },
     "pieces": {
       "title": "Ihre Spielfiguren (25 insgesamt)",
@@ -64,7 +81,30 @@
       "pyramidCaptureOptions": "Schlagoptionen von H5:",
       "pyramidOption1": "Zug nach I5: Wähle Seite 64 → schlägt 16 durch Vielfaches (64÷16=4)",
       "pyramidOption2": "Zug nach H6: Wähle Seite 49 → schlägt 49 durch Gleichheit (49=49)",
-      "pyramidOption3": "Zug nach G5: Wähle Seite 25 → schlägt 25 durch Gleichheit (25=25)"
+      "pyramidOption3": "Zug nach G5: Wähle Seite 25 → schlägt 25 durch Gleichheit (25=25)",
+      "intro": "Jeder Stein hat einen <strong>Zahlenwert</strong> und bewegt sich unterschiedlich:",
+      "pieceTypes": {
+        "circle": {
+          "name": "Kreis",
+          "movement": "Diagonal (wie ein Läufer)",
+          "count": "Anzahl: 8"
+        },
+        "triangle": {
+          "name": "Dreieck",
+          "movement": "Gerade Linien (wie ein Turm)",
+          "count": "Anzahl: 8"
+        },
+        "square": {
+          "name": "Quadrat",
+          "movement": "Alle Richtungen (wie eine Dame)",
+          "count": "Anzahl: 7"
+        },
+        "pyramid": {
+          "name": "Pyramide",
+          "movement": "Ein Feld in alle Richtungen (wie ein König)",
+          "count": "Anzahl: 1"
+        }
+      }
     },
     "capture": {
       "title": "Wie man schlägt",
@@ -90,7 +130,50 @@
       "ratioExample": "Ihre 20 ÷ Helfer 4 = Gegner 5",
       "ratioCaption": "Weißes Dreieck (20) kann schwarzen Kreis (5) mit Helfer-Kreis (4) schlagen: 20 ÷ 4 = 5",
       "helpersTitle": "💡 Was sind Helfer?",
-      "helpersDescription": "Helfer sind Ihre anderen Steine auf dem Brett. Sie bewegen sich nicht - sie fügen nur ihre Zahl zur Mathematik hinzu. Das Spiel zeigt Ihnen welche Schläge funktionieren wenn Sie einen Stein anklicken."
+      "helpersDescription": "Helfer sind Ihre anderen Steine auf dem Brett. Sie bewegen sich nicht - sie fügen nur ihre Zahl zur Mathematik hinzu. Das Spiel zeigt Ihnen welche Schläge funktionieren wenn Sie einen Stein anklicken.",
+      "intro": "Sie können einen gegnerischen Stein <strong>nur schlagen, wenn der Wert Ihres Steins mathematisch verwandt</strong> ist:",
+      "simpleEqual": {
+        "name": "Gleich",
+        "desc": "Ihre 25 schlägt deren 25"
+      },
+      "simpleMultiple": {
+        "name": "Vielfaches / Teiler",
+        "desc": "Ihre 64 schlägt deren 16 (64 ÷ 16 = 4)"
+      },
+      "advancedSum": {
+        "name": "Summe",
+        "desc": "Ihre 9 + Helfer 16 = Gegner 25"
+      },
+      "advancedDifference": {
+        "name": "Differenz",
+        "desc": "Ihre 30 - Helfer 10 = Gegner 20"
+      },
+      "advancedProduct": {
+        "name": "Produkt",
+        "desc": "Ihre 5 × Helfer 5 = Gegner 25"
+      },
+      "helpersDesc": "Helfer sind Ihre anderen Steine auf dem Brett — sie bewegen sich nicht, sie geben nur ihren Wert für die Mathematik. Das Spiel zeigt Ihnen gültige Schläge, wenn Sie einen Stein auswählen.",
+      "example1Title": "Beispiel: Vielfaches/Teiler-Schlag",
+      "example1Desc": "Weiße 64 (Quadrat) kann schwarze 16 (Dreieck) schlagen, weil 64 ein Vielfaches von 16 ist",
+      "example2Title": "Beispiel: Summen-Schlag mit Helfer",
+      "example2Desc": "Weiße 9 + Helfer 16 = schwarze 25 (9 + 16 = 25)",
+      "example3Title": "Beispiel: Differenz-Schlag mit Helfer",
+      "example3Desc": "Weiße 30 - Helfer 10 = schwarze 20 (30 - 10 = 20)",
+      "example4Title": "Beispiel: Produkt-Schlag mit Helfer",
+      "example4Desc": "Weiße 4 × Helfer 5 = schwarze 20 (4 × 5 = 20)",
+      "example5Title": "Beispiel: Verhältnis-Schlag mit Helfer",
+      "example5Desc": "Weiße 20 ÷ Helfer 4 = schwarze 5 (20 ÷ 4 = 5)",
+      "pyramidTitle": "Spezial: Pyramiden-Schläge",
+      "pyramidIntro": "Pyramiden haben 4 Seitenwerte, was sie unglaublich vielseitig macht. Sie wählen welche Seite Sie beim Schlagversuch verwenden, sodass eine Pyramide mehrere gegnerische Steine bedrohen kann.",
+      "pyramidEx1Title": "Beispiel: Pyramiden-Seitenwahl (Gleichheit)",
+      "pyramidEx1Desc": "Weiße Pyramide (Seiten: 64, 49, 36, 25) kann schwarze 49 schlagen, indem Seite 49 für Gleichheit gewählt wird (49 = 49)",
+      "pyramidEx1Note": "<strong>Seitenwahl:</strong> Weiß wählt Seite 49 → 49 = 49 (Gleichheit) → Schlag erfolgreich! Die Pyramide könnte auch Steine mit Werten 64, 36 oder 25 schlagen mit den entsprechenden Seiten.",
+      "pyramidEx2Title": "Beispiel: Pyramide mit Helfer (Summe)",
+      "pyramidEx2Desc": "Weiße Pyramide verwendet Seite 25 + Helfer 20 = schwarze 45 (25 + 20 = 45)",
+      "pyramidEx2Note": "<strong>Seitenwahl:</strong> Weiß wählt Seite 25 und deklariert Helfer bei D4 (Wert 20) → 25 + 20 = 45 (Summe) → Schlag erfolgreich! Durch Wahl verschiedener Seiten könnte dieselbe Pyramide andere Werte mit verschiedenen Helfern schlagen.",
+      "pyramidEx3Title": "Beispiel: Pyramiden-Flexibilität (Vielfaches/Teiler)",
+      "pyramidEx3Desc": "Schwarze Pyramide (Seiten: 36, 25, 16, 4) kann weiße 9 mit Seite 36 schlagen (Vielfaches: 36 ÷ 9 = 4)",
+      "pyramidEx3Note": "<strong>Seitenwahl:</strong> Schwarz wählt Seite 36 → 36 ÷ 9 = 4 (Vielfaches) → Schlag erfolgreich! Hinweis: Schwarz könnte auch Seite 4 mit Helfer 5 für Summe verwenden (4 + 5 = 9), was mehrere gültige Ansätze zeigt."
     },
     "harmony": {
       "title": "Harmonien: Der coolste Weg zu gewinnen",
@@ -157,6 +240,88 @@
       "tip3": "Große Steine sind stark - schwerer zu schlagen",
       "tip4": "Achten Sie auf ihre Harmonien - lassen Sie nicht 3 Steine tief",
       "tip5": "Pyramiden sind flexibel - wählen Sie den richtigen Wert für jeden Schlag"
+    },
+    "strategy": {
+      "title": "Strategie & Taktik",
+      "intro": "Rithmomachia belohnt sowohl mathematische Einsicht als auch strategische Planung. Erfolg erfordert das Ausbalancieren von Gebietskontrolle, Steineerhaltung und mathematischen Möglichkeiten.",
+      "openingPrinciples": {
+        "title": "Eröffnungsprinzipien",
+        "controlCenter": {
+          "title": "Kontrollieren Sie das Zentrum",
+          "desc": "Bewegen Sie Steine zur leeren 8-Spalten-Mitte (Spalten E–L). Dies bietet Mobilität und schafft Schlagmöglichkeiten aus mehreren Winkeln."
+        },
+        "developCircles": {
+          "title": "Entwickeln Sie zuerst kleine Kreise",
+          "desc": "Ihre kleinen Kreise (2–9) in Spalten D und M sind mobil und vielseitig. Bewegen Sie sie früh zur Mitte, um Präsenz zu etablieren und Helfer-Netzwerke zu schaffen."
+        },
+        "protectPyramid": {
+          "title": "Schützen Sie Ihre Pyramide",
+          "desc": "Die Pyramide ist Ihr flexibelster Stein (4 Seitenwerte), bewegt sich aber nur 1 Feld. Halten Sie sie hinter vorrückenden Linien bis zum Mittelspiel, wenn mathematische Bedrohungen klar sind."
+        },
+        "knowNumbers": {
+          "title": "Kennen Sie Ihre Zahlen",
+          "desc": "Merken Sie sich wichtige mathematische Beziehungen in Ihrer Armee. Identifizieren Sie welche Steine Faktoren, Vielfache und Summen bilden—dies beschleunigt taktische Berechnungen."
+        }
+      },
+      "midGame": {
+        "title": "Mittelspiel-Taktiken",
+        "helperNetworks": {
+          "title": "Bauen Sie Helfer-Netzwerke",
+          "desc": "Positionieren Sie Steine so, dass mehrere Helfer Schläge unterstützen können. Wenn Sie zum Beispiel Steine mit Werten 5 und 10 haben, können Sie 15 (Summe), 5 (Differenz) oder 50 (Produkt) schlagen, wenn Ihr Beweger richtig positioniert ist."
+        },
+        "createThreats": {
+          "title": "Schaffen Sie Schlagdrohungen",
+          "desc": "Zwingen Sie Ihren Gegner mehrere Steine gleichzeitig zu verteidigen. Auch wenn Sie nicht alle Schläge ausführen können, schränkt die Drohung deren Optionen ein und kontrolliert das Tempo."
+        },
+        "thinkDefensively": {
+          "title": "Denken Sie defensiv",
+          "desc": "Überprüfen Sie nach jedem Zug welche Ihrer Steine geschlagen werden können. Hochwertige Steine wie Quadrate (169, 225, 289, 361) sind anfällig für viele Beziehungen—positionieren Sie sie hinter Verteidigern oder auf geschützten Feldern."
+        },
+        "exchangeWhenAhead": {
+          "title": "Tauschen Sie wenn Sie vorne liegen",
+          "desc": "Wenn Sie mehr Steine oder höhere Werte geschlagen haben, vereinfachen Sie die Position durch Steintausch. Dies reduziert die Angriffsoptionen Ihres Gegners und bringt Sie näher an den Erschöpfungssieg."
+        }
+      },
+      "victoryPaths": {
+        "title": "Wege zum Sieg",
+        "harmony": {
+          "title": "Harmoniesieg (Am elegantesten)",
+          "desc": "Platzieren Sie 3 Steine im gegnerischen Gebiet, die eine arithmetische, geometrische oder harmonische Progression bilden. Häufige Triaden:",
+          "arithmetic": "<strong>Arithmetisch:</strong> (6, 9, 12), (5, 7, 9), (8, 12, 16)",
+          "geometric": "<strong>Geometrisch:</strong> (4, 8, 16), (3, 9, 27), (2, 8, 32)",
+          "harmonic": "<strong>Harmonisch:</strong> (6, 8, 12), (10, 12, 15), (6, 10, 15)"
+        },
+        "exhaustion": {
+          "title": "Erschöpfungssieg (Zermürbung)",
+          "desc": "Schlagen Sie systematisch Steine bis Ihr Gegner keine legalen Züge hat. Fokus auf: mobile Steine eliminieren (Quadrate und Dreiecke), Diagonalen und Reihen blockieren, und die Pyramide in eine Ecke zwingen."
+        },
+        "points": {
+          "title": "Punktesieg (Optionale Regel)",
+          "desc": "Falls aktiviert, schlagen Sie Steine im Wert von 30 Punkten (C=1, T=2, S=3, P=5). Jagen Sie hochwertige Ziele und bewahren Sie Ihre eigenen schweren Steine. Tauschen Sie vorteilhaft."
+        }
+      },
+      "commonMistakes": {
+        "title": "⚠️ Häufige Fehler zu vermeiden",
+        "movingWithoutCalc": "<strong>Bewegen ohne Berechnung:</strong> Überprüfen Sie immer ob Ihr Zielfeld von gegnerischen Steinen geschlagen werden kann",
+        "ignoringGeometry": "<strong>Helfer-Geometrie ignorieren:</strong> Helfer können überall sein, aber Sie brauchen noch einen legalen Zugpfad zum Schlagen",
+        "neglectingHarmony": "<strong>Harmoniedrohungen vernachlässigen:</strong> Wenn Ihr Gegner 2 Steine in Ihrem Gebiet hat, die Teil einer Progression bilden, blockieren Sie deren dritten",
+        "exposingPyramid": "<strong>Die Pyramide exponieren:</strong> Sie bewegt sich nur 1 Feld und hat begrenzte Fluchtoptionen—schützen Sie sie früh"
+      },
+      "advanced": {
+        "title": "Fortgeschrittene Konzepte",
+        "sacrifices": {
+          "title": "Positionsopfer",
+          "desc": "Manchmal öffnet das Opfern eines Steins Linien für Ihre anderen Steine oder zwingt Ihren Gegner in eine schlechtere Position. Berechnen Sie das resultierende Ungleichgewicht vor dem Opfern."
+        },
+        "pyramidFaces": {
+          "title": "Pyramiden-Seitenwahl",
+          "desc": "Ihre Pyramide hat 4 Seitenwerte. Beim Schlagen wählen Sie die Seite, die zukünftige Flexibilität maximiert. Bei Harmoniedeklarationen wählen Sie die Seite, die den wertvollsten Progressionstyp vervollständigt."
+        },
+        "tempo": {
+          "title": "Tempo und Initiative",
+          "desc": "Jeder Zug der eine defensive Antwort erzwingt gewinnt Tempo. Reihen Sie erzwungene Züge (Schläge, Drohungen) aneinander, um das Tempo zu diktieren und Ihren Gegner daran zu hindern, deren Plan auszuführen."
+        }
+      }
     }
   }
 }
