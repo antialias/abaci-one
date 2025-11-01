@@ -342,6 +342,59 @@ This project uses SQLite with Drizzle ORM. Database location: `./data/sqlite.db`
 - Drizzle config: `drizzle.config.ts`
 - Migrations: `drizzle/` directory
 
+### Creating Database Migrations
+
+**CRITICAL: NEVER manually create migration SQL files or edit the journal.**
+
+When adding/modifying database schema:
+
+1. **Update the schema file** in `src/db/schema/`:
+   ```typescript
+   // Example: Add new column to existing table
+   export const abacusSettings = sqliteTable('abacus_settings', {
+     userId: text('user_id').primaryKey(),
+     // ... existing columns ...
+     newField: integer('new_field', { mode: 'boolean' }).notNull().default(false),
+   })
+   ```
+
+2. **Generate migration using drizzle-kit**:
+   ```bash
+   npx drizzle-kit generate --custom
+   ```
+   This creates:
+   - A new SQL file in `drizzle/####_name.sql`
+   - Updates `drizzle/meta/_journal.json`
+   - Creates a snapshot in `drizzle/meta/####_snapshot.json`
+
+3. **Edit the generated SQL file** (it will be empty):
+   ```sql
+   -- Custom SQL migration file, put your code below! --
+   ALTER TABLE `abacus_settings` ADD `new_field` integer DEFAULT 0 NOT NULL;
+   ```
+
+4. **Test the migration** on your local database:
+   ```bash
+   npm run db:migrate
+   ```
+
+5. **Verify** the column was added:
+   ```bash
+   mcp__sqlite__describe_table table_name
+   ```
+
+**What NOT to do:**
+- ❌ DO NOT manually create SQL files in `drizzle/` without using `drizzle-kit generate`
+- ❌ DO NOT manually edit `drizzle/meta/_journal.json`
+- ❌ DO NOT run SQL directly with `sqlite3` command
+- ❌ DO NOT use `drizzle-kit generate` without `--custom` flag (it requires interactive prompts)
+
+**Why this matters:**
+- Drizzle tracks applied migrations in `__drizzle_migrations` table
+- Manual SQL files won't be tracked properly
+- Production deployments run `npm run db:migrate` automatically
+- Improperly created migrations will fail in production
+
 ## Deployment Verification
 
 **CRITICAL: Never assume deployment is complete just because the website is accessible.**
