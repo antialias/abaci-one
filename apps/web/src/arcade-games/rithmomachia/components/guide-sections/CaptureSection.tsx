@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../../styled-system/css'
 import { RithmomachiaBoard, type ExamplePiece } from '../RithmomachiaBoard'
 
@@ -16,7 +16,7 @@ function squaresToCropArea(topLeft: string, bottomRight: string) {
 }
 
 export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
-  const { t } = useTranslation()
+  const t = useTranslations('rithmomachia.guide')
 
   // Example board positions for captures
   const equalityExample: ExamplePiece[] = [
@@ -63,13 +63,10 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           mb: '16px',
         })}
       >
-        {t('guide.capture.title', 'How to Capture')}
+        {t('capture.title')}
       </h3>
       <p className={css({ fontSize: '15px', lineHeight: '1.6', mb: '24px', color: '#374151' })}>
-        {t(
-          'guide.capture.description',
-          'You can only capture an enemy piece if your piece value has a mathematical relation to theirs:'
-        )}
+        {t('capture.description')}
       </p>
 
       <h4
@@ -81,7 +78,7 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           mt: '20px',
         })}
       >
-        {t('guide.capture.simpleTitle', 'Simple Relations (no helper needed)')}
+        {t('capture.simpleTitle')}
       </h4>
 
       {/* Equality */}
@@ -95,10 +92,10 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
-          {t('guide.capture.equality', 'Equal')}
+          {t('capture.equality')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
-          {t('guide.capture.equalityExample', 'Your 25 captures their 25')}
+          {t('capture.equalityExample')}
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
           <RithmomachiaBoard
@@ -119,10 +116,7 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             fontStyle: 'italic',
           })}
         >
-          {t(
-            'guide.capture.equalityCaption',
-            'White Circle (25) can capture Black Circle (25) by equality'
-          )}
+          {t('capture.equalityCaption')}
         </p>
       </div>
 
@@ -137,10 +131,10 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
-          {t('guide.capture.multiple', 'Multiple / Divisor')}
+          {t('capture.multiple')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
-          {t('guide.capture.multipleExample', 'Your 64 captures their 16 (64 ÷ 16 = 4)')}
+          {t('capture.multipleExample')}
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
           <RithmomachiaBoard
@@ -161,10 +155,7 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             fontStyle: 'italic',
           })}
         >
-          {t(
-            'guide.capture.multipleCaption',
-            'White Square (64) can capture Black Triangle (16) because 64 ÷ 16 = 4'
-          )}
+          {t('capture.multipleCaption')}
         </p>
       </div>
 
@@ -177,7 +168,7 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           mt: '24px',
         })}
       >
-        {t('guide.capture.advancedTitle', 'Advanced Relations (need one helper piece)')}
+        {t('capture.advancedTitle')}
       </h4>
 
       {/* Sum */}
@@ -191,10 +182,10 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
-          {t('guide.capture.sum', 'Sum')}
+          {t('capture.sum')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
-          {t('guide.capture.sumExample', 'Your 9 + helper 16 = enemy 25')}
+          {t('capture.sumExample')}
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
           <RithmomachiaBoard
@@ -215,10 +206,7 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             fontStyle: 'italic',
           })}
         >
-          {t(
-            'guide.capture.sumCaption',
-            'White Circle (9) can capture Black Circle (25) using helper Triangle (16): 9 + 16 = 25'
-          )}
+          {t('capture.sumCaption')}
         </p>
       </div>
 
@@ -233,10 +221,10 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
-          {t('guide.capture.difference', 'Difference')}
+          {t('capture.difference')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
-          {t('guide.capture.differenceExample', 'Your 30 - helper 10 = enemy 20')}
+          {t('capture.differenceExample')}
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
           <RithmomachiaBoard
@@ -257,10 +245,7 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             fontStyle: 'italic',
           })}
         >
-          {t(
-            'guide.capture.differenceCaption',
-            'White Triangle (30) can capture Black Triangle (20) using helper Circle (10): 30 - 10 = 20'
-          )}
+          {t('capture.differenceCaption')}
         </p>
       </div>
 
@@ -275,10 +260,10 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
-          {t('guide.capture.product', 'Product')}
+          {t('capture.product')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
-          {t('guide.capture.productExample', 'Your 5 × helper 5 = enemy 25')}
+          {t('capture.productExample')}
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
           <RithmomachiaBoard
@@ -299,10 +284,7 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             fontStyle: 'italic',
           })}
         >
-          {t(
-            'guide.capture.productCaption',
-            'White Circle (5) can capture Black Circle (25) using helper Circle (5): 5 × 5 = 25'
-          )}
+          {t('capture.productCaption')}
         </p>
       </div>
 
@@ -317,10 +299,10 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#111827', mb: '8px' })}>
-          {t('guide.capture.ratio', 'Ratio')}
+          {t('capture.ratio')}
         </p>
         <p className={css({ fontSize: '13px', color: '#6b7280', mb: '12px' })}>
-          {t('guide.capture.ratioExample', 'Your 20 ÷ helper 4 = enemy 5')}
+          {t('capture.ratioExample')}
         </p>
         <div className={css({ display: 'flex', justifyContent: 'center' })}>
           <RithmomachiaBoard
@@ -341,10 +323,7 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             fontStyle: 'italic',
           })}
         >
-          {t(
-            'guide.capture.ratioCaption',
-            'White Triangle (20) can capture Black Circle (5) using helper Circle (4): 20 ÷ 4 = 5'
-          )}
+          {t('capture.ratioCaption')}
         </p>
       </div>
 
@@ -358,13 +337,10 @@ export function CaptureSection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         })}
       >
         <p className={css({ fontSize: '14px', fontWeight: 'bold', color: '#1e40af', mb: '8px' })}>
-          {t('guide.capture.helpersTitle', '💡 What are helpers?')}
+          {t('capture.helpersTitle')}
         </p>
         <p className={css({ fontSize: '14px', color: '#1e3a8a', lineHeight: '1.6' })}>
-          {t(
-            'guide.capture.helpersDescription',
-            'Helpers are your other pieces still on the board. They stay where they are and just provide their value for the math. The game shows you valid captures when you select a piece.'
-          )}
+          {t('capture.helpersDescription')}
         </p>
       </div>
     </div>

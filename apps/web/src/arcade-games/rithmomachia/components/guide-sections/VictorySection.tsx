@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../../styled-system/css'
 import { RithmomachiaBoard, type ExamplePiece } from '../RithmomachiaBoard'
 
@@ -16,7 +16,7 @@ function squaresToCropArea(topLeft: string, bottomRight: string) {
 }
 
 export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
-  const { t } = useTranslation()
+  const t = useTranslations('rithmomachia.guide')
 
   // Example winning position: White has formed a geometric progression in Black's territory
   const winningExample: ExamplePiece[] = [
@@ -39,7 +39,7 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           mb: '16px',
         })}
       >
-        {t('guide.victory.title', 'How to Win')}
+        {t('victory.title')}
       </h3>
 
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '24px' })}>
@@ -56,13 +56,10 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             })}
           >
             <span>👑</span>
-            <span>{t('guide.victory.harmony', 'Victory #1: Harmony (Progression)')}</span>
+            <span>{t('victory.harmony')}</span>
           </h4>
           <p className={css({ fontSize: '15px', lineHeight: '1.6', color: '#374151', mb: '12px' })}>
-            {t(
-              'guide.victory.harmonyDesc',
-              "Form a mathematical progression with 3 pieces in enemy territory. If it survives your opponent's next turn, you win!"
-            )}
+            {t('victory.harmonyDesc')}
           </p>
 
           {/* Visual example of winning harmony */}
@@ -84,7 +81,7 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 textAlign: 'center',
               })}
             >
-              {t('guide.victory.exampleTitle', 'Example: White Wins!')}
+              {t('victory.exampleTitle')}
             </p>
             <div className={css({ display: 'flex', justifyContent: 'center' })}>
               <RithmomachiaBoard
@@ -105,10 +102,7 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 fontStyle: 'italic',
               })}
             >
-              {t(
-                'guide.victory.exampleCaption',
-                'White pieces 4, 8, 16 form a geometric progression in enemy territory. Black cannot break it - White wins!'
-              )}
+              {t('victory.exampleCaption')}
             </p>
           </div>
 
@@ -121,10 +115,7 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             })}
           >
             <p className={css({ fontSize: '13px', color: '#15803d' })}>
-              {t(
-                'guide.victory.harmonyNote',
-                'This is the primary victory condition in Rithmomachia'
-              )}
+              {t('victory.harmonyNote')}
             </p>
           </div>
         </div>
@@ -142,13 +133,10 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             })}
           >
             <span>🚫</span>
-            <span>{t('guide.victory.exhaustion', 'Victory #2: Exhaustion')}</span>
+            <span>{t('victory.exhaustion')}</span>
           </h4>
           <p className={css({ fontSize: '15px', lineHeight: '1.6', color: '#374151' })}>
-            {t(
-              'guide.victory.exhaustionDesc',
-              'If your opponent has no legal moves at the start of their turn, they lose.'
-            )}
+            {t('victory.exhaustionDesc')}
           </p>
         </div>
       </div>
@@ -162,7 +150,7 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           mt: '32px',
         })}
       >
-        {t('guide.victory.strategyTitle', 'Quick Strategy Tips')}
+        {t('victory.strategyTitle')}
       </h3>
       <ul
         className={css({
@@ -172,31 +160,11 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           color: '#374151',
         })}
       >
-        <li>{t('guide.victory.tip1', 'Control the center — easier to invade enemy territory')}</li>
-        <li>
-          {t(
-            'guide.victory.tip2',
-            'Small pieces are fast — circles (3, 5, 7, 9) can slip into enemy half quickly'
-          )}
-        </li>
-        <li>
-          {t(
-            'guide.victory.tip3',
-            'Large pieces are powerful — harder to capture due to their size'
-          )}
-        </li>
-        <li>
-          {t(
-            'guide.victory.tip4',
-            "Watch for harmony threats — don't let opponent get 3 pieces deep in your territory"
-          )}
-        </li>
-        <li>
-          {t(
-            'guide.victory.tip5',
-            'Pyramids are flexible — choose the right face value for each situation'
-          )}
-        </li>
+        <li>{t('victory.tip1')}</li>
+        <li>{t('victory.tip2')}</li>
+        <li>{t('victory.tip3')}</li>
+        <li>{t('victory.tip4')}</li>
+        <li>{t('victory.tip5')}</li>
       </ul>
     </div>
   )

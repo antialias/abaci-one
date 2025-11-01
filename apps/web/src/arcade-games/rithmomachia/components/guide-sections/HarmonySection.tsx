@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../../styled-system/css'
 import { RithmomachiaBoard, type ExamplePiece } from '../RithmomachiaBoard'
 
@@ -16,7 +16,7 @@ function squaresToCropArea(topLeft: string, bottomRight: string) {
 }
 
 export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
-  const { t } = useTranslation()
+  const t = useTranslations('rithmomachia.guide')
 
   // Example board positions for harmonies (White pieces in Black's territory: rows 5-8)
   const arithmeticExample: ExamplePiece[] = [
@@ -47,19 +47,13 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           mb: '16px',
         })}
       >
-        {t('guide.harmony.title', 'Harmonies: The Elegant Victory')}
+        {t('harmony.title')}
       </h3>
       <p className={css({ fontSize: '15px', lineHeight: '1.6', mb: '8px', color: '#374151' })}>
-        {t(
-          'guide.harmony.intro',
-          'A Harmony (also called a "Proper Victory") is the most sophisticated way to win. Get 3 of your pieces into enemy territory arranged in a straight line where their values form a mathematical pattern.'
-        )}
+        {t('harmony.intro')}
       </p>
       <p className={css({ fontSize: '14px', lineHeight: '1.6', mb: '24px', color: '#6b7280' })}>
-        {t(
-          'guide.harmony.introDetail',
-          'Think of it like getting three numbers in a sequence—but the sequences follow special mathematical rules from ancient philosophy and music theory.'
-        )}
+        {t('harmony.introDetail')}
       </p>
 
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '24px' })}>
@@ -75,13 +69,10 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <h4
             className={css({ fontSize: '18px', fontWeight: 'bold', color: '#15803d', mb: '8px' })}
           >
-            {t('guide.harmony.arithmetic', '1. Arithmetic Progression (Easiest to Understand)')}
+            {t('harmony.arithmetic')}
           </h4>
           <p className={css({ fontSize: '14px', color: '#166534', mb: '12px', lineHeight: '1.6' })}>
-            {t(
-              'guide.harmony.arithmeticDesc',
-              'The middle number is exactly halfway between the other two. In other words, the differences are equal.'
-            )}
+            {t('harmony.arithmeticDesc')}
           </p>
 
           <div
@@ -101,7 +92,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 mb: '8px',
               })}
             >
-              {t('guide.harmony.howToCheck', 'How to check:')}
+              {t('harmony.howToCheck')}
             </p>
             <p
               className={css({
@@ -112,18 +103,17 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 mb: '12px',
               })}
             >
-              {t('guide.harmony.arithmeticFormula', 'Middle × 2 = First + Last')}
+              {t('harmony.arithmeticFormula')}
             </p>
 
             <div className={css({ fontSize: '13px', color: '#166534', lineHeight: '1.8' })}>
               <p className={css({ fontWeight: 'bold', mb: '4px' })}>
-                {t('guide.harmony.example', 'Example:')} 6, 9, 12
+                {t('harmony.example')} 6, 9, 12
               </p>
               <p>
-                {t('guide.harmony.differences', 'Differences:')} 9−6=3, 12−9=3{' '}
-                {t('guide.harmony.equal', '(equal!)')}
+                {t('harmony.differences')} 9−6=3, 12−9=3 {t('harmony.equal')}
               </p>
-              <p>{t('guide.harmony.check', 'Check:')} 9×2 = 18 = 6+12 ✓</p>
+              <p>{t('harmony.check')} 9×2 = 18 = 6+12 ✓</p>
             </div>
           </div>
 
@@ -146,10 +136,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
               mb: '12px',
             })}
           >
-            {t(
-              'guide.harmony.arithmeticCaption',
-              'White pieces 6, 9, 12 in a row in enemy territory form an arithmetic progression'
-            )}
+            {t('harmony.arithmeticCaption')}
           </p>
 
           <div
@@ -161,11 +148,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             })}
           >
             <p className={css({ fontSize: '13px', color: '#15803d' })}>
-              <strong>{t('guide.harmony.strategyTip', 'Strategy tip:')}</strong>{' '}
-              {t(
-                'guide.harmony.arithmeticTip',
-                'Your small circles (2-9) and many triangles naturally form arithmetic progressions. Look for three pieces where the gaps are equal!'
-              )}
+              <strong>{t('harmony.strategyTip')}</strong> {t('harmony.arithmeticTip')}
             </p>
           </div>
         </div>
@@ -182,13 +165,10 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <h4
             className={css({ fontSize: '18px', fontWeight: 'bold', color: '#92400e', mb: '8px' })}
           >
-            {t('guide.harmony.geometric', '2. Geometric Progression (Powers and Multiples)')}
+            {t('harmony.geometric')}
           </h4>
           <p className={css({ fontSize: '14px', color: '#78350f', mb: '12px', lineHeight: '1.6' })}>
-            {t(
-              'guide.harmony.geometricDesc',
-              'Each number is multiplied by the same amount to get the next. The ratios are equal.'
-            )}
+            {t('harmony.geometricDesc')}
           </p>
 
           <div
@@ -208,7 +188,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 mb: '8px',
               })}
             >
-              {t('guide.harmony.howToCheck', 'How to check:')}
+              {t('harmony.howToCheck')}
             </p>
             <p
               className={css({
@@ -219,18 +199,17 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 mb: '12px',
               })}
             >
-              {t('guide.harmony.geometricFormula', 'Middle² = First × Last')}
+              {t('harmony.geometricFormula')}
             </p>
 
             <div className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.8' })}>
               <p className={css({ fontWeight: 'bold', mb: '4px' })}>
-                {t('guide.harmony.example', 'Example:')} 4, 8, 16
+                {t('harmony.example')} 4, 8, 16
               </p>
               <p>
-                {t('guide.harmony.ratios', 'Ratios:')} 8÷4=2, 16÷8=2{' '}
-                {t('guide.harmony.equal', '(equal!)')}
+                {t('harmony.ratios')} 8÷4=2, 16÷8=2 {t('harmony.equal')}
               </p>
-              <p>{t('guide.harmony.check', 'Check:')} 8² = 64 = 4×16 ✓</p>
+              <p>{t('harmony.check')} 8² = 64 = 4×16 ✓</p>
             </div>
           </div>
 
@@ -253,10 +232,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
               mb: '12px',
             })}
           >
-            {t(
-              'guide.harmony.geometricCaption',
-              'White pieces 4, 8, 16 in a row in enemy territory form a geometric progression'
-            )}
+            {t('harmony.geometricCaption')}
           </p>
 
           <div
@@ -268,11 +244,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             })}
           >
             <p className={css({ fontSize: '13px', color: '#92400e' })}>
-              <strong>{t('guide.harmony.strategyTip', 'Strategy tip:')}</strong>{' '}
-              {t(
-                'guide.harmony.geometricTip',
-                'Square values (4, 9, 16, 25, 36, 49, 64, 81) work great here! For example, 4-16-64 (squares of 2, 4, 8).'
-              )}
+              <strong>{t('harmony.strategyTip')}</strong> {t('harmony.geometricTip')}
             </p>
           </div>
         </div>
@@ -289,13 +261,10 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <h4
             className={css({ fontSize: '18px', fontWeight: 'bold', color: '#1e40af', mb: '8px' })}
           >
-            {t('guide.harmony.harmonic', '3. Harmonic Progression (Music-Based, Trickiest)')}
+            {t('harmony.harmonic')}
           </h4>
           <p className={css({ fontSize: '14px', color: '#1e3a8a', mb: '12px', lineHeight: '1.6' })}>
-            {t(
-              'guide.harmony.harmonicDesc',
-              'Named after musical harmonies. The pattern is: the ratio of the outer numbers equals the ratio of their differences from the middle.'
-            )}
+            {t('harmony.harmonicDesc')}
           </p>
 
           <div
@@ -315,7 +284,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 mb: '8px',
               })}
             >
-              {t('guide.harmony.howToCheck', 'How to check:')}
+              {t('harmony.howToCheck')}
             </p>
             <p
               className={css({
@@ -326,14 +295,14 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 mb: '12px',
               })}
             >
-              {t('guide.harmony.harmonicFormula', '2 × First × Last = Middle × (First + Last)')}
+              {t('harmony.harmonicFormula')}
             </p>
 
             <div className={css({ fontSize: '13px', color: '#1e3a8a', lineHeight: '1.8' })}>
               <p className={css({ fontWeight: 'bold', mb: '4px' })}>
-                {t('guide.harmony.example', 'Example:')} 6, 8, 12
+                {t('harmony.example')} 6, 8, 12
               </p>
-              <p>{t('guide.harmony.check', 'Check:')} 2×6×12 = 144 = 8×(6+12) = 8×18 ✓</p>
+              <p>{t('harmony.check')} 2×6×12 = 144 = 8×(6+12) = 8×18 ✓</p>
             </div>
           </div>
 
@@ -356,10 +325,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
               mb: '12px',
             })}
           >
-            {t(
-              'guide.harmony.harmonicCaption',
-              'White pieces 6, 8, 12 in a row in enemy territory form a harmonic progression'
-            )}
+            {t('harmony.harmonicCaption')}
           </p>
 
           <div
@@ -371,11 +337,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             })}
           >
             <p className={css({ fontSize: '13px', color: '#1e40af' })}>
-              <strong>{t('guide.harmony.strategyTip', 'Strategy tip:')}</strong>{' '}
-              {t(
-                'guide.harmony.harmonicTip',
-                'Harmonic progressions are rarer. Memorize common triads: (3,4,6), (4,6,12), (6,8,12), (6,10,15), (8,12,24).'
-              )}
+              <strong>{t('harmony.strategyTip')}</strong> {t('harmony.harmonicTip')}
             </p>
           </div>
         </div>
@@ -392,43 +354,23 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         })}
       >
         <p className={css({ fontSize: '16px', fontWeight: 'bold', color: '#991b1b', mb: '12px' })}>
-          {t('guide.harmony.rulesTitle', '⚠️ Harmony Rules You Must Follow')}
+          {t('harmony.rulesTitle')}
         </p>
         <ul className={css({ fontSize: '14px', color: '#7f1d1d', lineHeight: '1.8', pl: '20px' })}>
           <li>
-            <strong>{t('guide.harmony.enemyTerritoryTitle', 'Enemy Territory Only:')}</strong>{' '}
-            {t(
-              'guide.harmony.enemyTerritory',
-              "All 3 pieces must be in your opponent's half (White needs rows 5-8, Black needs rows 1-4)"
-            )}
+            <strong>{t('harmony.enemyTerritoryTitle')}</strong> {t('harmony.enemyTerritory')}
           </li>
           <li>
-            <strong>{t('guide.harmony.straightLineTitle', 'Straight Line:')}</strong>{' '}
-            {t(
-              'guide.harmony.straightLine',
-              'The 3 pieces must form a row, column, or diagonal—no scattered formations'
-            )}
+            <strong>{t('harmony.straightLineTitle')}</strong> {t('harmony.straightLine')}
           </li>
           <li>
-            <strong>{t('guide.harmony.adjacentTitle', 'Adjacent Placement:')}</strong>{' '}
-            {t(
-              'guide.harmony.adjacent',
-              'In this implementation, the 3 pieces must be next to each other (no gaps)'
-            )}
+            <strong>{t('harmony.adjacentTitle')}</strong> {t('harmony.adjacent')}
           </li>
           <li>
-            <strong>{t('guide.harmony.survivalTitle', 'Survival Rule:')}</strong>{' '}
-            {t(
-              'guide.harmony.survival',
-              'When you declare a harmony, your opponent gets ONE turn to break it by capturing or moving a piece'
-            )}
+            <strong>{t('harmony.survivalTitle')}</strong> {t('harmony.survival')}
           </li>
           <li>
-            <strong>{t('guide.harmony.victoryTitle', 'Victory:')}</strong>{' '}
-            {t(
-              'guide.harmony.victoryRule',
-              'If your harmony survives until your next turn starts—you win!'
-            )}
+            <strong>{t('harmony.victoryTitle')}</strong> {t('harmony.victoryRule')}
           </li>
         </ul>
       </div>
@@ -443,7 +385,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             mb: '16px',
           })}
         >
-          {t('guide.harmony.strategyTitle', 'Strategy: How to Build Harmonies')}
+          {t('harmony.strategyTitle')}
         </h3>
 
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '16px' })}>
@@ -452,13 +394,10 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             <h4
               className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
             >
-              {t('guide.harmony.startWith2Title', 'Start with 2, Add the Third')}
+              {t('harmony.startWith2Title')}
             </h4>
             <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
-              {t(
-                'guide.harmony.startWith2',
-                "Get two pieces into enemy territory first. Calculate which third piece would complete a progression, then advance that piece. Your opponent may not notice the threat until it's too late!"
-              )}
+              {t('harmony.startWith2')}
             </p>
           </div>
 
@@ -467,13 +406,10 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             <h4
               className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
             >
-              {t('guide.harmony.useCommonTitle', 'Use Common Values')}
+              {t('harmony.useCommonTitle')}
             </h4>
             <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
-              {t(
-                'guide.harmony.useCommon',
-                'Pieces like 6, 8, 9, 12, 16 appear in multiple progressions. If you have these in enemy territory, calculate all possible third pieces that would complete a pattern.'
-              )}
+              {t('harmony.useCommon')}
             </p>
           </div>
 
@@ -482,13 +418,10 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             <h4
               className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
             >
-              {t('guide.harmony.protectTitle', 'Protect the Line')}
+              {t('harmony.protectTitle')}
             </h4>
             <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
-              {t(
-                'guide.harmony.protect',
-                'While building your harmony, position other pieces to defend your advancing pieces. One capture breaks the progression!'
-              )}
+              {t('harmony.protect')}
             </p>
           </div>
 
@@ -497,13 +430,10 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             <h4
               className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
             >
-              {t('guide.harmony.blockTitle', "Block Opponent's Harmonies")}
+              {t('harmony.blockTitle')}
             </h4>
             <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
-              {t(
-                'guide.harmony.block',
-                'If your opponent has 2 pieces in your territory forming part of a progression, identify which third piece would complete it. Block that square or capture one of the two pieces immediately.'
-              )}
+              {t('harmony.block')}
             </p>
           </div>
 
@@ -512,13 +442,10 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             <h4
               className={css({ fontSize: '15px', fontWeight: 'bold', color: '#374151', mb: '8px' })}
             >
-              {t('guide.harmony.calculateTitle', 'Calculate Before You Declare')}
+              {t('harmony.calculateTitle')}
             </h4>
             <p className={css({ fontSize: '14px', color: '#6b7280', lineHeight: '1.6' })}>
-              {t(
-                'guide.harmony.calculate',
-                'Before declaring harmony, examine if your opponent can capture any of the 3 pieces on their turn. If they can, either protect those pieces first or wait for a safer moment.'
-              )}
+              {t('harmony.calculate')}
             </p>
           </div>
         </div>
@@ -534,7 +461,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             mb: '16px',
           })}
         >
-          {t('guide.harmony.quickRefTitle', '💡 Quick Reference: Common Harmonies in Your Army')}
+          {t('harmony.quickRefTitle')}
         </h3>
 
         <div
@@ -561,7 +488,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 mb: '8px',
               })}
             >
-              {t('guide.harmony.arithmetic', 'Arithmetic')}
+              {t('harmony.arithmetic')}
             </h4>
             <ul
               className={css({
@@ -598,7 +525,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 mb: '8px',
               })}
             >
-              {t('guide.harmony.geometric', 'Geometric')}
+              {t('harmony.geometric')}
             </h4>
             <ul
               className={css({
@@ -635,7 +562,7 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
                 mb: '8px',
               })}
             >
-              {t('guide.harmony.harmonic', 'Harmonic')}
+              {t('harmony.harmonic')}
             </h4>
             <ul
               className={css({

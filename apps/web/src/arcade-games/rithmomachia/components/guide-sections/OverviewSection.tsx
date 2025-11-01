@@ -1,9 +1,9 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../../styled-system/css'
 import { RithmomachiaBoard, type ExamplePiece } from '../RithmomachiaBoard'
 
 export function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
-  const { t } = useTranslation()
+  const t = useTranslations('rithmomachia.guide')
 
   // Initial board setup - full starting position
   const initialSetup: ExamplePiece[] = [
@@ -75,13 +75,10 @@ export function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           mb: '16px',
         })}
       >
-        {t('guide.overview.goalTitle', 'Goal of the Game')}
+        {t('overview.goalTitle')}
       </h3>
       <p className={css({ fontSize: '16px', lineHeight: '1.6', mb: '20px', color: '#374151' })}>
-        {t(
-          'guide.overview.goal',
-          'Arrange 3 of your pieces in enemy territory to form a mathematical progression, survive one opponent turn, and win.'
-        )}
+        {t('overview.goal')}
       </p>
 
       <h3
@@ -93,7 +90,7 @@ export function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           mt: '24px',
         })}
       >
-        {t('guide.overview.boardTitle', 'The Board')}
+        {t('overview.boardTitle')}
       </h3>
 
       <div className={css({ mb: '20px' })}>
@@ -106,10 +103,7 @@ export function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNum
       </div>
 
       <p className={css({ fontSize: '14px', color: '#6b7280', mb: '20px', fontStyle: 'italic' })}>
-        {t(
-          'guide.overview.boardCaption',
-          'The starting position - Black on the left, White on the right'
-        )}
+        {t('overview.boardCaption')}
       </p>
 
       <ul
@@ -121,19 +115,9 @@ export function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           color: '#374151',
         })}
       >
-        <li>{t('guide.overview.boardSize', '8 rows × 16 columns (columns A-P, rows 1-8)')}</li>
-        <li>
-          {t(
-            'guide.overview.territory',
-            'Your half: Black controls rows 5-8, White controls rows 1-4'
-          )}
-        </li>
-        <li>
-          {t(
-            'guide.overview.enemyTerritory',
-            'Enemy territory: Where you need to build your winning progression'
-          )}
-        </li>
+        <li>{t('overview.boardSize')}</li>
+        <li>{t('overview.territory')}</li>
+        <li>{t('overview.enemyTerritory')}</li>
       </ul>
 
       <h3
@@ -145,7 +129,7 @@ export function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           mt: '24px',
         })}
       >
-        {t('guide.overview.howToPlayTitle', 'How to Play')}
+        {t('overview.howToPlayTitle')}
       </h3>
       <ol
         className={css({
@@ -155,11 +139,11 @@ export function OverviewSection({ useNativeAbacusNumbers }: { useNativeAbacusNum
           color: '#374151',
         })}
       >
-        <li>{t('guide.overview.step1', 'Move your pieces toward the center')}</li>
-        <li>{t('guide.overview.step2', 'Look for ways to capture using math')}</li>
-        <li>{t('guide.overview.step3', 'Push into enemy territory')}</li>
-        <li>{t('guide.overview.step4', 'Watch for chances to make a progression')}</li>
-        <li>{t('guide.overview.step5', 'Win by forming a progression that survives one turn!')}</li>
+        <li>{t('overview.step1')}</li>
+        <li>{t('overview.step2')}</li>
+        <li>{t('overview.step3')}</li>
+        <li>{t('overview.step4')}</li>
+        <li>{t('overview.step5')}</li>
       </ol>
     </div>
   )

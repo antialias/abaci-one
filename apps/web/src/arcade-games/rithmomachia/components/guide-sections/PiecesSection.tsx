@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../../styled-system/css'
 import { PieceRenderer } from '../PieceRenderer'
 import { RithmomachiaBoard } from '../RithmomachiaBoard'
@@ -18,7 +18,7 @@ function squaresToCropArea(topLeft: string, bottomRight: string) {
 }
 
 export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbers: boolean }) {
-  const { t } = useTranslation()
+  const t = useTranslations('rithmomachia.guide')
   const pieces: {
     type: PieceType
     name: string
@@ -28,22 +28,22 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
   }[] = [
     {
       type: 'C',
-      name: t('guide.pieces.circle', 'Circle'),
-      movement: t('guide.pieces.circleMove', 'Moves diagonally'),
+      name: t('pieces.circle'),
+      movement: t('pieces.circleMove'),
       count: 12,
       exampleValues: [3, 5, 7, 9],
     },
     {
       type: 'T',
-      name: t('guide.pieces.triangle', 'Triangle'),
-      movement: t('guide.pieces.triangleMove', 'Moves in straight lines'),
+      name: t('pieces.triangle'),
+      movement: t('pieces.triangleMove'),
       count: 6,
       exampleValues: [12, 16, 20, 30],
     },
     {
       type: 'S',
-      name: t('guide.pieces.square', 'Square'),
-      movement: t('guide.pieces.squareMove', 'Moves in any direction'),
+      name: t('pieces.square'),
+      movement: t('pieces.squareMove'),
       count: 6,
       exampleValues: [25, 28, 45, 66],
     },
@@ -59,13 +59,10 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
           mb: '16px',
         })}
       >
-        {t('guide.pieces.title', 'Your Pieces (25 total)')}
+        {t('pieces.title')}
       </h3>
       <p className={css({ fontSize: '15px', mb: '24px', color: '#374151' })}>
-        {t(
-          'guide.pieces.description',
-          'Each side has 25 pieces with different movement patterns. The shape tells you how it moves:'
-        )}
+        {t('pieces.description')}
       </p>
 
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '24px' })}>
@@ -122,7 +119,7 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                   fontStyle: 'italic',
                 })}
               >
-                {t('guide.pieces.exampleValues', 'Example values')}:
+                {t('pieces.exampleValues')}:
               </p>
               <div className={css({ display: 'flex', gap: '12px', flexWrap: 'wrap' })}>
                 {piece.exampleValues.map((value) => (
@@ -159,13 +156,10 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
         })}
       >
         <h4 className={css({ fontSize: '18px', fontWeight: 'bold', color: '#92400e', mb: '12px' })}>
-          {t('guide.pieces.pyramidTitle', '⭐ Pyramids: The Multi-Faced Pieces')}
+          {t('pieces.pyramidTitle')}
         </h4>
         <p className={css({ fontSize: '14px', color: '#78350f', lineHeight: '1.6', mb: '16px' })}>
-          {t(
-            'guide.pieces.pyramidIntro',
-            'Unlike other pieces with a single value, Pyramids contain 4 face values representing perfect squares. When capturing an enemy piece, you choose which face to use for the mathematical relation.'
-          )}
+          {t('pieces.pyramidIntro')}
         </p>
 
         <div
@@ -188,7 +182,7 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                 textAlign: 'center',
               })}
             >
-              {t('guide.pieces.blackPyramid', 'Black Pyramid Faces')}:
+              {t('pieces.blackPyramid')}:
             </p>
             <div className={css({ width: '80px', height: '80px', margin: '0 auto' })}>
               <PieceRenderer
@@ -208,7 +202,7 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                 fontWeight: 'bold',
               })}
             >
-              {t('guide.pieces.blackPyramidValues', '36 (6²), 25 (5²), 16 (4²), 4 (2²)')}
+              {t('pieces.blackPyramidValues')}
             </p>
           </div>
 
@@ -223,7 +217,7 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                 textAlign: 'center',
               })}
             >
-              {t('guide.pieces.whitePyramid', 'White Pyramid Faces')}:
+              {t('pieces.whitePyramid')}:
             </p>
             <div className={css({ width: '80px', height: '80px', margin: '0 auto' })}>
               <PieceRenderer
@@ -243,7 +237,7 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                 fontWeight: 'bold',
               })}
             >
-              {t('guide.pieces.whitePyramidValues', '64 (8²), 49 (7²), 36 (6²), 25 (5²)')}
+              {t('pieces.whitePyramidValues')}
             </p>
           </div>
         </div>
@@ -266,35 +260,15 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
               mb: '12px',
             })}
           >
-            {t('guide.pieces.pyramidHowItWorks', 'How face selection works:')}
+            {t('pieces.pyramidHowItWorks')}
           </p>
           <ul
             className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.8', pl: '20px' })}
           >
-            <li>
-              {t(
-                'guide.pieces.pyramidRule1',
-                "When your Pyramid attempts a capture, you must declare which face value you're using before the relation is checked"
-              )}
-            </li>
-            <li>
-              {t(
-                'guide.pieces.pyramidRule2',
-                'The chosen face value becomes "your piece\'s value" for all mathematical relations (equality, multiple/divisor, sum, difference, product, ratio)'
-              )}
-            </li>
-            <li>
-              {t(
-                'guide.pieces.pyramidRule3',
-                'You can choose different faces for different captures—the Pyramid doesn\'t "lock in" to one value'
-              )}
-            </li>
-            <li>
-              {t(
-                'guide.pieces.pyramidRule4',
-                'This flexibility makes Pyramids excellent for creating unexpected capture opportunities and versatile helpers'
-              )}
-            </li>
+            <li>{t('pieces.pyramidRule1')}</li>
+            <li>{t('pieces.pyramidRule2')}</li>
+            <li>{t('pieces.pyramidRule3')}</li>
+            <li>{t('pieces.pyramidRule4')}</li>
           </ul>
         </div>
 
@@ -308,11 +282,7 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
           })}
         >
           <p className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.6' })}>
-            <strong>{t('guide.pieces.example', 'Example:')}</strong>{' '}
-            {t(
-              'guide.pieces.pyramidExample',
-              "White's Pyramid can capture Black's 16 using face 64 (multiple: 64÷16=4), face 36 (multiple: 36÷9=4, with Black's 9), or face 25 with equality if capturing Black's 25."
-            )}
+            <strong>{t('pieces.example')}</strong> {t('pieces.pyramidExample')}
           </p>
         </div>
 
@@ -326,16 +296,10 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
               mb: '12px',
             })}
           >
-            {t(
-              'guide.pieces.pyramidVisualTitle',
-              "Visual Example: Pyramid's Multiple Capture Options"
-            )}
+            {t('pieces.pyramidVisualTitle')}
           </h5>
           <p className={css({ fontSize: '13px', color: '#78350f', mb: '12px', lineHeight: '1.6' })}>
-            {t(
-              'guide.pieces.pyramidVisualDesc',
-              "White's Pyramid (faces: 64, 49, 36, 25) is positioned to capture Black pieces. Notice the flexibility:"
-            )}
+            {t('pieces.pyramidVisualDesc')}
           </p>
 
           <div className={css({ display: 'flex', justifyContent: 'center', mb: '12px' })}>
@@ -372,29 +336,14 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
                 mb: '8px',
               })}
             >
-              {t('guide.pieces.pyramidCaptureOptions', 'Capture options from H5:')}
+              {t('pieces.pyramidCaptureOptions')}
             </p>
             <ul
               className={css({ fontSize: '13px', color: '#78350f', lineHeight: '1.8', pl: '20px' })}
             >
-              <li>
-                {t(
-                  'guide.pieces.pyramidOption1',
-                  'Move to I5: Choose face 64 → captures 16 by multiple (64÷16=4)'
-                )}
-              </li>
-              <li>
-                {t(
-                  'guide.pieces.pyramidOption2',
-                  'Move to H6: Choose face 49 → captures 49 by equality (49=49)'
-                )}
-              </li>
-              <li>
-                {t(
-                  'guide.pieces.pyramidOption3',
-                  'Move to G5: Choose face 25 → captures 25 by equality (25=25)'
-                )}
-              </li>
+              <li>{t('pieces.pyramidOption1')}</li>
+              <li>{t('pieces.pyramidOption2')}</li>
+              <li>{t('pieces.pyramidOption3')}</li>
             </ul>
           </div>
         </div>
