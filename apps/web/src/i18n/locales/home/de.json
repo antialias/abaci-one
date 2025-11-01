@@ -1,0 +1,77 @@
+{
+  "home": {
+    "learnByDoing": {
+      "title": "Lernen durch Handeln",
+      "subtitle": "Interaktive Tutorials lehren Sie Schritt für Schritt. Probieren Sie dieses Beispiel gleich jetzt:"
+    },
+    "whatYouLearn": {
+      "title": "Was Sie lernen werden"
+    },
+    "skills": {
+      "readNumbers": {
+        "title": "📖 Zahlen lesen und einstellen",
+        "desc": "Meistern Sie die Zahlendarstellung am Abakus von null bis tausend",
+        "example": "0-9999",
+        "badge": "Grundlagen",
+        "tutorialTitle": "Zahlen lesen und einstellen",
+        "tutorialDesc": "Meistern Sie die Zahlendarstellung am Abakus von null bis tausend"
+      },
+      "friends": {
+        "title": "🤝 Freunde-Techniken",
+        "desc": "Addieren und subtrahieren mit Komplementpaaren und mentalen Abkürzungen",
+        "example": "5 = 2+3",
+        "badge": "Kern",
+        "tutorialTitle": "Freunde der 5",
+        "tutorialDesc": "Addieren und subtrahieren mit Komplementpaaren: 5 = 2+3"
+      },
+      "multiply": {
+        "title": "✖️ Multiplizieren & dividieren",
+        "desc": "Flüssige mehrstellige Berechnungen mit fortgeschrittenen Techniken",
+        "example": "12×34",
+        "badge": "Fortgeschritten",
+        "tutorialTitle": "Multiplikation",
+        "tutorialDesc": "Flüssige mehrstellige Berechnungen mit fortgeschrittenen Techniken"
+      },
+      "mental": {
+        "title": "🧠 Mentale Berechnung",
+        "desc": "Visualisieren und rechnen ohne das physische Werkzeug (Anzan)",
+        "example": "Schnellrechnen",
+        "badge": "Experte",
+        "tutorialTitle": "Mentale Berechnung",
+        "tutorialDesc": "Visualisieren und rechnen ohne das physische Werkzeug (Anzan)"
+      }
+    },
+    "arcade": {
+      "title": "Die Spielhalle",
+      "subtitle": "Einzelspieler-Herausforderungen und Mehrspieler-Kämpfe in vernetzten Räumen. Laden Sie Freunde zum Spielen oder Zuschauen ein.",
+      "soloChallenge": "Einzelspieler-Herausforderung",
+      "playersCount": "{min}-{max} Spieler"
+    },
+    "journey": {
+      "title": "Ihre Reise",
+      "subtitle": "Fortschritt vom Anfänger zum Meister"
+    },
+    "flashcards": {
+      "title": "Eigene Lernkarten erstellen",
+      "subtitle": "Gestalten Sie schöne Lernkarten zum Lernen und Üben",
+      "features": {
+        "formats": {
+          "icon": "📄",
+          "title": "Mehrere Formate",
+          "desc": "PDF, PNG, SVG, HTML"
+        },
+        "customizable": {
+          "icon": "🎨",
+          "title": "Anpassbar",
+          "desc": "Perlenformen, Farben, Layouts"
+        },
+        "paperSizes": {
+          "icon": "📐",
+          "title": "Alle Papierformate",
+          "desc": "A3, A4, A5, US Letter"
+        }
+      },
+      "cta": "Lernkarten erstellen"
+    }
+  }
+}

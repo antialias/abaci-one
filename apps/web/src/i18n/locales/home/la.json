@@ -1,0 +1,77 @@
+{
+  "home": {
+    "learnByDoing": {
+      "title": "Faciendo Disce",
+      "subtitle": "Tutoria interactiva te gradatim docent. Hoc exemplum nunc experire:"
+    },
+    "whatYouLearn": {
+      "title": "Quid Disces"
+    },
+    "skills": {
+      "readNumbers": {
+        "title": "📖 Numeros lege et constitue",
+        "desc": "Magistra repraesentationem numerorum abaci a nihilo ad milia",
+        "example": "0-9999",
+        "badge": "Fundamentum",
+        "tutorialTitle": "Numeros lege et constitue",
+        "tutorialDesc": "Magistra repraesentationem numerorum abaci a nihilo ad milia"
+      },
+      "friends": {
+        "title": "🤝 Artes amicorum",
+        "desc": "Adde et subtrahe utens paria complementaria et compendia mentalia",
+        "example": "5 = 2+3",
+        "badge": "Nucleus",
+        "tutorialTitle": "Amici quinque",
+        "tutorialDesc": "Adde et subtrahe utens paria complementaria: 5 = 2+3"
+      },
+      "multiply": {
+        "title": "✖️ Multiplica et divide",
+        "desc": "Computationes fluentes multidigitales cum artibus provectis",
+        "example": "12×34",
+        "badge": "Provectus",
+        "tutorialTitle": "Multiplicatio",
+        "tutorialDesc": "Computationes fluentes multidigitales cum artibus provectis"
+      },
+      "mental": {
+        "title": "🧠 Computatio mentalis",
+        "desc": "Visualiza et computa sine instrumento physico (Anzan)",
+        "example": "Mathematica celera",
+        "badge": "Peritus",
+        "tutorialTitle": "Computatio mentalis",
+        "tutorialDesc": "Visualiza et computa sine instrumento physico (Anzan)"
+      }
+    },
+    "arcade": {
+      "title": "Ludus Porticus",
+      "subtitle": "Certamina singularia et pugnae multiplicis in cameris reticulatis. Invita amicos ad ludendum vel spectandum.",
+      "soloChallenge": "Certamen singulare",
+      "playersCount": "{min}-{max} lusores"
+    },
+    "journey": {
+      "title": "Iter Tuum",
+      "subtitle": "Progressus a tyrone ad magistrum"
+    },
+    "flashcards": {
+      "title": "Crea Schedas Proprias",
+      "subtitle": "Designa pulchras schedas ad discendum et exercendum",
+      "features": {
+        "formats": {
+          "icon": "📄",
+          "title": "Formae multiplices",
+          "desc": "PDF, PNG, SVG, HTML"
+        },
+        "customizable": {
+          "icon": "🎨",
+          "title": "Accommodabilis",
+          "desc": "Formae calcularum, colores, dispositiones"
+        },
+        "paperSizes": {
+          "icon": "📐",
+          "title": "Omnes magnitudines chartae",
+          "desc": "A3, A4, A5, Epistula US"
+        }
+      },
+      "cta": "Crea Schedas"
+    }
+  }
+}

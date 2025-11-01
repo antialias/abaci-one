@@ -1,0 +1,77 @@
+{
+  "home": {
+    "learnByDoing": {
+      "title": "Aprende Haciendo",
+      "subtitle": "Los tutoriales interactivos te enseñan paso a paso. Prueba este ejemplo ahora mismo:"
+    },
+    "whatYouLearn": {
+      "title": "Lo que aprenderás"
+    },
+    "skills": {
+      "readNumbers": {
+        "title": "📖 Leer y establecer números",
+        "desc": "Domina la representación numérica del ábaco desde cero hasta miles",
+        "example": "0-9999",
+        "badge": "Fundación",
+        "tutorialTitle": "Leer y establecer números",
+        "tutorialDesc": "Domina la representación numérica del ábaco desde cero hasta miles"
+      },
+      "friends": {
+        "title": "🤝 Técnicas de amigos",
+        "desc": "Suma y resta usando pares complementarios y atajos mentales",
+        "example": "5 = 2+3",
+        "badge": "Núcleo",
+        "tutorialTitle": "Amigos del 5",
+        "tutorialDesc": "Suma y resta usando pares complementarios: 5 = 2+3"
+      },
+      "multiply": {
+        "title": "✖️ Multiplicar y dividir",
+        "desc": "Cálculos fluidos de múltiples dígitos con técnicas avanzadas",
+        "example": "12×34",
+        "badge": "Avanzado",
+        "tutorialTitle": "Multiplicación",
+        "tutorialDesc": "Cálculos fluidos de múltiples dígitos con técnicas avanzadas"
+      },
+      "mental": {
+        "title": "🧠 Cálculo mental",
+        "desc": "Visualiza y calcula sin la herramienta física (Anzan)",
+        "example": "Matemáticas rápidas",
+        "badge": "Experto",
+        "tutorialTitle": "Cálculo mental",
+        "tutorialDesc": "Visualiza y calcula sin la herramienta física (Anzan)"
+      }
+    },
+    "arcade": {
+      "title": "La Sala de Juegos",
+      "subtitle": "Desafíos para un solo jugador y batallas multijugador en salas en red. Invita a amigos a jugar o ver en vivo.",
+      "soloChallenge": "Desafío individual",
+      "playersCount": "{min}-{max} jugadores"
+    },
+    "journey": {
+      "title": "Tu Viaje",
+      "subtitle": "Progreso de principiante a maestro"
+    },
+    "flashcards": {
+      "title": "Crea Tarjetas Personalizadas",
+      "subtitle": "Diseña hermosas tarjetas para aprender y practicar",
+      "features": {
+        "formats": {
+          "icon": "📄",
+          "title": "Múltiples formatos",
+          "desc": "PDF, PNG, SVG, HTML"
+        },
+        "customizable": {
+          "icon": "🎨",
+          "title": "Personalizable",
+          "desc": "Formas de cuentas, colores, diseños"
+        },
+        "paperSizes": {
+          "icon": "📐",
+          "title": "Todos los tamaños de papel",
+          "desc": "A3, A4, A5, Carta US"
+        }
+      },
+      "cta": "Crear Tarjetas"
+    }
+  }
+}

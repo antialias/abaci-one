@@ -1,0 +1,77 @@
+{
+  "home": {
+    "learnByDoing": {
+      "title": "実践で学ぶ",
+      "subtitle": "インタラクティブなチュートリアルで段階的に学習します。今すぐこの例を試してみましょう："
+    },
+    "whatYouLearn": {
+      "title": "学べること"
+    },
+    "skills": {
+      "readNumbers": {
+        "title": "📖 数字の読み書き",
+        "desc": "ゼロから千までのそろばんの数字表現をマスター",
+        "example": "0-9999",
+        "badge": "基礎",
+        "tutorialTitle": "数字の読み書き",
+        "tutorialDesc": "ゼロから千までのそろばんの数字表現をマスター"
+      },
+      "friends": {
+        "title": "🤝 友達のテクニック",
+        "desc": "補数ペアとメンタルショートカットを使った足し算と引き算",
+        "example": "5 = 2+3",
+        "badge": "コア",
+        "tutorialTitle": "5の友達",
+        "tutorialDesc": "補数ペアを使った足し算と引き算：5 = 2+3"
+      },
+      "multiply": {
+        "title": "✖️ 掛け算と割り算",
+        "desc": "高度なテクニックで流暢な多桁計算",
+        "example": "12×34",
+        "badge": "上級",
+        "tutorialTitle": "掛け算",
+        "tutorialDesc": "高度なテクニックで流暢な多桁計算"
+      },
+      "mental": {
+        "title": "🧠 暗算",
+        "desc": "物理的な道具なしで視覚化して計算（暗算）",
+        "example": "速算",
+        "badge": "エキスパート",
+        "tutorialTitle": "暗算",
+        "tutorialDesc": "物理的な道具なしで視覚化して計算（暗算）"
+      }
+    },
+    "arcade": {
+      "title": "アーケード",
+      "subtitle": "ネットワークルームでのシングルプレイヤーチャレンジとマルチプレイヤーバトル。友達を招待してプレイまたは観戦。",
+      "soloChallenge": "ソロチャレンジ",
+      "playersCount": "{min}-{max}人のプレイヤー"
+    },
+    "journey": {
+      "title": "あなたの旅",
+      "subtitle": "初心者からマスターへの進歩"
+    },
+    "flashcards": {
+      "title": "カスタムフラッシュカードを作成",
+      "subtitle": "学習と練習用の美しいフラッシュカードをデザイン",
+      "features": {
+        "formats": {
+          "icon": "📄",
+          "title": "複数のフォーマット",
+          "desc": "PDF、PNG、SVG、HTML"
+        },
+        "customizable": {
+          "icon": "🎨",
+          "title": "カスタマイズ可能",
+          "desc": "珠の形、色、レイアウト"
+        },
+        "paperSizes": {
+          "icon": "📐",
+          "title": "すべての用紙サイズ",
+          "desc": "A3、A4、A5、USレター"
+        }
+      },
+      "cta": "フラッシュカードを作成"
+    }
+  }
+}
