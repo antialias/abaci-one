@@ -16,6 +16,8 @@ import { useViewerId } from '@/hooks/useViewerId'
 import { useAbacusSettings } from '@/hooks/useAbacusSettings'
 import type { RosterWarning } from '@/components/nav/GameContextNav'
 import { css } from '../../../../styled-system/css'
+import { getRelationColor, getRelationOperator } from '../constants/captureRelations'
+import { getSquarePosition } from '../utils/boardCoordinates'
 import { useRithmomachia } from '../Provider'
 import type { Piece, RelationKind, RithmomachiaConfig } from '../types'
 import { validateMove } from '../utils/pathValidator'
@@ -1412,29 +1414,8 @@ function HelperSelectionOptions({
     }
   }
 
-  // Color scheme based on relation type
-  const colorMap: Record<RelationKind, string> = {
-    SUM: '#ef4444', // red
-    DIFF: '#f97316', // orange
-    PRODUCT: '#8b5cf6', // purple
-    RATIO: '#3b82f6', // blue
-    EQUAL: '#10b981', // green
-    MULTIPLE: '#eab308', // yellow
-    DIVISOR: '#06b6d4', // cyan
-  }
-  const color = colorMap[relation] || '#6b7280'
-
-  // Operator symbols
-  const operatorMap: Record<RelationKind, string> = {
-    SUM: '+',
-    DIFF: '−',
-    PRODUCT: '×',
-    RATIO: '÷',
-    EQUAL: '=',
-    MULTIPLE: '×',
-    DIVISOR: '÷',
-  }
-  const operator = operatorMap[relation] || '?'
+  const color = getRelationColor(relation)
+  const operator = getRelationOperator(relation)
 
   return (
     <g>
@@ -1594,38 +1575,11 @@ function NumberBondVisualization({
     return () => clearTimeout(timer)
   }, [autoAnimate])
 
-  // Color scheme based on relation type
-  const colorMap: Record<RelationKind, string> = {
-    SUM: '#ef4444', // red
-    DIFF: '#f97316', // orange
-    PRODUCT: '#8b5cf6', // purple
-    RATIO: '#3b82f6', // blue
-    EQUAL: '#10b981', // green
-    MULTIPLE: '#eab308', // yellow
-    DIVISOR: '#06b6d4', // cyan
-  }
-  const color = colorMap[relation] || '#6b7280'
-
-  // Operation symbol based on relation
-  const operatorMap: Record<RelationKind, string> = {
-    SUM: '+',
-    DIFF: '−',
-    PRODUCT: '×',
-    RATIO: '÷',
-    EQUAL: '=',
-    MULTIPLE: '×',
-    DIVISOR: '÷',
-  }
-  const operator = operatorMap[relation]
+  const color = getRelationColor(relation)
+  const operator = getRelationOperator(relation)
 
   // Calculate actual board position for target
-  const targetFile = targetPiece.square.charCodeAt(0) - 65
-  const targetRank = Number.parseInt(targetPiece.square.slice(1), 10)
-  const targetRow = 8 - targetRank
-  const targetBoardPos = {
-    x: padding + targetFile * (cellSize + gap) + cellSize / 2,
-    y: padding + targetRow * (cellSize + gap) + cellSize / 2,
-  }
+  const targetBoardPos = getSquarePosition(targetPiece.square, { cellSize, gap, padding })
 
   // Animation: Rotate and collapse from actual positions to target
   const captureAnimation = useSpring({
@@ -2088,56 +2042,14 @@ function CaptureRelationOptions({
             // Show only the current helper
             const currentHelper = validHelpers[currentHelperIndex]
 
-            // Color scheme based on relation type
-            const colorMap: Record<RelationKind, string> = {
-              SUM: '#ef4444', // red
-              DIFF: '#f97316', // orange
-              PRODUCT: '#8b5cf6', // purple
-              RATIO: '#3b82f6', // blue
-              EQUAL: '#10b981', // green
-              MULTIPLE: '#eab308', // yellow
-              DIVISOR: '#06b6d4', // cyan
-            }
-            const color = colorMap[hoveredRelation] || '#6b7280'
+            const color = getRelationColor(hoveredRelation)
+            const operator = getRelationOperator(hoveredRelation)
 
-            // Operator symbols
-            const operatorMap: Record<RelationKind, string> = {
-              SUM: '+',
-              DIFF: '−',
-              PRODUCT: '×',
-              RATIO: '÷',
-              EQUAL: '=',
-              MULTIPLE: '×',
-              DIVISOR: '÷',
-            }
-            const operator = operatorMap[hoveredRelation] || '?'
-
-            // Calculate mover position on board
-            const moverFile = moverPiece.square.charCodeAt(0) - 65
-            const moverRank = Number.parseInt(moverPiece.square.slice(1), 10)
-            const moverRow = 8 - moverRank
-            const moverPos = {
-              x: padding + moverFile * (cellSize + gap) + cellSize / 2,
-              y: padding + moverRow * (cellSize + gap) + cellSize / 2,
-            }
-
-            // Calculate target position on board
-            const targetFile = targetPiece.square.charCodeAt(0) - 65
-            const targetRank = Number.parseInt(targetPiece.square.slice(1), 10)
-            const targetRow = 8 - targetRank
-            const targetBoardPos = {
-              x: padding + targetFile * (cellSize + gap) + cellSize / 2,
-              y: padding + targetRow * (cellSize + gap) + cellSize / 2,
-            }
-
-            // Calculate current helper position on board
-            const helperFile = currentHelper.square.charCodeAt(0) - 65
-            const helperRank = Number.parseInt(currentHelper.square.slice(1), 10)
-            const helperRow = 8 - helperRank
-            const helperPos = {
-              x: padding + helperFile * (cellSize + gap) + cellSize / 2,
-              y: padding + helperRow * (cellSize + gap) + cellSize / 2,
-            }
+            // Calculate piece positions on board
+            const layout = { cellSize, gap, padding }
+            const moverPos = getSquarePosition(moverPiece.square, layout)
+            const targetBoardPos = getSquarePosition(targetPiece.square, layout)
+            const helperPos = getSquarePosition(currentHelper.square, layout)
 
             return (
               <g key={currentHelper.id}>
