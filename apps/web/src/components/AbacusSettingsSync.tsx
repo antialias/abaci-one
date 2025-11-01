@@ -45,7 +45,24 @@ export function AbacusSettingsSync() {
     // Only sync if config has changed since last sync
     if (configJson !== lastSyncedConfigRef.current) {
       console.log('🔄 Syncing abacus settings to API')
-      updateApiSettings(config)
+
+      // Only sync abacus-react config fields, not app-specific fields like nativeAbacusNumbers
+      const abacusReactFields = {
+        colorScheme: config.colorScheme,
+        beadShape: config.beadShape,
+        colorPalette: config.colorPalette,
+        hideInactiveBeads: config.hideInactiveBeads,
+        coloredNumerals: config.coloredNumerals,
+        scaleFactor: config.scaleFactor,
+        showNumbers: config.showNumbers,
+        animated: config.animated,
+        interactive: config.interactive,
+        gestures: config.gestures,
+        soundEnabled: config.soundEnabled,
+        soundVolume: config.soundVolume,
+      }
+
+      updateApiSettings(abacusReactFields)
       lastSyncedConfigRef.current = configJson
     }
   }, [config, updateApiSettings])

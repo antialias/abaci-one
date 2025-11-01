@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { Z_INDEX } from '../constants/zIndex'
 import { css } from '../../styled-system/css'
 import { hstack, stack } from '../../styled-system/patterns'
+import { useAbacusSettings, useUpdateAbacusSettings } from '../hooks/useAbacusSettings'
 
 interface AbacusDisplayDropdownProps {
   isFullscreen?: boolean
@@ -21,6 +22,8 @@ export function AbacusDisplayDropdown({
 }: AbacusDisplayDropdownProps) {
   const [open, setOpen] = useState(false)
   const { config, updateConfig, resetToDefaults } = useAbacusDisplay()
+  const { data: abacusSettings } = useAbacusSettings()
+  const { mutate: updateAbacusSettings } = useUpdateAbacusSettings()
 
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen)
@@ -246,6 +249,16 @@ export function AbacusDisplayDropdown({
                   />
                 </FormField>
               )}
+
+              <FormField label="Native Abacus Numbers" isFullscreen={isFullscreen}>
+                <SwitchField
+                  checked={abacusSettings?.nativeAbacusNumbers ?? false}
+                  onCheckedChange={(checked) =>
+                    updateAbacusSettings({ nativeAbacusNumbers: checked })
+                  }
+                  isFullscreen={isFullscreen}
+                />
+              </FormField>
             </div>
           </div>
         </DropdownMenu.Content>

@@ -60,6 +60,11 @@ export const abacusSettings = sqliteTable('abacus_settings', {
 
   /** Sound volume (0.0 - 1.0) */
   soundVolume: real('sound_volume').notNull().default(0.8),
+
+  /** Display numbers as abaci throughout the app where practical */
+  nativeAbacusNumbers: integer('native_abacus_numbers', { mode: 'boolean' })
+    .notNull()
+    .default(false),
 })
 
 export type AbacusSettings = typeof abacusSettings.$inferSelect
