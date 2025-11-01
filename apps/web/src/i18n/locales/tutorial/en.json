@@ -1,0 +1,96 @@
+{
+  "tutorial": {
+    "player": {
+      "noSteps": "No steps available",
+      "header": {
+        "step": "Step {current} of {total}: {title}"
+      },
+      "controls": {
+        "debug": "Debug",
+        "steps": "Steps",
+        "multiStep": {
+          "label": "Multi-step: {current} / {total}",
+          "first": "⏮ First",
+          "prev": "⏪ Prev",
+          "next": "Next ⏩"
+        },
+        "autoAdvance": "Auto-advance"
+      },
+      "sidebar": {
+        "title": "Tutorial Steps",
+        "empty": "No tutorial steps available"
+      },
+      "guidance": {
+        "title": "Guidance"
+      },
+      "error": {
+        "highlight": "That's not the highlighted bead. Try clicking the highlighted bead."
+      },
+      "navigation": {
+        "previous": "← Previous",
+        "next": "Next →",
+        "complete": "Complete Tutorial",
+        "stepCounter": "Step {current} of {total}"
+      },
+      "debugPanel": {
+        "title": "Debug Panel",
+        "currentState": "Current State",
+        "eventLog": "Event Log",
+        "step": "Step: {current}/{total}",
+        "value": "Value: {value}",
+        "target": "Target: {value}",
+        "completed": "Completed: {status}",
+        "completedStatus": {
+          "yes": "Yes",
+          "no": "No"
+        },
+        "time": "Time: {seconds}s"
+      }
+    },
+    "coachBar": {
+      "titleFallback": "Step",
+      "hideAria": "Hide guidance"
+    },
+    "reasonTooltip": {
+      "fromPrefix": "From",
+      "directTitle": "Add the {place} digit — {digit} {place} ({value})",
+      "directSubtitle": "From addend {addend}",
+      "subtitleContext": "From {place} digit {digit} of {addend}",
+      "digitChip": "Digit we're using",
+      "rodChip": "Rod shows",
+      "addHereChip": "So we add here",
+      "sourceDigit": "Source digit",
+      "reasoning": "From {addend}: use the {place} digit ({digit}).",
+      "details": {
+        "toggle": "More details",
+        "carryPath": "Carry path:",
+        "showMath": "Show the math",
+        "steps": "Step-by-step breakdown"
+      },
+      "ruleInfo": {
+        "Direct": {
+          "name": "Direct Move",
+          "description": "Simple bead movement"
+        },
+        "FiveComplement": {
+          "name": "Five Friend",
+          "description": "Using pairs that make 5"
+        },
+        "TenComplement": {
+          "name": "Ten Friend",
+          "description": "Using pairs that make 10"
+        },
+        "Cascade": {
+          "name": "Chain Reaction",
+          "description": "One move triggers another"
+        },
+        "Fallback": {
+          "name": "Strategy",
+          "description": "Abacus technique"
+        }
+      },
+      "formula": "{original} becomes {expanded}",
+      "devWarning": "⚠ Summary/guard mismatch: {issues}"
+    }
+  }
+}

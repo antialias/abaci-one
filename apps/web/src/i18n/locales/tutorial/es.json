@@ -1,0 +1,96 @@
+{
+  "tutorial": {
+    "player": {
+      "noSteps": "No hay pasos disponibles",
+      "header": {
+        "step": "Paso {current} de {total}: {title}"
+      },
+      "controls": {
+        "debug": "Depuración",
+        "steps": "Pasos",
+        "multiStep": {
+          "label": "Multipasos: {current} / {total}",
+          "first": "⏮ Inicio",
+          "prev": "⏪ Anterior",
+          "next": "Siguiente ⏩"
+        },
+        "autoAdvance": "Avance automático"
+      },
+      "sidebar": {
+        "title": "Pasos del tutorial",
+        "empty": "No hay pasos del tutorial disponibles"
+      },
+      "guidance": {
+        "title": "Guía"
+      },
+      "error": {
+        "highlight": "Esa no es la cuenta resaltada. Haz clic en la cuenta resaltada."
+      },
+      "navigation": {
+        "previous": "← Anterior",
+        "next": "Siguiente →",
+        "complete": "Completar tutorial",
+        "stepCounter": "Paso {current} de {total}"
+      },
+      "debugPanel": {
+        "title": "Panel de depuración",
+        "currentState": "Estado actual",
+        "eventLog": "Registro de eventos",
+        "step": "Paso: {current}/{total}",
+        "value": "Valor: {value}",
+        "target": "Objetivo: {value}",
+        "completed": "Completado: {status}",
+        "completedStatus": {
+          "yes": "Sí",
+          "no": "No"
+        },
+        "time": "Tiempo: {seconds}s"
+      }
+    },
+    "coachBar": {
+      "titleFallback": "Paso",
+      "hideAria": "Ocultar guía"
+    },
+    "reasonTooltip": {
+      "fromPrefix": "De",
+      "directTitle": "Suma el dígito de {place} — {digit} {place} ({value})",
+      "directSubtitle": "Del sumando {addend}",
+      "subtitleContext": "Del dígito de {place} {digit} de {addend}",
+      "digitChip": "Dígito que usamos",
+      "rodChip": "La varilla muestra",
+      "addHereChip": "Sumamos aquí",
+      "sourceDigit": "Dígito de origen",
+      "reasoning": "De {addend}: usa el dígito de {place} ({digit}).",
+      "details": {
+        "toggle": "Más detalles",
+        "carryPath": "Ruta del acarreo:",
+        "showMath": "Mostrar el cálculo",
+        "steps": "Desglose paso a paso"
+      },
+      "ruleInfo": {
+        "Direct": {
+          "name": "Movimiento directo",
+          "description": "Movimiento simple de cuentas"
+        },
+        "FiveComplement": {
+          "name": "Amigo del cinco",
+          "description": "Usa parejas que suman 5"
+        },
+        "TenComplement": {
+          "name": "Amigo del diez",
+          "description": "Usa parejas que suman 10"
+        },
+        "Cascade": {
+          "name": "Reacción en cadena",
+          "description": "Un movimiento provoca otro"
+        },
+        "Fallback": {
+          "name": "Estrategia",
+          "description": "Técnica de ábaco"
+        }
+      },
+      "formula": "{original} se convierte en {expanded}",
+      "devWarning": "⚠ Resumen y verificación no coinciden: {issues}"
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "tutorial": {
+    "player": {
+      "noSteps": "कोई चरण उपलब्ध नहीं है",
+      "header": {
+        "step": "चरण {current} / {total}: {title}"
+      },
+      "controls": {
+        "debug": "डिबग",
+        "steps": "चरण",
+        "multiStep": {
+          "label": "बहु-चरण: {current} / {total}",
+          "first": "⏮ पहला",
+          "prev": "⏪ पिछला",
+          "next": "अगला ⏩"
+        },
+        "autoAdvance": "स्वचालित आगे बढ़ें"
+      },
+      "sidebar": {
+        "title": "ट्यूटोरियल चरण",
+        "empty": "कोई ट्यूटोरियल चरण उपलब्ध नहीं हैं"
+      },
+      "guidance": {
+        "title": "मार्गदर्शन"
+      },
+      "error": {
+        "highlight": "यह हाइलाइट किया गया मोती नहीं है। कृपया हाइलाइट किए गए मोती पर क्लिक करें।"
+      },
+      "navigation": {
+        "previous": "← पिछला",
+        "next": "अगला →",
+        "complete": "ट्यूटोरियल पूर्ण करें",
+        "stepCounter": "चरण {current} / {total}"
+      },
+      "debugPanel": {
+        "title": "डिबग पैनल",
+        "currentState": "वर्तमान स्थिति",
+        "eventLog": "घटना लॉग",
+        "step": "चरण: {current}/{total}",
+        "value": "मान: {value}",
+        "target": "लक्ष्य: {value}",
+        "completed": "पूर्ण: {status}",
+        "completedStatus": {
+          "yes": "हाँ",
+          "no": "नहीं"
+        },
+        "time": "समय: {seconds} सेकंड"
+      }
+    },
+    "coachBar": {
+      "titleFallback": "चरण",
+      "hideAria": "मार्गदर्शन छुपाएँ"
+    },
+    "reasonTooltip": {
+      "fromPrefix": "से",
+      "directTitle": "{place} अंक जोड़ें — {digit} {place} ({value})",
+      "directSubtitle": "योग करने वाला {addend} से",
+      "subtitleContext": "{addend} का {place} अंक {digit}",
+      "digitChip": "हम जो अंक उपयोग कर रहे हैं",
+      "rodChip": "दंड दिखाता है",
+      "addHereChip": "यहाँ जोड़ें",
+      "sourceDigit": "स्रोत अंक",
+      "reasoning": "{addend} से: {place} अंक ({digit}) का उपयोग करें।",
+      "details": {
+        "toggle": "अधिक विवरण",
+        "carryPath": "कैरी मार्ग:",
+        "showMath": "गणना दिखाएँ",
+        "steps": "क्रमबद्ध विवरण"
+      },
+      "ruleInfo": {
+        "Direct": {
+          "name": "प्रत्यक्ष चाल",
+          "description": "सरल मोती चलना"
+        },
+        "FiveComplement": {
+          "name": "पाँच का मित्र",
+          "description": "ऐसे युग्म जो 5 बनाते हैं"
+        },
+        "TenComplement": {
+          "name": "दस का मित्र",
+          "description": "ऐसे युग्म जो 10 बनाते हैं"
+        },
+        "Cascade": {
+          "name": "श्रृंखला प्रतिक्रिया",
+          "description": "एक चाल दूसरी को शुरू करती है"
+        },
+        "Fallback": {
+          "name": "रणनीति",
+          "description": "अबेकस तकनीक"
+        }
+      },
+      "formula": "{original} {expanded} बन जाता है",
+      "devWarning": "⚠ सारांश/गार्ड मेल नहीं खाता: {issues}"
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "tutorial": {
+    "player": {
+      "noSteps": "手順がありません",
+      "header": {
+        "step": "ステップ {current}/{total}：{title}"
+      },
+      "controls": {
+        "debug": "デバッグ",
+        "steps": "ステップ一覧",
+        "multiStep": {
+          "label": "複数ステップ: {current} / {total}",
+          "first": "⏮ 最初",
+          "prev": "⏪ 前へ",
+          "next": "次へ ⏩"
+        },
+        "autoAdvance": "自動で進む"
+      },
+      "sidebar": {
+        "title": "チュートリアルのステップ",
+        "empty": "利用できるチュートリアルステップがありません"
+      },
+      "guidance": {
+        "title": "ガイダンス"
+      },
+      "error": {
+        "highlight": "強調された珠ではありません。ハイライトされた珠をクリックしてください。"
+      },
+      "navigation": {
+        "previous": "← 前へ",
+        "next": "次へ →",
+        "complete": "チュートリアルを完了",
+        "stepCounter": "ステップ {current}/{total}"
+      },
+      "debugPanel": {
+        "title": "デバッグパネル",
+        "currentState": "現在の状態",
+        "eventLog": "イベントログ",
+        "step": "ステップ: {current}/{total}",
+        "value": "値: {value}",
+        "target": "目標: {value}",
+        "completed": "完了: {status}",
+        "completedStatus": {
+          "yes": "はい",
+          "no": "いいえ"
+        },
+        "time": "時間: {seconds}秒"
+      }
+    },
+    "coachBar": {
+      "titleFallback": "ステップ",
+      "hideAria": "ガイダンスを隠す"
+    },
+    "reasonTooltip": {
+      "fromPrefix": "追加元",
+      "directTitle": "{place}の桁を加える — {digit} {place} ({value})",
+      "directSubtitle": "加数 {addend} から",
+      "subtitleContext": "{addend} の {place} の桁 {digit}",
+      "digitChip": "使う桁",
+      "rodChip": "そろばん列",
+      "addHereChip": "ここに加える",
+      "sourceDigit": "元の桁",
+      "reasoning": "{addend} から: {place}の桁 ({digit}) を使う。",
+      "details": {
+        "toggle": "詳細を表示",
+        "carryPath": "繰り上がり経路:",
+        "showMath": "計算を表示",
+        "steps": "ステップごとの説明"
+      },
+      "ruleInfo": {
+        "Direct": {
+          "name": "直接移動",
+          "description": "単純な珠の移動"
+        },
+        "FiveComplement": {
+          "name": "五の友",
+          "description": "5になる組み合わせを使う"
+        },
+        "TenComplement": {
+          "name": "十の友",
+          "description": "10になる組み合わせを使う"
+        },
+        "Cascade": {
+          "name": "連鎖反応",
+          "description": "1つの動きが次を引き起こす"
+        },
+        "Fallback": {
+          "name": "戦略",
+          "description": "そろばんテクニック"
+        }
+      },
+      "formula": "{original} は {expanded} になる",
+      "devWarning": "⚠ 要約とガードが一致しません: {issues}"
+    }
+  }
+}

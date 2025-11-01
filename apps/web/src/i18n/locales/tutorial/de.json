@@ -1,0 +1,96 @@
+{
+  "tutorial": {
+    "player": {
+      "noSteps": "Keine Schritte verfügbar",
+      "header": {
+        "step": "Schritt {current} von {total}: {title}"
+      },
+      "controls": {
+        "debug": "Debug",
+        "steps": "Schritte",
+        "multiStep": {
+          "label": "Mehrschritt: {current} / {total}",
+          "first": "⏮ Anfang",
+          "prev": "⏪ Zurück",
+          "next": "Weiter ⏩"
+        },
+        "autoAdvance": "Automatisch fortfahren"
+      },
+      "sidebar": {
+        "title": "Tutorial-Schritte",
+        "empty": "Keine Tutorial-Schritte verfügbar"
+      },
+      "guidance": {
+        "title": "Anleitung"
+      },
+      "error": {
+        "highlight": "Das ist nicht die markierte Perle. Klicke auf die markierte Perle."
+      },
+      "navigation": {
+        "previous": "← Zurück",
+        "next": "Weiter →",
+        "complete": "Tutorial abschließen",
+        "stepCounter": "Schritt {current} von {total}"
+      },
+      "debugPanel": {
+        "title": "Debug-Bereich",
+        "currentState": "Aktueller Zustand",
+        "eventLog": "Ereignisprotokoll",
+        "step": "Schritt: {current}/{total}",
+        "value": "Wert: {value}",
+        "target": "Ziel: {value}",
+        "completed": "Abgeschlossen: {status}",
+        "completedStatus": {
+          "yes": "Ja",
+          "no": "Nein"
+        },
+        "time": "Zeit: {seconds}s"
+      }
+    },
+    "coachBar": {
+      "titleFallback": "Schritt",
+      "hideAria": "Anleitung ausblenden"
+    },
+    "reasonTooltip": {
+      "fromPrefix": "Von",
+      "directTitle": "Addiere die {place}-Ziffer — {digit} {place} ({value})",
+      "directSubtitle": "Von Summand {addend}",
+      "subtitleContext": "Vom {place}-Digit {digit} von {addend}",
+      "digitChip": "Verwendete Ziffer",
+      "rodChip": "Stab zeigt",
+      "addHereChip": "Hier addieren",
+      "sourceDigit": "Quellziffer",
+      "reasoning": "Von {addend}: Nutze die {place}-Ziffer ({digit}).",
+      "details": {
+        "toggle": "Weitere Details",
+        "carryPath": "Übertragsweg:",
+        "showMath": "Rechnung anzeigen",
+        "steps": "Schritt-für-Schritt-Aufschlüsselung"
+      },
+      "ruleInfo": {
+        "Direct": {
+          "name": "Direkter Zug",
+          "description": "Einfaches Perlenverschieben"
+        },
+        "FiveComplement": {
+          "name": "Fünferfreund",
+          "description": "Paare verwenden, die 5 ergeben"
+        },
+        "TenComplement": {
+          "name": "Zehnerfreund",
+          "description": "Paare verwenden, die 10 ergeben"
+        },
+        "Cascade": {
+          "name": "Kettenreaktion",
+          "description": "Ein Zug löst den nächsten aus"
+        },
+        "Fallback": {
+          "name": "Strategie",
+          "description": "Abakustechnik"
+        }
+      },
+      "formula": "{original} wird zu {expanded}",
+      "devWarning": "⚠ Zusammenfassung/Wächter stimmen nicht überein: {issues}"
+    }
+  }
+}

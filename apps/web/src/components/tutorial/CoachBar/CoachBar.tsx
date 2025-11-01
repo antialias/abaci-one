@@ -1,10 +1,12 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import type { PedagogicalSegment } from '../DecompositionWithReasons'
 import { useTutorialUI } from '../TutorialUIContext'
 
 export function CoachBar() {
   const ui = useTutorialUI()
+  const t = useTranslations('tutorial.coachBar')
   const seg: PedagogicalSegment | null = ui.activeSegment
 
   if (!ui.showCoachBar || !seg || !seg.readable?.summary) return null
@@ -14,13 +16,13 @@ export function CoachBar() {
   return (
     <aside className="coachbar" role="status" aria-live="polite" data-test-id="coachbar">
       <div className="coachbar__row">
-        <div className="coachbar__title">{r.title ?? 'Step'}</div>
+        <div className="coachbar__title">{r.title ?? t('titleFallback')}</div>
         {ui.canHideCoachBar && (
           <button
             type="button"
             className="coachbar__hide"
             onClick={() => ui.setShowCoachBar(false)}
-            aria-label="Hide guidance"
+            aria-label={t('hideAria')}
           >
             ✕
           </button>
