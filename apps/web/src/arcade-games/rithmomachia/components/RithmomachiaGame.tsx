@@ -189,8 +189,8 @@ export function RithmomachiaGame() {
                     <PlayingGuideModal
                       isOpen={true}
                       onClose={() => setIsGuideOpen(false)}
-                      docked={guideDocked} // Only truly docked if guideDocked is true
-                      onUndock={handleUndock}
+                      docked={true} // Always render as docked when in panel
+                      onUndock={guideDocked ? handleUndock : undefined} // Only show undock button when truly docked
                       onDockPreview={handleDockPreview}
                     />
                   </Panel>
@@ -226,8 +226,8 @@ export function RithmomachiaGame() {
                     <PlayingGuideModal
                       isOpen={true}
                       onClose={() => setIsGuideOpen(false)}
-                      docked={guideDocked} // Only truly docked if guideDocked is true
-                      onUndock={handleUndock}
+                      docked={true} // Always render as docked when in panel
+                      onUndock={guideDocked ? handleUndock : undefined} // Only show undock button when truly docked
                       onDockPreview={handleDockPreview}
                     />
                   </Panel>
