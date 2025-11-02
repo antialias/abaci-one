@@ -481,18 +481,43 @@ export function BoardDisplay() {
       return false
     }
 
-    const moverValue = getEffectiveValue(moverPiece)
+    // Get target value
     const targetValue = getEffectiveValue(targetPiece)
+    if (targetValue === undefined || targetValue === null) {
+      console.log('[HOVER_ERROR] Target has no value')
+      return false
+    }
 
-    console.log('[HOVER_ERROR] Values - mover: ' + moverValue + ', target: ' + targetValue)
-
+    // For pyramids, check if ANY of the 4 faces can form a valid relation
     if (
-      moverValue === undefined ||
-      moverValue === null ||
-      targetValue === undefined ||
-      targetValue === null
+      moverPiece.type === 'P' &&
+      moverPiece.pyramidFaces &&
+      moverPiece.pyramidFaces.length === 4
     ) {
-      console.log('[HOVER_ERROR] Undefined or null values')
+      console.log(
+        '[HOVER_ERROR] Checking pyramid with faces: ' + moverPiece.pyramidFaces.join(', ')
+      )
+
+      // Check each face to see if any has valid relations
+      for (const faceValue of moverPiece.pyramidFaces) {
+        const relations = findAvailableRelations(faceValue, targetValue)
+        console.log('[HOVER_ERROR] Face ' + faceValue + ' relations: ' + relations.length)
+        if (relations.length > 0) {
+          console.log('[HOVER_ERROR] Found valid relations with face ' + faceValue + ' - no error')
+          return false // At least one face has valid relations, don't show error
+        }
+      }
+
+      console.log('[HOVER_ERROR] No pyramid face has valid relations - show error')
+      return true // None of the faces have valid relations
+    }
+
+    // For non-pyramid pieces, use the single value
+    const moverValue = getEffectiveValue(moverPiece)
+    console.log('[HOVER_ERROR] Non-pyramid value: ' + moverValue)
+
+    if (moverValue === undefined || moverValue === null) {
+      console.log('[HOVER_ERROR] Mover has no value')
       return false
     }
 
