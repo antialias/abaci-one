@@ -1,3 +1,4 @@
+import { useSpring, animated } from '@react-spring/web'
 import { AbacusReact, useAbacusDisplay } from '@soroban/abacus-react'
 import type { Color, PieceType } from '../types'
 
@@ -7,7 +8,7 @@ interface PieceRendererProps {
   value: number | string
   size?: number
   useNativeAbacusNumbers?: boolean
-  hovered?: boolean
+  selected?: boolean
   pyramidFaces?: number[]
 }
 
@@ -22,11 +23,21 @@ export function PieceRenderer({
   value,
   size = 48,
   useNativeAbacusNumbers = false,
-  hovered = false,
+  selected = false,
   pyramidFaces = [],
 }: PieceRendererProps) {
   const isDark = color === 'B'
   const { config } = useAbacusDisplay()
+
+  // Subtle animation for pyramid face numbers
+  const pyramidNumbersSpring = useSpring({
+    from: { opacity: 0, scale: 0.8 },
+    to: {
+      opacity: type === 'P' && selected && pyramidFaces.length === 4 ? 1 : 0,
+      scale: type === 'P' && selected && pyramidFaces.length === 4 ? 1 : 0.8,
+    },
+    config: { tension: 200, friction: 20 },
+  })
 
   // Gradient IDs
   const gradientId = `gradient-${type}-${color}-${size}`
@@ -229,9 +240,15 @@ export function PieceRenderer({
 
       {renderShape()}
 
-      {/* Pyramid face numbers - show when hovered */}
-      {type === 'P' && hovered && pyramidFaces.length === 4 && (
-        <g>
+      {/* Pyramid face numbers - show when selected */}
+      {type === 'P' && selected && pyramidFaces.length === 4 && (
+        <animated.g
+          style={{
+            opacity: pyramidNumbersSpring.opacity,
+            transform: pyramidNumbersSpring.scale.to((s) => `scale(${s})`),
+            transformOrigin: 'center',
+          }}
+        >
           {/* Filter for strong drop shadow */}
           <defs>
             <filter id={`face-shadow-${color}`} x="-100%" y="-100%" width="300%" height="300%">
@@ -366,7 +383,7 @@ export function PieceRenderer({
           >
             {pyramidFaces[3]}
           </text>
-        </g>
+        </animated.g>
       )}
 
       {/* Other pieces show numbers normally */}
