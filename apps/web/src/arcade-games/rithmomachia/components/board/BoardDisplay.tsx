@@ -311,6 +311,9 @@ export function BoardDisplay() {
   }
 
   const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    console.log(
+      '[HOVER_ERROR] Mouse move - isMyTurn: ' + isMyTurn + ', selectedSquare: ' + selectedSquare
+    )
     if (!isMyTurn || !selectedSquare) {
       setHoveredSquare(null)
       return
@@ -329,8 +332,20 @@ export function BoardDisplay() {
       const square = `${String.fromCharCode(65 + col)}${8 - row}`
       const piece = Object.values(state.pieces).find((p) => p.square === square && !p.captured)
 
+      console.log(
+        '[HOVER_ERROR] Square: ' +
+          square +
+          ', hasPiece: ' +
+          !!piece +
+          ', pieceColor: ' +
+          (piece ? piece.color : 'none') +
+          ', playerColor: ' +
+          playerColor
+      )
+
       // Only set hovered square if it's an enemy piece
       if (piece && piece.color !== playerColor) {
+        console.log('[HOVER_ERROR] Setting hoveredSquare to: ' + square)
         setHoveredSquare(square)
       } else {
         setHoveredSquare(null)
@@ -341,6 +356,7 @@ export function BoardDisplay() {
   }
 
   const handleSvgMouseLeave = () => {
+    console.log('[HOVER_ERROR] Mouse leave - clearing hoveredSquare')
     setHoveredSquare(null)
   }
 
@@ -350,22 +366,14 @@ export function BoardDisplay() {
     // Add labelMargin offset to the position from utility function
     const basePos = getSquarePosition(captureTarget.to, layout)
     const pos = { x: basePos.x + labelMargin, y: basePos.y }
-    console.log('[getTargetSquarePosition] captureTarget.to:', captureTarget.to, 'position:', pos)
     return pos
   }, [captureTarget, layout, labelMargin])
 
   const targetPos = getTargetSquarePosition()
-  if (targetPos) {
-    console.log('[BoardDisplay] targetPos calculated:', targetPos)
-  }
 
   // Prepare helper data with board positions (if showing helpers)
   const helpersWithPositions = (() => {
-    console.log('[helpersWithPositions] selectedRelation:', selectedRelation)
-    console.log('[helpersWithPositions] captureTarget:', captureTarget)
-
     if (!selectedRelation || !captureTarget) {
-      console.log('[helpersWithPositions] No selectedRelation or captureTarget, returning empty')
       return []
     }
 
@@ -376,19 +384,12 @@ export function BoardDisplay() {
       (p) => p.square === captureTarget.to && !p.captured
     )
 
-    console.log('[helpersWithPositions] moverPiece:', moverPiece)
-    console.log('[helpersWithPositions] targetPiece:', targetPiece)
-
     if (!moverPiece || !targetPiece) {
-      console.log('[helpersWithPositions] Missing pieces, returning empty')
       return []
     }
 
     const moverValue = getEffectiveValue(moverPiece)
     const targetValue = getEffectiveValue(targetPiece)
-
-    console.log('[helpersWithPositions] moverValue:', moverValue)
-    console.log('[helpersWithPositions] targetValue:', targetValue)
 
     if (
       moverValue === undefined ||
@@ -396,12 +397,10 @@ export function BoardDisplay() {
       targetValue === undefined ||
       targetValue === null
     ) {
-      console.log('[helpersWithPositions] Undefined/null values, returning empty')
       return []
     }
 
     const validHelpers = findValidHelpers(moverValue, targetValue, selectedRelation)
-    console.log('[helpersWithPositions] validHelpers found:', validHelpers.length)
 
     const helpersWithPos = validHelpers.map((piece) => {
       const basePos = getSquarePosition(piece.square, layout)
@@ -410,7 +409,6 @@ export function BoardDisplay() {
         boardPos: { x: basePos.x + labelMargin, y: basePos.y },
       }
     })
-    console.log('[helpersWithPositions] helpersWithPos:', helpersWithPos)
 
     return helpersWithPos
   })()
@@ -444,7 +442,19 @@ export function BoardDisplay() {
 
   // Calculate if hovered square shows error (for hover preview)
   const showHoverError = (() => {
-    if (!hoveredSquare || !selectedSquare || captureDialogOpen) return false
+    console.log(
+      '[HOVER_ERROR] Calculating showHoverError - hoveredSquare: ' +
+        hoveredSquare +
+        ', selectedSquare: ' +
+        selectedSquare +
+        ', captureDialogOpen: ' +
+        captureDialogOpen
+    )
+
+    if (!hoveredSquare || !selectedSquare || captureDialogOpen) {
+      console.log('[HOVER_ERROR] Early return - missing data or dialog open')
+      return false
+    }
 
     const moverPiece = Object.values(state.pieces).find(
       (p) => p.square === selectedSquare && !p.captured
@@ -453,25 +463,44 @@ export function BoardDisplay() {
       (p) => p.square === hoveredSquare && !p.captured
     )
 
-    if (!moverPiece || !targetPiece) return false
+    console.log(
+      '[HOVER_ERROR] Found pieces - mover: ' + !!moverPiece + ', target: ' + !!targetPiece
+    )
+
+    if (!moverPiece || !targetPiece) {
+      console.log('[HOVER_ERROR] Missing mover or target piece')
+      return false
+    }
 
     // First check if the move path is valid
     const validation = validateMove(moverPiece, selectedSquare, hoveredSquare, state.pieces)
-    if (!validation.valid) return false
+    console.log('[HOVER_ERROR] Path validation - valid: ' + validation.valid)
+
+    if (!validation.valid) {
+      console.log('[HOVER_ERROR] Path not valid - skipping relation check')
+      return false
+    }
 
     const moverValue = getEffectiveValue(moverPiece)
     const targetValue = getEffectiveValue(targetPiece)
+
+    console.log('[HOVER_ERROR] Values - mover: ' + moverValue + ', target: ' + targetValue)
 
     if (
       moverValue === undefined ||
       moverValue === null ||
       targetValue === undefined ||
       targetValue === null
-    )
+    ) {
+      console.log('[HOVER_ERROR] Undefined or null values')
       return false
+    }
 
     const relations = findAvailableRelations(moverValue, targetValue)
-    return relations.length === 0
+    console.log('[HOVER_ERROR] Relations found: ' + relations.length)
+    const shouldShow = relations.length === 0
+    console.log('[HOVER_ERROR] Final result - showHoverError: ' + shouldShow)
+    return shouldShow
   })()
 
   // Get position for hover error tooltip

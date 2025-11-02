@@ -93,17 +93,6 @@ export function PlayingGuideModal({
     }
   }, [size, docked, standalone])
 
-  // Debug logging for props
-  useEffect(() => {
-    console.log('[PlayingGuideModal] Component rendered/props changed', {
-      isOpen,
-      standalone,
-      docked,
-      hasOnDock: !!onDock,
-      hasOnUndock: !!onUndock,
-    })
-  }, [isOpen, standalone, docked, onDock, onUndock])
-
   // Track window width for responsive behavior
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth)
@@ -124,24 +113,35 @@ export function PlayingGuideModal({
 
   // Handle dragging
   const handleMouseDown = (e: React.MouseEvent) => {
-    console.log('[PlayingGuideModal] handleMouseDown called', {
-      windowWidth: window.innerWidth,
-      standalone,
-      docked,
-      hasOnDock: !!onDock,
-      hasOnUndock: !!onUndock,
-    })
-    if (window.innerWidth < 768 || standalone) return // No dragging on mobile or standalone
-    console.log('[PlayingGuideModal] Starting drag')
+    console.log(
+      '[GUIDE_DRAG] handleMouseDown - windowWidth: ' +
+        window.innerWidth +
+        ', standalone: ' +
+        standalone +
+        ', docked: ' +
+        docked
+    )
+    if (window.innerWidth < 768 || standalone) {
+      console.log('[GUIDE_DRAG] Skipping drag - mobile or standalone')
+      return // No dragging on mobile or standalone
+    }
+    console.log('[GUIDE_DRAG] Starting drag - docked: ' + docked)
     setIsDragging(true)
 
     // When docked, we need to track the initial mouse position for undocking
     if (docked) {
+      console.log(
+        '[GUIDE_DRAG] Docked - setting dragStart to clientX: ' +
+          e.clientX +
+          ', clientY: ' +
+          e.clientY
+      )
       setDragStart({
         x: e.clientX,
         y: e.clientY,
       })
     } else {
+      console.log('[GUIDE_DRAG] Not docked - setting dragStart offset')
       setDragStart({
         x: e.clientX - position.x,
         y: e.clientY - position.y,
@@ -179,22 +179,36 @@ export function PlayingGuideModal({
             (e.clientX - dragStart.x) ** 2 + (e.clientY - dragStart.y) ** 2
           )
 
+          console.log(
+            '[GUIDE_DRAG] Dragging while docked - distance: ' +
+              dragDistance +
+              ', threshold: ' +
+              UNDOCK_THRESHOLD
+          )
+
           if (dragDistance > UNDOCK_THRESHOLD) {
-            console.log('[PlayingGuideModal] Undocking due to drag distance:', dragDistance)
+            console.log('[GUIDE_DRAG] Threshold exceeded - calling onUndock()')
             onUndock()
             // After undocking, keep modal at current visual position
             // and set dragStart as offset from position to cursor for smooth continued dragging
             if (modalRef.current) {
               const rect = modalRef.current.getBoundingClientRect()
+              console.log('[GUIDE_DRAG] Modal rect - left: ' + rect.left + ', top: ' + rect.top)
               // Keep modal at its current screen position (no jump)
               setPosition({
                 x: rect.left,
                 y: rect.top,
               })
+              console.log('[GUIDE_DRAG] New position set to: ' + rect.left + ', ' + rect.top)
               // Set dragStart as offset from current position to cursor
+              const newDragStartX = e.clientX - rect.left
+              const newDragStartY = e.clientY - rect.top
+              console.log(
+                '[GUIDE_DRAG] New dragStart offset: ' + newDragStartX + ', ' + newDragStartY
+              )
               setDragStart({
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top,
+                x: newDragStartX,
+                y: newDragStartY,
               })
             }
           }
@@ -266,47 +280,15 @@ export function PlayingGuideModal({
     }
 
     const handleMouseUp = (e: MouseEvent) => {
-      console.log('[PlayingGuideModal] handleMouseUp called', {
-        isDragging,
-        hasOnDock: !!onDock,
-        docked,
-        clientX: e.clientX,
-        windowWidth: window.innerWidth,
-      })
-
       // Check for docking when releasing drag
       if (isDragging && onDock && !docked) {
         const DOCK_THRESHOLD = 100 // pixels from edge to trigger docking
-        const distanceFromLeft = e.clientX
-        const distanceFromRight = window.innerWidth - e.clientX
-
-        console.log('[PlayingGuideModal] Checking for dock', {
-          distanceFromLeft,
-          distanceFromRight,
-          DOCK_THRESHOLD,
-          shouldDockLeft: distanceFromLeft < DOCK_THRESHOLD,
-          shouldDockRight: distanceFromRight < DOCK_THRESHOLD,
-        })
 
         if (e.clientX < DOCK_THRESHOLD) {
-          console.log('[PlayingGuideModal] Docking to LEFT')
           onDock('left')
         } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
-          console.log('[PlayingGuideModal] Docking to RIGHT')
           onDock('right')
-        } else {
-          console.log('[PlayingGuideModal] No docking (not close enough to edges)')
         }
-      } else {
-        console.log('[PlayingGuideModal] Not checking for dock', {
-          reason: !isDragging
-            ? 'not dragging'
-            : !onDock
-              ? 'no onDock handler'
-              : docked
-                ? 'already docked'
-                : 'unknown',
-        })
       }
 
       setIsDragging(false)
