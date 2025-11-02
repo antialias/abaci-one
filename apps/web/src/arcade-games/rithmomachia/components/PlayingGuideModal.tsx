@@ -19,6 +19,7 @@ interface PlayingGuideModalProps {
   docked?: boolean // True when docked to side
   onDock?: (side: 'left' | 'right') => void
   onUndock?: () => void
+  onDockPreview?: (side: 'left' | 'right' | null) => void // Preview docking without committing
 }
 
 type Section = 'overview' | 'pieces' | 'capture' | 'strategy' | 'harmony' | 'victory'
@@ -30,6 +31,7 @@ export function PlayingGuideModal({
   docked = false,
   onDock,
   onUndock,
+  onDockPreview,
 }: PlayingGuideModalProps) {
   const t = useTranslations('rithmomachia.guide')
   const { data: abacusSettings } = useAbacusSettings()
@@ -124,14 +126,17 @@ export function PlayingGuideModal({
         })
 
         // Check if we're near edges for docking preview
-        if (onDock && !docked) {
+        if (onDock && onDockPreview && !docked) {
           const DOCK_THRESHOLD = 100
           if (e.clientX < DOCK_THRESHOLD) {
             setDockPreview('left')
+            onDockPreview('left')
           } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
             setDockPreview('right')
+            onDockPreview('right')
           } else {
             setDockPreview(null)
+            onDockPreview(null)
           }
         }
       } else if (isResizing) {
@@ -227,6 +232,9 @@ export function PlayingGuideModal({
       setIsResizing(false)
       setResizeDirection('')
       setDockPreview(null) // Clear dock preview when drag ends
+      if (onDockPreview) {
+        onDockPreview(null) // Clear parent preview state
+      }
     }
 
     if (isDragging || isResizing) {
@@ -409,8 +417,13 @@ export function PlayingGuideModal({
                 height: `${size.height}px`,
                 zIndex: Z_INDEX.MODAL,
               }),
-        // 80% opacity on desktop when not hovered, full opacity otherwise
-        opacity: !standalone && !docked && window.innerWidth >= 768 && !isHovered ? 0.8 : 1,
+        // 80% opacity when showing dock preview or when not hovered on desktop
+        opacity:
+          dockPreview !== null
+            ? 0.8
+            : !standalone && !docked && window.innerWidth >= 768 && !isHovered
+              ? 0.8
+              : 1,
         transition: 'opacity 0.2s ease',
       }}
       onMouseEnter={() => setIsHovered(true)}
@@ -696,36 +709,6 @@ export function PlayingGuideModal({
     return modalContent
   }
 
-  // Otherwise, render the modal with optional dock preview
-  return (
-    <>
-      {/* Dock preview ghost panel */}
-      {dockPreview && !docked && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            [dockPreview === 'left' ? 'left' : 'right']: 0,
-            width: '35%',
-            height: '100%',
-            background: 'rgba(139, 92, 246, 0.15)',
-            border: `3px dashed rgba(139, 92, 246, 0.5)`,
-            borderRadius: 0,
-            pointerEvents: 'none',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '48px',
-            color: 'rgba(139, 92, 246, 0.6)',
-            fontWeight: 'bold',
-            transition: 'none',
-          }}
-        >
-          {dockPreview === 'left' ? '←' : '→'}
-        </div>
-      )}
-      {modalContent}
-    </>
-  )
+  // Otherwise, just render the modal (parent will handle preview rendering)
+  return modalContent
 }

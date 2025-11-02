@@ -41,6 +41,7 @@ export function RithmomachiaGame() {
   const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [guideDocked, setGuideDocked] = useState(false)
   const [guideDockSide, setGuideDockSide] = useState<'left' | 'right'>('right')
+  const [dockPreviewSide, setDockPreviewSide] = useState<'left' | 'right' | null>(null)
 
   useEffect(() => {
     // Register this component's main div as the fullscreen element
@@ -97,6 +98,7 @@ export function RithmomachiaGame() {
     console.log('[RithmomachiaGame] handleDock called', { side })
     setGuideDockSide(side)
     setGuideDocked(true)
+    setDockPreviewSide(null) // Clear preview when committing to dock
     console.log('[RithmomachiaGame] Docked state updated', {
       guideDocked: true,
       guideDockSide: side,
@@ -107,6 +109,11 @@ export function RithmomachiaGame() {
     console.log('[RithmomachiaGame] handleUndock called')
     setGuideDocked(false)
     console.log('[RithmomachiaGame] Undocked state updated', { guideDocked: false })
+  }
+
+  const handleDockPreview = (side: 'left' | 'right' | null) => {
+    console.log('[RithmomachiaGame] handleDockPreview called', { side })
+    setDockPreviewSide(side)
   }
 
   const gameContent = (
@@ -174,16 +181,17 @@ export function RithmomachiaGame() {
             overflow: 'hidden',
           })}
         >
-          {guideDocked && isGuideOpen ? (
+          {(guideDocked || dockPreviewSide) && isGuideOpen ? (
             <PanelGroup direction="horizontal" style={{ flex: 1 }}>
-              {guideDockSide === 'left' && (
+              {(guideDocked ? guideDockSide : dockPreviewSide) === 'left' && (
                 <>
                   <Panel defaultSize={35} minSize={20} maxSize={50}>
                     <PlayingGuideModal
                       isOpen={true}
                       onClose={() => setIsGuideOpen(false)}
-                      docked={true}
+                      docked={guideDocked} // Only truly docked if guideDocked is true
                       onUndock={handleUndock}
+                      onDockPreview={handleDockPreview}
                     />
                   </Panel>
                   <PanelResizeHandle
@@ -200,7 +208,7 @@ export function RithmomachiaGame() {
                   <Panel minSize={50}>{gameContent}</Panel>
                 </>
               )}
-              {guideDockSide === 'right' && (
+              {(guideDocked ? guideDockSide : dockPreviewSide) === 'right' && (
                 <>
                   <Panel minSize={50}>{gameContent}</Panel>
                   <PanelResizeHandle
@@ -218,8 +226,9 @@ export function RithmomachiaGame() {
                     <PlayingGuideModal
                       isOpen={true}
                       onClose={() => setIsGuideOpen(false)}
-                      docked={true}
+                      docked={guideDocked} // Only truly docked if guideDocked is true
                       onUndock={handleUndock}
+                      onDockPreview={handleDockPreview}
                     />
                   </Panel>
                 </>
@@ -238,6 +247,7 @@ export function RithmomachiaGame() {
           onClose={() => setIsGuideOpen(false)}
           docked={false}
           onDock={handleDock}
+          onDockPreview={handleDockPreview}
         />
       )}
     </PageWithNav>
