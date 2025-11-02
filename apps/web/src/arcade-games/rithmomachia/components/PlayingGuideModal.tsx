@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
+import { Textfit } from 'react-textfit'
 import { css } from '../../../../styled-system/css'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useAbacusSettings } from '@/hooks/useAbacusSettings'
@@ -608,9 +609,7 @@ export function PlayingGuideModal({
               justifyContent: 'center',
               gap: isVeryNarrow ? '0' : isNarrow ? '4px' : '6px',
               lineHeight: 1,
-              whiteSpace: 'nowrap',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
             }}
             onMouseEnter={(e) => {
               if (activeSection !== section.id) {
@@ -624,11 +623,18 @@ export function PlayingGuideModal({
             }}
             title={section.label}
           >
-            <span style={{ fontSize: isVeryNarrow ? '18px' : 'inherit' }}>{section.icon}</span>
+            <span style={{ fontSize: isVeryNarrow ? '18px' : 'inherit', flexShrink: 0 }}>
+              {section.icon}
+            </span>
             {!isVeryNarrow && (
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {isNarrow ? section.label.split(' ')[0] : section.label}
-              </span>
+              <Textfit
+                mode="single"
+                min={8}
+                max={isNarrow ? 12 : 14}
+                style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}
+              >
+                {section.label}
+              </Textfit>
             )}
           </button>
         ))}
