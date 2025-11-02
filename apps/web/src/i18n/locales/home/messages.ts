@@ -1,6 +1,7 @@
 import de from './de.json'
 import en from './en.json'
 import es from './es.json'
+import goh from './goh.json'
 import hi from './hi.json'
 import ja from './ja.json'
 import la from './la.json'
@@ -12,4 +13,5 @@ export const homeMessages = {
   hi: hi.home,
   es: es.home,
   la: la.home,
+  goh: goh.home,
 } as const

@@ -48,7 +48,8 @@
         "Dringen Sie ins gegnerische Gebiet vor (Reihen 1-4 für Schwarz, Reihen 5-8 für Weiß)",
         "Achten Sie auf Harmoniemöglichkeiten mit Ihren vorderen Steinen",
         "Gewinnen Sie durch eine Progression, die eine Runde übersteht!"
-      ]
+      ],
+      "boardCaption": "The Rithmomachia board with initial piece setup"
     },
     "pieces": {
       "title": "Ihre Spielfiguren (25 insgesamt)",
@@ -104,7 +105,8 @@
           "movement": "Ein Feld in alle Richtungen (wie ein König)",
           "count": "Anzahl: 1"
         }
-      }
+      },
+      "pyramidMovement": "One step any way"
     },
     "capture": {
       "title": "Wie man schlägt",

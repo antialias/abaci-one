@@ -48,7 +48,8 @@
         "In territorium hostium impelle (ordines 1-4 pro Nigro, ordines 5-8 pro Albo)",
         "Occasiones harmoniae cum tabulis tuis anterioribus specta",
         "Vince progressionem faciendo quae unum tempus supersit!"
-      ]
+      ],
+      "boardCaption": "The Rithmomachia board with initial piece setup"
     },
     "pieces": {
       "title": "Tabulae Tuae (25 in summa)",
@@ -104,7 +105,8 @@
       "pyramidCaptureOptions": "Optiones capturae ex H5:",
       "pyramidOption1": "Move ad I5: Elige faciem 64 → capit 16 per multiplum (64÷16=4)",
       "pyramidOption2": "Move ad H6: Elige faciem 49 → capit 49 per aequalitatem (49=49)",
-      "pyramidOption3": "Move ad G5: Elige faciem 25 → capit 25 per aequalitatem (25=25)"
+      "pyramidOption3": "Move ad G5: Elige faciem 25 → capit 25 per aequalitatem (25=25)",
+      "pyramidMovement": "One step any way"
     },
     "capture": {
       "title": "Quomodo Capere",

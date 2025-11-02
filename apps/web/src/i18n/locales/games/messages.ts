@@ -6,12 +6,12 @@ import hi from './hi.json'
 import ja from './ja.json'
 import la from './la.json'
 
-export const tutorialMessages = {
-  en: en.tutorial,
-  de: de.tutorial,
-  ja: ja.tutorial,
-  hi: hi.tutorial,
-  es: es.tutorial,
-  la: la.tutorial,
-  goh: goh.tutorial,
+export const gamesMessages = {
+  en: en.games,
+  de: de.games,
+  ja: ja.games,
+  hi: hi.games,
+  es: es.games,
+  la: la.games,
+  goh: goh.games,
 } as const

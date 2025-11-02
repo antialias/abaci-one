@@ -4,7 +4,7 @@ import { guideMessages } from '@/i18n/locales/guide/messages'
 import { homeMessages } from '@/i18n/locales/home/messages'
 import { tutorialMessages } from '@/i18n/locales/tutorial/messages'
 
-export type Locale = 'en' | 'de' | 'ja' | 'hi' | 'es' | 'la'
+export type Locale = 'en' | 'de' | 'ja' | 'hi' | 'es' | 'la' | 'goh'
 
 /**
  * Deep merge messages from multiple sources

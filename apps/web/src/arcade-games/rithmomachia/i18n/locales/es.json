@@ -48,7 +48,8 @@
       "step2": "Busca oportunidades de captura usando relaciones matemáticas",
       "step3": "Avanza hacia territorio enemigo (filas 1-4 para Negro, filas 5-8 para Blanco)",
       "step4": "Busca oportunidades de armonía con tus piezas avanzadas",
-      "step5": "¡Gana formando una progresión que sobreviva un turno!"
+      "step5": "¡Gana formando una progresión que sobreviva un turno!",
+      "boardCaption": "The Rithmomachia board with initial piece setup"
     },
     "pieces": {
       "title": "Tus Piezas (24 en total)",
@@ -108,7 +109,8 @@
       "pyramid": "Pirámide",
       "pyramidMove": "Un paso en cualquier dirección (como un rey)",
       "exampleValues": "Valores de ejemplo",
-      "example": "Ejemplo:"
+      "example": "Ejemplo:",
+      "pyramidMovement": "One step any way"
     },
     "capture": {
       "title": "Cómo Capturar",

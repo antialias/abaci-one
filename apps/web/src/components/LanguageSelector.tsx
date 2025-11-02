@@ -16,6 +16,7 @@ const LANGUAGE_LABELS: Record<string, string> = {
   hi: 'हिन्दी',
   es: 'Español',
   la: 'Latina',
+  goh: 'Diutisc',
 }
 
 const LANGUAGE_FLAGS: Record<string, string> = {
@@ -25,6 +26,7 @@ const LANGUAGE_FLAGS: Record<string, string> = {
   hi: '🇮🇳',
   es: '🇪🇸',
   la: '🏛️',
+  goh: '🏰',
 }
 
 export function LanguageSelector({

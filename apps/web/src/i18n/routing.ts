@@ -1,5 +1,5 @@
 // Supported locales
-export const locales = ['en', 'de', 'ja', 'hi', 'es', 'la'] as const
+export const locales = ['en', 'de', 'ja', 'hi', 'es', 'la', 'goh'] as const
 export type Locale = (typeof locales)[number]
 
 // Default locale

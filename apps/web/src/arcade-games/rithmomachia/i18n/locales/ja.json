@@ -47,7 +47,8 @@
       "step2": "数学的関係を使って捕獲の機会を探す",
       "step3": "敵陣に進入する（黒は1-4行、白は5-8行）",
       "step4": "前進した駒でハーモニーの機会を狙う",
-      "step5": "1ターン生き残る級数を形成して勝利！"
+      "step5": "1ターン生き残る級数を形成して勝利！",
+      "boardCaption": "The Rithmomachia board with initial piece setup"
     },
     "pieces": {
       "title": "あなたの駒（全24個）",
@@ -125,7 +126,8 @@
       "pyramidCaptureOptions": "H5からの捕獲オプション：",
       "pyramidOption1": "I5に移動：面64を選択 → 倍数で16を捕獲（64÷16=4）",
       "pyramidOption2": "H6に移動：面49を選択 → 等式で49を捕獲（49=49）",
-      "pyramidOption3": "G5に移動：面25を選択 → 等式で25を捕獲（25=25）"
+      "pyramidOption3": "G5に移動：面25を選択 → 等式で25を捕獲（25=25）",
+      "pyramidMovement": "One step any way"
     },
     "capture": {
       "title": "捕獲方法",

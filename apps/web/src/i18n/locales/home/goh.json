@@ -1,0 +1,77 @@
+{
+  "home": {
+    "learnByDoing": {
+      "title": "Learn by Doing",
+      "subtitle": "Interactive tutorials teach you step-by-step. Try this example right now:"
+    },
+    "whatYouLearn": {
+      "title": "What You'll Learn"
+    },
+    "skills": {
+      "readNumbers": {
+        "title": "📖 Read and set numbers",
+        "desc": "Master abacus number representation from zero to thousands",
+        "example": "0-9999",
+        "badge": "Foundation",
+        "tutorialTitle": "Read and Set Numbers",
+        "tutorialDesc": "Master abacus number representation from zero to thousands"
+      },
+      "friends": {
+        "title": "🤝 Friends techniques",
+        "desc": "Add and subtract using complement pairs and mental shortcuts",
+        "example": "5 = 2+3",
+        "badge": "Core",
+        "tutorialTitle": "Friends of 5",
+        "tutorialDesc": "Add and subtract using complement pairs: 5 = 2+3"
+      },
+      "multiply": {
+        "title": "✖️ Multiply & divide",
+        "desc": "Fluent multi-digit calculations with advanced techniques",
+        "example": "12×34",
+        "badge": "Advanced",
+        "tutorialTitle": "Multiplication",
+        "tutorialDesc": "Fluent multi-digit calculations with advanced techniques"
+      },
+      "mental": {
+        "title": "🧠 Mental calculation",
+        "desc": "Visualize and compute without the physical tool (Anzan)",
+        "example": "Speed math",
+        "badge": "Expert",
+        "tutorialTitle": "Mental Calculation",
+        "tutorialDesc": "Visualize and compute without the physical tool (Anzan)"
+      }
+    },
+    "arcade": {
+      "title": "The Arcade",
+      "subtitle": "Single-player challenges and multiplayer battles in networked rooms. Invite friends to play or watch live.",
+      "soloChallenge": "Solo challenge",
+      "playersCount": "{min}-{max} players"
+    },
+    "journey": {
+      "title": "Your Journey",
+      "subtitle": "Progress from beginner to master"
+    },
+    "flashcards": {
+      "title": "Create Custom Flashcards",
+      "subtitle": "Design beautiful flashcards for learning and practice",
+      "features": {
+        "formats": {
+          "icon": "📄",
+          "title": "Multiple Formats",
+          "desc": "PDF, PNG, SVG, HTML"
+        },
+        "customizable": {
+          "icon": "🎨",
+          "title": "Customizable",
+          "desc": "Bead shapes, colors, layouts"
+        },
+        "paperSizes": {
+          "icon": "📐",
+          "title": "All Paper Sizes",
+          "desc": "A3, A4, A5, US Letter"
+        }
+      },
+      "cta": "Create Flashcards"
+    }
+  }
+}
