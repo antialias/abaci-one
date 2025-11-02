@@ -23,29 +23,41 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
     type: PieceType
     name: string
     movement: string
+    chessAnalogy: string
     count: number
-    exampleValues: number[]
+    exampleValue: number
   }[] = [
     {
       type: 'C',
       name: t('pieces.circle'),
       movement: t('pieces.circleMove'),
-      count: 12,
-      exampleValues: [3, 5, 7, 9],
+      chessAnalogy: 'like a bishop',
+      count: 8,
+      exampleValue: 64,
     },
     {
       type: 'T',
       name: t('pieces.triangle'),
       movement: t('pieces.triangleMove'),
-      count: 6,
-      exampleValues: [12, 16, 20, 30],
+      chessAnalogy: 'like a rook',
+      count: 8,
+      exampleValue: 64,
     },
     {
       type: 'S',
       name: t('pieces.square'),
       movement: t('pieces.squareMove'),
-      count: 6,
-      exampleValues: [25, 28, 45, 66],
+      chessAnalogy: 'like a queen',
+      count: 7,
+      exampleValue: 64,
+    },
+    {
+      type: 'P',
+      name: t('pieces.pyramidTitle'),
+      movement: t('pieces.pyramidMovement'),
+      chessAnalogy: 'like a king',
+      count: 1,
+      exampleValue: 64,
     },
   ]
 
@@ -77,68 +89,56 @@ export function PiecesSection({ useNativeAbacusNumbers }: { useNativeAbacusNumbe
             })}
           >
             <div
-              className={css({ display: 'flex', alignItems: 'center', gap: '12px', mb: '12px' })}
+              className={css({
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '16px',
+              })}
             >
               <div
                 className={css({
-                  width: '60px',
-                  height: '60px',
+                  width: '80px',
+                  height: '80px',
                   flexShrink: 0,
                 })}
               >
                 <PieceRenderer
                   type={piece.type}
                   color="W"
-                  value={piece.exampleValues[0]}
-                  size={60}
+                  value={piece.exampleValue}
+                  size={80}
                   useNativeAbacusNumbers={useNativeAbacusNumbers}
                 />
               </div>
-              <div className={css({ flex: 1 })}>
-                <h4
+              <div className={css({ flex: 1, pt: '4px' })}>
+                <div
                   className={css({
-                    fontSize: '18px',
+                    fontSize: '24px',
                     fontWeight: 'bold',
                     color: '#111827',
                     mb: '4px',
                   })}
                 >
-                  {piece.name} ({piece.count} per side)
+                  {piece.exampleValue}
+                </div>
+                <h4
+                  className={css({
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    color: '#111827',
+                    mb: '6px',
+                  })}
+                >
+                  {piece.name}
                 </h4>
-                <p className={css({ fontSize: '14px', color: '#6b7280' })}>{piece.movement}</p>
-              </div>
-            </div>
-
-            {/* Example values */}
-            <div className={css({ mt: '12px' })}>
-              <p
-                className={css({
-                  fontSize: '13px',
-                  color: '#9ca3af',
-                  mb: '8px',
-                  fontStyle: 'italic',
-                })}
-              >
-                {t('pieces.exampleValues')}:
-              </p>
-              <div className={css({ display: 'flex', gap: '12px', flexWrap: 'wrap' })}>
-                {piece.exampleValues.map((value) => (
-                  <div
-                    key={value}
-                    className={css({
-                      width: '48px',
-                      height: '48px',
-                    })}
-                  >
-                    <PieceRenderer
-                      type={piece.type}
-                      color="W"
-                      value={value}
-                      size={48}
-                      useNativeAbacusNumbers={useNativeAbacusNumbers}
-                    />
-                  </div>
-                ))}
+                <p className={css({ fontSize: '14px', color: '#6b7280', mb: '4px' })}>
+                  {piece.movement}{' '}
+                  <span className={css({ fontStyle: 'italic' })}>{piece.chessAnalogy}</span>
+                </p>
+                <p className={css({ fontSize: '13px', color: '#9ca3af', fontWeight: '600' })}>
+                  Count: {piece.count}
+                  {piece.count > 1 ? ' per side' : ''}
+                </p>
               </div>
             </div>
           </div>
