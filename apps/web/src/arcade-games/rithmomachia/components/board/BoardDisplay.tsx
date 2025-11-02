@@ -10,6 +10,7 @@ import { usePieceSelection } from '../../hooks/usePieceSelection'
 import { useRithmomachia } from '../../Provider'
 import type { Piece, RelationKind } from '../../types'
 import { getSquarePosition } from '../../utils/boardCoordinates'
+import { validateMove } from '../../utils/pathValidator'
 import { getEffectiveValue } from '../../utils/pieceSetup'
 import {
   checkDiff,
@@ -453,6 +454,10 @@ export function BoardDisplay() {
     )
 
     if (!moverPiece || !targetPiece) return false
+
+    // First check if the move path is valid
+    const validation = validateMove(moverPiece, selectedSquare, hoveredSquare, state.pieces)
+    if (!validation.valid) return false
 
     const moverValue = getEffectiveValue(moverPiece)
     const targetValue = getEffectiveValue(targetPiece)
