@@ -182,17 +182,19 @@ export function PlayingGuideModal({
           if (dragDistance > UNDOCK_THRESHOLD) {
             console.log('[PlayingGuideModal] Undocking due to drag distance:', dragDistance)
             onUndock()
-            // After undocking, set up position for continued dragging as floating modal
-            // Center the modal at the current mouse position
+            // After undocking, keep modal at current visual position
+            // and set dragStart as offset from position to cursor for smooth continued dragging
             if (modalRef.current) {
               const rect = modalRef.current.getBoundingClientRect()
+              // Keep modal at its current screen position (no jump)
               setPosition({
-                x: e.clientX - rect.width / 2,
-                y: e.clientY - 20, // Offset slightly from cursor
+                x: rect.left,
+                y: rect.top,
               })
+              // Set dragStart as offset from current position to cursor
               setDragStart({
-                x: e.clientX - (e.clientX - rect.width / 2),
-                y: e.clientY - (e.clientY - 20),
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
               })
             }
           }
