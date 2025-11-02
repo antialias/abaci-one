@@ -2,9 +2,10 @@ import { css } from '../../../../../styled-system/css'
 
 export interface SetupHeaderProps {
   onOpenGuide: () => void
+  isGuideOpen: boolean
 }
 
-export function SetupHeader({ onOpenGuide }: SetupHeaderProps) {
+export function SetupHeader({ onOpenGuide, isGuideOpen }: SetupHeaderProps) {
   return (
     <div
       data-element="title-section"
@@ -118,36 +119,38 @@ export function SetupHeader({ onOpenGuide }: SetupHeaderProps) {
       >
         Win by forming mathematical progressions in enemy territory
       </p>
-      <button
-        type="button"
-        data-action="open-guide"
-        onClick={onOpenGuide}
-        className={css({
-          bg: 'linear-gradient(135deg, #7c2d12, #92400e)',
-          color: 'white',
-          border: '2px solid rgba(251, 191, 36, 0.6)',
-          borderRadius: '0.8vh',
-          px: '1.5vh',
-          py: '0.8vh',
-          fontSize: '1.3vh',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5vh',
-          mx: 'auto',
-          boxShadow: '0 0.3vh 0.8vh rgba(0, 0, 0, 0.3)',
-          _hover: {
-            bg: 'linear-gradient(135deg, #92400e, #7c2d12)',
-            transform: 'translateY(-0.2vh)',
-            boxShadow: '0 0.5vh 1.2vh rgba(0, 0, 0, 0.4)',
-          },
-        })}
-      >
-        <span>📖</span>
-        <span>How to Play</span>
-      </button>
+      {!isGuideOpen && (
+        <button
+          type="button"
+          data-action="open-guide"
+          onClick={onOpenGuide}
+          className={css({
+            bg: 'linear-gradient(135deg, #7c2d12, #92400e)',
+            color: 'white',
+            border: '2px solid rgba(251, 191, 36, 0.6)',
+            borderRadius: '0.8vh',
+            px: '1.5vh',
+            py: '0.8vh',
+            fontSize: '1.3vh',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5vh',
+            mx: 'auto',
+            boxShadow: '0 0.3vh 0.8vh rgba(0, 0, 0, 0.3)',
+            _hover: {
+              bg: 'linear-gradient(135deg, #92400e, #7c2d12)',
+              transform: 'translateY(-0.2vh)',
+              boxShadow: '0 0.5vh 1.2vh rgba(0, 0, 0, 0.4)',
+            },
+          })}
+        >
+          <span>📖</span>
+          <span>How to Play</span>
+        </button>
+      )}
     </div>
   )
 }

@@ -39,8 +39,34 @@ export function PlayingGuideModal({
   const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
 
   const [activeSection, setActiveSection] = useState<Section>('overview')
-  const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [size, setSize] = useState({ width: 800, height: 600 })
+
+  // Load saved position and size from localStorage
+  const [position, setPosition] = useState<{ x: number; y: number }>(() => {
+    if (typeof window === 'undefined') return { x: 0, y: 0 }
+    const saved = localStorage.getItem('rithmomachia-guide-position')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        return { x: 0, y: 0 }
+      }
+    }
+    return { x: 0, y: 0 }
+  })
+
+  const [size, setSize] = useState<{ width: number; height: number }>(() => {
+    if (typeof window === 'undefined') return { width: 800, height: 600 }
+    const saved = localStorage.getItem('rithmomachia-guide-size')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        return { width: 800, height: 600 }
+      }
+    }
+    return { width: 800, height: 600 }
+  })
+
   const [isDragging, setIsDragging] = useState(false)
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 800
@@ -52,6 +78,20 @@ export function PlayingGuideModal({
   const [isHovered, setIsHovered] = useState(false)
   const [dockPreview, setDockPreview] = useState<'left' | 'right' | null>(null)
   const modalRef = useRef<HTMLDivElement>(null)
+
+  // Save position to localStorage whenever it changes
+  useEffect(() => {
+    if (!docked && !standalone) {
+      localStorage.setItem('rithmomachia-guide-position', JSON.stringify(position))
+    }
+  }, [position, docked, standalone])
+
+  // Save size to localStorage whenever it changes
+  useEffect(() => {
+    if (!docked && !standalone) {
+      localStorage.setItem('rithmomachia-guide-size', JSON.stringify(size))
+    }
+  }, [size, docked, standalone])
 
   // Debug logging for props
   useEffect(() => {
@@ -89,14 +129,24 @@ export function PlayingGuideModal({
       standalone,
       docked,
       hasOnDock: !!onDock,
+      hasOnUndock: !!onUndock,
     })
     if (window.innerWidth < 768 || standalone) return // No dragging on mobile or standalone
     console.log('[PlayingGuideModal] Starting drag')
     setIsDragging(true)
-    setDragStart({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    })
+
+    // When docked, we need to track the initial mouse position for undocking
+    if (docked) {
+      setDragStart({
+        x: e.clientX,
+        y: e.clientY,
+      })
+    } else {
+      setDragStart({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
+      })
+    }
   }
 
   // Handle resize start
@@ -115,29 +165,57 @@ export function PlayingGuideModal({
     const url = `${window.location.origin}/arcade/rithmomachia/guide`
     const features = 'width=600,height=800,menubar=no,toolbar=no,location=no,status=no'
     window.open(url, 'RithmomachiaGuide', features)
+    onClose() // Close the modal version after opening in new window
   }
 
   // Mouse move effect for dragging and resizing
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
-        setPosition({
-          x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y,
-        })
+        // When docked, check if we've dragged far enough away to undock
+        if (docked && onUndock) {
+          const UNDOCK_THRESHOLD = 50 // pixels to drag before undocking
+          const dragDistance = Math.sqrt(
+            (e.clientX - dragStart.x) ** 2 + (e.clientY - dragStart.y) ** 2
+          )
 
-        // Check if we're near edges for docking preview
-        if (onDock && onDockPreview && !docked) {
-          const DOCK_THRESHOLD = 100
-          if (e.clientX < DOCK_THRESHOLD) {
-            setDockPreview('left')
-            onDockPreview('left')
-          } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
-            setDockPreview('right')
-            onDockPreview('right')
-          } else {
-            setDockPreview(null)
-            onDockPreview(null)
+          if (dragDistance > UNDOCK_THRESHOLD) {
+            console.log('[PlayingGuideModal] Undocking due to drag distance:', dragDistance)
+            onUndock()
+            // After undocking, set up position for continued dragging as floating modal
+            // Center the modal at the current mouse position
+            if (modalRef.current) {
+              const rect = modalRef.current.getBoundingClientRect()
+              setPosition({
+                x: e.clientX - rect.width / 2,
+                y: e.clientY - 20, // Offset slightly from cursor
+              })
+              setDragStart({
+                x: e.clientX - (e.clientX - rect.width / 2),
+                y: e.clientY - (e.clientY - 20),
+              })
+            }
+          }
+        } else {
+          // Normal floating modal dragging
+          setPosition({
+            x: e.clientX - dragStart.x,
+            y: e.clientY - dragStart.y,
+          })
+
+          // Check if we're near edges for docking preview
+          if (onDock && onDockPreview && !docked) {
+            const DOCK_THRESHOLD = 100
+            if (e.clientX < DOCK_THRESHOLD) {
+              setDockPreview('left')
+              onDockPreview('left')
+            } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
+              setDockPreview('right')
+              onDockPreview('right')
+            } else {
+              setDockPreview(null)
+              onDockPreview(null)
+            }
           }
         }
       } else if (isResizing) {
@@ -247,7 +325,17 @@ export function PlayingGuideModal({
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isDragging, isResizing, dragStart, resizeDirection, resizeStart])
+  }, [
+    isDragging,
+    isResizing,
+    dragStart,
+    resizeDirection,
+    resizeStart,
+    docked,
+    onUndock,
+    onDock,
+    onDockPreview,
+  ])
 
   if (!isOpen && !standalone && !docked) return null
 
@@ -444,14 +532,13 @@ export function PlayingGuideModal({
         })}
         style={{
           padding: isVeryNarrow ? '8px' : isNarrow ? '12px' : '24px',
-          cursor:
-            isDragging && !docked
-              ? 'grabbing'
-              : !standalone && !docked && window.innerWidth >= 768
-                ? 'grab'
-                : 'default',
+          cursor: isDragging
+            ? 'grabbing'
+            : !standalone && window.innerWidth >= 768
+              ? 'grab'
+              : 'default',
         }}
-        onMouseDown={docked ? undefined : handleMouseDown}
+        onMouseDown={handleMouseDown}
       >
         {/* Close and utility buttons - top right */}
         <div
@@ -464,33 +551,6 @@ export function PlayingGuideModal({
             gap: isVeryNarrow ? '4px' : '8px',
           }}
         >
-          {/* Undock button (only when docked) */}
-          {docked && onUndock && (
-            <button
-              type="button"
-              data-action="undock-guide"
-              onClick={onUndock}
-              style={{
-                background: '#e5e7eb',
-                color: '#374151',
-                border: 'none',
-                borderRadius: isVeryNarrow ? '4px' : '6px',
-                width: isVeryNarrow ? '24px' : '32px',
-                height: isVeryNarrow ? '24px' : '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontSize: isVeryNarrow ? '12px' : '16px',
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#d1d5db')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = '#e5e7eb')}
-              title="Undock guide (return to floating mode)"
-            >
-              ⤴️
-            </button>
-          )}
           {/* Bust-out button (only if not already standalone/docked and not very narrow) */}
           {!standalone && !docked && !isVeryNarrow && (
             <button

@@ -11,9 +11,10 @@ import { StartButton } from './StartButton'
 
 export interface SetupPhaseProps {
   onOpenGuide: () => void
+  isGuideOpen: boolean
 }
 
-export function SetupPhase({ onOpenGuide }: SetupPhaseProps) {
+export function SetupPhase({ onOpenGuide, isGuideOpen }: SetupPhaseProps) {
   const { state, startGame, setConfig, lastError, clearError, rosterStatus } = useRithmomachia()
   const { players: playerMap, activePlayers: activePlayerIds, addPlayer, setActive } = useGameMode()
   const startDisabled = rosterStatus.status !== 'ok'
@@ -167,7 +168,7 @@ export function SetupPhase({ onOpenGuide }: SetupPhaseProps) {
         {/* Only show setup config when we have enough players */}
         {rosterStatus.status !== 'tooFew' && (
           <>
-            <SetupHeader onOpenGuide={onOpenGuide} />
+            <SetupHeader onOpenGuide={onOpenGuide} isGuideOpen={isGuideOpen} />
 
             {/* Game Settings - Compact with flex: 1 to take remaining space */}
             <div

@@ -7,9 +7,10 @@ import { BoardDisplay } from '../board/BoardDisplay'
 
 export interface PlayingPhaseProps {
   onOpenGuide: () => void
+  isGuideOpen: boolean
 }
 
-export function PlayingPhase({ onOpenGuide }: PlayingPhaseProps) {
+export function PlayingPhase({ onOpenGuide, isGuideOpen }: PlayingPhaseProps) {
   const { state, isMyTurn, lastError, clearError, rosterStatus } = useRithmomachia()
 
   // Get abacus settings for native abacus numbers
@@ -77,33 +78,35 @@ export function PlayingPhase({ onOpenGuide }: PlayingPhaseProps) {
           </span>
         </div>
         <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
-          <button
-            type="button"
-            data-action="open-guide-playing"
-            onClick={onOpenGuide}
-            className={css({
-              px: '3',
-              py: '1',
-              bg: 'linear-gradient(135deg, #7c2d12, #92400e)',
-              color: 'white',
-              border: '1px solid rgba(251, 191, 36, 0.6)',
-              borderRadius: 'md',
-              fontSize: 'sm',
-              fontWeight: 'semibold',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1',
-              transition: 'all 0.2s',
-              _hover: {
-                bg: 'linear-gradient(135deg, #92400e, #7c2d12)',
-                transform: 'translateY(-1px)',
-              },
-            })}
-          >
-            <span>📖</span>
-            <span>Guide</span>
-          </button>
+          {!isGuideOpen && (
+            <button
+              type="button"
+              data-action="open-guide-playing"
+              onClick={onOpenGuide}
+              className={css({
+                px: '3',
+                py: '1',
+                bg: 'linear-gradient(135deg, #7c2d12, #92400e)',
+                color: 'white',
+                border: '1px solid rgba(251, 191, 36, 0.6)',
+                borderRadius: 'md',
+                fontSize: 'sm',
+                fontWeight: 'semibold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1',
+                transition: 'all 0.2s',
+                _hover: {
+                  bg: 'linear-gradient(135deg, #92400e, #7c2d12)',
+                  transform: 'translateY(-1px)',
+                },
+              })}
+            >
+              <span>📖</span>
+              <span>Guide</span>
+            </button>
+          )}
           {isMyTurn && (
             <div
               className={css({

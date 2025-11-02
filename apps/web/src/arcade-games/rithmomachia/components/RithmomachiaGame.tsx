@@ -38,9 +38,21 @@ export function RithmomachiaGame() {
   const { setFullscreenElement } = useFullscreen()
   const gameRef = useRef<HTMLDivElement>(null)
   const rosterWarning = useRosterWarning(state.gamePhase === 'setup' ? 'setup' : 'playing')
+
+  // Load saved guide preferences from localStorage
+  const [guideDocked, setGuideDocked] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    const saved = localStorage.getItem('rithmomachia-guide-docked')
+    return saved === 'true'
+  })
+
+  const [guideDockSide, setGuideDockSide] = useState<'left' | 'right'>(() => {
+    if (typeof window === 'undefined') return 'right'
+    const saved = localStorage.getItem('rithmomachia-guide-dock-side')
+    return saved === 'left' || saved === 'right' ? saved : 'right'
+  })
+
   const [isGuideOpen, setIsGuideOpen] = useState(false)
-  const [guideDocked, setGuideDocked] = useState(false)
-  const [guideDockSide, setGuideDockSide] = useState<'left' | 'right'>('right')
   const [dockPreviewSide, setDockPreviewSide] = useState<'left' | 'right' | null>(null)
 
   useEffect(() => {
@@ -49,6 +61,16 @@ export function RithmomachiaGame() {
       setFullscreenElement(gameRef.current)
     }
   }, [setFullscreenElement])
+
+  // Save guide docked state to localStorage
+  useEffect(() => {
+    localStorage.setItem('rithmomachia-guide-docked', String(guideDocked))
+  }, [guideDocked])
+
+  // Save guide dock side to localStorage
+  useEffect(() => {
+    localStorage.setItem('rithmomachia-guide-dock-side', guideDockSide)
+  }, [guideDockSide])
 
   // Debug logging for state changes
   useEffect(() => {
@@ -97,9 +119,29 @@ export function RithmomachiaGame() {
   const handleOpenGuide = () => {
     console.log('[RithmomachiaGame] handleOpenGuide called')
     setIsGuideOpen(true)
-    setGuideDocked(true) // Default to docked on right
-    setGuideDockSide('right')
-    console.log('[RithmomachiaGame] Guide opened in docked right position')
+
+    // Use saved preferences if available, otherwise default to docked on right
+    if (typeof window !== 'undefined') {
+      const savedDocked = localStorage.getItem('rithmomachia-guide-docked')
+      const savedSide = localStorage.getItem('rithmomachia-guide-dock-side')
+
+      if (savedDocked !== null) {
+        const isDocked = savedDocked === 'true'
+        setGuideDocked(isDocked)
+        if (isDocked && savedSide) {
+          setGuideDockSide(savedSide === 'left' || savedSide === 'right' ? savedSide : 'right')
+        }
+        console.log('[RithmomachiaGame] Guide opened with saved preferences', {
+          docked: isDocked,
+          side: savedSide,
+        })
+      } else {
+        // First time opening - default to docked on right
+        setGuideDocked(true)
+        setGuideDockSide('right')
+        console.log('[RithmomachiaGame] Guide opened in default docked right position')
+      }
+    }
   }
 
   const handleDock = (side: 'left' | 'right') => {
@@ -152,8 +194,12 @@ export function RithmomachiaGame() {
           height: '100%',
         })}
       >
-        {state.gamePhase === 'setup' && <SetupPhase onOpenGuide={handleOpenGuide} />}
-        {state.gamePhase === 'playing' && <PlayingPhase onOpenGuide={handleOpenGuide} />}
+        {state.gamePhase === 'setup' && (
+          <SetupPhase onOpenGuide={handleOpenGuide} isGuideOpen={isGuideOpen} />
+        )}
+        {state.gamePhase === 'playing' && (
+          <PlayingPhase onOpenGuide={handleOpenGuide} isGuideOpen={isGuideOpen} />
+        )}
         {state.gamePhase === 'results' && <ResultsPhase />}
       </main>
     </div>
