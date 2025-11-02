@@ -49,6 +49,17 @@ export function PlayingGuideModal({
   const [isHovered, setIsHovered] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
 
+  // Debug logging for props
+  useEffect(() => {
+    console.log('[PlayingGuideModal] Component rendered/props changed', {
+      isOpen,
+      standalone,
+      docked,
+      hasOnDock: !!onDock,
+      hasOnUndock: !!onUndock,
+    })
+  }, [isOpen, standalone, docked, onDock, onUndock])
+
   // Track window width for responsive behavior
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth)
@@ -69,7 +80,14 @@ export function PlayingGuideModal({
 
   // Handle dragging
   const handleMouseDown = (e: React.MouseEvent) => {
+    console.log('[PlayingGuideModal] handleMouseDown called', {
+      windowWidth: window.innerWidth,
+      standalone,
+      docked,
+      hasOnDock: !!onDock,
+    })
     if (window.innerWidth < 768 || standalone) return // No dragging on mobile or standalone
+    console.log('[PlayingGuideModal] Starting drag')
     setIsDragging(true)
     setDragStart({
       x: e.clientX - position.x,
@@ -149,14 +167,47 @@ export function PlayingGuideModal({
     }
 
     const handleMouseUp = (e: MouseEvent) => {
+      console.log('[PlayingGuideModal] handleMouseUp called', {
+        isDragging,
+        hasOnDock: !!onDock,
+        docked,
+        clientX: e.clientX,
+        windowWidth: window.innerWidth,
+      })
+
       // Check for docking when releasing drag
       if (isDragging && onDock && !docked) {
         const DOCK_THRESHOLD = 100 // pixels from edge to trigger docking
+        const distanceFromLeft = e.clientX
+        const distanceFromRight = window.innerWidth - e.clientX
+
+        console.log('[PlayingGuideModal] Checking for dock', {
+          distanceFromLeft,
+          distanceFromRight,
+          DOCK_THRESHOLD,
+          shouldDockLeft: distanceFromLeft < DOCK_THRESHOLD,
+          shouldDockRight: distanceFromRight < DOCK_THRESHOLD,
+        })
+
         if (e.clientX < DOCK_THRESHOLD) {
+          console.log('[PlayingGuideModal] Docking to LEFT')
           onDock('left')
         } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
+          console.log('[PlayingGuideModal] Docking to RIGHT')
           onDock('right')
+        } else {
+          console.log('[PlayingGuideModal] No docking (not close enough to edges)')
         }
+      } else {
+        console.log('[PlayingGuideModal] Not checking for dock', {
+          reason: !isDragging
+            ? 'not dragging'
+            : !onDock
+              ? 'no onDock handler'
+              : docked
+                ? 'already docked'
+                : 'unknown',
+        })
       }
 
       setIsDragging(false)

@@ -49,6 +49,15 @@ export function RithmomachiaGame() {
     }
   }, [setFullscreenElement])
 
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log('[RithmomachiaGame] State changed', {
+      isGuideOpen,
+      guideDocked,
+      guideDockSide,
+    })
+  }, [isGuideOpen, guideDocked, guideDockSide])
+
   const currentPlayerId = useMemo(() => {
     if (state.turn === 'W') {
       return whitePlayerId ?? undefined
@@ -85,12 +94,19 @@ export function RithmomachiaGame() {
   }, [whitePlayerId, blackPlayerId])
 
   const handleDock = (side: 'left' | 'right') => {
+    console.log('[RithmomachiaGame] handleDock called', { side })
     setGuideDockSide(side)
     setGuideDocked(true)
+    console.log('[RithmomachiaGame] Docked state updated', {
+      guideDocked: true,
+      guideDockSide: side,
+    })
   }
 
   const handleUndock = () => {
+    console.log('[RithmomachiaGame] handleUndock called')
     setGuideDocked(false)
+    console.log('[RithmomachiaGame] Undocked state updated', { guideDocked: false })
   }
 
   const gameContent = (
