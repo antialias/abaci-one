@@ -1,77 +1,77 @@
 {
   "home": {
     "learnByDoing": {
-      "title": "Learn by Doing",
-      "subtitle": "Interactive tutorials teach you step-by-step. Try this example right now:"
+      "title": "Lernēn thuruh Tuon",
+      "subtitle": "Wechselwīsigiu lēra lērēnt thih scrit bi scrite. Firsuoh thiz bīspel nū:"
     },
     "whatYouLearn": {
-      "title": "What You'll Learn"
+      "title": "Waz Thu Lernēs"
     },
     "skills": {
       "readNumbers": {
-        "title": "📖 Read and set numbers",
-        "desc": "Master abacus number representation from zero to thousands",
+        "title": "📖 Lesan inti setzan zala",
+        "desc": "Bimeistan abakus zal-bezeichenunga fon nula zi thūsuntōn",
         "example": "0-9999",
-        "badge": "Foundation",
-        "tutorialTitle": "Read and Set Numbers",
-        "tutorialDesc": "Master abacus number representation from zero to thousands"
+        "badge": "Gruντlag",
+        "tutorialTitle": "Lesan inti Setzan Zala",
+        "tutorialDesc": "Bimeistan abakus zal-bezeichenunga fon nula zi thūsuntōn"
       },
       "friends": {
-        "title": "🤝 Friends techniques",
-        "desc": "Add and subtract using complement pairs and mental shortcuts",
+        "title": "🤝 Friunt-kunst",
+        "desc": "Zuotuon inti abaziohan mit gifulli-pār inti muot-wurti",
         "example": "5 = 2+3",
-        "badge": "Core",
-        "tutorialTitle": "Friends of 5",
-        "tutorialDesc": "Add and subtract using complement pairs: 5 = 2+3"
+        "badge": "Mitti",
+        "tutorialTitle": "Friunt fon Fimfi",
+        "tutorialDesc": "Zuotuon inti abaziohan mit gifulli-pār: 5 = 2+3"
       },
       "multiply": {
-        "title": "✖️ Multiply & divide",
-        "desc": "Fluent multi-digit calculations with advanced techniques",
+        "title": "✖️ Managfaltōn inti teilan",
+        "desc": "Fluzzigiu mang-ziffer rehhanunga mit furdiroreru kunst",
         "example": "12×34",
-        "badge": "Advanced",
-        "tutorialTitle": "Multiplication",
-        "tutorialDesc": "Fluent multi-digit calculations with advanced techniques"
+        "badge": "Furdir",
+        "tutorialTitle": "Managfaltōn",
+        "tutorialDesc": "Fluzzigiu mang-ziffer rehhanunga mit furdiroreru kunst"
       },
       "mental": {
-        "title": "🧠 Mental calculation",
-        "desc": "Visualize and compute without the physical tool (Anzan)",
-        "example": "Speed math",
-        "badge": "Expert",
-        "tutorialTitle": "Mental Calculation",
-        "tutorialDesc": "Visualize and compute without the physical tool (Anzan)"
+        "title": "🧠 Muot-rehhanunga",
+        "desc": "Gisiohan inti rehhanōn ānu thaz līphlīhha giziug (Anzan)",
+        "example": "Snel-rechanōn",
+        "badge": "Meistir",
+        "tutorialTitle": "Muot-Rehhanunga",
+        "tutorialDesc": "Gisiohan inti rehhanōn ānu thaz līphlīhha giziug (Anzan)"
       }
     },
     "arcade": {
-      "title": "The Arcade",
-      "subtitle": "Single-player challenges and multiplayer battles in networked rooms. Invite friends to play or watch live.",
-      "soloChallenge": "Solo challenge",
-      "playersCount": "{min}-{max} players"
+      "title": "Thiu Spil-Halla",
+      "subtitle": "Ein-spilāri forahtūn inti mang-spilāri fehtunga in ginezzōteru kamerūn. Gilad friunt zi spilenne odo zi gisehenne liuto.",
+      "soloChallenge": "Ein-spil forahtunga",
+      "playersCount": "{min}-{max} spilāri"
     },
     "journey": {
-      "title": "Your Journey",
-      "subtitle": "Progress from beginner to master"
+      "title": "Thīn Fart",
+      "subtitle": "Furugang fon anaginno zi meistir"
     },
     "flashcards": {
-      "title": "Create Custom Flashcards",
-      "subtitle": "Design beautiful flashcards for learning and practice",
+      "title": "Giscaffōn Sunderīgiu Lerno-Karta",
+      "subtitle": "Giskeidan scōniu lerno-karta zi lernenne inti ubenne",
       "features": {
         "formats": {
           "icon": "📄",
-          "title": "Multiple Formats",
+          "title": "Mang Gestalta",
           "desc": "PDF, PNG, SVG, HTML"
         },
         "customizable": {
           "icon": "🎨",
-          "title": "Customizable",
-          "desc": "Bead shapes, colors, layouts"
+          "title": "Giwantalōnti",
+          "desc": "Kornu-gestalta, farawa, leita"
         },
         "paperSizes": {
           "icon": "📐",
-          "title": "All Paper Sizes",
-          "desc": "A3, A4, A5, US Letter"
+          "title": "Alliu Boc-Grōzzi",
+          "desc": "A3, A4, A5, US Brēf"
         }
       },
-      "cta": "Create Flashcards"
+      "cta": "Giscaffōn Lerno-Karta"
     }
   }
 }

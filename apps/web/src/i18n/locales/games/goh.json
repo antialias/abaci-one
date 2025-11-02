@@ -1,65 +1,65 @@
 {
   "games": {
     "hero": {
-      "title": "🕹️ Soroban Arcade",
-      "subtitle": "Level up your mental math powers in the most fun way possible!",
+      "title": "🕹️ Soroban Spil-Halla",
+      "subtitle": "Hohi thīniu muot-rehhanunga-kraft in theru lustigosteru wīsu!",
       "xpBadge": "+100 XP",
-      "streakBadge": "STREAK!",
+      "streakBadge": "REIHA!",
       "features": {
-        "challenge": "🎯 Challenge Your Brain",
-        "speed": "⚡ Build Speed",
-        "achievements": "🏆 Unlock Achievements"
+        "challenge": "🎯 Forahtōn Thīnan Muot",
+        "speed": "⚡ Bouwan Snelli",
+        "achievements": "🏆 Intsliozzan Gitāt"
       }
     },
     "enterArcade": {
-      "title": "🏟️ Ready for the Arena?",
-      "description": "Select your champions, choose your battles, and dive into full-screen arcade action!",
-      "button": "🚀 ENTER ARCADE",
-      "subtitle": "Full-screen experience with immersive gameplay"
+      "title": "🏟️ Garo zi theru Kampf-Stedi?",
+      "description": "Giweli thīniu kemphōn, giweli thīniu fehtunga, inti sprinc in thaz follu-scirm spil-wefan!",
+      "button": "🚀 GIGANG IN SPIL-HALLA",
+      "subtitle": "Follu-scirm irfaran mit intsnkenten spil-wefan"
     },
     "champions": {
-      "title": "🏆 Your Arcade Champions",
-      "subtitle": "Track your progress and achievements!",
+      "title": "🏆 Thīniu Spil-Kemphōn",
+      "subtitle": "Spuro thīnan furugang inti gitāt!",
       "stats": {
-        "gamesPlayed": "GAMES PLAYED",
-        "victories": "VICTORIES",
-        "level": "Level {level}",
+        "gamesPlayed": "GESPILŌTIU SPIL",
+        "victories": "SIGU",
+        "level": "Stuofun {level}",
         "xp": "{current}/{total} XP"
       }
     },
     "dashboard": {
       "headToHead": {
-        "title": "🥊 Head-to-Head",
-        "subtitle": "Battle Record",
-        "vs": "VS",
-        "wins": "WINS",
-        "lastPlayed": "Last played: Memory Lightning ⚡"
+        "title": "🥊 Houbit-zi-Houbit",
+        "subtitle": "Fehtunga-Buoh",
+        "vs": "GAGAN",
+        "wins": "SIGU",
+        "lastPlayed": "Lezzist gespilōt: Gidanca Bliksamo ⚡"
       },
       "achievements": {
-        "title": "🏆 Recent Achievements",
-        "subtitle": "Latest unlocks",
+        "title": "🏆 Niuwiziu Gitāt",
+        "subtitle": "Niuwistiu intsliozeniu",
         "firstWin": {
-          "title": "🔥 First Win!",
-          "description": "Victory in Battle Arena"
+          "title": "🔥 Ēristo Sigu!",
+          "description": "Sigu in Fehtunga-Halla"
         },
         "speedDemon": {
-          "title": "⚡ Speed Demon",
-          "description": "Sub-5 second memory"
+          "title": "⚡ Snelli-Tiufal",
+          "description": "Untir-5 sekunda gidanca"
         }
       },
       "challenges": {
-        "title": "⚔️ Active Challenges",
-        "subtitle": "Friendly competition",
-        "challengesText": "challenges",
-        "exampleChallenge": "Beat my Memory Lightning score!",
-        "currentBest": "Current best: {score} points",
-        "createButton": "🎯 Create New Challenge"
+        "title": "⚔️ Wekkantiu Forahtūn",
+        "subtitle": "Friuntlīh kampf",
+        "challengesText": "forahtūn",
+        "exampleChallenge": "Bislah mīnan Gidanca-Bliksamo zal!",
+        "currentBest": "Nuwiu bezista: {score} punkti",
+        "createButton": "🎯 Giscaffōn Niuwa Forahtunga"
       }
     },
     "callToAction": {
-      "title": "🚀 Ready to Begin Your Journey?",
-      "description": "Start with our interactive guide and unlock the secrets of the ancient calculator!",
-      "button": "Start Learning →"
+      "title": "🚀 Garo zi Anaginnenne Thīna Fart?",
+      "description": "Anagin mit unseru wechselwīsigu leidare inti intslioz thiu digil thes alteru rehhanōres!",
+      "button": "Anagin Lernēn →"
     }
   }
 }

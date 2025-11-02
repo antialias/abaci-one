@@ -1,214 +1,214 @@
 {
   "guide": {
     "page": {
-      "navTitle": "Interactive Guide",
+      "navTitle": "Wurkīg Leidare",
       "hero": {
-        "title": "📚 Complete Soroban Mastery Guide",
-        "subtitle": "From basic reading to advanced arithmetic - everything you need to master the Japanese abacus"
+        "title": "📚 Folkomanlīh Soroban Meistari Leidare",
+        "subtitle": "Fon gruondlīh lesanne zi hōheru rehhinungu - allu thaz thū thurfs zi meistirōnne then Nipponiscun abacus"
       },
       "tabs": {
-        "reading": "📖 Reading Numbers",
-        "arithmetic": "🧮 Arithmetic Operations"
+        "reading": "📖 Lesanne Zalun",
+        "arithmetic": "🧮 Rehhinunga Werki"
       }
     },
     "reading": {
-      "title": "🔍 Learning to Read Soroban Numbers",
-      "subtitle": "Master the fundamentals of reading numbers on the soroban with step-by-step visual tutorials",
+      "title": "🔍 Lernēn zi Lesanne Soroban Zalun",
+      "subtitle": "Meistirōn thiu gruond fon lesanne zalun ūf theru soroban mit scrit umbi scrit gisiunīgeru lēru",
       "structure": {
         "number": "1",
-        "title": "Understanding the Structure",
-        "description": "The soroban consists of two main sections divided by a horizontal bar. Understanding this structure is fundamental to reading any number.",
+        "title": "Firstāntan thia Gistatunga",
+        "description": "Thiu soroban bestāt fon zueim hōhun teilun giteilteru thuruh ein hōrizontaliu rigila. Firstāntan thesa gistatunga ist gruondlīh zi lesanne iogilīhha zala.",
         "heaven": {
-          "title": "🌅 Heaven Beads (Top)",
+          "title": "🌅 Himil Cholbun (Obana)",
           "points": [
-            "Located above the horizontal bar",
-            "Each bead represents 5",
-            "Only one bead per column",
-            "When pushed down = active/counted"
+            "Gilagan obar theru hōrizontaleru rigilīn",
+            "Iogilīh cholba bezeichnōt 5",
+            "Nur ein cholba umbi iogilīhha spalta",
+            "Hwanne gistōzzan nidiri = gibārenti/gizeltiu"
           ]
         },
         "earth": {
-          "title": "🌍 Earth Beads (Bottom)",
+          "title": "🌍 Erda Cholbun (Untana)",
           "points": [
-            "Located below the horizontal bar",
-            "Each bead represents 1",
-            "Four beads per column",
-            "When pushed up = active/counted"
+            "Gilagan untar theru hōrizontaleru rigilīn",
+            "Iogilīh cholba bezeichnōt 1",
+            "Fior cholbun umbi iogilīhha spalta",
+            "Hwanne gistōzzan ūf = gibārenti/gizeltiu"
           ]
         },
-        "keyConcept": "💡 Key Concept: Active beads are those touching the horizontal bar"
+        "keyConcept": "💡 Sluzzil Gidenki: Gibārenti cholbun sint thiu thiu ruerēnt thia hōrizontalun rigila"
       },
       "singleDigits": {
         "number": "2",
-        "title": "Reading Single Digits (1-9)",
-        "description": "Let's learn to read single digits by understanding how heaven and earth beads combine to represent numbers 1 through 9.",
+        "title": "Lesanne Einluzīgiu Zifferun (1-9)",
+        "description": "Lāz uns lernēn zi lesanne einluzīgiu zifferun thuruh firstāntan wio himil inti erda cholbun gisamanōnt zi bezeichnōnne zalun 1 thuruh 9.",
         "examples": {
-          "0": "No beads active - all away from bar",
-          "1": "One earth bead pushed up",
-          "3": "Three earth beads pushed up",
-          "5": "Heaven bead pushed down",
-          "7": "Heaven bead + two earth beads"
+          "0": "Niheina cholbun gibārenti - allu inwek fon rigilīn",
+          "1": "Ein erda cholba gistōzzan ūf",
+          "3": "Thrīu erda cholbun gistōzzan ūf",
+          "5": "Himil cholba gistōzzan nidiri",
+          "7": "Himil cholba + zuō erda cholbun"
         }
       },
       "multiDigit": {
         "number": "3",
-        "title": "Multi-Digit Numbers",
-        "description": "Reading larger numbers is simply a matter of reading each column from left to right, with each column representing a different place value.",
+        "title": "Managzifferīgiu Zalun",
+        "description": "Lesanne grōziru zalun ist einfalt ein thing fon lesanne iogilīhha spaltun fon winistar zi zesuun, mit iogilīhheru spaltun bezeichnōnti anderu stat wert.",
         "readingDirection": {
-          "title": "📍 Reading Direction & Place Values",
+          "title": "📍 Lesanne Rihtunga & Stat Werti",
           "readingOrder": {
-            "title": "Reading Order:",
+            "title": "Lesanne Ordenunga:",
             "points": [
-              "Always read from LEFT to RIGHT",
-              "Each column is one digit",
-              "Combine digits to form the complete number"
+              "Iomēr lese fon WINISTAR zi ZESUUN",
+              "Iogilīh spalta ist ein ziffera",
+              "Gisamanōn zifferun zi formōnne thia folkomana zala"
             ]
           },
           "placeValues": {
-            "title": "Place Values:",
+            "title": "Stat Werti:",
             "points": [
-              "Rightmost = Ones (1s)",
-              "Next left = Tens (10s)",
-              "Continue for hundreds, thousands, etc."
+              "Zesawista = Einzala (1s)",
+              "Aftera winistar = Zehanzala (10s)",
+              "Fora tuon furi hunterti, thūsunti, etc."
             ]
           }
         },
         "examples": {
-          "title": "🔢 Multi-Digit Examples",
-          "23": "Two-digit: 2 in tens place + 3 in ones place",
-          "58": "Heaven bead in tens (5) + heaven + earth beads in ones (8)",
-          "147": "Three-digit: 1 hundred + 4 tens + 7 ones"
+          "title": "🔢 Managzifferīgiu Bīspil",
+          "23": "Zuō-zifferīg: 2 in zehanzala stat + 3 in einzala stat",
+          "58": "Himil cholba in zehanzala (5) + himil + erda cholbun in einzala (8)",
+          "147": "Thrī-zifferīg: 1 hunt + 4 zehan + 7 ein"
         }
       },
       "practice": {
         "number": "4",
-        "title": "Practice Strategy",
+        "title": "Ubunga List",
         "learningTips": {
-          "title": "🎯 Learning Tips",
+          "title": "🎯 Lernēn Rāta",
           "points": [
-            "Start with single digits (0-9)",
-            "Practice identifying active vs. inactive beads",
-            "Work on speed recognition",
-            "Progress to multi-digit numbers gradually"
+            "Beginnan mit einluzīgeru zifferun (0-9)",
+            "Ubunga gikennanne gibārenti enti nigibārenti cholbun",
+            "Wurken ūf snellu irkentnissa",
+            "Fora schrīten zi managzifferīgeru zalun allmāhlīgo"
           ]
         },
         "quickRecognition": {
-          "title": "⚡ Quick Recognition",
+          "title": "⚡ Snelliu Irkentnissa",
           "points": [
-            "Numbers 1-4: Only earth beads",
-            "Number 5: Only heaven bead",
-            "Numbers 6-9: Heaven + earth beads",
-            "Zero: All beads away from bar"
+            "Zalun 1-4: Nur erda cholbun",
+            "Zala 5: Nur himil cholba",
+            "Zalun 6-9: Himil + erda cholbun",
+            "Nulla: Allu cholbun inwek fon rigilīn"
           ]
         },
         "readyToPractice": {
-          "title": "🚀 Ready to Practice?",
-          "description": "Test your newfound knowledge with interactive flashcards",
-          "button": "Create Practice Flashcards →"
+          "title": "🚀 Garo zi Ubungōnne?",
+          "description": "Biproufen thīna niugiuundanu kunnida mit wurkīgeru lernukartun",
+          "button": "Skaffōn Ubunga Lernukarti →"
         }
       },
       "interactive": {
         "number": "5",
-        "title": "Interactive Practice",
-        "description": "Try the interactive abacus below! Click on the beads to activate them and watch the number change in real-time.",
+        "title": "Wurkīgiu Ubunga",
+        "description": "Firsuoh then wurkīgun abacus untana! Klikko ūf thiu cholbun zi machen siu gibārenti inti warten thia zala wechslōn in rehteru zīti.",
         "howToUse": {
-          "title": "🎮 How to Use the Interactive Abacus",
+          "title": "🎮 Wio zi Bruhhēnne then Wurkīgun Abacus",
           "heaven": {
-            "title": "Heaven Beads (Top):",
+            "title": "Himil Cholbun (Obana):",
             "points": [
-              "Worth 5 points each",
-              "Click to toggle on/off",
-              "Blue when active, gray when inactive"
+              "Werti 5 punkta iogilīh",
+              "Klikko zi wechslōnne an/aba",
+              "Blāo hwanne gibārenti, grāo hwanne nigibārenti"
             ]
           },
           "earth": {
-            "title": "Earth Beads (Bottom):",
+            "title": "Erda Cholbun (Untana):",
             "points": [
-              "Worth 1 point each",
-              "Click to activate groups",
-              "Green when active, gray when inactive"
+              "Werti 1 punkt iogilīh",
+              "Klikko zi machen gruppun gibārenti",
+              "Gruoni hwanne gibārenti, grāo hwanne nigibārenti"
             ]
           }
         },
         "readyToPractice": {
-          "title": "🚀 Ready to Practice?",
-          "description": "Test your newfound knowledge with interactive flashcards",
-          "button": "Create Practice Flashcards →"
+          "title": "🚀 Garo zi Ubungōnne?",
+          "description": "Biproufen thīna niugiuundanu kunnida mit wurkīgeru lernukartun",
+          "button": "Skaffōn Ubunga Lernukarti →"
         }
       }
     },
     "arithmetic": {
-      "title": "🧮 Arithmetic Operations",
-      "subtitle": "Master addition, subtraction, multiplication, and division on the soroban",
+      "title": "🧮 Rehhinunga Werki",
+      "subtitle": "Meistirōn zuotuon, abaziohan, managuualdēn, inti teilen ūf theru soroban",
       "addition": {
-        "title": "➕ Addition",
-        "description": "Addition on the soroban follows the principle of moving beads toward the bar to increase values.",
+        "title": "➕ Zuotuon",
+        "description": "Zuotuon ūf theru soroban folgōt themu bruchu fon rukkēnne cholbun zi theru rigilīn zi mērēnne werti.",
         "basicSteps": {
-          "title": "Basic Steps:",
+          "title": "Gruondlīhiu Scriti:",
           "steps": [
-            "Set the first number on the soroban",
-            "Add the second number by moving beads toward the bar",
-            "Handle carries when a column exceeds 9",
-            "Read the final result"
+            "Sezzen thia ērista zala ūf theru soroban",
+            "Zuotuon thia anderu zala thuruh rukkēnne cholbun zi theru rigilīn",
+            "Hantalōn tragōn hwanne ein spalta ubarschrītet 9",
+            "Lese thaz lezta irgebinissa"
           ]
         },
         "example": {
-          "title": "Example: 3 + 4 = 7",
-          "start": "Start: 3",
-          "result": "Result: 7"
+          "title": "Bīspil: 3 + 4 = 7",
+          "start": "Beginnan: 3",
+          "result": "Irgebinissa: 7"
         }
       },
       "guidedTutorial": {
-        "title": "🎯 Guided Addition Tutorial",
-        "description": "Learn addition step-by-step with interactive guidance, tooltips, and error correction.",
-        "editableNote": "This tutorial is now editable!",
-        "editableDesc": "You can customize this tutorial using our new tutorial editor system.",
-        "editableLink": "Open in Editor →"
+        "title": "🎯 Gileitu Zuotuon Lēra",
+        "description": "Lernēn zuotuon scrit umbi scrit mit wurkīgeru leidaru, werkzugaspizzun, inti felabirigidu.",
+        "editableNote": "Thesiu lēra ist nū biwerkanlīh!",
+        "editableDesc": "Thū maht anpassōn thesa lēra bruhhēnti unsaru niuwu lēra biwerkarisystem.",
+        "editableLink": "Offanōn in Biwerkari →"
       },
       "subtraction": {
-        "title": "➖ Subtraction",
-        "description": "Subtraction involves moving beads away from the bar to decrease values.",
+        "title": "➖ Abaziohan",
+        "description": "Abaziohan bifāhit rukkēnne cholbun inwek fon theru rigilīn zi minnarōnne werti.",
         "basicSteps": {
-          "title": "Basic Steps:",
+          "title": "Gruondlīhiu Scriti:",
           "steps": [
-            "Set the minuend (first number) on the soroban",
-            "Subtract by moving beads away from the bar",
-            "Handle borrowing when needed",
-            "Read the final result"
+            "Sezzen then minuend (ērista zala) ūf theru soroban",
+            "Abaziohan thuruh rukkēnne cholbun inwek fon theru rigilīn",
+            "Hantalōn borgen hwanne gibuntan",
+            "Lese thaz lezta irgebinissa"
           ]
         },
         "example": {
-          "title": "Example: 8 - 3 = 5",
-          "start": "Start: 8",
-          "result": "Result: 5"
+          "title": "Bīspil: 8 - 3 = 5",
+          "start": "Beginnan: 8",
+          "result": "Irgebinissa: 5"
         }
       },
       "multiplicationDivision": {
-        "title": "✖️➗ Multiplication & Division",
-        "description": "Advanced operations that combine addition/subtraction with position shifting.",
+        "title": "✖️➗ Managuualdēn & Teilen",
+        "description": "Hōhiru werki thiu gisamanōnt zuotuon/abaziohan mit stellunga ruckidu.",
         "multiplication": {
-          "title": "Multiplication",
+          "title": "Managuualdēn",
           "points": [
-            "Break down into repeated addition",
-            "Use position shifts for place values",
-            "Master multiplication tables",
-            "Practice with single digits first"
+            "Zibrohhan nidiri in gewidarhabaltu zuotuon",
+            "Bruhhen stellunga ruckidi furi stat werti",
+            "Meistirōn managuualdēn taffilun",
+            "Ubunga mit einluzīgeru zifferun ērist"
           ]
         },
         "division": {
-          "title": "Division",
+          "title": "Teilen",
           "points": [
-            "Use repeated subtraction method",
-            "Estimate quotients carefully",
-            "Handle remainders properly",
-            "Check results by multiplication"
+            "Bruhhen gewidarhabaltu abaziohan methoda",
+            "Skazzōn quotientas forasihtigalīgo",
+            "Hantalōn bibēdidi rehtlīgo",
+            "Biproufen irgebinissi thuruh managuualdēn"
           ]
         }
       },
       "practiceTips": {
-        "title": "💡 Master the Fundamentals",
-        "description": "Start with simple problems and gradually increase complexity",
-        "button": "Practice Arithmetic Operations →"
+        "title": "💡 Meistirōn thiu Gruond",
+        "description": "Beginnan mit einfalteru problēmun inti allmāhlīgo mērēn giwīhida",
+        "button": "Ubunga Rehhinunga Werki →"
       }
     }
   }

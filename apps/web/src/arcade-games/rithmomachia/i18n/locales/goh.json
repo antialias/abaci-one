@@ -1,327 +1,327 @@
 {
   "guide": {
-    "title": "Rithmomachia Playing Guide",
-    "subtitle": "Rithmomachia – The Philosopher's Game",
-    "close": "Close",
-    "maximize": "Maximize",
-    "restore": "Restore",
-    "bustOut": "Open in new window",
+    "title": "Rithmomachia Spilleida",
+    "subtitle": "Rithmomachia – Thaz Spil thero Wisōno",
+    "close": "Sliozan",
+    "maximize": "Mērōn",
+    "restore": "Widarbringan",
+    "bustOut": "Intuo niuwemo wintoge offanōn",
     "sections": {
-      "overview": "Quick Start",
-      "pieces": "Pieces",
-      "capture": "Capture",
-      "strategy": "Strategy",
-      "harmony": "Harmony",
-      "victory": "Victory"
+      "overview": "Snellero Biginno",
+      "pieces": "Steina",
+      "capture": "Fahan",
+      "strategy": "List",
+      "harmony": "Samanunga",
+      "victory": "Sigu"
     },
     "languageSelector": {
-      "label": "Language",
-      "en": "English",
-      "de": "Deutsch",
+      "label": "Zunga",
+      "en": "Englisce",
+      "de": "Diutisc",
       "ja": "日本語",
       "hi": "हिन्दी",
       "es": "Español",
       "la": "Latina"
     },
     "overview": {
-      "goalTitle": "Goal of the Game",
-      "goal": "Arrange 3 of your pieces in enemy territory to form a mathematical progression, survive one opponent turn, and win.",
-      "goalDesc": "Arrange <strong>3 of your pieces in enemy territory</strong> to form a <strong>mathematical progression</strong>, survive one opponent turn, and win.",
-      "boardTitle": "The Board",
-      "boardSize": "8 rows × 16 columns (columns A-P, rows 1-8)",
-      "territory": "Your half: Black controls rows 5-8, White controls rows 1-4",
-      "enemyTerritory": "Enemy territory: Where you need to build your winning progression",
+      "goalTitle": "Zil Thes Spiles",
+      "goal": "Gisezzit 3 thinero steino in fīantes lante zi gibildenne rehhanunga furgang, ūfstandit einan fīantes ziog, inti gewinnist.",
+      "goalDesc": "Gisezzit <strong>3 thinero steino in fīantes lante</strong> zi gibildenne <strong>rehhanunga furgang</strong>, ūfstandit einan fīantes ziog, inti gewinnist.",
+      "boardTitle": "Thaz Bret",
+      "boardSize": "8 rīgōn × 16 stabolōn (stabolōn A-P, rīgōn 1-8)",
+      "territory": "Thin halb: Swarzer bihaltet rīgōn 5-8, Hwīzer bihaltet rīgōn 1-4",
+      "enemyTerritory": "Fīantes lant: Wār thu darft buwen thinan wunnentlīhhan furgang",
       "boardItems": [
-        "8 rows × 16 columns (columns A-P, rows 1-8)",
-        "<strong>Your half:</strong> Black controls rows 5-8, White controls rows 1-4",
-        "<strong>Enemy territory:</strong> Where you need to build your winning progression"
+        "8 rīgōn × 16 stabolōn (stabolōn A-P, rīgōn 1-8)",
+        "<strong>Thin halb:</strong> Swarzer bihaltet rīgōn 5-8, Hwīzer bihaltet rīgōn 1-4",
+        "<strong>Fīantes lant:</strong> Wār thu darft buwen thinan wunnentlīhhan furgang"
       ],
-      "howToPlayTitle": "How to Play",
-      "step1": "Start by moving pieces toward the center",
-      "step2": "Look for capture opportunities using mathematical relations",
-      "step3": "Push into enemy territory (rows 1-4 for Black, rows 5-8 for White)",
-      "step4": "Watch for harmony opportunities with your forward pieces",
-      "step5": "Win by forming a progression that survives one turn!",
+      "howToPlayTitle": "Wio Zi Spilenne",
+      "step1": "Bigin mit ziohhenne steina zuoward thera mitti",
+      "step2": "Suoh fahanmugilheiti mit rehhanungalīhhīn gizogon",
+      "step3": "Dring intuo fīantes lant (rīgōn 1-4 fora Swarzemo, rīgōn 5-8 fora Hwīzemo)",
+      "step4": "Ahto fora samanunga mugilheiti mit thinēn forwarōn steinon",
+      "step5": "Gewinne thuruh gibildenne furgang ther ūfstantet einan ziog!",
       "howToPlayItems": [
-        "Start by moving pieces toward the center",
-        "Look for capture opportunities using mathematical relations",
-        "Push into enemy territory (rows 1-4 for Black, rows 5-8 for White)",
-        "Watch for harmony opportunities with your forward pieces",
-        "Win by forming a progression that survives one turn!"
+        "Bigin mit ziohhenne steina zuoward thera mitti",
+        "Suoh fahanmugilheiti mit rehhanungalīhhīn gizogon",
+        "Dring intuo fīantes lant (rīgōn 1-4 fora Swarzemo, rīgōn 5-8 fora Hwīzemo)",
+        "Ahto fora samanunga mugilheiti mit thinēn forwarōn steinon",
+        "Gewinne thuruh gibildenne furgang ther ūfstantet einan ziog!"
       ],
-      "boardCaption": "The Rithmomachia board with initial piece setup"
+      "boardCaption": "Thaz Rithmomachia bret mit anaganglīhheru steinasezzidu"
     },
     "pieces": {
-      "title": "Your Pieces (25 total)",
-      "description": "Each side has 25 pieces with different movement patterns. The shape tells you how it moves:",
-      "intro": "Each piece has a <strong>number value</strong> and moves differently:",
-      "count": "Count",
-      "circle": "Circle",
-      "circleMove": "Moves diagonally",
-      "triangle": "Triangle",
-      "triangleMove": "Moves in straight lines",
-      "square": "Square",
-      "squareMove": "Moves in any direction",
-      "pyramid": "Pyramid",
-      "pyramidMove": "One step any way (like a king)",
-      "exampleValues": "Example values",
-      "pyramidTitle": "⭐ Pyramids: The Special Piece",
-      "pyramidIntro": "Pyramids are special. They have 4 different values you can choose from when you capture. This makes them super flexible!",
-      "blackPyramid": "Black Pyramid Faces",
+      "title": "Thine Steina (25 allero)",
+      "description": "Io-gilīh sīta habet 25 steina mit missalīhhēn ziogawīson. Thiu gistalt saget thir wio iz ziohit:",
+      "intro": "Io-gilīh stein habet <strong>zalawert</strong> inti ziohit missalīhho:",
+      "count": "Zala",
+      "circle": "Ring",
+      "circleMove": "Ziohit scręggo",
+      "triangle": "Driu-ekka",
+      "triangleMove": "Ziohit in rehten līniōn",
+      "square": "Fior-ekka",
+      "squareMove": "Ziohit in io-gilīhhero rihti",
+      "pyramid": "Hōhberg",
+      "pyramidMove": "Ein staf io-gilīhhero wega (sama so kuning)",
+      "exampleValues": "Bīspil wertōn",
+      "pyramidTitle": "⭐ Hōhberga: Ther Suntarigo Stein",
+      "pyramidIntro": "Hōhberga sint suntarīge. Sie habent 4 missalīhhe werta thu maht kiosan fona wanana thu fahis. Thiz gituot sie ubar māzo bikwēmlīhhe!",
+      "blackPyramid": "Swarzes Hōhberges Wangīn",
       "blackPyramidValues": "36 (6²), 25 (5²), 16 (4²), 4 (2²)",
-      "whitePyramid": "White Pyramid Faces",
+      "whitePyramid": "Hwīzes Hōhberges Wangīn",
       "whitePyramidValues": "64 (8²), 49 (7²), 36 (6²), 25 (5²)",
-      "pyramidHowItWorks": "How it works:",
-      "pyramidRule1": "Pick which value to use before you capture",
-      "pyramidRule2": "That value becomes your piece's number for the math",
-      "pyramidRule3": "You can pick different values each time - nothing is locked in",
-      "pyramidRule4": "This makes Pyramids great for surprise attacks and helping other pieces",
-      "example": "Example:",
-      "pyramidExample": "White's Pyramid can capture Black's 16 using face 64 (multiple: 64÷16=4), face 36 (multiple: 36÷9=4, with Black's 9), or face 25 with equality if capturing Black's 25.",
-      "pyramidVisualTitle": "Visual Example: Pyramid's Multiple Capture Options",
-      "pyramidVisualDesc": "White's Pyramid (faces: 64, 49, 36, 25) is positioned to capture Black pieces. Notice the flexibility:",
-      "pyramidCaptureOptions": "Capture options from H5:",
-      "pyramidOption1": "Move to I5: Choose face 64 → captures 16 by multiple (64÷16=4)",
-      "pyramidOption2": "Move to H6: Choose face 49 → captures 49 by equality (49=49)",
-      "pyramidOption3": "Move to G5: Choose face 25 → captures 25 by equality (25=25)",
+      "pyramidHowItWorks": "Wio iz wurket:",
+      "pyramidRule1": "Kius welihhaz wert zi nuzzenne ęr thu fahis",
+      "pyramidRule2": "Thaz wert wirdit thines steines zala fora thia rehhanunga",
+      "pyramidRule3": "Thu maht kiosan missalīhhe werta io-gilīhhaz sinth - niowiht ist gislozzanaz",
+      "pyramidRule4": "Thiz gituot Hōhberga guot fora ubarwurfunga inti helfenne anderēn steinon",
+      "example": "Bīspil:",
+      "pyramidExample": "Hwīzes Hōhberg mag fahan Swarzes 16 mit wanga 64 (manigfalt: 64÷16=4), wanga 36 (manigfalt: 36÷9=4, mit Swarzemo 9), odo wanga 25 mit ebanheiti oba fahenti Swarzes 25.",
+      "pyramidVisualTitle": "Sihtunga Bīspil: Hōhberges Manigfaltero Fahanakiusungōn",
+      "pyramidVisualDesc": "Hwīzes Hōhberg (wangīn: 64, 49, 36, 25) ist gisezzit zi fahanne Swarzero steina. Gimerk thia bikwēmlīhhī:",
+      "pyramidCaptureOptions": "Fahankiusungōn fona H5:",
+      "pyramidOption1": "Zioh zi I5: Kius wanga 64 → fahit 16 thuruh manigfalt (64÷16=4)",
+      "pyramidOption2": "Zioh zi H6: Kius wanga 49 → fahit 49 thuruh ebanheiti (49=49)",
+      "pyramidOption3": "Zioh zi G5: Kius wanga 25 → fahit 25 thuruh ebanheiti (25=25)",
       "pieceTypes": {
         "circle": {
-          "name": "Circle",
-          "movement": "Diagonal (like a bishop)",
-          "count": "Count: 8"
+          "name": "Ring",
+          "movement": "Scręggo (sama so biscofo)",
+          "count": "Zala: 8"
         },
         "triangle": {
-          "name": "Triangle",
-          "movement": "Straight lines (like a rook)",
-          "count": "Count: 8"
+          "name": "Driu-ekka",
+          "movement": "Rehte līniōn (sama so turri)",
+          "count": "Zala: 8"
         },
         "square": {
-          "name": "Square",
-          "movement": "Any direction (like a queen)",
-          "count": "Count: 7"
+          "name": "Fior-ekka",
+          "movement": "Io-gilīhhiu riht (sama so kuningīn)",
+          "count": "Zala: 7"
         },
         "pyramid": {
-          "name": "Pyramid",
-          "movement": "One step any way (like a king)",
-          "count": "Count: 1"
+          "name": "Hōhberg",
+          "movement": "Ein staf io-gilīhhes weges (sama so kuning)",
+          "count": "Zala: 1"
         }
       },
-      "pyramidMovement": "One step any way"
+      "pyramidMovement": "Ein staf io-gilīhhes weges"
     },
     "capture": {
-      "title": "How to Capture",
-      "description": "You can only capture an enemy piece if your piece value has a mathematical relation to theirs:",
-      "intro": "You can capture an enemy piece <strong>only if your piece's value relates mathematically</strong> to theirs:",
-      "simpleTitle": "Simple Relations (no helper needed)",
-      "equality": "Equal",
-      "equalityExample": "Your 25 captures their 25",
-      "equalityCaption": "White Circle (25) can capture Black Circle (25) by equality",
-      "multiple": "Multiple / Divisor",
-      "multipleExample": "Your 64 captures their 16 (64 ÷ 16 = 4)",
-      "multipleCaption": "White Square (64) can capture Black Triangle (16) because 64 ÷ 16 = 4",
+      "title": "Wio Zi Fahanne",
+      "description": "Thu maht fahan fīantes stein engi oba thines steines wert habet rehhanungalīhhan gizog zi sīnemo:",
+      "intro": "Thu maht fahan fīantes stein <strong>engi oba thines steines wert ziohit rehhanungalīhho</strong> zi sīnemo:",
+      "simpleTitle": "Einfahhe Gizogī (ni helfāre gibrūhhan)",
+      "equality": "Eban",
+      "equalityExample": "Thin 25 fahit iro 25",
+      "equalityCaption": "Hwīzer Ring (25) mag fahan Swarzer Ring (25) thuruh ebanheiti",
+      "multiple": "Manigfalt / Teilāri",
+      "multipleExample": "Thin 64 fahit iro 16 (64 ÷ 16 = 4)",
+      "multipleCaption": "Hwīzer Fior-ekka (64) mag fahan Swarzer Driu-ekka (16) wanta 64 ÷ 16 = 4",
       "simpleEqual": {
-        "name": "Equal",
-        "desc": "Your 25 captures their 25"
+        "name": "Eban",
+        "desc": "Thin 25 fahit iro 25"
       },
       "simpleMultiple": {
-        "name": "Multiple / Divisor",
-        "desc": "Your 64 captures their 16 (64 ÷ 16 = 4)"
+        "name": "Manigfalt / Teilāri",
+        "desc": "Thin 64 fahit iro 16 (64 ÷ 16 = 4)"
       },
-      "advancedTitle": "Advanced Relations (need one helper piece)",
-      "sum": "Sum",
-      "sumExample": "Your 9 + helper 16 = enemy 25",
-      "sumCaption": "White Circle (9) can capture Black Circle (25) using helper Triangle (16): 9 + 16 = 25",
-      "difference": "Difference",
-      "differenceExample": "Your 30 - helper 10 = enemy 20",
-      "differenceCaption": "White Triangle (30) can capture Black Triangle (20) using helper Circle (10): 30 - 10 = 20",
-      "product": "Product",
-      "productExample": "Your 5 × helper 5 = enemy 25",
-      "productCaption": "White Circle (5) can capture Black Circle (25) using helper Circle (5): 5 × 5 = 25",
-      "ratio": "Ratio",
-      "ratioExample": "Your 20 ÷ helper 4 = enemy 5",
-      "ratioCaption": "White Triangle (20) can capture Black Circle (5) using helper Circle (4): 20 ÷ 4 = 5",
+      "advancedTitle": "Hōhhe Gizogī (brūhhent einan helfāri stein)",
+      "sum": "Gisam",
+      "sumExample": "Thin 9 + helfāri 16 = fīantes 25",
+      "sumCaption": "Hwīzer Ring (9) mag fahan Swarzer Ring (25) mit helfāremo Driu-ekka (16): 9 + 16 = 25",
+      "difference": "Undarskeit",
+      "differenceExample": "Thin 30 - helfāri 10 = fīantes 20",
+      "differenceCaption": "Hwīzer Driu-ekka (30) mag fahan Swarzer Driu-ekka (20) mit helfāremo Ringe (10): 30 - 10 = 20",
+      "product": "Wurf",
+      "productExample": "Thin 5 × helfāri 5 = fīantes 25",
+      "productCaption": "Hwīzer Ring (5) mag fahan Swarzer Ring (25) mit helfāremo Ringe (5): 5 × 5 = 25",
+      "ratio": "Gatal",
+      "ratioExample": "Thin 20 ÷ helfāri 4 = fīantes 5",
+      "ratioCaption": "Hwīzer Driu-ekka (20) mag fahan Swarzer Ring (5) mit helfāremo Ringe (4): 20 ÷ 4 = 5",
       "advancedSum": {
-        "name": "Sum",
-        "desc": "Your 9 + helper 16 = enemy 25"
+        "name": "Gisam",
+        "desc": "Thin 9 + helfāri 16 = fīantes 25"
       },
       "advancedDifference": {
-        "name": "Difference",
-        "desc": "Your 30 - helper 10 = enemy 20"
+        "name": "Undarskeit",
+        "desc": "Thin 30 - helfāri 10 = fīantes 20"
       },
       "advancedProduct": {
-        "name": "Product",
-        "desc": "Your 5 × helper 5 = enemy 25"
+        "name": "Wurf",
+        "desc": "Thin 5 × helfāri 5 = fīantes 25"
       },
-      "helpersTitle": "💡 What are helpers?",
-      "helpersDescription": "Helpers are your other pieces on the board. They don't move - they just add their number to the math. The game shows you which captures work when you click a piece.",
-      "helpersDesc": "Helpers are your other pieces still on the board — they don't move, just provide their value for the math. The game will show you valid captures when you select a piece.",
-      "example1Title": "Example: Multiple/Divisor Capture",
-      "example1Desc": "White's 64 (square) can capture Black's 16 (triangle) because 64 is a multiple of 16",
-      "example2Title": "Example: Sum Capture with Helper",
-      "example2Desc": "White's 9 + helper 16 = Black's 25 (9 + 16 = 25)",
-      "example3Title": "Example: Difference Capture with Helper",
-      "example3Desc": "White's 30 - helper 10 = Black's 20 (30 - 10 = 20)",
-      "example4Title": "Example: Product Capture with Helper",
-      "example4Desc": "White's 4 × helper 5 = Black's 20 (4 × 5 = 20)",
-      "example5Title": "Example: Ratio Capture with Helper",
-      "example5Desc": "White's 20 ÷ helper 4 = Black's 5 (20 ÷ 4 = 5)",
-      "pyramidTitle": "Special: Pyramid Captures",
-      "pyramidIntro": "Pyramids have 4 face values, making them incredibly versatile. You choose which face to use when attempting a capture, allowing one Pyramid to threaten multiple enemy pieces.",
-      "pyramidEx1Title": "Example: Pyramid Face Selection (Equality)",
-      "pyramidEx1Desc": "White's Pyramid (faces: 64, 49, 36, 25) can capture Black's 49 by choosing face 49 for equality (49 = 49)",
-      "pyramidEx1Note": "<strong>Face selection:</strong> White declares face 49 → 49 = 49 (equality) → Capture succeeds! The Pyramid could also capture pieces valued 64, 36, or 25 using the corresponding faces.",
-      "pyramidEx2Title": "Example: Pyramid with Helper (Sum)",
-      "pyramidEx2Desc": "White's Pyramid uses face 25 + helper 20 = Black's 45 (25 + 20 = 45)",
-      "pyramidEx2Note": "<strong>Face selection:</strong> White chooses face 25 and declares helper at D4 (value 20) → 25 + 20 = 45 (sum) → Capture succeeds! By selecting different faces, the same Pyramid could capture other values using various helpers.",
-      "pyramidEx3Title": "Example: Pyramid Flexibility (Multiple/Divisor)",
-      "pyramidEx3Desc": "Black's Pyramid (faces: 36, 25, 16, 4) can capture White's 9 using face 36 (multiple: 36 ÷ 9 = 4)",
-      "pyramidEx3Note": "<strong>Face selection:</strong> Black chooses face 36 → 36 ÷ 9 = 4 (multiple) → Capture succeeds! Note: Black could also use face 4 with a helper 5 for sum (4 + 5 = 9), showing multiple valid approaches."
+      "helpersTitle": "💡 Waz sint helfāra?",
+      "helpersDescription": "Helfāra sint thine andere steina ūf themo brette. Sie ni ziohent - sie engi gibent iro zala zi thera rehhanunga. Thaz spil zeigōt thir welihhe fahunga wurkent wanana thu klickōs einan stein.",
+      "helpersDesc": "Helfāra sint thine andere steina noh ūf themo brette — sie ni ziohent, engi gibent iro wert fora thia rehhanunga. Thaz spil zeigōt thir gultlīhhe fahunga wanana thu giseletōs einan stein.",
+      "example1Title": "Bīspil: Manigfalt/Teilāri Fahan",
+      "example1Desc": "Hwīzes 64 (fior-ekka) mag fahan Swarzes 16 (driu-ekka) wanta 64 ist manigfalt fona 16",
+      "example2Title": "Bīspil: Gisam Fahan mit Helfāremo",
+      "example2Desc": "Hwīzes 9 + helfāri 16 = Swarzes 25 (9 + 16 = 25)",
+      "example3Title": "Bīspil: Undarskeit Fahan mit Helfāremo",
+      "example3Desc": "Hwīzes 30 - helfāri 10 = Swarzes 20 (30 - 10 = 20)",
+      "example4Title": "Bīspil: Wurf Fahan mit Helfāremo",
+      "example4Desc": "Hwīzes 4 × helfāri 5 = Swarzes 20 (4 × 5 = 20)",
+      "example5Title": "Bīspil: Gatal Fahan mit Helfāremo",
+      "example5Desc": "Hwīzes 20 ÷ helfāri 4 = Swarzes 5 (20 ÷ 4 = 5)",
+      "pyramidTitle": "Suntarig: Hōhberg Fahunga",
+      "pyramidIntro": "Hōhberga habent 4 wangīnwerta, gituont sie ubarwurflīhho manigfaltlīhhe. Thu kiusist welihhaz wanga zi nuzzenne wanana thu fersuohhes zi fahanne, irlaubenti einemo Hōhberge zi farawenne manigon fīantes steinon.",
+      "pyramidEx1Title": "Bīspil: Hōhberg Wanginkius (Ebanheiti)",
+      "pyramidEx1Desc": "Hwīzes Hōhberg (wangīn: 64, 49, 36, 25) mag fahan Swarzes 49 thuruh kiusenti wanga 49 fora ebanheiti (49 = 49)",
+      "pyramidEx1Note": "<strong>Wanginkius:</strong> Hwīzer sagēt wanga 49 → 49 = 49 (ebanheiti) → Fahan gilinget! Thaz Hōhberg mohti ouh fahan steina giwertet 64, 36, odo 25 mit nuzzenti thiu gizeman wangīn.",
+      "pyramidEx2Title": "Bīspil: Hōhberg mit Helfāremo (Gisam)",
+      "pyramidEx2Desc": "Hwīzes Hōhberg nuzzit wanga 25 + helfāri 20 = Swarzes 45 (25 + 20 = 45)",
+      "pyramidEx2Note": "<strong>Wanginkius:</strong> Hwīzer kiusit wanga 25 inti sagēt helfāri an D4 (wert 20) → 25 + 20 = 45 (gisam) → Fahan gilinget! Thuruh gikiusenti missalīhhe wangīn, thaz selba Hōhberg mohti fahan andere werta mit mannegun helfārōn.",
+      "pyramidEx3Title": "Bīspil: Hōhberg Bikwēmlīhhī (Manigfalt/Teilāri)",
+      "pyramidEx3Desc": "Swarzes Hōhberg (wangīn: 36, 25, 16, 4) mag fahan Hwīzes 9 mit wanga 36 (manigfalt: 36 ÷ 9 = 4)",
+      "pyramidEx3Note": "<strong>Wanginkius:</strong> Swarzer kiusit wanga 36 → 36 ÷ 9 = 4 (manigfalt) → Fahan gilinget! Gimerk: Swarzer mohti ouh nuzzen wanga 4 mit helfāremo 5 fora gisam (4 + 5 = 9), zeigenti manigfaltlīhhe gultlīhhe wega."
     },
     "harmony": {
-      "title": "Harmonies: The Coolest Way to Win",
-      "intro": "A Harmony is how you win the game. Get 3 of your pieces into enemy territory in a straight line. Their values must form a mathematical pattern.",
-      "introDetail": "Think of it like a number sequence. There are 3 types of patterns you can make:",
-      "arithmetic": "1. Arithmetic (Easiest)",
-      "arithmeticDesc": "The middle number is exactly between the other two. Equal spacing.",
-      "arithmeticFormula": "Middle × 2 = First + Last",
-      "arithmeticTip": "Small circles (2-9) work great here. Look for equal gaps! Example: 6, 9, 12",
-      "arithmeticCaption": "White pieces 6, 9, 12 in a row in enemy territory form an arithmetic progression",
-      "geometric": "2. Geometric (Multiply by Same Number)",
-      "geometricDesc": "Multiply by the same number each time. Equal ratios.",
-      "geometricFormula": "Middle² = First × Last",
-      "geometricTip": "Square numbers work great! Example: 4, 8, 16 (multiply by 2 each time)",
-      "geometricCaption": "White pieces 4, 8, 16 in a row in enemy territory form a geometric progression",
-      "harmonic": "3. Harmonic (Tricky!)",
-      "harmonicDesc": "Based on musical harmonies. Hardest to spot.",
-      "harmonicFormula": "2 × First × Last = Middle × (First + Last)",
-      "harmonicTip": "These are rare. Just memorize these combos: 3-4-6, 4-6-12, 6-8-12, 6-10-15",
-      "harmonicCaption": "White pieces 6, 8, 12 in a row in enemy territory form a harmonic progression",
-      "howToCheck": "How to check:",
-      "example": "Example:",
-      "check": "Check:",
-      "differences": "Differences:",
-      "equal": "(equal!)",
-      "ratios": "Ratios:",
-      "strategyTip": "Strategy tip:",
-      "rulesTitle": "⚠️ Important Rules",
-      "enemyTerritoryTitle": "Must be in enemy territory:",
-      "enemyTerritory": "All 3 pieces must be on opponent's side (White: rows 5-8, Black: rows 1-4)",
-      "straightLineTitle": "Must be in a line:",
-      "straightLine": "Row, column, or diagonal. No scattered pieces!",
-      "adjacentTitle": "Must be touching:",
-      "adjacent": "The 3 pieces must be next to each other with no gaps",
-      "survivalTitle": "Must survive one turn:",
-      "survival": "After you declare harmony, opponent gets ONE turn to break it",
-      "victoryTitle": "Then you win:",
-      "victoryRule": "If it survives, you win on your next turn!",
-      "strategyTitle": "How to Win with Harmonies",
-      "startWith2Title": "Start with 2, then add the 3rd",
-      "startWith2": "Get 2 pieces deep first. Figure out which 3rd piece completes the pattern. Then push that piece forward. They might not see it coming!",
-      "useCommonTitle": "Use common numbers",
-      "useCommon": "Numbers like 6, 8, 9, 12, 16 work in lots of patterns. If you get these deep, check what 3rd piece finishes the job.",
-      "protectTitle": "Protect your pieces",
-      "protect": "While building, keep other pieces nearby to defend. One capture ruins everything!",
-      "blockTitle": "Block their harmonies",
-      "block": "If opponent has 2 pieces deep, figure out what 3rd piece they need. Block that spot or capture one of their pieces ASAP.",
-      "calculateTitle": "Check before you declare",
-      "calculate": "Before declaring, make sure opponent can't capture any of your 3 pieces. If they can, protect first or wait.",
-      "quickRefTitle": "💡 Quick Reference: Common Harmonies in Your Army"
+      "title": "Samanungōn: Ther Kuolōsto Weg Zi Gewinnenne",
+      "intro": "Samanunga ist wio thu gewinnist thaz spil. Giwinn 3 thinero steino intuo fīantes lant in rehteru līniu. Iro werta muozent biliden rehhanungalīhhan furuuert.",
+      "introDetail": "Gidenke iz sama so zalarihtida. Thār sint 3 cunni furuwerto thu maht gibiliden:",
+      "arithmetic": "1. Rehhanungalīhh (Leihtōst)",
+      "arithmeticDesc": "Thiu mittilosta zala ist ginauo zuisken thēn anderōn zwein. Ebanaz toumlīhhī.",
+      "arithmeticFormula": "Mittilosto × 2 = Ērist + Lezist",
+      "arithmeticTip": "Luzzile ringīn (2-9) wurkent wola hiar. Suoh fora ebane spaltunga! Bīspil: 6, 9, 12",
+      "arithmeticCaption": "Hwīze steina 6, 9, 12 in rīgu in fīantes lante bildent rehhanungalīhhan furgang",
+      "geometric": "2. Giometrisc (Manigfalden thuruh selba Zala)",
+      "geometricDesc": "Manigfalte thuruh thia selba zala io-gilīhhaz sinth. Ebane gatalī.",
+      "geometricFormula": "Mittilosto² = Ērist × Lezist",
+      "geometricTip": "Fiorekkege zalōn wurkent wola! Bīspil: 4, 8, 16 (manigfalten thuruh 2 io-gilīhhaz sinth)",
+      "geometricCaption": "Hwīze steina 4, 8, 16 in rīgu in fīantes lante bildent giometriscan furgang",
+      "harmonic": "3. Samanunga (Unkuollīh!)",
+      "harmonicDesc": "Gisezit ūf sanglīhhēn samanungōn. Hardōst zi irkenenne.",
+      "harmonicFormula": "2 × Ērist × Lezist = Mittilosto × (Ērist + Lezist)",
+      "harmonicTip": "Thisu sint selten. Engi gihugt thisu gibinda: 3-4-6, 4-6-12, 6-8-12, 6-10-15",
+      "harmonicCaption": "Hwīze steina 6, 8, 12 in rīgu in fīantes lante bildent samanunga furgang",
+      "howToCheck": "Wio zi prouuōnne:",
+      "example": "Bīspil:",
+      "check": "Prouuō:",
+      "differences": "Undarskeiti:",
+      "equal": "(eban!)",
+      "ratios": "Gatalī:",
+      "strategyTip": "List rāt:",
+      "rulesTitle": "⚠️ Wihtige Euua",
+      "enemyTerritoryTitle": "Muoz sīn in fīantes lante:",
+      "enemyTerritory": "Alle 3 steina muozent sīn ūf wīdarwertīn sītu (Hwīzer: rīgōn 5-8, Swarzer: rīgōn 1-4)",
+      "straightLineTitle": "Muoz sīn in līniu:",
+      "straightLine": "Rīga, stabo, odo scręggo. Ni gistrouite steina!",
+      "adjacentTitle": "Muoz sīn hirennenti:",
+      "adjacent": "Thie 3 steina muozent sīn nāh zisamane mit ni spalton",
+      "survivalTitle": "Muoz ūfstantan einan ziog:",
+      "survival": "Nāh thu sagēs samanunga, wīdarwerto giwinnit EINAN ziog zi gibrehhanne iz",
+      "victoryTitle": "Thanne gewinnist thu:",
+      "victoryRule": "Oba iz ūfstandit, thu gewinnist ūf thinemo nāhesten zioge!",
+      "strategyTitle": "Wio Zi Gewinnenne mit Samanungōn",
+      "startWith2Title": "Bigin mit 2, thanne gihaft thaz 3.",
+      "startWith2": "Giwinn 2 steina tiuf ērist. Irkenne welihher 3. stein gifullet thaz furuuert. Thanne dring thenan stein forwart. Sie ni mahten gisehan iz kumenti!",
+      "useCommonTitle": "Nuzze gimeine zalōn",
+      "useCommon": "Zalōn sama so 6, 8, 9, 12, 16 wurkent in managon furuwerton. Oba thu giwinnist thisu tiufu, prouuō welihher 3. stein endet thaz werc.",
+      "protectTitle": "Giscirme thine steina",
+      "protect": "Wīla buwenti, bihalte andere steina nāhu zi werende. Einaz fahan gibirbit allez!",
+      "blockTitle": "Gisperre iro samanungōn",
+      "block": "Oba wīdarwerto habet 2 steina tiufu, irkenne welihhan 3. stein sie brūhhent. Gisperre thenan stat odo fah einan iro steino SNIUMO.",
+      "calculateTitle": "Prouuō ęr thu sagēs",
+      "calculate": "Ęr sagenti, gimah giwizzo wīdarwerto ni mag fahan io-gilīhhan thinero 3 steino. Oba imo mag, giscirme ērist odo beite.",
+      "quickRefTitle": "💡 Snellero Gidanc: Gimeine Samanungōn in Thinemo Here"
     },
     "victory": {
-      "title": "How to Win",
-      "harmony": "Victory #1: Harmony (Progression)",
-      "harmonyDesc": "Form a mathematical progression with 3 pieces in enemy territory. If it survives your opponent's next turn, you win!",
-      "exampleTitle": "Example: White Wins!",
-      "exampleCaption": "White pieces 4, 8, 16 form a geometric progression in enemy territory. Black cannot break it - White wins!",
-      "harmonyNote": "This is the primary victory condition in Rithmomachia",
-      "exhaustion": "Victory #2: Exhaustion",
-      "exhaustionDesc": "If your opponent has no legal moves at the start of their turn, they lose.",
-      "strategyTitle": "Quick Tips",
-      "tip1": "Control the center - easier to push forward",
-      "tip2": "Small pieces are fast - circles can slip into enemy side quickly",
-      "tip3": "Big pieces are powerful - harder to capture",
-      "tip4": "Watch for their harmonies - don't let 3 pieces get deep",
-      "tip5": "Pyramids are flexible - pick the right value for each capture"
+      "title": "Wio Zi Gewinnenne",
+      "harmony": "Sigu #1: Samanunga (Furgang)",
+      "harmonyDesc": "Bilde rehhanungalīhhan furgang mit 3 steinon in fīantes lante. Oba iz ūfstandit thines wīdarwertīn nāhesten ziog, thu gewinnist!",
+      "exampleTitle": "Bīspil: Hwīzer Gewinnit!",
+      "exampleCaption": "Hwīze steina 4, 8, 16 bildent giometriscan furgang in fīantes lante. Swarzer ni mag gibrehhanne iz - Hwīzer gewinnit!",
+      "harmonyNote": "Thiz ist thiu ērisgī sigukintī in Rithmomachia",
+      "exhaustion": "Sigu #2: Armōtī",
+      "exhaustionDesc": "Oba thin wīdarwerto ni habet rehtlīhhe ziogī an anagange sīnes zioges, imo firliusit.",
+      "strategyTitle": "Snelle Rātī",
+      "tip1": "Bihalt thia mitti - leihtōr zi dringenne forwart",
+      "tip2": "Luzzile steina sint snel - ringīn magen sliffan intuo fīantes sītu sniumo",
+      "tip3": "Grōze steina sint mahtig - hardōr zi fahanne",
+      "tip4": "Ahto fora iro samanungōn - ni laz 3 steina ginestan tiufu",
+      "tip5": "Hōhberga sint bikwēmlīhhe - kius thaz rehtā wert fora io-gilīhhaz fahan"
     },
     "strategy": {
-      "title": "Strategy & Tactics",
-      "intro": "Rithmomachia rewards both mathematical insight and strategic planning. Success requires balancing territorial control, piece preservation, and mathematical opportunities.",
+      "title": "List inti Taktika",
+      "intro": "Rithmomachia lonōt bēde rehhanungalīhhe intuuithi inti listlīhhe plānnunga. Gilingen brūhhit ebanōn giwehtes lantes, steines bihaltnissi, inti rehhanungalīhhero mugilheitiō.",
       "openingPrinciples": {
-        "title": "Opening Principles",
+        "title": "Anaganges Āhton",
         "controlCenter": {
-          "title": "Control the Center",
-          "desc": "Advance pieces toward the 8-column empty center (columns E–L). This provides mobility and creates capturing opportunities from multiple angles."
+          "title": "Bihalt thia Mitti",
+          "desc": "Giforder steina zuoward thēn 8 stabolōn lāra mittī (stabolōn E–L). Thiz gibit biweglīhhī inti giscaffōt fahanmugilheiti fona managon winklon."
         },
         "developCircles": {
-          "title": "Develop Small Circles First",
-          "desc": "Your small circles (2–9) in columns D and M are mobile and versatile. Move them toward the center early to establish presence and create helper networks."
+          "title": "Intuuelih Luzzile Ringīn Ērist",
+          "desc": "Thine luzzile ringīn (2–9) in stabolōn D inti M sint biweglīhhe inti manigfaltlīhhe. Zioh sie zuoward thera mitti fruo zi gisettenne ginwerti inti zi giscaffōnne helfārinezza."
         },
         "protectPyramid": {
-          "title": "Protect Your Pyramid",
-          "desc": "The Pyramid is your most flexible piece (4 face values) but moves only 1 square. Keep it behind advancing lines until mid-game when mathematical threats are clear."
+          "title": "Giscirme Thin Hōhberg",
+          "desc": "Thaz Hōhberg ist thin bikwēmōsto stein (4 wangīnwerta) ouh ziohit engi 1 fiuru. Bihalte iz hintarōn giforderōn līniōn unzan mittisspil wanana rehhanungalīhhe farawungōn sint klar."
         },
         "knowNumbers": {
-          "title": "Know Your Numbers",
-          "desc": "Memorize key mathematical relationships in your army. Identify which pieces form factors, multiples, and sums—this speeds up tactical calculation."
+          "title": "Kenne Thine Zalōn",
+          "desc": "Gihugi wihtige rehhanungalīhhe gizogī in thinemo here. Irkenne welihhe steina bildent teilāra, manigfaltī, inti gisam—thiz snellet taktisce rehhanunga."
         }
       },
       "midGame": {
-        "title": "Mid-Game Tactics",
+        "title": "Mittispil Taktikōn",
         "helperNetworks": {
-          "title": "Build Helper Networks",
-          "desc": "Position pieces so multiple helpers can support captures. For example, if you have pieces valued 5 and 10, you can capture 15 (sum), 5 (difference), or 50 (product) when your mover is positioned correctly."
+          "title": "Buwe Helfārinesza",
+          "desc": "Gisezze steina thaz manige helfāra magen gistutten fahunga. Fora bīspil, oba thu habēs steina giwertet 5 inti 10, thu maht fahan 15 (gisam), 5 (undarskeit), odo 50 (wurf) wanana thin ziogāri ist gisezzit reht."
         },
         "createThreats": {
-          "title": "Create Capture Threats",
-          "desc": "Force your opponent to defend multiple pieces simultaneously. Even if you can't execute all captures, the threat constrains their options and controls the tempo."
+          "title": "Giscaffe Fahanfarawungōn",
+          "desc": "Gitwinge thinan wīdarwerto zi werentemo manigon steinon samantlīhho. Ibu ni thu maht gituon alle fahunga, thiu farawunga bitwingit iro kiusungōn inti bihaltit then takt."
         },
         "thinkDefensively": {
-          "title": "Think Defensively",
-          "desc": "After each move, check which of your pieces can be captured. High-value pieces like squares (169, 225, 289, 361) are vulnerable to many relations—position them behind defenders or in protected squares."
+          "title": "Gidenke Werentlīhho",
+          "desc": "Nāh io-gilīhhemo zioge, prouuō welihhe thinero steino magen wesan gifangan. Hōhwerte steina sama so fior-ekka (169, 225, 289, 361) sint kwekke zi managon gizogon—gisezze sie hintarōn werentōn odo in giscirmitēn fiurun."
         },
         "exchangeWhenAhead": {
-          "title": "Exchange When Ahead",
-          "desc": "If you've captured more pieces or higher values, simplify the position by trading pieces. This reduces your opponent's attacking options and brings you closer to exhaustion victory."
+          "title": "Giwehsele Wanana Forana",
+          "desc": "Oba thu habēs gifangan mēra steina odo hōhōra werta, einfahhō thia gisezzida thuruh hantelōn steina. Thiz giminnit thines wīdarwertīn anagriffenmugilheiti inti bringit thih nāhor zi armōtisigu."
         }
       },
       "victoryPaths": {
-        "title": "Paths to Victory",
+        "title": "Wega Zi Sigu",
         "harmony": {
-          "title": "Harmony Victory (Most Elegant)",
-          "desc": "Place 3 pieces in enemy territory forming an arithmetic, geometric, or harmonic progression. Common triads:",
-          "arithmetic": "<strong>Arithmetic:</strong> (6, 9, 12), (5, 7, 9), (8, 12, 16)",
-          "geometric": "<strong>Geometric:</strong> (4, 8, 16), (3, 9, 27), (2, 8, 32)",
-          "harmonic": "<strong>Harmonic:</strong> (6, 8, 12), (10, 12, 15), (6, 10, 15)"
+          "title": "Samanunga Sigu (Mērost Suozlīh)",
+          "desc": "Gilegge 3 steina in fīantes lante bildenti rehhanungalīhhan, giometriscan, odo samanunga furgang. Gimeine driu-gruppōn:",
+          "arithmetic": "<strong>Rehhanungalīh:</strong> (6, 9, 12), (5, 7, 9), (8, 12, 16)",
+          "geometric": "<strong>Giometrisc:</strong> (4, 8, 16), (3, 9, 27), (2, 8, 32)",
+          "harmonic": "<strong>Samanunga:</strong> (6, 8, 12), (10, 12, 15), (6, 10, 15)"
         },
         "exhaustion": {
-          "title": "Exhaustion Victory (Attrition)",
-          "desc": "Capture pieces systematically until your opponent has no legal moves. Focus on: eliminating mobile pieces (Squares and Triangles), blocking diagonals and ranks, and forcing the Pyramid into a corner."
+          "title": "Armōtī Sigu (Abatrīban)",
+          "desc": "Fah steina wisōnlīhho unzan thin wīdarwerto ni habet rehtlīhhe ziogī. Fokusōn ūf: giendentemo biweglīhhe steina (Fior-ekka inti Driu-ekka), gisperrenti scręggon inti rīgōn, inti gitwingenti thaz Hōhberg intuo ekka."
         },
         "points": {
-          "title": "Point Victory (Optional Rule)",
-          "desc": "If enabled, capture 30 points worth of pieces (C=1, T=2, S=3, P=5). Hunt high-value targets and preserve your own heavy pieces. Trade advantageously."
+          "title": "Punkte Sigu (Kiusitaz Euua)",
+          "desc": "Oba gierōt, fah 30 puntōn wertes steina (R=1, D=2, F=3, H=5). Jagō hōhwerte zil inti bihalte thine eigene swāre steina. Handele lōnlīhho."
         }
       },
       "commonMistakes": {
-        "title": "⚠️ Common Mistakes to Avoid",
-        "movingWithoutCalc": "<strong>Moving without calculation:</strong> Always check if your destination square is capturable by enemy pieces",
-        "ignoringGeometry": "<strong>Ignoring helper geometry:</strong> Helpers can be anywhere, but you still need a legal move path to capture",
-        "neglectingHarmony": "<strong>Neglecting harmony threats:</strong> If your opponent has 2 pieces in your territory forming part of a progression, block their third",
-        "exposingPyramid": "<strong>Leaving the Pyramid exposed:</strong> It moves only 1 square and has limited escape options—protect it early"
+        "title": "⚠️ Gimeine Missifallī Zi Mītanne",
+        "movingWithoutCalc": "<strong>Ziohenti āna rehhanunga:</strong> Iomēr prouuō oba thin ziluuurto fiuru ist fahankulīh fona fīantes steinon",
+        "ignoringGeometry": "<strong>Firgezzenti helfāra giometrī:</strong> Helfāra magen sīn io-gilīhhār, ouh thu noh brūhhes rehtlīhhan ziogweg zi fahanne",
+        "neglectingHarmony": "<strong>Firlāzzenti samanunga farawungōn:</strong> Oba thin wīdarwerto habet 2 steina in thinemo lante bildenti teil furuwonges, gisperre iro drittun",
+        "exposingPyramid": "<strong>Lāzzenti thaz Hōhberg offan:</strong> Iz ziohit engi 1 fiuru inti habet giringa flīhmugilheiti—giscirme iz fruo"
       },
       "advanced": {
-        "title": "Advanced Concepts",
+        "title": "Furderen Kunsti",
         "sacrifices": {
-          "title": "Positional Sacrifices",
-          "desc": "Sometimes sacrificing a piece opens lines for your other pieces or forces your opponent into a worse position. Calculate the resulting imbalance before sacrificing."
+          "title": "Gisezzidlīhhe Offarungōn",
+          "desc": "Mannungo offarenti einan stein offanōt līniōn fora thine andere steina odo gitwingit thinan wīdarwerto intuo wirsirun gisezzida. Girehhanō thaz girinnotaz ungalewissō ęr offarenti."
         },
         "pyramidFaces": {
-          "title": "Pyramid Face Selection",
-          "desc": "Your Pyramid has 4 face values. In captures, choose the face that maximizes future flexibility. In harmony declarations, choose the face that completes the most valuable progression type."
+          "title": "Hōhberg Wanginkius",
+          "desc": "Thin Hōhberg habet 4 wangīnwerta. In fahungōn, kius thaz wanga thaz mērōt zunftlīhha bikwēmlīhhī. In samanunga sagungōn, kius thaz wanga thaz gifullet thaz mērost lōnlīh furuwert cunni."
         },
         "tempo": {
-          "title": "Tempo and Initiative",
-          "desc": "Each move that forces a defensive response gains tempo. String together forcing moves (captures, threats) to dictate the pace and prevent your opponent from executing their plan."
+          "title": "Takt inti Anagriff",
+          "desc": "Io-gilīh ziog ther gitwingit werentaz antwurt giwinnit takt. Gibint zisamane gitwingente ziogī (fahunga, farawungōn) zi sagenne thaz māz inti zi firbiotentemo thinan wīdarwerto fona gituonne sīnan plān."
         }
       }
     }
