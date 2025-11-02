@@ -47,6 +47,7 @@ export function PlayingGuideModal({
   const [resizeDirection, setResizeDirection] = useState<string>('')
   const [resizeStart, setResizeStart] = useState({ width: 0, height: 0, x: 0, y: 0 })
   const [isHovered, setIsHovered] = useState(false)
+  const [dockPreview, setDockPreview] = useState<'left' | 'right' | null>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
   // Debug logging for props
@@ -121,6 +122,18 @@ export function PlayingGuideModal({
           x: e.clientX - dragStart.x,
           y: e.clientY - dragStart.y,
         })
+
+        // Check if we're near edges for docking preview
+        if (onDock && !docked) {
+          const DOCK_THRESHOLD = 100
+          if (e.clientX < DOCK_THRESHOLD) {
+            setDockPreview('left')
+          } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
+            setDockPreview('right')
+          } else {
+            setDockPreview(null)
+          }
+        }
       } else if (isResizing) {
         // Calculate delta from initial resize start position
         const deltaX = e.clientX - dragStart.x
@@ -213,6 +226,7 @@ export function PlayingGuideModal({
       setIsDragging(false)
       setIsResizing(false)
       setResizeDirection('')
+      setDockPreview(null) // Clear dock preview when drag ends
     }
 
     if (isDragging || isResizing) {
@@ -682,6 +696,36 @@ export function PlayingGuideModal({
     return modalContent
   }
 
-  // Otherwise, just render the modal (no backdrop so game is visible)
-  return modalContent
+  // Otherwise, render the modal with optional dock preview
+  return (
+    <>
+      {/* Dock preview ghost panel */}
+      {dockPreview && !docked && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            [dockPreview === 'left' ? 'left' : 'right']: 0,
+            width: '35%',
+            height: '100%',
+            background: 'rgba(139, 92, 246, 0.15)',
+            border: `3px dashed rgba(139, 92, 246, 0.5)`,
+            borderRadius: 0,
+            pointerEvents: 'none',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '48px',
+            color: 'rgba(139, 92, 246, 0.6)',
+            fontWeight: 'bold',
+            transition: 'none',
+          }}
+        >
+          {dockPreview === 'left' ? '←' : '→'}
+        </div>
+      )}
+      {modalContent}
+    </>
+  )
 }
