@@ -8,6 +8,7 @@ import { useAbacusSettings } from '@/hooks/useAbacusSettings'
 import { OverviewSection } from './guide-sections/OverviewSection'
 import { PiecesSection } from './guide-sections/PiecesSection'
 import { CaptureSection } from './guide-sections/CaptureSection'
+import { StrategySection } from './guide-sections/StrategySection'
 import { HarmonySection } from './guide-sections/HarmonySection'
 import { VictorySection } from './guide-sections/VictorySection'
 
@@ -160,6 +161,7 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
     { id: 'overview', label: t('sections.overview'), icon: '🎯' },
     { id: 'pieces', label: t('sections.pieces'), icon: '♟️' },
     { id: 'capture', label: t('sections.capture'), icon: '⚔️' },
+    { id: 'strategy', label: t('sections.strategy'), icon: '🧠' },
     { id: 'harmony', label: t('sections.harmony'), icon: '🎵' },
     { id: 'victory', label: t('sections.victory'), icon: '👑' },
   ]
@@ -560,6 +562,9 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
         )}
         {activeSection === 'capture' && (
           <CaptureSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+        )}
+        {activeSection === 'strategy' && (
+          <StrategySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
         )}
         {activeSection === 'harmony' && (
           <HarmonySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
