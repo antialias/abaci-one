@@ -31,6 +31,11 @@ import {
   checkRatio,
   checkSum,
 } from '../utils/relationEngine'
+import { AnimatedHelperPiece } from './capture/AnimatedHelperPiece'
+import { HelperSelectionOptions } from './capture/HelperSelectionOptions'
+import { NumberBondVisualization } from './capture/NumberBondVisualization'
+import { CaptureRelationOptions } from './capture/CaptureRelationOptions'
+import { CaptureErrorDialog } from './capture/CaptureErrorDialog'
 import { PieceRenderer } from './PieceRenderer'
 import { PlayingGuideModal } from './PlayingGuideModal'
 
