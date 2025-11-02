@@ -219,7 +219,9 @@ export function ReasonTooltip({
 
             {/* Optional provenance nudge (avoid duplicating subtitle) */}
             {provenance &&
-              !(enhancedContent?.subtitle || readable?.subtitle || '').includes(`${fromPrefix} `) && (
+              !(enhancedContent?.subtitle || readable?.subtitle || '').includes(
+                `${fromPrefix} `
+              ) && (
                 <div className="reason-tooltip__reasoning">
                   <p className="reason-tooltip__explanation-text">
                     {t('reasoning', {

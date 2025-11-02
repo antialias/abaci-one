@@ -10,7 +10,7 @@ import { GameModeProvider } from '@/contexts/GameModeContext'
 import { UserProfileProvider } from '@/contexts/UserProfileContext'
 import { LocaleProvider, useLocaleContext } from '@/contexts/LocaleContext'
 import { createQueryClient } from '@/lib/queryClient'
-import { type Locale } from '@/i18n/messages'
+import type { Locale } from '@/i18n/messages'
 import { AbacusSettingsSync } from './AbacusSettingsSync'
 import { DeploymentInfo } from './DeploymentInfo'
 

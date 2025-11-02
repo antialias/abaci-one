@@ -9,7 +9,24 @@ export const BOARD_COLUMNS = 16
 /**
  * Column labels (A-P for 16 columns)
  */
-export const COLUMN_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'] as const
+export const COLUMN_LABELS = [
+  'A',
+  'B',
+  'C',
+  'D',
+  'E',
+  'F',
+  'G',
+  'H',
+  'I',
+  'J',
+  'K',
+  'L',
+  'M',
+  'N',
+  'O',
+  'P',
+] as const
 
 /**
  * Row labels (1-8)

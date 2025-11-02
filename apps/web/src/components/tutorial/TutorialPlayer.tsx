@@ -1760,9 +1760,7 @@ function TutorialPlayerContent({
                     _hover: navigationState.canGoNext || isStepCompleted ? { bg: 'blue.600' } : {},
                   })}
                 >
-                  {navigationState.canGoNext
-                    ? t('navigation.next')
-                    : t('navigation.complete')}
+                  {navigationState.canGoNext ? t('navigation.next') : t('navigation.complete')}
                 </button>
               </div>
             </div>
@@ -1786,7 +1784,9 @@ function TutorialPlayerContent({
             <div className={stack({ gap: 4 })}>
               {/* Current state */}
               <div>
-                <h4 className={css({ fontWeight: 'medium', mb: 2 })}>{t('debugPanel.currentState')}</h4>
+                <h4 className={css({ fontWeight: 'medium', mb: 2 })}>
+                  {t('debugPanel.currentState')}
+                </h4>
                 <div
                   className={css({
                     fontSize: 'sm',
@@ -1806,9 +1806,7 @@ function TutorialPlayerContent({
                   <div>{t('debugPanel.target', { value: currentStep.targetValue })}</div>
                   <div>
                     {t('debugPanel.completed', {
-                      status: t(
-                        `debugPanel.completedStatus.${isStepCompleted ? 'yes' : 'no'}`
-                      ),
+                      status: t(`debugPanel.completedStatus.${isStepCompleted ? 'yes' : 'no'}`),
                     })}
                   </div>
                   <div>
