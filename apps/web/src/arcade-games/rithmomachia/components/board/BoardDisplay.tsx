@@ -1,12 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Z_INDEX } from '@/constants/zIndex'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAbacusSettings } from '@/hooks/useAbacusSettings'
+import { Z_INDEX } from '@/constants/zIndex'
 import { css } from '../../../../../styled-system/css'
+import { CaptureProvider } from '../../contexts/CaptureContext'
+import { useBoardLayout } from '../../hooks/useBoardLayout'
+import { usePieceSelection } from '../../hooks/usePieceSelection'
 import { useRithmomachia } from '../../Provider'
 import type { Piece, RelationKind } from '../../types'
-import { validateMove } from '../../utils/pathValidator'
+import { getSquarePosition } from '../../utils/boardCoordinates'
 import { getEffectiveValue } from '../../utils/pieceSetup'
 import {
   checkDiff,
@@ -28,12 +31,11 @@ import { SvgPiece } from './SvgPiece'
  */
 export function BoardDisplay() {
   const { state, makeMove, playerColor, isMyTurn } = useRithmomachia()
-
-  // Get abacus settings for native abacus numbers
+  const layout = useBoardLayout()
   const { data: abacusSettings } = useAbacusSettings()
   const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
 
-  const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
+  // Capture dialog state
   const [captureDialogOpen, setCaptureDialogOpen] = useState(false)
   const [closingDialog, setClosingDialog] = useState(false)
   const [captureTarget, setCaptureTarget] = useState<{
@@ -41,7 +43,6 @@ export function BoardDisplay() {
     to: string
     pieceId: string
   } | null>(null)
-  const [hoveredRelation, setHoveredRelation] = useState<string | null>(null)
   const [selectedRelation, setSelectedRelation] = useState<RelationKind | null>(null)
   const [selectedHelper, setSelectedHelper] = useState<{
     helperPiece: Piece
@@ -65,60 +66,27 @@ export function BoardDisplay() {
   }, [closingDialog])
 
   // Function to dismiss the dialog with animation
-  const dismissDialog = () => {
+  const dismissDialog = useCallback(() => {
     setSelectedRelation(null)
     setSelectedHelper(null)
     setClosingDialog(true)
-  }
+  }, [])
 
-  const handleSquareClick = (square: string, piece: (typeof state.pieces)[string] | undefined) => {
-    if (!isMyTurn) return
-
-    // If no piece selected, select this piece if it's yours
-    if (!selectedSquare) {
-      if (piece && piece.color === playerColor) {
-        setSelectedSquare(square)
-      }
-      return
-    }
-
-    // If clicking the same square, deselect
-    if (selectedSquare === square) {
-      setSelectedSquare(null)
-      return
-    }
-
-    // If clicking another piece of yours, select that instead
-    if (piece && piece.color === playerColor) {
-      setSelectedSquare(square)
-      return
-    }
-
-    // Otherwise, attempt to move
-    const selectedPiece = Object.values(state.pieces).find(
-      (p) => p.square === selectedSquare && !p.captured
-    )
-    if (selectedPiece) {
-      // Validate the move is legal before proceeding
-      const validation = validateMove(selectedPiece, selectedSquare, square, state.pieces)
-
-      if (!validation.valid) {
-        // Invalid move - silently ignore or show error
-        // TODO: Could show error message to user
-        return
-      }
-
-      // If target square has an enemy piece, open capture dialog
-      if (piece && piece.color !== playerColor) {
-        setCaptureTarget({ from: selectedSquare, to: square, pieceId: selectedPiece.id })
+  // Piece selection hook
+  const { selectedSquare, handleSquareClick, clearSelection } = usePieceSelection(
+    state.pieces,
+    playerColor,
+    isMyTurn,
+    {
+      onMove: (from, to, pieceId) => {
+        makeMove(from, to, pieceId)
+      },
+      onCaptureAttempt: (from, to, pieceId) => {
+        setCaptureTarget({ from, to, pieceId })
         setCaptureDialogOpen(true)
-      } else {
-        // Simple move (no capture)
-        makeMove(selectedSquare, square, selectedPiece.id)
-        setSelectedSquare(null)
-      }
+      },
     }
-  }
+  )
 
   // Find valid helper pieces for a given relation
   const findValidHelpers = (
@@ -260,7 +228,7 @@ export function BoardDisplay() {
 
       makeMove(captureTarget.from, captureTarget.to, captureTarget.pieceId, undefined, captureData)
       dismissDialog()
-      setSelectedSquare(null)
+      clearSelection()
     }
   }
 
@@ -299,18 +267,14 @@ export function BoardDisplay() {
 
     makeMove(captureTarget.from, captureTarget.to, captureTarget.pieceId, undefined, captureData)
     dismissDialog()
-    setSelectedSquare(null)
+    clearSelection()
   }
 
   // Get all active pieces
   const activePieces = Object.values(state.pieces).filter((p) => !p.captured)
 
-  // SVG dimensions
-  const cols = 16
-  const rows = 8
-  const cellSize = 100 // SVG units per cell
-  const gap = 2
-  const padding = 10
+  // SVG dimensions using layout hook
+  const { cellSize, gap, padding, rows, columns: cols } = layout
   const labelMargin = 30 // Space for row/column labels
   const boardInnerWidth = cols * cellSize + (cols - 1) * gap
   const boardInnerHeight = rows * cellSize + (rows - 1) * gap
@@ -342,26 +306,15 @@ export function BoardDisplay() {
     }
   }
 
-  // Calculate square position in SVG coordinates
-  const getSquarePosition = (square: string) => {
-    const file = square.charCodeAt(0) - 65
-    const rank = Number.parseInt(square.slice(1), 10)
-    const row = 8 - rank
-    const x = labelMargin + padding + file * (cellSize + gap) + cellSize / 2
-    const y = padding + row * (cellSize + gap) + cellSize / 2
-    console.log(
-      `[getSquarePosition] square: ${square}, file: ${file}, rank: ${rank}, row: ${row}, x: ${x}, y: ${y}, cellSize: ${cellSize}, gap: ${gap}, padding: ${padding}`
-    )
-    return { x, y }
-  }
-
   // Calculate target square position for floating capture options
-  const getTargetSquarePosition = () => {
+  const getTargetSquarePosition = useCallback(() => {
     if (!captureTarget) return null
-    const pos = getSquarePosition(captureTarget.to)
+    // Add labelMargin offset to the position from utility function
+    const basePos = getSquarePosition(captureTarget.to, layout)
+    const pos = { x: basePos.x + labelMargin, y: basePos.y }
     console.log('[getTargetSquarePosition] captureTarget.to:', captureTarget.to, 'position:', pos)
     return pos
-  }
+  }, [captureTarget, layout, labelMargin])
 
   const targetPos = getTargetSquarePosition()
   if (targetPos) {
@@ -412,10 +365,13 @@ export function BoardDisplay() {
     const validHelpers = findValidHelpers(moverValue, targetValue, selectedRelation)
     console.log('[helpersWithPositions] validHelpers found:', validHelpers.length)
 
-    const helpersWithPos = validHelpers.map((piece) => ({
-      piece,
-      boardPos: getSquarePosition(piece.square),
-    }))
+    const helpersWithPos = validHelpers.map((piece) => {
+      const basePos = getSquarePosition(piece.square, layout)
+      return {
+        piece,
+        boardPos: { x: basePos.x + labelMargin, y: basePos.y },
+      }
+    })
     console.log('[helpersWithPositions] helpersWithPos:', helpersWithPos)
 
     return helpersWithPos
@@ -566,71 +522,17 @@ export function BoardDisplay() {
         })}
 
         {/* Floating capture relation options, helper selection, or number bond */}
-        {(() => {
-          console.log('[Render] captureDialogOpen:', captureDialogOpen)
-          console.log('[Render] targetPos:', targetPos)
-          console.log('[Render] selectedRelation:', selectedRelation)
-          console.log('[Render] selectedHelper:', selectedHelper)
-          console.log('[Render] helpersWithPositions.length:', helpersWithPositions.length)
-          console.log('[Render] closingDialog:', closingDialog)
+        {captureDialogOpen &&
+          targetPos &&
+          (() => {
+            console.log('[Render] captureDialogOpen:', captureDialogOpen)
+            console.log('[Render] targetPos:', targetPos)
+            console.log('[Render] selectedRelation:', selectedRelation)
+            console.log('[Render] selectedHelper:', selectedHelper)
+            console.log('[Render] helpersWithPositions.length:', helpersWithPositions.length)
+            console.log('[Render] closingDialog:', closingDialog)
 
-          // Phase 3: Show number bond after helper selected
-          if (captureDialogOpen && targetPos && selectedRelation && selectedHelper) {
-            console.log('[Render] Showing NumberBondVisualization')
-
-            // Calculate mover position on board
-            const moverFile = selectedHelper.moverPiece.square.charCodeAt(0) - 65
-            const moverRank = Number.parseInt(selectedHelper.moverPiece.square.slice(1), 10)
-            const moverRow = 8 - moverRank
-            const moverStartPos = {
-              x: padding + moverFile * (cellSize + gap) + cellSize / 2,
-              y: padding + moverRow * (cellSize + gap) + cellSize / 2,
-            }
-
-            // Find helper position in ring
-            const helperIndex = helpersWithPositions.findIndex(
-              (h) => h.piece.id === selectedHelper.helperPiece.id
-            )
-            const maxRadius = cellSize * 1.2
-            const angleStep =
-              helpersWithPositions.length > 1 ? 360 / helpersWithPositions.length : 0
-            const angle = helperIndex * angleStep
-            const rad = (angle * Math.PI) / 180
-            const helperStartPos = {
-              x: targetPos.x + Math.cos(rad) * maxRadius,
-              y: targetPos.y + Math.sin(rad) * maxRadius,
-            }
-
-            return (
-              <NumberBondVisualization
-                moverPiece={selectedHelper.moverPiece}
-                helperPiece={selectedHelper.helperPiece}
-                targetPiece={selectedHelper.targetPiece}
-                relation={selectedRelation}
-                targetPos={targetPos}
-                cellSize={cellSize}
-                onConfirm={handleNumberBondConfirm}
-                closing={closingDialog}
-                moverStartPos={moverStartPos}
-                helperStartPos={helperStartPos}
-                padding={padding}
-                gap={gap}
-                useNativeAbacusNumbers={useNativeAbacusNumbers}
-              />
-            )
-          }
-
-          // Phase 2: Show helper selection
-          if (
-            captureDialogOpen &&
-            targetPos &&
-            selectedRelation &&
-            !selectedHelper &&
-            helpersWithPositions.length > 0
-          ) {
-            console.log('[Render] Showing HelperSelectionOptions')
-
-            // Extract mover and target pieces for number bond preview
+            // Extract mover and target pieces
             const moverPiece = Object.values(state.pieces).find(
               (p) => p.id === captureTarget?.pieceId
             )
@@ -639,77 +541,85 @@ export function BoardDisplay() {
             )
 
             if (!moverPiece || !targetPiece) {
-              console.log('[Render] Missing mover or target piece for helper selection')
+              console.log('[Render] Missing mover or target piece')
               return null
             }
 
-            return (
-              <HelperSelectionOptions
-                helpers={helpersWithPositions}
-                targetPos={targetPos}
-                cellSize={cellSize}
-                gap={gap}
-                padding={padding}
-                onSelectHelper={handleHelperSelection}
-                closing={closingDialog}
-                moverPiece={moverPiece}
-                targetPiece={targetPiece}
-                relation={selectedRelation}
-                useNativeAbacusNumbers={useNativeAbacusNumbers}
-              />
-            )
-          }
-
-          // Phase 1: Show relation options OR error if no valid relations
-          if (captureDialogOpen && targetPos && !selectedRelation) {
-            console.log('[Render] Showing CaptureRelationOptions')
-            console.log('[Render] availableRelations:', availableRelations)
-
-            // Extract mover and target pieces for number bond preview
-            const moverPiece = Object.values(state.pieces).find(
-              (p) => p.id === captureTarget?.pieceId
-            )
-            const targetPiece = Object.values(state.pieces).find(
-              (p) => p.square === captureTarget?.to && !p.captured
-            )
-
-            if (!moverPiece || !targetPiece) {
-              console.log('[Render] Missing mover or target piece for relation options')
-              return null
-            }
-
-            // Show error message if no valid relations
-            if (availableRelations.length === 0) {
-              return (
-                <CaptureErrorDialog
-                  targetPos={targetPos}
-                  cellSize={cellSize}
-                  onClose={dismissDialog}
-                  closing={closingDialog}
-                />
-              )
+            // Create context value for capture components
+            const captureContextValue = {
+              layout: {
+                targetPos,
+                cellSize,
+                gap,
+                padding,
+              },
+              pieces: {
+                mover: moverPiece,
+                target: targetPiece,
+                helper: selectedHelper?.helperPiece || null,
+              },
+              selectedRelation,
+              closing: closingDialog,
+              allPieces: activePieces,
+              findValidHelpers,
+              selectRelation: handleCaptureWithRelation,
+              selectHelper: handleHelperSelection,
+              dismissDialog,
             }
 
             return (
-              <CaptureRelationOptions
-                targetPos={targetPos}
-                cellSize={cellSize}
-                gap={gap}
-                padding={padding}
-                onSelectRelation={handleCaptureWithRelation}
-                closing={closingDialog}
-                availableRelations={availableRelations}
-                moverPiece={moverPiece}
-                targetPiece={targetPiece}
-                allPieces={activePieces}
-                findValidHelpers={findValidHelpers}
-              />
-            )
-          }
+              <CaptureProvider value={captureContextValue}>
+                {/* Phase 3: Show number bond after helper selected */}
+                {selectedRelation && selectedHelper && (
+                  <NumberBondVisualization
+                    onConfirm={handleNumberBondConfirm}
+                    moverStartPos={(() => {
+                      const moverFile = selectedHelper.moverPiece.square.charCodeAt(0) - 65
+                      const moverRank = Number.parseInt(
+                        selectedHelper.moverPiece.square.slice(1),
+                        10
+                      )
+                      const moverRow = 8 - moverRank
+                      return {
+                        x: padding + moverFile * (cellSize + gap) + cellSize / 2,
+                        y: padding + moverRow * (cellSize + gap) + cellSize / 2,
+                      }
+                    })()}
+                    helperStartPos={(() => {
+                      const helperIndex = helpersWithPositions.findIndex(
+                        (h) => h.piece.id === selectedHelper.helperPiece.id
+                      )
+                      const maxRadius = cellSize * 1.2
+                      const angleStep =
+                        helpersWithPositions.length > 1 ? 360 / helpersWithPositions.length : 0
+                      const angle = helperIndex * angleStep
+                      const rad = (angle * Math.PI) / 180
+                      return {
+                        x: targetPos.x + Math.cos(rad) * maxRadius,
+                        y: targetPos.y + Math.sin(rad) * maxRadius,
+                      }
+                    })()}
+                  />
+                )}
 
-          console.log('[Render] Showing nothing')
-          return null
-        })()}
+                {/* Phase 2: Show helper selection */}
+                {selectedRelation && !selectedHelper && helpersWithPositions.length > 0 && (
+                  <HelperSelectionOptions helpers={helpersWithPositions} />
+                )}
+
+                {/* Phase 1: Show relation options OR error */}
+                {!selectedRelation && (
+                  <>
+                    {availableRelations.length === 0 ? (
+                      <CaptureErrorDialog />
+                    ) : (
+                      <CaptureRelationOptions availableRelations={availableRelations} />
+                    )}
+                  </>
+                )}
+              </CaptureProvider>
+            )
+          })()}
       </svg>
     </div>
   )
