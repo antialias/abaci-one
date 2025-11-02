@@ -28,12 +28,20 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [size, setSize] = useState({ width: 800, height: 600 })
   const [isDragging, setIsDragging] = useState(false)
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 800)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [isResizing, setIsResizing] = useState(false)
   const [resizeDirection, setResizeDirection] = useState<string>('')
   const [resizeStart, setResizeStart] = useState({ width: 0, height: 0, x: 0, y: 0 })
   const [isHovered, setIsHovered] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
+
+  // Track window width for responsive behavior
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Center modal on mount (not in standalone mode)
   useEffect(() => {
@@ -93,21 +101,25 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
         let newY = resizeStart.y
 
         // Handle different resize directions - calculate from initial state
+        // Ultra-flexible minimum width for narrow layouts
+        const minWidth = 150
+        const minHeight = 300
+
         if (resizeDirection.includes('e')) {
-          newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, resizeStart.width + deltaX))
+          newWidth = Math.max(minWidth, Math.min(window.innerWidth * 0.9, resizeStart.width + deltaX))
         }
         if (resizeDirection.includes('w')) {
           const desiredWidth = resizeStart.width - deltaX
-          newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, desiredWidth))
+          newWidth = Math.max(minWidth, Math.min(window.innerWidth * 0.9, desiredWidth))
           // Move left edge by the amount we actually changed width
           newX = resizeStart.x + (resizeStart.width - newWidth)
         }
         if (resizeDirection.includes('s')) {
-          newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, resizeStart.height + deltaY))
+          newHeight = Math.max(minHeight, Math.min(window.innerHeight * 0.9, resizeStart.height + deltaY))
         }
         if (resizeDirection.includes('n')) {
           const desiredHeight = resizeStart.height - deltaY
-          newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, desiredHeight))
+          newHeight = Math.max(minHeight, Math.min(window.innerHeight * 0.9, desiredHeight))
           // Move top edge by the amount we actually changed height
           newY = resizeStart.y + (resizeStart.height - newHeight)
         }
@@ -143,6 +155,12 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
     { id: 'harmony', label: t('sections.harmony'), icon: '🎵' },
     { id: 'victory', label: t('sections.victory'), icon: '👑' },
   ]
+
+  // Determine layout mode based on modal width (or window width if standalone)
+  const effectiveWidth = standalone ? windowWidth : size.width
+  const isVeryNarrow = effectiveWidth < 250
+  const isNarrow = effectiveWidth < 400
+  const isMedium = effectiveWidth < 600
 
   const renderResizeHandles = () => {
     if (!isHovered || window.innerWidth < 768 || standalone) return null
@@ -276,17 +294,15 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
     <div
       ref={modalRef}
       data-component="playing-guide-modal"
-      className={css({
+      style={{
         position: 'fixed',
-        bg: 'white',
-        borderRadius: standalone ? 0 : '12px',
+        background: 'white',
+        borderRadius: standalone ? 0 : isVeryNarrow ? '8px' : '12px',
         boxShadow: standalone ? 'none' : '0 20px 60px rgba(0, 0, 0, 0.3)',
         border: standalone ? 'none' : '1px solid #e5e7eb',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-      })}
-      style={{
         ...(standalone
           ? { top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1 }
           : {
@@ -311,52 +327,53 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
         className={css({
           bg: '#f9fafb',
           borderBottom: '1px solid #e5e7eb',
-          p: '24px',
           userSelect: 'none',
           flexShrink: 0,
           position: 'relative',
         })}
-        onMouseDown={handleMouseDown}
         style={{
+          padding: isVeryNarrow ? '8px' : isNarrow ? '12px' : '24px',
           cursor: isDragging
             ? 'grabbing'
             : !standalone && window.innerWidth >= 768
               ? 'grab'
               : 'default',
         }}
+        onMouseDown={handleMouseDown}
       >
         {/* Close and utility buttons - top right */}
         <div
-          className={css({
+          style={{
             position: 'absolute',
-            top: '16px',
-            right: '16px',
+            top: isVeryNarrow ? '4px' : '8px',
+            right: isVeryNarrow ? '4px' : '8px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-          })}
+            gap: isVeryNarrow ? '4px' : '8px',
+          }}
         >
-          {/* Bust-out button (only if not already standalone) */}
-          {!standalone && (
+          {/* Bust-out button (only if not already standalone and not very narrow) */}
+          {!standalone && !isVeryNarrow && (
             <button
               type="button"
               data-action="bust-out-guide"
               onClick={handleBustOut}
-              className={css({
-                bg: '#e5e7eb',
+              style={{
+                background: '#e5e7eb',
                 color: '#374151',
                 border: 'none',
-                borderRadius: '6px',
-                width: '32px',
-                height: '32px',
+                borderRadius: isVeryNarrow ? '4px' : '6px',
+                width: isVeryNarrow ? '24px' : '32px',
+                height: isVeryNarrow ? '24px' : '32px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                fontSize: '16px',
+                fontSize: isVeryNarrow ? '12px' : '16px',
                 transition: 'background 0.2s',
-                _hover: { bg: '#d1d5db' },
-              })}
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#d1d5db')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#e5e7eb')}
               title={t('bustOut')}
             >
               ↗
@@ -368,103 +385,164 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
             type="button"
             data-action="close-guide"
             onClick={onClose}
-            className={css({
-              bg: '#e5e7eb',
+            style={{
+              background: '#e5e7eb',
               color: '#374151',
               border: 'none',
-              borderRadius: '6px',
-              width: '32px',
-              height: '32px',
+              borderRadius: isVeryNarrow ? '4px' : '6px',
+              width: isVeryNarrow ? '24px' : '32px',
+              height: isVeryNarrow ? '24px' : '32px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              fontSize: '18px',
+              fontSize: isVeryNarrow ? '14px' : '18px',
               transition: 'background 0.2s',
-              _hover: { bg: '#d1d5db' },
-            })}
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#d1d5db')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#e5e7eb')}
           >
             ✕
           </button>
         </div>
 
-        {/* Centered title and subtitle */}
-        <div className={css({ textAlign: 'center' })}>
-          <h1
-            className={css({
-              fontSize: { base: '24px', md: '28px' },
-              fontWeight: 'bold',
-              color: '#111827',
-              mb: '8px',
-            })}
-          >
-            {t('title')}
-          </h1>
-          <p
-            className={css({
-              fontSize: { base: '14px', md: '16px' },
-              color: '#6b7280',
-              mb: '16px',
-            })}
-          >
-            {t('subtitle')}
-          </p>
-        </div>
+        {/* Centered title and subtitle - hide when very narrow */}
+        {!isVeryNarrow && (
+          <div style={{ textAlign: 'center' }}>
+            <h1
+              style={{
+                fontSize: isNarrow ? '16px' : isMedium ? '20px' : '28px',
+                fontWeight: 'bold',
+                color: '#111827',
+                marginBottom: isNarrow ? '4px' : '8px',
+                lineHeight: 1.2,
+              }}
+            >
+              {t('title')}
+            </h1>
+            {!isNarrow && (
+              <p
+                style={{
+                  fontSize: isMedium ? '12px' : '16px',
+                  color: '#6b7280',
+                  marginBottom: isMedium ? '8px' : '16px',
+                  lineHeight: 1.3,
+                }}
+              >
+                {t('subtitle')}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Navigation Tabs - ultra responsive with scroll indicators */}
       <div
-        data-element="guide-nav"
-        className={css({
-          display: 'flex',
-          borderBottom: '2px solid #e5e7eb',
-          bg: '#f9fafb',
-          overflow: 'auto',
+        style={{
+          position: 'relative',
           flexShrink: 0,
-        })}
+        }}
       >
+        <div
+          data-element="guide-nav"
+          style={{
+            display: 'flex',
+            flexDirection: isVeryNarrow ? 'column' : 'row',
+            borderBottom: isVeryNarrow ? 'none' : '2px solid #e5e7eb',
+            borderRight: isVeryNarrow ? '2px solid #e5e7eb' : 'none',
+            background: '#f9fafb',
+            overflow: 'auto',
+            flexShrink: 0,
+            // Show scrollbar on narrow widths to indicate more content
+            scrollbarWidth: isNarrow && !isVeryNarrow ? 'thin' : 'auto',
+          }}
+        >
         {sections.map((section) => (
           <button
             key={section.id}
             type="button"
             data-action={`navigate-${section.id}`}
             onClick={() => setActiveSection(section.id)}
-            className={css({
-              flex: 1,
-              minWidth: 'fit-content',
-              p: { base: '12px 16px', md: '14px 20px' },
-              fontSize: { base: '13px', md: '14px' },
+            style={{
+              flex: isVeryNarrow ? 'none' : 1,
+              minWidth: isVeryNarrow ? 'auto' : 'fit-content',
+              padding: isVeryNarrow ? '8px 4px' : isNarrow ? '10px 8px' : '14px 20px',
+              fontSize: isVeryNarrow ? '18px' : isNarrow ? '12px' : '14px',
               fontWeight: activeSection === section.id ? 'bold' : '500',
               color: activeSection === section.id ? '#7c2d12' : '#6b7280',
-              bg: activeSection === section.id ? 'white' : 'transparent',
-              borderBottom: '3px solid',
+              background: activeSection === section.id ? 'white' : 'transparent',
+              borderBottom: isVeryNarrow ? 'none' : '3px solid',
+              borderRight: isVeryNarrow ? '3px solid' : 'none',
               borderBottomColor: activeSection === section.id ? '#7c2d12' : 'transparent',
+              borderRightColor: activeSection === section.id ? '#7c2d12' : 'transparent',
               cursor: 'pointer',
               transition: 'all 0.2s',
               border: 'none',
+              borderBottom: isVeryNarrow ? 'none' : `3px solid ${activeSection === section.id ? '#7c2d12' : 'transparent'}`,
+              borderRight: isVeryNarrow ? `3px solid ${activeSection === section.id ? '#7c2d12' : 'transparent'}` : 'none',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              _hover: {
-                bg: activeSection === section.id ? 'white' : '#f3f4f6',
-              },
-            })}
+              justifyContent: isVeryNarrow ? 'center' : 'center',
+              gap: isVeryNarrow ? '0' : isNarrow ? '4px' : '6px',
+              lineHeight: 1,
+            }}
+            onMouseEnter={(e) => {
+              if (activeSection !== section.id) {
+                e.currentTarget.style.background = '#f3f4f6'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeSection !== section.id) {
+                e.currentTarget.style.background = 'transparent'
+              }
+            }}
+            title={isVeryNarrow ? section.label : undefined}
           >
-            <span>{section.icon}</span>
-            <span>{section.label}</span>
+            <span style={{ fontSize: isVeryNarrow ? '20px' : 'inherit' }}>{section.icon}</span>
+            {!isVeryNarrow && <span>{isNarrow ? section.label.split(' ')[0] : section.label}</span>}
           </button>
         ))}
+        </div>
+
+        {/* Fade indicators for horizontal scroll (when not very narrow) */}
+        {!isVeryNarrow && isNarrow && (
+          <>
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: '20px',
+                background: 'linear-gradient(to right, rgba(249, 250, 251, 0.95), transparent)',
+                pointerEvents: 'none',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: '20px',
+                background: 'linear-gradient(to left, rgba(249, 250, 251, 0.95), transparent)',
+                pointerEvents: 'none',
+              }}
+            />
+          </>
+        )}
       </div>
 
       {/* Content */}
       <div
         data-element="guide-content"
-        className={css({
+        style={{
           flex: 1,
           overflow: 'auto',
-          p: '24px',
-        })}
+          padding: isVeryNarrow ? '8px' : isNarrow ? '12px' : '24px',
+          fontSize: isVeryNarrow ? '12px' : isNarrow ? '13px' : '14px',
+          lineHeight: 1.5,
+        }}
       >
         {activeSection === 'overview' && (
           <OverviewSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
