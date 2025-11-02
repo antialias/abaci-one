@@ -300,6 +300,9 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
               height: `${size.height}px`,
               zIndex: Z_INDEX.MODAL,
             }),
+        // 80% opacity on desktop when not hovered, full opacity otherwise
+        opacity: !standalone && window.innerWidth >= 768 && !isHovered ? 0.8 : 1,
+        transition: 'opacity 0.2s ease',
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
