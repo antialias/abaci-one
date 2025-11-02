@@ -1,41 +1,29 @@
 'use client'
 
 import { useState } from 'react'
+import { useAbacusSettings } from '@/hooks/useAbacusSettings'
+import { useCaptureContext } from '../../contexts/CaptureContext'
 import { getRelationColor, getRelationOperator } from '../../constants/captureRelations'
-import type { Piece, RelationKind } from '../../types'
+import type { Piece } from '../../types'
 import { AnimatedHelperPiece } from './AnimatedHelperPiece'
 
 interface HelperSelectionOptionsProps {
   helpers: Array<{ piece: Piece; boardPos: { x: number; y: number } }>
-  targetPos: { x: number; y: number }
-  cellSize: number
-  gap: number
-  padding: number
-  onSelectHelper: (pieceId: string) => void
-  closing?: boolean
-  moverPiece: Piece
-  targetPiece: Piece
-  relation: RelationKind
-  useNativeAbacusNumbers?: boolean
 }
 
 /**
  * Helper piece selection - pieces fly from board to selection ring
  * Hovering over a helper shows a preview of the number bond
  */
-export function HelperSelectionOptions({
-  helpers,
-  targetPos,
-  cellSize,
-  gap,
-  padding,
-  onSelectHelper,
-  closing = false,
-  moverPiece,
-  targetPiece,
-  relation,
-  useNativeAbacusNumbers = false,
-}: HelperSelectionOptionsProps) {
+export function HelperSelectionOptions({ helpers }: HelperSelectionOptionsProps) {
+  const { layout, pieces, selectedRelation, closing, selectHelper } = useCaptureContext()
+  const { targetPos, cellSize, gap, padding } = layout
+  const { mover: moverPiece, target: targetPiece } = pieces
+  const relation = selectedRelation!
+
+  // Get abacus settings
+  const { data: abacusSettings } = useAbacusSettings()
+  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
   const [hoveredHelperId, setHoveredHelperId] = useState<string | null>(null)
   const maxRadius = cellSize * 1.2
   const angleStep = helpers.length > 1 ? 360 / helpers.length : 0
@@ -84,7 +72,7 @@ export function HelperSelectionOptions({
             ringX={ringX}
             ringY={ringY}
             cellSize={cellSize}
-            onSelectHelper={onSelectHelper}
+            onSelectHelper={selectHelper}
             closing={closing}
             useNativeAbacusNumbers={useNativeAbacusNumbers}
             onHover={setHoveredHelperId}

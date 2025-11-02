@@ -1,21 +1,12 @@
 import { animated, to, useSpring } from '@react-spring/web'
-
-export interface CaptureErrorDialogProps {
-  targetPos: { x: number; y: number }
-  cellSize: number
-  onClose: () => void
-  closing: boolean
-}
+import { useCaptureContext } from '../../contexts/CaptureContext'
 
 /**
  * Error notification when no capture is possible
  */
-export function CaptureErrorDialog({
-  targetPos,
-  cellSize,
-  onClose,
-  closing,
-}: CaptureErrorDialogProps) {
+export function CaptureErrorDialog() {
+  const { layout, closing, dismissDialog } = useCaptureContext()
+  const { targetPos, cellSize } = layout
   const entranceSpring = useSpring({
     from: { opacity: 0, y: -20 },
     opacity: closing ? 0 : 1,
@@ -77,7 +68,7 @@ export function CaptureErrorDialog({
           <button
             onClick={(e) => {
               e.stopPropagation()
-              onClose()
+              dismissDialog()
             }}
             style={{
               padding: `${cellSize * 0.06}px ${cellSize * 0.12}px`,

@@ -4,40 +4,23 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import { animated, useSpring } from '@react-spring/web'
 import { useEffect, useState } from 'react'
 import { getRelationColor, getRelationOperator } from '../../constants/captureRelations'
-import type { Piece, RelationKind } from '../../types'
-import { getSquarePosition } from '../../utils/boardCoordinates'
+import type { RelationKind } from '../../types'
+import { useCaptureContext } from '../../contexts/CaptureContext'
 import { getEffectiveValue } from '../../utils/pieceSetup'
+import { getSquarePosition } from '../../utils/boardCoordinates'
 
 interface CaptureRelationOptionsProps {
-  targetPos: { x: number; y: number }
-  cellSize: number
-  gap: number
-  padding: number
-  onSelectRelation: (relation: RelationKind) => void
-  closing?: boolean
   availableRelations: RelationKind[]
-  moverPiece: Piece
-  targetPiece: Piece
-  allPieces: Piece[]
-  findValidHelpers: (moverValue: number, targetValue: number, relation: RelationKind) => Piece[]
 }
 
 /**
  * Animated floating capture relation options with number bond preview on hover
  */
-export function CaptureRelationOptions({
-  targetPos,
-  cellSize,
-  gap,
-  padding,
-  onSelectRelation,
-  closing = false,
-  availableRelations,
-  moverPiece,
-  targetPiece,
-  allPieces,
-  findValidHelpers,
-}: CaptureRelationOptionsProps) {
+export function CaptureRelationOptions({ availableRelations }: CaptureRelationOptionsProps) {
+  const { layout, pieces, closing, allPieces, findValidHelpers, selectRelation } =
+    useCaptureContext()
+  const { targetPos, cellSize, gap, padding } = layout
+  const { mover: moverPiece, target: targetPiece } = pieces
   const [hoveredRelation, setHoveredRelation] = useState<RelationKind | null>(null)
   const [currentHelperIndex, setCurrentHelperIndex] = useState(0)
 
@@ -236,7 +219,7 @@ export function CaptureRelationOptions({
                     <animated.button
                       onClick={(e) => {
                         e.stopPropagation()
-                        onSelectRelation(relation as RelationKind)
+                        selectRelation(relation as RelationKind)
                       }}
                       style={{
                         width: buttonSize,

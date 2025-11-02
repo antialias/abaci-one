@@ -2,27 +2,17 @@
 
 import { animated, to, useSpring } from '@react-spring/web'
 import { useEffect, useState } from 'react'
+import { useAbacusSettings } from '@/hooks/useAbacusSettings'
+import { useCaptureContext } from '../../contexts/CaptureContext'
 import { getRelationColor, getRelationOperator } from '../../constants/captureRelations'
-import type { Piece, RelationKind } from '../../types'
-import { getSquarePosition } from '../../utils/boardCoordinates'
 import { getEffectiveValue } from '../../utils/pieceSetup'
+import { getSquarePosition } from '../../utils/boardCoordinates'
 import { PieceRenderer } from '../PieceRenderer'
 
 interface NumberBondVisualizationProps {
-  moverPiece: Piece
-  helperPiece: Piece
-  targetPiece: Piece
-  relation: RelationKind
-  targetPos: { x: number; y: number }
-  cellSize: number
   onConfirm: () => void
-  closing?: boolean
-  autoAnimate?: boolean
   moverStartPos: { x: number; y: number }
   helperStartPos: { x: number; y: number }
-  useNativeAbacusNumbers?: boolean
-  padding: number
-  gap: number
 }
 
 /**
@@ -31,21 +21,20 @@ interface NumberBondVisualizationProps {
  * Animation: Rotate and collapse to target position, only mover remains
  */
 export function NumberBondVisualization({
-  moverPiece,
-  helperPiece,
-  targetPiece,
-  relation,
-  targetPos,
-  cellSize,
   onConfirm,
-  closing = false,
-  autoAnimate = true,
   moverStartPos,
   helperStartPos,
-  padding,
-  gap,
-  useNativeAbacusNumbers = false,
 }: NumberBondVisualizationProps) {
+  const { layout, pieces, selectedRelation, closing } = useCaptureContext()
+  const { targetPos, cellSize, padding, gap } = layout
+  const { mover: moverPiece, target: targetPiece, helper: helperPiece } = pieces
+  const relation = selectedRelation!
+
+  // Get abacus settings
+  const { data: abacusSettings } = useAbacusSettings()
+  const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
+
+  const autoAnimate = true
   const [animating, setAnimating] = useState(false)
 
   // Auto-trigger animation immediately when component mounts (after helper selection)
@@ -76,6 +65,12 @@ export function NumberBondVisualization({
       }
     },
   })
+
+  // Type guard - this component should only be rendered when helper is selected
+  // Must be after all hooks to follow Rules of Hooks
+  if (!helperPiece) {
+    return null
+  }
 
   // Get piece values
   const getMoverValue = () => getEffectiveValue(moverPiece)
