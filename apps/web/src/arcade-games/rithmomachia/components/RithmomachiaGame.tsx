@@ -94,6 +94,14 @@ export function RithmomachiaGame() {
     return badges
   }, [whitePlayerId, blackPlayerId])
 
+  const handleOpenGuide = () => {
+    console.log('[RithmomachiaGame] handleOpenGuide called')
+    setIsGuideOpen(true)
+    setGuideDocked(true) // Default to docked on right
+    setGuideDockSide('right')
+    console.log('[RithmomachiaGame] Guide opened in docked right position')
+  }
+
   const handleDock = (side: 'left' | 'right') => {
     console.log('[RithmomachiaGame] handleDock called', { side })
     setGuideDockSide(side)
@@ -144,8 +152,8 @@ export function RithmomachiaGame() {
           height: '100%',
         })}
       >
-        {state.gamePhase === 'setup' && <SetupPhase onOpenGuide={() => setIsGuideOpen(true)} />}
-        {state.gamePhase === 'playing' && <PlayingPhase onOpenGuide={() => setIsGuideOpen(true)} />}
+        {state.gamePhase === 'setup' && <SetupPhase onOpenGuide={handleOpenGuide} />}
+        {state.gamePhase === 'playing' && <PlayingPhase onOpenGuide={handleOpenGuide} />}
         {state.gamePhase === 'results' && <ResultsPhase />}
       </main>
     </div>
