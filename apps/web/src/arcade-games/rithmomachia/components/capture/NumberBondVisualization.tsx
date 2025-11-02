@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { animated, to, useSpring } from '@react-spring/web'
-import type { Piece, RelationKind } from '../../types'
+import { useEffect, useState } from 'react'
 import { getRelationColor, getRelationOperator } from '../../constants/captureRelations'
+import type { Piece, RelationKind } from '../../types'
 import { getSquarePosition } from '../../utils/boardCoordinates'
 import { getEffectiveValue } from '../../utils/pieceSetup'
 import { PieceRenderer } from '../PieceRenderer'

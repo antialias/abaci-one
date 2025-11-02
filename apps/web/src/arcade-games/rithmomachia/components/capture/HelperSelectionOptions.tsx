@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import type { Piece, RelationKind } from '../../types'
 import { getRelationColor, getRelationOperator } from '../../constants/captureRelations'
+import type { Piece, RelationKind } from '../../types'
 import { AnimatedHelperPiece } from './AnimatedHelperPiece'
 
 interface HelperSelectionOptionsProps {

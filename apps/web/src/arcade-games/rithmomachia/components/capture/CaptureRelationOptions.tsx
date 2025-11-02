@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { animated, useSpring } from '@react-spring/web'
-import type { Piece, RelationKind } from '../../types'
+import { useEffect, useState } from 'react'
 import { getRelationColor, getRelationOperator } from '../../constants/captureRelations'
+import type { Piece, RelationKind } from '../../types'
 import { getSquarePosition } from '../../utils/boardCoordinates'
 import { getEffectiveValue } from '../../utils/pieceSetup'
 
