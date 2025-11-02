@@ -508,6 +508,7 @@ export function BoardDisplay() {
           const isBorrowedHelper = helpersWithPositions.some((h) => h.piece.id === piece.id)
           const isBorrowedMover = selectedHelper && selectedHelper.moverPiece.id === piece.id
           const isInNumberBond = isBorrowedHelper || isBorrowedMover
+          const isSelected = piece.square === selectedSquare
           return (
             <SvgPiece
               key={piece.id}
@@ -517,6 +518,7 @@ export function BoardDisplay() {
               labelMargin={labelMargin}
               opacity={isInNumberBond ? 0.2 : 1}
               useNativeAbacusNumbers={useNativeAbacusNumbers}
+              selected={isSelected}
             />
           )
         })}

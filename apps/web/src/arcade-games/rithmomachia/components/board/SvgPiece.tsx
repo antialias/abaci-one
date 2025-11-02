@@ -11,6 +11,7 @@ export interface SvgPieceProps {
   labelMargin?: number
   opacity?: number
   useNativeAbacusNumbers?: boolean
+  selected?: boolean
 }
 
 export function SvgPiece({
@@ -20,6 +21,7 @@ export function SvgPiece({
   labelMargin = 0,
   opacity = 1,
   useNativeAbacusNumbers = false,
+  selected = false,
 }: SvgPieceProps) {
   const file = piece.square.charCodeAt(0) - 65 // A=0
   const rank = Number.parseInt(piece.square.slice(1), 10) // 1-8
@@ -55,6 +57,8 @@ export function SvgPiece({
             value={piece.type === 'P' ? piece.pyramidFaces?.[0] || 0 : piece.value || 0}
             size={pieceSize}
             useNativeAbacusNumbers={useNativeAbacusNumbers}
+            selected={selected}
+            pyramidFaces={piece.type === 'P' ? piece.pyramidFaces : undefined}
           />
         </div>
       </foreignObject>

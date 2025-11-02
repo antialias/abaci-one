@@ -7,6 +7,8 @@ interface PieceRendererProps {
   value: number | string
   size?: number
   useNativeAbacusNumbers?: boolean
+  selected?: boolean
+  pyramidFaces?: number[]
 }
 
 /**
@@ -20,6 +22,8 @@ export function PieceRenderer({
   value,
   size = 48,
   useNativeAbacusNumbers = false,
+  selected = false,
+  pyramidFaces = [],
 }: PieceRendererProps) {
   const isDark = color === 'B'
   const { config } = useAbacusDisplay()
@@ -225,7 +229,65 @@ export function PieceRenderer({
 
       {renderShape()}
 
-      {/* Pyramids don't show numbers */}
+      {/* Pyramid face numbers - show when selected */}
+      {type === 'P' && selected && pyramidFaces.length === 4 && (
+        <g>
+          {/* Top face */}
+          <text
+            x={size / 2}
+            y={size * 0.05}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={textColor}
+            fontSize={size * 0.16}
+            fontWeight="bold"
+            fontFamily="Georgia, 'Times New Roman', serif"
+          >
+            {pyramidFaces[0]}
+          </text>
+          {/* Right face */}
+          <text
+            x={size * 0.95}
+            y={size / 2}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={textColor}
+            fontSize={size * 0.16}
+            fontWeight="bold"
+            fontFamily="Georgia, 'Times New Roman', serif"
+          >
+            {pyramidFaces[1]}
+          </text>
+          {/* Bottom face */}
+          <text
+            x={size / 2}
+            y={size * 0.95}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={textColor}
+            fontSize={size * 0.16}
+            fontWeight="bold"
+            fontFamily="Georgia, 'Times New Roman', serif"
+          >
+            {pyramidFaces[2]}
+          </text>
+          {/* Left face */}
+          <text
+            x={size * 0.05}
+            y={size / 2}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={textColor}
+            fontSize={size * 0.16}
+            fontWeight="bold"
+            fontFamily="Georgia, 'Times New Roman', serif"
+          >
+            {pyramidFaces[3]}
+          </text>
+        </g>
+      )}
+
+      {/* Other pieces show numbers normally */}
       {type !== 'P' &&
         (useNativeAbacusNumbers && typeof value === 'number' ? (
           // Render mini abacus
