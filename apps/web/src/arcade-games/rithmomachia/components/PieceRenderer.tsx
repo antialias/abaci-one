@@ -7,7 +7,7 @@ interface PieceRendererProps {
   value: number | string
   size?: number
   useNativeAbacusNumbers?: boolean
-  selected?: boolean
+  hovered?: boolean
   pyramidFaces?: number[]
 }
 
@@ -22,7 +22,7 @@ export function PieceRenderer({
   value,
   size = 48,
   useNativeAbacusNumbers = false,
-  selected = false,
+  hovered = false,
   pyramidFaces = [],
 }: PieceRendererProps) {
   const isDark = color === 'B'
@@ -229,8 +229,8 @@ export function PieceRenderer({
 
       {renderShape()}
 
-      {/* Pyramid face numbers - show when selected */}
-      {type === 'P' && selected && pyramidFaces.length === 4 && (
+      {/* Pyramid face numbers - show when hovered */}
+      {type === 'P' && hovered && pyramidFaces.length === 4 && (
         <g>
           {/* Filter for strong drop shadow */}
           <defs>

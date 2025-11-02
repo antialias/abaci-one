@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { animated, useSpring } from '@react-spring/web'
 import type { Piece } from '../../types'
 import { PieceRenderer } from '../PieceRenderer'
@@ -23,6 +24,8 @@ export function SvgPiece({
   useNativeAbacusNumbers = false,
   selected = false,
 }: SvgPieceProps) {
+  const [isHovered, setIsHovered] = useState(false)
+
   const file = piece.square.charCodeAt(0) - 65 // A=0
   const rank = Number.parseInt(piece.square.slice(1), 10) // 1-8
   const row = 8 - rank // Invert for display
@@ -50,6 +53,8 @@ export function SvgPiece({
             justifyContent: 'center',
             opacity,
           }}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         >
           <PieceRenderer
             type={piece.type}
@@ -57,7 +62,7 @@ export function SvgPiece({
             value={piece.type === 'P' ? piece.pyramidFaces?.[0] || 0 : piece.value || 0}
             size={pieceSize}
             useNativeAbacusNumbers={useNativeAbacusNumbers}
-            selected={selected}
+            hovered={isHovered}
             pyramidFaces={piece.type === 'P' ? piece.pyramidFaces : undefined}
           />
         </div>
