@@ -50,6 +50,9 @@ export function BoardDisplay() {
     targetPiece: Piece
   } | null>(null)
 
+  // Hover state for showing error tooltip
+  const [hoveredSquare, setHoveredSquare] = useState<string | null>(null)
+
   // Handle closing animation completion
   useEffect(() => {
     if (closingDialog) {
@@ -306,6 +309,40 @@ export function BoardDisplay() {
     }
   }
 
+  const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isMyTurn || !selectedSquare) {
+      setHoveredSquare(null)
+      return
+    }
+
+    const svg = e.currentTarget
+    const rect = svg.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * boardWidth - labelMargin - padding
+    const y = ((e.clientY - rect.top) / rect.height) * boardHeight - padding
+
+    // Convert to grid coordinates
+    const col = Math.floor(x / (cellSize + gap))
+    const row = Math.floor(y / (cellSize + gap))
+
+    if (col >= 0 && col < cols && row >= 0 && row < rows) {
+      const square = `${String.fromCharCode(65 + col)}${8 - row}`
+      const piece = Object.values(state.pieces).find((p) => p.square === square && !p.captured)
+
+      // Only set hovered square if it's an enemy piece
+      if (piece && piece.color !== playerColor) {
+        setHoveredSquare(square)
+      } else {
+        setHoveredSquare(null)
+      }
+    } else {
+      setHoveredSquare(null)
+    }
+  }
+
+  const handleSvgMouseLeave = () => {
+    setHoveredSquare(null)
+  }
+
   // Calculate target square position for floating capture options
   const getTargetSquarePosition = useCallback(() => {
     if (!captureTarget) return null
@@ -404,6 +441,48 @@ export function BoardDisplay() {
     return findAvailableRelations(moverValue, targetValue)
   })()
 
+  // Calculate if hovered square shows error (for hover preview)
+  const showHoverError = (() => {
+    if (!hoveredSquare || !selectedSquare || captureDialogOpen) return false
+
+    const moverPiece = Object.values(state.pieces).find(
+      (p) => p.square === selectedSquare && !p.captured
+    )
+    const targetPiece = Object.values(state.pieces).find(
+      (p) => p.square === hoveredSquare && !p.captured
+    )
+
+    if (!moverPiece || !targetPiece) return false
+
+    const moverValue = getEffectiveValue(moverPiece)
+    const targetValue = getEffectiveValue(targetPiece)
+
+    if (
+      moverValue === undefined ||
+      moverValue === null ||
+      targetValue === undefined ||
+      targetValue === null
+    )
+      return false
+
+    const relations = findAvailableRelations(moverValue, targetValue)
+    return relations.length === 0
+  })()
+
+  // Get position for hover error tooltip
+  const hoverErrorPosition = (() => {
+    if (!showHoverError || !hoveredSquare) return null
+
+    const file = hoveredSquare.charCodeAt(0) - 65 // A=0
+    const rank = Number.parseInt(hoveredSquare.slice(1), 10) // 1-8
+    const row = 8 - rank // Invert for display
+
+    const x = labelMargin + padding + file * (cellSize + gap) + cellSize / 2
+    const y = padding + row * (cellSize + gap) + cellSize / 2
+
+    return { x, y }
+  })()
+
   return (
     <div
       className={css({
@@ -423,6 +502,8 @@ export function BoardDisplay() {
           overflow: 'visible',
         })}
         onClick={handleSvgClick}
+        onMouseMove={handleSvgMouseMove}
+        onMouseLeave={handleSvgMouseLeave}
       >
         {/* Board background */}
         <rect x={0} y={0} width={boardWidth} height={boardHeight} fill="#d1d5db" rx={8} />
@@ -622,6 +703,42 @@ export function BoardDisplay() {
               </CaptureProvider>
             )
           })()}
+
+        {/* Hover error tooltip - shows when hovering over invalid capture target */}
+        {showHoverError && hoverErrorPosition && (
+          <g transform={`translate(${hoverErrorPosition.x}, ${hoverErrorPosition.y})`}>
+            <foreignObject
+              x={-cellSize * 1.8}
+              y={-cellSize * 0.5}
+              width={cellSize * 3.6}
+              height={cellSize}
+              style={{ overflow: 'visible', pointerEvents: 'none' }}
+            >
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                  color: '#f1f5f9',
+                  padding: `${cellSize * 0.12}px ${cellSize * 0.18}px`,
+                  borderRadius: `${cellSize * 0.12}px`,
+                  fontSize: `${cellSize * 0.16}px`,
+                  fontWeight: 500,
+                  textAlign: 'center',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: `${cellSize * 0.1}px`,
+                  backdropFilter: 'blur(8px)',
+                  letterSpacing: '0.01em',
+                  pointerEvents: 'none',
+                }}
+              >
+                <span style={{ fontSize: `${cellSize * 0.2}px`, opacity: 0.7 }}>⚠</span>
+                <span>No valid relation</span>
+              </div>
+            </foreignObject>
+          </g>
+        )}
       </svg>
     </div>
   )

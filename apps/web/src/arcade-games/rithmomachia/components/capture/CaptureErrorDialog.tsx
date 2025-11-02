@@ -5,7 +5,7 @@ import { useCaptureContext } from '../../contexts/CaptureContext'
  * Error notification when no capture is possible
  */
 export function CaptureErrorDialog() {
-  const { layout, closing, dismissDialog } = useCaptureContext()
+  const { layout, closing } = useCaptureContext()
   const { targetPos, cellSize } = layout
   const entranceSpring = useSpring({
     from: { opacity: 0, y: -20 },
@@ -40,58 +40,22 @@ export function CaptureErrorDialog() {
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: `${cellSize * 0.15}px`,
+            justifyContent: 'center',
+            gap: `${cellSize * 0.1}px`,
             backdropFilter: 'blur(8px)',
             letterSpacing: '0.01em',
+            pointerEvents: 'none',
           }}
-          onClick={(e) => e.stopPropagation()}
         >
-          <div
+          <span
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: `${cellSize * 0.1}px`,
-              flex: 1,
+              fontSize: `${cellSize * 0.2}px`,
+              opacity: 0.7,
             }}
           >
-            <span
-              style={{
-                fontSize: `${cellSize * 0.2}px`,
-                opacity: 0.7,
-              }}
-            >
-              ⚠
-            </span>
-            <span>No valid relation</span>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              dismissDialog()
-            }}
-            style={{
-              padding: `${cellSize * 0.06}px ${cellSize * 0.12}px`,
-              borderRadius: `${cellSize * 0.08}px`,
-              border: 'none',
-              background: 'rgba(148, 163, 184, 0.2)',
-              color: '#cbd5e1',
-              fontSize: `${cellSize * 0.13}px`,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(148, 163, 184, 0.3)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(148, 163, 184, 0.2)'
-            }}
-          >
-            OK
-          </button>
+            ⚠
+          </span>
+          <span>No valid relation</span>
         </div>
       </foreignObject>
     </animated.g>
