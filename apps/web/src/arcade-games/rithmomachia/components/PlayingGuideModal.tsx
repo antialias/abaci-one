@@ -574,101 +574,64 @@ export function PlayingGuideModal({
         )}
       </div>
 
-      {/* Navigation Tabs - ultra responsive with scroll indicators */}
+      {/* Navigation Tabs - fully responsive, always fit in available width */}
       <div
+        data-element="guide-nav"
         style={{
-          position: 'relative',
+          display: 'flex',
+          flexDirection: 'row',
+          borderBottom: '2px solid #e5e7eb',
+          background: '#f9fafb',
           flexShrink: 0,
         }}
       >
-        <div
-          data-element="guide-nav"
-          style={{
-            display: 'flex',
-            flexDirection: 'row', // Always horizontal, even when very narrow
-            borderBottom: '2px solid #e5e7eb',
-            background: '#f9fafb',
-            overflow: 'auto',
-            flexShrink: 0,
-            // Hide scrollbar for cleaner look - indicators show scroll availability
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
-        >
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              data-action={`navigate-${section.id}`}
-              onClick={() => setActiveSection(section.id)}
-              style={{
-                flex: '0 0 auto', // Don't grow or shrink, natural size
-                minWidth: 'fit-content',
-                padding: isVeryNarrow ? '10px 6px' : isNarrow ? '10px 8px' : '14px 20px',
-                fontSize: isVeryNarrow ? '16px' : isNarrow ? '12px' : '14px',
-                fontWeight: activeSection === section.id ? 'bold' : '500',
-                color: activeSection === section.id ? '#7c2d12' : '#6b7280',
-                background: activeSection === section.id ? 'white' : 'transparent',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                border: 'none',
-                borderBottom: `3px solid ${activeSection === section.id ? '#7c2d12' : 'transparent'}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: isVeryNarrow ? '0' : isNarrow ? '4px' : '6px',
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={(e) => {
-                if (activeSection !== section.id) {
-                  e.currentTarget.style.background = '#f3f4f6'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeSection !== section.id) {
-                  e.currentTarget.style.background = 'transparent'
-                }
-              }}
-              title={isVeryNarrow ? section.label : undefined}
-            >
-              <span style={{ fontSize: isVeryNarrow ? '18px' : 'inherit' }}>{section.icon}</span>
-              {!isVeryNarrow && (
-                <span>{isNarrow ? section.label.split(' ')[0] : section.label}</span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Fade indicators for horizontal scroll - show at all narrow widths */}
-        {(isNarrow || isVeryNarrow) && (
-          <>
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: isVeryNarrow ? '16px' : '20px',
-                background: 'linear-gradient(to right, rgba(249, 250, 251, 0.95), transparent)',
-                pointerEvents: 'none',
-                zIndex: 1,
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: 0,
-                bottom: 0,
-                width: isVeryNarrow ? '16px' : '20px',
-                background: 'linear-gradient(to left, rgba(249, 250, 251, 0.95), transparent)',
-                pointerEvents: 'none',
-                zIndex: 1,
-              }}
-            />
-          </>
-        )}
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            data-action={`navigate-${section.id}`}
+            onClick={() => setActiveSection(section.id)}
+            style={{
+              flex: '1 1 0', // Equal width tabs
+              minWidth: 0, // Allow shrinking below content size
+              padding: isVeryNarrow ? '10px 6px' : isNarrow ? '10px 8px' : '14px 20px',
+              fontSize: isVeryNarrow ? '16px' : isNarrow ? '12px' : '14px',
+              fontWeight: activeSection === section.id ? 'bold' : '500',
+              color: activeSection === section.id ? '#7c2d12' : '#6b7280',
+              background: activeSection === section.id ? 'white' : 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              border: 'none',
+              borderBottom: `3px solid ${activeSection === section.id ? '#7c2d12' : 'transparent'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: isVeryNarrow ? '0' : isNarrow ? '4px' : '6px',
+              lineHeight: 1,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            onMouseEnter={(e) => {
+              if (activeSection !== section.id) {
+                e.currentTarget.style.background = '#f3f4f6'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeSection !== section.id) {
+                e.currentTarget.style.background = 'transparent'
+              }
+            }}
+            title={section.label}
+          >
+            <span style={{ fontSize: isVeryNarrow ? '18px' : 'inherit' }}>{section.icon}</span>
+            {!isVeryNarrow && (
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {isNarrow ? section.label.split(' ')[0] : section.label}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Content */}

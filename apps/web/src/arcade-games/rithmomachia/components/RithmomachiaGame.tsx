@@ -196,12 +196,13 @@ export function RithmomachiaGame() {
                   </Panel>
                   <PanelResizeHandle
                     className={css({
-                      width: '4px',
-                      background: 'rgba(139, 92, 246, 0.3)',
+                      width: '2px',
+                      background: '#e5e7eb',
                       cursor: 'col-resize',
-                      transition: 'background 0.2s',
+                      transition: 'all 0.2s',
                       _hover: {
-                        background: 'rgba(139, 92, 246, 0.6)',
+                        background: '#9ca3af',
+                        width: '3px',
                       },
                     })}
                   />
@@ -213,12 +214,13 @@ export function RithmomachiaGame() {
                   <Panel minSize={50}>{gameContent}</Panel>
                   <PanelResizeHandle
                     className={css({
-                      width: '4px',
-                      background: 'rgba(139, 92, 246, 0.3)',
+                      width: '2px',
+                      background: '#e5e7eb',
                       cursor: 'col-resize',
-                      transition: 'background 0.2s',
+                      transition: 'all 0.2s',
                       _hover: {
-                        background: 'rgba(139, 92, 246, 0.6)',
+                        background: '#9ca3af',
+                        width: '3px',
                       },
                     })}
                   />
