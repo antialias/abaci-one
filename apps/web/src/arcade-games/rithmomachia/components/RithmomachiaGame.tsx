@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { PlayerBadge } from '@/components/nav/types'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StandardGameLayout } from '@/components/StandardGameLayout'
@@ -38,6 +39,8 @@ export function RithmomachiaGame() {
   const gameRef = useRef<HTMLDivElement>(null)
   const rosterWarning = useRosterWarning(state.gamePhase === 'setup' ? 'setup' : 'playing')
   const [isGuideOpen, setIsGuideOpen] = useState(false)
+  const [guideDocked, setGuideDocked] = useState(false)
+  const [guideDockSide, setGuideDockSide] = useState<'left' | 'right'>('right')
 
   useEffect(() => {
     // Register this component's main div as the fullscreen element
@@ -81,6 +84,50 @@ export function RithmomachiaGame() {
     return badges
   }, [whitePlayerId, blackPlayerId])
 
+  const handleDock = (side: 'left' | 'right') => {
+    setGuideDockSide(side)
+    setGuideDocked(true)
+  }
+
+  const handleUndock = () => {
+    setGuideDocked(false)
+  }
+
+  const gameContent = (
+    <div
+      className={css({
+        flex: 1,
+        padding: guideDocked ? 0 : { base: '12px', sm: '16px', md: '20px' },
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'auto',
+      })}
+    >
+      <main
+        className={css({
+          width: '100%',
+          maxWidth: guideDocked ? 'none' : '1200px',
+          background: 'rgba(255,255,255,0.95)',
+          borderRadius: guideDocked ? 0 : { base: '12px', md: '20px' },
+          padding: { base: '12px', sm: '16px', md: '24px', lg: '32px' },
+          boxShadow: guideDocked ? 'none' : '0 10px 30px rgba(0,0,0,0.2)',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          position: 'relative',
+          height: '100%',
+        })}
+      >
+        {state.gamePhase === 'setup' && <SetupPhase onOpenGuide={() => setIsGuideOpen(true)} />}
+        {state.gamePhase === 'playing' && <PlayingPhase onOpenGuide={() => setIsGuideOpen(true)} />}
+        {state.gamePhase === 'results' && <ResultsPhase />}
+      </main>
+    </div>
+  )
+
   return (
     <PageWithNav
       navTitle="Rithmomachia"
@@ -105,40 +152,78 @@ export function RithmomachiaGame() {
           ref={gameRef}
           className={css({
             flex: 1,
-            padding: { base: '12px', sm: '16px', md: '20px' },
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
             position: 'relative',
-            overflow: 'auto',
+            overflow: 'hidden',
           })}
         >
-          <main
-            className={css({
-              width: '100%',
-              maxWidth: '1200px',
-              background: 'rgba(255,255,255,0.95)',
-              borderRadius: { base: '12px', md: '20px' },
-              padding: { base: '12px', sm: '16px', md: '24px', lg: '32px' },
-              boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              position: 'relative',
-            })}
-          >
-            {state.gamePhase === 'setup' && <SetupPhase onOpenGuide={() => setIsGuideOpen(true)} />}
-            {state.gamePhase === 'playing' && (
-              <PlayingPhase onOpenGuide={() => setIsGuideOpen(true)} />
-            )}
-            {state.gamePhase === 'results' && <ResultsPhase />}
-          </main>
+          {guideDocked && isGuideOpen ? (
+            <PanelGroup direction="horizontal" style={{ flex: 1 }}>
+              {guideDockSide === 'left' && (
+                <>
+                  <Panel defaultSize={35} minSize={20} maxSize={50}>
+                    <PlayingGuideModal
+                      isOpen={true}
+                      onClose={() => setIsGuideOpen(false)}
+                      docked={true}
+                      onUndock={handleUndock}
+                    />
+                  </Panel>
+                  <PanelResizeHandle
+                    className={css({
+                      width: '4px',
+                      background: 'rgba(139, 92, 246, 0.3)',
+                      cursor: 'col-resize',
+                      transition: 'background 0.2s',
+                      _hover: {
+                        background: 'rgba(139, 92, 246, 0.6)',
+                      },
+                    })}
+                  />
+                  <Panel minSize={50}>{gameContent}</Panel>
+                </>
+              )}
+              {guideDockSide === 'right' && (
+                <>
+                  <Panel minSize={50}>{gameContent}</Panel>
+                  <PanelResizeHandle
+                    className={css({
+                      width: '4px',
+                      background: 'rgba(139, 92, 246, 0.3)',
+                      cursor: 'col-resize',
+                      transition: 'background 0.2s',
+                      _hover: {
+                        background: 'rgba(139, 92, 246, 0.6)',
+                      },
+                    })}
+                  />
+                  <Panel defaultSize={35} minSize={20} maxSize={50}>
+                    <PlayingGuideModal
+                      isOpen={true}
+                      onClose={() => setIsGuideOpen(false)}
+                      docked={true}
+                      onUndock={handleUndock}
+                    />
+                  </Panel>
+                </>
+              )}
+            </PanelGroup>
+          ) : (
+            gameContent
+          )}
         </div>
       </StandardGameLayout>
 
-      {/* Playing Guide Modal - persists across all phases */}
-      <PlayingGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+      {/* Playing Guide Modal - only show when not docked */}
+      {!guideDocked && (
+        <PlayingGuideModal
+          isOpen={isGuideOpen}
+          onClose={() => setIsGuideOpen(false)}
+          docked={false}
+          onDock={handleDock}
+        />
+      )}
     </PageWithNav>
   )
 }

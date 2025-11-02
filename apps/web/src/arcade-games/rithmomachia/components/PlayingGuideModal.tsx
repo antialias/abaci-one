@@ -16,11 +16,21 @@ interface PlayingGuideModalProps {
   isOpen: boolean
   onClose: () => void
   standalone?: boolean // True when opened in popup window
+  docked?: boolean // True when docked to side
+  onDock?: (side: 'left' | 'right') => void
+  onUndock?: () => void
 }
 
 type Section = 'overview' | 'pieces' | 'capture' | 'strategy' | 'harmony' | 'victory'
 
-export function PlayingGuideModal({ isOpen, onClose, standalone = false }: PlayingGuideModalProps) {
+export function PlayingGuideModal({
+  isOpen,
+  onClose,
+  standalone = false,
+  docked = false,
+  onDock,
+  onUndock,
+}: PlayingGuideModalProps) {
   const t = useTranslations('rithmomachia.guide')
   const { data: abacusSettings } = useAbacusSettings()
   const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
@@ -138,7 +148,17 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
       }
     }
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      // Check for docking when releasing drag
+      if (isDragging && onDock && !docked) {
+        const DOCK_THRESHOLD = 100 // pixels from edge to trigger docking
+        if (e.clientX < DOCK_THRESHOLD) {
+          onDock('left')
+        } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
+          onDock('right')
+        }
+      }
+
       setIsDragging(false)
       setIsResizing(false)
       setResizeDirection('')
@@ -155,7 +175,7 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
     }
   }, [isDragging, isResizing, dragStart, resizeDirection, resizeStart])
 
-  if (!isOpen && !standalone) return null
+  if (!isOpen && !standalone && !docked) return null
 
   const sections: { id: Section; label: string; icon: string }[] = [
     { id: 'overview', label: t('sections.overview'), icon: '🎯' },
@@ -305,31 +325,33 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
       ref={modalRef}
       data-component="playing-guide-modal"
       style={{
-        position: 'fixed',
+        position: docked ? 'relative' : 'fixed',
         background: 'white',
-        borderRadius: standalone ? 0 : isVeryNarrow ? '8px' : '12px',
-        boxShadow: standalone ? 'none' : '0 20px 60px rgba(0, 0, 0, 0.3)',
-        border: standalone ? 'none' : '1px solid #e5e7eb',
+        borderRadius: standalone || docked ? 0 : isVeryNarrow ? '8px' : '12px',
+        boxShadow: standalone || docked ? 'none' : '0 20px 60px rgba(0, 0, 0, 0.3)',
+        border: standalone || docked ? 'none' : '1px solid #e5e7eb',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        ...(standalone
-          ? { top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1 }
-          : {
-              left: `${position.x}px`,
-              top: `${position.y}px`,
-              width: `${size.width}px`,
-              height: `${size.height}px`,
-              zIndex: Z_INDEX.MODAL,
-            }),
+        ...(docked
+          ? { width: '100%', height: '100%' }
+          : standalone
+            ? { top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1 }
+            : {
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                width: `${size.width}px`,
+                height: `${size.height}px`,
+                zIndex: Z_INDEX.MODAL,
+              }),
         // 80% opacity on desktop when not hovered, full opacity otherwise
-        opacity: !standalone && window.innerWidth >= 768 && !isHovered ? 0.8 : 1,
+        opacity: !standalone && !docked && window.innerWidth >= 768 && !isHovered ? 0.8 : 1,
         transition: 'opacity 0.2s ease',
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {renderResizeHandles()}
+      {!docked && renderResizeHandles()}
 
       {/* Header */}
       <div
@@ -343,13 +365,14 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
         })}
         style={{
           padding: isVeryNarrow ? '8px' : isNarrow ? '12px' : '24px',
-          cursor: isDragging
-            ? 'grabbing'
-            : !standalone && window.innerWidth >= 768
-              ? 'grab'
-              : 'default',
+          cursor:
+            isDragging && !docked
+              ? 'grabbing'
+              : !standalone && !docked && window.innerWidth >= 768
+                ? 'grab'
+                : 'default',
         }}
-        onMouseDown={handleMouseDown}
+        onMouseDown={docked ? undefined : handleMouseDown}
       >
         {/* Close and utility buttons - top right */}
         <div
@@ -362,8 +385,35 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
             gap: isVeryNarrow ? '4px' : '8px',
           }}
         >
-          {/* Bust-out button (only if not already standalone and not very narrow) */}
-          {!standalone && !isVeryNarrow && (
+          {/* Undock button (only when docked) */}
+          {docked && onUndock && (
+            <button
+              type="button"
+              data-action="undock-guide"
+              onClick={onUndock}
+              style={{
+                background: '#e5e7eb',
+                color: '#374151',
+                border: 'none',
+                borderRadius: isVeryNarrow ? '4px' : '6px',
+                width: isVeryNarrow ? '24px' : '32px',
+                height: isVeryNarrow ? '24px' : '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: isVeryNarrow ? '12px' : '16px',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#d1d5db')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#e5e7eb')}
+              title="Undock guide (return to floating mode)"
+            >
+              ⛶
+            </button>
+          )}
+          {/* Bust-out button (only if not already standalone/docked and not very narrow) */}
+          {!standalone && !docked && !isVeryNarrow && (
             <button
               type="button"
               data-action="bust-out-guide"
