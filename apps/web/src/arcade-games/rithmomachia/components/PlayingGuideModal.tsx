@@ -31,6 +31,7 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [isResizing, setIsResizing] = useState(false)
   const [resizeDirection, setResizeDirection] = useState<string>('')
+  const [resizeStart, setResizeStart] = useState({ width: 0, height: 0, x: 0, y: 0 })
   const [isHovered, setIsHovered] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -62,6 +63,8 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
     setIsResizing(true)
     setResizeDirection(direction)
     setDragStart({ x: e.clientX, y: e.clientY })
+    // Save initial dimensions and position for resize calculation
+    setResizeStart({ width: size.width, height: size.height, x: position.x, y: position.y })
   }
 
   // Bust-out button handler
@@ -80,44 +83,37 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
           y: e.clientY - dragStart.y,
         })
       } else if (isResizing) {
+        // Calculate delta from initial resize start position
         const deltaX = e.clientX - dragStart.x
         const deltaY = e.clientY - dragStart.y
 
-        setSize((prev) => {
-          let newWidth = prev.width
-          let newHeight = prev.height
-          let newX = position.x
-          let newY = position.y
+        let newWidth = resizeStart.width
+        let newHeight = resizeStart.height
+        let newX = resizeStart.x
+        let newY = resizeStart.y
 
-          // Handle different resize directions
-          if (resizeDirection.includes('e')) {
-            newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, prev.width + deltaX))
-          }
-          if (resizeDirection.includes('w')) {
-            const desiredWidth = prev.width - deltaX
-            newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, desiredWidth))
-            const widthDiff = newWidth - prev.width
-            newX = position.x - widthDiff
-          }
-          if (resizeDirection.includes('s')) {
-            newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, prev.height + deltaY))
-          }
-          if (resizeDirection.includes('n')) {
-            const desiredHeight = prev.height - deltaY
-            newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, desiredHeight))
-            const heightDiff = newHeight - prev.height
-            newY = position.y - heightDiff
-          }
+        // Handle different resize directions - calculate from initial state
+        if (resizeDirection.includes('e')) {
+          newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, resizeStart.width + deltaX))
+        }
+        if (resizeDirection.includes('w')) {
+          const desiredWidth = resizeStart.width - deltaX
+          newWidth = Math.max(450, Math.min(window.innerWidth * 0.9, desiredWidth))
+          // Move left edge by the amount we actually changed width
+          newX = resizeStart.x + (resizeStart.width - newWidth)
+        }
+        if (resizeDirection.includes('s')) {
+          newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, resizeStart.height + deltaY))
+        }
+        if (resizeDirection.includes('n')) {
+          const desiredHeight = resizeStart.height - deltaY
+          newHeight = Math.max(600, Math.min(window.innerHeight * 0.8, desiredHeight))
+          // Move top edge by the amount we actually changed height
+          newY = resizeStart.y + (resizeStart.height - newHeight)
+        }
 
-          if (newX !== position.x || newY !== position.y) {
-            setPosition({ x: newX, y: newY })
-          }
-
-          return { width: newWidth, height: newHeight }
-        })
-
-        // Reset dragStart to current mouse position for next delta calculation
-        setDragStart({ x: e.clientX, y: e.clientY })
+        setSize({ width: newWidth, height: newHeight })
+        setPosition({ x: newX, y: newY })
       }
     }
 
@@ -136,7 +132,7 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isDragging, isResizing, dragStart, position, resizeDirection])
+  }, [isDragging, isResizing, dragStart, resizeDirection, resizeStart])
 
   if (!isOpen && !standalone) return null
 
