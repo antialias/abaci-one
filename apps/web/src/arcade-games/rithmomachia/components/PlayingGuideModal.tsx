@@ -28,7 +28,9 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [size, setSize] = useState({ width: 800, height: 600 })
   const [isDragging, setIsDragging] = useState(false)
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 800)
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 800
+  )
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [isResizing, setIsResizing] = useState(false)
   const [resizeDirection, setResizeDirection] = useState<string>('')
@@ -106,7 +108,10 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
         const minHeight = 300
 
         if (resizeDirection.includes('e')) {
-          newWidth = Math.max(minWidth, Math.min(window.innerWidth * 0.9, resizeStart.width + deltaX))
+          newWidth = Math.max(
+            minWidth,
+            Math.min(window.innerWidth * 0.9, resizeStart.width + deltaX)
+          )
         }
         if (resizeDirection.includes('w')) {
           const desiredWidth = resizeStart.width - deltaX
@@ -115,7 +120,10 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
           newX = resizeStart.x + (resizeStart.width - newWidth)
         }
         if (resizeDirection.includes('s')) {
-          newHeight = Math.max(minHeight, Math.min(window.innerHeight * 0.9, resizeStart.height + deltaY))
+          newHeight = Math.max(
+            minHeight,
+            Math.min(window.innerHeight * 0.9, resizeStart.height + deltaY)
+          )
         }
         if (resizeDirection.includes('n')) {
           const desiredHeight = resizeStart.height - deltaY
@@ -447,65 +455,63 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
           data-element="guide-nav"
           style={{
             display: 'flex',
-            flexDirection: isVeryNarrow ? 'column' : 'row',
-            borderBottom: isVeryNarrow ? 'none' : '2px solid #e5e7eb',
-            borderRight: isVeryNarrow ? '2px solid #e5e7eb' : 'none',
+            flexDirection: 'row', // Always horizontal, even when very narrow
+            borderBottom: '2px solid #e5e7eb',
             background: '#f9fafb',
             overflow: 'auto',
             flexShrink: 0,
-            // Show scrollbar on narrow widths to indicate more content
-            scrollbarWidth: isNarrow && !isVeryNarrow ? 'thin' : 'auto',
+            // Hide scrollbar for cleaner look - indicators show scroll availability
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
           }}
         >
-        {sections.map((section) => (
-          <button
-            key={section.id}
-            type="button"
-            data-action={`navigate-${section.id}`}
-            onClick={() => setActiveSection(section.id)}
-            style={{
-              flex: isVeryNarrow ? 'none' : 1,
-              minWidth: isVeryNarrow ? 'auto' : 'fit-content',
-              padding: isVeryNarrow ? '8px 4px' : isNarrow ? '10px 8px' : '14px 20px',
-              fontSize: isVeryNarrow ? '18px' : isNarrow ? '12px' : '14px',
-              fontWeight: activeSection === section.id ? 'bold' : '500',
-              color: activeSection === section.id ? '#7c2d12' : '#6b7280',
-              background: activeSection === section.id ? 'white' : 'transparent',
-              borderBottom: isVeryNarrow ? 'none' : '3px solid',
-              borderRight: isVeryNarrow ? '3px solid' : 'none',
-              borderBottomColor: activeSection === section.id ? '#7c2d12' : 'transparent',
-              borderRightColor: activeSection === section.id ? '#7c2d12' : 'transparent',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              border: 'none',
-              borderBottom: isVeryNarrow ? 'none' : `3px solid ${activeSection === section.id ? '#7c2d12' : 'transparent'}`,
-              borderRight: isVeryNarrow ? `3px solid ${activeSection === section.id ? '#7c2d12' : 'transparent'}` : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: isVeryNarrow ? 'center' : 'center',
-              gap: isVeryNarrow ? '0' : isNarrow ? '4px' : '6px',
-              lineHeight: 1,
-            }}
-            onMouseEnter={(e) => {
-              if (activeSection !== section.id) {
-                e.currentTarget.style.background = '#f3f4f6'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeSection !== section.id) {
-                e.currentTarget.style.background = 'transparent'
-              }
-            }}
-            title={isVeryNarrow ? section.label : undefined}
-          >
-            <span style={{ fontSize: isVeryNarrow ? '20px' : 'inherit' }}>{section.icon}</span>
-            {!isVeryNarrow && <span>{isNarrow ? section.label.split(' ')[0] : section.label}</span>}
-          </button>
-        ))}
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              data-action={`navigate-${section.id}`}
+              onClick={() => setActiveSection(section.id)}
+              style={{
+                flex: '0 0 auto', // Don't grow or shrink, natural size
+                minWidth: 'fit-content',
+                padding: isVeryNarrow ? '10px 6px' : isNarrow ? '10px 8px' : '14px 20px',
+                fontSize: isVeryNarrow ? '16px' : isNarrow ? '12px' : '14px',
+                fontWeight: activeSection === section.id ? 'bold' : '500',
+                color: activeSection === section.id ? '#7c2d12' : '#6b7280',
+                background: activeSection === section.id ? 'white' : 'transparent',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                border: 'none',
+                borderBottom: `3px solid ${activeSection === section.id ? '#7c2d12' : 'transparent'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: isVeryNarrow ? '0' : isNarrow ? '4px' : '6px',
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={(e) => {
+                if (activeSection !== section.id) {
+                  e.currentTarget.style.background = '#f3f4f6'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeSection !== section.id) {
+                  e.currentTarget.style.background = 'transparent'
+                }
+              }}
+              title={isVeryNarrow ? section.label : undefined}
+            >
+              <span style={{ fontSize: isVeryNarrow ? '18px' : 'inherit' }}>{section.icon}</span>
+              {!isVeryNarrow && (
+                <span>{isNarrow ? section.label.split(' ')[0] : section.label}</span>
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* Fade indicators for horizontal scroll (when not very narrow) */}
-        {!isVeryNarrow && isNarrow && (
+        {/* Fade indicators for horizontal scroll - show at all narrow widths */}
+        {(isNarrow || isVeryNarrow) && (
           <>
             <div
               style={{
@@ -513,9 +519,10 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
                 left: 0,
                 top: 0,
                 bottom: 0,
-                width: '20px',
+                width: isVeryNarrow ? '16px' : '20px',
                 background: 'linear-gradient(to right, rgba(249, 250, 251, 0.95), transparent)',
                 pointerEvents: 'none',
+                zIndex: 1,
               }}
             />
             <div
@@ -524,9 +531,10 @@ export function PlayingGuideModal({ isOpen, onClose, standalone = false }: Playi
                 right: 0,
                 top: 0,
                 bottom: 0,
-                width: '20px',
+                width: isVeryNarrow ? '16px' : '20px',
                 background: 'linear-gradient(to left, rgba(249, 250, 251, 0.95), transparent)',
                 pointerEvents: 'none',
+                zIndex: 1,
               }}
             />
           </>
