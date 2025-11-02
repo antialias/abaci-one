@@ -1,14 +1,15 @@
 /**
  * Board layout constants
+ * Rithmomachia uses a 16x8 board (16 columns, 8 rows)
  */
 
 export const BOARD_ROWS = 8
-export const BOARD_COLUMNS = 8
+export const BOARD_COLUMNS = 16
 
 /**
- * Column labels (A-H)
+ * Column labels (A-P for 16 columns)
  */
-export const COLUMN_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const
+export const COLUMN_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'] as const
 
 /**
  * Row labels (1-8)

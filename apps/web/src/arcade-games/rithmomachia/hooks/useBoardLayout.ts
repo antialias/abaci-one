@@ -20,8 +20,8 @@ export function useBoardLayout(): BoardLayout {
   return useMemo(
     () => ({
       cellSize: 100, // SVG units per cell
-      gap: 5, // Gap between cells
-      padding: 20, // Padding around board
+      gap: 2, // Gap between cells
+      padding: 10, // Padding around board
       rows: BOARD_ROWS,
       columns: BOARD_COLUMNS,
     }),
