@@ -487,7 +487,7 @@ export function PlayingGuideModal({
               onMouseLeave={(e) => (e.currentTarget.style.background = '#e5e7eb')}
               title="Undock guide (return to floating mode)"
             >
-              ⛶
+              ⤴️
             </button>
           )}
           {/* Bust-out button (only if not already standalone/docked and not very narrow) */}
