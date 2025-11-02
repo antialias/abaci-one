@@ -232,55 +232,137 @@ export function PieceRenderer({
       {/* Pyramid face numbers - show when selected */}
       {type === 'P' && selected && pyramidFaces.length === 4 && (
         <g>
+          {/* Filter for strong drop shadow */}
+          <defs>
+            <filter id={`face-shadow-${color}`} x="-100%" y="-100%" width="300%" height="300%">
+              <feDropShadow
+                dx="0"
+                dy="0"
+                stdDeviation="3"
+                floodColor="#000000"
+                floodOpacity="0.9"
+              />
+            </filter>
+          </defs>
+
           {/* Top face */}
+          {/* Outline/stroke for contrast */}
           <text
             x={size / 2}
-            y={size * 0.05}
+            y={size * 0.12}
             textAnchor="middle"
             dominantBaseline="middle"
-            fill={textColor}
-            fontSize={size * 0.16}
-            fontWeight="bold"
-            fontFamily="Georgia, 'Times New Roman', serif"
+            fill="none"
+            stroke={isDark ? '#000000' : '#ffffff'}
+            strokeWidth={size * 0.03}
+            fontSize={size * 0.26}
+            fontWeight="900"
+            fontFamily="Arial, sans-serif"
           >
             {pyramidFaces[0]}
           </text>
+          {/* Main text with shadow and vibrant color */}
+          <text
+            x={size / 2}
+            y={size * 0.12}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={isDark ? '#fbbf24' : '#b45309'}
+            fontSize={size * 0.26}
+            fontWeight="900"
+            fontFamily="Arial, sans-serif"
+            filter={`url(#face-shadow-${color})`}
+            style={{ transition: 'all 0.2s ease' }}
+          >
+            {pyramidFaces[0]}
+          </text>
+
           {/* Right face */}
           <text
-            x={size * 0.95}
+            x={size * 0.88}
             y={size / 2}
             textAnchor="middle"
             dominantBaseline="middle"
-            fill={textColor}
-            fontSize={size * 0.16}
-            fontWeight="bold"
-            fontFamily="Georgia, 'Times New Roman', serif"
+            fill="none"
+            stroke={isDark ? '#000000' : '#ffffff'}
+            strokeWidth={size * 0.03}
+            fontSize={size * 0.26}
+            fontWeight="900"
+            fontFamily="Arial, sans-serif"
           >
             {pyramidFaces[1]}
           </text>
-          {/* Bottom face */}
           <text
-            x={size / 2}
-            y={size * 0.95}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill={textColor}
-            fontSize={size * 0.16}
-            fontWeight="bold"
-            fontFamily="Georgia, 'Times New Roman', serif"
-          >
-            {pyramidFaces[2]}
-          </text>
-          {/* Left face */}
-          <text
-            x={size * 0.05}
+            x={size * 0.88}
             y={size / 2}
             textAnchor="middle"
             dominantBaseline="middle"
-            fill={textColor}
-            fontSize={size * 0.16}
-            fontWeight="bold"
-            fontFamily="Georgia, 'Times New Roman', serif"
+            fill={isDark ? '#fbbf24' : '#b45309'}
+            fontSize={size * 0.26}
+            fontWeight="900"
+            fontFamily="Arial, sans-serif"
+            filter={`url(#face-shadow-${color})`}
+            style={{ transition: 'all 0.2s ease' }}
+          >
+            {pyramidFaces[1]}
+          </text>
+
+          {/* Bottom face */}
+          <text
+            x={size / 2}
+            y={size * 0.88}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="none"
+            stroke={isDark ? '#000000' : '#ffffff'}
+            strokeWidth={size * 0.03}
+            fontSize={size * 0.26}
+            fontWeight="900"
+            fontFamily="Arial, sans-serif"
+          >
+            {pyramidFaces[2]}
+          </text>
+          <text
+            x={size / 2}
+            y={size * 0.88}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={isDark ? '#fbbf24' : '#b45309'}
+            fontSize={size * 0.26}
+            fontWeight="900"
+            fontFamily="Arial, sans-serif"
+            filter={`url(#face-shadow-${color})`}
+            style={{ transition: 'all 0.2s ease' }}
+          >
+            {pyramidFaces[2]}
+          </text>
+
+          {/* Left face */}
+          <text
+            x={size * 0.12}
+            y={size / 2}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill="none"
+            stroke={isDark ? '#000000' : '#ffffff'}
+            strokeWidth={size * 0.03}
+            fontSize={size * 0.26}
+            fontWeight="900"
+            fontFamily="Arial, sans-serif"
+          >
+            {pyramidFaces[3]}
+          </text>
+          <text
+            x={size * 0.12}
+            y={size / 2}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fill={isDark ? '#fbbf24' : '#b45309'}
+            fontSize={size * 0.26}
+            fontWeight="900"
+            fontFamily="Arial, sans-serif"
+            filter={`url(#face-shadow-${color})`}
+            style={{ transition: 'all 0.2s ease' }}
           >
             {pyramidFaces[3]}
           </text>
