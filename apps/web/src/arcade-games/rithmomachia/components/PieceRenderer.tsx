@@ -254,10 +254,10 @@ export function PieceRenderer({
             dominantBaseline="middle"
             fill="none"
             stroke={isDark ? '#000000' : '#ffffff'}
-            strokeWidth={size * 0.03}
-            fontSize={size * 0.26}
+            strokeWidth={size * 0.05}
+            fontSize={size * 0.35}
             fontWeight="900"
-            fontFamily="Arial, sans-serif"
+            fontFamily="Arial Black, Arial, sans-serif"
           >
             {pyramidFaces[0]}
           </text>
@@ -268,9 +268,9 @@ export function PieceRenderer({
             textAnchor="middle"
             dominantBaseline="middle"
             fill={isDark ? '#fbbf24' : '#b45309'}
-            fontSize={size * 0.26}
+            fontSize={size * 0.35}
             fontWeight="900"
-            fontFamily="Arial, sans-serif"
+            fontFamily="Arial Black, Arial, sans-serif"
             filter={`url(#face-shadow-${color})`}
             style={{ transition: 'all 0.2s ease' }}
           >
@@ -285,10 +285,10 @@ export function PieceRenderer({
             dominantBaseline="middle"
             fill="none"
             stroke={isDark ? '#000000' : '#ffffff'}
-            strokeWidth={size * 0.03}
-            fontSize={size * 0.26}
+            strokeWidth={size * 0.05}
+            fontSize={size * 0.35}
             fontWeight="900"
-            fontFamily="Arial, sans-serif"
+            fontFamily="Arial Black, Arial, sans-serif"
           >
             {pyramidFaces[1]}
           </text>
@@ -298,9 +298,9 @@ export function PieceRenderer({
             textAnchor="middle"
             dominantBaseline="middle"
             fill={isDark ? '#fbbf24' : '#b45309'}
-            fontSize={size * 0.26}
+            fontSize={size * 0.35}
             fontWeight="900"
-            fontFamily="Arial, sans-serif"
+            fontFamily="Arial Black, Arial, sans-serif"
             filter={`url(#face-shadow-${color})`}
             style={{ transition: 'all 0.2s ease' }}
           >
@@ -315,10 +315,10 @@ export function PieceRenderer({
             dominantBaseline="middle"
             fill="none"
             stroke={isDark ? '#000000' : '#ffffff'}
-            strokeWidth={size * 0.03}
-            fontSize={size * 0.26}
+            strokeWidth={size * 0.05}
+            fontSize={size * 0.35}
             fontWeight="900"
-            fontFamily="Arial, sans-serif"
+            fontFamily="Arial Black, Arial, sans-serif"
           >
             {pyramidFaces[2]}
           </text>
@@ -328,9 +328,9 @@ export function PieceRenderer({
             textAnchor="middle"
             dominantBaseline="middle"
             fill={isDark ? '#fbbf24' : '#b45309'}
-            fontSize={size * 0.26}
+            fontSize={size * 0.35}
             fontWeight="900"
-            fontFamily="Arial, sans-serif"
+            fontFamily="Arial Black, Arial, sans-serif"
             filter={`url(#face-shadow-${color})`}
             style={{ transition: 'all 0.2s ease' }}
           >
@@ -345,10 +345,10 @@ export function PieceRenderer({
             dominantBaseline="middle"
             fill="none"
             stroke={isDark ? '#000000' : '#ffffff'}
-            strokeWidth={size * 0.03}
-            fontSize={size * 0.26}
+            strokeWidth={size * 0.05}
+            fontSize={size * 0.35}
             fontWeight="900"
-            fontFamily="Arial, sans-serif"
+            fontFamily="Arial Black, Arial, sans-serif"
           >
             {pyramidFaces[3]}
           </text>
@@ -358,9 +358,9 @@ export function PieceRenderer({
             textAnchor="middle"
             dominantBaseline="middle"
             fill={isDark ? '#fbbf24' : '#b45309'}
-            fontSize={size * 0.26}
+            fontSize={size * 0.35}
             fontWeight="900"
-            fontFamily="Arial, sans-serif"
+            fontFamily="Arial Black, Arial, sans-serif"
             filter={`url(#face-shadow-${color})`}
             style={{ transition: 'all 0.2s ease' }}
           >
