@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import React, { useCallback, useEffect, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
+import { getAvailableGames } from '@/lib/arcade/game-registry'
 import { css } from '../../../styled-system/css'
 import { useFullscreen } from '../../contexts/FullscreenContext'
 import { useGameMode } from '../../contexts/GameModeContext'
@@ -25,10 +26,21 @@ function GamesPageContent() {
     return aTime - bTime
   })
 
+  // Get available games
+  const availableGames = getAvailableGames()
+
   // Check if user has any stats to show
   const hasStats = profile.gamesPlayed > 0
 
-  // Embla carousel setup for simple carousel
+  // Embla carousel setup for games hero carousel
+  const [gamesEmblaRef, gamesEmblaApi] = useEmblaCarousel({
+    loop: true,
+    align: 'center',
+    containScroll: 'trimSnaps',
+  })
+  const [gamesSelectedIndex, setGamesSelectedIndex] = useState(0)
+
+  // Embla carousel setup for player carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
     align: 'center',
@@ -36,6 +48,25 @@ function GamesPageContent() {
   })
   const [selectedIndex, setSelectedIndex] = useState(0)
 
+  // Games carousel callbacks
+  const onGamesSelect = useCallback(() => {
+    if (!gamesEmblaApi) return
+    setGamesSelectedIndex(gamesEmblaApi.selectedScrollSnap())
+  }, [gamesEmblaApi])
+
+  useEffect(() => {
+    if (!gamesEmblaApi) return
+    onGamesSelect()
+    gamesEmblaApi.on('select', onGamesSelect)
+    gamesEmblaApi.on('reInit', onGamesSelect)
+
+    return () => {
+      gamesEmblaApi.off('select', onGamesSelect)
+      gamesEmblaApi.off('reInit', onGamesSelect)
+    }
+  }, [gamesEmblaApi, onGamesSelect])
+
+  // Player carousel callbacks
   const onSelect = useCallback(() => {
     if (!emblaApi) return
     setSelectedIndex(emblaApi.selectedScrollSnap())
@@ -85,6 +116,238 @@ function GamesPageContent() {
           position: 'relative',
         })}
       >
+        {/* Games Hero Carousel */}
+        <div
+          className={css({
+            mb: '16',
+          })}
+        >
+          <h2
+            className={css({
+              fontSize: { base: 'xl', md: '2xl' },
+              fontWeight: 'bold',
+              color: 'gray.900',
+              textAlign: 'center',
+              mb: '6',
+            })}
+          >
+            🎮 Available Games
+          </h2>
+
+          {/* Carousel */}
+          <div
+            ref={gamesEmblaRef}
+            className={css({
+              overflow: 'hidden',
+              cursor: 'grab',
+              userSelect: 'none',
+              _active: {
+                cursor: 'grabbing',
+              },
+            })}
+          >
+            <div
+              className={css({
+                display: 'flex',
+                gap: '6',
+              })}
+            >
+              {availableGames.map((game) => {
+                const gameIndex = availableGames.indexOf(game)
+                const isActive = gameIndex === gamesSelectedIndex
+
+                return (
+                  <div
+                    key={game.manifest.name}
+                    className={css({
+                      flex: '0 0 auto',
+                      w: { base: '85%', md: '400px' },
+                      mr: '6',
+                      transition: 'all 0.3s ease-out',
+                      opacity: isActive ? 1 : 0.6,
+                    })}
+                  >
+                    <Link
+                      href={`/arcade/${game.manifest.name}`}
+                      className={css({
+                        display: 'block',
+                        textDecoration: 'none',
+                        height: '100%',
+                      })}
+                    >
+                      <div
+                        className={css({
+                          background: 'white',
+                          rounded: '2xl',
+                          p: '6',
+                          border: '2px solid',
+                          borderColor: isActive ? 'blue.400' : 'gray.200',
+                          boxShadow: isActive
+                            ? '0 20px 40px rgba(59, 130, 246, 0.3)'
+                            : '0 10px 20px rgba(0, 0, 0, 0.1)',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          height: '100%',
+                          transition: 'all 0.3s ease',
+                          _hover: {
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 25px 50px rgba(59, 130, 246, 0.4)',
+                            borderColor: 'blue.500',
+                          },
+                        })}
+                        style={{
+                          background: game.manifest.gradient || 'white',
+                        }}
+                      >
+                        {/* Dark gradient overlay for readability */}
+                        <div
+                          className={css({
+                            position: 'absolute',
+                            inset: 0,
+                            background:
+                              'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%)',
+                            zIndex: 0,
+                          })}
+                        />
+
+                        {/* Content */}
+                        <div
+                          className={css({
+                            position: 'relative',
+                            zIndex: 1,
+                          })}
+                        >
+                          {/* Icon and Title */}
+                          <div
+                            className={css({
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3',
+                              mb: '4',
+                            })}
+                          >
+                            <div
+                              className={css({
+                                fontSize: '3xl',
+                                textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                              })}
+                            >
+                              {game.manifest.icon}
+                            </div>
+                            <div>
+                              <h3
+                                className={css({
+                                  fontSize: 'xl',
+                                  fontWeight: 'bold',
+                                  color: 'white',
+                                  textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+                                })}
+                              >
+                                {game.manifest.displayName}
+                              </h3>
+                              <p
+                                className={css({
+                                  fontSize: 'xs',
+                                  color: 'rgba(255, 255, 255, 0.9)',
+                                  textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
+                                })}
+                              >
+                                {game.manifest.difficulty} •{' '}
+                                {game.manifest.maxPlayers === 1
+                                  ? 'Solo'
+                                  : `1-${game.manifest.maxPlayers} Players`}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <p
+                            className={css({
+                              fontSize: 'sm',
+                              color: 'rgba(255, 255, 255, 0.95)',
+                              mb: '4',
+                              lineHeight: '1.6',
+                              textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
+                            })}
+                          >
+                            {game.manifest.description}
+                          </p>
+
+                          {/* Chips */}
+                          <div
+                            className={css({
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: '2',
+                            })}
+                          >
+                            {game.manifest.chips.map((chip) => (
+                              <span
+                                key={chip}
+                                className={css({
+                                  fontSize: 'xs',
+                                  px: '2',
+                                  py: '1',
+                                  bg: 'rgba(255, 255, 255, 0.2)',
+                                  color: 'white',
+                                  rounded: 'full',
+                                  fontWeight: 'semibold',
+                                  textShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
+                                })}
+                              >
+                                {chip}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Navigation Dots */}
+          <div
+            className={css({
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '2',
+              mt: '6',
+            })}
+          >
+            {availableGames.map((game, index) => (
+              <button
+                key={game.manifest.name}
+                type="button"
+                onClick={() => gamesEmblaApi?.scrollTo(index)}
+                className={css({
+                  w: '10',
+                  h: '10',
+                  rounded: 'full',
+                  border: '2px solid',
+                  borderColor: index === gamesSelectedIndex ? 'blue.500' : 'gray.300',
+                  bg: index === gamesSelectedIndex ? 'blue.500' : 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 'lg',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  _hover: {
+                    borderColor: 'blue.500',
+                    transform: 'scale(1.1)',
+                  },
+                })}
+                title={game.manifest.displayName}
+              >
+                {game.manifest.icon}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Enter Arcade Button */}
         <div
           className={css({
