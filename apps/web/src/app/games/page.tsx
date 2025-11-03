@@ -81,28 +81,10 @@ function GamesPageContent() {
           maxW: '6xl',
           mx: 'auto',
           px: { base: '4', md: '6' },
+          pt: '20',
           position: 'relative',
         })}
       >
-        {/* Hero Section */}
-        <div
-          className={css({
-            textAlign: 'center',
-            mb: '12',
-          })}
-        >
-          <p
-            className={css({
-              fontSize: { base: 'lg', md: 'xl' },
-              color: 'gray.600',
-              maxW: '2xl',
-              mx: 'auto',
-            })}
-          >
-            {t('hero.subtitle')}
-          </p>
-        </div>
-
         {/* Enter Arcade Button */}
         <div
           className={css({
