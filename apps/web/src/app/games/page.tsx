@@ -78,11 +78,11 @@ function GamesPageContent() {
         event.preventDefault()
         const delta = event.shiftKey ? event.deltaY : event.deltaX
 
-        // Scroll the carousel based on wheel delta
-        if (delta > 0) {
-          gamesEmblaApi.scrollNext()
-        } else {
-          gamesEmblaApi.scrollPrev()
+        // Get the scrollable container (embla's internal container)
+        const scrollContainer = gamesEmblaApi.internalEngine().scrollBody.container
+        if (scrollContainer) {
+          // Smooth scroll by the wheel delta amount (scale it down for better feel)
+          scrollContainer.scrollLeft += delta * 0.5
         }
       }
     }
@@ -121,11 +121,11 @@ function GamesPageContent() {
         event.preventDefault()
         const delta = event.shiftKey ? event.deltaY : event.deltaX
 
-        // Scroll the carousel based on wheel delta
-        if (delta > 0) {
-          emblaApi.scrollNext()
-        } else {
-          emblaApi.scrollPrev()
+        // Get the scrollable container (embla's internal container)
+        const scrollContainer = emblaApi.internalEngine().scrollBody.container
+        if (scrollContainer) {
+          // Smooth scroll by the wheel delta amount (scale it down for better feel)
+          scrollContainer.scrollLeft += delta * 0.5
         }
       }
     }
