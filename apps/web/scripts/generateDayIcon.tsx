@@ -128,12 +128,15 @@ svgContent = svgContent.replace(/\s*!important/g, '')
 // Calculate bounding box including posts, bar, and active beads
 const bbox = getAbacusBoundingBox(svgContent, 1.8, 2)
 
-// Add padding around active beads (in abacus coordinates)
-const padding = 10
-const cropX = bbox.minX - padding
-const cropY = bbox.minY - padding
-const cropWidth = bbox.maxX - bbox.minX + padding * 2
-const cropHeight = bbox.maxY - bbox.minY + padding * 2
+// Add minimal padding around active beads (in abacus coordinates)
+// Less padding below since we want to cut tight to the last bead
+const paddingTop = 8
+const paddingBottom = 2
+const paddingSide = 5
+const cropX = bbox.minX - paddingSide
+const cropY = bbox.minY - paddingTop
+const cropWidth = bbox.maxX - bbox.minX + paddingSide * 2
+const cropHeight = bbox.maxY - bbox.minY + paddingTop + paddingBottom
 
 // Calculate scale to fit cropped region into 96x96 (leaving room for border)
 const targetSize = 96
