@@ -64,16 +64,68 @@ COPY packages/templates/package.json ./packages/templates/
 # Install ONLY production dependencies
 RUN pnpm install --frozen-lockfile --prod
 
-# Production image
-FROM node:18-alpine AS runner
+# Typst builder stage - download and prepare typst binary
+FROM node:18-slim AS typst-builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    xz-utils \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+        TYPST_ARCH="x86_64-unknown-linux-musl"; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+        TYPST_ARCH="aarch64-unknown-linux-musl"; \
+    else \
+        echo "Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    TYPST_VERSION="v0.11.1" && \
+    wget -q "https://github.com/typst/typst/releases/download/${TYPST_VERSION}/typst-${TYPST_ARCH}.tar.xz" && \
+    tar -xf "typst-${TYPST_ARCH}.tar.xz" && \
+    mv "typst-${TYPST_ARCH}/typst" /usr/local/bin/typst && \
+    chmod +x /usr/local/bin/typst
+
+# BOSL2 builder stage - clone and minimize the library
+FROM node:18-slim AS bosl2-builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /bosl2 && \
+    cd /bosl2 && \
+    git clone --depth 1 --branch v2.0.0 https://github.com/BelfrySCAD/BOSL2.git . && \
+    # Remove unnecessary files to minimize size
+    rm -rf .git .github tests tutorials examples images *.md CONTRIBUTING* LICENSE* && \
+    # Keep only .scad files and essential directories
+    find . -type f ! -name "*.scad" -delete && \
+    find . -type d -empty -delete
+
+# Production image - Using Debian base for OpenSCAD availability
+FROM node:18-slim AS runner
 WORKDIR /app
 
-# Install ONLY runtime dependencies (no build tools needed)
-RUN apk add --no-cache python3 py3-pip typst qpdf
+# Install ONLY runtime dependencies (no build tools)
+# Using Debian because OpenSCAD is not available in Alpine repos
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    qpdf \
+    openscad \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy typst binary from typst-builder stage
+COPY --from=typst-builder /usr/local/bin/typst /usr/local/bin/typst
+
+# Copy minimized BOSL2 library from bosl2-builder stage
+RUN mkdir -p /usr/share/openscad/libraries
+COPY --from=bosl2-builder /bosl2 /usr/share/openscad/libraries/BOSL2
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
 # Copy built Next.js application
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next ./apps/web/.next
@@ -111,6 +163,9 @@ WORKDIR /app/apps/web
 
 # Create data directory for SQLite database
 RUN mkdir -p data && chown nextjs:nodejs data
+
+# Create tmp directory for 3D job outputs
+RUN mkdir -p tmp/3d-jobs && chown nextjs:nodejs tmp
 
 USER nextjs
 EXPOSE 3000
