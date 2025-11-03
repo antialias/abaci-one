@@ -124,7 +124,7 @@ export function getLightingFilter(lighting: LightingStyle = "top-down"): string 
  * Calculate Z-depth for a bead based on enhancement level and state
  */
 export function getBeadZDepth(
-  enhanced3d: boolean | "subtle" | "realistic" | "delightful",
+  enhanced3d: boolean | "subtle" | "realistic",
   active: boolean
 ): number {
   if (!enhanced3d || enhanced3d === true) return 0;
@@ -136,46 +136,9 @@ export function getBeadZDepth(
       return 6;
     case "realistic":
       return 10;
-    case "delightful":
-      return 12;
     default:
       return 0;
   }
-}
-
-/**
- * Calculate parallax offset based on mouse position
- */
-export function calculateParallaxOffset(
-  beadX: number,
-  beadY: number,
-  mouseX: number,
-  mouseY: number,
-  containerX: number,
-  containerY: number,
-  intensity: number = 0.5
-): { x: number; y: number; z: number } {
-  // Calculate distance from bead center to mouse
-  const dx = (mouseX - containerX) - beadX;
-  const dy = (mouseY - containerY) - beadY;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-
-  // Max influence radius (pixels)
-  const maxRadius = 150;
-
-  if (distance > maxRadius) {
-    return { x: 0, y: 0, z: 0 };
-  }
-
-  // Calculate lift amount (inverse square falloff)
-  const influence = Math.max(0, 1 - (distance / maxRadius));
-  const lift = influence * influence * intensity;
-
-  return {
-    x: dx * lift * 0.1,
-    y: dy * lift * 0.1,
-    z: lift * 8
-  };
 }
 
 /**
@@ -203,9 +166,8 @@ export function getWoodGrainPattern(id: string): string {
  * Get container class names for 3D enhancement level
  */
 export function get3DContainerClasses(
-  enhanced3d: boolean | "subtle" | "realistic" | "delightful" | undefined,
-  lighting?: LightingStyle,
-  parallaxEnabled?: boolean
+  enhanced3d: boolean | "subtle" | "realistic" | undefined,
+  lighting?: LightingStyle
 ): string {
   const classes: string[] = ["abacus-3d-container"];
 
@@ -216,18 +178,11 @@ export function get3DContainerClasses(
     classes.push("enhanced-subtle");
   } else if (enhanced3d === "realistic") {
     classes.push("enhanced-realistic");
-  } else if (enhanced3d === "delightful") {
-    classes.push("enhanced-delightful");
   }
 
   // Add lighting class
   if (lighting && enhanced3d !== "subtle") {
     classes.push(`lighting-${lighting}`);
-  }
-
-  // Add parallax class
-  if (parallaxEnabled && enhanced3d === "delightful") {
-    classes.push("parallax-enabled");
   }
 
   return classes.join(" ");
@@ -248,7 +203,7 @@ export function getBeadGradientId(
 /**
  * Physics config for different enhancement levels
  */
-export function getPhysicsConfig(enhanced3d: boolean | "subtle" | "realistic" | "delightful") {
+export function getPhysicsConfig(enhanced3d: boolean | "subtle" | "realistic") {
   const base = {
     tension: 300,
     friction: 22,
@@ -260,20 +215,11 @@ export function getPhysicsConfig(enhanced3d: boolean | "subtle" | "realistic" | 
     return { ...base, clamp: true };
   }
 
-  if (enhanced3d === "realistic") {
-    return {
-      tension: 320,
-      friction: 24,
-      mass: 0.6,
-      clamp: false
-    };
-  }
-
-  // delightful
+  // realistic
   return {
-    tension: 280,
-    friction: 20,
-    mass: 0.7,
-    clamp: false, // Allow overshoot for satisfying settle
+    tension: 320,
+    friction: 24,
+    mass: 0.6,
+    clamp: false
   };
 }

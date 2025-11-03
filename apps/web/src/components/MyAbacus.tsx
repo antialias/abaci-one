@@ -235,8 +235,8 @@ export function MyAbacus() {
               animated={isOpen || isHeroMode}
               customStyles={isHeroMode ? structuralStyles : trophyStyles}
               onValueChange={setAbacusValue}
-              // 3D Enhancement - delightful mode for hero and open states
-              enhanced3d={isOpen || isHeroMode ? 'delightful' : undefined}
+              // 3D Enhancement - realistic mode for hero and open states
+              enhanced3d={isOpen || isHeroMode ? 'realistic' : undefined}
               material3d={
                 isOpen || isHeroMode
                   ? {
@@ -247,65 +247,10 @@ export function MyAbacus() {
                     }
                   : undefined
               }
-              physics3d={
-                isOpen || isHeroMode
-                  ? {
-                      hoverParallax: true,
-                    }
-                  : undefined
-              }
             />
           </div>
         </div>
 
-        {/* Title and achievement info - only visible when open */}
-        {isOpen && (
-          <div
-            className={css({
-              position: 'absolute',
-              top: '100%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              mt: { base: '16', md: '20', lg: '24' },
-              textAlign: 'center',
-              animation: 'fadeIn 0.5s ease-out 0.3s both',
-              maxW: '600px',
-              px: '8',
-            })}
-          >
-            <h2
-              className={css({
-                fontSize: { base: '2xl', md: '3xl', lg: '4xl' },
-                fontWeight: 'bold',
-                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)',
-                backgroundClip: 'text',
-                color: 'transparent',
-                mb: '3',
-              })}
-            >
-              My Abacus
-            </h2>
-            <p
-              className={css({
-                fontSize: { base: 'md', md: 'lg' },
-                color: 'gray.300',
-                mb: '4',
-                fontWeight: 'medium',
-              })}
-            >
-              Your personal abacus grows with you
-            </p>
-            <p
-              className={css({
-                fontSize: { base: 'sm', md: 'md' },
-                color: 'gray.400',
-                lineHeight: '1.6',
-              })}
-            >
-              Complete tutorials, play games, and earn achievements to unlock higher place values
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Keyframes for animations */}

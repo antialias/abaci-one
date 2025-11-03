@@ -12,26 +12,20 @@ const meta: Meta<typeof AbacusReact> = {
         component: `
 # 3D Enhancement Showcase
 
-Three levels of progressive 3D enhancement for the abacus to make interactions feel satisfying and real.
+Two levels of progressive 3D enhancement for the abacus to make interactions feel satisfying and real.
 
-## Proposal 1: Subtle (CSS Perspective + Shadows)
+## Subtle (CSS Perspective + Shadows)
 - Light perspective tilt
 - Depth shadows on active beads
 - Smooth transitions
 - **Zero performance cost**
 
-## Proposal 2: Realistic (Lighting + Materials)
-- Everything from Proposal 1 +
+## Realistic (Lighting + Materials)
+- Everything from Subtle +
 - Realistic lighting effects with material gradients
 - Glossy/Satin/Matte bead materials
 - Wood grain textures on frame
 - Enhanced physics for realistic motion
-
-## Proposal 3: Delightful (Physics + Micro-interactions)
-- Everything from Proposal 2 +
-- Enhanced physics with satisfying bounce
-- Hover parallax with Z-depth lift
-- Maximum satisfaction
         `
       }
     }
@@ -64,7 +58,7 @@ export const CompareAllLevels: Story = {
       </div>
 
       <div>
-        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Proposal 1: Subtle</h3>
+        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Subtle</h3>
         <AbacusReact
           value={4242}
           columns={4}
@@ -78,7 +72,7 @@ export const CompareAllLevels: Story = {
       </div>
 
       <div>
-        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Proposal 2: Realistic (Satin Beads + Wood Frame)</h3>
+        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Realistic (Satin Beads + Wood Frame)</h3>
         <AbacusReact
           value={4242}
           columns={4}
@@ -96,35 +90,12 @@ export const CompareAllLevels: Story = {
           }}
         />
       </div>
-
-      <div>
-        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Proposal 3: Delightful (Glossy + Parallax)</h3>
-        <AbacusReact
-          value={4242}
-          columns={4}
-          showNumbers
-          interactive
-          animated
-          colorScheme="place-value"
-          scaleFactor={1.2}
-          enhanced3d="delightful"
-          material3d={{
-            heavenBeads: 'glossy',
-            earthBeads: 'glossy',
-            lighting: 'dramatic',
-            woodGrain: true
-          }}
-          physics3d={{
-            hoverParallax: true
-          }}
-        />
-      </div>
     </div>
   ),
   parameters: {
     docs: {
       description: {
-        story: 'Side-by-side comparison of all three enhancement levels. **Click beads** to see how they move! **Hover over the Delightful version** to see parallax effect.'
+        story: 'Side-by-side comparison of both enhancement levels. **Click beads** to see how they move!'
       }
     }
   }
@@ -362,129 +333,33 @@ export const Realistic_LightingComparison: Story = {
 };
 
 // ============================================
-// PROPOSAL 3: DELIGHTFUL (Physics)
-// ============================================
-
-export const Delightful_FullExperience: Story = {
-  name: '3️⃣ Delightful - Full Experience',
-  args: {
-    value: 8642,
-    columns: 4,
-    showNumbers: true,
-    interactive: true,
-    animated: true,
-    soundEnabled: true,
-    colorScheme: 'rainbow',
-    scaleFactor: 1.4,
-    enhanced3d: 'delightful',
-    material3d: {
-      heavenBeads: 'glossy',
-      earthBeads: 'satin',
-      lighting: 'dramatic',
-      woodGrain: true
-    },
-    physics3d: {
-      hoverParallax: true
-    }
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: '🎉 **Full delightful experience!** Click beads to see enhanced physics. Hover your mouse over the abacus to see parallax lift. Sound enabled for maximum satisfaction!'
-      }
-    }
-  }
-};
-
-export const Delightful_HoverParallax: Story = {
-  name: '3️⃣ Delightful - Hover Parallax',
-  args: {
-    value: 1234,
-    columns: 4,
-    showNumbers: true,
-    interactive: true,
-    animated: true,
-    colorScheme: 'place-value',
-    scaleFactor: 1.3,
-    enhanced3d: 'delightful',
-    material3d: {
-      heavenBeads: 'satin',
-      earthBeads: 'satin',
-      lighting: 'ambient'
-    },
-    physics3d: {
-      hoverParallax: true  // Enable hover parallax
-    }
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: '**Hover parallax enabled!** Move your mouse over the abacus. Beads near your cursor will lift up with Z-depth. Creates magical depth perception!'
-      }
-    }
-  }
-};
-
-export const Delightful_Traditional: Story = {
-  name: '3️⃣ Delightful - Traditional Wood',
-  args: {
-    value: 99999,
-    columns: 5,
-    showNumbers: true,
-    interactive: true,
-    animated: true,
-    colorScheme: 'monochrome',
-    scaleFactor: 1.2,
-    enhanced3d: 'delightful',
-    material3d: {
-      heavenBeads: 'matte',
-      earthBeads: 'matte',
-      lighting: 'ambient',
-      woodGrain: true
-    },
-    physics3d: {
-      hoverParallax: true
-    }
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Traditional aesthetic with **wood grain frame** + modern delightful physics. Best of both worlds!'
-      }
-    }
-  }
-};
-
-// ============================================
 // INTERACTIVE PLAYGROUND
 // ============================================
 
 export const Playground: Story = {
   name: '🎮 Interactive Playground',
   render: () => {
-    const [level, setLevel] = React.useState<'subtle' | 'realistic' | 'delightful'>('delightful');
+    const [level, setLevel] = React.useState<'subtle' | 'realistic'>('realistic');
     const [material, setMaterial] = React.useState<'glossy' | 'satin' | 'matte'>('glossy');
     const [lighting, setLighting] = React.useState<'top-down' | 'ambient' | 'dramatic'>('dramatic');
     const [woodGrain, setWoodGrain] = React.useState(true);
-    const [parallax, setParallax] = React.useState(true);
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', alignItems: 'center' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           gap: '20px',
           padding: '20px',
           background: '#f5f5f5',
           borderRadius: '8px',
-          maxWidth: '600px'
+          maxWidth: '500px'
         }}>
           <div>
             <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Enhancement Level</label>
             <select value={level} onChange={e => setLevel(e.target.value as any)} style={{ width: '100%', padding: '5px' }}>
               <option value="subtle">Subtle</option>
               <option value="realistic">Realistic</option>
-              <option value="delightful">Delightful</option>
             </select>
           </div>
 
@@ -512,13 +387,6 @@ export const Playground: Story = {
               <span>Wood Grain</span>
             </label>
           </div>
-
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <input type="checkbox" checked={parallax} onChange={e => setParallax(e.target.checked)} />
-              <span>Hover Parallax (Delightful)</span>
-            </label>
-          </div>
         </div>
 
         <AbacusReact
@@ -536,9 +404,6 @@ export const Playground: Story = {
             earthBeads: material,
             lighting: lighting,
             woodGrain: woodGrain
-          }}
-          physics3d={{
-            hoverParallax: parallax
           }}
         />
 
