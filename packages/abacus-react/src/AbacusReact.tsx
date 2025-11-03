@@ -1248,12 +1248,21 @@ const Bead: React.FC<BeadProps> = ({
   colorPalette = "default",
   totalColumns = 1,
 }) => {
-  const [{ x: springX, y: springY }, api] = useSpring(() => ({ x, y }));
+  // Detect server-side rendering
+  const isServer = typeof window === 'undefined';
+
+  // Use springs only if not on server and animations are enabled
+  // Even on server, we must call hooks unconditionally, so we provide static values
+  const [{ x: springX, y: springY }, api] = useSpring(() => ({
+    x,
+    y,
+    config: enableAnimation && !isServer ? config.default : { duration: 0 }
+  }));
 
   // Arrow pulse animation for urgency indication
   const [{ arrowPulse }, arrowApi] = useSpring(() => ({
     arrowPulse: 1,
-    config: { tension: 200, friction: 10 },
+    config: enableAnimation && !isServer ? { tension: 200, friction: 10 } : { duration: 0 },
   }));
 
   const gestureStateRef = useRef({
@@ -1281,8 +1290,8 @@ const Bead: React.FC<BeadProps> = ({
     [bead.type],
   );
 
-  // Directional gesture handler
-  const bind = useDrag(
+  // Directional gesture handler - only on client with gestures enabled
+  const bind = (enableGestures && !isServer) ? useDrag(
     ({ event, movement: [, deltaY], first, active }) => {
       if (first) {
         event?.preventDefault();
@@ -1322,7 +1331,7 @@ const Bead: React.FC<BeadProps> = ({
       enabled: enableGestures,
       preventDefault: true,
     },
-  );
+  ) : () => ({});
 
   React.useEffect(() => {
     if (enableAnimation) {
@@ -1395,7 +1404,9 @@ const Bead: React.FC<BeadProps> = ({
     }
   };
 
-  const AnimatedG = animated.g;
+  // Use animated.g only if animations are enabled, otherwise use regular g
+  const GElement = enableAnimation ? animated.g : 'g';
+  const DirectionIndicatorG = (enableAnimation && showDirectionIndicator && direction) ? animated.g : 'g';
 
   // Calculate correct offset based on shape (matching Typst positioning)
   const getXOffset = () => {
@@ -1406,8 +1417,34 @@ const Bead: React.FC<BeadProps> = ({
     return size / 2; // Y offset is always size/2 for all shapes
   };
 
+  // Calculate static transform for direction indicator
+  const getDirectionIndicatorTransform = () => {
+    const centerX = shape === "diamond" ? size * 0.7 : size / 2;
+    const centerY = size / 2;
+    const pulse = enableAnimation ? undefined : 1;
+    return `translate(${centerX}, ${centerY}) scale(${pulse})`;
+  };
+
+  // Build style object based on animation mode
+  const beadStyle: any = enableAnimation
+    ? {
+        transform: to(
+          [springX, springY],
+          (sx, sy) =>
+            `translate(${sx - getXOffset()}px, ${sy - getYOffset()}px)`,
+        ),
+        cursor: enableGestures ? "grab" : onClick ? "pointer" : "default",
+        touchAction: "none" as const,
+        transition: "opacity 0.2s ease-in-out",
+      }
+    : {
+        cursor: enableGestures ? "grab" : onClick ? "pointer" : "default",
+        touchAction: "none" as const,
+        transition: "opacity 0.2s ease-in-out",
+      };
+
   return (
-    <AnimatedG
+    <GElement
       ref={onRef}
       {...(enableGestures ? bind() : {})}
       className={`abacus-bead ${bead.active ? "active" : "inactive"} ${hideInactiveBeads && !bead.active ? "hidden-inactive" : ""}`}
@@ -1423,24 +1460,7 @@ const Bead: React.FC<BeadProps> = ({
           ? undefined
           : `translate(${x - getXOffset()}, ${y - getYOffset()})`
       }
-      style={
-        enableAnimation
-          ? {
-              transform: to(
-                [springX, springY],
-                (sx, sy) =>
-                  `translate(${sx - getXOffset()}px, ${sy - getYOffset()}px)`,
-              ),
-              cursor: enableGestures ? "grab" : onClick ? "pointer" : "default",
-              touchAction: "none",
-              transition: "opacity 0.2s ease-in-out",
-            }
-          : {
-              cursor: enableGestures ? "grab" : onClick ? "pointer" : "default",
-              touchAction: "none",
-              transition: "opacity 0.2s ease-in-out",
-            }
-      }
+      style={beadStyle}
       onClick={(e) => {
         // Prevent click if a gesture just triggered to avoid double-toggling
         if (enableGestures && gestureStateRef.current.hasGestureTriggered) {
@@ -1451,17 +1471,21 @@ const Bead: React.FC<BeadProps> = ({
       }} // Enable click with gesture conflict prevention
     >
       {renderShape()}
-      {showDirectionIndicator && direction && (
-        <animated.g
-          className="direction-indicator"
-          style={{ pointerEvents: "none" }}
-          transform={to([arrowPulse], (pulse) => {
-            // Match the exact center coordinates of each shape
-            const centerX = shape === "diamond" ? size * 0.7 : size / 2;
-            const centerY = size / 2;
-            return `translate(${centerX}, ${centerY}) scale(${pulse})`;
-          })}
-        >
+      {showDirectionIndicator && direction && (() => {
+        const indicatorTransform: any = enableAnimation
+          ? to([arrowPulse], (pulse) => {
+              const centerX = shape === "diamond" ? size * 0.7 : size / 2;
+              const centerY = size / 2;
+              return `translate(${centerX}, ${centerY}) scale(${pulse})`;
+            })
+          : getDirectionIndicatorTransform();
+
+        return (
+          <DirectionIndicatorG
+            className="direction-indicator"
+            style={{ pointerEvents: "none" as const }}
+            transform={indicatorTransform}
+          >
           {(() => {
             const arrowColors = getArrowColors(
               bead,
@@ -1493,9 +1517,10 @@ const Bead: React.FC<BeadProps> = ({
               />
             );
           })()}
-        </animated.g>
-      )}
-    </AnimatedG>
+          </DirectionIndicatorG>
+        );
+      })()}
+    </GElement>
   );
 };
 
