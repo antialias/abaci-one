@@ -1,15 +1,8 @@
 {
   "games": {
     "hero": {
-      "title": "🕹️ Soroban Arcade",
-      "subtitle": "Level up your mental math powers in the most fun way possible!",
-      "xpBadge": "+100 XP",
-      "streakBadge": "STREAK!",
-      "features": {
-        "challenge": "🎯 Challenge Your Brain",
-        "speed": "⚡ Build Speed",
-        "achievements": "🏆 Unlock Achievements"
-      }
+      "title": "Soroban Arcade",
+      "subtitle": "Classic strategy games and lightning-fast challenges"
     },
     "enterArcade": {
       "title": "🏟️ Ready for the Arena?",
