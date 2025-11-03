@@ -51,7 +51,10 @@ function generateFavicon(): string {
   )
 
   // Extract just the SVG content (without div wrapper)
-  const svgContent = extractSvgContent(abacusMarkup)
+  let svgContent = extractSvgContent(abacusMarkup)
+
+  // Remove !important from CSS (production code policy)
+  svgContent = svgContent.replace(/\s*!important/g, '')
 
   // Wrap in SVG with proper viewBox for favicon sizing
   // AbacusReact with 1 column + scaleFactor 1.0 = ~25×120px
@@ -116,7 +119,10 @@ function generateOGImage(): string {
   )
 
   // Extract just the SVG content (without div wrapper)
-  const svgContent = extractSvgContent(abacusMarkup)
+  let svgContent = extractSvgContent(abacusMarkup)
+
+  // Remove !important from CSS (production code policy)
+  svgContent = svgContent.replace(/\s*!important/g, '')
 
   return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <!-- Dark background like homepage -->

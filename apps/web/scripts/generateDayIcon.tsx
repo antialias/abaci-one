@@ -33,10 +33,11 @@ const abacusMarkup = renderToStaticMarkup(
   <AbacusReact
     value={day}
     columns={2}
-    scaleFactor={1.0}
+    scaleFactor={1.8}
     animated={false}
     interactive={false}
     showNumbers={false}
+    hideInactiveBeads={true}
     customStyles={{
       columnPosts: {
         fill: '#1c1917',
@@ -64,17 +65,20 @@ const abacusMarkup = renderToStaticMarkup(
   />
 )
 
-const svgContent = extractSvgContent(abacusMarkup)
+let svgContent = extractSvgContent(abacusMarkup)
+
+// Remove !important from CSS (production code policy)
+svgContent = svgContent.replace(/\s*!important/g, '')
 
 // Wrap in SVG with proper viewBox for favicon sizing
-// AbacusReact with 2 columns + scaleFactor 1.0 = ~50×120px
-// Scale 0.7 = ~35×84px, centered in 100×100
+// AbacusReact with 2 columns + scaleFactor 1.8 = ~90×216px
+// Scale 0.48 = ~43×104px (slightly overflows height, but fine for icon)
 const svg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <!-- Background circle with border for definition -->
   <circle cx="50" cy="50" r="48" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
 
   <!-- Abacus showing day ${day.toString().padStart(2, '0')} (US Central Time) -->
-  <g transform="translate(33, 8) scale(0.7)">
+  <g class="hide-inactive-mode" transform="translate(28, -2) scale(0.48)">
     ${svgContent}
   </g>
 </svg>
