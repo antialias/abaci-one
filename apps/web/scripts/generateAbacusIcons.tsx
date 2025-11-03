@@ -12,9 +12,19 @@ import { writeFileSync } from 'fs'
 import { join } from 'path'
 import { AbacusReact } from '@soroban/abacus-react'
 
+// Extract just the SVG element content from rendered output
+function extractSvgContent(markup: string): string {
+  // Find the opening <svg and closing </svg> tags
+  const svgMatch = markup.match(/<svg[^>]*>([\s\S]*?)<\/svg>/)
+  if (!svgMatch) {
+    throw new Error('No SVG element found in rendered output')
+  }
+  return svgMatch[1] // Return just the inner content
+}
+
 // Generate the favicon (icon.svg) - single column showing value 5
 function generateFavicon(): string {
-  const iconSvg = renderToStaticMarkup(
+  const abacusMarkup = renderToStaticMarkup(
     <AbacusReact
       value={5}
       columns={1}
@@ -39,6 +49,9 @@ function generateFavicon(): string {
     />
   )
 
+  // Extract just the SVG content (without div wrapper)
+  const svgContent = extractSvgContent(abacusMarkup)
+
   // Wrap in SVG with proper viewBox for favicon sizing
   return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <!-- Background circle for better visibility -->
@@ -46,7 +59,7 @@ function generateFavicon(): string {
 
   <!-- Abacus from @soroban/abacus-react -->
   <g transform="translate(32, 8) scale(0.36)">
-    ${iconSvg}
+    ${svgContent}
   </g>
 </svg>
 `
@@ -54,7 +67,7 @@ function generateFavicon(): string {
 
 // Generate the Open Graph image (og-image.svg)
 function generateOGImage(): string {
-  const abacusSvg = renderToStaticMarkup(
+  const abacusMarkup = renderToStaticMarkup(
     <AbacusReact
       value={123}
       columns={3}
@@ -79,6 +92,9 @@ function generateOGImage(): string {
     />
   )
 
+  // Extract just the SVG content (without div wrapper)
+  const svgContent = extractSvgContent(abacusMarkup)
+
   return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <!-- Gradient background -->
   <defs>
@@ -93,7 +109,7 @@ function generateOGImage(): string {
 
   <!-- Left side - Abacus from @soroban/abacus-react -->
   <g transform="translate(80, 100) scale(0.9)">
-    ${abacusSvg}
+    ${svgContent}
   </g>
 
   <!-- Right side - Text content -->
