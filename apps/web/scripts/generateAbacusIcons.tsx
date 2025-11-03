@@ -7,6 +7,7 @@
  * SVG output as the interactive client-side version (without animations).
  */
 
+import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
@@ -33,16 +34,16 @@ function generateFavicon(): string {
       interactive={false}
       showNumbers={false}
       customStyles={{
-        heavenBeads: { fill: '#fbbf24' },
-        earthBeads: { fill: '#fbbf24' },
+        heavenBeads: { fill: '#7c2d12', stroke: '#451a03', strokeWidth: 1 },
+        earthBeads: { fill: '#7c2d12', stroke: '#451a03', strokeWidth: 1 },
         columnPosts: {
-          fill: '#7c2d12',
-          stroke: '#92400e',
+          fill: '#451a03',
+          stroke: '#292524',
           strokeWidth: 2,
         },
         reckoningBar: {
-          fill: '#92400e',
-          stroke: '#92400e',
+          fill: '#292524',
+          stroke: '#292524',
           strokeWidth: 3,
         },
       }}
@@ -53,12 +54,14 @@ function generateFavicon(): string {
   const svgContent = extractSvgContent(abacusMarkup)
 
   // Wrap in SVG with proper viewBox for favicon sizing
+  // AbacusReact with 1 column + scaleFactor 1.0 = ~25×120px
+  // Scale 0.7 = ~17.5×84px, centered in 100×100
   return `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <!-- Background circle for better visibility -->
   <circle cx="50" cy="50" r="48" fill="#fef3c7"/>
 
   <!-- Abacus from @soroban/abacus-react -->
-  <g transform="translate(32, 8) scale(0.36)">
+  <g transform="translate(41, 8) scale(0.7)">
     ${svgContent}
   </g>
 </svg>
@@ -69,24 +72,44 @@ function generateFavicon(): string {
 function generateOGImage(): string {
   const abacusMarkup = renderToStaticMarkup(
     <AbacusReact
-      value={123}
-      columns={3}
-      scaleFactor={1.8}
+      value={1234}
+      columns={4}
+      scaleFactor={3.5}
       animated={false}
       interactive={false}
       showNumbers={false}
       customStyles={{
-        heavenBeads: { fill: '#fbbf24' },
-        earthBeads: { fill: '#fbbf24' },
         columnPosts: {
-          fill: '#7c2d12',
-          stroke: '#92400e',
+          fill: 'rgb(255, 255, 255)',
+          stroke: 'rgb(200, 200, 200)',
           strokeWidth: 2,
         },
         reckoningBar: {
-          fill: '#92400e',
-          stroke: '#92400e',
+          fill: 'rgb(255, 255, 255)',
+          stroke: 'rgb(200, 200, 200)',
           strokeWidth: 3,
+        },
+        columns: {
+          0: {
+            // Ones place (rightmost) - Blue
+            heavenBeads: { fill: '#60a5fa', stroke: '#3b82f6', strokeWidth: 1 },
+            earthBeads: { fill: '#60a5fa', stroke: '#3b82f6', strokeWidth: 1 },
+          },
+          1: {
+            // Tens place - Green
+            heavenBeads: { fill: '#4ade80', stroke: '#22c55e', strokeWidth: 1 },
+            earthBeads: { fill: '#4ade80', stroke: '#22c55e', strokeWidth: 1 },
+          },
+          2: {
+            // Hundreds place - Yellow/Gold
+            heavenBeads: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 1 },
+            earthBeads: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 1 },
+          },
+          3: {
+            // Thousands place (leftmost) - Purple
+            heavenBeads: { fill: '#c084fc', stroke: '#a855f7', strokeWidth: 1 },
+            earthBeads: { fill: '#c084fc', stroke: '#a855f7', strokeWidth: 1 },
+          },
         },
       }}
     />
@@ -96,48 +119,79 @@ function generateOGImage(): string {
   const svgContent = extractSvgContent(abacusMarkup)
 
   return `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
-  <!-- Gradient background -->
+  <!-- Dark background like homepage -->
+  <rect width="1200" height="630" fill="#111827"/>
+
+  <!-- Subtle dot pattern background -->
   <defs>
-    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#fef3c7;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#fcd34d;stop-opacity:1" />
-    </linearGradient>
+    <pattern id="dots" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="rgba(255, 255, 255, 0.15)" />
+    </pattern>
   </defs>
+  <rect width="1200" height="630" fill="url(#dots)" opacity="0.1"/>
 
-  <!-- Background -->
-  <rect width="1200" height="630" fill="url(#bg-gradient)"/>
+  <!-- Left decorative elements - Diamond shapes and math operators -->
+  <g opacity="0.4">
+    <!-- Purple diamond (thousands) -->
+    <polygon points="150,120 180,150 150,180 120,150" fill="#c084fc" />
+    <!-- Gold diamond (hundreds) -->
+    <polygon points="150,220 180,250 150,280 120,250" fill="#fbbf24" />
+    <!-- Green diamond (tens) -->
+    <polygon points="150,320 180,350 150,380 120,350" fill="#4ade80" />
+    <!-- Blue diamond (ones) -->
+    <polygon points="150,420 180,450 150,480 120,450" fill="#60a5fa" />
+  </g>
 
-  <!-- Left side - Abacus from @soroban/abacus-react -->
-  <g transform="translate(80, 100) scale(0.9)">
+  <!-- Left math operators -->
+  <g opacity="0.35" fill="rgba(255, 255, 255, 0.8)">
+    <text x="80" y="100" font-family="Arial, sans-serif" font-size="42" font-weight="300">+</text>
+    <text x="240" y="190" font-family="Arial, sans-serif" font-size="42" font-weight="300">×</text>
+    <text x="70" y="290" font-family="Arial, sans-serif" font-size="42" font-weight="300">=</text>
+    <text x="250" y="390" font-family="Arial, sans-serif" font-size="42" font-weight="300">−</text>
+  </g>
+
+  <!-- Right decorative elements - Diamond shapes and math operators -->
+  <g opacity="0.4">
+    <!-- Purple diamond (thousands) -->
+    <polygon points="1050,120 1080,150 1050,180 1020,150" fill="#c084fc" />
+    <!-- Gold diamond (hundreds) -->
+    <polygon points="1050,220 1080,250 1050,280 1020,250" fill="#fbbf24" />
+    <!-- Green diamond (tens) -->
+    <polygon points="1050,320 1080,350 1050,380 1020,350" fill="#4ade80" />
+    <!-- Blue diamond (ones) -->
+    <polygon points="1050,420 1080,450 1050,480 1020,450" fill="#60a5fa" />
+  </g>
+
+  <!-- Right math operators -->
+  <g opacity="0.35" fill="rgba(255, 255, 255, 0.8)">
+    <text x="940" y="160" font-family="Arial, sans-serif" font-size="42" font-weight="300">÷</text>
+    <text x="1110" y="270" font-family="Arial, sans-serif" font-size="42" font-weight="300">+</text>
+    <text x="920" y="360" font-family="Arial, sans-serif" font-size="42" font-weight="300">×</text>
+    <text x="1120" y="480" font-family="Arial, sans-serif" font-size="42" font-weight="300">=</text>
+  </g>
+
+  <!-- Huge centered abacus from @soroban/abacus-react -->
+  <!-- AbacusReact 4 columns @ scale 3.5: width ~350px, height ~420px -->
+  <!-- Center horizontally: (1200-350)/2 = 425px -->
+  <!-- Center vertically in upper portion: abacus middle at ~225px, so start at 225-210 = 15px -->
+  <g transform="translate(425, 15)">
     ${svgContent}
   </g>
 
-  <!-- Right side - Text content -->
-  <g transform="translate(550, 180)">
-    <!-- Main title -->
-    <text x="0" y="0" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#7c2d12">
-      Abaci.One
-    </text>
+  <!-- Title at bottom, horizontally and vertically centered in lower portion -->
+  <!-- Position at y=520 for vertical centering in bottom half -->
+  <text x="600" y="520" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="url(#title-gradient)" text-anchor="middle">
+    Abaci One
+  </text>
 
-    <!-- Subtitle -->
-    <text x="0" y="80" font-family="Arial, sans-serif" font-size="36" font-weight="600" fill="#92400e">
-      Learn Soroban Through Play
-    </text>
-
-    <!-- Features -->
-    <text x="0" y="150" font-family="Arial, sans-serif" font-size="28" fill="#78350f">
-      • Interactive Games
-    </text>
-    <text x="0" y="190" font-family="Arial, sans-serif" font-size="28" fill="#78350f">
-      • Tutorials
-    </text>
-    <text x="0" y="230" font-family="Arial, sans-serif" font-size="28" fill="#78350f">
-      • Practice Tools
-    </text>
-  </g>
-
-  <!-- Bottom accent line -->
-  <rect x="0" y="610" width="1200" height="20" fill="#92400e" opacity="0.3"/>
+  <!-- Gold gradient for title -->
+  <defs>
+    <linearGradient id="title-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fbbf24;stop-opacity:1" />
+    </linearGradient>
+  </defs>
 </svg>
 `
 }
