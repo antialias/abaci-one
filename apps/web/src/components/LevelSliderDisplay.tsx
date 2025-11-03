@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSpring, useTransition, animated } from '@react-spring/web'
 import * as Slider from '@radix-ui/react-slider'
-import { AbacusReact, StandaloneBead } from '@soroban/abacus-react'
+import { AbacusReact, StandaloneBead, ABACUS_THEMES } from '@soroban/abacus-react'
 import { css } from '../../styled-system/css'
 import { stack } from '../../styled-system/patterns'
 import { kyuLevelDetails } from '@/data/kyuLevelDetails'
@@ -260,19 +260,8 @@ function parseKyuDetails(rawText: string) {
   return sections
 }
 
-// Dark theme styles matching the homepage
-const darkStyles = {
-  columnPosts: {
-    fill: 'rgba(255, 255, 255, 0.3)',
-    stroke: 'rgba(255, 255, 255, 0.2)',
-    strokeWidth: 2,
-  },
-  reckoningBar: {
-    fill: 'rgba(255, 255, 255, 0.4)',
-    stroke: 'rgba(255, 255, 255, 0.25)',
-    strokeWidth: 3,
-  },
-}
+// Use dark theme preset from abacus-react instead of manual definition
+const darkStyles = ABACUS_THEMES.dark
 
 interface LevelSliderDisplayProps {
   initialIndex?: number

@@ -2,7 +2,7 @@
 
 import { useContext, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+import { AbacusReact, useAbacusConfig, ABACUS_THEMES } from '@soroban/abacus-react'
 import { css } from '../../styled-system/css'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { HomeHeroContext } from '@/contexts/HomeHeroContext'
@@ -56,33 +56,9 @@ export function MyAbacus() {
     }
   }, [isOpen])
 
-  // Hero mode styles - white structural (from original HeroAbacus)
-  const structuralStyles = {
-    columnPosts: {
-      fill: 'rgb(255, 255, 255)',
-      stroke: 'rgb(200, 200, 200)',
-      strokeWidth: 2,
-    },
-    reckoningBar: {
-      fill: 'rgb(255, 255, 255)',
-      stroke: 'rgb(200, 200, 200)',
-      strokeWidth: 3,
-    },
-  }
-
-  // Trophy abacus styles - golden/premium look
-  const trophyStyles = {
-    columnPosts: {
-      fill: '#fbbf24',
-      stroke: '#f59e0b',
-      strokeWidth: 3,
-    },
-    reckoningBar: {
-      fill: '#fbbf24',
-      stroke: '#f59e0b',
-      strokeWidth: 4,
-    },
-  }
+  // Use theme presets from abacus-react instead of manual definitions
+  const structuralStyles = ABACUS_THEMES.light
+  const trophyStyles = ABACUS_THEMES.trophy
 
   return (
     <>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
+import { AbacusReact, useAbacusConfig, ABACUS_THEMES } from '@soroban/abacus-react'
 import { css } from '../../styled-system/css'
 import { useHomeHero } from '../contexts/HomeHeroContext'
 
@@ -17,19 +17,8 @@ export function HeroAbacus() {
   const appConfig = useAbacusConfig()
   const heroRef = useRef<HTMLDivElement>(null)
 
-  // Styling for structural elements (solid, no translucency)
-  const structuralStyles = {
-    columnPosts: {
-      fill: 'rgb(255, 255, 255)',
-      stroke: 'rgb(200, 200, 200)',
-      strokeWidth: 2,
-    },
-    reckoningBar: {
-      fill: 'rgb(255, 255, 255)',
-      stroke: 'rgb(200, 200, 200)',
-      strokeWidth: 3,
-    },
-  }
+  // Use theme preset from abacus-react instead of manual definition
+  const structuralStyles = ABACUS_THEMES.light
 
   // Detect when hero scrolls out of view
   useEffect(() => {
