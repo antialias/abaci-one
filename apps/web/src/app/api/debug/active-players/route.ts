@@ -4,6 +4,9 @@ import { getActivePlayers } from '@/lib/arcade/player-manager'
 import { db, schema } from '@/db'
 import { eq } from 'drizzle-orm'
 
+// Force dynamic rendering - this route uses headers()
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/debug/active-players
  * Debug endpoint to check active players for current user

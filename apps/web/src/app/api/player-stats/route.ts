@@ -7,6 +7,9 @@ import { players } from '@/db/schema/players'
 import type { GetAllPlayerStatsResponse, PlayerStatsData } from '@/lib/arcade/stats/types'
 import { getViewerId } from '@/lib/viewer'
 
+// Force dynamic rendering - this route uses headers()
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/player-stats
  *

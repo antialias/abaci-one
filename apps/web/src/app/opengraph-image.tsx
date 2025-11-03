@@ -4,6 +4,7 @@ import { join } from 'path'
 
 // Route segment config
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 // Image metadata
 export const alt = 'Abaci.One - Interactive Soroban Learning Platform'
