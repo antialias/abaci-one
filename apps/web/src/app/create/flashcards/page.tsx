@@ -8,8 +8,8 @@ import { GenerationProgress } from '@/components/GenerationProgress'
 import { LivePreview } from '@/components/LivePreview'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StyleControls } from '@/components/StyleControls'
-import { css } from '../../../styled-system/css'
-import { container, grid, hstack, stack } from '../../../styled-system/patterns'
+import { css } from '../../../../styled-system/css'
+import { container, grid, hstack, stack } from '../../../../styled-system/patterns'
 
 // Complete, validated configuration ready for generation
 export interface FlashcardConfig {
