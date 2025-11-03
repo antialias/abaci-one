@@ -31,21 +31,6 @@ export function MyAbacus() {
   const isHeroVisible = homeHeroContext?.isHeroVisible ?? false
   const isHeroMode = isOnHomePage && isHeroVisible && !isOpen
 
-  // Track scroll position for hero mode
-  const [scrollY, setScrollY] = useState(0)
-
-  useEffect(() => {
-    if (!isHeroMode) return
-
-    const handleScroll = () => {
-      setScrollY(window.scrollY)
-    }
-
-    handleScroll() // Initial position
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [isHeroMode])
-
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return
@@ -162,36 +147,28 @@ export function MyAbacus() {
         data-component="my-abacus"
         data-mode={isOpen ? 'open' : isHeroMode ? 'hero' : 'button'}
         onClick={isOpen || isHeroMode ? undefined : toggle}
-        style={
-          isHeroMode
-            ? {
-                // Hero mode: position accounts for scroll to flow with page (subtract scroll to move up with content)
-                // Positioned lower (60vh instead of 50vh) to avoid covering subtitle
-                top: `calc(60vh - ${scrollY}px)`,
-              }
-            : undefined
-        }
         className={css({
-          position: 'fixed',
+          position: isHeroMode ? 'absolute' : 'fixed',
           zIndex: Z_INDEX.MY_ABACUS,
           cursor: isOpen || isHeroMode ? 'default' : 'pointer',
-          transition: isHeroMode ? 'none' : 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-          // Three modes: hero (inline with content), button (bottom-right), open (center)
+          transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+          // Three modes: hero (absolute - scrolls with document), button (fixed), open (fixed)
           ...(isOpen
             ? {
-                // Open mode: center of screen
+                // Open mode: fixed to center of viewport
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
               }
             : isHeroMode
               ? {
-                  // Hero mode: centered horizontally, top handled by inline style
+                  // Hero mode: absolute positioning - scrolls naturally with document
+                  top: '60vh',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
                 }
               : {
-                  // Button mode: bottom-right corner
+                  // Button mode: fixed to bottom-right corner
                   bottom: { base: '4', md: '6' },
                   right: { base: '4', md: '6' },
                   transform: 'translate(0, 0)',
