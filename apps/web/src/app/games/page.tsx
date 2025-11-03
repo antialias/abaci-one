@@ -66,6 +66,31 @@ function GamesPageContent() {
     }
   }, [gamesEmblaApi, onGamesSelect])
 
+  // Enable horizontal scrolling with mouse wheel for games carousel
+  useEffect(() => {
+    if (!gamesEmblaApi) return
+    const containerNode = gamesEmblaApi.rootNode()
+    if (!containerNode) return
+
+    const handleWheel = (event: WheelEvent) => {
+      // Only handle horizontal scroll or shift+vertical scroll
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.shiftKey) {
+        event.preventDefault()
+        const delta = event.shiftKey ? event.deltaY : event.deltaX
+
+        // Scroll the carousel based on wheel delta
+        if (delta > 0) {
+          gamesEmblaApi.scrollNext()
+        } else {
+          gamesEmblaApi.scrollPrev()
+        }
+      }
+    }
+
+    containerNode.addEventListener('wheel', handleWheel, { passive: false })
+    return () => containerNode.removeEventListener('wheel', handleWheel)
+  }, [gamesEmblaApi])
+
   // Player carousel callbacks
   const onSelect = useCallback(() => {
     if (!emblaApi) return
@@ -83,6 +108,31 @@ function GamesPageContent() {
       emblaApi.off('reInit', onSelect)
     }
   }, [emblaApi, onSelect])
+
+  // Enable horizontal scrolling with mouse wheel for player carousel
+  useEffect(() => {
+    if (!emblaApi) return
+    const containerNode = emblaApi.rootNode()
+    if (!containerNode) return
+
+    const handleWheel = (event: WheelEvent) => {
+      // Only handle horizontal scroll or shift+vertical scroll
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.shiftKey) {
+        event.preventDefault()
+        const delta = event.shiftKey ? event.deltaY : event.deltaX
+
+        // Scroll the carousel based on wheel delta
+        if (delta > 0) {
+          emblaApi.scrollNext()
+        } else {
+          emblaApi.scrollPrev()
+        }
+      }
+    }
+
+    containerNode.addEventListener('wheel', handleWheel, { passive: false })
+    return () => containerNode.removeEventListener('wheel', handleWheel)
+  }, [emblaApi])
 
   return (
     <div
