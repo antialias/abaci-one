@@ -270,6 +270,10 @@ export interface AbacusConfig {
   soundEnabled?: boolean;
   soundVolume?: number;
 
+  // Layout & Frame
+  frameVisible?: boolean; // Show/hide column posts and reckoning bar
+  compact?: boolean; // Compact layout for inline display (implies frameVisible=false, optimized spacing)
+
   // 3D Enhancement
   enhanced3d?: boolean | "subtle" | "realistic";
   material3d?: Abacus3DMaterial;
@@ -281,6 +285,7 @@ export interface AbacusConfig {
 
   // Tutorial and accessibility features
   highlightColumns?: number[]; // Highlight specific columns (legacy - array indices)
+  columnLabels?: string[]; // Optional labels for columns (indexed by column index, left to right)
   highlightBeads?: BeadHighlight[]; // Support both place-value and column-index based highlighting
   stepBeadHighlights?: StepBeadHighlight[]; // Progressive step-based highlighting with directions
   currentStep?: number; // Current step index for progressive highlighting
@@ -1581,6 +1586,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   showNumbers,
   soundEnabled,
   soundVolume,
+  // Layout & Frame props
+  frameVisible,
+  compact,
   // 3D enhancement props
   enhanced3d,
   material3d,
@@ -1589,6 +1597,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   callbacks,
   overlays = [],
   highlightColumns = [],
+  columnLabels = [],
   highlightBeads = [],
   stepBeadHighlights = [],
   currentStep = 0,
@@ -1609,6 +1618,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   }
 
   // Use props if provided, otherwise fall back to context config
+  // Apply compact preset logic
+  const effectiveFrameVisible = compact ? false : (frameVisible ?? true);
+
   const finalConfig = {
     hideInactiveBeads: hideInactiveBeads ?? contextConfig.hideInactiveBeads,
     beadShape: beadShape ?? contextConfig.beadShape,
@@ -1621,6 +1633,8 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     showNumbers: showNumbers ?? contextConfig.showNumbers,
     soundEnabled: soundEnabled ?? contextConfig.soundEnabled,
     soundVolume: soundVolume ?? contextConfig.soundVolume,
+    frameVisible: effectiveFrameVisible,
+    compact: compact ?? false,
   };
   // Calculate effective columns first, without depending on columnStates
   const effectiveColumns = useMemo(() => {
@@ -2167,8 +2181,55 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
           );
         })}
 
+        {/* Column highlights - rendered behind everything for tutorial/educational purposes */}
+        {highlightColumns.map((colIndex) => {
+          if (colIndex < 0 || colIndex >= effectiveColumns) return null;
+
+          const x = colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
+          const highlightWidth = dimensions.rodSpacing * 0.9; // Slightly narrower than full column
+          const highlightHeight = dimensions.height;
+
+          return (
+            <rect
+              key={`column-highlight-${colIndex}`}
+              x={x - highlightWidth / 2}
+              y={0}
+              width={highlightWidth}
+              height={highlightHeight}
+              fill="rgba(59, 130, 246, 0.15)" // Light blue highlight
+              stroke="rgba(59, 130, 246, 0.4)" // Slightly darker blue border
+              strokeWidth={2}
+              rx={6}
+              style={{ pointerEvents: "none" }}
+            />
+          );
+        })}
+
+        {/* Column labels - rendered above columns for tutorial/educational purposes */}
+        {columnLabels.map((label, colIndex) => {
+          if (!label || colIndex >= effectiveColumns) return null;
+
+          const x = colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
+          const labelY = -20; // Position above the abacus
+
+          return (
+            <text
+              key={`column-label-${colIndex}`}
+              x={x}
+              y={labelY}
+              textAnchor="middle"
+              fontSize="14"
+              fontWeight="600"
+              fill="rgba(0, 0, 0, 0.7)"
+              style={{ pointerEvents: "none", userSelect: "none" }}
+            >
+              {label}
+            </text>
+          );
+        })}
+
         {/* Rods - positioned as rectangles like in Typst */}
-        {Array.from({ length: effectiveColumns }, (_, colIndex) => {
+        {finalConfig.frameVisible && Array.from({ length: effectiveColumns }, (_, colIndex) => {
           const placeValue = effectiveColumns - 1 - colIndex;
           const x =
             colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
@@ -2229,32 +2290,36 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         })}
 
         {/* Reckoning bar - spans from leftmost to rightmost bead */}
-        <rect
-          x={dimensions.rodSpacing / 2 - dimensions.beadSize / 2}
-          y={barY}
-          width={
-            (effectiveColumns - 1) * dimensions.rodSpacing + dimensions.beadSize
-          }
-          height={dimensions.barThickness}
-          fill={customStyles?.reckoningBar?.fill || "black"} // Typst default is black
-          stroke={customStyles?.reckoningBar?.stroke || "none"}
-          strokeWidth={customStyles?.reckoningBar?.strokeWidth ?? 0}
-          opacity={customStyles?.reckoningBar?.opacity ?? 1}
-          className="reckoning-bar"
-        />
-        {/* Wood grain texture overlay for reckoning bar */}
-        {enhanced3d === 'realistic' && material3d?.woodGrain && (
-          <rect
-            x={dimensions.rodSpacing / 2 - dimensions.beadSize / 2}
-            y={barY}
-            width={
-              (effectiveColumns - 1) * dimensions.rodSpacing + dimensions.beadSize
-            }
-            height={dimensions.barThickness}
-            fill="url(#wood-grain-pattern)"
-            className="frame-wood"
-            style={{ pointerEvents: 'none' }}
-          />
+        {finalConfig.frameVisible && (
+          <>
+            <rect
+              x={dimensions.rodSpacing / 2 - dimensions.beadSize / 2}
+              y={barY}
+              width={
+                (effectiveColumns - 1) * dimensions.rodSpacing + dimensions.beadSize
+              }
+              height={dimensions.barThickness}
+              fill={customStyles?.reckoningBar?.fill || "black"} // Typst default is black
+              stroke={customStyles?.reckoningBar?.stroke || "none"}
+              strokeWidth={customStyles?.reckoningBar?.strokeWidth ?? 0}
+              opacity={customStyles?.reckoningBar?.opacity ?? 1}
+              className="reckoning-bar"
+            />
+            {/* Wood grain texture overlay for reckoning bar */}
+            {enhanced3d === 'realistic' && material3d?.woodGrain && (
+              <rect
+                x={dimensions.rodSpacing / 2 - dimensions.beadSize / 2}
+                y={barY}
+                width={
+                  (effectiveColumns - 1) * dimensions.rodSpacing + dimensions.beadSize
+                }
+                height={dimensions.barThickness}
+                fill="url(#wood-grain-pattern)"
+                className="frame-wood"
+                style={{ pointerEvents: 'none' }}
+              />
+            )}
+          </>
         )}
 
         {/* Beads */}
