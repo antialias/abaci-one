@@ -567,7 +567,6 @@ function MinimalNav({
 export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const isGamePage = pathname?.startsWith('/games')
   const isArcadePage = pathname?.startsWith('/arcade')
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
 
@@ -583,7 +582,8 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const showBranding = !homeHero || !homeHero.isHeroVisible
 
   // Auto-detect variant based on context
-  const actualVariant = variant === 'full' && (isGamePage || isArcadePage) ? 'minimal' : variant
+  // Only arcade pages (not /games) should use minimal nav
+  const actualVariant = variant === 'full' && isArcadePage ? 'minimal' : variant
 
   // Mini nav for games/arcade (both fullscreen and non-fullscreen)
   if (actualVariant === 'minimal') {
