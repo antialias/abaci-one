@@ -95,7 +95,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN mkdir -p /bosl2 && \
     cd /bosl2 && \
-    git clone --depth 1 --branch v2.0.0 https://github.com/BelfrySCAD/BOSL2.git . && \
+    git clone --depth 1 https://github.com/BelfrySCAD/BOSL2.git . && \
     # Remove unnecessary files to minimize size
     rm -rf .git .github tests tutorials examples images *.md CONTRIBUTING* LICENSE* && \
     # Keep only .scad files and essential directories
