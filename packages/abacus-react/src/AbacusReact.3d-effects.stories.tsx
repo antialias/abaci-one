@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { AbacusReact } from './AbacusReact';
-import React, { useEffect, useRef } from 'react';
-import './Abacus3D.css';
+import React from 'react';
 
 const meta: Meta<typeof AbacusReact> = {
   title: 'Soroban/3D Effects Showcase',
@@ -23,19 +22,17 @@ Three levels of progressive 3D enhancement for the abacus to make interactions f
 
 ## Proposal 2: Realistic (Lighting + Materials)
 - Everything from Proposal 1 +
-- Realistic lighting effects
-- Material-based bead rendering (glossy/satin/matte)
-- Ambient occlusion
-- Frame depth
+- Realistic lighting effects with material gradients
+- Glossy/Satin/Matte bead materials
+- Wood grain textures on frame
+- Enhanced physics for realistic motion
 
 ## Proposal 3: Delightful (Physics + Micro-interactions)
 - Everything from Proposal 2 +
 - Enhanced physics with satisfying bounce
-- Clack ripple effects when beads snap
-- Hover parallax
+- Wobble rotation during movement
+- Hover parallax with Z-depth lift
 - Maximum satisfaction
-
-**Note:** Currently these are CSS-only demos. Full integration with React Spring physics coming next!
         `
       }
     }
@@ -46,596 +43,559 @@ Three levels of progressive 3D enhancement for the abacus to make interactions f
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Wrapper component to apply 3D CSS classes
-const Wrapper3D: React.FC<{
-  children: React.ReactNode;
-  level: 'subtle' | 'realistic' | 'delightful';
-  lighting?: 'top-down' | 'ambient' | 'dramatic';
-}> = ({ children, level, lighting }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (containerRef.current) {
-      const svg = containerRef.current.querySelector('.abacus-svg');
-      const beads = containerRef.current.querySelectorAll('.abacus-bead');
-
-      // Add classes to container
-      containerRef.current.classList.add('abacus-3d-container');
-      containerRef.current.classList.add(`enhanced-${level}`);
-      if (lighting) {
-        containerRef.current.classList.add(`lighting-${lighting}`);
-      }
-
-      // Apply will-change for performance
-      if (level === 'delightful') {
-        beads.forEach(bead => {
-          (bead as HTMLElement).style.willChange = 'transform, filter';
-        });
-      }
-    }
-  }, [level, lighting]);
-
-  return <div ref={containerRef}>{children}</div>;
-};
-
 // ============================================
-// PROPOSAL 1: SUBTLE
+// SIDE-BY-SIDE COMPARISON
 // ============================================
 
-export const Subtle_Static: Story = {
-  name: '1. Subtle - Static Display',
+export const CompareAllLevels: Story = {
+  name: '🎯 Compare All Levels',
   render: () => (
-    <Wrapper3D level="subtle">
-      <AbacusReact
-        value={12345}
-        columns={5}
-        showNumbers
-        colorScheme="place-value"
-        scaleFactor={1.2}
-      />
-    </Wrapper3D>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Subtle 3D with light perspective tilt and depth shadows. Notice the slight elevation of active beads.'
-      }
-    }
-  }
-};
-
-export const Subtle_Interactive: Story = {
-  name: '1. Subtle - Interactive',
-  render: () => (
-    <Wrapper3D level="subtle">
-      <AbacusReact
-        value={678}
-        columns={3}
-        showNumbers
-        interactive
-        animated
-        soundEnabled
-        colorScheme="heaven-earth"
-        scaleFactor={1.2}
-      />
-    </Wrapper3D>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Subtle 3D + interaction. Click beads to see depth shadows change. Notice how the perspective gives a sense of physicality.'
-      }
-    }
-  }
-};
-
-export const Subtle_Tutorial: Story = {
-  name: '1. Subtle - Tutorial Mode',
-  render: () => {
-    const [step, setStep] = React.useState(0);
-    const highlights = [
-      { placeValue: 0, beadType: 'earth' as const, position: 2 },
-      { placeValue: 1, beadType: 'heaven' as const },
-      { placeValue: 2, beadType: 'earth' as const, position: 0 },
-    ];
-
-    return (
-      <div style={{ textAlign: 'center' }}>
-        <Wrapper3D level="subtle">
-          <AbacusReact
-            value={123}
-            columns={3}
-            showNumbers
-            interactive
-            animated
-            highlightBeads={[highlights[step]]}
-            colorScheme="place-value"
-            scaleFactor={1.2}
-          />
-        </Wrapper3D>
-        <div style={{ marginTop: '20px' }}>
-          <button onClick={() => setStep((step + 1) % 3)} style={{ padding: '8px 16px' }}>
-            Next Step ({step + 1}/3)
-          </button>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '60px', alignItems: 'center' }}>
+      <div>
+        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>No Enhancement</h3>
+        <AbacusReact
+          value={4242}
+          columns={4}
+          showNumbers
+          interactive
+          animated
+          colorScheme="place-value"
+          scaleFactor={1.2}
+        />
       </div>
-    );
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'Tutorial mode with subtle 3D effects. The depth helps highlight which bead to focus on.'
-      }
-    }
-  }
-};
 
-// ============================================
-// PROPOSAL 2: REALISTIC
-// ============================================
-
-export const Realistic_TopDown: Story = {
-  name: '2. Realistic - Top-Down Lighting',
-  render: () => (
-    <Wrapper3D level="realistic" lighting="top-down">
-      <AbacusReact
-        value={24680}
-        columns={5}
-        showNumbers
-        colorScheme="place-value"
-        beadShape="circle"
-        scaleFactor={1.2}
-      />
-    </Wrapper3D>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Realistic 3D with top-down lighting. Notice the enhanced shadows and sense of illumination from above.'
-      }
-    }
-  }
-};
-
-export const Realistic_Ambient: Story = {
-  name: '2. Realistic - Ambient Lighting',
-  render: () => (
-    <Wrapper3D level="realistic" lighting="ambient">
-      <AbacusReact
-        value={13579}
-        columns={5}
-        showNumbers
-        colorScheme="place-value"
-        beadShape="diamond"
-        scaleFactor={1.2}
-      />
-    </Wrapper3D>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Realistic 3D with ambient lighting. Softer, more even illumination creates a cozy feel.'
-      }
-    }
-  }
-};
-
-export const Realistic_Dramatic: Story = {
-  name: '2. Realistic - Dramatic Lighting',
-  render: () => (
-    <Wrapper3D level="realistic" lighting="dramatic">
-      <AbacusReact
-        value={99999}
-        columns={5}
-        showNumbers
-        colorScheme="heaven-earth"
-        beadShape="square"
-        colorPalette="colorblind"
-        scaleFactor={1.2}
-      />
-    </Wrapper3D>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Realistic 3D with dramatic lighting. Strong directional light creates bold shadows and depth.'
-      }
-    }
-  }
-};
-
-export const Realistic_Interactive: Story = {
-  name: '2. Realistic - Interactive',
-  render: () => (
-    <Wrapper3D level="realistic" lighting="top-down">
-      <AbacusReact
-        value={555}
-        columns={3}
-        showNumbers
-        interactive
-        animated
-        soundEnabled
-        colorScheme="place-value"
-        colorPalette="nature"
-        scaleFactor={1.3}
-      />
-    </Wrapper3D>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Realistic 3D + interaction. Click beads and watch the enhanced shadows and lighting respond. Feel that satisfaction!'
-      }
-    }
-  }
-};
-
-export const Realistic_AllShapes: Story = {
-  name: '2. Realistic - All Bead Shapes',
-  render: () => (
-    <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center' }}>
-        <Wrapper3D level="realistic" lighting="top-down">
-          <AbacusReact
-            value={777}
-            columns={3}
-            showNumbers
-            beadShape="diamond"
-            colorScheme="place-value"
-          />
-        </Wrapper3D>
-        <p style={{ marginTop: '12px', fontSize: '14px' }}>Diamond</p>
+      <div>
+        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Proposal 1: Subtle</h3>
+        <AbacusReact
+          value={4242}
+          columns={4}
+          showNumbers
+          interactive
+          animated
+          colorScheme="place-value"
+          scaleFactor={1.2}
+          enhanced3d="subtle"
+        />
       </div>
-      <div style={{ textAlign: 'center' }}>
-        <Wrapper3D level="realistic" lighting="top-down">
-          <AbacusReact
-            value={777}
-            columns={3}
-            showNumbers
-            beadShape="circle"
-            colorScheme="place-value"
-          />
-        </Wrapper3D>
-        <p style={{ marginTop: '12px', fontSize: '14px' }}>Circle</p>
+
+      <div>
+        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Proposal 2: Realistic (Satin Beads + Wood Frame)</h3>
+        <AbacusReact
+          value={4242}
+          columns={4}
+          showNumbers
+          interactive
+          animated
+          colorScheme="place-value"
+          scaleFactor={1.2}
+          enhanced3d="realistic"
+          material3d={{
+            heavenBeads: 'satin',
+            earthBeads: 'satin',
+            lighting: 'top-down',
+            woodGrain: true
+          }}
+        />
       </div>
-      <div style={{ textAlign: 'center' }}>
-        <Wrapper3D level="realistic" lighting="top-down">
-          <AbacusReact
-            value={777}
-            columns={3}
-            showNumbers
-            beadShape="square"
-            colorScheme="place-value"
-          />
-        </Wrapper3D>
-        <p style={{ marginTop: '12px', fontSize: '14px' }}>Square</p>
+
+      <div>
+        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Proposal 3: Delightful (Glossy + Wobble + Parallax)</h3>
+        <AbacusReact
+          value={4242}
+          columns={4}
+          showNumbers
+          interactive
+          animated
+          colorScheme="place-value"
+          scaleFactor={1.2}
+          enhanced3d="delightful"
+          material3d={{
+            heavenBeads: 'glossy',
+            earthBeads: 'glossy',
+            lighting: 'dramatic',
+            woodGrain: true
+          }}
+          physics3d={{
+            wobble: true,
+            hoverParallax: true
+          }}
+        />
       </div>
     </div>
   ),
   parameters: {
     docs: {
       description: {
-        story: 'Realistic 3D works beautifully with all three bead shapes.'
+        story: 'Side-by-side comparison of all three enhancement levels. **Click beads** to see how they move! **Hover over the Delightful version** to see parallax effect.'
       }
     }
   }
 };
 
 // ============================================
-// PROPOSAL 3: DELIGHTFUL
+// PROPOSAL 1: SUBTLE
 // ============================================
 
-export const Delightful_Static: Story = {
-  name: '3. Delightful - Maximum Depth',
-  render: () => (
-    <Wrapper3D level="delightful">
-      <AbacusReact
-        value={11111}
-        columns={5}
-        showNumbers
-        colorScheme="alternating"
-        beadShape="circle"
-        colorPalette="mnemonic"
-        scaleFactor={1.2}
-      />
-    </Wrapper3D>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Delightful 3D with maximum depth and richness. The beads really pop off the page!'
-      }
-    }
-  }
-};
-
-export const Delightful_Interactive: Story = {
-  name: '3. Delightful - Interactive (Physics Ready)',
-  render: () => (
-    <Wrapper3D level="delightful">
-      <AbacusReact
-        value={987}
-        columns={3}
-        showNumbers
-        interactive
-        animated
-        soundEnabled
-        colorScheme="place-value"
-        scaleFactor={1.3}
-      />
-    </Wrapper3D>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Delightful 3D + interaction. This is the CSS foundation - physics effects (wobble, clack ripple) will be added in the next iteration. Already feels great!'
-      }
-    }
-  }
-};
-
-export const Delightful_LargeScale: Story = {
-  name: '3. Delightful - Large Scale',
-  render: () => (
-    <Wrapper3D level="delightful">
-      <AbacusReact
-        value={9876543210}
-        columns={10}
-        showNumbers
-        colorScheme="place-value"
-        scaleFactor={1}
-      />
-    </Wrapper3D>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: 'Delightful 3D scales beautifully even with many columns. The depth hierarchy helps organize the visual.'
-      }
-    }
-  }
-};
-
-// ============================================
-// COMPARISON VIEWS
-// ============================================
-
-export const CompareAllLevels: Story = {
-  name: 'Compare All Three Levels',
-  render: () => {
-    const value = 4242;
-    const columns = 4;
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '60px', padding: '20px' }}>
-        {/* No 3D */}
-        <div style={{ textAlign: 'center' }}>
-          <h3 style={{ fontSize: '16px', marginBottom: '20px', color: '#666' }}>
-            No Enhancement (Current)
-          </h3>
-          <AbacusReact
-            value={value}
-            columns={columns}
-            showNumbers
-            colorScheme="place-value"
-            scaleFactor={1.2}
-          />
-        </div>
-
-        {/* Subtle */}
-        <div style={{ textAlign: 'center' }}>
-          <h3 style={{ fontSize: '16px', marginBottom: '20px', color: '#666' }}>
-            Proposal 1: Subtle 😊
-          </h3>
-          <Wrapper3D level="subtle">
-            <AbacusReact
-              value={value}
-              columns={columns}
-              showNumbers
-              colorScheme="place-value"
-              scaleFactor={1.2}
-            />
-          </Wrapper3D>
-          <p style={{ fontSize: '12px', color: '#888', marginTop: '12px' }}>
-            Light tilt + depth shadows
-          </p>
-        </div>
-
-        {/* Realistic */}
-        <div style={{ textAlign: 'center' }}>
-          <h3 style={{ fontSize: '16px', marginBottom: '20px', color: '#666' }}>
-            Proposal 2: Realistic 😍
-          </h3>
-          <Wrapper3D level="realistic" lighting="top-down">
-            <AbacusReact
-              value={value}
-              columns={columns}
-              showNumbers
-              colorScheme="place-value"
-              scaleFactor={1.2}
-            />
-          </Wrapper3D>
-          <p style={{ fontSize: '12px', color: '#888', marginTop: '12px' }}>
-            Lighting + materials + ambient occlusion
-          </p>
-        </div>
-
-        {/* Delightful */}
-        <div style={{ textAlign: 'center' }}>
-          <h3 style={{ fontSize: '16px', marginBottom: '20px', color: '#666' }}>
-            Proposal 3: Delightful 🤩
-          </h3>
-          <Wrapper3D level="delightful">
-            <AbacusReact
-              value={value}
-              columns={columns}
-              showNumbers
-              colorScheme="place-value"
-              scaleFactor={1.2}
-            />
-          </Wrapper3D>
-          <p style={{ fontSize: '12px', color: '#888', marginTop: '12px' }}>
-            Maximum depth + enhanced lighting (physics effects coming next!)
-          </p>
-        </div>
-      </div>
-    );
+export const Subtle_Basic: Story = {
+  name: '1️⃣ Subtle - Basic',
+  args: {
+    value: 12345,
+    columns: 5,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    colorScheme: 'place-value',
+    scaleFactor: 1.2,
+    enhanced3d: 'subtle'
   },
   parameters: {
     docs: {
       description: {
-        story: 'Side-by-side comparison of all three enhancement levels. Which feels best to you?'
+        story: 'Subtle 3D with light perspective tilt and depth shadows. Click beads to interact!'
       }
     }
   }
 };
 
-export const CompareInteractive: Story = {
-  name: 'Compare Interactive (Side-by-Side)',
-  render: () => {
-    const [value1, setValue1] = React.useState(123);
-    const [value2, setValue2] = React.useState(456);
-    const [value3, setValue3] = React.useState(789);
+// ============================================
+// PROPOSAL 2: REALISTIC (Materials)
+// ============================================
 
-    return (
-      <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <h4 style={{ fontSize: '14px', marginBottom: '12px' }}>Subtle</h4>
-          <Wrapper3D level="subtle">
-            <AbacusReact
-              value={value1}
-              onValueChange={(v) => setValue1(Number(v))}
-              columns={3}
-              showNumbers
-              interactive
-              animated
-              colorScheme="place-value"
-            />
-          </Wrapper3D>
-        </div>
-
-        <div style={{ textAlign: 'center' }}>
-          <h4 style={{ fontSize: '14px', marginBottom: '12px' }}>Realistic</h4>
-          <Wrapper3D level="realistic" lighting="top-down">
-            <AbacusReact
-              value={value2}
-              onValueChange={(v) => setValue2(Number(v))}
-              columns={3}
-              showNumbers
-              interactive
-              animated
-              colorScheme="place-value"
-            />
-          </Wrapper3D>
-        </div>
-
-        <div style={{ textAlign: 'center' }}>
-          <h4 style={{ fontSize: '14px', marginBottom: '12px' }}>Delightful</h4>
-          <Wrapper3D level="delightful">
-            <AbacusReact
-              value={value3}
-              onValueChange={(v) => setValue3(Number(v))}
-              columns={3}
-              showNumbers
-              interactive
-              animated
-              colorScheme="place-value"
-            />
-          </Wrapper3D>
-        </div>
-      </div>
-    );
+export const Realistic_GlossyBeads: Story = {
+  name: '2️⃣ Realistic - Glossy Beads',
+  args: {
+    value: 7890,
+    columns: 4,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    colorScheme: 'heaven-earth',
+    scaleFactor: 1.3,
+    enhanced3d: 'realistic',
+    material3d: {
+      heavenBeads: 'glossy',
+      earthBeads: 'glossy',
+      lighting: 'top-down'
+    }
   },
   parameters: {
     docs: {
       description: {
-        story: 'Try all three side-by-side! Click beads and feel the difference in satisfaction.'
+        story: '**Glossy material** with high shine and strong highlights. Notice the radial gradients on the beads!'
+      }
+    }
+  }
+};
+
+export const Realistic_SatinBeads: Story = {
+  name: '2️⃣ Realistic - Satin Beads',
+  args: {
+    value: 7890,
+    columns: 4,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    colorScheme: 'heaven-earth',
+    scaleFactor: 1.3,
+    enhanced3d: 'realistic',
+    material3d: {
+      heavenBeads: 'satin',
+      earthBeads: 'satin',
+      lighting: 'top-down'
+    }
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '**Satin material** (default) with balanced shine. Medium highlights, smooth appearance.'
+      }
+    }
+  }
+};
+
+export const Realistic_MatteBeads: Story = {
+  name: '2️⃣ Realistic - Matte Beads',
+  args: {
+    value: 7890,
+    columns: 4,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    colorScheme: 'heaven-earth',
+    scaleFactor: 1.3,
+    enhanced3d: 'realistic',
+    material3d: {
+      heavenBeads: 'matte',
+      earthBeads: 'matte',
+      lighting: 'ambient'
+    }
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '**Matte material** with subtle shading, no shine. Flat, understated appearance.'
+      }
+    }
+  }
+};
+
+export const Realistic_MixedMaterials: Story = {
+  name: '2️⃣ Realistic - Mixed Materials',
+  args: {
+    value: 5678,
+    columns: 4,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    colorScheme: 'heaven-earth',
+    scaleFactor: 1.3,
+    enhanced3d: 'realistic',
+    material3d: {
+      heavenBeads: 'glossy',  // Heaven beads are shiny
+      earthBeads: 'matte',    // Earth beads are flat
+      lighting: 'dramatic'
+    }
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '**Mixed materials**: Glossy heaven beads (5-value) + Matte earth beads (1-value). Different visual weight!'
+      }
+    }
+  }
+};
+
+export const Realistic_WoodGrain: Story = {
+  name: '2️⃣ Realistic - Wood Grain Frame',
+  args: {
+    value: 3456,
+    columns: 4,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    colorScheme: 'monochrome',
+    scaleFactor: 1.3,
+    enhanced3d: 'realistic',
+    material3d: {
+      heavenBeads: 'satin',
+      earthBeads: 'satin',
+      lighting: 'top-down',
+      woodGrain: true  // Enable wood texture on frame
+    }
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '**Wood grain texture** overlaid on the frame (rods and reckoning bar). Traditional soroban aesthetic!'
+      }
+    }
+  }
+};
+
+export const Realistic_LightingComparison: Story = {
+  name: '2️⃣ Realistic - Lighting Comparison',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', alignItems: 'center' }}>
+      <div>
+        <h4 style={{ marginBottom: '10px', textAlign: 'center' }}>Top-Down Lighting</h4>
+        <AbacusReact
+          value={999}
+          columns={3}
+          showNumbers
+          interactive
+          animated
+          colorScheme="place-value"
+          scaleFactor={1.2}
+          enhanced3d="realistic"
+          material3d={{
+            heavenBeads: 'glossy',
+            earthBeads: 'glossy',
+            lighting: 'top-down'
+          }}
+        />
+      </div>
+
+      <div>
+        <h4 style={{ marginBottom: '10px', textAlign: 'center' }}>Ambient Lighting</h4>
+        <AbacusReact
+          value={999}
+          columns={3}
+          showNumbers
+          interactive
+          animated
+          colorScheme="place-value"
+          scaleFactor={1.2}
+          enhanced3d="realistic"
+          material3d={{
+            heavenBeads: 'glossy',
+            earthBeads: 'glossy',
+            lighting: 'ambient'
+          }}
+        />
+      </div>
+
+      <div>
+        <h4 style={{ marginBottom: '10px', textAlign: 'center' }}>Dramatic Lighting</h4>
+        <AbacusReact
+          value={999}
+          columns={3}
+          showNumbers
+          interactive
+          animated
+          colorScheme="place-value"
+          scaleFactor={1.2}
+          enhanced3d="realistic"
+          material3d={{
+            heavenBeads: 'glossy',
+            earthBeads: 'glossy',
+            lighting: 'dramatic'
+          }}
+        />
+      </div>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: 'Compare different **lighting styles**: top-down (balanced), ambient (soft all around), dramatic (strong directional).'
       }
     }
   }
 };
 
 // ============================================
-// FEATURE TESTS
+// PROPOSAL 3: DELIGHTFUL (Physics)
 // ============================================
 
-export const ColorSchemes_With3D: Story = {
-  name: '3D Works With All Color Schemes',
+export const Delightful_FullExperience: Story = {
+  name: '3️⃣ Delightful - Full Experience',
+  args: {
+    value: 8642,
+    columns: 4,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    soundEnabled: true,
+    colorScheme: 'rainbow',
+    scaleFactor: 1.4,
+    enhanced3d: 'delightful',
+    material3d: {
+      heavenBeads: 'glossy',
+      earthBeads: 'satin',
+      lighting: 'dramatic',
+      woodGrain: true
+    },
+    physics3d: {
+      wobble: true,
+      hoverParallax: true
+    }
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '🎉 **Full delightful experience!** Click beads to see wobble physics. Hover your mouse over the abacus to see parallax lift. Sound enabled for maximum satisfaction!'
+      }
+    }
+  }
+};
+
+export const Delightful_WobblePhysics: Story = {
+  name: '3️⃣ Delightful - Wobble Physics',
+  args: {
+    value: 5555,
+    columns: 4,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    colorScheme: 'heaven-earth',
+    scaleFactor: 1.3,
+    enhanced3d: 'delightful',
+    material3d: {
+      heavenBeads: 'glossy',
+      earthBeads: 'glossy',
+      lighting: 'top-down'
+    },
+    physics3d: {
+      wobble: true,  // Enable wobble rotation
+      hoverParallax: false
+    }
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '**Wobble physics enabled!** Click beads rapidly to see them wobble and rotate during movement. Enhanced spring physics with bounce!'
+      }
+    }
+  }
+};
+
+export const Delightful_HoverParallax: Story = {
+  name: '3️⃣ Delightful - Hover Parallax',
+  args: {
+    value: 1234,
+    columns: 4,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    colorScheme: 'place-value',
+    scaleFactor: 1.3,
+    enhanced3d: 'delightful',
+    material3d: {
+      heavenBeads: 'satin',
+      earthBeads: 'satin',
+      lighting: 'ambient'
+    },
+    physics3d: {
+      wobble: false,
+      hoverParallax: true  // Enable hover parallax
+    }
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '**Hover parallax enabled!** Move your mouse over the abacus. Beads near your cursor will lift up with Z-depth. Creates magical depth perception!'
+      }
+    }
+  }
+};
+
+export const Delightful_Traditional: Story = {
+  name: '3️⃣ Delightful - Traditional Wood',
+  args: {
+    value: 99999,
+    columns: 5,
+    showNumbers: true,
+    interactive: true,
+    animated: true,
+    colorScheme: 'monochrome',
+    scaleFactor: 1.2,
+    enhanced3d: 'delightful',
+    material3d: {
+      heavenBeads: 'matte',
+      earthBeads: 'matte',
+      lighting: 'ambient',
+      woodGrain: true
+    },
+    physics3d: {
+      wobble: true,
+      hoverParallax: true
+    }
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Traditional aesthetic with **wood grain frame** + modern delightful physics. Best of both worlds!'
+      }
+    }
+  }
+};
+
+// ============================================
+// INTERACTIVE PLAYGROUND
+// ============================================
+
+export const Playground: Story = {
+  name: '🎮 Interactive Playground',
   render: () => {
-    const value = 333;
-    const schemes: Array<'monochrome' | 'place-value' | 'alternating' | 'heaven-earth'> = [
-      'monochrome',
-      'place-value',
-      'alternating',
-      'heaven-earth'
-    ];
+    const [level, setLevel] = React.useState<'subtle' | 'realistic' | 'delightful'>('delightful');
+    const [material, setMaterial] = React.useState<'glossy' | 'satin' | 'matte'>('glossy');
+    const [lighting, setLighting] = React.useState<'top-down' | 'ambient' | 'dramatic'>('dramatic');
+    const [woodGrain, setWoodGrain] = React.useState(true);
+    const [wobble, setWobble] = React.useState(true);
+    const [parallax, setParallax] = React.useState(true);
 
     return (
-      <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        {schemes.map(scheme => (
-          <div key={scheme} style={{ textAlign: 'center' }}>
-            <Wrapper3D level="realistic" lighting="top-down">
-              <AbacusReact
-                value={value}
-                columns={3}
-                showNumbers
-                colorScheme={scheme}
-              />
-            </Wrapper3D>
-            <p style={{ fontSize: '12px', marginTop: '8px', textTransform: 'capitalize' }}>
-              {scheme}
-            </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', alignItems: 'center' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '20px',
+          padding: '20px',
+          background: '#f5f5f5',
+          borderRadius: '8px',
+          maxWidth: '600px'
+        }}>
+          <div>
+            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Enhancement Level</label>
+            <select value={level} onChange={e => setLevel(e.target.value as any)} style={{ width: '100%', padding: '5px' }}>
+              <option value="subtle">Subtle</option>
+              <option value="realistic">Realistic</option>
+              <option value="delightful">Delightful</option>
+            </select>
           </div>
-        ))}
-      </div>
-    );
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: 'The 3D effects work seamlessly with all existing color schemes.'
-      }
-    }
-  }
-};
 
-export const ColorPalettes_With3D: Story = {
-  name: '3D Works With All Palettes',
-  render: () => {
-    const value = 555;
-    const palettes: Array<'default' | 'colorblind' | 'mnemonic' | 'grayscale' | 'nature'> = [
-      'default',
-      'colorblind',
-      'mnemonic',
-      'grayscale',
-      'nature'
-    ];
-
-    return (
-      <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        {palettes.map(palette => (
-          <div key={palette} style={{ textAlign: 'center' }}>
-            <Wrapper3D level="realistic" lighting="top-down">
-              <AbacusReact
-                value={value}
-                columns={3}
-                showNumbers
-                colorScheme="place-value"
-                colorPalette={palette}
-              />
-            </Wrapper3D>
-            <p style={{ fontSize: '12px', marginTop: '8px', textTransform: 'capitalize' }}>
-              {palette}
-            </p>
+          <div>
+            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Bead Material</label>
+            <select value={material} onChange={e => setMaterial(e.target.value as any)} style={{ width: '100%', padding: '5px' }}>
+              <option value="glossy">Glossy</option>
+              <option value="satin">Satin</option>
+              <option value="matte">Matte</option>
+            </select>
           </div>
-        ))}
+
+          <div>
+            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Lighting</label>
+            <select value={lighting} onChange={e => setLighting(e.target.value as any)} style={{ width: '100%', padding: '5px' }}>
+              <option value="top-down">Top-Down</option>
+              <option value="ambient">Ambient</option>
+              <option value="dramatic">Dramatic</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <input type="checkbox" checked={woodGrain} onChange={e => setWoodGrain(e.target.checked)} />
+              <span>Wood Grain</span>
+            </label>
+          </div>
+
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <input type="checkbox" checked={wobble} onChange={e => setWobble(e.target.checked)} />
+              <span>Wobble Physics</span>
+            </label>
+          </div>
+
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <input type="checkbox" checked={parallax} onChange={e => setParallax(e.target.checked)} />
+              <span>Hover Parallax</span>
+            </label>
+          </div>
+        </div>
+
+        <AbacusReact
+          value={6789}
+          columns={4}
+          showNumbers
+          interactive
+          animated
+          soundEnabled
+          colorScheme="rainbow"
+          scaleFactor={1.4}
+          enhanced3d={level}
+          material3d={{
+            heavenBeads: material,
+            earthBeads: material,
+            lighting: lighting,
+            woodGrain: woodGrain
+          }}
+          physics3d={{
+            wobble: wobble,
+            hoverParallax: parallax
+          }}
+        />
+
+        <p style={{ maxWidth: '500px', textAlign: 'center', color: '#666' }}>
+          Click beads to interact! Try different combinations above to find your favorite look and feel.
+        </p>
       </div>
     );
   },
   parameters: {
     docs: {
       description: {
-        story: 'The 3D effects enhance all color palettes beautifully.'
+        story: 'Experiment with all the 3D options! Mix and match materials, lighting, and physics to find your perfect configuration.'
       }
     }
   }
