@@ -45,11 +45,16 @@ RUN cd apps/web && npx @pandacss/dev
 RUN turbo build --filter=@soroban/web
 
 # Production dependencies stage - install only runtime dependencies
-FROM node:18-alpine AS deps
+# IMPORTANT: Must use same base as runner stage for binary compatibility (better-sqlite3)
+FROM node:18-slim AS deps
 WORKDIR /app
 
 # Install build tools temporarily for better-sqlite3 installation
-RUN apk add --no-cache python3 py3-setuptools make g++
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
 RUN npm install -g pnpm@9.15.4
