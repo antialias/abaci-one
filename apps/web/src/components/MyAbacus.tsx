@@ -22,6 +22,21 @@ export function MyAbacus() {
   const isHeroVisible = homeHeroContext?.isHeroVisible ?? false
   const isHeroMode = isOnHomePage && isHeroVisible && !isOpen
 
+  // Track scroll position for hero mode
+  const [scrollY, setScrollY] = useState(0)
+
+  useEffect(() => {
+    if (!isHeroMode) return
+
+    const handleScroll = () => {
+      setScrollY(window.scrollY)
+    }
+
+    handleScroll() // Initial position
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [isHeroMode])
+
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return
@@ -138,12 +153,20 @@ export function MyAbacus() {
         data-component="my-abacus"
         data-mode={isOpen ? 'open' : isHeroMode ? 'hero' : 'button'}
         onClick={isOpen || isHeroMode ? undefined : toggle}
+        style={
+          isHeroMode
+            ? {
+                // Hero mode: position accounts for scroll to flow with page (subtract scroll to move up with content)
+                top: `calc(50vh - ${scrollY}px)`,
+              }
+            : undefined
+        }
         className={css({
           position: 'fixed',
           zIndex: Z_INDEX.MY_ABACUS,
           cursor: isOpen || isHeroMode ? 'default' : 'pointer',
-          transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-          // Three modes: hero (top center), button (bottom-right), open (center)
+          transition: isHeroMode ? 'none' : 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+          // Three modes: hero (inline with content), button (bottom-right), open (center)
           ...(isOpen
             ? {
                 // Open mode: center of screen
@@ -153,8 +176,7 @@ export function MyAbacus() {
               }
             : isHeroMode
               ? {
-                  // Hero mode: top center (in viewport flow position)
-                  top: '50vh',
+                  // Hero mode: centered horizontally, top handled by inline style
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
                 }

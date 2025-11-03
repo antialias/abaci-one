@@ -155,7 +155,12 @@
       "Bash(git clone:*)",
       "Bash(git ls-remote:*)",
       "Bash(openscad:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(env)",
+      "Bash(security find-generic-password -s 'Anthropic API Key' -w)",
+      "Bash(printenv:*)",
+      "Bash(typst:*)",
+      "Bash(npx tsx:*)"
     ],
     "deny": [],
     "ask": []
