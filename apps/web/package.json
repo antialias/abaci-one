@@ -57,6 +57,7 @@
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.4.1",
     "drizzle-orm": "^0.44.6",
+    "embla-carousel-react": "^8.6.0",
     "emojibase-data": "^16.0.3",
     "jose": "^6.1.0",
     "js-yaml": "^4.1.0",
