@@ -5,13 +5,15 @@ import useEmblaCarousel from 'embla-carousel-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageWithNav } from '@/components/PageWithNav'
+import { GamePreview } from '@/components/GamePreview'
 import { getAvailableGames } from '@/lib/arcade/game-registry'
 import { css } from '../../../styled-system/css'
 import { useFullscreen } from '../../contexts/FullscreenContext'
 import { useGameMode } from '../../contexts/GameModeContext'
 import { useUserProfile } from '../../contexts/UserProfileContext'
+import { useAllPlayerStats } from '@/hooks/usePlayerStats'
 
 function GamesPageContent() {
   const t = useTranslations('games')
@@ -27,11 +29,28 @@ function GamesPageContent() {
     return aTime - bTime
   })
 
+  // Fetch per-player stats
+  const { data: playerStatsArray, isLoading: statsLoading } = useAllPlayerStats()
+
+  // Create a map of playerId -> stats for easy lookup
+  const playerStatsMap = useMemo(() => {
+    const map = new Map()
+    if (playerStatsArray) {
+      for (const stats of playerStatsArray) {
+        map.set(stats.playerId, stats)
+      }
+    }
+    return map
+  }, [playerStatsArray])
+
   // Get available games
   const availableGames = getAvailableGames()
 
-  // Check if user has any stats to show
-  const hasStats = profile.gamesPlayed > 0
+  // Check if user has any stats to show (check if ANY player has stats)
+  const hasStats =
+    playerStatsArray &&
+    playerStatsArray.length > 0 &&
+    playerStatsArray.some((s) => s.gamesPlayed > 0)
 
   // Embla carousel setup for games hero carousel with autoplay
   const [gamesEmblaRef, gamesEmblaApi] = useEmblaCarousel(
@@ -113,859 +132,790 @@ function GamesPageContent() {
         })}
       />
 
+      {/* Enter Arcade Button */}
+      <div
+        className={css({
+          mb: '12',
+          pt: '20',
+          textAlign: 'center',
+          px: { base: '4', md: '12' },
+        })}
+      >
+        <button
+          onClick={async () => {
+            try {
+              await enterFullscreen()
+              sessionStorage.setItem('enterArcadeFullscreen', 'true')
+              router.push('/arcade')
+            } catch (error) {
+              console.error('Failed to enter fullscreen:', error)
+              sessionStorage.setItem('enterArcadeFullscreen', 'true')
+              router.push('/arcade')
+            }
+          }}
+          className={css({
+            px: { base: '12', md: '20' },
+            py: { base: '8', md: '12' },
+            minH: { base: '60px', md: '80px' },
+            minW: { base: '200px', md: '300px' },
+            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899)',
+            color: 'white',
+            fontSize: { base: '3xl', md: '5xl' },
+            fontWeight: 'black',
+            rounded: '3xl',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 20px 60px rgba(139, 92, 246, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.3)',
+            transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            position: 'relative',
+            overflow: 'hidden',
+            touchAction: 'manipulation',
+            textTransform: 'uppercase',
+            letterSpacing: 'wider',
+            _hover: {
+              transform: {
+                base: 'translateY(-4px) scale(1.02)',
+                md: 'translateY(-8px) scale(1.08)',
+              },
+              boxShadow: '0 30px 80px rgba(139, 92, 246, 0.6), 0 0 0 6px rgba(255, 255, 255, 0.5)',
+              '& .button-glow': {
+                opacity: 1,
+              },
+            },
+            _active: {
+              transform: 'translateY(-2px) scale(1.03)',
+            },
+          })}
+        >
+          {/* Button glow effect */}
+          <div
+            className={`${css({
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background:
+                'linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1))',
+              opacity: 0,
+              transition: 'opacity 0.3s ease',
+            })} button-glow`}
+          />
+
+          <span className={css({ position: 'relative', zIndex: 1 })}>
+            {t('enterArcade.button')}
+          </span>
+        </button>
+      </div>
+
       {/* Games Hero Carousel - Full Width */}
       <div
         className={css({
           mb: '16',
-          pt: '20',
-          overflow: 'visible',
           px: { base: '4', md: '12' },
         })}
       >
-        <h2
-          className={css({
-            fontSize: { base: 'xl', md: '2xl' },
-            fontWeight: 'bold',
-            color: 'gray.900',
-            textAlign: 'center',
-            mb: '6',
-          })}
-        >
-          🎮 Available Games
-        </h2>
-
-        {/* Carousel */}
         <div
-          ref={gamesEmblaRef}
           className={css({
+            position: 'relative',
             overflow: 'visible',
-            cursor: 'grab',
+            py: '12',
             userSelect: 'none',
-            _active: {
-              cursor: 'grabbing',
-            },
           })}
+          data-component="games-carousel"
         >
+          <div
+            ref={gamesEmblaRef}
+            className={css({
+              overflow: 'visible',
+              cursor: 'grab',
+              _active: {
+                cursor: 'grabbing',
+              },
+            })}
+          >
+            <div
+              className={css({
+                display: 'flex',
+              })}
+            >
+              {/* Dynamic Game Cards */}
+              {availableGames.map((game, index) => {
+                const isActive = index === gamesSelectedIndex
+                const manifest = game.manifest
+                const GameComp = game.GameComponent
+                const Provider = game.Provider
+
+                return (
+                  <div
+                    key={manifest.name}
+                    className={css({
+                      position: 'relative',
+                      rounded: '2xl',
+                      overflow: 'hidden',
+                      border: '2px solid rgba(255, 255, 255, 0.9)',
+                      boxShadow: isActive
+                        ? '0 30px 60px rgba(0, 0, 0, 0.2)'
+                        : '0 20px 40px rgba(0, 0, 0, 0.15)',
+                      cursor: 'pointer',
+                      flex: '0 0 500px',
+                      minWidth: '500px',
+                      height: '312px', // Match scaled game height (900px * 0.347 = 312px)
+                      mr: '6',
+                      opacity: isActive ? 1 : 0.8,
+                      transitionProperty: 'opacity, box-shadow',
+                      transitionDuration: '0.3s',
+                      transitionTimingFunction: 'ease-out',
+                      _hover: {
+                        opacity: 1,
+                      },
+                    })}
+                    onClick={() => gamesEmblaApi?.scrollTo(index)}
+                    data-element={`game-card-${manifest.name}`}
+                  >
+                    {/* Live Game Demo */}
+                    <div
+                      className={css({
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        // Scale 1440×900 viewport to fit 500×600 card
+                        // Scale factor: 500/1440 ≈ 0.347
+                        transform: 'scale(0.347)',
+                        transformOrigin: 'top left',
+                        pointerEvents: 'none',
+                      })}
+                    >
+                      <GamePreview
+                        GameComponent={GameComp}
+                        Provider={Provider}
+                        gameName={manifest.name}
+                      />
+                    </div>
+
+                    {/* Overlay with game info - shorter gradient that overlaps game */}
+                    <div
+                      className={css({
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        background:
+                          'linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 35%, transparent 100%)',
+                        px: '6',
+                        py: '4',
+                        pointerEvents: 'none',
+                      })}
+                    >
+                      {/* Game Icon */}
+                      <div
+                        className={css({
+                          fontSize: '3xl',
+                          mb: '2',
+                          textAlign: 'center',
+                        })}
+                      >
+                        {manifest.icon}
+                      </div>
+
+                      {/* Game Title */}
+                      <h3
+                        className={css({
+                          fontSize: 'xl',
+                          fontWeight: 'bold',
+                          color: 'white',
+                          textAlign: 'center',
+                          mb: '2',
+                          textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)',
+                        })}
+                      >
+                        {manifest.displayName}
+                      </h3>
+
+                      {/* Game Info Badges */}
+                      <div
+                        className={css({
+                          display: 'flex',
+                          gap: '2',
+                          mb: '2',
+                          justifyContent: 'center',
+                          flexWrap: 'wrap',
+                        })}
+                      >
+                        <span
+                          className={css({
+                            px: '3',
+                            py: '1',
+                            rounded: 'full',
+                            fontSize: 'xs',
+                            fontWeight: 'semibold',
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            color: 'white',
+                            textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
+                          })}
+                        >
+                          {manifest.difficulty}
+                        </span>
+                        <span
+                          className={css({
+                            px: '3',
+                            py: '1',
+                            rounded: 'full',
+                            fontSize: 'xs',
+                            fontWeight: 'semibold',
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            color: 'white',
+                            textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
+                          })}
+                        >
+                          {manifest.maxPlayers === 1
+                            ? '1 Player'
+                            : `1-${manifest.maxPlayers} Players`}
+                        </span>
+                      </div>
+
+                      {/* Description */}
+                      <p
+                        className={css({
+                          fontSize: 'sm',
+                          color: 'white',
+                          textAlign: 'center',
+                          lineHeight: '1.4',
+                          textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
+                        })}
+                      >
+                        {manifest.description}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Navigation Dots with Game Icons */}
           <div
             className={css({
               display: 'flex',
-              gap: '6',
+              justifyContent: 'center',
+              gap: '3',
+              mt: '8',
             })}
+            data-element="games-carousel-dots"
           >
-            {availableGames.map((game) => {
-              const gameIndex = availableGames.indexOf(game)
-              const isActive = gameIndex === gamesSelectedIndex
-
-              return (
-                <div
-                  key={game.manifest.name}
-                  className={css({
-                    flex: '0 0 auto',
-                    w: { base: '85%', md: '400px' },
-                    mr: '6',
-                    transitionProperty: 'opacity',
-                    transitionDuration: '0.3s',
-                    transitionTimingFunction: 'ease-out',
-                    opacity: isActive ? 1 : 0.6,
-                  })}
-                >
-                  <Link
-                    href={`/arcade/${game.manifest.name}`}
-                    className={css({
-                      display: 'block',
-                      textDecoration: 'none',
-                      height: '100%',
-                    })}
-                  >
-                    <div
-                      className={css({
-                        background: 'white',
-                        rounded: '2xl',
-                        p: '6',
-                        border: '2px solid',
-                        borderColor: isActive ? 'blue.400' : 'gray.200',
-                        boxShadow: isActive
-                          ? '0 20px 40px rgba(59, 130, 246, 0.3)'
-                          : '0 10px 20px rgba(0, 0, 0, 0.1)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        height: '100%',
-                        transitionProperty: 'transform, box-shadow, border-color',
-                        transitionDuration: '0.3s',
-                        transitionTimingFunction: 'ease',
-                        _hover: {
-                          transform: 'translateY(-4px)',
-                          boxShadow: '0 25px 50px rgba(59, 130, 246, 0.4)',
-                          borderColor: 'blue.500',
-                        },
-                      })}
-                      style={{
-                        background: game.manifest.gradient || 'white',
-                      }}
-                    >
-                      {/* Dark gradient overlay for readability */}
-                      <div
-                        className={css({
-                          position: 'absolute',
-                          inset: 0,
-                          background:
-                            'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%)',
-                          zIndex: 0,
-                        })}
-                      />
-
-                      {/* Content */}
-                      <div
-                        className={css({
-                          position: 'relative',
-                          zIndex: 1,
-                        })}
-                      >
-                        {/* Icon and Title */}
-                        <div
-                          className={css({
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '3',
-                            mb: '4',
-                          })}
-                        >
-                          <div
-                            className={css({
-                              fontSize: '3xl',
-                              textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-                            })}
-                          >
-                            {game.manifest.icon}
-                          </div>
-                          <div>
-                            <h3
-                              className={css({
-                                fontSize: 'xl',
-                                fontWeight: 'bold',
-                                color: 'white',
-                                textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
-                              })}
-                            >
-                              {game.manifest.displayName}
-                            </h3>
-                            <p
-                              className={css({
-                                fontSize: 'xs',
-                                color: 'rgba(255, 255, 255, 0.9)',
-                                textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
-                              })}
-                            >
-                              {game.manifest.difficulty} •{' '}
-                              {game.manifest.maxPlayers === 1
-                                ? 'Solo'
-                                : `1-${game.manifest.maxPlayers} Players`}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Description */}
-                        <p
-                          className={css({
-                            fontSize: 'sm',
-                            color: 'rgba(255, 255, 255, 0.95)',
-                            mb: '4',
-                            lineHeight: '1.6',
-                            textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)',
-                          })}
-                        >
-                          {game.manifest.description}
-                        </p>
-
-                        {/* Chips */}
-                        <div
-                          className={css({
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '2',
-                          })}
-                        >
-                          {game.manifest.chips.map((chip) => (
-                            <span
-                              key={chip}
-                              className={css({
-                                fontSize: 'xs',
-                                px: '2',
-                                py: '1',
-                                bg: 'rgba(255, 255, 255, 0.2)',
-                                color: 'white',
-                                rounded: 'full',
-                                fontWeight: 'semibold',
-                                textShadow: '0 1px 3px rgba(0, 0, 0, 0.4)',
-                              })}
-                            >
-                              {chip}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              )
-            })}
+            {availableGames.map((game, index) => (
+              <button
+                key={game.manifest.name}
+                onClick={() => gamesEmblaApi?.scrollTo(index)}
+                className={css({
+                  rounded: 'full',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  minH: '44px',
+                  minW: '44px',
+                  w: '12',
+                  h: '12',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: index === gamesSelectedIndex ? '2xl' : 'lg',
+                  opacity: index === gamesSelectedIndex ? 1 : 0.5,
+                  background:
+                    index === gamesSelectedIndex
+                      ? 'rgba(255, 255, 255, 0.9)'
+                      : 'rgba(255, 255, 255, 0.3)',
+                  _hover: {
+                    opacity: 1,
+                    transform: 'scale(1.1)',
+                  },
+                })}
+                aria-label={`Go to ${game.manifest.displayName}`}
+                data-action={`select-game-${index}`}
+              >
+                <span>{game.manifest.icon}</span>
+              </button>
+            ))}
           </div>
-        </div>
-
-        {/* Navigation Dots */}
-        <div
-          className={css({
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '2',
-            mt: '6',
-          })}
-        >
-          {availableGames.map((game, index) => (
-            <button
-              key={game.manifest.name}
-              type="button"
-              onClick={() => gamesEmblaApi?.scrollTo(index)}
-              className={css({
-                w: '10',
-                h: '10',
-                rounded: 'full',
-                border: '2px solid',
-                borderColor: index === gamesSelectedIndex ? 'blue.500' : 'gray.300',
-                bg: index === gamesSelectedIndex ? 'blue.500' : 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 'lg',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                _hover: {
-                  borderColor: 'blue.500',
-                  transform: 'scale(1.1)',
-                },
-              })}
-              title={game.manifest.displayName}
-            >
-              {game.manifest.icon}
-            </button>
-          ))}
         </div>
       </div>
 
-      {/* Rest of content - constrained width */}
-      <div
-        className={css({
-          maxW: '6xl',
-          mx: 'auto',
-          px: { base: '4', md: '6' },
-          position: 'relative',
-        })}
-      >
-        {/* Enter Arcade Button */}
-        <div
-          className={css({
-            mb: '16',
-            textAlign: 'center',
-          })}
-        >
+      {/* Character Showcase Section - Only show if user has stats */}
+      {hasStats && (
+        <>
+          {/* Character Showcase Header */}
           <div
             className={css({
-              background: 'white',
-              rounded: '3xl',
-              p: '8',
-              border: '2px solid',
-              borderColor: 'gray.200',
-              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
-              position: 'relative',
-              overflow: 'hidden',
+              mb: '16',
             })}
           >
-            {/* Gradient background */}
             <div
               className={css({
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'linear-gradient(135deg, #dbeafe 0%, #e9d5ff 50%, #fef3c7 100%)',
-                opacity: 0.5,
-              })}
-            />
-
-            <div
-              className={css({
-                position: 'relative',
-                zIndex: 1,
+                textAlign: 'center',
+                mb: '8',
               })}
             >
               <h2
                 className={css({
                   fontSize: { base: '2xl', md: '3xl' },
                   fontWeight: 'bold',
-                  color: 'gray.900',
-                  mb: '4',
+                  color: 'gray.800',
+                  mb: '2',
                 })}
               >
-                {t('enterArcade.title')}
+                {t('champions.title')}
               </h2>
-
               <p
                 className={css({
-                  fontSize: 'lg',
-                  color: 'gray.700',
-                  mb: '8',
-                  maxW: 'xl',
-                  mx: 'auto',
-                })}
-              >
-                {t('enterArcade.description')}
-              </p>
-
-              <button
-                onClick={async () => {
-                  try {
-                    await enterFullscreen()
-                    // Set a flag so arcade knows to enter fullscreen
-                    sessionStorage.setItem('enterArcadeFullscreen', 'true')
-                    router.push('/arcade')
-                  } catch (error) {
-                    console.error('Failed to enter fullscreen:', error)
-                    // Navigate anyway if fullscreen fails
-                    sessionStorage.setItem('enterArcadeFullscreen', 'true')
-                    router.push('/arcade')
-                  }
-                }}
-                className={css({
-                  px: { base: '8', md: '12' },
-                  py: { base: '4', md: '6' },
-                  minH: { base: '44px', md: 'auto' },
-                  minW: { base: '44px', md: 'auto' },
-                  background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                  color: 'white',
-                  fontSize: { base: 'xl', md: '2xl' },
-                  fontWeight: 'bold',
-                  rounded: '2xl',
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 10px 30px rgba(59, 130, 246, 0.3)',
-                  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  touchAction: 'manipulation',
-                  _hover: {
-                    transform: {
-                      base: 'translateY(-2px)',
-                      md: 'translateY(-4px) scale(1.05)',
-                    },
-                    boxShadow: '0 20px 50px rgba(59, 130, 246, 0.4)',
-                    '& .button-glow': {
-                      opacity: 1,
-                    },
-                  },
-                  _active: {
-                    transform: 'translateY(-1px) scale(1.01)',
-                  },
-                })}
-              >
-                {/* Button glow effect */}
-                <div
-                  className={`${css({
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background:
-                      'linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1))',
-                    opacity: 0,
-                    transition: 'opacity 0.3s ease',
-                  })} button-glow`}
-                />
-
-                <span className={css({ position: 'relative', zIndex: 1 })}>
-                  {t('enterArcade.button')}
-                </span>
-              </button>
-
-              <p
-                className={css({
-                  fontSize: 'sm',
                   color: 'gray.600',
-                  mt: '4',
+                  fontSize: 'lg',
                 })}
               >
-                {t('enterArcade.subtitle')}
+                {t('champions.subtitle')}
               </p>
             </div>
-          </div>
-        </div>
 
-        {/* Character Showcase Section - Only show if user has stats */}
-        {hasStats && (
-          <>
-            {/* Character Showcase Header */}
+            {/* Player Carousel */}
             <div
               className={css({
-                mb: '16',
+                position: 'relative',
+                overflow: 'hidden',
+                py: '12',
+                userSelect: 'none',
+              })}
+              data-component="player-carousel"
+            >
+              <div
+                ref={emblaRef}
+                className={css({
+                  overflow: 'hidden',
+                  cursor: 'grab',
+                  _active: {
+                    cursor: 'grabbing',
+                  },
+                })}
+              >
+                <div
+                  className={css({
+                    display: 'flex',
+                  })}
+                >
+                  {/* Dynamic Player Character Cards */}
+                  {allPlayers.map((player, index) => {
+                    const isActive = index === selectedIndex
+
+                    // Rotate through different color schemes for visual variety
+                    const colorSchemes = [
+                      {
+                        border: 'rgba(59, 130, 246, 0.3)',
+                        shadow: 'rgba(59, 130, 246, 0.1)',
+                        gradient: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
+                        statBg: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                        statBorder: 'blue.200',
+                        statColor: 'blue.800',
+                        levelColor: 'blue.700',
+                      },
+                      {
+                        border: 'rgba(139, 92, 246, 0.3)',
+                        shadow: 'rgba(139, 92, 246, 0.1)',
+                        gradient: 'linear-gradient(90deg, #8b5cf6, #7c3aed)',
+                        statBg: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
+                        statBorder: 'purple.200',
+                        statColor: 'purple.800',
+                        levelColor: 'purple.700',
+                      },
+                      {
+                        border: 'rgba(16, 185, 129, 0.3)',
+                        shadow: 'rgba(16, 185, 129, 0.1)',
+                        gradient: 'linear-gradient(90deg, #10b981, #059669)',
+                        statBg: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
+                        statBorder: 'green.200',
+                        statColor: 'green.800',
+                        levelColor: 'green.700',
+                      },
+                      {
+                        border: 'rgba(245, 158, 11, 0.3)',
+                        shadow: 'rgba(245, 158, 11, 0.1)',
+                        gradient: 'linear-gradient(90deg, #f59e0b, #d97706)',
+                        statBg: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                        statBorder: 'yellow.200',
+                        statColor: 'yellow.800',
+                        levelColor: 'yellow.700',
+                      },
+                    ]
+                    const theme = colorSchemes[index % colorSchemes.length]
+
+                    // Get per-player stats
+                    const playerStats = playerStatsMap.get(player.id)
+                    const gamesPlayed = playerStats?.gamesPlayed || 0
+                    const totalWins = playerStats?.totalWins || 0
+
+                    return (
+                      <div
+                        key={player.id}
+                        className={css({
+                          position: 'relative',
+                          background: 'rgba(255, 255, 255, 0.95)',
+                          backdropFilter: 'blur(10px)',
+                          rounded: '2xl',
+                          p: '6',
+                          border: '2px solid',
+                          boxShadow: isActive
+                            ? `0 30px 60px ${theme.shadow}`
+                            : `0 20px 40px ${theme.shadow}`,
+                          cursor: 'pointer',
+                          flex: '0 0 350px',
+                          minWidth: '350px',
+                          mr: '6',
+                          opacity: isActive ? 1 : 0.6,
+                          transitionProperty: 'opacity, box-shadow',
+                          transitionDuration: '0.3s',
+                          transitionTimingFunction: 'ease-out',
+                          _hover: {
+                            opacity: 1,
+                          },
+                        })}
+                        style={{
+                          borderColor: theme.border,
+                        }}
+                        onClick={() => emblaApi?.scrollTo(index)}
+                        data-element={`player-card-${index}`}
+                      >
+                        {/* Gradient Border */}
+                        <div
+                          className={css({
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: '4px',
+                            borderRadius: '16px 16px 0 0',
+                          })}
+                          style={{ background: theme.gradient }}
+                        />
+
+                        {/* Character Display */}
+                        <div
+                          className={css({
+                            textAlign: 'center',
+                            mb: '4',
+                          })}
+                        >
+                          <div
+                            className={`${css({
+                              fontSize: '4xl',
+                              mb: '2',
+                              transition: 'all 0.3s ease',
+                            })} character-emoji`}
+                          >
+                            {player.emoji}
+                          </div>
+                          <h3
+                            className={css({
+                              fontSize: 'xl',
+                              fontWeight: 'bold',
+                            })}
+                            style={{ color: player.color }}
+                          >
+                            {player.name}
+                          </h3>
+                        </div>
+
+                        {/* Stats */}
+                        <div
+                          className={css({
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '3',
+                          })}
+                        >
+                          <div
+                            className={css({
+                              textAlign: 'center',
+                              p: '3',
+                              rounded: 'lg',
+                              border: '1px solid',
+                            })}
+                            style={{
+                              background: theme.statBg,
+                              borderColor: theme.statBorder,
+                            }}
+                          >
+                            <div
+                              className={css({
+                                fontSize: '2xl',
+                                fontWeight: 'bold',
+                              })}
+                              style={{ color: theme.statColor }}
+                            >
+                              {gamesPlayed}
+                            </div>
+                            <div
+                              className={css({
+                                fontSize: 'xs',
+                                fontWeight: 'semibold',
+                              })}
+                              style={{ color: theme.statColor }}
+                            >
+                              {t('champions.stats.gamesPlayed')}
+                            </div>
+                          </div>
+
+                          <div
+                            className={css({
+                              textAlign: 'center',
+                              background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                              p: '3',
+                              rounded: 'lg',
+                              border: '1px solid',
+                              borderColor: 'yellow.200',
+                            })}
+                          >
+                            <div
+                              className={css({
+                                fontSize: '2xl',
+                                fontWeight: 'bold',
+                                color: 'yellow.800',
+                              })}
+                            >
+                              {totalWins}
+                            </div>
+                            <div
+                              className={css({
+                                fontSize: 'xs',
+                                color: 'yellow.700',
+                                fontWeight: 'semibold',
+                              })}
+                            >
+                              {t('champions.stats.victories')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Level Progress */}
+                        <div
+                          className={css({
+                            mt: '4',
+                          })}
+                        >
+                          <div
+                            className={css({
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              mb: '2',
+                            })}
+                          >
+                            <span
+                              className={css({
+                                fontSize: 'sm',
+                                fontWeight: 'semibold',
+                              })}
+                              style={{ color: theme.levelColor }}
+                            >
+                              {t('champions.stats.level', {
+                                level: Math.floor(gamesPlayed / 5) + 1,
+                              })}
+                            </span>
+                            <span
+                              className={css({
+                                fontSize: 'xs',
+                              })}
+                              style={{ color: theme.levelColor }}
+                            >
+                              {t('champions.stats.xp', {
+                                current: gamesPlayed % 5,
+                                total: 5,
+                              })}
+                            </span>
+                          </div>
+                          <div
+                            className={css({
+                              w: 'full',
+                              h: '2',
+                              rounded: 'full',
+                              overflow: 'hidden',
+                            })}
+                            style={{ background: `${player.color}33` }}
+                          >
+                            <div
+                              className={css({
+                                h: 'full',
+                                rounded: 'full',
+                                transition: 'width 0.5s ease',
+                              })}
+                              style={{
+                                background: theme.gradient,
+                                width: `${(gamesPlayed % 5) * 20}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Quick Customize Button */}
+                        <button
+                          className={css({
+                            position: 'absolute',
+                            top: '3',
+                            right: '3',
+                            w: { base: '12', md: '8' },
+                            h: { base: '12', md: '8' },
+                            minH: '44px',
+                            minW: '44px',
+                            background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
+                            rounded: 'full',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: { base: 'md', md: 'sm' },
+                            border: '1px solid',
+                            borderColor: 'gray.300',
+                            cursor: 'pointer',
+                            touchAction: 'manipulation',
+                            transition: 'all 0.3s ease',
+                            _hover: {
+                              transform: 'scale(1.1)',
+                              background: 'linear-gradient(135deg, #e5e7eb, #d1d5db)',
+                            },
+                          })}
+                        >
+                          ⚙️
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Navigation Dots */}
+              <div
+                className={css({
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '3',
+                  mt: '8',
+                })}
+                data-element="carousel-dots"
+              >
+                {allPlayers.map((player, index) => (
+                  <button
+                    key={player.id}
+                    onClick={() => emblaApi?.scrollTo(index)}
+                    className={css({
+                      rounded: 'full',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      minH: '44px',
+                      minW: '44px',
+                      w: '12',
+                      h: '12',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: index === selectedIndex ? '2xl' : 'lg',
+                      opacity: index === selectedIndex ? 1 : 0.5,
+                      _hover: {
+                        opacity: 1,
+                        transform: 'scale(1.1)',
+                      },
+                    })}
+                    style={{
+                      background:
+                        index === selectedIndex
+                          ? `linear-gradient(135deg, ${player.color}, ${player.color}dd)`
+                          : `${player.color}30`,
+                    }}
+                    aria-label={`Go to ${player.name}`}
+                    data-action={`select-player-${index}`}
+                  >
+                    <span>{player.emoji}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Character vs Character Dashboard - Only show if user has stats */}
+      {hasStats && (
+        <div
+          className={css({
+            mb: '12',
+          })}
+        >
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: {
+                base: '1fr',
+                md: '1fr',
+                lg: 'repeat(3, 1fr)',
+              },
+              gap: { base: '4', md: '6' },
+              maxW: '7xl',
+              mx: 'auto',
+            })}
+          >
+            {/* Head-to-Head Stats */}
+            <div
+              className={css({
+                background: 'white',
+                backdropFilter: 'blur(10px)',
+                rounded: '2xl',
+                p: '6',
+                border: '1px solid',
+                borderColor: 'gray.200',
+                boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.3s ease',
+                _hover: {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 20px 45px rgba(0, 0, 0, 0.15)',
+                },
               })}
             >
               <div
                 className={css({
                   textAlign: 'center',
-                  mb: '8',
+                  mb: '4',
                 })}
               >
-                <h2
+                <h3
                   className={css({
-                    fontSize: { base: '2xl', md: '3xl' },
+                    fontSize: 'xl',
                     fontWeight: 'bold',
                     color: 'gray.800',
                     mb: '2',
                   })}
                 >
-                  {t('champions.title')}
-                </h2>
+                  {t('dashboard.headToHead.title')}
+                </h3>
                 <p
                   className={css({
+                    fontSize: 'sm',
                     color: 'gray.600',
-                    fontSize: 'lg',
                   })}
                 >
-                  {t('champions.subtitle')}
+                  {t('dashboard.headToHead.subtitle')}
                 </p>
               </div>
 
-              {/* Player Carousel */}
               <div
                 className={css({
-                  position: 'relative',
-                  overflow: 'hidden',
-                  py: '12',
-                  userSelect: 'none',
-                })}
-                data-component="player-carousel"
-              >
-                <div
-                  ref={emblaRef}
-                  className={css({
-                    overflow: 'hidden',
-                    cursor: 'grab',
-                    _active: {
-                      cursor: 'grabbing',
-                    },
-                  })}
-                >
-                  <div
-                    className={css({
-                      display: 'flex',
-                    })}
-                  >
-                    {/* Dynamic Player Character Cards */}
-                    {allPlayers.map((player, index) => {
-                      const isActive = index === selectedIndex
-
-                      // Rotate through different color schemes for visual variety
-                      const colorSchemes = [
-                        {
-                          border: 'rgba(59, 130, 246, 0.3)',
-                          shadow: 'rgba(59, 130, 246, 0.1)',
-                          gradient: 'linear-gradient(90deg, #3b82f6, #1d4ed8)',
-                          statBg: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
-                          statBorder: 'blue.200',
-                          statColor: 'blue.800',
-                          levelColor: 'blue.700',
-                        },
-                        {
-                          border: 'rgba(139, 92, 246, 0.3)',
-                          shadow: 'rgba(139, 92, 246, 0.1)',
-                          gradient: 'linear-gradient(90deg, #8b5cf6, #7c3aed)',
-                          statBg: 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
-                          statBorder: 'purple.200',
-                          statColor: 'purple.800',
-                          levelColor: 'purple.700',
-                        },
-                        {
-                          border: 'rgba(16, 185, 129, 0.3)',
-                          shadow: 'rgba(16, 185, 129, 0.1)',
-                          gradient: 'linear-gradient(90deg, #10b981, #059669)',
-                          statBg: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
-                          statBorder: 'green.200',
-                          statColor: 'green.800',
-                          levelColor: 'green.700',
-                        },
-                        {
-                          border: 'rgba(245, 158, 11, 0.3)',
-                          shadow: 'rgba(245, 158, 11, 0.1)',
-                          gradient: 'linear-gradient(90deg, #f59e0b, #d97706)',
-                          statBg: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                          statBorder: 'yellow.200',
-                          statColor: 'yellow.800',
-                          levelColor: 'yellow.700',
-                        },
-                      ]
-                      const theme = colorSchemes[index % colorSchemes.length]
-
-                      return (
-                        <div
-                          key={player.id}
-                          className={css({
-                            position: 'relative',
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            backdropFilter: 'blur(10px)',
-                            rounded: '2xl',
-                            p: '6',
-                            border: '2px solid',
-                            boxShadow: isActive
-                              ? `0 30px 60px ${theme.shadow}`
-                              : `0 20px 40px ${theme.shadow}`,
-                            cursor: 'pointer',
-                            flex: '0 0 350px',
-                            minWidth: '350px',
-                            mr: '6',
-                            opacity: isActive ? 1 : 0.6,
-                            transitionProperty: 'opacity, box-shadow',
-                            transitionDuration: '0.3s',
-                            transitionTimingFunction: 'ease-out',
-                            _hover: {
-                              opacity: 1,
-                            },
-                          })}
-                          style={{
-                            borderColor: theme.border,
-                          }}
-                          onClick={() => emblaApi?.scrollTo(index)}
-                          data-element={`player-card-${index}`}
-                        >
-                          {/* Gradient Border */}
-                          <div
-                            className={css({
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: '4px',
-                              borderRadius: '16px 16px 0 0',
-                            })}
-                            style={{ background: theme.gradient }}
-                          />
-
-                          {/* Character Display */}
-                          <div
-                            className={css({
-                              textAlign: 'center',
-                              mb: '4',
-                            })}
-                          >
-                            <div
-                              className={`${css({
-                                fontSize: '4xl',
-                                mb: '2',
-                                transition: 'all 0.3s ease',
-                              })} character-emoji`}
-                            >
-                              {player.emoji}
-                            </div>
-                            <h3
-                              className={css({
-                                fontSize: 'xl',
-                                fontWeight: 'bold',
-                              })}
-                              style={{ color: player.color }}
-                            >
-                              {player.name}
-                            </h3>
-                          </div>
-
-                          {/* Stats */}
-                          <div
-                            className={css({
-                              display: 'grid',
-                              gridTemplateColumns: 'repeat(2, 1fr)',
-                              gap: '3',
-                            })}
-                          >
-                            <div
-                              className={css({
-                                textAlign: 'center',
-                                p: '3',
-                                rounded: 'lg',
-                                border: '1px solid',
-                              })}
-                              style={{
-                                background: theme.statBg,
-                                borderColor: theme.statBorder,
-                              }}
-                            >
-                              <div
-                                className={css({
-                                  fontSize: '2xl',
-                                  fontWeight: 'bold',
-                                })}
-                                style={{ color: theme.statColor }}
-                              >
-                                {profile.gamesPlayed}
-                              </div>
-                              <div
-                                className={css({
-                                  fontSize: 'xs',
-                                  fontWeight: 'semibold',
-                                })}
-                                style={{ color: theme.statColor }}
-                              >
-                                {t('champions.stats.gamesPlayed')}
-                              </div>
-                            </div>
-
-                            <div
-                              className={css({
-                                textAlign: 'center',
-                                background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                                p: '3',
-                                rounded: 'lg',
-                                border: '1px solid',
-                                borderColor: 'yellow.200',
-                              })}
-                            >
-                              <div
-                                className={css({
-                                  fontSize: '2xl',
-                                  fontWeight: 'bold',
-                                  color: 'yellow.800',
-                                })}
-                              >
-                                {profile.totalWins}
-                              </div>
-                              <div
-                                className={css({
-                                  fontSize: 'xs',
-                                  color: 'yellow.700',
-                                  fontWeight: 'semibold',
-                                })}
-                              >
-                                {t('champions.stats.victories')}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Level Progress */}
-                          <div
-                            className={css({
-                              mt: '4',
-                            })}
-                          >
-                            <div
-                              className={css({
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                mb: '2',
-                              })}
-                            >
-                              <span
-                                className={css({
-                                  fontSize: 'sm',
-                                  fontWeight: 'semibold',
-                                })}
-                                style={{ color: theme.levelColor }}
-                              >
-                                {t('champions.stats.level', {
-                                  level: Math.floor(profile.gamesPlayed / 5) + 1,
-                                })}
-                              </span>
-                              <span
-                                className={css({
-                                  fontSize: 'xs',
-                                })}
-                                style={{ color: theme.levelColor }}
-                              >
-                                {t('champions.stats.xp', {
-                                  current: profile.gamesPlayed % 5,
-                                  total: 5,
-                                })}
-                              </span>
-                            </div>
-                            <div
-                              className={css({
-                                w: 'full',
-                                h: '2',
-                                rounded: 'full',
-                                overflow: 'hidden',
-                              })}
-                              style={{ background: `${player.color}33` }}
-                            >
-                              <div
-                                className={css({
-                                  h: 'full',
-                                  rounded: 'full',
-                                  transition: 'width 0.5s ease',
-                                })}
-                                style={{
-                                  background: theme.gradient,
-                                  width: `${(profile.gamesPlayed % 5) * 20}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Quick Customize Button */}
-                          <button
-                            className={css({
-                              position: 'absolute',
-                              top: '3',
-                              right: '3',
-                              w: { base: '12', md: '8' },
-                              h: { base: '12', md: '8' },
-                              minH: '44px',
-                              minW: '44px',
-                              background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
-                              rounded: 'full',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: { base: 'md', md: 'sm' },
-                              border: '1px solid',
-                              borderColor: 'gray.300',
-                              cursor: 'pointer',
-                              touchAction: 'manipulation',
-                              transition: 'all 0.3s ease',
-                              _hover: {
-                                transform: 'scale(1.1)',
-                                background: 'linear-gradient(135deg, #e5e7eb, #d1d5db)',
-                              },
-                            })}
-                          >
-                            ⚙️
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Navigation Dots */}
-                <div
-                  className={css({
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: '3',
-                    mt: '8',
-                  })}
-                  data-element="carousel-dots"
-                >
-                  {allPlayers.map((player, index) => (
-                    <button
-                      key={player.id}
-                      onClick={() => emblaApi?.scrollTo(index)}
-                      className={css({
-                        rounded: 'full',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        minH: '44px',
-                        minW: '44px',
-                        w: '12',
-                        h: '12',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: index === selectedIndex ? '2xl' : 'lg',
-                        opacity: index === selectedIndex ? 1 : 0.5,
-                        _hover: {
-                          opacity: 1,
-                          transform: 'scale(1.1)',
-                        },
-                      })}
-                      style={{
-                        background:
-                          index === selectedIndex
-                            ? `linear-gradient(135deg, ${player.color}, ${player.color}dd)`
-                            : `${player.color}30`,
-                      }}
-                      aria-label={`Go to ${player.name}`}
-                      data-action={`select-player-${index}`}
-                    >
-                      <span>{player.emoji}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Character vs Character Dashboard - Only show if user has stats */}
-        {hasStats && (
-          <div
-            className={css({
-              mb: '12',
-            })}
-          >
-            <div
-              className={css({
-                display: 'grid',
-                gridTemplateColumns: {
-                  base: '1fr',
-                  md: '1fr',
-                  lg: 'repeat(3, 1fr)',
-                },
-                gap: { base: '4', md: '6' },
-                maxW: '7xl',
-                mx: 'auto',
-              })}
-            >
-              {/* Head-to-Head Stats */}
-              <div
-                className={css({
-                  background: 'white',
-                  backdropFilter: 'blur(10px)',
-                  rounded: '2xl',
-                  p: '6',
-                  border: '1px solid',
-                  borderColor: 'gray.200',
-                  boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.3s ease',
-                  _hover: {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 20px 45px rgba(0, 0, 0, 0.15)',
-                  },
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: '4',
                 })}
               >
-                <div
-                  className={css({
-                    textAlign: 'center',
-                    mb: '4',
-                  })}
-                >
-                  <h3
-                    className={css({
-                      fontSize: 'xl',
-                      fontWeight: 'bold',
-                      color: 'gray.800',
-                      mb: '2',
-                    })}
-                  >
-                    {t('dashboard.headToHead.title')}
-                  </h3>
-                  <p
-                    className={css({
-                      fontSize: 'sm',
-                      color: 'gray.600',
-                    })}
-                  >
-                    {t('dashboard.headToHead.subtitle')}
-                  </p>
-                </div>
+                {allPlayers.slice(0, 2).map((player, idx) => {
+                  const playerStats = playerStatsMap.get(player.id)
+                  const totalWins = playerStats?.totalWins || 0
 
-                <div
-                  className={css({
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    mb: '4',
-                  })}
-                >
-                  {allPlayers.slice(0, 2).map((player, idx) => (
+                  return (
                     <React.Fragment key={player.id}>
                       <div
                         className={css({
@@ -987,7 +937,7 @@ function GamesPageContent() {
                           })}
                           style={{ color: player.color }}
                         >
-                          {Math.floor(profile.totalWins * (idx === 0 ? 0.6 : 0.4))}
+                          {totalWins}
                         </div>
                         <div
                           className={css({
@@ -1019,240 +969,240 @@ function GamesPageContent() {
                         </div>
                       )}
                     </React.Fragment>
-                  ))}
-                </div>
+                  )
+                })}
+              </div>
 
-                <div
+              <div
+                className={css({
+                  textAlign: 'center',
+                  fontSize: 'sm',
+                  color: 'gray.600',
+                })}
+              >
+                {t('dashboard.headToHead.lastPlayed')}
+              </div>
+            </div>
+
+            {/* Recent Achievements */}
+            <div
+              className={css({
+                background: 'white',
+                backdropFilter: 'blur(10px)',
+                rounded: '2xl',
+                p: '6',
+                border: '1px solid',
+                borderColor: 'gray.200',
+                boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.3s ease',
+                _hover: {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 20px 45px rgba(0, 0, 0, 0.15)',
+                },
+              })}
+            >
+              <div
+                className={css({
+                  textAlign: 'center',
+                  mb: '4',
+                })}
+              >
+                <h3
                   className={css({
-                    textAlign: 'center',
+                    fontSize: 'xl',
+                    fontWeight: 'bold',
+                    color: 'gray.800',
+                    mb: '2',
+                  })}
+                >
+                  {t('dashboard.achievements.title')}
+                </h3>
+                <p
+                  className={css({
                     fontSize: 'sm',
                     color: 'gray.600',
                   })}
                 >
-                  {t('dashboard.headToHead.lastPlayed')}
-                </div>
+                  {t('dashboard.achievements.subtitle')}
+                </p>
               </div>
 
-              {/* Recent Achievements */}
               <div
                 className={css({
-                  background: 'white',
-                  backdropFilter: 'blur(10px)',
-                  rounded: '2xl',
-                  p: '6',
-                  border: '1px solid',
-                  borderColor: 'gray.200',
-                  boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.3s ease',
-                  _hover: {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 20px 45px rgba(0, 0, 0, 0.15)',
-                  },
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '3',
                 })}
               >
-                <div
-                  className={css({
-                    textAlign: 'center',
-                    mb: '4',
-                  })}
-                >
-                  <h3
-                    className={css({
-                      fontSize: 'xl',
-                      fontWeight: 'bold',
-                      color: 'gray.800',
-                      mb: '2',
-                    })}
-                  >
-                    {t('dashboard.achievements.title')}
-                  </h3>
-                  <p
-                    className={css({
-                      fontSize: 'sm',
-                      color: 'gray.600',
-                    })}
-                  >
-                    {t('dashboard.achievements.subtitle')}
-                  </p>
-                </div>
-
-                <div
-                  className={css({
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '3',
-                  })}
-                >
-                  {allPlayers.slice(0, 2).map((player, idx) => (
-                    <div
-                      key={player.id}
-                      className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '3',
-                        p: '3',
-                        rounded: 'lg',
-                        border: '1px solid',
-                      })}
-                      style={{
-                        background:
-                          idx === 0
-                            ? 'linear-gradient(135deg, #fef3c7, #fde68a)'
-                            : 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
-                        borderColor: idx === 0 ? '#fde68a' : '#ddd6fe',
-                      }}
-                    >
-                      <span className={css({ fontSize: 'lg' })}>{player.emoji}</span>
-                      <div>
-                        <div
-                          className={css({
-                            fontSize: 'sm',
-                            fontWeight: 'semibold',
-                          })}
-                          style={{ color: idx === 0 ? '#92400e' : '#581c87' }}
-                        >
-                          {idx === 0
-                            ? t('dashboard.achievements.firstWin.title')
-                            : t('dashboard.achievements.speedDemon.title')}
-                        </div>
-                        <div
-                          className={css({
-                            fontSize: 'xs',
-                          })}
-                          style={{ color: idx === 0 ? '#a16207' : '#6b21a8' }}
-                        >
-                          {idx === 0
-                            ? t('dashboard.achievements.firstWin.description')
-                            : t('dashboard.achievements.speedDemon.description')}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Challenge System */}
-              <div
-                className={css({
-                  background: 'white',
-                  backdropFilter: 'blur(10px)',
-                  rounded: '2xl',
-                  p: '6',
-                  border: '1px solid',
-                  borderColor: 'gray.200',
-                  boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.3s ease',
-                  _hover: {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 20px 45px rgba(0, 0, 0, 0.15)',
-                  },
-                })}
-              >
-                <div
-                  className={css({
-                    textAlign: 'center',
-                    mb: '4',
-                  })}
-                >
-                  <h3
-                    className={css({
-                      fontSize: 'xl',
-                      fontWeight: 'bold',
-                      color: 'gray.800',
-                      mb: '2',
-                    })}
-                  >
-                    {t('dashboard.challenges.title')}
-                  </h3>
-                  <p
-                    className={css({
-                      fontSize: 'sm',
-                      color: 'gray.600',
-                    })}
-                  >
-                    {t('dashboard.challenges.subtitle')}
-                  </p>
-                </div>
-
-                {allPlayers.length >= 2 && (
+                {allPlayers.slice(0, 2).map((player, idx) => (
                   <div
+                    key={player.id}
                     className={css({
-                      background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3',
+                      p: '3',
                       rounded: 'lg',
-                      p: '4',
                       border: '1px solid',
-                      borderColor: 'blue.200',
-                      mb: '4',
                     })}
+                    style={{
+                      background:
+                        idx === 0
+                          ? 'linear-gradient(135deg, #fef3c7, #fde68a)'
+                          : 'linear-gradient(135deg, #e9d5ff, #ddd6fe)',
+                      borderColor: idx === 0 ? '#fde68a' : '#ddd6fe',
+                    }}
                   >
-                    <div
-                      className={css({
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '2',
-                        mb: '2',
-                      })}
-                    >
-                      <span className={css({ fontSize: 'lg' })}>{allPlayers[0].emoji}</span>
-                      <span
+                    <span className={css({ fontSize: 'lg' })}>{player.emoji}</span>
+                    <div>
+                      <div
                         className={css({
                           fontSize: 'sm',
-                          color: 'blue.800',
                           fontWeight: 'semibold',
                         })}
+                        style={{ color: idx === 0 ? '#92400e' : '#581c87' }}
                       >
-                        {t('dashboard.challenges.challengesText')}
-                      </span>
-                      <span className={css({ fontSize: 'lg' })}>{allPlayers[1].emoji}</span>
-                    </div>
-                    <div
-                      className={css({
-                        fontSize: 'sm',
-                        color: 'blue.700',
-                        fontWeight: 'medium',
-                      })}
-                    >
-                      "{t('dashboard.challenges.exampleChallenge')}"
-                    </div>
-                    <div
-                      className={css({
-                        fontSize: 'xs',
-                        color: 'blue.600',
-                        mt: '1',
-                      })}
-                    >
-                      {t('dashboard.challenges.currentBest', { score: 850 })}
+                        {idx === 0
+                          ? t('dashboard.achievements.firstWin.title')
+                          : t('dashboard.achievements.speedDemon.title')}
+                      </div>
+                      <div
+                        className={css({
+                          fontSize: 'xs',
+                        })}
+                        style={{ color: idx === 0 ? '#a16207' : '#6b21a8' }}
+                      >
+                        {idx === 0
+                          ? t('dashboard.achievements.firstWin.description')
+                          : t('dashboard.achievements.speedDemon.description')}
+                      </div>
                     </div>
                   </div>
-                )}
-
-                <button
-                  className={css({
-                    w: 'full',
-                    py: { base: '4', md: '3' },
-                    minH: '44px',
-                    background: 'linear-gradient(135deg, #10b981, #059669)',
-                    color: 'white',
-                    rounded: 'lg',
-                    fontSize: { base: 'md', md: 'sm' },
-                    fontWeight: 'semibold',
-                    border: 'none',
-                    cursor: 'pointer',
-                    touchAction: 'manipulation',
-                    transition: 'all 0.3s ease',
-                    _hover: {
-                      transform: 'translateY(-1px)',
-                      boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)',
-                    },
-                  })}
-                >
-                  {t('dashboard.challenges.createButton')}
-                </button>
+                ))}
               </div>
             </div>
+
+            {/* Challenge System */}
+            <div
+              className={css({
+                background: 'white',
+                backdropFilter: 'blur(10px)',
+                rounded: '2xl',
+                p: '6',
+                border: '1px solid',
+                borderColor: 'gray.200',
+                boxShadow: '0 15px 35px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.3s ease',
+                _hover: {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 20px 45px rgba(0, 0, 0, 0.15)',
+                },
+              })}
+            >
+              <div
+                className={css({
+                  textAlign: 'center',
+                  mb: '4',
+                })}
+              >
+                <h3
+                  className={css({
+                    fontSize: 'xl',
+                    fontWeight: 'bold',
+                    color: 'gray.800',
+                    mb: '2',
+                  })}
+                >
+                  {t('dashboard.challenges.title')}
+                </h3>
+                <p
+                  className={css({
+                    fontSize: 'sm',
+                    color: 'gray.600',
+                  })}
+                >
+                  {t('dashboard.challenges.subtitle')}
+                </p>
+              </div>
+
+              {allPlayers.length >= 2 && (
+                <div
+                  className={css({
+                    background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)',
+                    rounded: 'lg',
+                    p: '4',
+                    border: '1px solid',
+                    borderColor: 'blue.200',
+                    mb: '4',
+                  })}
+                >
+                  <div
+                    className={css({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '2',
+                      mb: '2',
+                    })}
+                  >
+                    <span className={css({ fontSize: 'lg' })}>{allPlayers[0].emoji}</span>
+                    <span
+                      className={css({
+                        fontSize: 'sm',
+                        color: 'blue.800',
+                        fontWeight: 'semibold',
+                      })}
+                    >
+                      {t('dashboard.challenges.challengesText')}
+                    </span>
+                    <span className={css({ fontSize: 'lg' })}>{allPlayers[1].emoji}</span>
+                  </div>
+                  <div
+                    className={css({
+                      fontSize: 'sm',
+                      color: 'blue.700',
+                      fontWeight: 'medium',
+                    })}
+                  >
+                    "{t('dashboard.challenges.exampleChallenge')}"
+                  </div>
+                  <div
+                    className={css({
+                      fontSize: 'xs',
+                      color: 'blue.600',
+                      mt: '1',
+                    })}
+                  >
+                    {t('dashboard.challenges.currentBest', { score: 850 })}
+                  </div>
+                </div>
+              )}
+
+              <button
+                className={css({
+                  w: 'full',
+                  py: { base: '4', md: '3' },
+                  minH: '44px',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: 'white',
+                  rounded: 'lg',
+                  fontSize: { base: 'md', md: 'sm' },
+                  fontWeight: 'semibold',
+                  border: 'none',
+                  cursor: 'pointer',
+                  touchAction: 'manipulation',
+                  transition: 'all 0.3s ease',
+                  _hover: {
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)',
+                  },
+                })}
+              >
+                {t('dashboard.challenges.createButton')}
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

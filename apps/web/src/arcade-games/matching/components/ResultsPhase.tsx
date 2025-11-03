@@ -1,15 +1,19 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { css } from '../../../../styled-system/css'
 import { useGameMode } from '@/contexts/GameModeContext'
 import { useMatching } from '../Provider'
 import { formatGameTime, getMultiplayerWinner, getPerformanceAnalysis } from '../utils/gameScoring'
+import { useRecordGameResult } from '@/hooks/useRecordGameResult'
+import type { GameResult } from '@/lib/arcade/stats/types'
 
 export function ResultsPhase() {
   const router = useRouter()
   const { state, resetGame, activePlayers, gameMode, exitSession } = useMatching()
   const { players: playerMap, activePlayers: activePlayerIds } = useGameMode()
+  const { mutate: recordGameResult } = useRecordGameResult()
 
   // Get active player data array
   const activePlayerData = Array.from(activePlayerIds)
@@ -27,6 +31,45 @@ export function ResultsPhase() {
   const analysis = getPerformanceAnalysis(state)
   const multiplayerResult =
     gameMode === 'multiplayer' ? getMultiplayerWinner(state, activePlayers) : null
+
+  // Record game stats when results are shown
+  useEffect(() => {
+    if (!state.gameEndTime || !state.gameStartTime) return
+
+    // Build game result
+    const gameResult: GameResult = {
+      gameType: 'matching',
+      playerResults: activePlayerData.map((player) => {
+        const isWinner = gameMode === 'single' || multiplayerResult?.winners.includes(player.id)
+        const score =
+          gameMode === 'multiplayer'
+            ? multiplayerResult?.scores[player.id] || 0
+            : state.matchedPairs
+
+        return {
+          playerId: player.id,
+          won: isWinner || false,
+          score,
+          accuracy: analysis.statistics.accuracy / 100, // Convert percentage to 0-1
+          completionTime: gameTime,
+          metrics: {
+            moves: state.moves,
+            matchedPairs: state.matchedPairs,
+          },
+        }
+      }),
+      completedAt: state.gameEndTime,
+      duration: gameTime,
+      metadata: {
+        gameMode,
+        starRating: analysis.starRating,
+        grade: analysis.grade,
+      },
+    }
+
+    console.log('📊 Recording matching game result:', gameResult)
+    recordGameResult(gameResult)
+  }, []) // Empty deps - only record once when component mounts
 
   return (
     <div
