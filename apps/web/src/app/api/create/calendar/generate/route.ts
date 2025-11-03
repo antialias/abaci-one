@@ -33,30 +33,24 @@ export async function POST(request: NextRequest) {
     // Generate SVGs using script (avoids Next.js react-dom/server restriction)
     const daysInMonth = getDaysInMonth(year, month)
     const maxDay = format === 'daily' ? daysInMonth : 31 // For monthly, pre-generate all
-    const customStyles = abacusConfig?.customStyles || {}
+    const scriptPath = join(process.cwd(), 'scripts', 'generateCalendarAbacus.tsx')
 
-    // Call script to generate all SVGs
-    const scriptPath = join(process.cwd(), 'scripts', 'generateCalendarSVGs.tsx')
-    const customStylesJson = JSON.stringify(customStyles)
-    const svgsJson = execSync(`npx tsx "${scriptPath}" ${maxDay} ${year} '${customStylesJson}'`, {
+    // Generate day SVGs (1 to maxDay)
+    for (let day = 1; day <= maxDay; day++) {
+      const svg = execSync(`npx tsx "${scriptPath}" ${day} 2`, {
+        encoding: 'utf-8',
+        cwd: process.cwd(),
+      })
+      writeFileSync(join(tempDir, `day-${day}.svg`), svg)
+    }
+
+    // Generate year SVG
+    const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
+    const yearSvg = execSync(`npx tsx "${scriptPath}" ${year} ${yearColumns}`, {
       encoding: 'utf-8',
       cwd: process.cwd(),
     })
-
-    interface CalendarSVGs {
-      days: Record<string, string>
-      year: string
-    }
-
-    const svgs: CalendarSVGs = JSON.parse(svgsJson)
-
-    // Write day SVGs to temp directory
-    for (const [key, svg] of Object.entries(svgs.days)) {
-      writeFileSync(join(tempDir, `${key}.svg`), svg)
-    }
-
-    // Write year SVG
-    writeFileSync(join(tempDir, 'year.svg'), svgs.year)
+    writeFileSync(join(tempDir, 'year.svg'), yearSvg)
 
     // Generate Typst document
     const typstContent =

@@ -166,7 +166,8 @@ export function MyAbacus() {
           isHeroMode
             ? {
                 // Hero mode: position accounts for scroll to flow with page (subtract scroll to move up with content)
-                top: `calc(50vh - ${scrollY}px)`,
+                // Positioned lower (60vh instead of 50vh) to avoid covering subtitle
+                top: `calc(60vh - ${scrollY}px)`,
               }
             : undefined
         }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { css } from '../../../../styled-system/css'
 import { useAbacusConfig } from '@soroban/abacus-react'
+import { PageWithNav } from '@/components/PageWithNav'
 import { CalendarConfigPanel } from './components/CalendarConfigPanel'
 import { CalendarPreview } from './components/CalendarPreview'
 
@@ -54,75 +55,77 @@ export default function CalendarCreatorPage() {
   }
 
   return (
-    <div
-      data-component="calendar-creator"
-      className={css({
-        minHeight: '100vh',
-        bg: 'gray.900',
-        color: 'white',
-        padding: '2rem',
-      })}
-    >
+    <PageWithNav navTitle="Create" navEmoji="📅">
       <div
+        data-component="calendar-creator"
         className={css({
-          maxWidth: '1400px',
-          margin: '0 auto',
+          minHeight: '100vh',
+          bg: 'gray.900',
+          color: 'white',
+          padding: '2rem',
         })}
       >
-        {/* Header */}
-        <header
-          data-section="page-header"
-          className={css({
-            textAlign: 'center',
-            marginBottom: '3rem',
-          })}
-        >
-          <h1
-            className={css({
-              fontSize: '2.5rem',
-              fontWeight: 'bold',
-              marginBottom: '0.5rem',
-              color: 'yellow.400',
-            })}
-          >
-            Create Abacus Calendar
-          </h1>
-          <p
-            className={css({
-              fontSize: '1.125rem',
-              color: 'gray.300',
-            })}
-          >
-            Generate printable calendars with abacus date numbers
-          </p>
-        </header>
-
-        {/* Main Content */}
         <div
           className={css({
-            display: 'grid',
-            gridTemplateColumns: { base: '1fr', lg: '350px 1fr' },
-            gap: '2rem',
+            maxWidth: '1400px',
+            margin: '0 auto',
           })}
         >
-          {/* Configuration Panel */}
-          <CalendarConfigPanel
-            month={month}
-            year={year}
-            format={format}
-            paperSize={paperSize}
-            isGenerating={isGenerating}
-            onMonthChange={setMonth}
-            onYearChange={setYear}
-            onFormatChange={setFormat}
-            onPaperSizeChange={setPaperSize}
-            onGenerate={handleGenerate}
-          />
+          {/* Header */}
+          <header
+            data-section="page-header"
+            className={css({
+              textAlign: 'center',
+              marginBottom: '3rem',
+            })}
+          >
+            <h1
+              className={css({
+                fontSize: '2.5rem',
+                fontWeight: 'bold',
+                marginBottom: '0.5rem',
+                color: 'yellow.400',
+              })}
+            >
+              Create Abacus Calendar
+            </h1>
+            <p
+              className={css({
+                fontSize: '1.125rem',
+                color: 'gray.300',
+              })}
+            >
+              Generate printable calendars with abacus date numbers
+            </p>
+          </header>
 
-          {/* Preview */}
-          <CalendarPreview month={month} year={year} format={format} />
+          {/* Main Content */}
+          <div
+            className={css({
+              display: 'grid',
+              gridTemplateColumns: { base: '1fr', lg: '350px 1fr' },
+              gap: '2rem',
+            })}
+          >
+            {/* Configuration Panel */}
+            <CalendarConfigPanel
+              month={month}
+              year={year}
+              format={format}
+              paperSize={paperSize}
+              isGenerating={isGenerating}
+              onMonthChange={setMonth}
+              onYearChange={setYear}
+              onFormatChange={setFormat}
+              onPaperSizeChange={setPaperSize}
+              onGenerate={handleGenerate}
+            />
+
+            {/* Preview */}
+            <CalendarPreview month={month} year={year} format={format} />
+          </div>
         </div>
       </div>
-    </div>
+    </PageWithNav>
   )
 }
