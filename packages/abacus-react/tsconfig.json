@@ -25,6 +25,7 @@
     "dist",
     "**/*.stories.*",
     "**/*.test.*",
-    "src/test/**/*"
+    "src/test/**/*",
+    "src/__tests__/**/*"
   ]
 }

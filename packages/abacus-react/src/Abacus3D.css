@@ -1,0 +1,360 @@
+/**
+ * Abacus 3D Enhancement Styles
+ * Three levels of progressive enhancement:
+ * - subtle: CSS perspective + shadows
+ * - realistic: Lighting + material design
+ * - delightful: Physics + micro-interactions
+ */
+
+/* ============================================
+   PROPOSAL 1: SUBTLE (CSS Perspective + Shadows)
+   ============================================ */
+
+.abacus-3d-container {
+  display: inline-block;
+  position: relative;
+}
+
+.abacus-3d-container.enhanced-subtle {
+  perspective: 1200px;
+  perspective-origin: 50% 50%;
+}
+
+.abacus-3d-container.enhanced-subtle .abacus-svg {
+  transform-style: preserve-3d;
+  transform: rotateX(2deg) rotateY(-1deg);
+  transition: transform 0.3s ease-out;
+}
+
+.abacus-3d-container.enhanced-subtle:hover .abacus-svg {
+  transform: rotateX(0deg) rotateY(0deg);
+}
+
+/* Bead depth shadows - subtle */
+.abacus-3d-container.enhanced-subtle .abacus-bead.active {
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25))
+          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.abacus-3d-container.enhanced-subtle .abacus-bead.inactive {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Frame depth */
+.abacus-3d-container.enhanced-subtle rect[class*="column-post"],
+.abacus-3d-container.enhanced-subtle rect[class*="reckoning-bar"] {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* ============================================
+   PROPOSAL 2: REALISTIC (Lighting + Materials)
+   ============================================ */
+
+.abacus-3d-container.enhanced-realistic {
+  perspective: 1200px;
+  perspective-origin: 50% 50%;
+}
+
+.abacus-3d-container.enhanced-realistic .abacus-svg {
+  transform-style: preserve-3d;
+  transform: rotateX(3deg) rotateY(-2deg);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.abacus-3d-container.enhanced-realistic:hover .abacus-svg {
+  transform: rotateX(0deg) rotateY(0deg);
+}
+
+/* Enhanced bead shadows with ambient occlusion */
+.abacus-3d-container.enhanced-realistic .abacus-bead.active {
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3))
+          drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2))
+          drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+}
+
+.abacus-3d-container.enhanced-realistic .abacus-bead.inactive {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))
+          drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Frame with depth and texture */
+.abacus-3d-container.enhanced-realistic rect[class*="column-post"],
+.abacus-3d-container.enhanced-realistic rect[class*="reckoning-bar"] {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25))
+          drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
+}
+
+/* Material-specific enhancements */
+.abacus-3d-container.enhanced-realistic .bead-material-glossy {
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.3))
+          drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2))
+          drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+}
+
+.abacus-3d-container.enhanced-realistic .bead-material-satin {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25))
+          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.abacus-3d-container.enhanced-realistic .bead-material-matte {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.2))
+          drop-shadow(0 1px 3px rgba(0, 0, 0, 0.1));
+}
+
+/* Wood grain texture overlay */
+.abacus-3d-container.enhanced-realistic .frame-wood {
+  opacity: 0.15;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* Lighting effects - top-down */
+.abacus-3d-container.enhanced-realistic.lighting-top-down::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  left: 50%;
+  width: 120%;
+  height: 30%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Lighting effects - ambient */
+.abacus-3d-container.enhanced-realistic.lighting-ambient::before {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Lighting effects - dramatic */
+.abacus-3d-container.enhanced-realistic.lighting-dramatic::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.25) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ============================================
+   PROPOSAL 3: DELIGHTFUL (Physics + Micro-interactions)
+   ============================================ */
+
+.abacus-3d-container.enhanced-delightful {
+  perspective: 1400px;
+  perspective-origin: 50% 50%;
+}
+
+.abacus-3d-container.enhanced-delightful .abacus-svg {
+  transform-style: preserve-3d;
+  transform: rotateX(4deg) rotateY(-3deg);
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.abacus-3d-container.enhanced-delightful:hover .abacus-svg {
+  transform: rotateX(1deg) rotateY(-0.5deg);
+}
+
+/* Maximum depth shadows */
+.abacus-3d-container.enhanced-delightful .abacus-bead.active {
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.35))
+          drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25))
+          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.abacus-3d-container.enhanced-delightful .abacus-bead.inactive {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15))
+          drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Hover parallax effect */
+.abacus-3d-container.enhanced-delightful.parallax-enabled .abacus-bead {
+  transition: transform 0.15s ease-out, filter 0.15s ease-out;
+}
+
+.abacus-3d-container.enhanced-delightful.parallax-enabled .abacus-bead.parallax-lift {
+  transform: translateZ(4px) scale(1.02);
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.4))
+          drop-shadow(0 5px 10px rgba(0, 0, 0, 0.3));
+}
+
+/* Clack ripple effect */
+@keyframes clack-ripple {
+  0% {
+    r: 0;
+    opacity: 0.6;
+  }
+  100% {
+    r: 25;
+    opacity: 0;
+  }
+}
+
+.clack-ripple {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  opacity: 0;
+}
+
+.clack-ripple.animating {
+  animation: clack-ripple 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Particle effects */
+@keyframes particle-rise {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-20px) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes particle-sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+}
+
+.particle {
+  pointer-events: none;
+}
+
+.particle.particle-subtle {
+  animation: particle-rise 0.5s ease-out forwards;
+}
+
+.particle.particle-sparkle {
+  animation: particle-sparkle 0.6s ease-in-out forwards;
+}
+
+/* Enhanced lighting with multiple sources */
+.abacus-3d-container.enhanced-delightful::before {
+  content: '';
+  position: absolute;
+  top: -15%;
+  left: 50%;
+  width: 140%;
+  height: 40%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 80%
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+.abacus-3d-container.enhanced-delightful::after {
+  content: '';
+  position: absolute;
+  bottom: -10%;
+  left: 50%;
+  width: 100%;
+  height: 20%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.1) 0%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Wobble physics - applied via inline styles from React Spring */
+.bead-wobble {
+  /* transform-origin set dynamically */
+  transform-style: preserve-3d;
+}
+
+/* Frame depth enhancement */
+.abacus-3d-container.enhanced-delightful rect[class*="column-post"],
+.abacus-3d-container.enhanced-delightful rect[class*="reckoning-bar"] {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))
+          drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))
+          drop-shadow(0 0 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Wood grain texture - enhanced */
+.frame-wood-enhanced {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(139, 90, 43, 0.03) 2px,
+      rgba(139, 90, 43, 0.03) 4px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(101, 67, 33, 0.02) 1px,
+      rgba(101, 67, 33, 0.02) 2px
+    );
+  opacity: 0.2;
+  mix-blend-mode: multiply;
+}
+
+/* Accessibility - Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .abacus-3d-container.enhanced-subtle .abacus-svg,
+  .abacus-3d-container.enhanced-realistic .abacus-svg,
+  .abacus-3d-container.enhanced-delightful .abacus-svg {
+    transition: none;
+    transform: none;
+  }
+
+  .abacus-3d-container.enhanced-delightful.parallax-enabled .abacus-bead {
+    transition: none;
+  }
+
+  .clack-ripple.animating {
+    animation: none;
+  }
+
+  .particle {
+    display: none;
+  }
+}
+
+/* Performance optimization - will-change hints */
+.abacus-3d-container.enhanced-delightful .abacus-bead {
+  will-change: transform, filter;
+}
+
+.abacus-3d-container.enhanced-realistic .abacus-bead.active {
+  will-change: filter;
+}

@@ -6,6 +6,8 @@ import { useDrag } from "@use-gesture/react";
 import NumberFlow from "@number-flow/react";
 import { useAbacusConfig, getDefaultAbacusConfig } from "./AbacusContext";
 import { playBeadSound } from "./soundManager";
+import * as Abacus3DUtils from "./Abacus3DUtils";
+import "./Abacus3D.css";
 
 // Types
 export interface BeadConfig {
@@ -238,6 +240,27 @@ export interface AbacusOverlay {
   visible?: boolean;
 }
 
+// 3D Enhancement Configuration
+export type BeadMaterial = "glossy" | "satin" | "matte";
+export type FrameMaterial = "wood" | "metal" | "minimal";
+export type LightingStyle = "top-down" | "ambient" | "dramatic";
+
+export interface Abacus3DMaterial {
+  heavenBeads?: BeadMaterial;
+  earthBeads?: BeadMaterial;
+  frame?: FrameMaterial;
+  lighting?: LightingStyle;
+  woodGrain?: boolean; // Add wood texture to frame
+}
+
+export interface Abacus3DPhysics {
+  wobble?: boolean; // Beads rotate slightly during movement
+  clackEffect?: boolean; // Visual ripple when beads snap
+  hoverParallax?: boolean; // Beads lift on hover
+  particleSnap?: "off" | "subtle" | "sparkle"; // Particle effects on snap
+  hapticFeedback?: boolean; // Trigger haptic feedback on mobile
+}
+
 export interface AbacusConfig {
   // Basic configuration
   value?: number | bigint;
@@ -254,6 +277,11 @@ export interface AbacusConfig {
   showNumbers?: boolean;
   soundEnabled?: boolean;
   soundVolume?: number;
+
+  // 3D Enhancement
+  enhanced3d?: boolean | "subtle" | "realistic" | "delightful";
+  material3d?: Abacus3DMaterial;
+  physics3d?: Abacus3DPhysics;
 
   // Advanced customization
   customStyles?: AbacusCustomStyles;
@@ -1540,6 +1568,10 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   showNumbers,
   soundEnabled,
   soundVolume,
+  // 3D enhancement props
+  enhanced3d,
+  material3d,
+  physics3d,
   // Advanced customization props
   customStyles,
   callbacks,

@@ -26,6 +26,10 @@ export const Z_INDEX = {
   // Top-level overlays (20000+)
   TOAST: 20000,
 
+  // My Abacus - Personal trophy overlay (30000+)
+  MY_ABACUS_BACKDROP: 30000,
+  MY_ABACUS: 30001,
+
   // Special navigation layers for game pages
   GAME_NAV: {
     // Hamburger menu and its nested content

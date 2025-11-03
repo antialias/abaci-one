@@ -13,6 +13,9 @@ import { createQueryClient } from '@/lib/queryClient'
 import type { Locale } from '@/i18n/messages'
 import { AbacusSettingsSync } from './AbacusSettingsSync'
 import { DeploymentInfo } from './DeploymentInfo'
+import { MyAbacusProvider } from '@/contexts/MyAbacusContext'
+import { MyAbacus } from './MyAbacus'
+import { HomeHeroProvider } from '@/contexts/HomeHeroContext'
 
 interface ClientProvidersProps {
   children: ReactNode
@@ -31,8 +34,13 @@ function InnerProviders({ children }: { children: ReactNode }) {
           <UserProfileProvider>
             <GameModeProvider>
               <FullscreenProvider>
-                {children}
-                <DeploymentInfo />
+                <HomeHeroProvider>
+                  <MyAbacusProvider>
+                    {children}
+                    <DeploymentInfo />
+                    <MyAbacus />
+                  </MyAbacusProvider>
+                </HomeHeroProvider>
               </FullscreenProvider>
             </GameModeProvider>
           </UserProfileProvider>

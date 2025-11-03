@@ -68,6 +68,7 @@ export function InteractiveFlashcards() {
   return (
     <div
       ref={containerRef}
+      data-component="interactive-flashcards"
       className={css({
         position: 'relative',
         width: '100%',
@@ -78,6 +79,7 @@ export function InteractiveFlashcards() {
         bg: 'rgba(0, 0, 0, 0.3)',
         rounded: 'xl',
         border: '1px solid rgba(255, 255, 255, 0.1)',
+        zIndex: 1, // Create stacking context so child z-indexes are relative
       })}
     >
       {cards.map((card) => (
@@ -113,7 +115,7 @@ function DraggableCard({ card, containerRef }: DraggableCardProps) {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true)
-    setZIndex(1000) // Bring to front
+    setZIndex(10) // Bring to front within container stacking context
     setDragSpeed(0)
 
     // Capture the pointer
