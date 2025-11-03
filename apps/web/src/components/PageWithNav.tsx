@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useContext } from 'react'
 import { useGameMode } from '../contexts/GameModeContext'
 import { useRoomData } from '../hooks/useRoomData'
 import { useViewerId } from '../hooks/useViewerId'
@@ -9,6 +9,7 @@ import { GameContextNav, type RosterWarning } from './nav/GameContextNav'
 import type { PlayerBadge } from './nav/types'
 import { PlayerConfigDialog } from './nav/PlayerConfigDialog'
 import { ModerationNotifications } from './nav/ModerationNotifications'
+import { PreviewModeContext } from './GamePreview'
 
 interface PageWithNavProps {
   navTitle?: string
@@ -57,6 +58,12 @@ export function PageWithNav({
   onAssignBlackPlayer,
   gamePhase,
 }: PageWithNavProps) {
+  // In preview mode, render just the children without navigation
+  const previewMode = useContext(PreviewModeContext)
+  if (previewMode?.isPreview) {
+    return <>{children}</>
+  }
+
   const { players, activePlayers, setActive, activePlayerCount } = useGameMode()
   const { roomData, isInRoom, moderationEvent, clearModerationEvent } = useRoomData()
   const { data: viewerId } = useViewerId()

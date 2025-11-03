@@ -6,6 +6,7 @@ import { Textfit } from 'react-textfit'
 import { css } from '../../../../styled-system/css'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useAbacusSettings } from '@/hooks/useAbacusSettings'
+import { useViewport } from '@/contexts/ViewportContext'
 import { OverviewSection } from './guide-sections/OverviewSection'
 import { PiecesSection } from './guide-sections/PiecesSection'
 import { CaptureSection } from './guide-sections/CaptureSection'
@@ -37,6 +38,7 @@ export function PlayingGuideModal({
   const t = useTranslations('rithmomachia.guide')
   const { data: abacusSettings } = useAbacusSettings()
   const useNativeAbacusNumbers = abacusSettings?.nativeAbacusNumbers ?? false
+  const viewport = useViewport()
 
   const [activeSection, setActiveSection] = useState<Section>('overview')
 
@@ -69,7 +71,7 @@ export function PlayingGuideModal({
 
   const [isDragging, setIsDragging] = useState(false)
   const [windowWidth, setWindowWidth] = useState(
-    typeof window !== 'undefined' ? window.innerWidth : 800
+    typeof window !== 'undefined' ? viewport.width : 800
   )
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [isResizing, setIsResizing] = useState(false)
@@ -98,18 +100,16 @@ export function PlayingGuideModal({
 
   // Track window width for responsive behavior
   useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+    setWindowWidth(viewport.width)
+  }, [viewport.width])
 
   // Center modal on mount (not in standalone mode)
   useEffect(() => {
     if (isOpen && modalRef.current && !standalone) {
       const rect = modalRef.current.getBoundingClientRect()
       setPosition({
-        x: (window.innerWidth - rect.width) / 2,
-        y: Math.max(50, (window.innerHeight - rect.height) / 2),
+        x: (viewport.width - rect.width) / 2,
+        y: Math.max(50, (viewport.height - rect.height) / 2),
       })
     }
   }, [isOpen, standalone])
@@ -118,13 +118,13 @@ export function PlayingGuideModal({
   const handleMouseDown = (e: React.MouseEvent) => {
     console.log(
       '[GUIDE_DRAG] === MOUSE DOWN === windowWidth: ' +
-        window.innerWidth +
+        viewport.width +
         ', standalone: ' +
         standalone +
         ', docked: ' +
         docked
     )
-    if (window.innerWidth < 768 || standalone) {
+    if (viewport.width < 768 || standalone) {
       console.log('[GUIDE_DRAG] Skipping drag - mobile or standalone')
       return // No dragging on mobile or standalone
     }
@@ -169,7 +169,7 @@ export function PlayingGuideModal({
 
   // Handle resize start
   const handleResizeStart = (e: React.MouseEvent, direction: string) => {
-    if (window.innerWidth < 768 || standalone) return
+    if (viewport.width < 768 || standalone) return
     e.stopPropagation()
     setIsResizing(true)
     setResizeDirection(direction)
@@ -326,7 +326,7 @@ export function PlayingGuideModal({
             if (e.clientX < DOCK_THRESHOLD) {
               setDockPreview('left')
               onDockPreview('left')
-            } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
+            } else if (e.clientX > viewport.width - DOCK_THRESHOLD) {
               setDockPreview('right')
               onDockPreview('right')
             } else {
@@ -351,26 +351,23 @@ export function PlayingGuideModal({
         const minHeight = 300
 
         if (resizeDirection.includes('e')) {
-          newWidth = Math.max(
-            minWidth,
-            Math.min(window.innerWidth * 0.9, resizeStart.width + deltaX)
-          )
+          newWidth = Math.max(minWidth, Math.min(viewport.width * 0.9, resizeStart.width + deltaX))
         }
         if (resizeDirection.includes('w')) {
           const desiredWidth = resizeStart.width - deltaX
-          newWidth = Math.max(minWidth, Math.min(window.innerWidth * 0.9, desiredWidth))
+          newWidth = Math.max(minWidth, Math.min(viewport.width * 0.9, desiredWidth))
           // Move left edge by the amount we actually changed width
           newX = resizeStart.x + (resizeStart.width - newWidth)
         }
         if (resizeDirection.includes('s')) {
           newHeight = Math.max(
             minHeight,
-            Math.min(window.innerHeight * 0.9, resizeStart.height + deltaY)
+            Math.min(viewport.height * 0.9, resizeStart.height + deltaY)
           )
         }
         if (resizeDirection.includes('n')) {
           const desiredHeight = resizeStart.height - deltaY
-          newHeight = Math.max(minHeight, Math.min(window.innerHeight * 0.9, desiredHeight))
+          newHeight = Math.max(minHeight, Math.min(viewport.height * 0.9, desiredHeight))
           // Move top edge by the amount we actually changed height
           newY = resizeStart.y + (resizeStart.height - newHeight)
         }
@@ -403,7 +400,7 @@ export function PlayingGuideModal({
             ', threshold: ' +
             DOCK_THRESHOLD +
             ', windowWidth: ' +
-            window.innerWidth
+            viewport.width
         )
 
         if (e.clientX < DOCK_THRESHOLD) {
@@ -420,7 +417,7 @@ export function PlayingGuideModal({
           }
           console.log('[GUIDE_DRAG] Cleared state after re-dock to left')
           return
-        } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
+        } else if (e.clientX > viewport.width - DOCK_THRESHOLD) {
           console.log('[GUIDE_DRAG] Mouse up - near right edge, calling onDock(right)')
           onDock('right')
           // Don't call onUndock if we're re-docking
@@ -496,7 +493,7 @@ export function PlayingGuideModal({
   const isMedium = effectiveWidth < 600
 
   const renderResizeHandles = () => {
-    if (!isHovered || window.innerWidth < 768 || standalone) return null
+    if (!isHovered || viewport.width < 768 || standalone) return null
 
     const handleStyle = {
       position: 'absolute' as const,
@@ -662,7 +659,7 @@ export function PlayingGuideModal({
       opacity:
         dockPreview !== null
           ? 0.8
-          : !standalone && !docked && window.innerWidth >= 768 && !isHovered
+          : !standalone && !docked && viewport.width >= 768 && !isHovered
             ? 0.8
             : 1,
       transition: 'opacity 0.2s ease',
@@ -705,7 +702,7 @@ export function PlayingGuideModal({
             padding: isVeryNarrow ? '8px' : isNarrow ? '12px' : '24px',
             cursor: isDragging
               ? 'grabbing'
-              : !standalone && window.innerWidth >= 768
+              : !standalone && viewport.width >= 768
                 ? 'grab'
                 : 'default',
           }}

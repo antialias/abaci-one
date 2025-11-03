@@ -4,6 +4,7 @@ import { css } from '../../../../styled-system/css'
 import { useCardSorting } from '../Provider'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSpring, animated, to } from '@react-spring/web'
+import { useViewport } from '@/contexts/ViewportContext'
 import type { SortingCard } from '../types'
 
 // Add celebration animations
@@ -929,10 +930,12 @@ export function PlayingPhaseDrag() {
   const [nextZIndex, setNextZIndex] = useState(1)
 
   // Track viewport dimensions for responsive positioning
+  // Get viewport dimensions (uses mock dimensions in preview mode)
+  const viewport = useViewport()
+
   // For spectators, reduce dimensions to account for panels
   const getEffectiveViewportWidth = () => {
-    if (typeof window === 'undefined') return 1000
-    const baseWidth = window.innerWidth
+    const baseWidth = viewport.width
     // Sidebar is hidden on mobile (< 768px), narrower on desktop
     if (isSpectating && !spectatorStatsCollapsed && baseWidth >= 768) {
       return baseWidth - 240 // Subtract stats sidebar width on desktop
@@ -941,9 +944,8 @@ export function PlayingPhaseDrag() {
   }
 
   const getEffectiveViewportHeight = () => {
-    if (typeof window === 'undefined') return 800
-    const baseHeight = window.innerHeight
-    const baseWidth = window.innerWidth
+    const baseHeight = viewport.height
+    const baseWidth = viewport.width
     if (isSpectating) {
       // Banner is 170px on mobile (130px mini nav + 40px spectator banner), 56px on desktop
       return baseHeight - (baseWidth < 768 ? 170 : 56)
@@ -1284,8 +1286,8 @@ export function PlayingPhaseDrag() {
     const newYPx = e.clientY - offsetY
 
     // Convert to percentages
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
+    const viewportWidth = viewport.width
+    const viewportHeight = viewport.height
     const newX = (newXPx / viewportWidth) * 100
     const newY = (newYPx / viewportHeight) * 100
 
@@ -1901,22 +1903,15 @@ export function PlayingPhaseDrag() {
         })}
         style={{
           width:
-            isSpectating &&
-            !spectatorStatsCollapsed &&
-            typeof window !== 'undefined' &&
-            window.innerWidth >= 768
+            isSpectating && !spectatorStatsCollapsed && viewport.width >= 768
               ? 'calc(100vw - 240px)'
               : '100vw',
           height: isSpectating
-            ? typeof window !== 'undefined' && window.innerWidth < 768
+            ? viewport.width < 768
               ? 'calc(100vh - 170px)'
               : 'calc(100vh - 56px)'
             : '100vh',
-          top: isSpectating
-            ? typeof window !== 'undefined' && window.innerWidth < 768
-              ? '170px'
-              : '56px'
-            : '0',
+          top: isSpectating ? (viewport.width < 768 ? '170px' : '56px') : '0',
         }}
       >
         {/* Render continuous curved path through the entire sequence */}

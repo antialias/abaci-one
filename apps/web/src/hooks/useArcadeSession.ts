@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { GameMove } from '@/lib/arcade/validation'
 import { useArcadeSocket } from './useArcadeSocket'
 import {
@@ -6,6 +6,7 @@ import {
   useOptimisticGameState,
 } from './useOptimisticGameState'
 import type { RetryState } from '@/lib/arcade/error-handling'
+import { PreviewModeContext } from '@/components/GamePreview'
 
 export interface UseArcadeSessionOptions<TState> extends UseOptimisticGameStateOptions<TState> {
   /**
@@ -100,6 +101,40 @@ export function useArcadeSession<TState>(
   options: UseArcadeSessionOptions<TState>
 ): UseArcadeSessionReturn<TState> {
   const { userId, roomId, autoJoin = true, ...optimisticOptions } = options
+
+  // Check if we're in preview mode
+  const previewMode = useContext(PreviewModeContext)
+
+  // If in preview mode, return mock session immediately
+  if (previewMode?.isPreview && previewMode?.mockState) {
+    const mockRetryState: RetryState = {
+      isRetrying: false,
+      retryCount: 0,
+      move: null,
+      timestamp: null,
+    }
+
+    return {
+      state: previewMode.mockState as TState,
+      version: 1,
+      connected: true,
+      hasPendingMoves: false,
+      lastError: null,
+      retryState: mockRetryState,
+      sendMove: () => {
+        // Mock: do nothing in preview
+      },
+      exitSession: () => {
+        // Mock: do nothing in preview
+      },
+      clearError: () => {
+        // Mock: do nothing in preview
+      },
+      refresh: () => {
+        // Mock: do nothing in preview
+      },
+    }
+  }
 
   // Optimistic state management
   const optimistic = useOptimisticGameState<TState>(optimisticOptions)

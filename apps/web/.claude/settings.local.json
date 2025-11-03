@@ -145,7 +145,17 @@
       "Bash(gcloud config list:*)",
       "WebFetch(domain:www.boardspace.net)",
       "WebFetch(domain:www.gamecabinet.com)",
-      "WebFetch(domain:en.wikipedia.org)"
+      "WebFetch(domain:en.wikipedia.org)",
+      "Bash(pnpm search:*)",
+      "Bash(mkdir:*)",
+      "Bash(timeout 10 npx drizzle-kit generate:sqlite:*)",
+      "Bash(brew install:*)",
+      "Bash(sudo ln:*)",
+      "Bash(cd:*)",
+      "Bash(git clone:*)",
+      "Bash(git ls-remote:*)",
+      "Bash(openscad:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []

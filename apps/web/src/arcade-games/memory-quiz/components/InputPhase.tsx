@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isPrefix } from '@/lib/memory-quiz-utils'
 import { useMemoryQuiz } from '../Provider'
+import { useViewport } from '@/contexts/ViewportContext'
 import { CardGrid } from './CardGrid'
 
 export function InputPhase() {
   const { state, dispatch, acceptNumber, rejectNumber, setInput, showResults } = useMemoryQuiz()
+  const viewport = useViewport()
   const [displayFeedback, setDisplayFeedback] = useState<'neutral' | 'correct' | 'incorrect'>(
     'neutral'
   )
@@ -56,7 +58,7 @@ export function InputPhase() {
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
       // Method 3: Check viewport characteristics for mobile devices
-      const isMobileViewport = window.innerWidth <= 768 && window.innerHeight <= 1024
+      const isMobileViewport = viewport.width <= 768 && viewport.height <= 1024
 
       // Combined heuristic: assume no physical keyboard if:
       // - It's a touch device AND has mobile viewport AND lacks precise pointer

@@ -1,4 +1,5 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useContext, useRef } from 'react'
+import { PreviewModeContext } from '@/components/GamePreview'
 
 /**
  * Web Audio API sound effects system
@@ -15,6 +16,7 @@ interface Note {
 
 export function useSoundEffects() {
   const audioContextsRef = useRef<AudioContext[]>([])
+  const previewMode = useContext(PreviewModeContext)
 
   /**
    * Helper function to play multi-note 90s arcade sounds
@@ -107,6 +109,11 @@ export function useSoundEffects() {
         | 'steam_hiss',
       volume: number = 0.15
     ) => {
+      // Disable all audio in preview mode
+      if (previewMode?.isPreview) {
+        return
+      }
+
       try {
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
 
@@ -438,7 +445,7 @@ export function useSoundEffects() {
         console.log('🎵 Web Audio not supported - missing out on rad 90s sounds!')
       }
     },
-    [play90sSound]
+    [play90sSound, previewMode]
   )
 
   /**
