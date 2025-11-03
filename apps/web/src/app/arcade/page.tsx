@@ -22,6 +22,8 @@ import { getAllGames, getGame, hasGame } from '@/lib/arcade/game-registry'
  *
  * Note: ModerationNotifications is handled by PageWithNav inside each game component,
  * so we don't need to render it here.
+ *
+ * Test: Verifying compose-updater automatic deployment cycle
  */
 export default function RoomPage() {
   const router = useRouter()
