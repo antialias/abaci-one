@@ -161,11 +161,14 @@
       "Bash(printenv:*)",
       "Bash(typst:*)",
       "Bash(npx tsx:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(scp:*)"
     ],
     "deny": [],
     "ask": []
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": ["sqlite"]
+  "enabledMcpjsonServers": [
+    "sqlite"
+  ]
 }

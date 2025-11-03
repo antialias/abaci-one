@@ -30,7 +30,6 @@ Three levels of progressive 3D enhancement for the abacus to make interactions f
 ## Proposal 3: Delightful (Physics + Micro-interactions)
 - Everything from Proposal 2 +
 - Enhanced physics with satisfying bounce
-- Wobble rotation during movement
 - Hover parallax with Z-depth lift
 - Maximum satisfaction
         `
@@ -99,7 +98,7 @@ export const CompareAllLevels: Story = {
       </div>
 
       <div>
-        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Proposal 3: Delightful (Glossy + Wobble + Parallax)</h3>
+        <h3 style={{ marginBottom: '10px', textAlign: 'center' }}>Proposal 3: Delightful (Glossy + Parallax)</h3>
         <AbacusReact
           value={4242}
           columns={4}
@@ -116,7 +115,6 @@ export const CompareAllLevels: Story = {
             woodGrain: true
           }}
           physics3d={{
-            wobble: true,
             hoverParallax: true
           }}
         />
@@ -386,44 +384,13 @@ export const Delightful_FullExperience: Story = {
       woodGrain: true
     },
     physics3d: {
-      wobble: true,
       hoverParallax: true
     }
   },
   parameters: {
     docs: {
       description: {
-        story: '🎉 **Full delightful experience!** Click beads to see wobble physics. Hover your mouse over the abacus to see parallax lift. Sound enabled for maximum satisfaction!'
-      }
-    }
-  }
-};
-
-export const Delightful_WobblePhysics: Story = {
-  name: '3️⃣ Delightful - Wobble Physics',
-  args: {
-    value: 5555,
-    columns: 4,
-    showNumbers: true,
-    interactive: true,
-    animated: true,
-    colorScheme: 'heaven-earth',
-    scaleFactor: 1.3,
-    enhanced3d: 'delightful',
-    material3d: {
-      heavenBeads: 'glossy',
-      earthBeads: 'glossy',
-      lighting: 'top-down'
-    },
-    physics3d: {
-      wobble: true,  // Enable wobble rotation
-      hoverParallax: false
-    }
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: '**Wobble physics enabled!** Click beads rapidly to see them wobble and rotate during movement. Enhanced spring physics with bounce!'
+        story: '🎉 **Full delightful experience!** Click beads to see enhanced physics. Hover your mouse over the abacus to see parallax lift. Sound enabled for maximum satisfaction!'
       }
     }
   }
@@ -446,7 +413,6 @@ export const Delightful_HoverParallax: Story = {
       lighting: 'ambient'
     },
     physics3d: {
-      wobble: false,
       hoverParallax: true  // Enable hover parallax
     }
   },
@@ -477,7 +443,6 @@ export const Delightful_Traditional: Story = {
       woodGrain: true
     },
     physics3d: {
-      wobble: true,
       hoverParallax: true
     }
   },
@@ -501,7 +466,6 @@ export const Playground: Story = {
     const [material, setMaterial] = React.useState<'glossy' | 'satin' | 'matte'>('glossy');
     const [lighting, setLighting] = React.useState<'top-down' | 'ambient' | 'dramatic'>('dramatic');
     const [woodGrain, setWoodGrain] = React.useState(true);
-    const [wobble, setWobble] = React.useState(true);
     const [parallax, setParallax] = React.useState(true);
 
     return (
@@ -551,15 +515,8 @@ export const Playground: Story = {
 
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <input type="checkbox" checked={wobble} onChange={e => setWobble(e.target.checked)} />
-              <span>Wobble Physics</span>
-            </label>
-          </div>
-
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <input type="checkbox" checked={parallax} onChange={e => setParallax(e.target.checked)} />
-              <span>Hover Parallax</span>
+              <span>Hover Parallax (Delightful)</span>
             </label>
           </div>
         </div>
@@ -581,7 +538,6 @@ export const Playground: Story = {
             woodGrain: woodGrain
           }}
           physics3d={{
-            wobble: wobble,
             hoverParallax: parallax
           }}
         />

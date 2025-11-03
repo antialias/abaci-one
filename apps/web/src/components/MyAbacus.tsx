@@ -6,7 +6,6 @@ import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { css } from '../../styled-system/css'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { HomeHeroContext } from '@/contexts/HomeHeroContext'
-import { Z_INDEX } from '@/constants/zIndex'
 
 export function MyAbacus() {
   const { isOpen, close, toggle } = useMyAbacus()
@@ -99,7 +98,7 @@ export function MyAbacus() {
             inset: 0,
             bg: 'rgba(0, 0, 0, 0.8)',
             backdropFilter: 'blur(12px)',
-            zIndex: Z_INDEX.MY_ABACUS_BACKDROP,
+            zIndex: 101,
             animation: 'backdropFadeIn 0.4s ease-out',
           })}
           onClick={close}
@@ -129,7 +128,7 @@ export function MyAbacus() {
             fontWeight: 'bold',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            zIndex: Z_INDEX.MY_ABACUS + 1,
+            zIndex: 103,
             animation: 'fadeIn 0.3s ease-out 0.2s both',
             _hover: {
               bg: 'rgba(255, 255, 255, 0.2)',
@@ -149,7 +148,7 @@ export function MyAbacus() {
         onClick={isOpen || isHeroMode ? undefined : toggle}
         className={css({
           position: isHeroMode ? 'absolute' : 'fixed',
-          zIndex: Z_INDEX.MY_ABACUS,
+          zIndex: 102,
           cursor: isOpen || isHeroMode ? 'default' : 'pointer',
           transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
           // Three modes: hero (absolute - scrolls with document), button (fixed), open (fixed)

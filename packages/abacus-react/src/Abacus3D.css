@@ -103,7 +103,7 @@
 
 /* Wood grain texture overlay */
 .abacus-3d-container.enhanced-realistic .frame-wood {
-  opacity: 0.15;
+  opacity: 0.4;
   mix-blend-mode: multiply;
   pointer-events: none;
 }
@@ -293,11 +293,6 @@
   z-index: -1;
 }
 
-/* Wobble physics - applied via inline styles from React Spring */
-.bead-wobble {
-  /* transform-origin set dynamically */
-  transform-style: preserve-3d;
-}
 
 /* Frame depth enhancement */
 .abacus-3d-container.enhanced-delightful rect[class*="column-post"],
@@ -307,25 +302,11 @@
           drop-shadow(0 0 2px rgba(0, 0, 0, 0.1));
 }
 
-/* Wood grain texture - enhanced */
-.frame-wood-enhanced {
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 2px,
-      rgba(139, 90, 43, 0.03) 2px,
-      rgba(139, 90, 43, 0.03) 4px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 1px,
-      rgba(101, 67, 33, 0.02) 1px,
-      rgba(101, 67, 33, 0.02) 2px
-    );
-  opacity: 0.2;
+/* Wood grain texture - enhanced for delightful mode */
+.abacus-3d-container.enhanced-delightful .frame-wood {
+  opacity: 0.45;
   mix-blend-mode: multiply;
+  pointer-events: none;
 }
 
 /* Accessibility - Reduced motion */

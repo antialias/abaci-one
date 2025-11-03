@@ -144,19 +144,6 @@ export function getBeadZDepth(
 }
 
 /**
- * Generate wobble rotation based on velocity (for delightful mode)
- */
-export function getWobbleRotation(velocity: number, axis: "x" | "y" = "x"): string {
-  const maxRotation = 3; // degrees
-  const rotation = Math.max(-maxRotation, Math.min(maxRotation, velocity * -2));
-
-  if (axis === "x") {
-    return `rotateX(${rotation}deg)`;
-  }
-  return `rotateY(${rotation}deg)`;
-}
-
-/**
  * Calculate parallax offset based on mouse position
  */
 export function calculateParallaxOffset(
@@ -197,16 +184,17 @@ export function calculateParallaxOffset(
 export function getWoodGrainPattern(id: string): string {
   return `
     <pattern id="${id}" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-      <rect width="100" height="100" fill="#8B5A2B" opacity="0.3"/>
-      <!-- Grain lines -->
-      <path d="M 0 10 Q 25 8 50 10 T 100 10" stroke="#654321" stroke-width="0.5" fill="none" opacity="0.4"/>
-      <path d="M 0 30 Q 25 28 50 30 T 100 30" stroke="#654321" stroke-width="0.5" fill="none" opacity="0.3"/>
-      <path d="M 0 50 Q 25 48 50 50 T 100 50" stroke="#654321" stroke-width="0.5" fill="none" opacity="0.4"/>
-      <path d="M 0 70 Q 25 68 50 70 T 100 70" stroke="#654321" stroke-width="0.5" fill="none" opacity="0.3"/>
-      <path d="M 0 90 Q 25 88 50 90 T 100 90" stroke="#654321" stroke-width="0.5" fill="none" opacity="0.4"/>
-      <!-- Knots -->
-      <ellipse cx="20" cy="25" rx="8" ry="6" fill="#654321" opacity="0.2"/>
-      <ellipse cx="75" cy="65" rx="6" ry="8" fill="#654321" opacity="0.2"/>
+      <rect width="100" height="100" fill="#8B5A2B" opacity="0.5"/>
+      <!-- Grain lines - more visible -->
+      <path d="M 0 10 Q 25 8 50 10 T 100 10" stroke="#654321" stroke-width="1" fill="none" opacity="0.6"/>
+      <path d="M 0 30 Q 25 28 50 30 T 100 30" stroke="#654321" stroke-width="1" fill="none" opacity="0.5"/>
+      <path d="M 0 50 Q 25 48 50 50 T 100 50" stroke="#654321" stroke-width="1" fill="none" opacity="0.6"/>
+      <path d="M 0 70 Q 25 68 50 70 T 100 70" stroke="#654321" stroke-width="1" fill="none" opacity="0.5"/>
+      <path d="M 0 90 Q 25 88 50 90 T 100 90" stroke="#654321" stroke-width="1" fill="none" opacity="0.6"/>
+      <!-- Knots - more prominent -->
+      <ellipse cx="20" cy="25" rx="8" ry="6" fill="#654321" opacity="0.35"/>
+      <ellipse cx="75" cy="65" rx="6" ry="8" fill="#654321" opacity="0.35"/>
+      <ellipse cx="45" cy="82" rx="5" ry="7" fill="#654321" opacity="0.3"/>
     </pattern>
   `;
 }

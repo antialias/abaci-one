@@ -254,11 +254,7 @@ export interface Abacus3DMaterial {
 }
 
 export interface Abacus3DPhysics {
-  wobble?: boolean; // Beads rotate slightly during movement
-  clackEffect?: boolean; // Visual ripple when beads snap
-  hoverParallax?: boolean; // Beads lift on hover
-  particleSnap?: "off" | "subtle" | "sparkle"; // Particle effects on snap
-  hapticFeedback?: boolean; // Trigger haptic feedback on mobile
+  hoverParallax?: boolean; // Beads lift on hover (delightful mode only)
 }
 
 export interface AbacusConfig {
@@ -1306,10 +1302,6 @@ const Bead: React.FC<BeadProps> = ({
     config: physicsConfig
   }));
 
-  // Track velocity for wobble effect (delightful mode only)
-  const velocityRef = useRef(0);
-  const lastYRef = useRef(y);
-
   // Calculate parallax offset for hover effect
   const parallaxOffset = React.useMemo(() => {
     if (enhanced3d === 'delightful' && physics3d?.hoverParallax && mousePosition && containerBounds) {
@@ -1402,11 +1394,6 @@ const Bead: React.FC<BeadProps> = ({
 
   React.useEffect(() => {
     if (enableAnimation) {
-      // Calculate velocity for wobble effect
-      const deltaY = y - lastYRef.current;
-      velocityRef.current = deltaY;
-      lastYRef.current = y;
-
       api.start({ x, y, config: physicsConfig });
     } else {
       api.set({ x, y });
@@ -1508,7 +1495,6 @@ const Bead: React.FC<BeadProps> = ({
   };
 
   // Build style object based on animation mode
-  const wobbleEnabled = enhanced3d === 'delightful' && physics3d?.wobble;
   const parallaxEnabled = enhanced3d === 'delightful' && physics3d?.hoverParallax;
   const beadStyle: any = enableAnimation
     ? {
@@ -1521,11 +1507,6 @@ const Bead: React.FC<BeadProps> = ({
             // Add parallax Z translation
             if (parallaxEnabled && parallaxOffset.z > 0) {
               transforms.push(`translateZ(${parallaxOffset.z}px)`);
-            }
-
-            // Add wobble rotation
-            if (wobbleEnabled && velocityRef.current !== 0) {
-              transforms.push(Abacus3DUtils.getWobbleRotation(velocityRef.current, 'x'));
             }
 
             return transforms.join(' ');
