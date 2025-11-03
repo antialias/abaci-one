@@ -235,6 +235,25 @@ export function MyAbacus() {
               animated={isOpen || isHeroMode}
               customStyles={isHeroMode ? structuralStyles : trophyStyles}
               onValueChange={setAbacusValue}
+              // 3D Enhancement - delightful mode for hero and open states
+              enhanced3d={isOpen || isHeroMode ? 'delightful' : undefined}
+              material3d={
+                isOpen || isHeroMode
+                  ? {
+                      heavenBeads: 'glossy',
+                      earthBeads: 'satin',
+                      lighting: 'dramatic',
+                      woodGrain: true,
+                    }
+                  : undefined
+              }
+              physics3d={
+                isOpen || isHeroMode
+                  ? {
+                      hoverParallax: true,
+                    }
+                  : undefined
+              }
             />
           </div>
         </div>
