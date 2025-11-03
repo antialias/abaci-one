@@ -200,17 +200,14 @@ function generateOGImage(): string {
 const appDir = __dirname.replace('/scripts', '')
 
 try {
-  console.log('Generating favicon from AbacusReact...')
-  const faviconSvg = generateFavicon()
-  writeFileSync(join(appDir, 'src', 'app', 'icon.svg'), faviconSvg)
-  console.log('✓ Generated src/app/icon.svg')
-
   console.log('Generating Open Graph image from AbacusReact...')
   const ogImageSvg = generateOGImage()
   writeFileSync(join(appDir, 'public', 'og-image.svg'), ogImageSvg)
   console.log('✓ Generated public/og-image.svg')
 
-  console.log('\n✅ All icons generated successfully!')
+  console.log('\n✅ Icon generated successfully!')
+  console.log('\nNote: Day-of-month favicons are generated on-demand by src/app/icon/route.tsx')
+  console.log('which calls scripts/generateDayIcon.tsx as a subprocess.')
 } catch (error) {
   console.error('❌ Error generating icons:', error)
   process.exit(1)
