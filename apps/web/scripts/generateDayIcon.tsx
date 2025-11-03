@@ -19,7 +19,7 @@ function extractSvgContent(markup: string): string {
   return svgMatch[1]
 }
 
-// Calculate bounding box of active beads from rendered SVG
+// Calculate bounding box that includes active beads AND structural elements (posts, bar)
 interface BoundingBox {
   minX: number
   minY: number
@@ -27,14 +27,22 @@ interface BoundingBox {
   maxY: number
 }
 
-function getActiveBeadsBoundingBox(svgContent: string, scaleFactor: number): BoundingBox {
-  // Parse all active bead transforms: <g class="abacus-bead active" transform="translate(x, y)">
+function getAbacusBoundingBox(
+  svgContent: string,
+  scaleFactor: number,
+  columns: number
+): BoundingBox {
+  // Parse column posts: <rect x="..." y="..." width="..." height="..." ... >
+  const postRegex = /<rect\s+x="([^"]+)"\s+y="([^"]+)"\s+width="([^"]+)"\s+height="([^"]+)"/g
+  const postMatches = [...svgContent.matchAll(postRegex)]
+
+  // Parse active bead transforms: <g class="abacus-bead active" transform="translate(x, y)">
   const activeBeadRegex =
     /<g\s+class="abacus-bead active[^"]*"\s+transform="translate\(([^,]+),\s*([^)]+)\)"/g
-  const matches = [...svgContent.matchAll(activeBeadRegex)]
+  const beadMatches = [...svgContent.matchAll(activeBeadRegex)]
 
-  if (matches.length === 0) {
-    // Fallback if no active beads found
+  if (beadMatches.length === 0) {
+    // Fallback if no active beads found - show full abacus
     return { minX: 0, minY: 0, maxX: 50 * scaleFactor, maxY: 120 * scaleFactor }
   }
 
@@ -42,21 +50,31 @@ function getActiveBeadsBoundingBox(svgContent: string, scaleFactor: number): Bou
   const beadWidth = 30.24 * scaleFactor
   const beadHeight = 21.6 * scaleFactor
 
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
+  // First, get the Y range from active beads only
+  let beadMinY = Infinity
+  let beadMaxY = -Infinity
 
-  for (const match of matches) {
-    const x = parseFloat(match[1])
+  for (const match of beadMatches) {
     const y = parseFloat(match[2])
-
-    // Account for bead dimensions
-    minX = Math.min(minX, x)
-    minY = Math.min(minY, y)
-    maxX = Math.max(maxX, x + beadWidth)
-    maxY = Math.max(maxY, y + beadHeight)
+    beadMinY = Math.min(beadMinY, y)
+    beadMaxY = Math.max(beadMaxY, y + beadHeight)
   }
+
+  // Now get X range from ALL column posts (to show full width)
+  let minX = Infinity
+  let maxX = -Infinity
+
+  for (const match of postMatches) {
+    const x = parseFloat(match[1])
+    const width = parseFloat(match[3])
+    minX = Math.min(minX, x)
+    maxX = Math.max(maxX, x + width)
+  }
+
+  // For Y, use the bead range but ensure we show some post structure
+  // Add extra space above/below to show context
+  const minY = beadMinY
+  const maxY = beadMaxY
 
   return { minX, minY, maxX, maxY }
 }
@@ -112,8 +130,8 @@ let svgContent = extractSvgContent(abacusMarkup)
 // Remove !important from CSS (production code policy)
 svgContent = svgContent.replace(/\s*!important/g, '')
 
-// Calculate bounding box of active beads
-const bbox = getActiveBeadsBoundingBox(svgContent, 1.8)
+// Calculate bounding box including posts, bar, and active beads
+const bbox = getAbacusBoundingBox(svgContent, 1.8, 2)
 
 // Add padding around active beads (in abacus coordinates)
 const padding = 15
