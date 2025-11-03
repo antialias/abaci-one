@@ -13,6 +13,7 @@ A comprehensive React component for rendering interactive Soroban (Japanese abac
 - 🔧 **Developer-friendly** - Comprehensive hooks and callback system
 - 🎓 **Tutorial system** - Built-in overlay and guidance capabilities
 - 🧩 **Framework-free SVG** - Complete control over rendering
+- ✨ **3D Enhancement** - Three levels of progressive 3D effects for immersive visuals
 
 ## Installation
 
@@ -113,6 +114,82 @@ Educational guidance with tooltips
 />
 ```
 
+## 3D Enhancement
+
+Make the abacus feel tangible and satisfying with three progressive levels of 3D effects.
+
+### Subtle Mode
+
+Light depth shadows and perspective for subtle dimensionality.
+
+```tsx
+<AbacusReact
+  value={12345}
+  columns={5}
+  enhanced3d="subtle"
+  interactive
+  animated
+/>
+```
+
+### Realistic Mode
+
+Material-based rendering with lighting effects and textures.
+
+```tsx
+<AbacusReact
+  value={7890}
+  columns={4}
+  enhanced3d="realistic"
+  material3d={{
+    heavenBeads: 'glossy',   // 'glossy' | 'satin' | 'matte'
+    earthBeads: 'satin',
+    lighting: 'top-down',    // 'top-down' | 'ambient' | 'dramatic'
+    woodGrain: true          // Add wood texture to frame
+  }}
+  interactive
+  animated
+/>
+```
+
+**Materials:**
+- `glossy` - High shine with strong highlights
+- `satin` - Balanced shine (default)
+- `matte` - Subtle shading, no shine
+
+**Lighting:**
+- `top-down` - Balanced directional light from above
+- `ambient` - Soft light from all directions
+- `dramatic` - Strong directional light for high contrast
+
+### Delightful Mode
+
+Maximum satisfaction with enhanced physics and interactive effects.
+
+```tsx
+<AbacusReact
+  value={8642}
+  columns={4}
+  enhanced3d="delightful"
+  material3d={{
+    heavenBeads: 'glossy',
+    earthBeads: 'satin',
+    lighting: 'dramatic',
+    woodGrain: true
+  }}
+  physics3d={{
+    hoverParallax: true      // Beads lift on hover with Z-depth
+  }}
+  interactive
+  animated
+  soundEnabled
+/>
+```
+
+**Physics Options:**
+- `hoverParallax` - Beads near mouse cursor lift up with depth perception
+
+All 3D modes work with existing configurations and preserve exact geometry.
 
 ## Core API
 
