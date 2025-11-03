@@ -1,29 +1,30 @@
 // Automatic instruction generator for abacus tutorial steps
-import type { ValidPlaceValues } from '@soroban/abacus-react'
+// Re-exports core types and functions from abacus-react
 
-export interface BeadState {
-  heavenActive: boolean
-  earthActive: number // 0-4
-}
+export type { ValidPlaceValues } from '@soroban/abacus-react'
+export {
+  type BeadState,
+  type AbacusState,
+  type PlaceValueBasedBead as BeadHighlight,
+  numberToAbacusState,
+  calculateBeadChanges,
+} from '@soroban/abacus-react'
 
-export interface AbacusState {
-  [placeValue: number]: BeadState
-}
+import type { ValidPlaceValues, PlaceValueBasedBead } from '@soroban/abacus-react'
+import { numberToAbacusState, calculateBeadChanges } from '@soroban/abacus-react'
 
-export interface BeadHighlight {
-  placeValue: ValidPlaceValues
-  beadType: 'heaven' | 'earth'
-  position?: number
-}
+// Type alias for internal use
+type BeadHighlight = PlaceValueBasedBead
 
-export interface StepBeadHighlight extends BeadHighlight {
+// App-specific extension for step-based tutorial highlighting
+export interface StepBeadHighlight extends PlaceValueBasedBead {
   stepIndex: number // Which instruction step this bead belongs to
   direction: 'up' | 'down' | 'activate' | 'deactivate' // Movement direction
   order?: number // Order within the step (for multiple beads per step)
 }
 
 export interface GeneratedInstruction {
-  highlightBeads: BeadHighlight[]
+  highlightBeads: PlaceValueBasedBead[]
   expectedAction: 'add' | 'remove' | 'multi-step'
   actionDescription: string
   multiStepInstructions?: string[]
@@ -40,68 +41,7 @@ export interface GeneratedInstruction {
   }
 }
 
-// Convert a number to abacus state representation
-export function numberToAbacusState(value: number, maxPlaces: number = 5): AbacusState {
-  const state: AbacusState = {}
-
-  for (let place = 0; place < maxPlaces; place++) {
-    const placeValueNum = 10 ** place
-    const digit = Math.floor(value / placeValueNum) % 10
-
-    state[place] = {
-      heavenActive: digit >= 5,
-      earthActive: digit >= 5 ? digit - 5 : digit,
-    }
-  }
-
-  return state
-}
-
-// Calculate the difference between two abacus states
-export function calculateBeadChanges(
-  startState: AbacusState,
-  targetState: AbacusState
-): {
-  additions: BeadHighlight[]
-  removals: BeadHighlight[]
-  placeValue: number
-} {
-  const additions: BeadHighlight[] = []
-  const removals: BeadHighlight[] = []
-  let mainPlaceValue = 0
-
-  for (const placeStr in targetState) {
-    const place = parseInt(placeStr, 10) as ValidPlaceValues
-    const start = startState[place] || { heavenActive: false, earthActive: 0 }
-    const target = targetState[place]
-
-    // Check heaven bead changes
-    if (!start.heavenActive && target.heavenActive) {
-      additions.push({ placeValue: place, beadType: 'heaven' })
-      mainPlaceValue = place
-    } else if (start.heavenActive && !target.heavenActive) {
-      removals.push({ placeValue: place, beadType: 'heaven' })
-      mainPlaceValue = place
-    }
-
-    // Check earth bead changes
-    if (target.earthActive > start.earthActive) {
-      // Adding earth beads
-      for (let pos = start.earthActive; pos < target.earthActive; pos++) {
-        additions.push({ placeValue: place, beadType: 'earth', position: pos })
-        mainPlaceValue = place
-      }
-    } else if (target.earthActive < start.earthActive) {
-      // Removing earth beads
-      for (let pos = start.earthActive - 1; pos >= target.earthActive; pos--) {
-        removals.push({ placeValue: place, beadType: 'earth', position: pos })
-        mainPlaceValue = place
-      }
-    }
-  }
-
-  return { additions, removals, placeValue: mainPlaceValue }
-}
+// Note: numberToAbacusState and calculateBeadChanges are now re-exported from @soroban/abacus-react above
 
 // Generate proper complement breakdown using simple bead movements
 function generateProperComplementDescription(

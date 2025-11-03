@@ -6,6 +6,7 @@ import {
   AbacusReact,
   type StepBeadHighlight,
   useAbacusDisplay,
+  calculateBeadDiffFromValues,
 } from '@soroban/abacus-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -18,7 +19,6 @@ import type {
   TutorialStep,
   UIState,
 } from '../../types/tutorial'
-import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateUnifiedInstructionSequence } from '../../utils/unifiedStepGenerator'
 import { CoachBar } from './CoachBar/CoachBar'
 import { DecompositionWithReasons } from './DecompositionWithReasons'

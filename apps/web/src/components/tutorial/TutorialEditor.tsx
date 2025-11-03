@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Resizable from 'react-resizable-layout'
+import { calculateBeadDiffFromValues } from '@soroban/abacus-react'
 import { css } from '../../../styled-system/css'
 import { hstack, stack, vstack } from '../../../styled-system/patterns'
 import {
@@ -13,7 +14,6 @@ import {
   type TutorialValidation,
 } from '../../types/tutorial'
 import { generateAbacusInstructions } from '../../utils/abacusInstructionGenerator'
-import { calculateBeadDiffFromValues } from '../../utils/beadDiff'
 import { generateSingleProblem } from '../../utils/problemGenerator'
 import {
   createBasicAllowedConfiguration,
