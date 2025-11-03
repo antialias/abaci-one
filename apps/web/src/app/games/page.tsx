@@ -66,31 +66,6 @@ function GamesPageContent() {
     }
   }, [gamesEmblaApi, onGamesSelect])
 
-  // Enable horizontal scrolling with mouse wheel for games carousel
-  useEffect(() => {
-    if (!gamesEmblaApi) return
-    const containerNode = gamesEmblaApi.rootNode()
-    if (!containerNode) return
-
-    const handleWheel = (event: WheelEvent) => {
-      // Only handle horizontal scroll or shift+vertical scroll
-      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.shiftKey) {
-        event.preventDefault()
-        const delta = event.shiftKey ? event.deltaY : event.deltaX
-
-        // Get the scrollable container (embla's internal container)
-        const scrollContainer = gamesEmblaApi.internalEngine().scrollBody.container
-        if (scrollContainer) {
-          // Smooth scroll by the wheel delta amount (scale it down for better feel)
-          scrollContainer.scrollLeft += delta * 0.5
-        }
-      }
-    }
-
-    containerNode.addEventListener('wheel', handleWheel, { passive: false })
-    return () => containerNode.removeEventListener('wheel', handleWheel)
-  }, [gamesEmblaApi])
-
   // Player carousel callbacks
   const onSelect = useCallback(() => {
     if (!emblaApi) return
@@ -108,31 +83,6 @@ function GamesPageContent() {
       emblaApi.off('reInit', onSelect)
     }
   }, [emblaApi, onSelect])
-
-  // Enable horizontal scrolling with mouse wheel for player carousel
-  useEffect(() => {
-    if (!emblaApi) return
-    const containerNode = emblaApi.rootNode()
-    if (!containerNode) return
-
-    const handleWheel = (event: WheelEvent) => {
-      // Only handle horizontal scroll or shift+vertical scroll
-      if (Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.shiftKey) {
-        event.preventDefault()
-        const delta = event.shiftKey ? event.deltaY : event.deltaX
-
-        // Get the scrollable container (embla's internal container)
-        const scrollContainer = emblaApi.internalEngine().scrollBody.container
-        if (scrollContainer) {
-          // Smooth scroll by the wheel delta amount (scale it down for better feel)
-          scrollContainer.scrollLeft += delta * 0.5
-        }
-      }
-    }
-
-    containerNode.addEventListener('wheel', handleWheel, { passive: false })
-    return () => containerNode.removeEventListener('wheel', handleWheel)
-  }, [emblaApi])
 
   return (
     <div
@@ -170,6 +120,7 @@ function GamesPageContent() {
         <div
           className={css({
             mb: '16',
+            overflow: 'visible',
           })}
         >
           <h2
@@ -188,7 +139,7 @@ function GamesPageContent() {
           <div
             ref={gamesEmblaRef}
             className={css({
-              overflow: 'hidden',
+              overflow: 'visible',
               cursor: 'grab',
               userSelect: 'none',
               _active: {
