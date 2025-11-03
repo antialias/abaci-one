@@ -23,13 +23,11 @@ export function AbacusTarget({ number }: AbacusTargetProps) {
       <AbacusReact
         value={number}
         columns={1}
+        compact={true}
         interactive={false}
         showNumbers={false}
         hideInactiveBeads={true}
         scaleFactor={0.72}
-        customStyles={{
-          columnPosts: { opacity: 0 },
-        }}
       />
     </div>
   )
