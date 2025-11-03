@@ -163,7 +163,9 @@ function GamesPageContent() {
                       flex: '0 0 auto',
                       w: { base: '85%', md: '400px' },
                       mr: '6',
-                      transition: 'all 0.3s ease-out',
+                      transitionProperty: 'opacity',
+                      transitionDuration: '0.3s',
+                      transitionTimingFunction: 'ease-out',
                       opacity: isActive ? 1 : 0.6,
                     })}
                   >
@@ -188,7 +190,9 @@ function GamesPageContent() {
                           position: 'relative',
                           overflow: 'hidden',
                           height: '100%',
-                          transition: 'all 0.3s ease',
+                          transitionProperty: 'transform, box-shadow, border-color',
+                          transitionDuration: '0.3s',
+                          transitionTimingFunction: 'ease',
                           _hover: {
                             transform: 'translateY(-4px)',
                             boxShadow: '0 25px 50px rgba(59, 130, 246, 0.4)',
