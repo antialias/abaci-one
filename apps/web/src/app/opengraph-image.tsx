@@ -1,4 +1,6 @@
 import { ImageResponse } from 'next/og'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { AbacusReact } from '@soroban/abacus-react'
 
 // Route segment config
 export const runtime = 'edge'
@@ -11,10 +13,47 @@ export const size = {
 }
 export const contentType = 'image/png'
 
+// Extract just the SVG element content from rendered output
+function extractSvgContent(markup: string): string {
+  const svgMatch = markup.match(/<svg[^>]*>([\s\S]*?)<\/svg>/)
+  if (!svgMatch) {
+    throw new Error('No SVG element found in rendered output')
+  }
+  return svgMatch[1]
+}
+
 // Image generation
-// Note: Using simplified abacus HTML/CSS representation instead of StaticAbacus
-// because ImageResponse has limited JSX support (no custom components)
+// Note: Now using AbacusReact server-side rendering, same as icon.svg and og-image.svg
 export default async function Image() {
+  // Render AbacusReact server-side
+  const abacusMarkup = renderToStaticMarkup(
+    <AbacusReact
+      value={123}
+      columns={3}
+      scaleFactor={1.8}
+      animated={false}
+      interactive={false}
+      showNumbers={false}
+      customStyles={{
+        heavenBeads: { fill: '#fbbf24' },
+        earthBeads: { fill: '#fbbf24' },
+        columnPosts: {
+          fill: '#7c2d12',
+          stroke: '#92400e',
+          strokeWidth: 2,
+        },
+        reckoningBar: {
+          fill: '#92400e',
+          stroke: '#92400e',
+          strokeWidth: 3,
+        },
+      }}
+    />
+  )
+
+  // Extract SVG content
+  const svgContent = extractSvgContent(abacusMarkup)
+
   return new ImageResponse(
     <div
       style={{
@@ -27,154 +66,16 @@ export default async function Image() {
         padding: '80px',
       }}
     >
-      {/* Left side - Simplified abacus visualization (HTML/CSS)
-          Can't use StaticAbacus here because ImageResponse only supports
-          basic HTML elements, not custom React components */}
+      {/* Left side - Abacus from @soroban/abacus-react (server-side rendered) */}
       <div
         style={{
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
           width: '40%',
         }}
-      >
-        {/* Simple abacus representation with 3 columns */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '30px',
-          }}
-        >
-          {/* Column 1 */}
-          <div
-            style={{
-              width: '80px',
-              height: '400px',
-              background: '#7c2d12',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'space-around',
-              padding: '20px 0',
-              position: 'relative',
-            }}
-          >
-            {/* Reckoning bar */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '-10px',
-                right: '-10px',
-                height: '12px',
-                background: '#92400e',
-                borderRadius: '4px',
-              }}
-            />
-            {/* Beads - simplified representation */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {[...Array(2)].map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    background: '#fbbf24',
-                    borderRadius: '50%',
-                    border: '3px solid #92400e',
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Column 2 */}
-          <div
-            style={{
-              width: '80px',
-              height: '400px',
-              background: '#7c2d12',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'space-around',
-              padding: '20px 0',
-              position: 'relative',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '-10px',
-                right: '-10px',
-                height: '12px',
-                background: '#92400e',
-                borderRadius: '4px',
-              }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {[...Array(2)].map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    background: '#fbbf24',
-                    borderRadius: '50%',
-                    border: '3px solid #92400e',
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Column 3 */}
-          <div
-            style={{
-              width: '80px',
-              height: '400px',
-              background: '#7c2d12',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'space-around',
-              padding: '20px 0',
-              position: 'relative',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '-10px',
-                right: '-10px',
-                height: '12px',
-                background: '#92400e',
-                borderRadius: '4px',
-              }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {[...Array(2)].map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    background: '#fbbf24',
-                    borderRadius: '50%',
-                    border: '3px solid #92400e',
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+        dangerouslySetInnerHTML={{
+          __html: `<svg width="135" height="216" viewBox="0 0 135 216">${svgContent}</svg>`,
+        }}
+      />
 
       {/* Right side - Text content */}
       <div
