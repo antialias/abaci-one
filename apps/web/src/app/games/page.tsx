@@ -91,18 +91,6 @@ function GamesPageContent() {
             mb: '12',
           })}
         >
-          <h1
-            className={css({
-              fontSize: { base: '4xl', md: '5xl' },
-              fontWeight: 'bold',
-              color: 'gray.900',
-              mb: '4',
-              letterSpacing: 'tight',
-            })}
-          >
-            {t('hero.title')}
-          </h1>
-
           <p
             className={css({
               fontSize: { base: 'lg', md: 'xl' },
@@ -1116,7 +1104,7 @@ const globalAnimations = `
 
 export default function GamesPage() {
   return (
-    <PageWithNav>
+    <PageWithNav navTitle="Soroban Arcade" navEmoji="🕹️">
       <GamesPageContent />
     </PageWithNav>
   )
