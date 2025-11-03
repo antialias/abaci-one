@@ -17,12 +17,27 @@ interface CaptureRelationOptionsProps {
  * Animated floating capture relation options with number bond preview on hover
  */
 export function CaptureRelationOptions({ availableRelations }: CaptureRelationOptionsProps) {
-  const { layout, pieces, closing, allPieces, findValidHelpers, selectRelation } =
-    useCaptureContext()
+  const {
+    layout,
+    pieces,
+    closing,
+    allPieces,
+    pyramidFaceValues,
+    findValidHelpers,
+    selectRelation,
+  } = useCaptureContext()
   const { targetPos, cellSize, gap, padding } = layout
   const { mover: moverPiece, target: targetPiece } = pieces
   const [hoveredRelation, setHoveredRelation] = useState<RelationKind | null>(null)
   const [currentHelperIndex, setCurrentHelperIndex] = useState(0)
+
+  // Get mover value - either from pyramidFaceValues map (for pyramids) or from piece directly
+  const getMoverValue = (relation: RelationKind): number | null => {
+    if (pyramidFaceValues && pyramidFaceValues.has(relation)) {
+      return pyramidFaceValues.get(relation) || null
+    }
+    return getEffectiveValue(moverPiece)
+  }
 
   // Cycle through valid helpers every 1.5 seconds when hovering
   useEffect(() => {
@@ -31,7 +46,7 @@ export function CaptureRelationOptions({ availableRelations }: CaptureRelationOp
       return
     }
 
-    const moverValue = getEffectiveValue(moverPiece)
+    const moverValue = getMoverValue(hoveredRelation)
     const targetValue = getEffectiveValue(targetPiece)
 
     if (
@@ -56,7 +71,7 @@ export function CaptureRelationOptions({ availableRelations }: CaptureRelationOp
     }, 1500)
 
     return () => clearInterval(interval)
-  }, [hoveredRelation, moverPiece, targetPiece, findValidHelpers])
+  }, [hoveredRelation, pyramidFaceValues, targetPiece, findValidHelpers])
 
   // Generate tooltip text with actual numbers for the currently displayed helper
   const getTooltipText = (relation: RelationKind): string => {
@@ -74,7 +89,7 @@ export function CaptureRelationOptions({ availableRelations }: CaptureRelationOp
       return genericMap[relation] || relation
     }
 
-    const moverValue = getEffectiveValue(moverPiece)
+    const moverValue = getMoverValue(relation)
     const targetValue = getEffectiveValue(targetPiece)
 
     if (
@@ -287,7 +302,7 @@ export function CaptureRelationOptions({ availableRelations }: CaptureRelationOp
         {/* Number bond preview when hovering over a relation - cycle through valid helpers */}
         {hoveredRelation &&
           (() => {
-            const moverValue = getEffectiveValue(moverPiece)
+            const moverValue = getMoverValue(hoveredRelation)
             const targetValue = getEffectiveValue(targetPiece)
 
             if (

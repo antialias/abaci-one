@@ -183,40 +183,87 @@ export function BoardDisplay() {
         return
       }
 
-      const moverValue = getEffectiveValue(moverPiece)
       const targetValue = getEffectiveValue(targetPiece)
 
-      console.log('[handleCaptureWithRelation] moverValue:', moverValue)
       console.log('[handleCaptureWithRelation] targetValue:', targetValue)
 
+      if (targetValue === undefined || targetValue === null) {
+        console.log('[handleCaptureWithRelation] Undefined/null target value, returning')
+        return
+      }
+
+      // For pyramids, find helpers using all faces
       if (
-        moverValue === undefined ||
-        moverValue === null ||
-        targetValue === undefined ||
-        targetValue === null
+        moverPiece.type === 'P' &&
+        moverPiece.pyramidFaces &&
+        moverPiece.pyramidFaces.length === 4
       ) {
-        console.log('[handleCaptureWithRelation] Undefined/null value, returning')
-        return
+        console.log(
+          '[handleCaptureWithRelation] Pyramid - checking all faces for helpers: ' +
+            moverPiece.pyramidFaces.join(', ')
+        )
+
+        // Collect all valid helpers from all pyramid faces
+        const allValidHelpers = new Map<string, Piece>()
+
+        for (const faceValue of moverPiece.pyramidFaces) {
+          const helpers = findValidHelpers(faceValue, targetValue, relation)
+          console.log(
+            '[handleCaptureWithRelation] Face ' +
+              faceValue +
+              ' found ' +
+              helpers.length +
+              ' helpers'
+          )
+          for (const helper of helpers) {
+            allValidHelpers.set(helper.id, helper)
+          }
+        }
+
+        const validHelpers = Array.from(allValidHelpers.values())
+        console.log('[handleCaptureWithRelation] Total unique helpers: ' + validHelpers.length)
+
+        if (validHelpers.length === 0) {
+          console.log('[handleCaptureWithRelation] No valid helpers found for any pyramid face')
+          return
+        }
+
+        console.log('[handleCaptureWithRelation] Auto-selecting first helper:', validHelpers[0])
+        setSelectedRelation(relation)
+        setSelectedHelper({
+          helperPiece: validHelpers[0],
+          moverPiece,
+          targetPiece,
+        })
+      } else {
+        // Non-pyramid logic
+        const moverValue = getEffectiveValue(moverPiece)
+        console.log('[handleCaptureWithRelation] moverValue:', moverValue)
+
+        if (moverValue === undefined || moverValue === null) {
+          console.log('[handleCaptureWithRelation] Undefined/null mover value, returning')
+          return
+        }
+
+        // Find valid helpers
+        const validHelpers = findValidHelpers(moverValue, targetValue, relation)
+        console.log('[handleCaptureWithRelation] validHelpers:', validHelpers)
+
+        if (validHelpers.length === 0) {
+          // No valid helpers - relation is impossible
+          console.log('[handleCaptureWithRelation] No valid helpers found')
+          return
+        }
+
+        // Automatically select the first valid helper (skip helper selection UI)
+        console.log('[handleCaptureWithRelation] Auto-selecting first helper:', validHelpers[0])
+        setSelectedRelation(relation)
+        setSelectedHelper({
+          helperPiece: validHelpers[0],
+          moverPiece,
+          targetPiece,
+        })
       }
-
-      // Find valid helpers
-      const validHelpers = findValidHelpers(moverValue, targetValue, relation)
-      console.log('[handleCaptureWithRelation] validHelpers:', validHelpers)
-
-      if (validHelpers.length === 0) {
-        // No valid helpers - relation is impossible
-        console.log('[handleCaptureWithRelation] No valid helpers found')
-        return
-      }
-
-      // Automatically select the first valid helper (skip helper selection UI)
-      console.log('[handleCaptureWithRelation] Auto-selecting first helper:', validHelpers[0])
-      setSelectedRelation(relation)
-      setSelectedHelper({
-        helperPiece: validHelpers[0],
-        moverPiece,
-        targetPiece,
-      })
     } else {
       console.log('[handleCaptureWithRelation] No helper needed, executing capture immediately')
       // No helper needed - execute capture immediately
@@ -388,19 +435,36 @@ export function BoardDisplay() {
       return []
     }
 
-    const moverValue = getEffectiveValue(moverPiece)
     const targetValue = getEffectiveValue(targetPiece)
 
-    if (
-      moverValue === undefined ||
-      moverValue === null ||
-      targetValue === undefined ||
-      targetValue === null
-    ) {
+    if (targetValue === undefined || targetValue === null) {
       return []
     }
 
-    const validHelpers = findValidHelpers(moverValue, targetValue, selectedRelation)
+    // For pyramids, collect helpers from all faces
+    let validHelpers: Piece[]
+    if (
+      moverPiece.type === 'P' &&
+      moverPiece.pyramidFaces &&
+      moverPiece.pyramidFaces.length === 4
+    ) {
+      const allValidHelpers = new Map<string, Piece>()
+
+      for (const faceValue of moverPiece.pyramidFaces) {
+        const helpers = findValidHelpers(faceValue, targetValue, selectedRelation)
+        for (const helper of helpers) {
+          allValidHelpers.set(helper.id, helper)
+        }
+      }
+
+      validHelpers = Array.from(allValidHelpers.values())
+    } else {
+      const moverValue = getEffectiveValue(moverPiece)
+      if (moverValue === undefined || moverValue === null) {
+        return []
+      }
+      validHelpers = findValidHelpers(moverValue, targetValue, selectedRelation)
+    }
 
     const helpersWithPos = validHelpers.map((piece) => {
       const basePos = getSquarePosition(piece.square, layout)
@@ -413,9 +477,9 @@ export function BoardDisplay() {
     return helpersWithPos
   })()
 
-  // Calculate available relations for this capture
-  const availableRelations = (() => {
-    if (!captureTarget) return []
+  // Calculate available relations and pyramid face values for this capture
+  const { availableRelations, pyramidFaceValues } = (() => {
+    if (!captureTarget) return { availableRelations: [], pyramidFaceValues: null }
 
     const moverPiece = Object.values(state.pieces).find(
       (p) => p.id === captureTarget.pieceId && !p.captured
@@ -424,20 +488,60 @@ export function BoardDisplay() {
       (p) => p.square === captureTarget.to && !p.captured
     )
 
-    if (!moverPiece || !targetPiece) return []
+    if (!moverPiece || !targetPiece) return { availableRelations: [], pyramidFaceValues: null }
 
-    const moverValue = getEffectiveValue(moverPiece)
     const targetValue = getEffectiveValue(targetPiece)
 
-    if (
-      moverValue === undefined ||
-      moverValue === null ||
-      targetValue === undefined ||
-      targetValue === null
-    )
-      return []
+    if (targetValue === undefined || targetValue === null)
+      return { availableRelations: [], pyramidFaceValues: null }
 
-    return findAvailableRelations(moverValue, targetValue)
+    // For pyramids, collect ALL relations from ALL faces and track which face to use
+    if (
+      moverPiece.type === 'P' &&
+      moverPiece.pyramidFaces &&
+      moverPiece.pyramidFaces.length === 4
+    ) {
+      console.log(
+        '[availableRelations] Checking pyramid with faces: ' + moverPiece.pyramidFaces.join(', ')
+      )
+
+      const allRelations = new Set<RelationKind>()
+      const faceMap = new Map<RelationKind, number>()
+
+      // Check each face and collect all available relations, storing first face that works for each relation
+      for (const faceValue of moverPiece.pyramidFaces) {
+        const relations = findAvailableRelations(faceValue, targetValue)
+        console.log(
+          '[availableRelations] Face ' + faceValue + ' relations: ' + relations.join(', ')
+        )
+        for (const rel of relations) {
+          if (!faceMap.has(rel)) {
+            faceMap.set(rel, faceValue)
+          }
+          allRelations.add(rel)
+        }
+      }
+
+      const result = Array.from(allRelations)
+      console.log('[availableRelations] All pyramid relations: ' + result.join(', '))
+      console.log(
+        '[availableRelations] Pyramid face map: ' +
+          Array.from(faceMap.entries())
+            .map(([r, v]) => r + '=' + v)
+            .join(', ')
+      )
+      return { availableRelations: result, pyramidFaceValues: faceMap }
+    }
+
+    // For non-pyramid pieces, use standard logic
+    const moverValue = getEffectiveValue(moverPiece)
+    if (moverValue === undefined || moverValue === null)
+      return { availableRelations: [], pyramidFaceValues: null }
+
+    return {
+      availableRelations: findAvailableRelations(moverValue, targetValue),
+      pyramidFaceValues: null,
+    }
   })()
 
   // Calculate if hovered square shows error (for hover preview)
@@ -542,24 +646,126 @@ export function BoardDisplay() {
     return { x, y }
   })()
 
+  // Detect portrait vs landscape and calculate explicit dimensions for rotation
+  const boardAspectRatio = boardWidth / boardHeight // ~2:1 for 16x8 board
+  const [containerAspectRatio, setContainerAspectRatio] = useState(1)
+  const [svgDimensions, setSvgDimensions] = useState<{ width: string; height: string } | null>(null)
+  const [updateCounter, setUpdateCounter] = useState(0)
+
+  useEffect(() => {
+    const container = document.querySelector('[data-component="board-container"]')
+    if (!container) {
+      return
+    }
+
+    // Watch the parent element - that's what gets resized by the panel
+    const parentContainer = container.parentElement
+    if (!parentContainer) {
+      return
+    }
+
+    const updateDimensions = () => {
+      // Measure the PARENT container, not the wrapper itself
+      const rect = parentContainer.getBoundingClientRect()
+      const containerAspect = rect.width / rect.height
+      const shouldRotateBoard = containerAspect < 1 && boardAspectRatio > 1
+
+      if (shouldRotateBoard) {
+        // When rotating -90°, the board's dimensions swap visually:
+        // - pre-rotation width → visual height
+        // - pre-rotation height → visual width
+        //
+        // In portrait mode (tall container), prioritize filling HEIGHT.
+
+        // Start by filling container height
+        let visualHeight = rect.height
+        let visualWidth = visualHeight / boardAspectRatio
+
+        // If visual width exceeds container width, scale down PROPORTIONALLY
+        // (don't switch to filling width - keep height priority)
+        if (visualWidth > rect.width) {
+          const scale = rect.width / visualWidth
+          visualWidth = rect.width
+          visualHeight = visualHeight * scale
+        }
+
+        // Convert visual dimensions back to pre-rotation SVG dimensions
+        const preRotationWidth = visualHeight
+        const preRotationHeight = visualWidth
+
+        setSvgDimensions({
+          width: `${preRotationWidth}px`,
+          height: `${preRotationHeight}px`,
+        })
+      } else {
+        // Normal landscape: use percentage sizing
+        setSvgDimensions(null)
+      }
+
+      setContainerAspectRatio(containerAspect)
+    }
+
+    // Initial check - use requestAnimationFrame to ensure layout is painted
+    const initialUpdate = () => {
+      requestAnimationFrame(() => {
+        updateDimensions()
+      })
+    }
+    initialUpdate()
+
+    // Use ResizeObserver to detect panel resizing (window resize doesn't catch panel changes!)
+    const resizeObserver = new ResizeObserver((entries) => {
+      // Use requestAnimationFrame to ensure we measure after layout
+      requestAnimationFrame(() => {
+        updateDimensions()
+      })
+    })
+    // Watch the parent container - that's what gets resized by the panel
+    resizeObserver.observe(parentContainer)
+
+    // Also listen to window resize for when the whole window changes
+    window.addEventListener('resize', updateDimensions)
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', updateDimensions)
+    }
+  }, [boardAspectRatio])
+
+  // Rotate board if container is portrait and board is landscape
+  const shouldRotate = containerAspectRatio < 1 && boardAspectRatio > 1
+
   return (
     <div
+      data-component="board-container"
       className={css({
         width: '100%',
-        maxWidth: '1200px',
-        margin: '0 auto',
+        height: '100%',
         position: 'relative',
         zIndex: Z_INDEX.GAME.OVERLAY,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       })}
     >
       {/* Unified SVG Board */}
       <svg
         viewBox={`0 0 ${boardWidth} ${boardHeight}`}
-        className={css({
-          width: '100%',
+        style={{
+          // Use explicit dimensions when rotated, percentage sizing when normal
+          width: svgDimensions ? svgDimensions.width : '100%',
+          height: svgDimensions ? svgDimensions.height : 'auto',
+          // Don't constrain with max dimensions when rotating - we've already calculated exact size
+          maxWidth: svgDimensions ? 'none' : '100%',
+          maxHeight: svgDimensions ? 'none' : '100%',
+          // Don't use aspect-ratio when rotating - it overrides explicit dimensions
+          aspectRatio: svgDimensions ? 'auto' : `${boardWidth} / ${boardHeight}`,
           cursor: isMyTurn ? 'pointer' : 'default',
           overflow: 'visible',
-        })}
+          transform: shouldRotate ? 'rotate(-90deg)' : 'none',
+          transformOrigin: 'center',
+          transition: 'transform 0.3s ease',
+        }}
         onClick={handleSvgClick}
         onMouseMove={handleSvgMouseMove}
         onMouseLeave={handleSvgMouseLeave}
@@ -603,19 +809,21 @@ export function BoardDisplay() {
           const y = boardHeight - 10
 
           return (
-            <text
-              key={`col-${colLabel}`}
-              x={x}
-              y={y}
-              fontSize="20"
-              fontWeight="bold"
-              fill="#374151"
-              fontFamily="sans-serif"
-              textAnchor="middle"
-              dominantBaseline="middle"
-            >
-              {colLabel}
-            </text>
+            <g key={`col-${colLabel}`} transform={`translate(${x}, ${y})`}>
+              <text
+                x={0}
+                y={0}
+                fontSize="20"
+                fontWeight="bold"
+                fill="#374151"
+                fontFamily="sans-serif"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                transform={shouldRotate ? 'rotate(90)' : undefined}
+              >
+                {colLabel}
+              </text>
+            </g>
           )
         })}
 
@@ -626,19 +834,21 @@ export function BoardDisplay() {
           const y = padding + row * (cellSize + gap) + cellSize / 2
 
           return (
-            <text
-              key={`row-${actualRank}`}
-              x={x}
-              y={y}
-              fontSize="20"
-              fontWeight="bold"
-              fill="#374151"
-              fontFamily="sans-serif"
-              textAnchor="middle"
-              dominantBaseline="middle"
-            >
-              {actualRank}
-            </text>
+            <g key={`row-${actualRank}`} transform={`translate(${x}, ${y})`}>
+              <text
+                x={0}
+                y={0}
+                fontSize="20"
+                fontWeight="bold"
+                fill="#374151"
+                fontFamily="sans-serif"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                transform={shouldRotate ? 'rotate(90)' : undefined}
+              >
+                {actualRank}
+              </text>
+            </g>
           )
         })}
 
@@ -659,6 +869,7 @@ export function BoardDisplay() {
               opacity={isInNumberBond ? 0.2 : 1}
               useNativeAbacusNumbers={useNativeAbacusNumbers}
               selected={isSelected}
+              shouldRotate={shouldRotate}
             />
           )
         })}
@@ -703,6 +914,7 @@ export function BoardDisplay() {
               selectedRelation,
               closing: closingDialog,
               allPieces: activePieces,
+              pyramidFaceValues,
               findValidHelpers,
               selectRelation: handleCaptureWithRelation,
               selectHelper: handleHelperSelection,

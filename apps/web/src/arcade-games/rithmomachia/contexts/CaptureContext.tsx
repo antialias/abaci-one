@@ -39,6 +39,9 @@ export interface CaptureContextValue {
   // All pieces on the board (for validation)
   allPieces: Piece[]
 
+  // For pyramid pieces, maps relation to which face value to use
+  pyramidFaceValues: Map<RelationKind, number> | null
+
   // Helper functions
   findValidHelpers: (moverValue: number, targetValue: number, relation: RelationKind) => Piece[]
 

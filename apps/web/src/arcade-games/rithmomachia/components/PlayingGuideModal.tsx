@@ -78,6 +78,9 @@ export function PlayingGuideModal({
   const [isHovered, setIsHovered] = useState(false)
   const [dockPreview, setDockPreview] = useState<'left' | 'right' | null>(null)
   const modalRef = useRef<HTMLDivElement>(null)
+  const hasUndockedRef = useRef(false) // Track if we've undocked during current drag
+  const undockPositionRef = useRef<{ x: number; y: number } | null>(null) // Position at moment of undocking
+  const [dragTransform, setDragTransform] = useState<{ x: number; y: number } | null>(null) // Visual transform while dragging from dock
 
   // Save position to localStorage whenever it changes
   useEffect(() => {
@@ -114,7 +117,7 @@ export function PlayingGuideModal({
   // Handle dragging
   const handleMouseDown = (e: React.MouseEvent) => {
     console.log(
-      '[GUIDE_DRAG] handleMouseDown - windowWidth: ' +
+      '[GUIDE_DRAG] === MOUSE DOWN === windowWidth: ' +
         window.innerWidth +
         ', standalone: ' +
         standalone +
@@ -125,8 +128,18 @@ export function PlayingGuideModal({
       console.log('[GUIDE_DRAG] Skipping drag - mobile or standalone')
       return // No dragging on mobile or standalone
     }
-    console.log('[GUIDE_DRAG] Starting drag - docked: ' + docked)
+    console.log(
+      '[GUIDE_DRAG] Starting drag - docked: ' +
+        docked +
+        ', position: ' +
+        JSON.stringify(position) +
+        ', size: ' +
+        JSON.stringify(size)
+    )
     setIsDragging(true)
+    hasUndockedRef.current = false // Reset undock tracking for new drag
+    undockPositionRef.current = null // Clear undock position
+    setDragTransform(null) // Clear any previous transform
 
     // When docked, we need to track the initial mouse position for undocking
     if (docked) {
@@ -141,7 +154,12 @@ export function PlayingGuideModal({
         y: e.clientY,
       })
     } else {
-      console.log('[GUIDE_DRAG] Not docked - setting dragStart offset')
+      console.log(
+        '[GUIDE_DRAG] Not docked - setting dragStart offset: ' +
+          (e.clientX - position.x) +
+          ', ' +
+          (e.clientY - position.y)
+      )
       setDragStart({
         x: e.clientX - position.x,
         y: e.clientY - position.y,
@@ -172,34 +190,61 @@ export function PlayingGuideModal({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
-        // When docked, check if we've dragged far enough away to undock
-        if (docked && onUndock) {
+        console.log(
+          '[GUIDE_DRAG] Mouse move - clientX: ' +
+            e.clientX +
+            ', clientY: ' +
+            e.clientY +
+            ', docked: ' +
+            docked +
+            ', hasUndocked: ' +
+            hasUndockedRef.current
+        )
+
+        // When docked and haven't undocked yet, check if we've dragged far enough away to undock
+        if (docked && onUndock && !hasUndockedRef.current) {
           const UNDOCK_THRESHOLD = 50 // pixels to drag before undocking
           const dragDistance = Math.sqrt(
             (e.clientX - dragStart.x) ** 2 + (e.clientY - dragStart.y) ** 2
           )
 
           console.log(
-            '[GUIDE_DRAG] Dragging while docked - distance: ' +
+            '[GUIDE_DRAG] Checking threshold - distance: ' +
               dragDistance +
               ', threshold: ' +
-              UNDOCK_THRESHOLD
+              UNDOCK_THRESHOLD +
+              ', dragStart: ' +
+              JSON.stringify(dragStart)
           )
 
           if (dragDistance > UNDOCK_THRESHOLD) {
-            console.log('[GUIDE_DRAG] Threshold exceeded - calling onUndock()')
-            onUndock()
-            // After undocking, keep modal at current visual position
-            // and set dragStart as offset from position to cursor for smooth continued dragging
+            console.log('[GUIDE_DRAG] === THRESHOLD EXCEEDED === Marking as virtually undocked')
+            hasUndockedRef.current = true
+            // Don't call onUndock() yet - wait until mouse up to avoid unmounting during drag
+            // After undocking, set dragStart as offset from position to cursor for smooth continued dragging
             if (modalRef.current) {
               const rect = modalRef.current.getBoundingClientRect()
-              console.log('[GUIDE_DRAG] Modal rect - left: ' + rect.left + ', top: ' + rect.top)
-              // Keep modal at its current screen position (no jump)
-              setPosition({
+              console.log(
+                '[GUIDE_DRAG] Modal rect - left: ' +
+                  rect.left +
+                  ', top: ' +
+                  rect.top +
+                  ', width: ' +
+                  rect.width +
+                  ', height: ' +
+                  rect.height
+              )
+
+              // Store the undock position in ref for immediate access
+              undockPositionRef.current = {
                 x: rect.left,
                 y: rect.top,
-              })
-              console.log('[GUIDE_DRAG] New position set to: ' + rect.left + ', ' + rect.top)
+              }
+              console.log(
+                '[GUIDE_DRAG] Stored undock position in ref: ' +
+                  JSON.stringify(undockPositionRef.current)
+              )
+
               // Set dragStart as offset from current position to cursor
               const newDragStartX = e.clientX - rect.left
               const newDragStartY = e.clientY - rect.top
@@ -210,18 +255,74 @@ export function PlayingGuideModal({
                 x: newDragStartX,
                 y: newDragStartY,
               })
+              // Also store the position for state (used when actually undocking)
+              setPosition({
+                x: rect.left,
+                y: rect.top,
+              })
             }
+          } else {
+            console.log('[GUIDE_DRAG] Below threshold - returning early')
+            // Still below threshold - don't apply any transform yet
+            return
           }
-        } else {
-          // Normal floating modal dragging
-          setPosition({
-            x: e.clientX - dragStart.x,
-            y: e.clientY - dragStart.y,
-          })
+        }
 
-          // Check if we're near edges for docking preview
-          if (onDock && onDockPreview && !docked) {
+        // Virtually undocked or already floating - update position
+        if (hasUndockedRef.current || !docked) {
+          const newX = e.clientX - dragStart.x
+          const newY = e.clientY - dragStart.y
+          console.log(
+            '[GUIDE_DRAG] Calculating position - newX: ' +
+              newX +
+              ', newY: ' +
+              newY +
+              ', dragStart: ' +
+              JSON.stringify(dragStart)
+          )
+
+          if (hasUndockedRef.current && docked) {
+            // Still docked but virtually undocked - use transform for visual movement
+            // Use undockPositionRef instead of position state to avoid stale closure
+            if (undockPositionRef.current) {
+              const transformX = newX - undockPositionRef.current.x
+              const transformY = newY - undockPositionRef.current.y
+              console.log(
+                '[GUIDE_DRAG] === SETTING TRANSFORM === x: ' +
+                  transformX +
+                  ', y: ' +
+                  transformY +
+                  ', undockPosition: ' +
+                  JSON.stringify(undockPositionRef.current)
+              )
+              setDragTransform({ x: transformX, y: transformY })
+            }
+          } else {
+            // Actually floating - use position
+            console.log('[GUIDE_DRAG] Floating - setting position: ' + newX + ', ' + newY)
+            setPosition({
+              x: newX,
+              y: newY,
+            })
+          }
+
+          // Check if we're near edges for docking preview (works for floating or virtually undocked)
+          console.log(
+            '[GUIDE_DRAG] Checking docking preview - onDock: ' +
+              (onDock ? 'defined' : 'undefined') +
+              ', onDockPreview: ' +
+              (onDockPreview ? 'defined' : 'undefined') +
+              ', docked: ' +
+              docked +
+              ', hasUndocked: ' +
+              hasUndockedRef.current
+          )
+          if (onDock && onDockPreview && (!docked || hasUndockedRef.current)) {
             const DOCK_THRESHOLD = 100
+            console.log(
+              '[GUIDE_DRAG] Docking preview condition passed - checking edges, clientX: ' +
+                e.clientX
+            )
             if (e.clientX < DOCK_THRESHOLD) {
               setDockPreview('left')
               onDockPreview('left')
@@ -280,21 +381,77 @@ export function PlayingGuideModal({
     }
 
     const handleMouseUp = (e: MouseEvent) => {
-      // Check for docking when releasing drag
-      if (isDragging && onDock && !docked) {
+      console.log(
+        '[GUIDE_DRAG] === MOUSE UP === clientX: ' +
+          e.clientX +
+          ', docked: ' +
+          docked +
+          ', hasUndocked: ' +
+          hasUndockedRef.current +
+          ', isDragging: ' +
+          isDragging +
+          ', onDock: ' +
+          (onDock ? 'defined' : 'undefined')
+      )
+
+      // Check for docking when releasing drag (works for floating or virtually undocked)
+      if (isDragging && onDock && (!docked || hasUndockedRef.current)) {
         const DOCK_THRESHOLD = 100 // pixels from edge to trigger docking
+        console.log(
+          '[GUIDE_DRAG] Checking for dock - clientX: ' +
+            e.clientX +
+            ', threshold: ' +
+            DOCK_THRESHOLD +
+            ', windowWidth: ' +
+            window.innerWidth
+        )
 
         if (e.clientX < DOCK_THRESHOLD) {
+          console.log('[GUIDE_DRAG] Mouse up - near left edge, calling onDock(left)')
           onDock('left')
+          // Don't call onUndock if we're re-docking
+          setIsDragging(false)
+          setIsResizing(false)
+          setResizeDirection('')
+          setDockPreview(null)
+          setDragTransform(null)
+          if (onDockPreview) {
+            onDockPreview(null)
+          }
+          console.log('[GUIDE_DRAG] Cleared state after re-dock to left')
+          return
         } else if (e.clientX > window.innerWidth - DOCK_THRESHOLD) {
+          console.log('[GUIDE_DRAG] Mouse up - near right edge, calling onDock(right)')
           onDock('right')
+          // Don't call onUndock if we're re-docking
+          setIsDragging(false)
+          setIsResizing(false)
+          setResizeDirection('')
+          setDockPreview(null)
+          setDragTransform(null)
+          if (onDockPreview) {
+            onDockPreview(null)
+          }
+          console.log('[GUIDE_DRAG] Cleared state after re-dock to right')
+          return
         }
       }
 
+      // If we virtually undocked during this drag and didn't re-dock, now actually undock
+      if (hasUndockedRef.current && docked && onUndock) {
+        console.log(
+          '[GUIDE_DRAG] Mouse up - calling deferred onUndock() with final position: ' +
+            JSON.stringify(position)
+        )
+        onUndock()
+      }
+
+      console.log('[GUIDE_DRAG] Mouse up - clearing all drag state')
       setIsDragging(false)
       setIsResizing(false)
       setResizeDirection('')
       setDockPreview(null) // Clear dock preview when drag ends
+      setDragTransform(null) // Clear drag transform
       if (onDockPreview) {
         onDockPreview(null) // Clear parent preview state
       }
@@ -466,81 +623,138 @@ export function PlayingGuideModal({
     )
   }
 
-  const modalContent = (
-    <div
-      ref={modalRef}
-      data-component="playing-guide-modal"
-      style={{
-        position: docked ? 'relative' : 'fixed',
-        background: 'white',
-        borderRadius: standalone || docked ? 0 : isVeryNarrow ? '8px' : '12px',
-        boxShadow: standalone || docked ? 'none' : '0 20px 60px rgba(0, 0, 0, 0.3)',
-        border: standalone || docked ? 'none' : '1px solid #e5e7eb',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        ...(docked
-          ? { width: '100%', height: '100%' }
+  const modalContent = (() => {
+    const styleConfig: React.CSSProperties = {
+      // When virtually undocked (dragTransform present), use fixed positioning to break out of Panel
+      position: dragTransform || !docked ? 'fixed' : 'relative',
+      background: 'white',
+      borderRadius: standalone || (docked && !dragTransform) ? 0 : isVeryNarrow ? '8px' : '12px',
+      boxShadow:
+        standalone || (docked && !dragTransform) ? 'none' : '0 20px 60px rgba(0, 0, 0, 0.3)',
+      border: standalone || (docked && !dragTransform) ? 'none' : '1px solid #e5e7eb',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      overflow: 'hidden',
+      ...(dragTransform && undockPositionRef.current
+        ? // Virtually undocked - show at drag position using ref position
+          {
+            left: `${undockPositionRef.current.x + dragTransform.x}px`,
+            top: `${undockPositionRef.current.y + dragTransform.y}px`,
+            width: `${size.width}px`,
+            height: `${size.height}px`,
+            zIndex: Z_INDEX.MODAL,
+          }
+        : docked
+          ? // Still docked
+            { width: '100%', height: '100%' }
           : standalone
-            ? { top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1 }
-            : {
+            ? // Standalone mode
+              { top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1 }
+            : // Actually floating
+              {
                 left: `${position.x}px`,
                 top: `${position.y}px`,
                 width: `${size.width}px`,
                 height: `${size.height}px`,
                 zIndex: Z_INDEX.MODAL,
               }),
-        // 80% opacity when showing dock preview or when not hovered on desktop
-        opacity:
-          dockPreview !== null
+      // 80% opacity when showing dock preview or when not hovered on desktop
+      opacity:
+        dockPreview !== null
+          ? 0.8
+          : !standalone && !docked && window.innerWidth >= 768 && !isHovered
             ? 0.8
-            : !standalone && !docked && window.innerWidth >= 768 && !isHovered
-              ? 0.8
-              : 1,
-        transition: 'opacity 0.2s ease',
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {!docked && renderResizeHandles()}
+            : 1,
+      transition: 'opacity 0.2s ease',
+    }
 
-      {/* Header */}
+    console.log(
+      '[GUIDE_DRAG] Rendering with style - position: ' +
+        styleConfig.position +
+        ', left: ' +
+        (styleConfig.left ?? 'none') +
+        ', top: ' +
+        (styleConfig.top ?? 'none') +
+        ', dragTransform: ' +
+        JSON.stringify(dragTransform) +
+        ', docked: ' +
+        docked
+    )
+
+    return (
       <div
-        data-element="modal-header"
-        className={css({
-          bg: '#f9fafb',
-          borderBottom: '1px solid #e5e7eb',
-          userSelect: 'none',
-          flexShrink: 0,
-          position: 'relative',
-        })}
-        style={{
-          padding: isVeryNarrow ? '8px' : isNarrow ? '12px' : '24px',
-          cursor: isDragging
-            ? 'grabbing'
-            : !standalone && window.innerWidth >= 768
-              ? 'grab'
-              : 'default',
-        }}
-        onMouseDown={handleMouseDown}
+        ref={modalRef}
+        data-component="playing-guide-modal"
+        style={styleConfig}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Close and utility buttons - top right */}
+        {!docked && renderResizeHandles()}
+
+        {/* Header */}
         <div
+          data-element="modal-header"
+          className={css({
+            bg: '#f9fafb',
+            borderBottom: '1px solid #e5e7eb',
+            userSelect: 'none',
+            flexShrink: 0,
+            position: 'relative',
+          })}
           style={{
-            position: 'absolute',
-            top: isVeryNarrow ? '4px' : '8px',
-            right: isVeryNarrow ? '4px' : '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: isVeryNarrow ? '4px' : '8px',
+            padding: isVeryNarrow ? '8px' : isNarrow ? '12px' : '24px',
+            cursor: isDragging
+              ? 'grabbing'
+              : !standalone && window.innerWidth >= 768
+                ? 'grab'
+                : 'default',
           }}
+          onMouseDown={handleMouseDown}
         >
-          {/* Bust-out button (only if not already standalone/docked and not very narrow) */}
-          {!standalone && !docked && !isVeryNarrow && (
+          {/* Close and utility buttons - top right */}
+          <div
+            style={{
+              position: 'absolute',
+              top: isVeryNarrow ? '4px' : '8px',
+              right: isVeryNarrow ? '4px' : '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: isVeryNarrow ? '4px' : '8px',
+            }}
+          >
+            {/* Bust-out button (only if not already standalone/docked and not very narrow) */}
+            {!standalone && !docked && !isVeryNarrow && (
+              <button
+                type="button"
+                data-action="bust-out-guide"
+                onClick={handleBustOut}
+                style={{
+                  background: '#e5e7eb',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: isVeryNarrow ? '4px' : '6px',
+                  width: isVeryNarrow ? '24px' : '32px',
+                  height: isVeryNarrow ? '24px' : '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: isVeryNarrow ? '12px' : '16px',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#d1d5db')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#e5e7eb')}
+                title={t('bustOut')}
+              >
+                ↗
+              </button>
+            )}
+
+            {/* Close button */}
             <button
               type="button"
-              data-action="bust-out-guide"
-              onClick={handleBustOut}
+              data-action="close-guide"
+              onClick={onClose}
               style={{
                 background: '#e5e7eb',
                 color: '#374151',
@@ -552,170 +766,144 @@ export function PlayingGuideModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                fontSize: isVeryNarrow ? '12px' : '16px',
+                fontSize: isVeryNarrow ? '14px' : '18px',
                 transition: 'background 0.2s',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.background = '#d1d5db')}
               onMouseLeave={(e) => (e.currentTarget.style.background = '#e5e7eb')}
-              title={t('bustOut')}
             >
-              ↗
+              ✕
             </button>
-          )}
+          </div>
 
-          {/* Close button */}
-          <button
-            type="button"
-            data-action="close-guide"
-            onClick={onClose}
-            style={{
-              background: '#e5e7eb',
-              color: '#374151',
-              border: 'none',
-              borderRadius: isVeryNarrow ? '4px' : '6px',
-              width: isVeryNarrow ? '24px' : '32px',
-              height: isVeryNarrow ? '24px' : '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: isVeryNarrow ? '14px' : '18px',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#d1d5db')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#e5e7eb')}
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Centered title and subtitle - hide when very narrow */}
-        {!isVeryNarrow && (
-          <div style={{ textAlign: 'center' }}>
-            <h1
-              style={{
-                fontSize: isNarrow ? '16px' : isMedium ? '20px' : '28px',
-                fontWeight: 'bold',
-                color: '#111827',
-                marginBottom: isNarrow ? '4px' : '8px',
-                lineHeight: 1.2,
-              }}
-            >
-              {t('title')}
-            </h1>
-            {!isNarrow && (
-              <p
+          {/* Centered title and subtitle - hide when very narrow */}
+          {!isVeryNarrow && (
+            <div style={{ textAlign: 'center' }}>
+              <h1
                 style={{
-                  fontSize: isMedium ? '12px' : '16px',
-                  color: '#6b7280',
-                  marginBottom: isMedium ? '8px' : '16px',
-                  lineHeight: 1.3,
+                  fontSize: isNarrow ? '16px' : isMedium ? '20px' : '28px',
+                  fontWeight: 'bold',
+                  color: '#111827',
+                  marginBottom: isNarrow ? '4px' : '8px',
+                  lineHeight: 1.2,
                 }}
               >
-                {t('subtitle')}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+                {t('title')}
+              </h1>
+              {!isNarrow && (
+                <p
+                  style={{
+                    fontSize: isMedium ? '12px' : '16px',
+                    color: '#6b7280',
+                    marginBottom: isMedium ? '8px' : '16px',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {t('subtitle')}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
-      {/* Navigation Tabs - fully responsive, always fit in available width */}
-      <div
-        data-element="guide-nav"
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          borderBottom: '2px solid #e5e7eb',
-          background: '#f9fafb',
-          flexShrink: 0,
-        }}
-      >
-        {sections.map((section) => (
-          <button
-            key={section.id}
-            type="button"
-            data-action={`navigate-${section.id}`}
-            onClick={() => setActiveSection(section.id)}
-            style={{
-              flex: '1 1 0', // Equal width tabs
-              minWidth: 0, // Allow shrinking below content size
-              padding: isVeryNarrow ? '10px 6px' : isNarrow ? '10px 8px' : '14px 20px',
-              fontSize: isVeryNarrow ? '16px' : isNarrow ? '12px' : '14px',
-              fontWeight: activeSection === section.id ? 'bold' : '500',
-              color: activeSection === section.id ? '#7c2d12' : '#6b7280',
-              background: activeSection === section.id ? 'white' : 'transparent',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              border: 'none',
-              borderBottom: `3px solid ${activeSection === section.id ? '#7c2d12' : 'transparent'}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: isVeryNarrow ? '0' : isNarrow ? '4px' : '6px',
-              lineHeight: 1,
-              overflow: 'hidden',
-            }}
-            onMouseEnter={(e) => {
-              if (activeSection !== section.id) {
-                e.currentTarget.style.background = '#f3f4f6'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeSection !== section.id) {
-                e.currentTarget.style.background = 'transparent'
-              }
-            }}
-            title={section.label}
-          >
-            <span style={{ fontSize: isVeryNarrow ? '18px' : 'inherit', flexShrink: 0 }}>
-              {section.icon}
-            </span>
-            {!isVeryNarrow && (
-              <Textfit
-                mode="single"
-                min={8}
-                max={isNarrow ? 12 : 14}
-                style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}
-              >
-                {section.label}
-              </Textfit>
-            )}
-          </button>
-        ))}
-      </div>
+        {/* Navigation Tabs - fully responsive, always fit in available width */}
+        <div
+          data-element="guide-nav"
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            borderBottom: '2px solid #e5e7eb',
+            background: '#f9fafb',
+            flexShrink: 0,
+          }}
+        >
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              data-action={`navigate-${section.id}`}
+              onClick={() => setActiveSection(section.id)}
+              style={{
+                flex: '1 1 0', // Equal width tabs
+                minWidth: 0, // Allow shrinking below content size
+                padding: isVeryNarrow ? '10px 6px' : isNarrow ? '10px 8px' : '14px 20px',
+                fontSize: isVeryNarrow ? '16px' : isNarrow ? '12px' : '14px',
+                fontWeight: activeSection === section.id ? 'bold' : '500',
+                color: activeSection === section.id ? '#7c2d12' : '#6b7280',
+                background: activeSection === section.id ? 'white' : 'transparent',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                border: 'none',
+                borderBottom: `3px solid ${activeSection === section.id ? '#7c2d12' : 'transparent'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: isVeryNarrow ? '0' : isNarrow ? '4px' : '6px',
+                lineHeight: 1,
+                overflow: 'hidden',
+              }}
+              onMouseEnter={(e) => {
+                if (activeSection !== section.id) {
+                  e.currentTarget.style.background = '#f3f4f6'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeSection !== section.id) {
+                  e.currentTarget.style.background = 'transparent'
+                }
+              }}
+              title={section.label}
+            >
+              <span style={{ fontSize: isVeryNarrow ? '18px' : 'inherit', flexShrink: 0 }}>
+                {section.icon}
+              </span>
+              {!isVeryNarrow && (
+                <Textfit
+                  mode="single"
+                  min={8}
+                  max={isNarrow ? 12 : 14}
+                  style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}
+                >
+                  {section.label}
+                </Textfit>
+              )}
+            </button>
+          ))}
+        </div>
 
-      {/* Content */}
-      <div
-        data-element="guide-content"
-        style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: isVeryNarrow ? '8px' : isNarrow ? '12px' : '24px',
-          fontSize: isVeryNarrow ? '12px' : isNarrow ? '13px' : '14px',
-          lineHeight: 1.5,
-        }}
-      >
-        {activeSection === 'overview' && (
-          <OverviewSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
-        )}
-        {activeSection === 'pieces' && (
-          <PiecesSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
-        )}
-        {activeSection === 'capture' && (
-          <CaptureSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
-        )}
-        {activeSection === 'strategy' && (
-          <StrategySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
-        )}
-        {activeSection === 'harmony' && (
-          <HarmonySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
-        )}
-        {activeSection === 'victory' && (
-          <VictorySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
-        )}
+        {/* Content */}
+        <div
+          data-element="guide-content"
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: isVeryNarrow ? '8px' : isNarrow ? '12px' : '24px',
+            fontSize: isVeryNarrow ? '12px' : isNarrow ? '13px' : '14px',
+            lineHeight: 1.5,
+          }}
+        >
+          {activeSection === 'overview' && (
+            <OverviewSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+          )}
+          {activeSection === 'pieces' && (
+            <PiecesSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+          )}
+          {activeSection === 'capture' && (
+            <CaptureSection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+          )}
+          {activeSection === 'strategy' && (
+            <StrategySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+          )}
+          {activeSection === 'harmony' && (
+            <HarmonySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+          )}
+          {activeSection === 'victory' && (
+            <VictorySection useNativeAbacusNumbers={useNativeAbacusNumbers} />
+          )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  })() // Invoke the IIFE
 
   // If standalone, just render the content without Dialog wrapper
   if (standalone) {

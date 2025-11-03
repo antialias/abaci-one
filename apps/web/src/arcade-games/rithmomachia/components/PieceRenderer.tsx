@@ -10,6 +10,7 @@ interface PieceRendererProps {
   useNativeAbacusNumbers?: boolean
   selected?: boolean
   pyramidFaces?: number[]
+  shouldRotate?: boolean
 }
 
 /**
@@ -25,6 +26,7 @@ export function PieceRenderer({
   useNativeAbacusNumbers = false,
   selected = false,
   pyramidFaces = [],
+  shouldRotate = false,
 }: PieceRendererProps) {
   const isDark = color === 'B'
   const { config } = useAbacusDisplay()
@@ -242,244 +244,249 @@ export function PieceRenderer({
 
       {/* Pyramid face numbers - show when selected */}
       {type === 'P' && selected && pyramidFaces.length === 4 && (
-        <animated.g
-          style={{
-            opacity: pyramidNumbersSpring.opacity,
-            transform: pyramidNumbersSpring.scale.to((s) => `scale(${s})`),
-            transformOrigin: 'center',
-          }}
-        >
-          {/* Filter for strong drop shadow */}
-          <defs>
-            <filter id={`face-shadow-${color}`} x="-100%" y="-100%" width="300%" height="300%">
-              <feDropShadow
-                dx="0"
-                dy="0"
-                stdDeviation="3"
-                floodColor="#000000"
-                floodOpacity="0.9"
-              />
-            </filter>
-          </defs>
+        <g transform={shouldRotate ? `rotate(90, ${size / 2}, ${size / 2})` : undefined}>
+          <animated.g
+            style={{
+              opacity: pyramidNumbersSpring.opacity,
+              transform: pyramidNumbersSpring.scale.to((s) => `scale(${s})`),
+              transformOrigin: 'center',
+            }}
+          >
+            {/* Filter for strong drop shadow */}
+            <defs>
+              <filter id={`face-shadow-${color}`} x="-100%" y="-100%" width="300%" height="300%">
+                <feDropShadow
+                  dx="0"
+                  dy="0"
+                  stdDeviation="3"
+                  floodColor="#000000"
+                  floodOpacity="0.9"
+                />
+              </filter>
+            </defs>
 
-          {/* Top face */}
-          {/* Outline/stroke for contrast */}
-          <text
-            x={size / 2}
-            y={size * 0.12}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="none"
-            stroke={isDark ? '#000000' : '#ffffff'}
-            strokeWidth={size * 0.05}
-            fontSize={size * 0.35}
-            fontWeight="900"
-            fontFamily="Arial Black, Arial, sans-serif"
-          >
-            {pyramidFaces[0]}
-          </text>
-          {/* Main text with shadow and vibrant color */}
-          <text
-            x={size / 2}
-            y={size * 0.12}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill={isDark ? '#fbbf24' : '#b45309'}
-            fontSize={size * 0.35}
-            fontWeight="900"
-            fontFamily="Arial Black, Arial, sans-serif"
-            filter={`url(#face-shadow-${color})`}
-            style={{ transition: 'all 0.2s ease' }}
-          >
-            {pyramidFaces[0]}
-          </text>
+            {/* Top face */}
+            {/* Outline/stroke for contrast */}
+            <text
+              x={size / 2}
+              y={size * 0.12}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="none"
+              stroke={isDark ? '#000000' : '#ffffff'}
+              strokeWidth={size * 0.05}
+              fontSize={size * 0.35}
+              fontWeight="900"
+              fontFamily="Arial Black, Arial, sans-serif"
+            >
+              {pyramidFaces[0]}
+            </text>
+            {/* Main text with shadow and vibrant color */}
+            <text
+              x={size / 2}
+              y={size * 0.12}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={isDark ? '#fbbf24' : '#b45309'}
+              fontSize={size * 0.35}
+              fontWeight="900"
+              fontFamily="Arial Black, Arial, sans-serif"
+              filter={`url(#face-shadow-${color})`}
+              style={{ transition: 'all 0.2s ease' }}
+            >
+              {pyramidFaces[0]}
+            </text>
 
-          {/* Right face */}
-          <text
-            x={size * 0.88}
-            y={size / 2}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="none"
-            stroke={isDark ? '#000000' : '#ffffff'}
-            strokeWidth={size * 0.05}
-            fontSize={size * 0.35}
-            fontWeight="900"
-            fontFamily="Arial Black, Arial, sans-serif"
-          >
-            {pyramidFaces[1]}
-          </text>
-          <text
-            x={size * 0.88}
-            y={size / 2}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill={isDark ? '#fbbf24' : '#b45309'}
-            fontSize={size * 0.35}
-            fontWeight="900"
-            fontFamily="Arial Black, Arial, sans-serif"
-            filter={`url(#face-shadow-${color})`}
-            style={{ transition: 'all 0.2s ease' }}
-          >
-            {pyramidFaces[1]}
-          </text>
+            {/* Right face */}
+            <text
+              x={size * 0.88}
+              y={size / 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="none"
+              stroke={isDark ? '#000000' : '#ffffff'}
+              strokeWidth={size * 0.05}
+              fontSize={size * 0.35}
+              fontWeight="900"
+              fontFamily="Arial Black, Arial, sans-serif"
+            >
+              {pyramidFaces[1]}
+            </text>
+            <text
+              x={size * 0.88}
+              y={size / 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={isDark ? '#fbbf24' : '#b45309'}
+              fontSize={size * 0.35}
+              fontWeight="900"
+              fontFamily="Arial Black, Arial, sans-serif"
+              filter={`url(#face-shadow-${color})`}
+              style={{ transition: 'all 0.2s ease' }}
+            >
+              {pyramidFaces[1]}
+            </text>
 
-          {/* Bottom face */}
-          <text
-            x={size / 2}
-            y={size * 0.88}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="none"
-            stroke={isDark ? '#000000' : '#ffffff'}
-            strokeWidth={size * 0.05}
-            fontSize={size * 0.35}
-            fontWeight="900"
-            fontFamily="Arial Black, Arial, sans-serif"
-          >
-            {pyramidFaces[2]}
-          </text>
-          <text
-            x={size / 2}
-            y={size * 0.88}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill={isDark ? '#fbbf24' : '#b45309'}
-            fontSize={size * 0.35}
-            fontWeight="900"
-            fontFamily="Arial Black, Arial, sans-serif"
-            filter={`url(#face-shadow-${color})`}
-            style={{ transition: 'all 0.2s ease' }}
-          >
-            {pyramidFaces[2]}
-          </text>
+            {/* Bottom face */}
+            <text
+              x={size / 2}
+              y={size * 0.88}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="none"
+              stroke={isDark ? '#000000' : '#ffffff'}
+              strokeWidth={size * 0.05}
+              fontSize={size * 0.35}
+              fontWeight="900"
+              fontFamily="Arial Black, Arial, sans-serif"
+            >
+              {pyramidFaces[2]}
+            </text>
+            <text
+              x={size / 2}
+              y={size * 0.88}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={isDark ? '#fbbf24' : '#b45309'}
+              fontSize={size * 0.35}
+              fontWeight="900"
+              fontFamily="Arial Black, Arial, sans-serif"
+              filter={`url(#face-shadow-${color})`}
+              style={{ transition: 'all 0.2s ease' }}
+            >
+              {pyramidFaces[2]}
+            </text>
 
-          {/* Left face */}
-          <text
-            x={size * 0.12}
-            y={size / 2}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="none"
-            stroke={isDark ? '#000000' : '#ffffff'}
-            strokeWidth={size * 0.05}
-            fontSize={size * 0.35}
-            fontWeight="900"
-            fontFamily="Arial Black, Arial, sans-serif"
-          >
-            {pyramidFaces[3]}
-          </text>
-          <text
-            x={size * 0.12}
-            y={size / 2}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill={isDark ? '#fbbf24' : '#b45309'}
-            fontSize={size * 0.35}
-            fontWeight="900"
-            fontFamily="Arial Black, Arial, sans-serif"
-            filter={`url(#face-shadow-${color})`}
-            style={{ transition: 'all 0.2s ease' }}
-          >
-            {pyramidFaces[3]}
-          </text>
-        </animated.g>
+            {/* Left face */}
+            <text
+              x={size * 0.12}
+              y={size / 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="none"
+              stroke={isDark ? '#000000' : '#ffffff'}
+              strokeWidth={size * 0.05}
+              fontSize={size * 0.35}
+              fontWeight="900"
+              fontFamily="Arial Black, Arial, sans-serif"
+            >
+              {pyramidFaces[3]}
+            </text>
+            <text
+              x={size * 0.12}
+              y={size / 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={isDark ? '#fbbf24' : '#b45309'}
+              fontSize={size * 0.35}
+              fontWeight="900"
+              fontFamily="Arial Black, Arial, sans-serif"
+              filter={`url(#face-shadow-${color})`}
+              style={{ transition: 'all 0.2s ease' }}
+            >
+              {pyramidFaces[3]}
+            </text>
+          </animated.g>
+        </g>
       )}
 
       {/* Other pieces show numbers normally */}
-      {type !== 'P' &&
-        (useNativeAbacusNumbers && typeof value === 'number' ? (
-          // Render mini abacus
-          <foreignObject
-            x={size * 0.1}
-            y={size * 0.1}
-            width={size * 0.8}
-            height={size * 0.8}
-            style={{ overflow: 'visible' }}
-          >
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+      {type !== 'P' && (
+        <g transform={shouldRotate ? `rotate(90, ${size / 2}, ${size / 2})` : undefined}>
+          {useNativeAbacusNumbers && typeof value === 'number' ? (
+            // Render mini abacus
+            <foreignObject
+              x={size * 0.1}
+              y={size * 0.1}
+              width={size * 0.8}
+              height={size * 0.8}
+              style={{ overflow: 'visible' }}
             >
-              <AbacusReact
-                value={value}
-                columns={Math.max(1, Math.ceil(Math.log10(value + 1)))}
-                scaleFactor={0.35}
-                showNumbers={false}
-                beadShape={config.beadShape}
-                colorScheme={config.colorScheme}
-                hideInactiveBeads={config.hideInactiveBeads}
-                customStyles={{
-                  columnPosts: {
-                    fill: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)',
-                    stroke: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
-                    strokeWidth: 1,
-                  },
-                  reckoningBar: {
-                    fill: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.2)',
-                    stroke: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)',
-                    strokeWidth: 1,
-                  },
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
-              />
-            </div>
-          </foreignObject>
-        ) : (
-          // Render traditional text number
-          <g>
-            {/* Outer glow/shadow for emphasis */}
-            {isDark ? (
+              >
+                <AbacusReact
+                  value={value}
+                  columns={Math.max(1, Math.ceil(Math.log10(value + 1)))}
+                  scaleFactor={0.35}
+                  showNumbers={false}
+                  beadShape={config.beadShape}
+                  colorScheme={config.colorScheme}
+                  hideInactiveBeads={config.hideInactiveBeads}
+                  customStyles={{
+                    columnPosts: {
+                      fill: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)',
+                      stroke: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+                      strokeWidth: 1,
+                    },
+                    reckoningBar: {
+                      fill: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.2)',
+                      stroke: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)',
+                      strokeWidth: 1,
+                    },
+                  }}
+                />
+              </div>
+            </foreignObject>
+          ) : (
+            // Render traditional text number
+            <g>
+              {/* Outer glow/shadow for emphasis */}
+              {isDark ? (
+                <text
+                  x={size / 2}
+                  y={size / 2}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="none"
+                  stroke="rgba(255, 255, 255, 0.4)"
+                  strokeWidth={fontSize * 0.2}
+                  fontSize={fontSize}
+                  fontWeight="900"
+                  fontFamily="Georgia, 'Times New Roman', serif"
+                >
+                  {value}
+                </text>
+              ) : (
+                <text
+                  x={size / 2}
+                  y={size / 2}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="none"
+                  stroke="rgba(255, 255, 255, 0.95)"
+                  strokeWidth={fontSize * 0.25}
+                  fontSize={fontSize}
+                  fontWeight="900"
+                  fontFamily="Georgia, 'Times New Roman', serif"
+                >
+                  {value}
+                </text>
+              )}
+              {/* Main text */}
               <text
                 x={size / 2}
                 y={size / 2}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.4)"
-                strokeWidth={fontSize * 0.2}
+                fill={textColor}
                 fontSize={fontSize}
                 fontWeight="900"
                 fontFamily="Georgia, 'Times New Roman', serif"
+                filter={isDark ? `url(#text-shadow-${color})` : undefined}
               >
                 {value}
               </text>
-            ) : (
-              <text
-                x={size / 2}
-                y={size / 2}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.95)"
-                strokeWidth={fontSize * 0.25}
-                fontSize={fontSize}
-                fontWeight="900"
-                fontFamily="Georgia, 'Times New Roman', serif"
-              >
-                {value}
-              </text>
-            )}
-            {/* Main text */}
-            <text
-              x={size / 2}
-              y={size / 2}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill={textColor}
-              fontSize={fontSize}
-              fontWeight="900"
-              fontFamily="Georgia, 'Times New Roman', serif"
-              filter={isDark ? `url(#text-shadow-${color})` : undefined}
-            >
-              {value}
-            </text>
-          </g>
-        ))}
+            </g>
+          )}
+        </g>
+      )}
     </svg>
   )
 }

@@ -12,6 +12,7 @@ export interface SvgPieceProps {
   opacity?: number
   useNativeAbacusNumbers?: boolean
   selected?: boolean
+  shouldRotate?: boolean
 }
 
 export function SvgPiece({
@@ -22,6 +23,7 @@ export function SvgPiece({
   opacity = 1,
   useNativeAbacusNumbers = false,
   selected = false,
+  shouldRotate = false,
 }: SvgPieceProps) {
   const file = piece.square.charCodeAt(0) - 65 // A=0
   const rank = Number.parseInt(piece.square.slice(1), 10) // 1-8
@@ -59,6 +61,7 @@ export function SvgPiece({
             useNativeAbacusNumbers={useNativeAbacusNumbers}
             selected={selected}
             pyramidFaces={piece.type === 'P' ? piece.pyramidFaces : undefined}
+            shouldRotate={shouldRotate}
           />
         </div>
       </foreignObject>

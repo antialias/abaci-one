@@ -140,7 +140,9 @@
       "Bash(src/arcade-games/rithmomachia/components/guide-sections/VictorySection.tsx)",
       "Bash(pnpm remove:*)",
       "Bash(__NEW_LINE__ sed -n '68,73p' CaptureSection.tsx.bak)",
-      "WebFetch(domain:hub.docker.com)"
+      "WebFetch(domain:hub.docker.com)",
+      "Bash(gcloud auth:*)",
+      "Bash(gcloud config list:*)"
     ],
     "deny": [],
     "ask": []

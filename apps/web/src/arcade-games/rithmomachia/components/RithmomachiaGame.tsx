@@ -173,9 +173,11 @@ export function RithmomachiaGame() {
         padding: guideDocked ? 0 : { base: '12px', sm: '16px', md: '20px' },
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
+        alignItems: guideDocked ? 'stretch' : 'center',
         position: 'relative',
         overflow: 'auto',
+        // When docked, ensure we fill panel height
+        height: guideDocked ? '100%' : 'auto',
       })}
     >
       <main
@@ -191,7 +193,8 @@ export function RithmomachiaGame() {
           flexDirection: 'column',
           overflow: 'hidden',
           position: 'relative',
-          height: '100%',
+          // Ensure main fills parent height
+          minHeight: 0,
         })}
       >
         {state.gamePhase === 'setup' && (
@@ -245,6 +248,7 @@ export function RithmomachiaGame() {
                       onClose={() => setIsGuideOpen(false)}
                       docked={true} // Always render as docked when in panel
                       onUndock={guideDocked ? handleUndock : undefined} // Only show undock button when truly docked
+                      onDock={handleDock} // Allow re-docking during virtual undock
                       onDockPreview={handleDockPreview}
                     />
                   </Panel>
@@ -284,6 +288,7 @@ export function RithmomachiaGame() {
                       onClose={() => setIsGuideOpen(false)}
                       docked={true} // Always render as docked when in panel
                       onUndock={guideDocked ? handleUndock : undefined} // Only show undock button when truly docked
+                      onDock={handleDock} // Allow re-docking during virtual undock
                       onDockPreview={handleDockPreview}
                     />
                   </Panel>

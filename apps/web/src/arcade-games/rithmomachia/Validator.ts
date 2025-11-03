@@ -280,21 +280,6 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
     capture: NonNullable<Extract<RithmomachiaMove, { type: 'MOVE' }>['data']['capture']>,
     pyramidFaceUsed?: number | null
   ): ValidationResult {
-    // Get mover value
-    let moverValue: number
-    if (mover.type === 'P') {
-      if (!pyramidFaceUsed) {
-        return { valid: false, error: 'Pyramid must choose a face for capture' }
-      }
-      // Validate face is valid
-      if (!mover.pyramidFaces?.some((f) => f === pyramidFaceUsed)) {
-        return { valid: false, error: 'Invalid pyramid face' }
-      }
-      moverValue = pyramidFaceUsed
-    } else {
-      moverValue = mover.value!
-    }
-
     // Get target value
     const targetValue = getEffectiveValue(target)
     if (targetValue === null) {
@@ -334,14 +319,49 @@ export class RithmomachiaValidator implements GameValidator<RithmomachiaState, R
       helperValue = getEffectiveValue(helperPiece) ?? undefined
     }
 
-    // Check the relation
-    const relationCheck = checkRelation(capture.relation, moverValue, targetValue, helperValue)
+    // Get mover value(s) - for pyramids, try all faces if not specified
+    if (mover.type === 'P') {
+      if (pyramidFaceUsed) {
+        // Specific face provided - validate it
+        if (!mover.pyramidFaces?.some((f) => f === pyramidFaceUsed)) {
+          return { valid: false, error: 'Invalid pyramid face' }
+        }
+        const relationCheck = checkRelation(
+          capture.relation,
+          pyramidFaceUsed,
+          targetValue,
+          helperValue
+        )
+        if (!relationCheck.valid) {
+          return { valid: false, error: relationCheck.explanation || 'Relation check failed' }
+        }
+        return { valid: true }
+      } else {
+        // No face specified - try all faces and accept if ANY works
+        if (!mover.pyramidFaces || mover.pyramidFaces.length !== 4) {
+          return { valid: false, error: 'Pyramid must have 4 faces' }
+        }
 
-    if (!relationCheck.valid) {
-      return { valid: false, error: relationCheck.explanation || 'Relation check failed' }
+        for (const faceValue of mover.pyramidFaces) {
+          const relationCheck = checkRelation(capture.relation, faceValue, targetValue, helperValue)
+          if (relationCheck.valid) {
+            // At least one face works - capture is valid
+            return { valid: true }
+          }
+        }
+
+        // None of the faces worked
+        return { valid: false, error: 'No pyramid face satisfies the relation' }
+      }
+    } else {
+      // Non-pyramid piece
+      const moverValue = mover.value!
+      const relationCheck = checkRelation(capture.relation, moverValue, targetValue, helperValue)
+      if (!relationCheck.valid) {
+        return { valid: false, error: relationCheck.explanation || 'Relation check failed' }
+      }
+      return { valid: true }
     }
-
-    return { valid: true }
   }
 
   /**
