@@ -91,6 +91,7 @@ function GamesPageContent() {
         background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
         py: '8',
         position: 'relative',
+        overflowX: 'hidden',
       })}
     >
       {/* Subtle background pattern */}
