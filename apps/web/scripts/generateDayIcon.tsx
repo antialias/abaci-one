@@ -129,7 +129,7 @@ svgContent = svgContent.replace(/\s*!important/g, '')
 const bbox = getAbacusBoundingBox(svgContent, 1.8, 2)
 
 // Add padding around active beads (in abacus coordinates)
-const padding = 15
+const padding = 10
 const cropX = bbox.minX - padding
 const cropY = bbox.minY - padding
 const cropWidth = bbox.maxX - bbox.minX + padding * 2
@@ -146,14 +146,19 @@ const offsetX = (100 - scaledWidth) / 2
 const offsetY = (100 - scaledHeight) / 2
 
 // Wrap in SVG with proper viewBox for favicon sizing
+// Use nested SVG with viewBox to actually CROP the content, not just scale it
 const svg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <!-- Background circle with border for definition -->
   <circle cx="50" cy="50" r="48" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
 
   <!-- Abacus showing day ${day.toString().padStart(2, '0')} (US Central Time) - cropped to active beads -->
-  <g class="hide-inactive-mode" transform="translate(${offsetX}, ${offsetY}) scale(${scale}) translate(${-cropX}, ${-cropY})">
-    ${svgContent}
-  </g>
+  <!-- Nested SVG with viewBox does the actual cropping -->
+  <svg x="${offsetX}" y="${offsetY}" width="${scaledWidth}" height="${scaledHeight}"
+       viewBox="${cropX} ${cropY} ${cropWidth} ${cropHeight}">
+    <g class="hide-inactive-mode">
+      ${svgContent}
+    </g>
+  </svg>
 </svg>
 `
 
