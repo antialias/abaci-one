@@ -47,20 +47,9 @@ function getAbacusBoundingBox(
   }
 
   // Bead dimensions (diamond): width ≈ 30px * scaleFactor, height ≈ 21px * scaleFactor
-  const beadWidth = 30.24 * scaleFactor
   const beadHeight = 21.6 * scaleFactor
 
-  // First, get the Y range from active beads only
-  let beadMinY = Infinity
-  let beadMaxY = -Infinity
-
-  for (const match of beadMatches) {
-    const y = parseFloat(match[2])
-    beadMinY = Math.min(beadMinY, y)
-    beadMaxY = Math.max(beadMaxY, y + beadHeight)
-  }
-
-  // Now get X range from ALL column posts (to show full width)
+  // HORIZONTAL BOUNDS: Always show full width of both columns (fixed for all days)
   let minX = Infinity
   let maxX = -Infinity
 
@@ -71,10 +60,16 @@ function getAbacusBoundingBox(
     maxX = Math.max(maxX, x + width)
   }
 
-  // For Y, use the bead range but ensure we show some post structure
-  // Add extra space above/below to show context
-  const minY = beadMinY
-  const maxY = beadMaxY
+  // VERTICAL BOUNDS: Crop to active beads (dynamic based on which beads are active)
+  let minY = Infinity
+  let maxY = -Infinity
+
+  for (const match of beadMatches) {
+    const y = parseFloat(match[2])
+    // Top of topmost active bead to bottom of bottommost active bead
+    minY = Math.min(minY, y)
+    maxY = Math.max(maxY, y + beadHeight)
+  }
 
   return { minX, minY, maxX, maxY }
 }
