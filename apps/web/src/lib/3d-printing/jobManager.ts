@@ -122,18 +122,29 @@ export class JobManager {
       console.log(`Executing: ${cmd}`)
 
       // Execute OpenSCAD (with 60s timeout)
+      // Note: OpenSCAD may exit with non-zero status due to CGAL warnings
+      // but still produce valid output. We'll check file existence afterward.
       try {
         await execAsync(cmd, {
           timeout: 60000,
           cwd: join(process.cwd(), 'public', '3d-models'),
         })
       } catch (execError) {
-        // Log detailed error information
-        console.error(`OpenSCAD execution failed:`, execError)
-        if (execError instanceof Error) {
-          throw new Error(`OpenSCAD error: ${execError.message}`)
+        // Log the error but don't throw yet - check if output was created
+        console.warn(`OpenSCAD reported errors, but checking if output was created:`, execError)
+
+        // Check if output file exists despite the error
+        try {
+          await readFile(outputPath)
+          console.log(`Output file created despite OpenSCAD warnings - proceeding`)
+        } catch (readError) {
+          // File doesn't exist, this is a real failure
+          console.error(`OpenSCAD execution failed and no output file created:`, execError)
+          if (execError instanceof Error) {
+            throw new Error(`OpenSCAD error: ${execError.message}`)
+          }
+          throw execError
         }
-        throw execError
       }
 
       job.progress = 'Finalizing...'
