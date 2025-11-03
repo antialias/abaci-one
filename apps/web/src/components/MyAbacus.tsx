@@ -1,6 +1,7 @@
 'use client'
 
 import { useContext, useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { css } from '../../styled-system/css'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
@@ -10,6 +11,7 @@ import { Z_INDEX } from '@/constants/zIndex'
 export function MyAbacus() {
   const { isOpen, close, toggle } = useMyAbacus()
   const appConfig = useAbacusConfig()
+  const pathname = usePathname()
 
   // Sync with hero context if on home page
   const homeHeroContext = useContext(HomeHeroContext)
@@ -17,8 +19,15 @@ export function MyAbacus() {
   const abacusValue = homeHeroContext?.abacusValue ?? localAbacusValue
   const setAbacusValue = homeHeroContext?.setAbacusValue ?? setLocalAbacusValue
 
-  // Determine display mode
-  const isOnHomePage = Boolean(homeHeroContext)
+  // Determine display mode - only hero mode on actual home page
+  const isOnHomePage =
+    pathname === '/' ||
+    pathname === '/en' ||
+    pathname === '/de' ||
+    pathname === '/ja' ||
+    pathname === '/hi' ||
+    pathname === '/es' ||
+    pathname === '/la'
   const isHeroVisible = homeHeroContext?.isHeroVisible ?? false
   const isHeroMode = isOnHomePage && isHeroVisible && !isOpen
 

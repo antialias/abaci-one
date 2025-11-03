@@ -160,7 +160,8 @@
       "Bash(security find-generic-password -s 'Anthropic API Key' -w)",
       "Bash(printenv:*)",
       "Bash(typst:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(sort:*)"
     ],
     "deny": [],
     "ask": []

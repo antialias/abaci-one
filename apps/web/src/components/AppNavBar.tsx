@@ -616,7 +616,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 1000,
+          zIndex: Z_INDEX.NAV_BAR,
           transition: 'all 0.3s ease',
         })}
       >
@@ -675,7 +675,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
                         fontSize: 'sm',
                         maxW: '250px',
                         shadow: 'lg',
-                        zIndex: 50,
+                        zIndex: Z_INDEX.TOOLTIP,
                       })}
                     >
                       {subtitle.description}
