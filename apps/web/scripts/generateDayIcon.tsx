@@ -106,14 +106,14 @@ const abacusMarkup = renderToStaticMarkup(
       },
       columns: {
         0: {
-          // Ones place - Bold Blue (high contrast)
-          heavenBeads: { fill: '#2563eb', stroke: '#1e40af', strokeWidth: 2 },
-          earthBeads: { fill: '#2563eb', stroke: '#1e40af', strokeWidth: 2 },
+          // Ones place - Gold (royal theme)
+          heavenBeads: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 2 },
+          earthBeads: { fill: '#fbbf24', stroke: '#f59e0b', strokeWidth: 2 },
         },
         1: {
-          // Tens place - Bold Green (high contrast)
-          heavenBeads: { fill: '#16a34a', stroke: '#15803d', strokeWidth: 2 },
-          earthBeads: { fill: '#16a34a', stroke: '#15803d', strokeWidth: 2 },
+          // Tens place - Purple (royal theme)
+          heavenBeads: { fill: '#a855f7', stroke: '#7e22ce', strokeWidth: 2 },
+          earthBeads: { fill: '#a855f7', stroke: '#7e22ce', strokeWidth: 2 },
         },
       },
     }}
@@ -151,9 +151,6 @@ const offsetY = (100 - scaledHeight) / 2
 // Wrap in SVG with proper viewBox for favicon sizing
 // Use nested SVG with viewBox to actually CROP the content, not just scale it
 const svg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background circle with border for definition -->
-  <circle cx="50" cy="50" r="48" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
-
   <!-- Abacus showing day ${day.toString().padStart(2, '0')} (US Central Time) - cropped to active beads -->
   <!-- Nested SVG with viewBox does the actual cropping -->
   <svg x="${offsetX}" y="${offsetY}" width="${scaledWidth}" height="${scaledHeight}"
