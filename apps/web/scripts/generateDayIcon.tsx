@@ -19,6 +19,48 @@ function extractSvgContent(markup: string): string {
   return svgMatch[1]
 }
 
+// Calculate bounding box of active beads from rendered SVG
+interface BoundingBox {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
+function getActiveBeadsBoundingBox(svgContent: string, scaleFactor: number): BoundingBox {
+  // Parse all active bead transforms: <g class="abacus-bead active" transform="translate(x, y)">
+  const activeBeadRegex =
+    /<g\s+class="abacus-bead active[^"]*"\s+transform="translate\(([^,]+),\s*([^)]+)\)"/g
+  const matches = [...svgContent.matchAll(activeBeadRegex)]
+
+  if (matches.length === 0) {
+    // Fallback if no active beads found
+    return { minX: 0, minY: 0, maxX: 50 * scaleFactor, maxY: 120 * scaleFactor }
+  }
+
+  // Bead dimensions (diamond): width ≈ 30px * scaleFactor, height ≈ 21px * scaleFactor
+  const beadWidth = 30.24 * scaleFactor
+  const beadHeight = 21.6 * scaleFactor
+
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+
+  for (const match of matches) {
+    const x = parseFloat(match[1])
+    const y = parseFloat(match[2])
+
+    // Account for bead dimensions
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x + beadWidth)
+    maxY = Math.max(maxY, y + beadHeight)
+  }
+
+  return { minX, minY, maxX, maxY }
+}
+
 // Get day from command line argument
 const day = parseInt(process.argv[2], 10)
 
@@ -70,15 +112,33 @@ let svgContent = extractSvgContent(abacusMarkup)
 // Remove !important from CSS (production code policy)
 svgContent = svgContent.replace(/\s*!important/g, '')
 
+// Calculate bounding box of active beads
+const bbox = getActiveBeadsBoundingBox(svgContent, 1.8)
+
+// Add padding around active beads (in abacus coordinates)
+const padding = 15
+const cropX = bbox.minX - padding
+const cropY = bbox.minY - padding
+const cropWidth = bbox.maxX - bbox.minX + padding * 2
+const cropHeight = bbox.maxY - bbox.minY + padding * 2
+
+// Calculate scale to fit cropped region into 96x96 (leaving room for border)
+const targetSize = 96
+const scale = Math.min(targetSize / cropWidth, targetSize / cropHeight)
+
+// Center in 100x100 canvas
+const scaledWidth = cropWidth * scale
+const scaledHeight = cropHeight * scale
+const offsetX = (100 - scaledWidth) / 2
+const offsetY = (100 - scaledHeight) / 2
+
 // Wrap in SVG with proper viewBox for favicon sizing
-// AbacusReact with 2 columns + scaleFactor 1.8 = ~90×216px
-// Scale 0.48 = ~43×104px (slightly overflows height, but fine for icon)
 const svg = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
   <!-- Background circle with border for definition -->
   <circle cx="50" cy="50" r="48" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
 
-  <!-- Abacus showing day ${day.toString().padStart(2, '0')} (US Central Time) -->
-  <g class="hide-inactive-mode" transform="translate(28, -2) scale(0.48)">
+  <!-- Abacus showing day ${day.toString().padStart(2, '0')} (US Central Time) - cropped to active beads -->
+  <g class="hide-inactive-mode" transform="translate(${offsetX}, ${offsetY}) scale(${scale}) translate(${-cropX}, ${-cropY})">
     ${svgContent}
   </g>
 </svg>
