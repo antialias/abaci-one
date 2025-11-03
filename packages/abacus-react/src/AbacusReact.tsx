@@ -1247,6 +1247,13 @@ interface BeadProps {
   colorScheme?: string;
   colorPalette?: string;
   totalColumns?: number;
+  // 3D Enhancement
+  enhanced3d?: boolean | "subtle" | "realistic" | "delightful";
+  material3d?: Abacus3DMaterial;
+  physics3d?: Abacus3DPhysics;
+  columnIndex?: number;
+  mousePosition?: { x: number; y: number };
+  containerBounds?: { x: number; y: number };
 }
 
 const Bead: React.FC<BeadProps> = ({
@@ -1275,17 +1282,49 @@ const Bead: React.FC<BeadProps> = ({
   colorScheme = "monochrome",
   colorPalette = "default",
   totalColumns = 1,
+  enhanced3d,
+  material3d,
+  physics3d,
+  columnIndex,
+  mousePosition,
+  containerBounds,
 }) => {
   // Detect server-side rendering
   const isServer = typeof window === 'undefined';
 
   // Use springs only if not on server and animations are enabled
-  // Even on server, we must call hooks unconditionally, so we provide static values
+  // Enhanced physics config for 3D modes
+  const physicsConfig = React.useMemo(() => {
+    if (!enableAnimation || isServer) return { duration: 0 };
+    if (!enhanced3d || enhanced3d === true || enhanced3d === 'subtle') return config.default;
+    return Abacus3DUtils.getPhysicsConfig(enhanced3d);
+  }, [enableAnimation, isServer, enhanced3d]);
+
   const [{ x: springX, y: springY }, api] = useSpring(() => ({
     x,
     y,
-    config: enableAnimation && !isServer ? config.default : { duration: 0 }
+    config: physicsConfig
   }));
+
+  // Track velocity for wobble effect (delightful mode only)
+  const velocityRef = useRef(0);
+  const lastYRef = useRef(y);
+
+  // Calculate parallax offset for hover effect
+  const parallaxOffset = React.useMemo(() => {
+    if (enhanced3d === 'delightful' && physics3d?.hoverParallax && mousePosition && containerBounds) {
+      return Abacus3DUtils.calculateParallaxOffset(
+        x,
+        y,
+        mousePosition.x,
+        mousePosition.y,
+        containerBounds.x,
+        containerBounds.y,
+        0.5
+      );
+    }
+    return { x: 0, y: 0, z: 0 };
+  }, [enhanced3d, physics3d?.hoverParallax, mousePosition, containerBounds, x, y]);
 
   // Arrow pulse animation for urgency indication
   const [{ arrowPulse }, arrowApi] = useSpring(() => ({
@@ -1363,11 +1402,16 @@ const Bead: React.FC<BeadProps> = ({
 
   React.useEffect(() => {
     if (enableAnimation) {
-      api.start({ x, y, config: { tension: 400, friction: 30, mass: 0.8 } });
+      // Calculate velocity for wobble effect
+      const deltaY = y - lastYRef.current;
+      velocityRef.current = deltaY;
+      lastYRef.current = y;
+
+      api.start({ x, y, config: physicsConfig });
     } else {
       api.set({ x, y });
     }
-  }, [x, y, enableAnimation, api]);
+  }, [x, y, enableAnimation, api, physicsConfig]);
 
   // Pulse animation for direction arrows to indicate urgency
   React.useEffect(() => {
@@ -1396,12 +1440,22 @@ const Bead: React.FC<BeadProps> = ({
   const renderShape = () => {
     const halfSize = size / 2;
 
+    // Determine fill - use gradient for realistic/delightful modes, otherwise use color
+    let fillValue = color;
+    if ((enhanced3d === 'realistic' || enhanced3d === 'delightful') && columnIndex !== undefined) {
+      if (bead.type === 'heaven') {
+        fillValue = `url(#bead-gradient-${columnIndex}-heaven)`;
+      } else {
+        fillValue = `url(#bead-gradient-${columnIndex}-earth-${bead.position})`;
+      }
+    }
+
     switch (shape) {
       case "diamond":
         return (
           <polygon
             points={`${size * 0.7},0 ${size * 1.4},${halfSize} ${size * 0.7},${size} 0,${halfSize}`}
-            fill={color}
+            fill={fillValue}
             stroke="#000"
             strokeWidth="0.5"
           />
@@ -1411,7 +1465,7 @@ const Bead: React.FC<BeadProps> = ({
           <rect
             width={size}
             height={size}
-            fill={color}
+            fill={fillValue}
             stroke="#000"
             strokeWidth="0.5"
             rx="1"
@@ -1424,7 +1478,7 @@ const Bead: React.FC<BeadProps> = ({
             cx={halfSize}
             cy={halfSize}
             r={halfSize}
-            fill={color}
+            fill={fillValue}
             stroke="#000"
             strokeWidth="0.5"
           />
@@ -1454,13 +1508,31 @@ const Bead: React.FC<BeadProps> = ({
   };
 
   // Build style object based on animation mode
+  const wobbleEnabled = enhanced3d === 'delightful' && physics3d?.wobble;
+  const parallaxEnabled = enhanced3d === 'delightful' && physics3d?.hoverParallax;
   const beadStyle: any = enableAnimation
     ? {
         transform: to(
           [springX, springY],
-          (sx, sy) =>
-            `translate(${sx - getXOffset()}px, ${sy - getYOffset()}px)`,
+          (sx, sy) => {
+            const translate = `translate(${sx - getXOffset() + parallaxOffset.x}px, ${sy - getYOffset() + parallaxOffset.y}px)`;
+            const transforms = [translate];
+
+            // Add parallax Z translation
+            if (parallaxEnabled && parallaxOffset.z > 0) {
+              transforms.push(`translateZ(${parallaxOffset.z}px)`);
+            }
+
+            // Add wobble rotation
+            if (wobbleEnabled && velocityRef.current !== 0) {
+              transforms.push(Abacus3DUtils.getWobbleRotation(velocityRef.current, 'x'));
+            }
+
+            return transforms.join(' ');
+          },
         ),
+        transformOrigin: 'center center',
+        transformStyle: 'preserve-3d',
         cursor: enableGestures ? "grab" : onClick ? "pointer" : "default",
         touchAction: "none" as const,
         transition: "opacity 0.2s ease-in-out",
@@ -1992,14 +2064,36 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     // console.log(`🎯 activeColumn changed to: ${activeColumn}`);
   }, [activeColumn]);
 
+  // 3D Enhancement: Calculate container classes
+  const containerClasses = Abacus3DUtils.get3DContainerClasses(
+    enhanced3d,
+    material3d?.lighting,
+    physics3d?.hoverParallax
+  );
+
+  // 3D Enhancement: Track mouse position for parallax
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [mousePos, setMousePos] = React.useState({ x: 0, y: 0 });
+  const [containerBounds, setContainerBounds] = React.useState({ x: 0, y: 0 });
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (enhanced3d === 'delightful' && physics3d?.hoverParallax && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setMousePos({ x: e.clientX, y: e.clientY });
+      setContainerBounds({ x: rect.left, y: rect.top });
+    }
+  }, [enhanced3d, physics3d?.hoverParallax]);
+
   return (
     <div
-      className="abacus-container"
+      ref={containerRef}
+      className={containerClasses}
       style={{
         display: "inline-block",
         textAlign: "center",
         position: "relative",
       }}
+      onMouseMove={handleMouseMove}
       tabIndex={
         finalConfig.interactive && finalConfig.showNumbers ? 0 : undefined
       }
@@ -2053,6 +2147,68 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             opacity: 0 !important;
           }
         `}</style>
+
+          {/* 3D Enhancement: Material gradients for beads */}
+          {(enhanced3d === 'realistic' || enhanced3d === 'delightful') && material3d && (
+            <>
+              {/* Generate gradients for all beads based on material type */}
+              {Array.from({ length: effectiveColumns }, (_, colIndex) => {
+                const placeValue = (effectiveColumns - 1 - colIndex) as ValidPlaceValues;
+
+                // Create dummy beads to get their colors
+                const heavenBead: BeadConfig = {
+                  type: 'heaven',
+                  value: 5,
+                  active: true,
+                  position: 0,
+                  placeValue
+                };
+                const earthBead: BeadConfig = {
+                  type: 'earth',
+                  value: 1,
+                  active: true,
+                  position: 0,
+                  placeValue
+                };
+
+                const heavenColor = getBeadColor(heavenBead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette, false);
+                const earthColor = getBeadColor(earthBead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette, false);
+
+                return (
+                  <React.Fragment key={`gradients-col-${colIndex}`}>
+                    {/* Heaven bead gradient */}
+                    <defs dangerouslySetInnerHTML={{
+                      __html: Abacus3DUtils.getBeadGradient(
+                        `bead-gradient-${colIndex}-heaven`,
+                        heavenColor,
+                        material3d.heavenBeads || 'satin',
+                        true
+                      )
+                    }} />
+
+                    {/* Earth bead gradients */}
+                    {[0, 1, 2, 3].map(pos => (
+                      <defs key={`earth-${pos}`} dangerouslySetInnerHTML={{
+                        __html: Abacus3DUtils.getBeadGradient(
+                          `bead-gradient-${colIndex}-earth-${pos}`,
+                          earthColor,
+                          material3d.earthBeads || 'satin',
+                          true
+                        )
+                      }} />
+                    ))}
+                  </React.Fragment>
+                );
+              }).filter(Boolean)}
+
+              {/* Wood grain texture pattern */}
+              {material3d.woodGrain && (
+                <defs dangerouslySetInnerHTML={{
+                  __html: Abacus3DUtils.getWoodGrainPattern('wood-grain-pattern')
+                }} />
+              )}
+            </>
+          )}
         </defs>
 
         {/* Background glow effects - rendered behind everything */}
@@ -2120,17 +2276,31 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
           };
 
           return (
-            <rect
-              key={`rod-pv${placeValue}`}
-              x={x - dimensions.rodWidth / 2}
-              y={rodStartY}
-              width={dimensions.rodWidth}
-              height={rodEndY - rodStartY}
-              fill={rodStyle.fill}
-              stroke={rodStyle.stroke}
-              strokeWidth={rodStyle.strokeWidth}
-              opacity={rodStyle.opacity}
-            />
+            <React.Fragment key={`rod-pv${placeValue}`}>
+              <rect
+                x={x - dimensions.rodWidth / 2}
+                y={rodStartY}
+                width={dimensions.rodWidth}
+                height={rodEndY - rodStartY}
+                fill={rodStyle.fill}
+                stroke={rodStyle.stroke}
+                strokeWidth={rodStyle.strokeWidth}
+                opacity={rodStyle.opacity}
+                className="column-post"
+              />
+              {/* Wood grain texture overlay for column posts */}
+              {(enhanced3d === 'realistic' || enhanced3d === 'delightful') && material3d?.woodGrain && (
+                <rect
+                  x={x - dimensions.rodWidth / 2}
+                  y={rodStartY}
+                  width={dimensions.rodWidth}
+                  height={rodEndY - rodStartY}
+                  fill="url(#wood-grain-pattern)"
+                  className="frame-wood"
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
+            </React.Fragment>
           );
         })}
 
@@ -2146,7 +2316,22 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
           stroke={customStyles?.reckoningBar?.stroke || "none"}
           strokeWidth={customStyles?.reckoningBar?.strokeWidth ?? 0}
           opacity={customStyles?.reckoningBar?.opacity ?? 1}
+          className="reckoning-bar"
         />
+        {/* Wood grain texture overlay for reckoning bar */}
+        {(enhanced3d === 'realistic' || enhanced3d === 'delightful') && material3d?.woodGrain && (
+          <rect
+            x={dimensions.rodSpacing / 2 - dimensions.beadSize / 2}
+            y={barY}
+            width={
+              (effectiveColumns - 1) * dimensions.rodSpacing + dimensions.beadSize
+            }
+            height={dimensions.barThickness}
+            fill="url(#wood-grain-pattern)"
+            className="frame-wood"
+            style={{ pointerEvents: 'none' }}
+          />
+        )}
 
         {/* Beads */}
         {beadStates.map((columnBeads, colIndex) =>
@@ -2329,6 +2514,12 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                 colorScheme={finalConfig.colorScheme}
                 colorPalette={finalConfig.colorPalette}
                 totalColumns={effectiveColumns}
+                enhanced3d={enhanced3d}
+                material3d={material3d}
+                physics3d={physics3d}
+                columnIndex={colIndex}
+                mousePosition={mousePos}
+                containerBounds={containerBounds}
               />
             );
           }),
