@@ -343,38 +343,6 @@ export function HarmonySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         </div>
       </div>
 
-      {/* Rules Section */}
-      <div
-        className={css({
-          mt: '24px',
-          p: '16px',
-          bg: 'rgba(239, 68, 68, 0.1)',
-          borderLeft: '4px solid #ef4444',
-          borderRadius: '4px',
-        })}
-      >
-        <p className={css({ fontSize: '16px', fontWeight: 'bold', color: '#991b1b', mb: '12px' })}>
-          {t('harmony.rulesTitle')}
-        </p>
-        <ul className={css({ fontSize: '14px', color: '#7f1d1d', lineHeight: '1.8', pl: '20px' })}>
-          <li>
-            <strong>{t('harmony.enemyTerritoryTitle')}</strong> {t('harmony.enemyTerritory')}
-          </li>
-          <li>
-            <strong>{t('harmony.straightLineTitle')}</strong> {t('harmony.straightLine')}
-          </li>
-          <li>
-            <strong>{t('harmony.adjacentTitle')}</strong> {t('harmony.adjacent')}
-          </li>
-          <li>
-            <strong>{t('harmony.survivalTitle')}</strong> {t('harmony.survival')}
-          </li>
-          <li>
-            <strong>{t('harmony.victoryTitle')}</strong> {t('harmony.victoryRule')}
-          </li>
-        </ul>
-      </div>
-
       {/* Strategy Section */}
       <div className={css({ mt: '24px' })}>
         <h3

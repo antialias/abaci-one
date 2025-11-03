@@ -58,9 +58,50 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
             <span>👑</span>
             <span>{t('victory.harmony')}</span>
           </h4>
-          <p className={css({ fontSize: '15px', lineHeight: '1.6', color: '#374151', mb: '12px' })}>
+          <p className={css({ fontSize: '15px', lineHeight: '1.6', color: '#374151', mb: '16px' })}>
             {t('victory.harmonyDesc')}
           </p>
+
+          {/* Requirements Section */}
+          <div
+            className={css({
+              mb: '16px',
+              p: '16px',
+              bg: 'rgba(251, 191, 36, 0.1)',
+              borderLeft: '4px solid #f59e0b',
+              borderRadius: '4px',
+            })}
+          >
+            <p
+              className={css({
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#92400e',
+                mb: '12px',
+              })}
+            >
+              {t('victory.requirementsTitle')}
+            </p>
+            <ul
+              className={css({ fontSize: '14px', color: '#78350f', lineHeight: '1.8', pl: '20px' })}
+            >
+              <li>
+                <strong>{t('victory.enemyTerritoryTitle')}</strong> {t('victory.enemyTerritory')}
+              </li>
+              <li>
+                <strong>{t('victory.straightLineTitle')}</strong> {t('victory.straightLine')}
+              </li>
+              <li>
+                <strong>{t('victory.adjacentTitle')}</strong> {t('victory.adjacent')}
+              </li>
+              <li>
+                <strong>{t('victory.progressionTitle')}</strong> {t('victory.progression')}
+              </li>
+              <li>
+                <strong>{t('victory.survivalTitle')}</strong> {t('victory.survival')}
+              </li>
+            </ul>
+          </div>
 
           {/* Visual example of winning harmony */}
           <div
@@ -109,13 +150,13 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
           <div
             className={css({
               p: '12px',
-              bg: '#f0fdf4',
+              bg: '#dbeafe',
               borderRadius: '6px',
-              border: '1px solid #86efac',
+              border: '1px solid #93c5fd',
             })}
           >
-            <p className={css({ fontSize: '13px', color: '#15803d' })}>
-              {t('victory.harmonyNote')}
+            <p className={css({ fontSize: '13px', color: '#1e40af' })}>
+              💡 {t('victory.harmonyNote')}
             </p>
           </div>
         </div>
@@ -141,31 +182,32 @@ export function VictorySection({ useNativeAbacusNumbers }: { useNativeAbacusNumb
         </div>
       </div>
 
-      <h3
-        className={css({
-          fontSize: { base: '18px', md: '20px' },
-          fontWeight: 'bold',
-          color: '#7c2d12',
-          mb: '12px',
-          mt: '32px',
-        })}
-      >
-        {t('victory.strategyTitle')}
-      </h3>
-      <ul
-        className={css({
-          fontSize: '14px',
-          lineHeight: '1.8',
-          pl: '20px',
-          color: '#374151',
-        })}
-      >
-        <li>{t('victory.tip1')}</li>
-        <li>{t('victory.tip2')}</li>
-        <li>{t('victory.tip3')}</li>
-        <li>{t('victory.tip4')}</li>
-        <li>{t('victory.tip5')}</li>
-      </ul>
+      <div className={css({ mt: '32px' })}>
+        <h3
+          className={css({
+            fontSize: { base: '18px', md: '20px' },
+            fontWeight: 'bold',
+            color: '#7c2d12',
+            mb: '12px',
+          })}
+        >
+          {t('victory.strategyTitle')}
+        </h3>
+        <ul
+          className={css({
+            fontSize: '14px',
+            lineHeight: '1.8',
+            pl: '20px',
+            color: '#374151',
+          })}
+        >
+          <li>{t('victory.tip1')}</li>
+          <li>{t('victory.tip2')}</li>
+          <li>{t('victory.tip3')}</li>
+          <li>{t('victory.tip4')}</li>
+          <li>{t('victory.tip5')}</li>
+        </ul>
+      </div>
     </div>
   )
 }
