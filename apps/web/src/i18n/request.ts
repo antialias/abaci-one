@@ -11,7 +11,7 @@ export async function getRequestLocale(): Promise<Locale> {
   let locale = headersList.get('x-locale') as Locale | null
 
   if (!locale) {
-    locale = cookieStore.get(LOCALE_COOKIE_NAME)?.value as Locale | undefined
+    locale = (cookieStore.get(LOCALE_COOKIE_NAME)?.value as Locale | undefined) ?? null
   }
 
   // Validate and fallback to default
@@ -28,5 +28,6 @@ export default getRequestConfig(async () => {
   return {
     locale,
     messages: await getMessages(locale),
+    timeZone: 'UTC',
   }
 })

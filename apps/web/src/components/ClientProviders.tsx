@@ -24,7 +24,7 @@ function InnerProviders({ children }: { children: ReactNode }) {
   const { locale, messages } = useLocaleContext()
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
+    <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
       <ToastProvider>
         <AbacusDisplayProvider>
           <AbacusSettingsSync />
