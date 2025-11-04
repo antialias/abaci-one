@@ -127,7 +127,8 @@ import { AbacusReact, ABACUS_THEMES } from '@soroban/abacus-react';
 For static, non-interactive displays that work in React Server Components:
 
 ```tsx
-import { AbacusStatic } from '@soroban/abacus-react';
+// IMPORTANT: Use /static import path for RSC compatibility!
+import { AbacusStatic } from '@soroban/abacus-react/static';
 
 // ✅ Works in React Server Components - no "use client" needed!
 // ✅ No JavaScript sent to client
@@ -140,6 +141,10 @@ import { AbacusStatic } from '@soroban/abacus-react';
   compact
 />
 ```
+
+**Import paths:**
+- `@soroban/abacus-react` - Full package (client components with hooks/animations)
+- `@soroban/abacus-react/static` - Server-compatible components only (no client code)
 
 **When to use `AbacusStatic` vs `AbacusReact`:**
 
@@ -157,7 +162,7 @@ import { AbacusStatic } from '@soroban/abacus-react';
 ```tsx
 // Example: Server Component with static abacus cards
 // app/flashcards/page.tsx
-import { AbacusStatic } from '@soroban/abacus-react'
+import { AbacusStatic } from '@soroban/abacus-react/static'
 
 export default function FlashcardsPage() {
   const numbers = [1, 5, 10, 25, 50, 100]
