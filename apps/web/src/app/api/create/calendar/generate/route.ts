@@ -32,48 +32,62 @@ export async function POST(request: NextRequest) {
 
     // Generate SVGs using script (avoids Next.js react-dom/server restriction)
     const daysInMonth = getDaysInMonth(year, month)
-    const maxDay = format === 'daily' ? daysInMonth : 31 // For monthly, pre-generate all
-    const scriptPath = join(process.cwd(), 'scripts', 'generateCalendarAbacus.tsx')
 
-    // Generate day SVGs (1 to maxDay)
-    for (let day = 1; day <= maxDay; day++) {
+    if (format === 'monthly') {
+      // Generate single composite SVG for monthly calendar (prevents multi-page overflow)
+      const compositeScriptPath = join(process.cwd(), 'scripts', 'generateCalendarComposite.tsx')
       try {
-        const svg = execSync(`npx tsx "${scriptPath}" ${day} 2`, {
+        const compositeSvg = execSync(`npx tsx "${compositeScriptPath}" ${month} ${year}`, {
           encoding: 'utf-8',
           cwd: process.cwd(),
           stdio: ['pipe', 'pipe', 'pipe'],
         })
-        if (!svg || svg.trim().length === 0) {
-          console.error(`Empty SVG for day ${day}`)
-          throw new Error(`Generated empty SVG for day ${day}`)
+        if (!compositeSvg || compositeSvg.trim().length === 0) {
+          throw new Error(`Generated empty composite calendar SVG`)
         }
-        writeFileSync(join(tempDir, `day-${day}.svg`), svg)
+        writeFileSync(join(tempDir, 'calendar.svg'), compositeSvg)
       } catch (error: any) {
-        console.error(`Error generating day ${day} SVG:`, error.stderr || error.message)
+        console.error(`Error generating composite calendar:`, error.stderr || error.message)
         throw error
       }
-    }
+    } else {
+      // Daily format: generate individual SVGs for each day
+      const scriptPath = join(process.cwd(), 'scripts', 'generateCalendarAbacus.tsx')
 
-    // Generate year SVG
-    const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
-    try {
-      const yearSvg = execSync(`npx tsx "${scriptPath}" ${year} ${yearColumns}`, {
-        encoding: 'utf-8',
-        cwd: process.cwd(),
-        stdio: ['pipe', 'pipe', 'pipe'],
-      })
-      console.log(`Year SVG length: ${yearSvg.length}, starts with: ${yearSvg.substring(0, 100)}`)
-      if (!yearSvg || yearSvg.trim().length === 0) {
-        console.error(`Empty SVG for year ${year}`)
-        throw new Error(`Generated empty SVG for year ${year}`)
+      // Generate day SVGs (1 to daysInMonth)
+      for (let day = 1; day <= daysInMonth; day++) {
+        try {
+          const svg = execSync(`npx tsx "${scriptPath}" ${day} 2`, {
+            encoding: 'utf-8',
+            cwd: process.cwd(),
+            stdio: ['pipe', 'pipe', 'pipe'],
+          })
+          if (!svg || svg.trim().length === 0) {
+            throw new Error(`Generated empty SVG for day ${day}`)
+          }
+          writeFileSync(join(tempDir, `day-${day}.svg`), svg)
+        } catch (error: any) {
+          console.error(`Error generating day ${day} SVG:`, error.stderr || error.message)
+          throw error
+        }
       }
-      writeFileSync(join(tempDir, 'year.svg'), yearSvg)
-      // Debug: also save to /tmp for inspection
-      writeFileSync('/tmp/debug-year.svg', yearSvg)
-      console.log('Saved debug year.svg to /tmp/debug-year.svg')
-    } catch (error: any) {
-      console.error(`Error generating year ${year} SVG:`, error.stderr || error.message)
-      throw error
+
+      // Generate year SVG
+      const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
+      try {
+        const yearSvg = execSync(`npx tsx "${scriptPath}" ${year} ${yearColumns}`, {
+          encoding: 'utf-8',
+          cwd: process.cwd(),
+          stdio: ['pipe', 'pipe', 'pipe'],
+        })
+        if (!yearSvg || yearSvg.trim().length === 0) {
+          throw new Error(`Generated empty SVG for year ${year}`)
+        }
+        writeFileSync(join(tempDir, 'year.svg'), yearSvg)
+      } catch (error: any) {
+        console.error(`Error generating year ${year} SVG:`, error.stderr || error.message)
+        throw error
+      }
     }
 
     // Generate Typst document
