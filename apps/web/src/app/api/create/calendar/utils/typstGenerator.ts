@@ -44,10 +44,14 @@ interface PaperConfig {
 
 function getPaperConfig(size: string): PaperConfig {
   const configs: Record<PaperSize, PaperConfig> = {
-    'us-letter': { typstName: 'us-letter', marginX: '0.75in', marginY: '1in' },
-    a4: { typstName: 'a4', marginX: '2cm', marginY: '2.5cm' },
-    a3: { typstName: 'a3', marginX: '2cm', marginY: '2.5cm' },
-    tabloid: { typstName: 'us-tabloid', marginX: '1in', marginY: '1in' },
+    // Tight margins to maximize space for calendar grid
+    'us-letter': { typstName: 'us-letter', marginX: '0.5in', marginY: '0.5in' },
+    // A4 is slightly taller/narrower than US Letter - adjust margins proportionally
+    a4: { typstName: 'a4', marginX: '1.3cm', marginY: '1.3cm' },
+    // A3 is 2x area of A4 - can use same margins but will scale content larger
+    a3: { typstName: 'a3', marginX: '1.5cm', marginY: '1.5cm' },
+    // Tabloid (11" × 17") is larger - can use more margin
+    tabloid: { typstName: 'us-tabloid', marginX: '0.75in', marginY: '0.75in' },
   }
   return configs[size as PaperSize] || configs['us-letter']
 }
@@ -76,33 +80,31 @@ export function generateMonthlyTypst(config: TypstConfig): string {
   margin: (x: ${paperConfig.marginX}, y: ${paperConfig.marginY}),
 )
 
-#set text(font: "Arial", size: 12pt)
+#set text(font: "Arial", size: 10pt)
 
-// Title
+// Title and year - compact header
 #align(center)[
-  #text(size: 24pt, weight: "bold")[${monthName} ${year}]
-
-  #v(0.5em)
-
-  // Year as abacus
-  #image("year.svg", width: 35%)
+  #text(size: 18pt, weight: "bold")[${monthName} ${year}]
+  #h(1em)
+  #box(baseline: 25%, image("year.svg", width: 20%))
 ]
 
-#v(1.5em)
+#v(0.5em)
 
-// Calendar grid
+// Calendar grid - maximizes available space
 #grid(
   columns: (1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr),
-  gutter: 4pt,
+  gutter: 2pt,
+  row-gutter: 2pt,
 
   // Weekday headers
-  [#align(center)[*Sun*]],
-  [#align(center)[*Mon*]],
-  [#align(center)[*Tue*]],
-  [#align(center)[*Wed*]],
-  [#align(center)[*Thu*]],
-  [#align(center)[*Fri*]],
-  [#align(center)[*Sat*]],
+  [#align(center)[#text(size: 9pt, weight: "bold")[Sun]]],
+  [#align(center)[#text(size: 9pt, weight: "bold")[Mon]]],
+  [#align(center)[#text(size: 9pt, weight: "bold")[Tue]]],
+  [#align(center)[#text(size: 9pt, weight: "bold")[Wed]]],
+  [#align(center)[#text(size: 9pt, weight: "bold")[Thu]]],
+  [#align(center)[#text(size: 9pt, weight: "bold")[Fri]]],
+  [#align(center)[#text(size: 9pt, weight: "bold")[Sat]]],
 
   // Calendar days
 ${cells})
