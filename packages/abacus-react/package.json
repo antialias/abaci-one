@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.es.js",
       "require": "./dist/index.cjs.js"
+    },
+    "./static": {
+      "types": "./dist/static.d.ts",
+      "import": "./dist/static.es.js",
+      "require": "./dist/static.cjs.js"
     }
   },
   "files": [

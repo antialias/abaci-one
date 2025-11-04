@@ -8,10 +8,12 @@ export default defineConfig(async () => {
     plugins: [react()],
     build: {
       lib: {
-        entry: resolve(__dirname, "src/index.ts"),
-        name: "AbacusReact",
+        entry: {
+          index: resolve(__dirname, "src/index.ts"),
+          static: resolve(__dirname, "src/static.ts"),
+        },
         formats: ["es", "cjs"],
-        fileName: (format) => `index.${format}.js`,
+        fileName: (format, entryName) => `${entryName}.${format === "es" ? "es" : "cjs"}.js`,
       },
       sourcemap: true,
       rollupOptions: {
