@@ -1,6 +1,6 @@
 'use client'
 
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { css } from '../../../../../styled-system/css'
 
 interface CalendarPreviewProps {
@@ -26,14 +26,44 @@ async function fetchTypstPreview(month: number, year: number, format: string): P
 }
 
 export function CalendarPreview({ month, year, format, previewSvg }: CalendarPreviewProps) {
-  // Use React Query with Suspense to fetch Typst-generated preview
-  const { data: typstPreviewSvg } = useSuspenseQuery({
+  // Use React Query to fetch Typst-generated preview (client-side only)
+  const { data: typstPreviewSvg, isLoading } = useQuery({
     queryKey: ['calendar-typst-preview', month, year, format],
     queryFn: () => fetchTypstPreview(month, year, format),
+    enabled: typeof window !== 'undefined' && format === 'monthly', // Only run on client and for monthly format
   })
 
   // Use generated PDF SVG if available, otherwise use Typst live preview
   const displaySvg = previewSvg || typstPreviewSvg
+
+  // Show loading state while fetching preview
+  if (isLoading || (!displaySvg && format === 'monthly')) {
+    return (
+      <div
+        data-component="calendar-preview"
+        className={css({
+          bg: 'gray.800',
+          borderRadius: '12px',
+          padding: '2rem',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '600px',
+        })}
+      >
+        <p
+          className={css({
+            fontSize: '1.25rem',
+            color: 'gray.400',
+            textAlign: 'center',
+          })}
+        >
+          Loading preview...
+        </p>
+      </div>
+    )
+  }
 
   if (!displaySvg) {
     return (

@@ -11,7 +11,13 @@
       "Bash(git commit:*)",
       "Bash(npm run build:*)",
       "Bash(git reset:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pnpm --filter @soroban/abacus-react build:*)",
+      "Bash(git show:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm --filter @soroban/web build:*)",
+      "Bash(pnpm tsc:*)",
+      "Bash(AbacusReact.tsx)"
     ]
   },
   "enableAllProjectMcpServers": true,

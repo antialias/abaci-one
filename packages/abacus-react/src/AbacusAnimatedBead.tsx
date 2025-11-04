@@ -76,20 +76,6 @@ export function AbacusAnimatedBead({
 }: AnimatedBeadProps) {
   // x, y are already calculated by AbacusSVGRenderer
 
-  // Debug: Log animation state for first render
-  React.useEffect(() => {
-    if (bead.placeValue === 0 && bead.type === 'heaven') {
-      console.log('[AbacusAnimatedBead] Animation debug:', {
-        enableAnimation,
-        physicsConfig,
-        x,
-        y,
-        beadType: bead.type,
-        beadActive: bead.active
-      })
-    }
-  }, [])
-
   // Spring animation for position
   const [{ springX, springY }, api] = useSpring(() => ({
     springX: x,
@@ -169,14 +155,6 @@ export function AbacusAnimatedBead({
 
   // Update spring animation when position changes
   React.useEffect(() => {
-    if (bead.placeValue === 0 && bead.type === 'heaven') {
-      console.log('[AbacusAnimatedBead] Position update:', {
-        x, y,
-        enableAnimation,
-        willAnimate: enableAnimation,
-        beadActive: bead.active
-      })
-    }
     if (enableAnimation) {
       api.start({ springX: x, springY: y, config: physicsConfig })
     } else {

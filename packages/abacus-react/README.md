@@ -146,6 +146,62 @@ import { AbacusStatic } from '@soroban/abacus-react/static';
 - `@soroban/abacus-react` - Full package (client components with hooks/animations)
 - `@soroban/abacus-react/static` - Server-compatible components only (no client code)
 
+**Guaranteed Visual Consistency:**
+
+Both `AbacusStatic` and `AbacusReact` share the same underlying layout engine. **Same props = same exact SVG output.** This ensures:
+- Static previews match interactive versions pixel-perfect
+- Server-rendered abaci look identical to client-rendered ones
+- PDF generation produces accurate representations
+- No visual discrepancies between environments
+
+**Architecture: How We Guarantee Consistency**
+
+The package uses a shared rendering architecture with dependency injection:
+
+```
+┌─────────────────────────────────────────────┐
+│ Shared Utilities (AbacusUtils.ts)          │
+│ • calculateStandardDimensions() - Single    │
+│   source of truth for all layout dimensions│
+│ • calculateBeadPosition() - Exact bead      │
+│   positioning using shared formulas        │
+└────────────┬────────────────────────────────┘
+             │
+             ├──────────────────────────────────┐
+             ↓                                  ↓
+   ┌─────────────────┐              ┌─────────────────┐
+   │ AbacusStatic    │              │ AbacusReact     │
+   │ (Server/Static) │              │ (Interactive)   │
+   └────────┬────────┘              └────────┬────────┘
+            │                                │
+            └────────────┬───────────────────┘
+                         ↓
+             ┌────────────────────────┐
+             │ AbacusSVGRenderer      │
+             │ • Pure SVG structure   │
+             │ • Dependency injection │
+             │ • Bead component prop  │
+             └────────────────────────┘
+                         ↓
+         ┌───────────────┴───────────────┐
+         ↓                               ↓
+   ┌──────────────┐              ┌──────────────────┐
+   │ AbacusStatic │              │ AbacusAnimated   │
+   │ Bead         │              │ Bead             │
+   │ (Simple SVG) │              │ (react-spring)   │
+   └──────────────┘              └──────────────────┘
+```
+
+**Key Components:**
+
+1. **`calculateStandardDimensions()`** - Returns complete layout dimensions (bar position, bead sizes, gaps, etc.)
+2. **`calculateBeadPosition()`** - Calculates exact x,y coordinates for any bead
+3. **`AbacusSVGRenderer`** - Shared SVG rendering component that accepts a bead component via dependency injection
+4. **`AbacusStaticBead`** - Simple SVG shapes for static display (no hooks, RSC-compatible)
+5. **`AbacusAnimatedBead`** - Client component with react-spring animations and gesture handling
+
+This architecture eliminates code duplication (~560 lines removed in the refactor) while guaranteeing pixel-perfect consistency.
+
 **When to use `AbacusStatic` vs `AbacusReact`:**
 
 | Feature | AbacusStatic | AbacusReact |
@@ -156,8 +212,9 @@ import { AbacusStatic } from '@soroban/abacus-react/static';
 | Animations | ❌ No | ✅ Smooth transitions |
 | Sound effects | ❌ No | ✅ Optional sounds |
 | 3D effects | ❌ No | ✅ Yes |
+| **Visual output** | **✅ Identical** | **✅ Identical** |
 | Bundle size | 📦 Minimal | 📦 Full-featured |
-| Use cases | Preview cards, thumbnails, static pages | Interactive tutorials, games, tools |
+| Use cases | Preview cards, thumbnails, static pages, PDFs | Interactive tutorials, games, tools |
 
 ```tsx
 // Example: Server Component with static abacus cards
@@ -648,6 +705,63 @@ const state2 = numberToAbacusState(123);
 const isEqual = areStatesEqual(state1, state2); // true
 ```
 
+### calculateStandardDimensions
+
+**⚡ Core Architecture Function** - Calculate complete layout dimensions for consistent rendering.
+
+This is the **single source of truth** for all layout dimensions, used internally by both `AbacusStatic` and `AbacusReact` to guarantee pixel-perfect consistency.
+
+```tsx
+import { calculateStandardDimensions } from '@soroban/abacus-react';
+
+const dimensions = calculateStandardDimensions({
+  columns: 3,
+  scaleFactor: 1.5,
+  showNumbers: true,
+  columnLabels: ['ones', 'tens', 'hundreds']
+});
+
+// Returns complete layout info:
+// {
+//   width, height,           // SVG canvas size
+//   beadSize,                // 12 * scaleFactor (standard bead size)
+//   rodSpacing,              // 25 * scaleFactor (column spacing)
+//   rodWidth,                // 3 * scaleFactor
+//   barThickness,            // 2 * scaleFactor
+//   barY,                    // Reckoning bar Y position (30 * scaleFactor + labels)
+//   heavenY, earthY,         // Inactive bead rest positions
+//   activeGap,               // 1 * scaleFactor (gap to bar when active)
+//   inactiveGap,             // 8 * scaleFactor (gap between active/inactive)
+//   adjacentSpacing,         // 0.5 * scaleFactor (spacing between adjacent beads)
+//   padding, labelHeight, numbersHeight, totalColumns
+// }
+```
+
+**Why this matters:** Same input parameters = same exact layout dimensions = pixel-perfect visual consistency across static and interactive displays.
+
+### calculateBeadPosition
+
+**⚡ Core Architecture Function** - Calculate exact x,y coordinates for any bead.
+
+Used internally by `AbacusSVGRenderer` to position all beads consistently in both static and interactive modes.
+
+```tsx
+import { calculateBeadPosition, calculateStandardDimensions } from '@soroban/abacus-react';
+
+const dimensions = calculateStandardDimensions({ columns: 3, scaleFactor: 1 });
+const bead = {
+  type: 'heaven',
+  active: true,
+  position: 0,
+  placeValue: 1  // tens column
+};
+
+const position = calculateBeadPosition(bead, dimensions);
+// Returns: { x: 25, y: 29 }  // exact pixel coordinates
+```
+
+Useful for custom rendering or positioning tooltips/overlays relative to specific beads.
+
 ## Educational Use Cases
 
 ### Interactive Math Lessons
@@ -725,6 +839,8 @@ import {
   calculateBeadDiffFromValues,
   validateAbacusValue,
   areStatesEqual,
+  calculateStandardDimensions,  // NEW: Shared layout calculator
+  calculateBeadPosition,         // NEW: Bead position calculator
 
   // Theme Presets
   ABACUS_THEMES,
@@ -740,7 +856,9 @@ import {
   BeadState,
   BeadDiffResult,
   BeadDiffOutput,
-  AbacusThemeName
+  AbacusThemeName,
+  AbacusLayoutDimensions,        // NEW: Complete layout dimensions type
+  BeadPositionConfig             // NEW: Bead config for position calculation
 } from '@soroban/abacus-react';
 
 // All interfaces fully typed for excellent developer experience
