@@ -37,20 +37,44 @@ export async function POST(request: NextRequest) {
 
     // Generate day SVGs (1 to maxDay)
     for (let day = 1; day <= maxDay; day++) {
-      const svg = execSync(`npx tsx "${scriptPath}" ${day} 2`, {
-        encoding: 'utf-8',
-        cwd: process.cwd(),
-      })
-      writeFileSync(join(tempDir, `day-${day}.svg`), svg)
+      try {
+        const svg = execSync(`npx tsx "${scriptPath}" ${day} 2`, {
+          encoding: 'utf-8',
+          cwd: process.cwd(),
+          stdio: ['pipe', 'pipe', 'pipe'],
+        })
+        if (!svg || svg.trim().length === 0) {
+          console.error(`Empty SVG for day ${day}`)
+          throw new Error(`Generated empty SVG for day ${day}`)
+        }
+        writeFileSync(join(tempDir, `day-${day}.svg`), svg)
+      } catch (error: any) {
+        console.error(`Error generating day ${day} SVG:`, error.stderr || error.message)
+        throw error
+      }
     }
 
     // Generate year SVG
     const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
-    const yearSvg = execSync(`npx tsx "${scriptPath}" ${year} ${yearColumns}`, {
-      encoding: 'utf-8',
-      cwd: process.cwd(),
-    })
-    writeFileSync(join(tempDir, 'year.svg'), yearSvg)
+    try {
+      const yearSvg = execSync(`npx tsx "${scriptPath}" ${year} ${yearColumns}`, {
+        encoding: 'utf-8',
+        cwd: process.cwd(),
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      console.log(`Year SVG length: ${yearSvg.length}, starts with: ${yearSvg.substring(0, 100)}`)
+      if (!yearSvg || yearSvg.trim().length === 0) {
+        console.error(`Empty SVG for year ${year}`)
+        throw new Error(`Generated empty SVG for year ${year}`)
+      }
+      writeFileSync(join(tempDir, 'year.svg'), yearSvg)
+      // Debug: also save to /tmp for inspection
+      writeFileSync('/tmp/debug-year.svg', yearSvg)
+      console.log('Saved debug year.svg to /tmp/debug-year.svg')
+    } catch (error: any) {
+      console.error(`Error generating year ${year} SVG:`, error.stderr || error.message)
+      throw error
+    }
 
     // Generate Typst document
     const typstContent =

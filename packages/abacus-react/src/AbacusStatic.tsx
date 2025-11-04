@@ -205,6 +205,7 @@ export function AbacusStatic({
 
   return (
     <svg
+      xmlns="http://www.w3.org/2000/svg"
       width={width * scaleFactor}
       height={height * scaleFactor}
       viewBox={`0 0 ${width} ${height}`}
