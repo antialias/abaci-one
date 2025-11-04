@@ -87,6 +87,7 @@ export function CalendarPreview({ month, year, format }: CalendarPreviewProps) {
               columns={4}
               customStyles={abacusConfig.customStyles}
               scaleFactor={0.4}
+              showNumbers={false}
             />
           </div>
 
@@ -103,6 +104,7 @@ export function CalendarPreview({ month, year, format }: CalendarPreviewProps) {
               columns={2}
               customStyles={abacusConfig.customStyles}
               scaleFactor={0.8}
+              showNumbers={false}
             />
           </div>
 
@@ -184,7 +186,7 @@ export function CalendarPreview({ month, year, format }: CalendarPreviewProps) {
             color: 'yellow.400',
           })}
         >
-          {MONTHS[month - 1]} {year}
+          {MONTHS[month - 1]}
         </h2>
         <div
           className={css({
@@ -197,6 +199,7 @@ export function CalendarPreview({ month, year, format }: CalendarPreviewProps) {
             columns={4}
             customStyles={abacusConfig.customStyles}
             scaleFactor={0.6}
+            showNumbers={false}
           />
         </div>
       </div>
@@ -244,7 +247,8 @@ export function CalendarPreview({ month, year, format }: CalendarPreviewProps) {
                 value={day}
                 columns={2}
                 customStyles={abacusConfig.customStyles}
-                scaleFactor={0.35}
+                scaleFactor={1.0}
+                showNumbers={false}
               />
             )}
           </div>

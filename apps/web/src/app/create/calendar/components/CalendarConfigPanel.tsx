@@ -2,7 +2,7 @@
 
 import { css } from '../../../../../styled-system/css'
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
-import Link from 'next/link'
+import { AbacusDisplayDropdown } from '@/components/AbacusDisplayDropdown'
 
 interface CalendarConfigPanelProps {
   month: number
@@ -243,7 +243,7 @@ export function CalendarConfigPanel({
         </select>
       </fieldset>
 
-      {/* Abacus Styling Info */}
+      {/* Abacus Styling */}
       <div
         data-section="styling-info"
         className={css({
@@ -259,7 +259,7 @@ export function CalendarConfigPanel({
             color: 'gray.300',
           })}
         >
-          Using your saved abacus style:
+          Calendar abacus style preview:
         </p>
         <div
           className={css({
@@ -273,22 +273,17 @@ export function CalendarConfigPanel({
             columns={2}
             customStyles={abacusConfig.customStyles}
             scaleFactor={0.5}
+            showNumbers={false}
           />
         </div>
-        <Link
-          href="/create"
-          data-action="edit-style"
+        <div
           className={css({
-            display: 'block',
-            textAlign: 'center',
-            fontSize: '0.875rem',
-            color: 'yellow.400',
-            textDecoration: 'underline',
-            _hover: { color: 'yellow.300' },
+            display: 'flex',
+            justifyContent: 'center',
           })}
         >
-          Edit your abacus style →
-        </Link>
+          <AbacusDisplayDropdown />
+        </div>
       </div>
 
       {/* Generate Button */}
