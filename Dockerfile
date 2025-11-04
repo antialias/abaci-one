@@ -121,6 +121,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Install tsx globally for calendar generation scripts
+RUN npm install -g tsx@4.20.5
+
 # Copy typst binary from typst-builder stage
 COPY --from=typst-builder /usr/local/bin/typst /usr/local/bin/typst
 
@@ -146,6 +149,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/dist ./apps/web/dist
 # Copy database migrations
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/drizzle ./apps/web/drizzle
 
+# Copy scripts directory (needed for calendar generation)
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/scripts ./apps/web/scripts
+
 # Copy PRODUCTION node_modules only (no dev dependencies)
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=deps --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/node_modules
@@ -155,6 +161,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/packages/core ./packages/core
 
 # Copy templates package (needed for Typst templates)
 COPY --from=builder --chown=nextjs:nodejs /app/packages/templates ./packages/templates
+
+# Copy abacus-react package (needed for calendar generation scripts)
+COPY --from=builder --chown=nextjs:nodejs /app/packages/abacus-react ./packages/abacus-react
 
 # Install Python dependencies for flashcard generation
 RUN pip3 install --no-cache-dir --break-system-packages -r packages/core/requirements.txt
