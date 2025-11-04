@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Generate SVGs using server-side rendering (API routes can use react-dom/server)
     const daysInMonth = getDaysInMonth(year, month)
+    let previewSvg: string | null = null
 
     if (format === 'monthly') {
       // Generate single composite SVG for monthly calendar (prevents multi-page overflow)
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
         if (!compositeSvg || compositeSvg.trim().length === 0) {
           throw new Error(`Generated empty composite calendar SVG`)
         }
+        previewSvg = compositeSvg
         writeFileSync(join(tempDir, 'calendar.svg'), compositeSvg)
       } catch (error: any) {
         console.error(`Error generating composite calendar:`, error.message)
@@ -121,18 +123,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Read and return PDF
+    // Read PDF
     const pdfBuffer = readFileSync(pdfPath)
 
     // Clean up temp directory
     rmSync(tempDir, { recursive: true, force: true })
     tempDir = null
 
-    return new NextResponse(pdfBuffer, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="calendar-${year}-${String(month).padStart(2, '0')}.pdf"`,
-      },
+    // Return JSON with both PDF and SVG preview
+    return NextResponse.json({
+      pdf: pdfBuffer.toString('base64'),
+      svg: previewSvg,
+      filename: `calendar-${year}-${String(month).padStart(2, '0')}.pdf`,
     })
   } catch (error) {
     console.error('Error generating calendar:', error)
@@ -146,6 +148,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ error: 'Failed to generate calendar' }, { status: 500 })
+    // Surface the actual error for debugging
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+
+    return NextResponse.json(
+      {
+        error: 'Failed to generate calendar',
+        message: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
+      },
+      { status: 500 }
+    )
   }
 }

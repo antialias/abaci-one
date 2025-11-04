@@ -15,6 +15,7 @@ export default function CalendarCreatorPage() {
   const [format, setFormat] = useState<'monthly' | 'daily'>('monthly')
   const [paperSize, setPaperSize] = useState<'us-letter' | 'a4' | 'a3' | 'tabloid'>('us-letter')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [previewSvg, setPreviewSvg] = useState<string | null>(null)
 
   const handleGenerate = async () => {
     setIsGenerating(true)
@@ -34,21 +35,31 @@ export default function CalendarCreatorPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate calendar')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to generate calendar')
       }
 
-      const blob = await response.blob()
+      const data = await response.json()
+
+      // Store SVG preview for display
+      if (data.svg) {
+        setPreviewSvg(data.svg)
+      }
+
+      // Convert base64 PDF to blob and trigger download
+      const pdfBytes = Uint8Array.from(atob(data.pdf), c => c.charCodeAt(0))
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `calendar-${year}-${String(month).padStart(2, '0')}.pdf`
+      a.download = data.filename
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
       console.error('Error generating calendar:', error)
-      alert('Failed to generate calendar. Please try again.')
+      alert(`Failed to generate calendar: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsGenerating(false)
     }
@@ -122,7 +133,7 @@ export default function CalendarCreatorPage() {
             />
 
             {/* Preview */}
-            <CalendarPreview month={month} year={year} format={format} />
+            <CalendarPreview month={month} year={year} format={format} previewSvg={previewSvg} />
           </div>
         </div>
       </div>
