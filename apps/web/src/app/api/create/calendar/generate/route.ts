@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { writeFileSync, readFileSync, mkdirSync, rmSync } from 'fs'
+import { writeFileSync, mkdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { execSync } from 'child_process'
@@ -31,89 +31,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid month or year' }, { status: 400 })
     }
 
-    // Create temp directory
+    // Create temp directory for SVG files
     tempDir = join(tmpdir(), `calendar-${Date.now()}-${Math.random()}`)
     mkdirSync(tempDir, { recursive: true })
 
-    // Generate SVGs using server-side rendering (API routes can use react-dom/server)
+    // Generate and write SVG files
     const daysInMonth = getDaysInMonth(year, month)
-    let previewSvg: string | null = null
+    let typstContent: string
 
     if (format === 'monthly') {
-      // Generate single composite SVG for monthly calendar (prevents multi-page overflow)
-      try {
-        const compositeSvg = generateCalendarComposite({
-          month,
-          year,
-          renderToString: renderToStaticMarkup
-        })
-        if (!compositeSvg || compositeSvg.trim().length === 0) {
-          throw new Error(`Generated empty composite calendar SVG`)
-        }
-        previewSvg = compositeSvg
-        writeFileSync(join(tempDir, 'calendar.svg'), compositeSvg)
-      } catch (error: any) {
-        console.error(`Error generating composite calendar:`, error.message)
-        throw error
+      // Generate single composite SVG for monthly calendar
+      const calendarSvg = generateCalendarComposite({
+        month,
+        year,
+        renderToString: renderToStaticMarkup
+      })
+      if (!calendarSvg || calendarSvg.trim().length === 0) {
+        throw new Error('Generated empty composite calendar SVG')
       }
+      writeFileSync(join(tempDir, 'calendar.svg'), calendarSvg)
+
+      // Generate Typst document
+      typstContent = generateMonthlyTypst({
+        month,
+        year,
+        paperSize,
+        daysInMonth,
+      })
     } else {
       // Daily format: generate individual SVGs for each day
-
-      // Generate day SVGs (1 to daysInMonth)
       for (let day = 1; day <= daysInMonth; day++) {
-        try {
-          const svg = renderToStaticMarkup(generateAbacusElement(day, 2))
-          if (!svg || svg.trim().length === 0) {
-            throw new Error(`Generated empty SVG for day ${day}`)
-          }
-          writeFileSync(join(tempDir, `day-${day}.svg`), svg)
-        } catch (error: any) {
-          console.error(`Error generating day ${day} SVG:`, error.message)
-          throw error
+        const svg = renderToStaticMarkup(generateAbacusElement(day, 2))
+        if (!svg || svg.trim().length === 0) {
+          throw new Error(`Generated empty SVG for day ${day}`)
         }
+        writeFileSync(join(tempDir, `day-${day}.svg`), svg)
       }
 
       // Generate year SVG
       const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
-      try {
-        const yearSvg = renderToStaticMarkup(generateAbacusElement(year, yearColumns))
-        if (!yearSvg || yearSvg.trim().length === 0) {
-          throw new Error(`Generated empty SVG for year ${year}`)
-        }
-        writeFileSync(join(tempDir, 'year.svg'), yearSvg)
-      } catch (error: any) {
-        console.error(`Error generating year ${year} SVG:`, error.message)
-        throw error
+      const yearSvg = renderToStaticMarkup(generateAbacusElement(year, yearColumns))
+      if (!yearSvg || yearSvg.trim().length === 0) {
+        throw new Error(`Generated empty SVG for year ${year}`)
       }
+      writeFileSync(join(tempDir, 'year.svg'), yearSvg)
+
+      // Generate Typst document
+      typstContent = generateDailyTypst({
+        month,
+        year,
+        paperSize,
+        daysInMonth,
+      })
     }
 
-    // Generate Typst document
-    const typstContent =
-      format === 'monthly'
-        ? generateMonthlyTypst({
-            month,
-            year,
-            paperSize,
-            tempDir,
-            daysInMonth,
-          })
-        : generateDailyTypst({
-            month,
-            year,
-            paperSize,
-            tempDir,
-            daysInMonth,
-          })
-
-    const typstPath = join(tempDir, 'calendar.typ')
-    writeFileSync(typstPath, typstContent)
-
-    // Compile with Typst (run from tempDir so relative paths work)
-    const pdfPath = join(tempDir, 'calendar.pdf')
+    // Compile with Typst: stdin for .typ content, stdout for PDF output
+    let pdfBuffer: Buffer
     try {
-      execSync(`typst compile "calendar.typ" "calendar.pdf"`, {
-        cwd: tempDir,
-        stdio: 'pipe',
+      pdfBuffer = execSync('typst compile - -', {
+        input: typstContent,
+        cwd: tempDir, // Run in temp dir so relative paths work
+        maxBuffer: 50 * 1024 * 1024, // 50MB limit for large calendars
       })
     } catch (error) {
       console.error('Typst compilation error:', error)
@@ -123,17 +101,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Read PDF
-    const pdfBuffer = readFileSync(pdfPath)
-
     // Clean up temp directory
     rmSync(tempDir, { recursive: true, force: true })
     tempDir = null
 
-    // Return JSON with both PDF and SVG preview
+    // Return JSON with PDF
     return NextResponse.json({
       pdf: pdfBuffer.toString('base64'),
-      svg: previewSvg,
       filename: `calendar-${year}-${String(month).padStart(2, '0')}.pdf`,
     })
   } catch (error) {

@@ -1,8 +1,14 @@
-interface TypstConfig {
+interface TypstMonthlyConfig {
   month: number
   year: number
   paperSize: 'us-letter' | 'a4' | 'a3' | 'tabloid'
-  tempDir: string
+  daysInMonth: number
+}
+
+interface TypstDailyConfig {
+  month: number
+  year: number
+  paperSize: 'us-letter' | 'a4' | 'a3' | 'tabloid'
   daysInMonth: number
 }
 
@@ -56,8 +62,8 @@ function getPaperConfig(size: string): PaperConfig {
   return configs[size as PaperSize] || configs['us-letter']
 }
 
-export function generateMonthlyTypst(config: TypstConfig): string {
-  const { month, year, paperSize, tempDir, daysInMonth } = config
+export function generateMonthlyTypst(config: TypstMonthlyConfig): string {
+  const { paperSize } = config
   const paperConfig = getPaperConfig(paperSize)
 
   // Single-page design: use one composite SVG that scales to fit
@@ -74,8 +80,8 @@ export function generateMonthlyTypst(config: TypstConfig): string {
 `
 }
 
-export function generateDailyTypst(config: TypstConfig): string {
-  const { month, year, paperSize, tempDir, daysInMonth } = config
+export function generateDailyTypst(config: TypstDailyConfig): string {
+  const { month, year, paperSize, daysInMonth } = config
   const paperConfig = getPaperConfig(paperSize)
   const monthName = MONTH_NAMES[month - 1]
 
