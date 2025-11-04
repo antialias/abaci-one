@@ -42,23 +42,37 @@ const monthName = MONTH_NAMES[month - 1]
 // Layout constants for US Letter aspect ratio (8.5 x 11)
 const WIDTH = 850
 const HEIGHT = 1100
-const MARGIN = 40
+const MARGIN = 50
 const CONTENT_WIDTH = WIDTH - MARGIN * 2
 const CONTENT_HEIGHT = HEIGHT - MARGIN * 2
 
 // Header
-const HEADER_HEIGHT = 80
-const TITLE_Y = MARGIN + 30
-const YEAR_ABACUS_WIDTH = 120
-const YEAR_ABACUS_HEIGHT = 50
+const HEADER_HEIGHT = 60
+const TITLE_Y = MARGIN + 35
 
 // Calendar grid
-const GRID_START_Y = MARGIN + HEADER_HEIGHT + 20
-const GRID_HEIGHT = CONTENT_HEIGHT - HEADER_HEIGHT - 20
+const GRID_START_Y = MARGIN + HEADER_HEIGHT
+const GRID_HEIGHT = CONTENT_HEIGHT - HEADER_HEIGHT
+const WEEKDAY_ROW_HEIGHT = 25
+const DAY_GRID_HEIGHT = GRID_HEIGHT - WEEKDAY_ROW_HEIGHT
+
+// 7 columns, up to 6 rows (35 cells max = 5 empty + 30 days worst case)
 const CELL_WIDTH = CONTENT_WIDTH / 7
-const CELL_HEIGHT = GRID_HEIGHT / 6.5 // ~6 weeks max + weekday headers
-const WEEKDAY_ROW_HEIGHT = 30
-const DAY_CELL_HEIGHT = (GRID_HEIGHT - WEEKDAY_ROW_HEIGHT) / 6
+const DAY_CELL_HEIGHT = DAY_GRID_HEIGHT / 6
+
+// Abacus natural size is 120x230 at scale=1
+// We need to fit in cell with padding
+const ABACUS_NATURAL_WIDTH = 120
+const ABACUS_NATURAL_HEIGHT = 230
+const CELL_PADDING = 5
+
+// Calculate max scale to fit in cell
+const MAX_SCALE_X = (CELL_WIDTH - CELL_PADDING * 2) / ABACUS_NATURAL_WIDTH
+const MAX_SCALE_Y = (DAY_CELL_HEIGHT - CELL_PADDING * 2) / ABACUS_NATURAL_HEIGHT
+const ABACUS_SCALE = Math.min(MAX_SCALE_X, MAX_SCALE_Y) * 0.9 // 90% to leave breathing room
+
+const SCALED_ABACUS_WIDTH = ABACUS_NATURAL_WIDTH * ABACUS_SCALE
+const SCALED_ABACUS_HEIGHT = ABACUS_NATURAL_HEIGHT * ABACUS_SCALE
 
 // Generate calendar grid
 const calendarCells: (number | null)[] = []
@@ -72,9 +86,9 @@ for (let day = 1; day <= daysInMonth; day++) {
 // Calculate how many columns needed for year
 const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
 
-// Render individual abacus SVGs as strings
-function renderAbacusSVG(value: number, columns: number, scale: number): string {
-  return renderToStaticMarkup(
+// Render individual abacus SVGs as strings (without outer svg tag for embedding)
+function renderAbacusContent(value: number, columns: number, scale: number): string {
+  const fullSvg = renderToStaticMarkup(
     <AbacusStatic
       value={value}
       columns={columns}
@@ -84,6 +98,8 @@ function renderAbacusSVG(value: number, columns: number, scale: number): string 
       compact={false}
     />
   )
+  // Strip outer <svg> tag to embed content
+  return fullSvg.replace(/<svg[^>]*>/, '').replace('</svg>', '')
 }
 
 // Main composite SVG
@@ -92,49 +108,55 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
   <rect width="${WIDTH}" height="${HEIGHT}" fill="white"/>
 
   <!-- Title -->
-  <text x="${WIDTH / 2}" y="${TITLE_Y}" text-anchor="middle" font-family="Arial" font-size="36" font-weight="bold" fill="#000">
+  <text x="${WIDTH / 2}" y="${TITLE_Y}" text-anchor="middle" font-family="Arial" font-size="32" font-weight="bold" fill="#1a1a1a">
     ${monthName} ${year}
   </text>
 
-  <!-- Year Abacus (inline, to the right of title) -->
-  <g transform="translate(${WIDTH / 2 + 150}, ${TITLE_Y - 25})">
-    ${renderAbacusSVG(year, yearColumns, 0.4).replace(/<svg[^>]*>/, '').replace('</svg>', '')}
-  </g>
-
   <!-- Weekday Headers -->
   ${WEEKDAYS.map((day, i) => `
-  <text x="${MARGIN + i * CELL_WIDTH + CELL_WIDTH / 2}" y="${GRID_START_Y + 20}"
-        text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold" fill="#333">
+  <text x="${MARGIN + i * CELL_WIDTH + CELL_WIDTH / 2}" y="${GRID_START_Y + 18}"
+        text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold" fill="#555">
     ${day}
   </text>`).join('')}
 
   <!-- Separator line under weekdays -->
   <line x1="${MARGIN}" y1="${GRID_START_Y + WEEKDAY_ROW_HEIGHT}"
         x2="${WIDTH - MARGIN}" y2="${GRID_START_Y + WEEKDAY_ROW_HEIGHT}"
-        stroke="#ccc" stroke-width="2"/>
+        stroke="#ddd" stroke-width="1"/>
 
-  <!-- Calendar Grid -->
+  <!-- Calendar Grid Cells (debug borders) -->
+  ${calendarCells.map((day, index) => {
+    const row = Math.floor(index / 7)
+    const col = index % 7
+    const cellX = MARGIN + col * CELL_WIDTH
+    const cellY = GRID_START_Y + WEEKDAY_ROW_HEIGHT + row * DAY_CELL_HEIGHT
+
+    return `
+  <rect x="${cellX}" y="${cellY}" width="${CELL_WIDTH}" height="${DAY_CELL_HEIGHT}"
+        fill="none" stroke="#f0f0f0" stroke-width="0.5"/>`
+  }).join('')}
+
+  <!-- Calendar Day Abaci -->
   ${calendarCells.map((day, index) => {
     if (day === null) return ''
 
     const row = Math.floor(index / 7)
     const col = index % 7
-    const x = MARGIN + col * CELL_WIDTH
-    const y = GRID_START_Y + WEEKDAY_ROW_HEIGHT + row * DAY_CELL_HEIGHT
+    const cellX = MARGIN + col * CELL_WIDTH
+    const cellY = GRID_START_Y + WEEKDAY_ROW_HEIGHT + row * DAY_CELL_HEIGHT
 
-    // Calculate scale to fit abacus in cell (leaving some padding)
-    const abacusScale = Math.min(CELL_WIDTH / 120, DAY_CELL_HEIGHT / 230) * 0.7
+    // Center abacus in cell
+    const abacusCenterX = cellX + CELL_WIDTH / 2
+    const abacusCenterY = cellY + DAY_CELL_HEIGHT / 2
 
-    const abacusSVG = renderAbacusSVG(day, 2, abacusScale)
-      .replace(/<svg[^>]*>/, '')
-      .replace('</svg>', '')
+    // Offset to top-left corner of abacus (accounting for scaled size)
+    const abacusX = abacusCenterX - SCALED_ABACUS_WIDTH / 2
+    const abacusY = abacusCenterY - SCALED_ABACUS_HEIGHT / 2
 
     return `
-  <!-- Day ${day} -->
-  <g transform="translate(${x + CELL_WIDTH / 2}, ${y + DAY_CELL_HEIGHT / 2})">
-    <g transform="translate(-60, -115)">
-      ${abacusSVG}
-    </g>
+  <!-- Day ${day} (row ${row}, col ${col}) -->
+  <g transform="translate(${abacusX}, ${abacusY})">
+    ${renderAbacusContent(day, 2, ABACUS_SCALE)}
   </g>`
   }).join('')}
 </svg>`
