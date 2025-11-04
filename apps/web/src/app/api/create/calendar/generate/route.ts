@@ -3,7 +3,6 @@ import { writeFileSync, readFileSync, mkdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { execSync } from 'child_process'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { generateMonthlyTypst, generateDailyTypst, getDaysInMonth } from '../utils/typstGenerator'
 import type { AbacusConfig } from '@soroban/abacus-react'
 import { generateCalendarComposite } from '@/../../scripts/generateCalendarComposite'
@@ -21,6 +20,9 @@ export async function POST(request: NextRequest) {
   let tempDir: string | null = null
 
   try {
+    // Dynamic import to avoid Next.js bundler issues with react-dom/server
+    const { renderToStaticMarkup } = await import('react-dom/server')
+
     const body: CalendarRequest = await request.json()
     const { month, year, format, paperSize, abacusConfig } = body
 
