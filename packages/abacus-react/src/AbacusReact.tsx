@@ -7,6 +7,9 @@ import NumberFlow from "@number-flow/react";
 import { useAbacusConfig, getDefaultAbacusConfig } from "./AbacusContext";
 import { playBeadSound } from "./soundManager";
 import * as Abacus3DUtils from "./Abacus3DUtils";
+import { calculateStandardDimensions } from "./AbacusUtils";
+import { AbacusSVGRenderer } from "./AbacusSVGRenderer";
+import { AbacusAnimatedBead } from "./AbacusAnimatedBead";
 import "./Abacus3D.css";
 
 // Types
@@ -318,38 +321,26 @@ export function useAbacusDimensions(
   showNumbers: boolean = false,
 ): AbacusDimensions {
   return useMemo(() => {
-    // Exact Typst parameters (lines 33-39 in flashcards.typ)
-    const rodWidth = 3 * scaleFactor;
-    const beadSize = 12 * scaleFactor;
-    const adjacentSpacing = 0.5 * scaleFactor; // Minimal spacing for adjacent beads of same type
-    const columnSpacing = 25 * scaleFactor; // rod spacing
-    const heavenEarthGap = 30 * scaleFactor;
-    const barThickness = 2 * scaleFactor;
+    // Use shared dimension calculator to ensure consistency with AbacusStatic
+    const standardDims = calculateStandardDimensions({
+      columns,
+      scaleFactor,
+      showNumbers,
+      columnLabels: [], // No labels for basic hook usage
+    });
 
-    // Positioning gaps (lines 169-170 in flashcards.typ)
-    const activeGap = 1 * scaleFactor; // Gap between active beads and reckoning bar
-    const inactiveGap = 8 * scaleFactor; // Gap between inactive beads and active beads/bar
-
-    // Calculate total dimensions based on Typst logic (line 154-155)
-    const totalWidth = columns * columnSpacing;
-    const baseHeight =
-      heavenEarthGap + 5 * (beadSize + 4 * scaleFactor) + 10 * scaleFactor;
-
-    // Add space for numbers if they are visible
-    const numbersSpace = 40 * scaleFactor; // Space for NumberFlow components
-    const totalHeight = showNumbers ? baseHeight + numbersSpace : baseHeight;
-
+    // Extract fields compatible with AbacusDimensions interface
     return {
-      width: totalWidth,
-      height: totalHeight,
-      rodSpacing: columnSpacing,
-      beadSize,
-      rodWidth,
-      barThickness,
-      heavenEarthGap,
-      activeGap,
-      inactiveGap,
-      adjacentSpacing,
+      width: standardDims.width,
+      height: standardDims.height,
+      rodSpacing: standardDims.rodSpacing,
+      beadSize: standardDims.beadSize,
+      rodWidth: standardDims.rodWidth,
+      barThickness: standardDims.barThickness,
+      heavenEarthGap: standardDims.heavenEarthGap,
+      activeGap: standardDims.activeGap,
+      inactiveGap: standardDims.inactiveGap,
+      adjacentSpacing: standardDims.adjacentSpacing,
     };
   }, [columns, scaleFactor, showNumbers]);
 }
@@ -2024,6 +2015,156 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     material3d?.lighting
   );
 
+  // Convert placeStates Map to AbacusState object for compatibility
+  const abacusState = useMemo(() => {
+    const state: Record<number, { heavenActive: boolean; earthActive: number }> = {}
+    for (let col = 0; col < effectiveColumns; col++) {
+      const placeValue = effectiveColumns - 1 - col
+      const placeState = placeStates.get(placeValue as ValidPlaceValues)
+      state[placeValue] = placeState
+        ? { heavenActive: placeState.heavenActive, earthActive: placeState.earthActive }
+        : { heavenActive: false, earthActive: 0 }
+    }
+    return state
+  }, [placeStates, effectiveColumns])
+
+  // Calculate standard dimensions for shared renderer
+  // Note: We pass empty columnLabels because AbacusReact renders labels separately above the abacus (y=-20)
+  // The original useAbacusDimensions didn't account for label space in barY positioning
+  const standardDims = useMemo(() => calculateStandardDimensions({
+    columns: effectiveColumns,
+    scaleFactor: finalConfig.scaleFactor,
+    showNumbers: false, // We render numbers separately with NumberFlow
+    columnLabels: [], // Empty - we handle labels separately to match original positioning
+  }), [effectiveColumns, finalConfig.scaleFactor])
+
+  // Generate 3D gradients as defs content
+  const defsContent = useMemo(() => {
+    if (enhanced3d !== 'realistic' || !material3d) return null
+
+    return (
+      <>
+        {/* Generate gradients for all beads based on material type */}
+        {Array.from({ length: effectiveColumns }, (_, colIndex) => {
+          const placeValue = (effectiveColumns - 1 - colIndex) as ValidPlaceValues
+
+          // Create dummy beads to get their colors
+          const heavenBead: BeadConfig = {
+            type: 'heaven',
+            value: 5,
+            active: true,
+            position: 0,
+            placeValue
+          }
+          const earthBead: BeadConfig = {
+            type: 'earth',
+            value: 1,
+            active: true,
+            position: 0,
+            placeValue
+          }
+
+          const heavenColor = getBeadColor(heavenBead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette, false)
+          const earthColor = getBeadColor(earthBead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette, false)
+
+          return (
+            <React.Fragment key={`gradients-col-${colIndex}`}>
+              {/* Heaven bead gradient */}
+              <defs dangerouslySetInnerHTML={{
+                __html: Abacus3DUtils.getBeadGradient(
+                  `bead-gradient-${colIndex}-heaven`,
+                  heavenColor,
+                  material3d.heavenBeads || 'satin',
+                  true
+                )
+              }} />
+
+              {/* Earth bead gradients */}
+              {[0, 1, 2, 3].map(pos => (
+                <defs key={`earth-${pos}`} dangerouslySetInnerHTML={{
+                  __html: Abacus3DUtils.getBeadGradient(
+                    `bead-gradient-${colIndex}-earth-${pos}`,
+                    earthColor,
+                    material3d.earthBeads || 'satin',
+                    true
+                  )
+                }} />
+              ))}
+            </React.Fragment>
+          )
+        }).filter(Boolean)}
+
+        {/* Wood grain texture pattern */}
+        {material3d.woodGrain && (
+          <defs dangerouslySetInnerHTML={{
+            __html: Abacus3DUtils.getWoodGrainPattern('wood-grain-pattern')
+          }} />
+        )}
+      </>
+    )
+  }, [enhanced3d, material3d, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette])
+
+  // Enhanced physics config for 3D modes
+  const physicsConfig = React.useMemo(() => {
+    if (!finalConfig.animated) return { duration: 0 }
+    if (!enhanced3d || enhanced3d === true || enhanced3d === 'subtle') return config.default
+    return Abacus3DUtils.getPhysicsConfig(enhanced3d)
+  }, [finalConfig.animated, enhanced3d])
+
+  // Wrapped bead component that passes extra props to AbacusAnimatedBead
+  const WrappedBeadComponent = useCallback((props: any) => {
+    // Check if bead is highlighted
+    const regularHighlight = isBeadHighlightedByPlaceValue(props.bead, highlightBeads)
+    const stepHighlight = getBeadStepHighlight(props.bead, stepBeadHighlights, currentStep)
+    const isHighlighted = regularHighlight || stepHighlight.isHighlighted
+
+    // Check if bead is disabled
+    const columnIndex = effectiveColumns - 1 - props.bead.placeValue
+    const isDisabled = isBeadDisabledByPlaceValue(props.bead, disabledBeads) || disabledColumns?.includes(columnIndex)
+
+    // Apply custom styling
+    const beadStyle = mergeBeadStyles(
+      { fill: props.color },
+      customStyles,
+      columnIndex,
+      props.bead.type,
+      props.bead.type === 'earth' ? props.bead.position : undefined,
+      props.bead.active,
+    )
+
+    return (
+      <AbacusAnimatedBead
+        {...props}
+        color={beadStyle.fill || props.color}
+        customStyle={beadStyle}
+        enableAnimation={finalConfig.animated}
+        physicsConfig={physicsConfig}
+        enableGestures={finalConfig.interactive || finalConfig.gestures}
+        onGestureToggle={handleGestureToggle}
+        showDirectionIndicator={showDirectionIndicators && stepHighlight.isCurrentStep}
+        direction={stepHighlight.direction}
+        isCurrentStep={stepHighlight.isCurrentStep}
+        enhanced3d={enhanced3d}
+        columnIndex={columnIndex}
+      />
+    )
+  }, [
+    finalConfig.animated,
+    finalConfig.interactive,
+    finalConfig.gestures,
+    physicsConfig,
+    enhanced3d,
+    highlightBeads,
+    stepBeadHighlights,
+    currentStep,
+    showDirectionIndicators,
+    disabledBeads,
+    disabledColumns,
+    customStyles,
+    effectiveColumns,
+    handleGestureToggle,
+  ])
+
   return (
     <div
       className={containerClasses}
@@ -2051,713 +2192,151 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         }
       }}
     >
-      <svg
-        width={dimensions.width}
-        height={dimensions.height}
-        viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
-        className={`abacus-svg ${finalConfig.hideInactiveBeads ? "hide-inactive-mode" : ""} ${finalConfig.interactive ? "interactive" : ""}`}
-        style={{ overflow: "visible", display: "block" }}
+      <AbacusSVGRenderer
+        value={currentValue}
+        columns={effectiveColumns}
+        state={abacusState}
+        beadConfigs={beadStates}
+        dimensions={standardDims}
+        scaleFactor={finalConfig.scaleFactor}
+        beadShape={finalConfig.beadShape}
+        colorScheme={finalConfig.colorScheme}
+        colorPalette={finalConfig.colorPalette}
+        hideInactiveBeads={finalConfig.hideInactiveBeads}
+        frameVisible={finalConfig.frameVisible}
+        showNumbers={false}
+        customStyles={customStyles}
+        interactive={finalConfig.interactive}
+        highlightColumns={highlightColumns}
+        columnLabels={columnLabels}
+        defsContent={defsContent}
+        BeadComponent={WrappedBeadComponent}
+        getBeadColor={getBeadColor}
+        onBeadClick={handleBeadClick}
+        onBeadMouseEnter={callbacks?.onBeadHover ? (bead, event) => {
+          const beadClickEvent = {
+            bead,
+            columnIndex: effectiveColumns - 1 - bead.placeValue,
+            beadType: bead.type,
+            position: bead.position,
+            active: bead.active,
+            value: bead.value,
+            event: event!,
+          }
+          callbacks.onBeadHover?.(beadClickEvent)
+        } : undefined}
+        onBeadMouseLeave={callbacks?.onBeadLeave ? (bead, event) => {
+          const beadClickEvent = {
+            bead,
+            columnIndex: effectiveColumns - 1 - bead.placeValue,
+            beadType: bead.type,
+            position: bead.position,
+            active: bead.active,
+            value: bead.value,
+            event: event!,
+          }
+          callbacks.onBeadLeave?.(beadClickEvent)
+        } : undefined}
+        onBeadRef={callbacks?.onBeadRef}
       >
-        <defs>
-          <style>{`
-          /* CSS-based opacity system for hidden inactive beads */
-          .abacus-bead {
-            transition: opacity 0.2s ease-in-out;
-          }
+        {/* NumberFlow place value displays */}
+        {finalConfig.showNumbers &&
+          placeValues.map((value, columnIndex) => {
+            const placeValue = effectiveColumns - 1 - columnIndex
+            const x = columnIndex * standardDims.rodSpacing + standardDims.rodSpacing / 2
+            const baseHeight = standardDims.heavenEarthGap + 5 * (standardDims.beadSize + 4 * finalConfig.scaleFactor) + 10 * finalConfig.scaleFactor
+            const y = baseHeight + 25
+            const isActive = activeColumn === columnIndex
 
-          /* Hidden inactive beads are invisible by default */
-          .hide-inactive-mode .abacus-bead.hidden-inactive {
-            opacity: 0;
-          }
-
-          /* Interactive abacus: When hovering over the abacus, hidden inactive beads become semi-transparent */
-          .abacus-svg.hide-inactive-mode.interactive:hover .abacus-bead.hidden-inactive {
-            opacity: 0.5;
-          }
-
-          /* Interactive abacus: When hovering over a specific hidden inactive bead, it becomes fully visible */
-          .hide-inactive-mode.interactive .abacus-bead.hidden-inactive:hover {
-            opacity: 1 !important;
-          }
-
-          /* Non-interactive abacus: Hidden inactive beads always stay at opacity 0 */
-          .abacus-svg.hide-inactive-mode:not(.interactive) .abacus-bead.hidden-inactive {
-            opacity: 0 !important;
-          }
-        `}</style>
-
-          {/* 3D Enhancement: Material gradients for beads */}
-          {enhanced3d === 'realistic' && material3d && (
-            <>
-              {/* Generate gradients for all beads based on material type */}
-              {Array.from({ length: effectiveColumns }, (_, colIndex) => {
-                const placeValue = (effectiveColumns - 1 - colIndex) as ValidPlaceValues;
-
-                // Create dummy beads to get their colors
-                const heavenBead: BeadConfig = {
-                  type: 'heaven',
-                  value: 5,
-                  active: true,
-                  position: 0,
-                  placeValue
-                };
-                const earthBead: BeadConfig = {
-                  type: 'earth',
-                  value: 1,
-                  active: true,
-                  position: 0,
-                  placeValue
-                };
-
-                const heavenColor = getBeadColor(heavenBead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette, false);
-                const earthColor = getBeadColor(earthBead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette, false);
-
-                return (
-                  <React.Fragment key={`gradients-col-${colIndex}`}>
-                    {/* Heaven bead gradient */}
-                    <defs dangerouslySetInnerHTML={{
-                      __html: Abacus3DUtils.getBeadGradient(
-                        `bead-gradient-${colIndex}-heaven`,
-                        heavenColor,
-                        material3d.heavenBeads || 'satin',
-                        true
-                      )
-                    }} />
-
-                    {/* Earth bead gradients */}
-                    {[0, 1, 2, 3].map(pos => (
-                      <defs key={`earth-${pos}`} dangerouslySetInnerHTML={{
-                        __html: Abacus3DUtils.getBeadGradient(
-                          `bead-gradient-${colIndex}-earth-${pos}`,
-                          earthColor,
-                          material3d.earthBeads || 'satin',
-                          true
-                        )
-                      }} />
-                    ))}
-                  </React.Fragment>
-                );
-              }).filter(Boolean)}
-
-              {/* Wood grain texture pattern */}
-              {material3d.woodGrain && (
-                <defs dangerouslySetInnerHTML={{
-                  __html: Abacus3DUtils.getWoodGrainPattern('wood-grain-pattern')
-                }} />
-              )}
-            </>
-          )}
-        </defs>
-
-        {/* Background glow effects - rendered behind everything */}
-        {Array.from({ length: effectiveColumns }, (_, colIndex) => {
-          const placeValue = effectiveColumns - 1 - colIndex;
-          const columnStyles = customStyles?.columns?.[colIndex];
-          const backgroundGlow = columnStyles?.backgroundGlow;
-
-          if (!backgroundGlow) return null;
-
-          const x =
-            colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
-          const glowWidth =
-            dimensions.rodSpacing + (backgroundGlow.spread || 0);
-          const glowHeight = dimensions.height + (backgroundGlow.spread || 0);
-
-          return (
-            <rect
-              key={`background-glow-pv${placeValue}`}
-              x={x - glowWidth / 2}
-              y={-(backgroundGlow.spread || 0) / 2}
-              width={glowWidth}
-              height={glowHeight}
-              fill={backgroundGlow.fill || "rgba(59, 130, 246, 0.2)"}
-              filter={
-                backgroundGlow.blur ? `blur(${backgroundGlow.blur}px)` : "none"
-              }
-              opacity={0.6}
-              rx={8}
-              style={{ pointerEvents: "none" }}
-            />
-          );
-        })}
-
-        {/* Column highlights - rendered behind everything for tutorial/educational purposes */}
-        {highlightColumns.map((colIndex) => {
-          if (colIndex < 0 || colIndex >= effectiveColumns) return null;
-
-          const x = colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
-          const highlightWidth = dimensions.rodSpacing * 0.9; // Slightly narrower than full column
-          const highlightHeight = dimensions.height;
-
-          return (
-            <rect
-              key={`column-highlight-${colIndex}`}
-              x={x - highlightWidth / 2}
-              y={0}
-              width={highlightWidth}
-              height={highlightHeight}
-              fill="rgba(59, 130, 246, 0.15)" // Light blue highlight
-              stroke="rgba(59, 130, 246, 0.4)" // Slightly darker blue border
-              strokeWidth={2}
-              rx={6}
-              style={{ pointerEvents: "none" }}
-            />
-          );
-        })}
-
-        {/* Column labels - rendered above columns for tutorial/educational purposes */}
-        {columnLabels.map((label, colIndex) => {
-          if (!label || colIndex >= effectiveColumns) return null;
-
-          const x = colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
-          const labelY = -20; // Position above the abacus
-
-          return (
-            <text
-              key={`column-label-${colIndex}`}
-              x={x}
-              y={labelY}
-              textAnchor="middle"
-              fontSize="14"
-              fontWeight="600"
-              fill="rgba(0, 0, 0, 0.7)"
-              style={{ pointerEvents: "none", userSelect: "none" }}
-            >
-              {label}
-            </text>
-          );
-        })}
-
-        {/* Rods - positioned as rectangles like in Typst */}
-        {finalConfig.frameVisible && Array.from({ length: effectiveColumns }, (_, colIndex) => {
-          const placeValue = effectiveColumns - 1 - colIndex;
-          const x =
-            colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
-
-          // Calculate rod bounds based on visible beads (matching Typst logic)
-          const rodStartY = 0; // Start from top for now, will be refined
-          const rodEndY = dimensions.height; // End at bottom for now, will be refined
-
-          // Apply custom column post styling (column-specific overrides global)
-          const columnStyles = customStyles?.columns?.[colIndex];
-          const globalColumnPosts = customStyles?.columnPosts;
-          const rodStyle = {
-            fill:
-              columnStyles?.columnPost?.fill ||
-              globalColumnPosts?.fill ||
-              "rgb(0, 0, 0, 0.1)", // Default Typst color
-            stroke:
-              columnStyles?.columnPost?.stroke ||
-              globalColumnPosts?.stroke ||
-              "none",
-            strokeWidth:
-              columnStyles?.columnPost?.strokeWidth ??
-              globalColumnPosts?.strokeWidth ??
-              0,
-            opacity:
-              columnStyles?.columnPost?.opacity ??
-              globalColumnPosts?.opacity ??
-              1,
-          };
-
-          return (
-            <React.Fragment key={`rod-pv${placeValue}`}>
-              <rect
-                x={x - dimensions.rodWidth / 2}
-                y={rodStartY}
-                width={dimensions.rodWidth}
-                height={rodEndY - rodStartY}
-                fill={rodStyle.fill}
-                stroke={rodStyle.stroke}
-                strokeWidth={rodStyle.strokeWidth}
-                opacity={rodStyle.opacity}
-                className="column-post"
-              />
-              {/* Wood grain texture overlay for column posts */}
-              {enhanced3d === 'realistic' && material3d?.woodGrain && (
+            return (
+              <React.Fragment key={`place-display-pv${placeValue}`}>
+                {/* Background rectangle */}
                 <rect
-                  x={x - dimensions.rodWidth / 2}
-                  y={rodStartY}
-                  width={dimensions.rodWidth}
-                  height={rodEndY - rodStartY}
-                  fill="url(#wood-grain-pattern)"
-                  className="frame-wood"
-                  style={{ pointerEvents: 'none' }}
+                  x={x - 12 * finalConfig.scaleFactor}
+                  y={y - 12 * finalConfig.scaleFactor}
+                  width={24 * finalConfig.scaleFactor}
+                  height={24 * finalConfig.scaleFactor}
+                  fill={isActive ? "#e3f2fd" : "#f5f5f5"}
+                  stroke={isActive ? "#2196f3" : "#ccc"}
+                  strokeWidth={isActive ? 2 * finalConfig.scaleFactor : 1 * finalConfig.scaleFactor}
+                  rx={3 * finalConfig.scaleFactor}
+                  style={{ cursor: finalConfig.interactive ? "pointer" : "default" }}
+                  onClick={finalConfig.interactive ? () => setActiveColumn(columnIndex) : undefined}
                 />
-              )}
-            </React.Fragment>
-          );
-        })}
 
-        {/* Reckoning bar - spans from leftmost to rightmost bead */}
-        {finalConfig.frameVisible && (
-          <>
-            <rect
-              x={dimensions.rodSpacing / 2 - dimensions.beadSize / 2}
-              y={barY}
-              width={
-                (effectiveColumns - 1) * dimensions.rodSpacing + dimensions.beadSize
-              }
-              height={dimensions.barThickness}
-              fill={customStyles?.reckoningBar?.fill || "black"} // Typst default is black
-              stroke={customStyles?.reckoningBar?.stroke || "none"}
-              strokeWidth={customStyles?.reckoningBar?.strokeWidth ?? 0}
-              opacity={customStyles?.reckoningBar?.opacity ?? 1}
-              className="reckoning-bar"
-            />
-            {/* Wood grain texture overlay for reckoning bar */}
-            {enhanced3d === 'realistic' && material3d?.woodGrain && (
-              <rect
-                x={dimensions.rodSpacing / 2 - dimensions.beadSize / 2}
-                y={barY}
-                width={
-                  (effectiveColumns - 1) * dimensions.rodSpacing + dimensions.beadSize
-                }
-                height={dimensions.barThickness}
-                fill="url(#wood-grain-pattern)"
-                className="frame-wood"
-                style={{ pointerEvents: 'none' }}
-              />
-            )}
-          </>
-        )}
-
-        {/* Beads */}
-        {beadStates.map((columnBeads, colIndex) =>
-          columnBeads.map((bead, beadIndex) => {
-            // Render all beads - CSS handles visibility for inactive beads
-
-            // x-offset calculation matching Typst (line 160)
-            const x =
-              colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
-            let y: number;
-
-            if (bead.type === "heaven") {
-              // Heaven bead positioning - exact Typst formulas (lines 173-179)
-              if (bead.active) {
-                // Active heaven bead: positioned close to reckoning bar (line 175)
-                y =
-                  dimensions.heavenEarthGap -
-                  dimensions.beadSize / 2 -
-                  dimensions.activeGap;
-              } else {
-                // Inactive heaven bead: positioned away from reckoning bar (line 178)
-                y =
-                  dimensions.heavenEarthGap -
-                  dimensions.inactiveGap -
-                  dimensions.beadSize / 2;
-              }
-            } else {
-              // Earth bead positioning - exact Typst formulas (lines 249-261)
-              const columnState = columnStates[colIndex];
-              if (!columnState) {
-                throw new Error(
-                  `Invalid abacus state: columnState is undefined for column index ${colIndex}. ` +
-                  `effectiveColumns=${effectiveColumns}, columnStates.length=${columnStates.length}, ` +
-                  `beadStates.length=${beadStates.length}, placeValue=${bead.placeValue}. ` +
-                  `This indicates a mismatch between the number of columns and the bead states. ` +
-                  `Please report this issue with the abacus configuration that triggered it.`
-                );
-              }
-              const earthActive = columnState.earthActive;
-
-              if (bead.active) {
-                // Active beads: positioned near reckoning bar, adjacent beads touch (line 251)
-                y =
-                  dimensions.heavenEarthGap +
-                  dimensions.barThickness +
-                  dimensions.activeGap +
-                  dimensions.beadSize / 2 +
-                  bead.position *
-                    (dimensions.beadSize + dimensions.adjacentSpacing);
-              } else {
-                // Inactive beads: positioned after active beads + gap (lines 254-261)
-                if (earthActive > 0) {
-                  // Position after the last active bead + gap, then adjacent inactive beads touch (line 256)
-                  y =
-                    dimensions.heavenEarthGap +
-                    dimensions.barThickness +
-                    dimensions.activeGap +
-                    dimensions.beadSize / 2 +
-                    (earthActive - 1) *
-                      (dimensions.beadSize + dimensions.adjacentSpacing) +
-                    dimensions.beadSize / 2 +
-                    dimensions.inactiveGap +
-                    dimensions.beadSize / 2 +
-                    (bead.position - earthActive) *
-                      (dimensions.beadSize + dimensions.adjacentSpacing);
-                } else {
-                  // No active beads: position after reckoning bar + gap, adjacent inactive beads touch (line 259)
-                  y =
-                    dimensions.heavenEarthGap +
-                    dimensions.barThickness +
-                    dimensions.inactiveGap +
-                    dimensions.beadSize / 2 +
-                    bead.position *
-                      (dimensions.beadSize + dimensions.adjacentSpacing);
-                }
-              }
-            }
-
-            // Check if bead is highlighted - NO MORE EFFECTIVECOLUMNS THREADING!
-            const regularHighlight = isBeadHighlightedByPlaceValue(
-              bead,
-              highlightBeads,
-            );
-            const stepHighlight = getBeadStepHighlight(
-              bead,
-              stepBeadHighlights,
-              currentStep,
-            );
-            const isHighlighted =
-              regularHighlight || stepHighlight.isHighlighted;
-
-            const color = getBeadColor(
-              bead,
-              effectiveColumns,
-              finalConfig.colorScheme,
-              finalConfig.colorPalette,
-              isHighlighted,
-            );
-
-            // Apply custom styling
-            const beadStyle = mergeBeadStyles(
-              { fill: color },
-              customStyles,
-              effectiveColumns - 1 - bead.placeValue, // Convert place value to column index for styling
-              bead.type,
-              bead.type === "earth" ? bead.position : undefined,
-              bead.active,
-            );
-
-            // Check if bead is disabled - NO MORE EFFECTIVECOLUMNS THREADING!
-            const isDisabled =
-              isBeadDisabledByPlaceValue(bead, disabledBeads) ||
-              disabledColumns?.includes(effectiveColumns - 1 - bead.placeValue);
-
-            return (
-              <Bead
-                key={`bead-pv${bead.placeValue}-${bead.type}-${bead.type === "earth" ? bead.position : 0}`}
-                bead={bead}
-                x={x}
-                y={y}
-                size={dimensions.beadSize}
-                shape={finalConfig.beadShape}
-                color={beadStyle.fill || color}
-                customStyle={beadStyle}
-                isHighlighted={isHighlighted}
-                isDisabled={isDisabled}
-                enableAnimation={finalConfig.animated}
-                enableGestures={finalConfig.interactive || finalConfig.gestures}
-                hideInactiveBeads={finalConfig.hideInactiveBeads}
-                showDirectionIndicator={
-                  showDirectionIndicators && stepHighlight.isCurrentStep
-                }
-                direction={stepHighlight.direction}
-                isCurrentStep={stepHighlight.isCurrentStep}
-                onClick={
-                  finalConfig.interactive && !isDisabled
-                    ? (event) => handleBeadClick(bead, event)
-                    : undefined
-                }
-                onHover={
-                  callbacks?.onBeadHover
-                    ? (event) => {
-                        const beadClickEvent: BeadClickEvent = {
-                          bead,
-                          columnIndex: effectiveColumns - 1 - bead.placeValue, // Convert place value to column index for callback
-                          beadType: bead.type,
-                          position: bead.position,
-                          active: bead.active,
-                          value: bead.value,
-                          event,
-                        };
-                        callbacks.onBeadHover?.(beadClickEvent);
-                      }
-                    : undefined
-                }
-                onLeave={
-                  callbacks?.onBeadLeave
-                    ? (event) => {
-                        const beadClickEvent: BeadClickEvent = {
-                          bead,
-                          columnIndex: effectiveColumns - 1 - bead.placeValue, // Convert place value to column index for callback
-                          beadType: bead.type,
-                          position: bead.position,
-                          active: bead.active,
-                          value: bead.value,
-                          event,
-                        };
-                        callbacks.onBeadLeave?.(beadClickEvent);
-                      }
-                    : undefined
-                }
-                onGestureToggle={handleGestureToggle}
-                onRef={
-                  callbacks?.onBeadRef
-                    ? (element) => callbacks.onBeadRef!(bead, element)
-                    : undefined
-                }
-                heavenEarthGap={dimensions.heavenEarthGap}
-                barY={barY}
-                colorScheme={finalConfig.colorScheme}
-                colorPalette={finalConfig.colorPalette}
-                totalColumns={effectiveColumns}
-                enhanced3d={enhanced3d}
-                material3d={material3d}
-                columnIndex={colIndex}
-              />
-            );
-          }),
-        )}
-
-        {/* Background rectangles for place values - in SVG */}
-        {finalConfig.showNumbers &&
-          placeValues.map((value, columnIndex) => {
-            const placeValue = effectiveColumns - 1 - columnIndex;
-            const x =
-              columnIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
-            // Position background rectangles to match the text positioning
-            const baseHeight =
-              dimensions.heavenEarthGap +
-              5 * (dimensions.beadSize + 4 * finalConfig.scaleFactor) +
-              10 * finalConfig.scaleFactor;
-            const y = baseHeight + 25;
-            const isActive = activeColumn === columnIndex;
-
-            return (
-              <rect
-                key={`place-bg-pv${placeValue}`}
-                x={x - 12 * finalConfig.scaleFactor}
-                y={y - 12 * finalConfig.scaleFactor}
-                width={24 * finalConfig.scaleFactor}
-                height={24 * finalConfig.scaleFactor}
-                fill={isActive ? "#e3f2fd" : "#f5f5f5"}
-                stroke={isActive ? "#2196f3" : "#ccc"}
-                strokeWidth={
-                  isActive
-                    ? 2 * finalConfig.scaleFactor
-                    : 1 * finalConfig.scaleFactor
-                }
-                rx={3 * finalConfig.scaleFactor}
-                style={{
-                  cursor: finalConfig.interactive ? "pointer" : "default",
-                }}
-                onClick={
-                  finalConfig.interactive
-                    ? () => setActiveColumn(columnIndex)
-                    : undefined
-                }
-              />
-            );
-          })}
-
-        {/* NumberFlow place value displays - inside SVG using foreignObject */}
-        {finalConfig.showNumbers &&
-          placeValues.map((value, columnIndex) => {
-            const placeValue = effectiveColumns - 1 - columnIndex;
-            const x =
-              columnIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
-            // Position numbers within the allocated numbers space (below the baseHeight)
-            const baseHeight =
-              dimensions.heavenEarthGap +
-              5 * (dimensions.beadSize + 4 * finalConfig.scaleFactor) +
-              10 * finalConfig.scaleFactor;
-            const y = baseHeight + 25;
-
-            return (
-              <foreignObject
-                key={`place-number-pv${placeValue}`}
-                x={x - 12 * finalConfig.scaleFactor}
-                y={y - 8 * finalConfig.scaleFactor}
-                width={24 * finalConfig.scaleFactor}
-                height={16 * finalConfig.scaleFactor}
-                style={{ pointerEvents: "none" }}
-              >
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: `${Math.max(8, 14 * finalConfig.scaleFactor)}px`,
-                    fontFamily: "monospace",
-                    fontWeight: "bold",
-                    pointerEvents: finalConfig.interactive ? "auto" : "none",
-                    cursor: finalConfig.interactive ? "pointer" : "default",
-                  }}
-                  onClick={
-                    finalConfig.interactive
-                      ? () => setActiveColumn(columnIndex)
-                      : undefined
-                  }
+                {/* NumberFlow */}
+                <foreignObject
+                  x={x - 12 * finalConfig.scaleFactor}
+                  y={y - 8 * finalConfig.scaleFactor}
+                  width={24 * finalConfig.scaleFactor}
+                  height={16 * finalConfig.scaleFactor}
+                  style={{ pointerEvents: "none" }}
                 >
-                  <NumberFlow
-                    value={value}
-                    format={{ style: "decimal" }}
+                  <div
                     style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: `${Math.max(8, 14 * finalConfig.scaleFactor)}px`,
                       fontFamily: "monospace",
                       fontWeight: "bold",
-                      fontSize: `${Math.max(8, 14 * finalConfig.scaleFactor)}px`,
+                      pointerEvents: finalConfig.interactive ? "auto" : "none",
+                      cursor: finalConfig.interactive ? "pointer" : "default",
                     }}
-                  />
-                </div>
-              </foreignObject>
-            );
+                    onClick={finalConfig.interactive ? () => setActiveColumn(columnIndex) : undefined}
+                  >
+                    <NumberFlow
+                      value={value}
+                      format={{ style: "decimal" }}
+                      style={{
+                        fontFamily: "monospace",
+                        fontWeight: "bold",
+                        fontSize: `${Math.max(8, 14 * finalConfig.scaleFactor)}px`,
+                      }}
+                    />
+                  </div>
+                </foreignObject>
+              </React.Fragment>
+            )
           })}
 
         {/* Overlay system for tooltips, arrows, highlights, etc. */}
         {overlays.map((overlay) => {
-          if (overlay.visible === false) return null;
+          if (overlay.visible === false) return null
 
-          let position = { x: 0, y: 0 };
+          let position = { x: 0, y: 0 }
 
           // Calculate overlay position based on target
           if (overlay.target.type === "bead") {
-            // Find the bead position
-            const targetColumn = overlay.target.columnIndex;
-            const targetBeadType = overlay.target.beadType;
-            const targetBeadPosition = overlay.target.beadPosition;
+            const targetColumn = overlay.target.columnIndex
+            const targetBeadType = overlay.target.beadType
+            const targetBeadPosition = overlay.target.beadPosition
 
             if (targetColumn !== undefined && targetBeadType) {
-              const x =
-                targetColumn * dimensions.rodSpacing +
-                dimensions.rodSpacing / 2;
-              let y = 0;
+              const x = targetColumn * standardDims.rodSpacing + standardDims.rodSpacing / 2
 
-              if (targetBeadType === "heaven") {
-                const columnState = columnStates[targetColumn];
-                if (!columnState) {
-                  console.error(
-                    `Invalid abacus overlay: columnState is undefined for overlay targeting column ${targetColumn}`
-                  );
-                  return;
-                }
-                y = columnState.heavenActive
-                  ? dimensions.heavenEarthGap -
-                    dimensions.beadSize / 2 -
-                    dimensions.activeGap
-                  : dimensions.heavenEarthGap -
-                    dimensions.inactiveGap -
-                    dimensions.beadSize / 2;
-              } else if (
-                targetBeadType === "earth" &&
-                targetBeadPosition !== undefined
-              ) {
-                const columnState = columnStates[targetColumn];
-                if (!columnState) {
-                  console.error(
-                    `Invalid abacus overlay: columnState is undefined for overlay targeting column ${targetColumn}`
-                  );
-                  return;
-                }
-                const earthActive = columnState.earthActive;
-                const isActive = targetBeadPosition < earthActive;
-
-                if (isActive) {
-                  y =
-                    dimensions.heavenEarthGap +
-                    dimensions.barThickness +
-                    dimensions.activeGap +
-                    dimensions.beadSize / 2 +
-                    targetBeadPosition *
-                      (dimensions.beadSize + dimensions.adjacentSpacing);
-                } else {
-                  if (earthActive > 0) {
-                    y =
-                      dimensions.heavenEarthGap +
-                      dimensions.barThickness +
-                      dimensions.activeGap +
-                      dimensions.beadSize / 2 +
-                      (earthActive - 1) *
-                        (dimensions.beadSize + dimensions.adjacentSpacing) +
-                      dimensions.beadSize / 2 +
-                      dimensions.inactiveGap +
-                      dimensions.beadSize / 2 +
-                      (targetBeadPosition - earthActive) *
-                        (dimensions.beadSize + dimensions.adjacentSpacing);
-                  } else {
-                    y =
-                      dimensions.heavenEarthGap +
-                      dimensions.barThickness +
-                      dimensions.inactiveGap +
-                      dimensions.beadSize / 2 +
-                      targetBeadPosition *
-                        (dimensions.beadSize + dimensions.adjacentSpacing);
-                  }
-                }
-              }
-
-              position = calculateOverlayPosition(
-                overlay,
-                dimensions,
-                targetColumn,
-                { x, y },
-              );
+              // Find the bead to get its Y position
+              // This is a simplified version - you may need to calculate the exact Y position
+              position = { x, y: standardDims.barY }
             }
-          } else {
-            position = calculateOverlayPosition(overlay, dimensions);
+          } else if (overlay.target.type === "coordinates") {
+            position = { x: overlay.target.x || 0, y: overlay.target.y || 0 }
           }
 
           return (
-            <foreignObject
+            <g
               key={overlay.id}
-              x={position.x}
-              y={position.y}
-              width="200"
-              height="100"
-              style={{
-                overflow: "visible",
-                pointerEvents: "none",
-                ...overlay.style,
-              }}
+              transform={`translate(${position.x + (overlay.offset?.x || 0)}, ${position.y + (overlay.offset?.y || 0)})`}
               className={overlay.className}
+              style={overlay.style}
             >
-              <div style={{ position: "relative", pointerEvents: "none" }}>
-                {overlay.content}
-              </div>
-            </foreignObject>
-          );
+              {overlay.content}
+            </g>
+          )
         })}
-
-        {/* Column interaction areas - rendered last to be on top of all other elements */}
-        {Array.from({ length: effectiveColumns }, (_, colIndex) => {
-          const placeValue = effectiveColumns - 1 - colIndex;
-          const x =
-            colIndex * dimensions.rodSpacing + dimensions.rodSpacing / 2;
-          const columnStyles = customStyles?.columns?.[colIndex];
-          const hasColumnHighlight = columnStyles?.columnPost;
-
-          const backgroundWidth = dimensions.rodSpacing; // Full column width for better interaction
-          const backgroundHeight = dimensions.height;
-
-          return (
-            <rect
-              key={`column-interaction-pv${placeValue}`}
-              x={x - backgroundWidth / 2}
-              y={0}
-              width={backgroundWidth}
-              height={backgroundHeight}
-              fill="transparent"
-              stroke="none"
-              style={{
-                cursor:
-                  callbacks?.onColumnClick || callbacks?.onColumnHover
-                    ? "pointer"
-                    : "default",
-                pointerEvents:
-                  callbacks?.onColumnClick || callbacks?.onColumnHover
-                    ? "all"
-                    : "none", // Only capture events when callbacks exist
-              }}
-              onClick={(e) => callbacks?.onColumnClick?.(colIndex, e)}
-              onMouseEnter={(e) => callbacks?.onColumnHover?.(colIndex, e)}
-              onMouseLeave={(e) => callbacks?.onColumnLeave?.(colIndex, e)}
-            />
-          );
-        })}
-      </svg>
+      </AbacusSVGRenderer>
     </div>
   );
 };

@@ -358,13 +358,114 @@ function getPlaceName(place: number): string {
 }
 
 /**
- * Calculate the natural dimensions of an abacus SVG
- * This uses the same logic as AbacusStatic to ensure consistency
+ * Complete layout dimensions for abacus rendering
+ * Used by both static and dynamic rendering to ensure identical layouts
+ */
+export interface AbacusLayoutDimensions {
+  // SVG canvas size
+  width: number
+  height: number
+
+  // Bead and spacing
+  beadSize: number
+  rodSpacing: number  // Same as columnSpacing
+  rodWidth: number
+  barThickness: number
+
+  // Gaps and positioning
+  heavenEarthGap: number  // Gap between heaven and earth sections (where bar sits)
+  activeGap: number       // Gap between active beads and reckoning bar
+  inactiveGap: number     // Gap between inactive beads and active beads/bar
+  adjacentSpacing: number // Minimal spacing for adjacent beads of same type
+
+  // Key Y positions (absolute coordinates)
+  barY: number           // Y position of reckoning bar
+  heavenY: number        // Y position where inactive heaven beads rest
+  earthY: number         // Y position where inactive earth beads rest
+
+  // Padding and extras
+  padding: number
+  labelHeight: number
+  numbersHeight: number
+
+  // Derived values
+  totalColumns: number
+}
+
+/**
+ * Calculate standard layout dimensions for abacus rendering
+ * This ensures both static and dynamic rendering use identical geometry
+ * Same props = same exact visual output
  *
  * @param columns - Number of columns in the abacus
+ * @param scaleFactor - Size multiplier (default: 1)
  * @param showNumbers - Whether numbers are shown below columns
  * @param columnLabels - Array of column labels (if any)
- * @returns Object with width and height in pixels (at scale=1)
+ * @returns Complete layout dimensions object
+ */
+export function calculateStandardDimensions({
+  columns,
+  scaleFactor = 1,
+  showNumbers = false,
+  columnLabels = [],
+}: {
+  columns: number
+  scaleFactor?: number
+  showNumbers?: boolean
+  columnLabels?: string[]
+}): AbacusLayoutDimensions {
+  // Standard dimensions - used by both AbacusStatic and AbacusReact
+  const rodWidth = 3 * scaleFactor
+  const beadSize = 12 * scaleFactor
+  const adjacentSpacing = 0.5 * scaleFactor
+  const columnSpacing = 25 * scaleFactor
+  const heavenEarthGap = 30 * scaleFactor
+  const barThickness = 2 * scaleFactor
+
+  // Positioning gaps
+  const activeGap = 1 * scaleFactor
+  const inactiveGap = 8 * scaleFactor
+
+  // Calculate total dimensions
+  const totalWidth = columns * columnSpacing
+  const baseHeight = heavenEarthGap + 5 * (beadSize + 4 * scaleFactor) + 10 * scaleFactor
+
+  // Extra spacing
+  const numbersSpace = showNumbers ? 40 * scaleFactor : 0
+  const labelSpace = columnLabels.length > 0 ? 30 * scaleFactor : 0
+  const padding = 0 // No padding - keeps layout clean
+
+  const totalHeight = baseHeight + numbersSpace + labelSpace
+
+  // Key Y positions - bar is at heavenEarthGap from top
+  const barY = heavenEarthGap + labelSpace
+  const heavenY = labelSpace + activeGap  // Top area for inactive heaven beads
+  const earthY = barY + barThickness + (4 * beadSize) + activeGap + inactiveGap  // Bottom area for inactive earth
+
+  return {
+    width: totalWidth,
+    height: totalHeight,
+    beadSize,
+    rodSpacing: columnSpacing,
+    rodWidth,
+    barThickness,
+    heavenEarthGap,
+    activeGap,
+    inactiveGap,
+    adjacentSpacing,
+    barY,
+    heavenY,
+    earthY,
+    padding,
+    labelHeight: labelSpace,
+    numbersHeight: numbersSpace,
+    totalColumns: columns,
+  }
+}
+
+/**
+ * @deprecated Use calculateStandardDimensions instead for full layout info
+ * This function only returns width/height for backward compatibility
  */
 export function calculateAbacusDimensions({
   columns,
@@ -375,18 +476,87 @@ export function calculateAbacusDimensions({
   showNumbers?: boolean
   columnLabels?: string[]
 }): { width: number; height: number } {
-  // Constants matching AbacusStatic
-  const beadSize = 20
-  const rodSpacing = 40
-  const heavenHeight = 60
-  const earthHeight = 120
-  const barHeight = 10
-  const padding = 20
-  const numberHeightCalc = showNumbers ? 30 : 0
-  const labelHeight = columnLabels.length > 0 ? 30 : 0
+  // Redirect to new function for backward compatibility
+  const dims = calculateStandardDimensions({ columns, scaleFactor: 1, showNumbers, columnLabels })
+  return { width: dims.width, height: dims.height }
+}
 
-  const width = columns * rodSpacing + padding * 2
-  const height = heavenHeight + earthHeight + barHeight + padding * 2 + numberHeightCalc + labelHeight
+/**
+ * Simplified bead config for position calculation
+ * (Compatible with BeadConfig from AbacusReact)
+ */
+export interface BeadPositionConfig {
+  type: 'heaven' | 'earth'
+  active: boolean
+  position: number  // 0 for heaven, 0-3 for earth
+  placeValue: number
+}
 
-  return { width, height }
+/**
+ * Column state needed for earth bead positioning
+ * (Required to calculate inactive earth bead positions correctly)
+ */
+export interface ColumnStateForPositioning {
+  earthActive: number  // Number of active earth beads (0-4)
+}
+
+/**
+ * Calculate the x,y position for a bead based on standard layout dimensions
+ * This ensures both static and dynamic rendering position beads identically
+ * Uses exact Typst formulas from the original implementation
+ *
+ * @param bead - Bead configuration
+ * @param dimensions - Layout dimensions from calculateStandardDimensions
+ * @param columnState - Optional column state (required for inactive earth beads)
+ * @returns Object with x and y coordinates
+ */
+export function calculateBeadPosition(
+  bead: BeadPositionConfig,
+  dimensions: AbacusLayoutDimensions,
+  columnState?: ColumnStateForPositioning
+): { x: number; y: number } {
+  const { beadSize, rodSpacing, heavenEarthGap, barThickness, activeGap, inactiveGap, adjacentSpacing, totalColumns } = dimensions
+
+  // X position based on place value (rightmost = ones place)
+  const columnIndex = totalColumns - 1 - bead.placeValue
+  const x = columnIndex * rodSpacing + rodSpacing / 2
+
+  // Y position based on bead type and active state
+  // These formulas match the original Typst implementation exactly
+  if (bead.type === 'heaven') {
+    if (bead.active) {
+      // Active heaven bead: positioned close to reckoning bar (Typst line 175)
+      const y = heavenEarthGap - beadSize / 2 - activeGap
+      return { x, y }
+    } else {
+      // Inactive heaven bead: positioned away from reckoning bar (Typst line 178)
+      const y = heavenEarthGap - inactiveGap - beadSize / 2
+      return { x, y }
+    }
+  } else {
+    // Earth bead positioning (Typst lines 249-261)
+    const earthActive = columnState?.earthActive ?? 0
+
+    if (bead.active) {
+      // Active beads: positioned near reckoning bar, adjacent beads touch (Typst line 251)
+      const y = heavenEarthGap + barThickness + activeGap + beadSize / 2 +
+                bead.position * (beadSize + adjacentSpacing)
+      return { x, y }
+    } else {
+      // Inactive beads: positioned after active beads + gap (Typst lines 254-261)
+      let y: number
+      if (earthActive > 0) {
+        // Position after the last active bead + gap, then adjacent inactive beads touch (Typst line 256)
+        y = heavenEarthGap + barThickness + activeGap + beadSize / 2 +
+            (earthActive - 1) * (beadSize + adjacentSpacing) +
+            beadSize / 2 + inactiveGap + beadSize / 2 +
+            (bead.position - earthActive) * (beadSize + adjacentSpacing)
+      } else {
+        // No active beads: position after reckoning bar + gap, adjacent inactive beads touch (Typst line 259)
+        y = heavenEarthGap + barThickness + inactiveGap + beadSize / 2 +
+            bead.position * (beadSize + adjacentSpacing)
+      }
+      return { x, y }
+    }
+  }
 }
