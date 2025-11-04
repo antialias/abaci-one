@@ -356,3 +356,37 @@ function getPlaceName(place: number): string {
       return `place ${place} column`
   }
 }
+
+/**
+ * Calculate the natural dimensions of an abacus SVG
+ * This uses the same logic as AbacusStatic to ensure consistency
+ *
+ * @param columns - Number of columns in the abacus
+ * @param showNumbers - Whether numbers are shown below columns
+ * @param columnLabels - Array of column labels (if any)
+ * @returns Object with width and height in pixels (at scale=1)
+ */
+export function calculateAbacusDimensions({
+  columns,
+  showNumbers = true,
+  columnLabels = [],
+}: {
+  columns: number
+  showNumbers?: boolean
+  columnLabels?: string[]
+}): { width: number; height: number } {
+  // Constants matching AbacusStatic
+  const beadSize = 20
+  const rodSpacing = 40
+  const heavenHeight = 60
+  const earthHeight = 120
+  const barHeight = 10
+  const padding = 20
+  const numberHeightCalc = showNumbers ? 30 : 0
+  const labelHeight = columnLabels.length > 0 ? 30 : 0
+
+  const width = columns * rodSpacing + padding * 2
+  const height = heavenHeight + earthHeight + barHeight + padding * 2 + numberHeightCalc + labelHeight
+
+  return { width, height }
+}

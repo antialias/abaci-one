@@ -9,7 +9,7 @@ export { AbacusStaticBead } from './AbacusStaticBead'
 export type { StaticBeadProps } from './AbacusStaticBead'
 
 // Re-export shared utilities that are safe for server components
-export { numberToAbacusState } from './AbacusUtils'
+export { numberToAbacusState, calculateAbacusDimensions } from './AbacusUtils'
 export type {
   AbacusCustomStyles,
   BeadConfig,

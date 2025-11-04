@@ -47,6 +47,7 @@ export {
   calculateBeadDiffFromValues,
   validateAbacusValue,
   areStatesEqual,
+  calculateAbacusDimensions,
 } from "./AbacusUtils";
 export type {
   BeadState,

@@ -6,7 +6,7 @@
  * Different: No hooks, no animations, no interactions, simplified rendering
  */
 
-import { numberToAbacusState } from './AbacusUtils'
+import { numberToAbacusState, calculateAbacusDimensions } from './AbacusUtils'
 import { AbacusStaticBead } from './AbacusStaticBead'
 import type {
   AbacusCustomStyles,
@@ -175,7 +175,14 @@ export function AbacusStatic({
     beadConfigs.push(beads)
   }
 
-  // Calculate dimensions (matching AbacusReact)
+  // Calculate dimensions using shared utility
+  const { width, height } = calculateAbacusDimensions({
+    columns: effectiveColumns,
+    showNumbers: !!showNumbers,
+    columnLabels,
+  })
+
+  // Layout constants (must match calculateAbacusDimensions)
   const beadSize = 20
   const rodSpacing = 40
   const heavenHeight = 60
@@ -184,9 +191,6 @@ export function AbacusStatic({
   const padding = 20
   const numberHeightCalc = showNumbers ? 30 : 0
   const labelHeight = columnLabels.length > 0 ? 30 : 0
-
-  const width = effectiveColumns * rodSpacing + padding * 2
-  const height = heavenHeight + earthHeight + barHeight + padding * 2 + numberHeightCalc + labelHeight
 
   const dimensions = {
     width,

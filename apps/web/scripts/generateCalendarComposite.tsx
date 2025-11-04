@@ -9,7 +9,7 @@
  */
 
 import React from 'react'
-import { AbacusStatic } from '@soroban/abacus-react/static'
+import { AbacusStatic, calculateAbacusDimensions } from '@soroban/abacus-react/static'
 
 interface CalendarCompositeOptions {
   month: number
@@ -45,9 +45,30 @@ const MARGIN = 50
 const CONTENT_WIDTH = WIDTH - MARGIN * 2
 const CONTENT_HEIGHT = HEIGHT - MARGIN * 2
 
-// Header
-const HEADER_HEIGHT = 60
+// Abacus natural size is 120x230 at scale=1
+const ABACUS_NATURAL_WIDTH = 120
+const ABACUS_NATURAL_HEIGHT = 230
+
+// Calculate how many columns needed for year
+const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
+
+// Year abacus dimensions (calculate first to determine header height)
+// Use the shared dimension calculator so we stay in sync with AbacusStatic
+const { width: yearAbacusActualWidth, height: yearAbacusActualHeight } = calculateAbacusDimensions({
+  columns: yearColumns,
+  showNumbers: false,
+  columnLabels: [],
+})
+
+const yearAbacusDisplayWidth = WIDTH * 0.15 // Display size on page
+const yearAbacusDisplayHeight = (yearAbacusActualHeight / yearAbacusActualWidth) * yearAbacusDisplayWidth
+
+// Header - sized to fit month name + year abacus
+const MONTH_NAME_HEIGHT = 40
+const HEADER_HEIGHT = MONTH_NAME_HEIGHT + yearAbacusDisplayHeight + 20 // 20px spacing
 const TITLE_Y = MARGIN + 35
+const yearAbacusX = (WIDTH - yearAbacusDisplayWidth) / 2
+const yearAbacusY = TITLE_Y + 10
 
 // Calendar grid
 const GRID_START_Y = MARGIN + HEADER_HEIGHT
@@ -59,10 +80,7 @@ const DAY_GRID_HEIGHT = GRID_HEIGHT - WEEKDAY_ROW_HEIGHT
 const CELL_WIDTH = CONTENT_WIDTH / 7
 const DAY_CELL_HEIGHT = DAY_GRID_HEIGHT / 6
 
-// Abacus natural size is 120x230 at scale=1
-// We need to fit in cell with padding
-const ABACUS_NATURAL_WIDTH = 120
-const ABACUS_NATURAL_HEIGHT = 230
+// Day abacus sizing - fit in cell with padding
 const CELL_PADDING = 5
 
 // Calculate max scale to fit in cell
@@ -81,9 +99,6 @@ for (let i = 0; i < firstDayOfWeek; i++) {
 for (let day = 1; day <= daysInMonth; day++) {
   calendarCells.push(day)
 }
-
-// Calculate how many columns needed for year
-const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
 
 // Render individual abacus SVGs as complete SVG elements
 function renderAbacusSVG(value: number, columns: number, scale: number): string {
@@ -105,7 +120,7 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
   <rect width="${WIDTH}" height="${HEIGHT}" fill="white"/>
 
   <!-- Title: Month Name -->
-  <text x="${WIDTH / 2}" y="${TITLE_Y - 20}" text-anchor="middle" font-family="Arial" font-size="32" font-weight="bold" fill="#1a1a1a">
+  <text x="${WIDTH / 2}" y="${TITLE_Y}" text-anchor="middle" font-family="Arial" font-size="32" font-weight="bold" fill="#1a1a1a">
     ${monthName}
   </text>
 
@@ -113,13 +128,8 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
   ${(() => {
     const yearAbacusSVG = renderAbacusSVG(year, yearColumns, 1)
     const yearAbacusContent = yearAbacusSVG.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')
-    // Scale year abacus to be smaller (about 15% of width)
-    const yearAbacusDisplayWidth = WIDTH * 0.15
-    const yearAbacusDisplayHeight = (ABACUS_NATURAL_HEIGHT / ABACUS_NATURAL_WIDTH) * yearAbacusDisplayWidth
-    const yearAbacusX = (WIDTH - yearAbacusDisplayWidth) / 2
-    const yearAbacusY = TITLE_Y - 10
     return `<svg x="${yearAbacusX}" y="${yearAbacusY}" width="${yearAbacusDisplayWidth}" height="${yearAbacusDisplayHeight}"
-         viewBox="0 0 ${ABACUS_NATURAL_WIDTH} ${ABACUS_NATURAL_HEIGHT}">
+         viewBox="0 0 ${yearAbacusActualWidth} ${yearAbacusActualHeight}">
     ${yearAbacusContent}
   </svg>`
   })()}
