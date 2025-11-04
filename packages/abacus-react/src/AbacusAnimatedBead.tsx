@@ -293,6 +293,7 @@ export function AbacusAnimatedBead({
     <>
       <GElement
         className={`abacus-bead ${bead.active ? 'active' : 'inactive'} ${hideInactiveBeads && !bead.active ? 'hidden-inactive' : ''}`}
+        data-testid={`bead-place-${bead.placeValue}-${bead.type}${bead.type === 'earth' ? `-pos-${bead.position}` : ''}`}
         style={beadStyle}
         {...bind()}
         onClick={handleClick}

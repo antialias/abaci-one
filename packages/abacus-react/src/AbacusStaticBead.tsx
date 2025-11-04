@@ -91,6 +91,7 @@ export function AbacusStaticBead({
   return (
     <g
       className={`abacus-bead ${bead.active ? 'active' : 'inactive'} ${hideInactiveBeads && !bead.active ? 'hidden-inactive' : ''}`}
+      data-testid={`bead-place-${bead.placeValue}-${bead.type}${bead.type === 'earth' ? `-pos-${bead.position}` : ''}`}
       transform={transform}
       style={{ transition: 'opacity 0.2s ease-in-out' }}
     >
