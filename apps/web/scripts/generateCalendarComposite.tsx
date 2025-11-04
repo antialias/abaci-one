@@ -86,9 +86,9 @@ for (let day = 1; day <= daysInMonth; day++) {
 // Calculate how many columns needed for year
 const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
 
-// Render individual abacus SVGs as strings (without outer svg tag for embedding)
-function renderAbacusContent(value: number, columns: number, scale: number): string {
-  const fullSvg = renderToStaticMarkup(
+// Render individual abacus SVGs as complete SVG elements
+function renderAbacusSVG(value: number, columns: number, scale: number): string {
+  return renderToStaticMarkup(
     <AbacusStatic
       value={value}
       columns={columns}
@@ -98,8 +98,6 @@ function renderAbacusContent(value: number, columns: number, scale: number): str
       compact={false}
     />
   )
-  // Strip outer <svg> tag to embed content
-  return fullSvg.replace(/<svg[^>]*>/, '').replace('</svg>', '')
 }
 
 // Main composite SVG
@@ -153,11 +151,16 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
     const abacusX = abacusCenterX - SCALED_ABACUS_WIDTH / 2
     const abacusY = abacusCenterY - SCALED_ABACUS_HEIGHT / 2
 
+    // Render at scale=1 and let the nested SVG handle scaling via viewBox
+    const abacusSVG = renderAbacusSVG(day, 2, 1)
+    const svgContent = abacusSVG.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')
+
     return `
   <!-- Day ${day} (row ${row}, col ${col}) -->
-  <g transform="translate(${abacusX}, ${abacusY})">
-    ${renderAbacusContent(day, 2, ABACUS_SCALE)}
-  </g>`
+  <svg x="${abacusX}" y="${abacusY}" width="${SCALED_ABACUS_WIDTH}" height="${SCALED_ABACUS_HEIGHT}"
+       viewBox="0 0 ${ABACUS_NATURAL_WIDTH} ${ABACUS_NATURAL_HEIGHT}">
+    ${svgContent}
+  </svg>`
   }).join('')}
 </svg>`
 
