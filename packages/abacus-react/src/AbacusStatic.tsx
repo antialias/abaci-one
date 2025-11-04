@@ -226,7 +226,7 @@ export function AbacusStatic({
       {highlightColumns.map((colIndex) => {
         if (colIndex < 0 || colIndex >= effectiveColumns) return null
 
-        const x = colIndex * rodSpacing + rodSpacing / 2
+        const x = colIndex * rodSpacing + rodSpacing / 2 + padding
         const highlightWidth = rodSpacing * 0.9
         const highlightHeight = height - padding * 2 - numberHeightCalc - labelHeight
 
