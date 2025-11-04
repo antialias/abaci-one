@@ -14,6 +14,7 @@ A comprehensive React component for rendering interactive Soroban (Japanese abac
 - 🎓 **Tutorial system** - Built-in overlay and guidance capabilities
 - 🧩 **Framework-free SVG** - Complete control over rendering
 - ✨ **3D Enhancement** - Three levels of progressive 3D effects for immersive visuals
+- 🚀 **Server Component support** - AbacusStatic works in React Server Components (Next.js App Router)
 
 ## Installation
 
@@ -120,6 +121,59 @@ import { AbacusReact, ABACUS_THEMES } from '@soroban/abacus-react';
 - `translucent` - Nearly invisible frame (best for inline/minimal UI)
 - `solid` - Black frame (best for high contrast/educational contexts)
 - `traditional` - Brown wooden appearance (best for traditional soroban aesthetic)
+
+### Static Display (Server Components)
+
+For static, non-interactive displays that work in React Server Components:
+
+```tsx
+import { AbacusStatic } from '@soroban/abacus-react';
+
+// ✅ Works in React Server Components - no "use client" needed!
+// ✅ No JavaScript sent to client
+// ✅ Perfect for SSG, SSR, and static previews
+
+<AbacusStatic
+  value={123}
+  columns="auto"
+  hideInactiveBeads
+  compact
+/>
+```
+
+**When to use `AbacusStatic` vs `AbacusReact`:**
+
+| Feature | AbacusStatic | AbacusReact |
+|---------|--------------|-------------|
+| React Server Components | ✅ Yes | ❌ No (requires "use client") |
+| Client-side JavaScript | ❌ None | ✅ Yes |
+| User interaction | ❌ No | ✅ Click/drag beads |
+| Animations | ❌ No | ✅ Smooth transitions |
+| Sound effects | ❌ No | ✅ Optional sounds |
+| 3D effects | ❌ No | ✅ Yes |
+| Bundle size | 📦 Minimal | 📦 Full-featured |
+| Use cases | Preview cards, thumbnails, static pages | Interactive tutorials, games, tools |
+
+```tsx
+// Example: Server Component with static abacus cards
+// app/flashcards/page.tsx
+import { AbacusStatic } from '@soroban/abacus-react'
+
+export default function FlashcardsPage() {
+  const numbers = [1, 5, 10, 25, 50, 100]
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {numbers.map(num => (
+        <div key={num} className="card">
+          <AbacusStatic value={num} columns="auto" compact />
+          <p>{num}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
 
 ### Compact/Inline Display
 

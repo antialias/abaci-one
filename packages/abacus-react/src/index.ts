@@ -33,6 +33,9 @@ export type {
 export { StandaloneBead } from "./StandaloneBead";
 export type { StandaloneBeadProps } from "./StandaloneBead";
 
+export { AbacusStatic } from "./AbacusStatic";
+export type { AbacusStaticConfig } from "./AbacusStatic";
+
 export { ABACUS_THEMES } from "./AbacusThemes";
 export type { AbacusThemeName } from "./AbacusThemes";
 
