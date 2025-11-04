@@ -104,10 +104,25 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
   <!-- Background -->
   <rect width="${WIDTH}" height="${HEIGHT}" fill="white"/>
 
-  <!-- Title -->
-  <text x="${WIDTH / 2}" y="${TITLE_Y}" text-anchor="middle" font-family="Arial" font-size="32" font-weight="bold" fill="#1a1a1a">
-    ${monthName} ${year}
+  <!-- Title: Month Name -->
+  <text x="${WIDTH / 2}" y="${TITLE_Y - 20}" text-anchor="middle" font-family="Arial" font-size="32" font-weight="bold" fill="#1a1a1a">
+    ${monthName}
   </text>
+
+  <!-- Year Abacus (centered below month name) -->
+  ${(() => {
+    const yearAbacusSVG = renderAbacusSVG(year, yearColumns, 1)
+    const yearAbacusContent = yearAbacusSVG.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')
+    // Scale year abacus to be smaller (about 15% of width)
+    const yearAbacusDisplayWidth = WIDTH * 0.15
+    const yearAbacusDisplayHeight = (ABACUS_NATURAL_HEIGHT / ABACUS_NATURAL_WIDTH) * yearAbacusDisplayWidth
+    const yearAbacusX = (WIDTH - yearAbacusDisplayWidth) / 2
+    const yearAbacusY = TITLE_Y - 10
+    return `<svg x="${yearAbacusX}" y="${yearAbacusY}" width="${yearAbacusDisplayWidth}" height="${yearAbacusDisplayHeight}"
+         viewBox="0 0 ${ABACUS_NATURAL_WIDTH} ${ABACUS_NATURAL_HEIGHT}">
+    ${yearAbacusContent}
+  </svg>`
+  })()}
 
   <!-- Weekday Headers -->
   ${WEEKDAYS.map((day, i) => `
@@ -119,9 +134,9 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
   <!-- Separator line under weekdays -->
   <line x1="${MARGIN}" y1="${GRID_START_Y + WEEKDAY_ROW_HEIGHT}"
         x2="${WIDTH - MARGIN}" y2="${GRID_START_Y + WEEKDAY_ROW_HEIGHT}"
-        stroke="#ddd" stroke-width="1"/>
+        stroke="#333" stroke-width="2"/>
 
-  <!-- Calendar Grid Cells (debug borders) -->
+  <!-- Calendar Grid Cells -->
   ${calendarCells.map((day, index) => {
     const row = Math.floor(index / 7)
     const col = index % 7
@@ -130,7 +145,7 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
 
     return `
   <rect x="${cellX}" y="${cellY}" width="${CELL_WIDTH}" height="${DAY_CELL_HEIGHT}"
-        fill="none" stroke="#f0f0f0" stroke-width="0.5"/>`
+        fill="none" stroke="#333" stroke-width="2"/>`
   }).join('')}
 
   <!-- Calendar Day Abaci -->
