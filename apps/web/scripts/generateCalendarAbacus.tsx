@@ -9,11 +9,10 @@
  */
 
 import React from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { AbacusStatic } from '@soroban/abacus-react/static'
 
-export function generateAbacusSVG(value: number, columns: number): string {
-  return renderToStaticMarkup(
+export function generateAbacusElement(value: number, columns: number) {
+  return (
     <AbacusStatic
       value={value}
       columns={columns}
@@ -26,6 +25,9 @@ export function generateAbacusSVG(value: number, columns: number): string {
 
 // CLI interface (if run directly)
 if (require.main === module) {
+  // Only import react-dom/server for CLI usage
+  const { renderToStaticMarkup } = require('react-dom/server')
+
   const value = parseInt(process.argv[2], 10)
   const columns = parseInt(process.argv[3], 10)
 
@@ -34,5 +36,5 @@ if (require.main === module) {
     process.exit(1)
   }
 
-  process.stdout.write(generateAbacusSVG(value, columns))
+  process.stdout.write(renderToStaticMarkup(generateAbacusElement(value, columns)))
 }

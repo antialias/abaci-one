@@ -9,12 +9,12 @@
  */
 
 import React from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { AbacusStatic } from '@soroban/abacus-react/static'
 
 interface CalendarCompositeOptions {
   month: number
   year: number
+  renderToString: (element: React.ReactElement) => string
 }
 
 const MONTH_NAMES = [
@@ -33,7 +33,7 @@ function getFirstDayOfWeek(year: number, month: number): number {
 }
 
 export function generateCalendarComposite(options: CalendarCompositeOptions): string {
-  const { month, year } = options
+  const { month, year, renderToString } = options
   const daysInMonth = getDaysInMonth(year, month)
   const firstDayOfWeek = getFirstDayOfWeek(year, month)
   const monthName = MONTH_NAMES[month - 1]
@@ -87,7 +87,7 @@ const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
 
 // Render individual abacus SVGs as complete SVG elements
 function renderAbacusSVG(value: number, columns: number, scale: number): string {
-  return renderToStaticMarkup(
+  return renderToString(
     <AbacusStatic
       value={value}
       columns={columns}
@@ -168,6 +168,9 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
 
 // CLI interface (if run directly)
 if (require.main === module) {
+  // Only import react-dom/server for CLI usage
+  const { renderToStaticMarkup } = require('react-dom/server')
+
   const month = parseInt(process.argv[2], 10)
   const year = parseInt(process.argv[3], 10)
 
@@ -176,5 +179,5 @@ if (require.main === module) {
     process.exit(1)
   }
 
-  process.stdout.write(generateCalendarComposite({ month, year }))
+  process.stdout.write(generateCalendarComposite({ month, year, renderToString: renderToStaticMarkup }))
 }

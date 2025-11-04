@@ -3,10 +3,11 @@ import { writeFileSync, readFileSync, mkdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { execSync } from 'child_process'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { generateMonthlyTypst, generateDailyTypst, getDaysInMonth } from '../utils/typstGenerator'
 import type { AbacusConfig } from '@soroban/abacus-react'
 import { generateCalendarComposite } from '@/../../scripts/generateCalendarComposite'
-import { generateAbacusSVG } from '@/../../scripts/generateCalendarAbacus'
+import { generateAbacusElement } from '@/../../scripts/generateCalendarAbacus'
 
 interface CalendarRequest {
   month: number
@@ -32,13 +33,17 @@ export async function POST(request: NextRequest) {
     tempDir = join(tmpdir(), `calendar-${Date.now()}-${Math.random()}`)
     mkdirSync(tempDir, { recursive: true })
 
-    // Generate SVGs using script (avoids Next.js react-dom/server restriction)
+    // Generate SVGs using server-side rendering (API routes can use react-dom/server)
     const daysInMonth = getDaysInMonth(year, month)
 
     if (format === 'monthly') {
       // Generate single composite SVG for monthly calendar (prevents multi-page overflow)
       try {
-        const compositeSvg = generateCalendarComposite({ month, year })
+        const compositeSvg = generateCalendarComposite({
+          month,
+          year,
+          renderToString: renderToStaticMarkup
+        })
         if (!compositeSvg || compositeSvg.trim().length === 0) {
           throw new Error(`Generated empty composite calendar SVG`)
         }
@@ -53,7 +58,7 @@ export async function POST(request: NextRequest) {
       // Generate day SVGs (1 to daysInMonth)
       for (let day = 1; day <= daysInMonth; day++) {
         try {
-          const svg = generateAbacusSVG(day, 2)
+          const svg = renderToStaticMarkup(generateAbacusElement(day, 2))
           if (!svg || svg.trim().length === 0) {
             throw new Error(`Generated empty SVG for day ${day}`)
           }
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
       // Generate year SVG
       const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
       try {
-        const yearSvg = generateAbacusSVG(year, yearColumns)
+        const yearSvg = renderToStaticMarkup(generateAbacusElement(year, yearColumns))
         if (!yearSvg || yearSvg.trim().length === 0) {
           throw new Error(`Generated empty SVG for year ${year}`)
         }
