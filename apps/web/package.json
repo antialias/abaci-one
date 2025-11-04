@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && concurrently \"node server.js\" \"npx @pandacss/dev --watch\"",
-    "build": "node scripts/generate-build-info.js && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && next build",
+    "build": "node scripts/generate-build-info.js && npx @pandacss/dev && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json && next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "npx @biomejs/biome lint . && npx eslint .",
     "lint:fix": "npx @biomejs/biome lint . --write && npx eslint . --fix",
