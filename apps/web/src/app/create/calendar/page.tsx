@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { css } from '../../../../styled-system/css'
 import { useAbacusConfig } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -40,11 +40,6 @@ export default function CalendarCreatorPage() {
       }
 
       const data = await response.json()
-
-      // Store SVG preview for display
-      if (data.svg) {
-        setPreviewSvg(data.svg)
-      }
 
       // Convert base64 PDF to blob and trigger download
       const pdfBytes = Uint8Array.from(atob(data.pdf), c => c.charCodeAt(0))
@@ -133,7 +128,35 @@ export default function CalendarCreatorPage() {
             />
 
             {/* Preview */}
-            <CalendarPreview month={month} year={year} format={format} previewSvg={previewSvg} />
+            <Suspense
+              fallback={
+                <div
+                  data-component="calendar-preview"
+                  className={css({
+                    bg: 'gray.800',
+                    borderRadius: '12px',
+                    padding: '2rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '600px',
+                  })}
+                >
+                  <p
+                    className={css({
+                      fontSize: '1.25rem',
+                      color: 'gray.400',
+                      textAlign: 'center',
+                    })}
+                  >
+                    Loading preview...
+                  </p>
+                </div>
+              }
+            >
+              <CalendarPreview month={month} year={year} format={format} previewSvg={previewSvg} />
+            </Suspense>
           </div>
         </div>
       </div>
