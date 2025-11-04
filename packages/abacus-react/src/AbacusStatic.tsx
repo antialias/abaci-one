@@ -1,12 +1,14 @@
 /**
  * AbacusStatic - Server Component compatible static abacus
  *
- * Shares core logic with AbacusReact but uses static rendering without hooks/animations.
- * Reuses: numberToAbacusState, getBeadColor logic, positioning calculations
- * Different: No hooks, no animations, no interactions, simplified rendering
+ * Shares layout and rendering with AbacusReact through dependency injection.
+ * Uses standard dimensions to ensure same props = same exact visual output.
+ * Reuses: AbacusSVGRenderer for structure, shared dimension/position calculators
+ * Different: No hooks, no animations, no interactions, simplified bead rendering
  */
 
-import { numberToAbacusState, calculateAbacusDimensions } from './AbacusUtils'
+import { numberToAbacusState, calculateStandardDimensions } from './AbacusUtils'
+import { AbacusSVGRenderer } from './AbacusSVGRenderer'
 import { AbacusStaticBead } from './AbacusStaticBead'
 import type {
   AbacusCustomStyles,
@@ -30,7 +32,7 @@ export interface AbacusStaticConfig {
   columnLabels?: string[]
 }
 
-// Shared color logic from AbacusReact (simplified for static use)
+// Shared color logic (matches AbacusReact)
 function getBeadColor(
   bead: BeadConfig,
   totalColumns: number,
@@ -85,37 +87,6 @@ function getBeadColor(
 
   // Monochrome (default)
   return '#3b82f6'
-}
-
-// Calculate bead positions (simplified from AbacusReact)
-function calculateBeadPosition(
-  bead: BeadConfig,
-  dimensions: { beadSize: number; rodSpacing: number; heavenY: number; earthY: number; barY: number; totalColumns: number }
-): { x: number; y: number } {
-  const { beadSize, rodSpacing, heavenY, earthY, barY, totalColumns } = dimensions
-
-  // X position based on place value (rightmost = ones place)
-  const columnIndex = totalColumns - 1 - bead.placeValue
-  const x = columnIndex * rodSpacing + rodSpacing / 2
-
-  // Y position based on bead type and active state
-  if (bead.type === 'heaven') {
-    // Heaven bead: if active, near bar; if inactive, at top
-    const y = bead.active ? barY - beadSize - 5 : heavenY
-    return { x, y }
-  } else {
-    // Earth bead: if active, stack up from bar; if inactive, at bottom
-    const earthSpacing = beadSize + 4
-    if (bead.active) {
-      // Active earth beads stack upward from the bar
-      const y = barY + beadSize / 2 + 10 + bead.position * earthSpacing
-      return { x, y }
-    } else {
-      // Inactive earth beads rest at the bottom
-      const y = earthY + (bead.position - 2) * earthSpacing
-      return { x, y }
-    }
-  }
 }
 
 /**
@@ -175,196 +146,38 @@ export function AbacusStatic({
     beadConfigs.push(beads)
   }
 
-  // Calculate dimensions using shared utility
-  const { width, height } = calculateAbacusDimensions({
+  // Calculate standard dimensions (same as AbacusReact!)
+  const dimensions = calculateStandardDimensions({
     columns: effectiveColumns,
+    scaleFactor,
     showNumbers: !!showNumbers,
     columnLabels,
   })
 
-  // Layout constants (must match calculateAbacusDimensions)
-  const beadSize = 20
-  const rodSpacing = 40
-  const heavenHeight = 60
-  const earthHeight = 120
-  const barHeight = 10
-  const padding = 20
-  const numberHeightCalc = showNumbers ? 30 : 0
-  const labelHeight = columnLabels.length > 0 ? 30 : 0
-
-  const dimensions = {
-    width,
-    height,
-    beadSize,
-    rodSpacing,
-    heavenY: padding + labelHeight + heavenHeight / 3,
-    earthY: padding + labelHeight + heavenHeight + barHeight + earthHeight * 0.7,
-    barY: padding + labelHeight + heavenHeight,
-    padding,
-    totalColumns: effectiveColumns,
-  }
-
   // Compact mode hides frame
   const effectiveFrameVisible = compact ? false : frameVisible
 
+  // Use shared renderer with static bead component
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={width * scaleFactor}
-      height={height * scaleFactor}
-      viewBox={`0 0 ${width} ${height}`}
-      className={`abacus-svg ${hideInactiveBeads ? 'hide-inactive-mode' : ''}`}
-      style={{ overflow: 'visible', display: 'block' }}
-    >
-      <defs>
-        <style>{`
-          .abacus-bead {
-            transition: opacity 0.2s ease-in-out;
-          }
-          .hide-inactive-mode .abacus-bead.hidden-inactive {
-            opacity: 0 !important;
-          }
-        `}</style>
-      </defs>
-
-      {/* Column highlights */}
-      {highlightColumns.map((colIndex) => {
-        if (colIndex < 0 || colIndex >= effectiveColumns) return null
-
-        const x = colIndex * rodSpacing + rodSpacing / 2 + padding
-        const highlightWidth = rodSpacing * 0.9
-        const highlightHeight = height - padding * 2 - numberHeightCalc - labelHeight
-
-        return (
-          <rect
-            key={`column-highlight-${colIndex}`}
-            x={x - highlightWidth / 2}
-            y={padding + labelHeight}
-            width={highlightWidth}
-            height={highlightHeight}
-            fill="rgba(59, 130, 246, 0.15)"
-            stroke="rgba(59, 130, 246, 0.4)"
-            strokeWidth={2}
-            rx={6}
-            style={{ pointerEvents: 'none' }}
-          />
-        )
-      })}
-
-      {/* Column labels */}
-      {columnLabels.map((label, colIndex) => {
-        if (!label || colIndex >= effectiveColumns) return null
-
-        const x = colIndex * rodSpacing + rodSpacing / 2 + padding
-
-        return (
-          <text
-            key={`column-label-${colIndex}`}
-            x={x}
-            y={padding + 15}
-            textAnchor="middle"
-            fontSize="14"
-            fontWeight="600"
-            fill="rgba(0, 0, 0, 0.7)"
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >
-            {label}
-          </text>
-        )
-      })}
-
-      {/* Rods (column posts) */}
-      {effectiveFrameVisible && beadConfigs.map((_, colIndex) => {
-        const x = colIndex * rodSpacing + rodSpacing / 2 + padding
-
-        return (
-          <rect
-            key={`rod-${colIndex}`}
-            x={x - 3}
-            y={padding + labelHeight}
-            width={6}
-            height={heavenHeight + earthHeight + barHeight}
-            fill={customStyles?.columnPosts?.fill || 'rgb(0, 0, 0, 0.1)'}
-            stroke={customStyles?.columnPosts?.stroke || 'rgba(0, 0, 0, 0.2)'}
-            strokeWidth={customStyles?.columnPosts?.strokeWidth || 1}
-            opacity={customStyles?.columnPosts?.opacity ?? 1}
-          />
-        )
-      })}
-
-      {/* Reckoning bar */}
-      {effectiveFrameVisible && (
-        <rect
-          x={padding}
-          y={dimensions.barY}
-          width={effectiveColumns * rodSpacing}
-          height={barHeight}
-          fill={customStyles?.reckoningBar?.fill || 'rgb(0, 0, 0, 0.15)'}
-          stroke={customStyles?.reckoningBar?.stroke || 'rgba(0, 0, 0, 0.3)'}
-          strokeWidth={customStyles?.reckoningBar?.strokeWidth || 2}
-          opacity={customStyles?.reckoningBar?.opacity ?? 1}
-        />
-      )}
-
-      {/* Beads */}
-      {beadConfigs.map((columnBeads, colIndex) => {
-        const placeValue = effectiveColumns - 1 - colIndex
-
-        return (
-          <g key={`column-${colIndex}`}>
-            {columnBeads.map((bead, beadIndex) => {
-              const position = calculateBeadPosition(bead, dimensions)
-
-              // Adjust X for padding
-              position.x += padding
-
-              const color = getBeadColor(bead, effectiveColumns, colorScheme, colorPalette)
-
-              return (
-                <AbacusStaticBead
-                  key={`bead-${colIndex}-${beadIndex}`}
-                  bead={bead}
-                  x={position.x}
-                  y={position.y}
-                  size={beadSize}
-                  shape={beadShape}
-                  color={color}
-                  hideInactiveBeads={hideInactiveBeads}
-                  customStyle={
-                    bead.type === 'heaven'
-                      ? customStyles?.heavenBeads
-                      : customStyles?.earthBeads
-                  }
-                />
-              )
-            })}
-          </g>
-        )
-      })}
-
-      {/* Column numbers */}
-      {showNumbers && beadConfigs.map((_, colIndex) => {
-        const placeValue = effectiveColumns - 1 - colIndex
-        const columnState = state[placeValue] || { heavenActive: false, earthActive: 0 }
-        const digit = (columnState.heavenActive ? 5 : 0) + columnState.earthActive
-        const x = colIndex * rodSpacing + rodSpacing / 2 + padding
-
-        return (
-          <text
-            key={`number-${colIndex}`}
-            x={x}
-            y={height - padding + 5}
-            textAnchor="middle"
-            fontSize={customStyles?.numerals?.fontSize || 16}
-            fontWeight={customStyles?.numerals?.fontWeight || '600'}
-            fill={customStyles?.numerals?.color || 'rgba(0, 0, 0, 0.8)'}
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >
-            {digit}
-          </text>
-        )
-      })}
-    </svg>
+    <AbacusSVGRenderer
+      value={value}
+      columns={effectiveColumns}
+      state={state}
+      beadConfigs={beadConfigs}
+      dimensions={dimensions}
+      scaleFactor={scaleFactor}
+      beadShape={beadShape}
+      colorScheme={colorScheme}
+      colorPalette={colorPalette}
+      hideInactiveBeads={hideInactiveBeads}
+      frameVisible={effectiveFrameVisible}
+      showNumbers={!!showNumbers}
+      customStyles={customStyles}
+      highlightColumns={highlightColumns}
+      columnLabels={columnLabels}
+      BeadComponent={AbacusStaticBead}
+      getBeadColor={getBeadColor}
+    />
   )
 }
 

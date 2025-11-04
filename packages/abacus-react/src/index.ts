@@ -48,6 +48,8 @@ export {
   validateAbacusValue,
   areStatesEqual,
   calculateAbacusDimensions,
+  calculateStandardDimensions,  // NEW: Shared layout calculator
+  calculateBeadPosition,         // NEW: Bead position calculator
 } from "./AbacusUtils";
 export type {
   BeadState,
@@ -55,6 +57,8 @@ export type {
   BeadDiffResult,
   BeadDiffOutput,
   PlaceValueBasedBead,
+  AbacusLayoutDimensions,        // NEW: Complete layout dimensions type
+  BeadPositionConfig,            // NEW: Bead config for position calculation
 } from "./AbacusUtils";
 
 export { useAbacusDiff, useAbacusState } from "./AbacusHooks";

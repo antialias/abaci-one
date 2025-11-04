@@ -7,20 +7,39 @@ import { ABACUS_THEMES } from './AbacusThemes'
  *
  * ## Key Features:
  * - ✅ Works in React Server Components (no "use client")
- * - ✅ Shares core utilities with AbacusReact (numberToAbacusState, color logic)
+ * - ✅ **Identical layout to AbacusReact** - same props = same exact SVG output
  * - ✅ No animations, hooks, or client-side JavaScript
  * - ✅ Lightweight rendering for static displays
  *
- * ## Shared Code (No Duplication!):
- * - Uses `numberToAbacusState()` from AbacusUtils
- * - Uses same color scheme logic as AbacusReact
- * - Uses same bead positioning concepts
- * - Accepts same `customStyles` prop structure
+ * ## Shared Architecture (Zero Duplication!):
+ * Both AbacusStatic and AbacusReact use the **exact same rendering pipeline**:
+ *
+ * ```
+ * calculateStandardDimensions() → AbacusSVGRenderer → calculateBeadPosition()
+ *                                        ↓
+ *                    ┌───────────────────┴───────────────────┐
+ *                    ↓                                       ↓
+ *             AbacusStaticBead                    AbacusAnimatedBead
+ *             (Simple SVG)                        (react-spring)
+ * ```
+ *
+ * - `calculateStandardDimensions()` - Single source of truth for layout (beadSize, gaps, bar position, etc.)
+ * - `AbacusSVGRenderer` - Shared SVG structure with dependency injection for bead components
+ * - `calculateBeadPosition()` - Exact positioning formulas used by both variants
+ * - `AbacusStaticBead` - RSC-compatible simple SVG shapes (this component)
+ * - `AbacusAnimatedBead` - Client component with animations (AbacusReact)
+ *
+ * ## Visual Consistency Guarantee:
+ * Both AbacusStatic and AbacusReact produce **pixel-perfect identical output** for the same props.
+ * This ensures previews match interactive versions, PDFs match web displays, etc.
+ *
+ * **Architecture benefit:** ~560 lines of duplicate code eliminated. Same props = same dimensions = same positions = same layout.
  *
  * ## When to Use:
  * - React Server Components (Next.js App Router)
  * - Static site generation
  * - Non-interactive previews
+ * - PDF generation
  * - Server-side rendering without hydration
  */
 const meta = {

@@ -94,7 +94,7 @@ export interface AbacusSVGRendererProps {
   children?: React.ReactNode  // Rendered at the end of the SVG
 
   // Dependency injection
-  BeadComponent: React.ComponentType<BeadComponentProps>
+  BeadComponent: React.ComponentType<any>  // Accept any bead component (base props + extra props)
   getBeadColor: (bead: BeadConfig, totalColumns: number, colorScheme: string, colorPalette: string) => string
 
   // Event handlers (optional, passed through to beads)
@@ -102,6 +102,10 @@ export interface AbacusSVGRendererProps {
   onBeadMouseEnter?: (bead: BeadConfig, event?: React.MouseEvent) => void
   onBeadMouseLeave?: (bead: BeadConfig, event?: React.MouseEvent) => void
   onBeadRef?: (bead: BeadConfig, element: SVGElement | null) => void
+
+  // Extra props calculator (for animations, gestures, etc.)
+  // This function is called for each bead to get extra props
+  calculateExtraBeadProps?: (bead: BeadConfig, baseProps: BeadComponentProps) => Record<string, any>
 }
 
 /**
@@ -133,6 +137,7 @@ export function AbacusSVGRenderer({
   onBeadMouseEnter,
   onBeadMouseLeave,
   onBeadRef,
+  calculateExtraBeadProps,
 }: AbacusSVGRendererProps) {
   const { width, height, rodSpacing, barY, beadSize, barThickness, labelHeight, numbersHeight } = dimensions
 
@@ -315,21 +320,30 @@ export function AbacusSVGRenderer({
                   ? customStyles?.heavenBeads
                   : customStyles?.earthBeads
 
+              // Build base props
+              const baseProps: BeadComponentProps = {
+                bead,
+                x: position.x,
+                y: position.y,
+                size: beadSize,
+                shape: beadShape,
+                color,
+                hideInactiveBeads,
+                customStyle,
+                onClick: onBeadClick,
+                onMouseEnter: onBeadMouseEnter,
+                onMouseLeave: onBeadMouseLeave,
+                onRef: onBeadRef,
+              }
+
+              // Calculate extra props if provided (for animations, etc.)
+              const extraProps = calculateExtraBeadProps?.(bead, baseProps) || {}
+
               return (
                 <BeadComponent
-                  key={`bead-${colIndex}-${beadIndex}`}
-                  bead={bead}
-                  x={position.x}
-                  y={position.y}
-                  size={beadSize}
-                  shape={beadShape}
-                  color={color}
-                  hideInactiveBeads={hideInactiveBeads}
-                  customStyle={customStyle}
-                  onClick={onBeadClick}
-                  onMouseEnter={onBeadMouseEnter}
-                  onMouseLeave={onBeadMouseLeave}
-                  onRef={onBeadRef}
+                  key={`bead-pv${bead.placeValue}-${bead.type}-${bead.position}`}
+                  {...baseProps}
+                  {...extraProps}
                 />
               )
             })}
