@@ -1,5 +1,75 @@
 # Claude Code Instructions for apps/web
 
+## CRITICAL: Production Dependencies
+
+**NEVER add TypeScript execution tools to production dependencies.**
+
+### Forbidden Production Dependencies
+
+The following packages must ONLY be in `devDependencies`, NEVER in `dependencies`:
+
+- ❌ `tsx` - TypeScript execution (only for scripts during development)
+- ❌ `ts-node` - TypeScript execution
+- ❌ Any TypeScript compiler/executor that runs .ts/.tsx files at runtime
+
+### Why This Matters
+
+1. **Docker Image Size**: These tools add 50-100MB+ to production images
+2. **Security**: Running TypeScript at runtime is a security risk
+3. **Performance**: Production should run compiled JavaScript, not interpret TypeScript
+4. **Architecture**: If you need TypeScript at runtime, the code is in the wrong place
+
+### What To Do Instead
+
+**❌ WRONG - Adding tsx to dependencies to run .ts/.tsx at runtime:**
+```json
+{
+  "dependencies": {
+    "tsx": "^4.20.5"  // NEVER DO THIS
+  }
+}
+```
+
+**✅ CORRECT - Move code to proper location:**
+
+1. **For Next.js API routes**: Move files to `src/` so Next.js bundles them during build
+   - Example: `scripts/generateCalendar.tsx` → `src/utils/calendar/generateCalendar.tsx`
+   - Next.js will compile and bundle these during `npm run build`
+
+2. **For standalone scripts**: Keep in `scripts/` and use `tsx` from devDependencies
+   - Only run during development/build, never at runtime
+   - Scripts can use `tsx` because it's available during build
+
+3. **For server-side TypeScript**: Compile to JavaScript during build
+   - Use `tsc` to compile `src/` to `dist/`
+   - Production runs the compiled JavaScript from `dist/`
+
+### Historical Context
+
+**We've made this mistake TWICE:**
+
+1. **First time (commit ffae9c1b)**: Added tsx to dependencies for calendar generation scripts
+   - **Fix**: Moved scripts to `src/utils/calendar/` so Next.js bundles them
+
+2. **Second time (would have happened again)**: Almost added tsx again for same reason
+   - **Learning**: If you're tempted to add tsx to dependencies, the architecture is wrong
+
+### Red Flags
+
+If you find yourself thinking:
+- "I need to add tsx to dependencies to run this .ts file in production"
+- "This script needs TypeScript at runtime"
+- "Production can't import this .tsx file"
+
+**STOP.** The code is in the wrong place. Move it to `src/` for bundling.
+
+### Enforcement
+
+Before modifying `package.json` dependencies:
+1. Check if any TypeScript execution tools are being added
+2. Ask yourself: "Could this code be in `src/` instead?"
+3. If unsure, ask the user before proceeding
+
 ## MANDATORY: Quality Checks for ALL Work
 
 **BEFORE declaring ANY work complete, fixed, or working**, you MUST run and pass these checks:
