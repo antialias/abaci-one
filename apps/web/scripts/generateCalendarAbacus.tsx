@@ -5,12 +5,12 @@
  * Usage: npx tsx scripts/generateCalendarAbacus.tsx <value> <columns>
  * Example: npx tsx scripts/generateCalendarAbacus.tsx 15 2
  *
- * Pattern copied directly from working generateDayIcon.tsx
+ * Uses AbacusStatic for server-side rendering (no client hooks)
  */
 
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { AbacusReact } from '@soroban/abacus-react'
+import { AbacusStatic } from '@soroban/abacus-react/static'
 
 const value = parseInt(process.argv[2], 10)
 const columns = parseInt(process.argv[3], 10)
@@ -20,15 +20,14 @@ if (isNaN(value) || isNaN(columns)) {
   process.exit(1)
 }
 
-// Use exact same pattern as generateDayIcon - inline customStyles
+// Use AbacusStatic - pure server-side rendering, no client hooks
 const abacusMarkup = renderToStaticMarkup(
-  <AbacusReact
+  <AbacusStatic
     value={value}
     columns={columns}
     scaleFactor={1}
-    animated={false}
-    interactive={false}
     showNumbers={false}
+    frameVisible={true}
   />
 )
 
