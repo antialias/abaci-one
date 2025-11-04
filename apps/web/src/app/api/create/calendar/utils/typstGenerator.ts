@@ -68,7 +68,7 @@ export function generateMonthlyTypst(config: TypstConfig): string {
 
   // Day cells
   for (let day = 1; day <= daysInMonth; day++) {
-    cells += `  [#image("${tempDir}/day-${day}.svg", width: 90%)],\n`
+    cells += `  [#image("day-${day}.svg", width: 90%)],\n`
   }
 
   return `#set page(
@@ -85,7 +85,7 @@ export function generateMonthlyTypst(config: TypstConfig): string {
   #v(0.5em)
 
   // Year as abacus
-  #image("${tempDir}/year.svg", width: 35%)
+  #image("year.svg", width: 35%)
 ]
 
 #v(1.5em)
@@ -127,14 +127,14 @@ export function generateDailyTypst(config: TypstConfig): string {
   // Header: Year
   #align(center)[
     #v(1em)
-    #image("${tempDir}/year.svg", width: 30%)
+    #image("year.svg", width: 30%)
   ]
 
   #v(2em)
 
   // Main: Day number as large abacus
   #align(center + horizon)[
-    #image("${tempDir}/day-${day}.svg", width: 50%)
+    #image("day-${day}.svg", width: 50%)
   ]
 
   #v(2em)

@@ -73,10 +73,11 @@ export async function POST(request: NextRequest) {
     const typstPath = join(tempDir, 'calendar.typ')
     writeFileSync(typstPath, typstContent)
 
-    // Compile with Typst
+    // Compile with Typst (run from tempDir so relative paths work)
     const pdfPath = join(tempDir, 'calendar.pdf')
     try {
-      execSync(`typst compile "${typstPath}" "${pdfPath}"`, {
+      execSync(`typst compile "calendar.typ" "calendar.pdf"`, {
+        cwd: tempDir,
         stdio: 'pipe',
       })
     } catch (error) {
