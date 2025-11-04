@@ -5,6 +5,8 @@ import { join } from 'path'
 import { execSync } from 'child_process'
 import { generateMonthlyTypst, generateDailyTypst, getDaysInMonth } from '../utils/typstGenerator'
 import type { AbacusConfig } from '@soroban/abacus-react'
+import { generateCalendarComposite } from '@/../../scripts/generateCalendarComposite'
+import { generateAbacusSVG } from '@/../../scripts/generateCalendarAbacus'
 
 interface CalendarRequest {
   month: number
@@ -35,39 +37,29 @@ export async function POST(request: NextRequest) {
 
     if (format === 'monthly') {
       // Generate single composite SVG for monthly calendar (prevents multi-page overflow)
-      const compositeScriptPath = join(process.cwd(), 'scripts', 'generateCalendarComposite.tsx')
       try {
-        const compositeSvg = execSync(`npx tsx "${compositeScriptPath}" ${month} ${year}`, {
-          encoding: 'utf-8',
-          cwd: process.cwd(),
-          stdio: ['pipe', 'pipe', 'pipe'],
-        })
+        const compositeSvg = generateCalendarComposite({ month, year })
         if (!compositeSvg || compositeSvg.trim().length === 0) {
           throw new Error(`Generated empty composite calendar SVG`)
         }
         writeFileSync(join(tempDir, 'calendar.svg'), compositeSvg)
       } catch (error: any) {
-        console.error(`Error generating composite calendar:`, error.stderr || error.message)
+        console.error(`Error generating composite calendar:`, error.message)
         throw error
       }
     } else {
       // Daily format: generate individual SVGs for each day
-      const scriptPath = join(process.cwd(), 'scripts', 'generateCalendarAbacus.tsx')
 
       // Generate day SVGs (1 to daysInMonth)
       for (let day = 1; day <= daysInMonth; day++) {
         try {
-          const svg = execSync(`npx tsx "${scriptPath}" ${day} 2`, {
-            encoding: 'utf-8',
-            cwd: process.cwd(),
-            stdio: ['pipe', 'pipe', 'pipe'],
-          })
+          const svg = generateAbacusSVG(day, 2)
           if (!svg || svg.trim().length === 0) {
             throw new Error(`Generated empty SVG for day ${day}`)
           }
           writeFileSync(join(tempDir, `day-${day}.svg`), svg)
         } catch (error: any) {
-          console.error(`Error generating day ${day} SVG:`, error.stderr || error.message)
+          console.error(`Error generating day ${day} SVG:`, error.message)
           throw error
         }
       }
@@ -75,17 +67,13 @@ export async function POST(request: NextRequest) {
       // Generate year SVG
       const yearColumns = Math.max(1, Math.ceil(Math.log10(year + 1)))
       try {
-        const yearSvg = execSync(`npx tsx "${scriptPath}" ${year} ${yearColumns}`, {
-          encoding: 'utf-8',
-          cwd: process.cwd(),
-          stdio: ['pipe', 'pipe', 'pipe'],
-        })
+        const yearSvg = generateAbacusSVG(year, yearColumns)
         if (!yearSvg || yearSvg.trim().length === 0) {
           throw new Error(`Generated empty SVG for year ${year}`)
         }
         writeFileSync(join(tempDir, 'year.svg'), yearSvg)
       } catch (error: any) {
-        console.error(`Error generating year ${year} SVG:`, error.stderr || error.message)
+        console.error(`Error generating year ${year} SVG:`, error.message)
         throw error
       }
     }

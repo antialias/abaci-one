@@ -121,9 +121,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install tsx globally for calendar generation scripts
-RUN npm install -g tsx@4.20.5
-
 # Copy typst binary from typst-builder stage
 COPY --from=typst-builder /usr/local/bin/typst /usr/local/bin/typst
 

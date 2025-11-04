@@ -12,23 +12,27 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { AbacusStatic } from '@soroban/abacus-react/static'
 
-const value = parseInt(process.argv[2], 10)
-const columns = parseInt(process.argv[3], 10)
-
-if (isNaN(value) || isNaN(columns)) {
-  console.error('Usage: npx tsx scripts/generateCalendarAbacus.tsx <value> <columns>')
-  process.exit(1)
+export function generateAbacusSVG(value: number, columns: number): string {
+  return renderToStaticMarkup(
+    <AbacusStatic
+      value={value}
+      columns={columns}
+      scaleFactor={1}
+      showNumbers={false}
+      frameVisible={true}
+    />
+  )
 }
 
-// Use AbacusStatic - pure server-side rendering, no client hooks
-const abacusMarkup = renderToStaticMarkup(
-  <AbacusStatic
-    value={value}
-    columns={columns}
-    scaleFactor={1}
-    showNumbers={false}
-    frameVisible={true}
-  />
-)
+// CLI interface (if run directly)
+if (require.main === module) {
+  const value = parseInt(process.argv[2], 10)
+  const columns = parseInt(process.argv[3], 10)
 
-process.stdout.write(abacusMarkup)
+  if (isNaN(value) || isNaN(columns)) {
+    console.error('Usage: npx tsx scripts/generateCalendarAbacus.tsx <value> <columns>')
+    process.exit(1)
+  }
+
+  process.stdout.write(generateAbacusSVG(value, columns))
+}

@@ -12,12 +12,9 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { AbacusStatic } from '@soroban/abacus-react/static'
 
-const month = parseInt(process.argv[2], 10)
-const year = parseInt(process.argv[3], 10)
-
-if (isNaN(month) || isNaN(year) || month < 1 || month > 12) {
-  console.error('Usage: npx tsx scripts/generateCalendarComposite.tsx <month> <year>')
-  process.exit(1)
+interface CalendarCompositeOptions {
+  month: number
+  year: number
 }
 
 const MONTH_NAMES = [
@@ -35,9 +32,11 @@ function getFirstDayOfWeek(year: number, month: number): number {
   return new Date(year, month - 1, 1).getDay()
 }
 
-const daysInMonth = getDaysInMonth(year, month)
-const firstDayOfWeek = getFirstDayOfWeek(year, month)
-const monthName = MONTH_NAMES[month - 1]
+export function generateCalendarComposite(options: CalendarCompositeOptions): string {
+  const { month, year } = options
+  const daysInMonth = getDaysInMonth(year, month)
+  const firstDayOfWeek = getFirstDayOfWeek(year, month)
+  const monthName = MONTH_NAMES[month - 1]
 
 // Layout constants for US Letter aspect ratio (8.5 x 11)
 const WIDTH = 850
@@ -164,4 +163,18 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
   }).join('')}
 </svg>`
 
-process.stdout.write(compositeSVG)
+  return compositeSVG
+}
+
+// CLI interface (if run directly)
+if (require.main === module) {
+  const month = parseInt(process.argv[2], 10)
+  const year = parseInt(process.argv[3], 10)
+
+  if (isNaN(month) || isNaN(year) || month < 1 || month > 12) {
+    console.error('Usage: npx tsx scripts/generateCalendarComposite.tsx <month> <year>')
+    process.exit(1)
+  }
+
+  process.stdout.write(generateCalendarComposite({ month, year }))
+}
