@@ -970,16 +970,11 @@ function TutorialPlayerContent({
 
   // Two-level dynamic column highlights: group terms + individual term
   const dynamicColumnHighlights = useMemo(() => {
-    console.log('🎨 COMPUTING COLUMN HIGHLIGHTS')
-    console.log('  - activeTermIndices:', Array.from(activeTermIndices))
-    console.log('  - activeIndividualTermIndex:', activeIndividualTermIndex)
-
     const highlights: Record<number, any> = {}
 
     // Level 1: Group highlights (blue glow for all terms in activeTermIndices)
     activeTermIndices.forEach((termIndex) => {
       const columnIndex = getColumnFromTermIndex(termIndex, true) // Use group column (rhsPlace)
-      console.log(`  - Group term ${termIndex} maps to column ${columnIndex} (using rhsPlace)`)
       if (columnIndex !== null) {
         highlights[columnIndex] = {
           // Group background glow effect (blue)
@@ -998,16 +993,12 @@ function TutorialPlayerContent({
             borderColor: '#3b82f6',
           },
         }
-        console.log(`  🔵 Added BLUE highlight for column ${columnIndex}`)
       }
     })
 
     // Level 2: Individual term highlight (orange glow, overrides group styling)
     if (activeIndividualTermIndex !== null) {
       const individualColumnIndex = getColumnFromTermIndex(activeIndividualTermIndex, false) // Use individual column (termPlace)
-      console.log(
-        `  - Individual term ${activeIndividualTermIndex} maps to column ${individualColumnIndex} (using termPlace)`
-      )
       if (individualColumnIndex !== null) {
         highlights[individualColumnIndex] = {
           // Individual background glow effect (orange) - overrides group glow
@@ -1026,54 +1017,46 @@ function TutorialPlayerContent({
             borderColor: '#ea580c',
           },
         }
-        console.log(
-          `  🟠 Added ORANGE highlight for column ${individualColumnIndex} (overriding blue)`
-        )
       }
     }
 
-    console.log(
-      '🎨 Final highlights:',
-      Object.keys(highlights).map((col) => `Column ${col}`)
-    )
     return highlights
   }, [activeTermIndices, activeIndividualTermIndex, getColumnFromTermIndex])
 
   // Memoize custom styles calculation to avoid expensive recalculation on every render
   const customStyles = useMemo(() => {
-    // Calculate valid column range based on abacusColumns
-    const minValidColumn = 5 - abacusColumns
+    // Separate bead-level and column-level styles
+    const beadLevelHighlights: Record<number, any> = {}
+    const columnLevelHighlights: Record<number, any> = {}
 
-    // Start with static highlights from step configuration
-    const staticHighlights: Record<number, any> = {}
-
+    // Process static highlights from step configuration (bead-specific)
     if (currentStep.highlightBeads && Array.isArray(currentStep.highlightBeads)) {
       currentStep.highlightBeads.forEach((highlight) => {
         // Convert placeValue to columnIndex for AbacusReact compatibility
         const columnIndex = abacusColumns - 1 - highlight.placeValue
 
-        // Skip highlights for columns that don't exist
-        if (columnIndex < minValidColumn) {
+        // Skip highlights for columns that don't exist in the rendered abacus
+        if (columnIndex < 0 || columnIndex >= abacusColumns) {
           return
         }
 
         // Initialize column if it doesn't exist
-        if (!staticHighlights[columnIndex]) {
-          staticHighlights[columnIndex] = {}
+        if (!beadLevelHighlights[columnIndex]) {
+          beadLevelHighlights[columnIndex] = {}
         }
 
         // Add the bead style to the appropriate type
         if (highlight.beadType === 'earth' && highlight.position !== undefined) {
-          if (!staticHighlights[columnIndex].earth) {
-            staticHighlights[columnIndex].earth = {}
+          if (!beadLevelHighlights[columnIndex].earth) {
+            beadLevelHighlights[columnIndex].earth = {}
           }
-          staticHighlights[columnIndex].earth[highlight.position] = {
+          beadLevelHighlights[columnIndex].earth[highlight.position] = {
             fill: '#fbbf24',
             stroke: '#f59e0b',
             strokeWidth: 3,
           }
         } else {
-          staticHighlights[columnIndex][highlight.beadType] = {
+          beadLevelHighlights[columnIndex][highlight.beadType] = {
             fill: '#fbbf24',
             stroke: '#f59e0b',
             strokeWidth: 3,
@@ -1082,29 +1065,30 @@ function TutorialPlayerContent({
       })
     }
 
-    // Merge static and dynamic highlights (dynamic takes precedence)
-    const mergedHighlights = { ...staticHighlights }
+    // Process dynamic column highlights (column-level: backgroundGlow, numerals)
     Object.keys(dynamicColumnHighlights).forEach((columnIndexStr) => {
       const columnIndex = parseInt(columnIndexStr, 10)
 
-      // Skip highlights for columns that don't exist
-      if (columnIndex < minValidColumn) {
+      // Skip highlights for columns that don't exist in the rendered abacus
+      if (columnIndex < 0 || columnIndex >= abacusColumns) {
         return
       }
 
-      if (!mergedHighlights[columnIndex]) {
-        mergedHighlights[columnIndex] = {}
-      }
-      // Merge dynamic highlights into the column
-      Object.assign(mergedHighlights[columnIndex], dynamicColumnHighlights[columnIndex])
+      // Dynamic highlights are column-level (backgroundGlow, numerals)
+      columnLevelHighlights[columnIndex] = dynamicColumnHighlights[columnIndex]
     })
 
     // Build the custom styles object
     const styles: any = {}
 
-    // Add column highlights if any
-    if (Object.keys(mergedHighlights).length > 0) {
-      styles.columns = mergedHighlights
+    // Add bead-level highlights to styles.beads
+    if (Object.keys(beadLevelHighlights).length > 0) {
+      styles.beads = beadLevelHighlights
+    }
+
+    // Add column-level highlights to styles.columns
+    if (Object.keys(columnLevelHighlights).length > 0) {
+      styles.columns = columnLevelHighlights
     }
 
     // Add frame styling for dark mode
@@ -1121,6 +1105,17 @@ function TutorialPlayerContent({
         stroke: 'rgba(255, 255, 255, 0.25)',
         strokeWidth: 3,
       }
+    }
+
+    // Debug logging for custom styles
+    if (Object.keys(styles).length > 0) {
+      console.log('📋 TUTORIAL CUSTOM STYLES:', JSON.stringify({
+        beadLevelHighlights,
+        columnLevelHighlights,
+        finalStyles: styles,
+        currentStepHighlightBeads: currentStep.highlightBeads,
+        abacusColumns,
+      }, null, 2))
     }
 
     return Object.keys(styles).length > 0 ? styles : undefined
@@ -1608,7 +1603,7 @@ function TutorialPlayerContent({
                   columns={abacusColumns}
                   interactive={true}
                   animated={true}
-                  scaleFactor={2.5}
+                  scaleFactor={1.5}
                   colorScheme={abacusConfig.colorScheme}
                   beadShape={abacusConfig.beadShape}
                   hideInactiveBeads={abacusConfig.hideInactiveBeads}
