@@ -1,9 +1,11 @@
 /**
  * Test page for AbacusStatic - Server Component
  * This demonstrates that AbacusStatic works without "use client"
+ *
+ * Note: Uses /static import path to avoid client-side code
  */
 
-import { AbacusStatic } from '@soroban/abacus-react'
+import { AbacusStatic } from '@soroban/abacus-react/static'
 
 export default function TestStaticAbacusPage() {
   const numbers = [1, 2, 3, 4, 5, 10, 25, 50, 100, 123, 456, 789]
@@ -12,7 +14,7 @@ export default function TestStaticAbacusPage() {
     <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
       <h1 style={{ marginBottom: '10px' }}>AbacusStatic Test (Server Component)</h1>
       <p style={{ color: '#64748b', marginBottom: '30px' }}>
-        This page is a React Server Component - no "use client" directive!
+        This page is a React Server Component - no &quot;use client&quot; directive!
         All abacus displays below are rendered on the server with zero client-side JavaScript.
       </p>
 
@@ -55,7 +57,7 @@ export default function TestStaticAbacusPage() {
         <h2 style={{ marginTop: 0, color: '#166534' }}>✅ Success!</h2>
         <p style={{ color: '#15803d' }}>
           If you can see the abacus displays above, then AbacusStatic is working correctly
-          in React Server Components. Check the page source - you'll see pure HTML/SVG with
+          in React Server Components. Check the page source - you&apos;ll see pure HTML/SVG with
           no client-side hydration markers!
         </p>
       </div>
