@@ -7,7 +7,7 @@ import NumberFlow from "@number-flow/react";
 import { useAbacusConfig, getDefaultAbacusConfig } from "./AbacusContext";
 import { playBeadSound } from "./soundManager";
 import * as Abacus3DUtils from "./Abacus3DUtils";
-import { calculateStandardDimensions } from "./AbacusUtils";
+import { calculateStandardDimensions, calculateBeadPosition } from "./AbacusUtils";
 import { AbacusSVGRenderer } from "./AbacusSVGRenderer";
 import { AbacusAnimatedBead } from "./AbacusAnimatedBead";
 import "./Abacus3D.css";
@@ -711,6 +711,13 @@ function mergeBeadStyles(
     const beadStyles = customStyles.beads[columnIndex];
     if (beadType === "heaven" && beadStyles.heaven) {
       mergedStyle = { ...mergedStyle, ...beadStyles.heaven };
+      console.log('🎨 BEAD STYLE MERGE (heaven):', JSON.stringify({
+        columnIndex,
+        beadType,
+        isActive,
+        appliedStyle: beadStyles.heaven,
+        mergedStyle
+      }, null, 2))
     }
     if (
       beadType === "earth" &&
@@ -718,6 +725,14 @@ function mergeBeadStyles(
       beadStyles.earth?.[position]
     ) {
       mergedStyle = { ...mergedStyle, ...beadStyles.earth[position] };
+      console.log('🎨 BEAD STYLE MERGE (earth):', JSON.stringify({
+        columnIndex,
+        beadType,
+        position,
+        isActive,
+        appliedStyle: beadStyles.earth[position],
+        mergedStyle
+      }, null, 2))
     }
   }
 
@@ -1860,6 +1875,9 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   // Place value editing - FRESH IMPLEMENTATION
   const [activeColumn, setActiveColumn] = React.useState<number | null>(null);
 
+  // Track hover state for showing hidden inactive beads
+  const [isAbacusHovered, setIsAbacusHovered] = React.useState(false);
+
   // Calculate current place values
   const placeValues = React.useMemo(() => {
     return columnStates.map(
@@ -2133,6 +2151,21 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       bead.active,
     )
 
+    // Debug: log when we're computing styles for a bead that might have custom styles
+    if (customStyles?.beads?.[columnIndex]) {
+      console.log('🎯 CALCULATE EXTRA BEAD PROPS:', JSON.stringify({
+        bead: {
+          type: bead.type,
+          position: bead.position,
+          placeValue: bead.placeValue,
+          active: bead.active,
+        },
+        columnIndex,
+        customStylesBeads: customStyles.beads[columnIndex],
+        computedBeadStyle: beadStyle,
+      }, null, 2))
+    }
+
     // Return extra props for AbacusAnimatedBead
     return {
       color: beadStyle.fill || baseProps.color,
@@ -2146,6 +2179,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       isCurrentStep: stepHighlight.isCurrentStep,
       enhanced3d,
       columnIndex,
+      isAbacusHovered,
     }
   }, [
     finalConfig.animated,
@@ -2162,6 +2196,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
     customStyles,
     effectiveColumns,
     handleGestureToggle,
+    isAbacusHovered,
   ])
 
   return (
@@ -2190,6 +2225,8 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
           setActiveColumn(null);
         }
       }}
+      onMouseEnter={() => setIsAbacusHovered(true)}
+      onMouseLeave={() => setIsAbacusHovered(false)}
     >
       <AbacusSVGRenderer
         value={currentValue}
@@ -2315,25 +2352,53 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
             const targetBeadPosition = overlay.target.beadPosition
 
             if (targetColumn !== undefined && targetBeadType) {
-              const x = targetColumn * standardDims.rodSpacing + standardDims.rodSpacing / 2
+              // Convert columnIndex to placeValue
+              const placeValue = effectiveColumns - 1 - targetColumn
 
-              // Find the bead to get its Y position
-              // This is a simplified version - you may need to calculate the exact Y position
-              position = { x, y: standardDims.barY }
+              // Get column state to determine if bead is active
+              const columnState = abacusState[placeValue] || { heavenActive: false, earthActive: 0 }
+
+              // Determine if this specific bead is active
+              let isActive = false
+              if (targetBeadType === 'heaven') {
+                isActive = columnState.heavenActive
+              } else if (targetBeadType === 'earth' && targetBeadPosition !== undefined) {
+                isActive = targetBeadPosition < columnState.earthActive
+              }
+
+              // Create BeadPositionConfig for calculateBeadPosition
+              const beadConfig = {
+                type: targetBeadType,
+                active: isActive,
+                position: targetBeadPosition ?? 0,
+                placeValue: placeValue,
+              }
+
+              // Use calculateBeadPosition to get exact coordinates
+              position = calculateBeadPosition(beadConfig, standardDims, { earthActive: columnState.earthActive })
             }
           } else if (overlay.target.type === "coordinates") {
             position = { x: overlay.target.x || 0, y: overlay.target.y || 0 }
           }
 
           return (
-            <g
+            <foreignObject
               key={overlay.id}
-              transform={`translate(${position.x + (overlay.offset?.x || 0)}, ${position.y + (overlay.offset?.y || 0)})`}
+              x={position.x + (overlay.offset?.x || 0)}
+              y={position.y + (overlay.offset?.y || 0)}
+              width="300"
+              height="200"
+              style={{
+                overflow: 'visible',
+                pointerEvents: 'none',
+                ...overlay.style
+              }}
               className={overlay.className}
-              style={overlay.style}
             >
-              {overlay.content}
-            </g>
+              <div style={{ pointerEvents: 'auto' }}>
+                {overlay.content}
+              </div>
+            </foreignObject>
           )
         })}
       </AbacusSVGRenderer>

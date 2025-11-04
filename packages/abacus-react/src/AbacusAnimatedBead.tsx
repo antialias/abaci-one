@@ -49,6 +49,9 @@ interface AnimatedBeadProps extends BeadComponentProps {
   // 3D effects
   enhanced3d?: 'none' | 'subtle' | 'realistic' | 'delightful'
   columnIndex?: number
+
+  // Hover state from parent abacus
+  isAbacusHovered?: boolean
 }
 
 export function AbacusAnimatedBead({
@@ -73,8 +76,15 @@ export function AbacusAnimatedBead({
   isCurrentStep,
   enhanced3d = 'none',
   columnIndex,
+  isAbacusHovered = false,
 }: AnimatedBeadProps) {
   // x, y are already calculated by AbacusSVGRenderer
+
+  // Track hover state for showing hidden inactive beads
+  const [isHovered, setIsHovered] = React.useState(false)
+
+  // Use abacus hover if provided, otherwise use individual bead hover
+  const effectiveHoverState = isAbacusHovered || isHovered
 
   // Spring animation for position
   const [{ springX, springY }, api] = useSpring(() => ({
@@ -200,9 +210,49 @@ export function AbacusAnimatedBead({
       }
     }
 
-    const opacity = bead.active ? (customStyle?.opacity ?? 1) : 0.3
+    // Calculate opacity based on state and settings
+    let opacity: number
+    if (customStyle?.opacity !== undefined) {
+      // Custom opacity always takes precedence
+      opacity = customStyle.opacity
+    } else if (bead.active) {
+      // Active beads are always full opacity
+      opacity = 1
+    } else if (hideInactiveBeads && effectiveHoverState) {
+      // Inactive beads that are hidden but being hovered show at low opacity
+      opacity = 0.3
+    } else if (hideInactiveBeads) {
+      // Inactive beads that are hidden and not hovered are invisible (handled below)
+      opacity = 0
+    } else {
+      // Inactive beads when hideInactiveBeads is false are full opacity
+      opacity = 1
+    }
+
     const stroke = customStyle?.stroke || '#000'
     const strokeWidth = customStyle?.strokeWidth || 0.5
+
+    // Debug logging for bead styling - only log yellow highlights
+    if (customStyle && customStyle.fill === '#fbbf24') {
+      console.log('🔴 YELLOW HIGHLIGHT BEAD RENDER:', JSON.stringify({
+        bead: {
+          type: bead.type,
+          position: bead.position,
+          placeValue: bead.placeValue,
+          active: bead.active,
+        },
+        size,
+        halfSize,
+        customStyle,
+        finalStyle: {
+          fillValue,
+          opacity,
+          stroke,
+          strokeWidth,
+        },
+        shape,
+      }, null, 2))
+    }
 
     switch (shape) {
       case 'diamond':
@@ -258,27 +308,28 @@ export function AbacusAnimatedBead({
     enableAnimation && showDirectionIndicator && direction ? animated.g : 'g'
 
   // Build style object
+  // Show pointer cursor on hidden beads so users know they can interact
+  const shouldShowCursor = bead.active || !hideInactiveBeads || effectiveHoverState
+  const cursor = shouldShowCursor ? (enableGestures ? 'grab' : onClick ? 'pointer' : 'default') : 'default'
+
   const beadStyle: any = enableAnimation
     ? {
         transform: to(
           [springX, springY],
           (sx, sy) => `translate(${sx - getXOffset()}px, ${sy - getYOffset()}px)`
         ),
-        cursor: enableGestures ? 'grab' : onClick ? 'pointer' : 'default',
+        cursor,
         touchAction: 'none' as const,
         transition: 'opacity 0.2s ease-in-out',
+        pointerEvents: 'auto' as const, // Ensure hidden beads can still be hovered
       }
     : {
         transform: `translate(${x - getXOffset()}px, ${y - getYOffset()}px)`,
-        cursor: enableGestures ? 'grab' : onClick ? 'pointer' : 'default',
+        cursor,
         touchAction: 'none' as const,
         transition: 'opacity 0.2s ease-in-out',
+        pointerEvents: 'auto' as const, // Ensure hidden beads can still be hovered
       }
-
-  // Don't render inactive beads if hideInactiveBeads is true
-  if (!bead.active && hideInactiveBeads) {
-    return null
-  }
 
   const handleClick = (event: React.MouseEvent) => {
     // Prevent click if gesture was triggered
@@ -289,6 +340,16 @@ export function AbacusAnimatedBead({
     onClick?.(bead, event)
   }
 
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    setIsHovered(true)
+    onMouseEnter?.(bead, e as any)
+  }
+
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    setIsHovered(false)
+    onMouseLeave?.(bead, e as any)
+  }
+
   return (
     <>
       <GElement
@@ -297,8 +358,8 @@ export function AbacusAnimatedBead({
         style={beadStyle}
         {...bind()}
         onClick={handleClick}
-        onMouseEnter={(e) => onMouseEnter?.(bead, e as any)}
-        onMouseLeave={(e) => onMouseLeave?.(bead, e as any)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         ref={(el) => onRef?.(bead, el as any)}
       >
         {renderShape()}
@@ -316,35 +377,33 @@ export function AbacusAnimatedBead({
                     (sx, sy, pulse) => {
                       const centerX = shape === 'diamond' ? size * 0.7 : size / 2
                       const centerY = size / 2
-                      return `translate(${sx - centerX}px, ${sy - centerY}px) scale(${pulse})`
+                      // Scale from center: translate to position, then translate to center, scale, translate back
+                      return `translate(${sx}px, ${sy}px) scale(${pulse}) translate(${-centerX}px, ${-centerY}px)`
                     }
                   ),
                   pointerEvents: 'none' as const,
                 }
               : {
-                  transform: `translate(${x - (shape === 'diamond' ? size * 0.7 : size / 2)}px, ${y - size / 2}px) scale(1)`,
+                  transform: `translate(${x}px, ${y}px) translate(${-(shape === 'diamond' ? size * 0.7 : size / 2)}px, ${-size / 2}px)`,
                   pointerEvents: 'none' as const,
                 }) as any
           }
         >
-          <circle
-            cx={shape === 'diamond' ? size * 0.7 : size / 2}
-            cy={size / 2}
-            r={size * 0.8}
-            fill="rgba(255, 165, 0, 0.3)"
-            stroke="orange"
-            strokeWidth="2"
-          />
           <text
             x={shape === 'diamond' ? size * 0.7 : size / 2}
             y={size / 2}
             textAnchor="middle"
             dy=".35em"
-            fontSize={size * 0.8}
-            fill="orange"
+            fontSize={size * 0.7}
+            fill="#fbbf24"
             fontWeight="bold"
+            stroke="#000"
+            strokeWidth="1.5"
+            paintOrder="stroke"
           >
-            {direction === 'activate' ? '↓' : '↑'}
+            {bead.type === 'heaven'
+              ? (direction === 'activate' ? '↓' : '↑')
+              : (direction === 'activate' ? '↑' : '↓')}
           </text>
         </DirectionIndicatorG>
       )}
