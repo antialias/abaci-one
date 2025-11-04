@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { execSync } from 'child_process'
 import { generateMonthlyTypst, getDaysInMonth } from '../utils/typstGenerator'
-import { generateCalendarComposite } from '@/../../scripts/generateCalendarComposite'
+import { generateCalendarComposite } from '@/utils/calendar/generateCalendarComposite'
 
 interface PreviewRequest {
   month: number

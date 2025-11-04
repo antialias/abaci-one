@@ -1,11 +1,6 @@
-#!/usr/bin/env tsx
-
 /**
  * Generate a complete monthly calendar as a single SVG
  * This prevents multi-page overflow - one image scales to fit
- *
- * Usage: npx tsx scripts/generateCalendarComposite.tsx <month> <year>
- * Example: npx tsx scripts/generateCalendarComposite.tsx 12 2025
  */
 
 import React from 'react'
@@ -189,20 +184,4 @@ const compositeSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" h
 </svg>`
 
   return compositeSVG
-}
-
-// CLI interface (if run directly)
-if (require.main === module) {
-  // Only import react-dom/server for CLI usage
-  const { renderToStaticMarkup } = require('react-dom/server')
-
-  const month = parseInt(process.argv[2], 10)
-  const year = parseInt(process.argv[3], 10)
-
-  if (isNaN(month) || isNaN(year) || month < 1 || month > 12) {
-    console.error('Usage: npx tsx scripts/generateCalendarComposite.tsx <month> <year>')
-    process.exit(1)
-  }
-
-  process.stdout.write(generateCalendarComposite({ month, year, renderToString: renderToStaticMarkup }))
 }

@@ -146,9 +146,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/dist ./apps/web/dist
 # Copy database migrations
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/drizzle ./apps/web/drizzle
 
-# Copy scripts directory (needed for calendar generation)
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/scripts ./apps/web/scripts
-
 # Copy PRODUCTION node_modules only (no dev dependencies)
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=deps --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/node_modules

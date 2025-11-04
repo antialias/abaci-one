@@ -5,8 +5,8 @@ import { join } from 'path'
 import { execSync } from 'child_process'
 import { generateMonthlyTypst, generateDailyTypst, getDaysInMonth } from '../utils/typstGenerator'
 import type { AbacusConfig } from '@soroban/abacus-react'
-import { generateCalendarComposite } from '@/../../scripts/generateCalendarComposite'
-import { generateAbacusElement } from '@/../../scripts/generateCalendarAbacus'
+import { generateCalendarComposite } from '@/utils/calendar/generateCalendarComposite'
+import { generateAbacusElement } from '@/utils/calendar/generateCalendarAbacus'
 
 interface CalendarRequest {
   month: number
