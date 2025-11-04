@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     // Compile with Typst: stdin for .typ content, stdout for PDF output
     let pdfBuffer: Buffer
     try {
-      pdfBuffer = execSync('typst compile - -', {
+      pdfBuffer = execSync('typst compile --format pdf - -', {
         input: typstContent,
         cwd: tempDir, // Run in temp dir so relative paths work
         maxBuffer: 50 * 1024 * 1024, // 50MB limit for large calendars
