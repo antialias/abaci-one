@@ -263,12 +263,11 @@ export function ReadingNumbersGuide() {
                   {example.num}
                 </div>
 
-                {/* Aspect ratio container for soroban - roughly 1:3 ratio */}
+                {/* Fixed size container for consistent abacus rendering */}
                 <div
                   className={css({
-                    width: '100%',
-                    aspectRatio: '1/2.8',
-                    maxW: '120px',
+                    width: '120px',
+                    height: '240px',
                     bg: 'white',
                     border: '1px solid',
                     borderColor: 'gray.300',
@@ -278,19 +277,22 @@ export function ReadingNumbersGuide() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     overflow: 'hidden',
+                    mx: 'auto',
                   })}
                 >
-                  <AbacusReact
-                    value={example.num}
-                    columns={1}
-                    beadShape={appConfig.beadShape}
-                    colorScheme={appConfig.colorScheme}
-                    hideInactiveBeads={appConfig.hideInactiveBeads}
-                    scaleFactor={0.8}
-                    interactive={false}
-                    showNumbers={false}
-                    animated={true}
-                  />
+                  <div className={css({ width: '100%', height: '100%' })}>
+                    <AbacusReact
+                      value={example.num}
+                      columns={1}
+                      beadShape={appConfig.beadShape}
+                      colorScheme={appConfig.colorScheme}
+                      hideInactiveBeads={appConfig.hideInactiveBeads}
+                      scaleFactor={0.7}
+                      interactive={false}
+                      showNumbers={false}
+                      animated={true}
+                    />
+                  </div>
                 </div>
 
                 <p
@@ -487,12 +489,11 @@ export function ReadingNumbersGuide() {
                     {example.num}
                   </div>
 
-                  {/* Larger container for multi-digit numbers */}
+                  {/* Fixed size container for multi-digit numbers */}
                   <div
                     className={css({
-                      width: '100%',
-                      aspectRatio: '3/4',
-                      maxW: '180px',
+                      width: '180px',
+                      height: '200px',
                       bg: 'gray.50',
                       border: '1px solid',
                       borderColor: 'blue.200',
@@ -502,19 +503,22 @@ export function ReadingNumbersGuide() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       overflow: 'hidden',
+                      mx: 'auto',
                     })}
                   >
-                    <AbacusReact
-                      value={example.num}
-                      columns={'auto'}
-                      beadShape={appConfig.beadShape}
-                      colorScheme={appConfig.colorScheme}
-                      hideInactiveBeads={appConfig.hideInactiveBeads}
-                      scaleFactor={0.9}
-                      interactive={false}
-                      showNumbers={false}
-                      animated={true}
-                    />
+                    <div className={css({ width: '100%', height: '100%' })}>
+                      <AbacusReact
+                        value={example.num}
+                        columns={'auto'}
+                        beadShape={appConfig.beadShape}
+                        colorScheme={appConfig.colorScheme}
+                        hideInactiveBeads={appConfig.hideInactiveBeads}
+                        scaleFactor={0.8}
+                        interactive={false}
+                        showNumbers={false}
+                        animated={true}
+                      />
+                    </div>
                   </div>
 
                   <p

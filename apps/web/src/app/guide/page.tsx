@@ -16,7 +16,7 @@ export default function GuidePage() {
 
   return (
     <PageWithNav navTitle={t('navTitle')} navEmoji="📖">
-      <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
+      <div className={`with-fixed-nav ${css({ minHeight: '100vh', bg: 'gray.50' })}`}>
         {/* Hero Section */}
         <div
           className={css({
