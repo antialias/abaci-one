@@ -7,7 +7,7 @@ import { css } from '../../../../styled-system/css'
 
 export default function ThreeDPrintPage() {
   // New unified parameter system
-  const [columns, setColumns] = useState(13)
+  const [columns, setColumns] = useState(4)
   const [scaleFactor, setScaleFactor] = useState(1.5)
   const [widthMm, setWidthMm] = useState<number | undefined>(undefined)
   const [format, setFormat] = useState<'stl' | '3mf' | 'scad'>('stl')
