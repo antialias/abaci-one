@@ -10,6 +10,11 @@
   --app-nav-height-minimal: 92px;
 }
 
+/* Utility class for pages with fixed nav */
+.with-fixed-nav {
+  padding-top: var(--app-nav-height, 80px);
+}
+
 /* Custom global styles */
 body {
   font-family:

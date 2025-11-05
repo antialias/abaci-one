@@ -42,7 +42,7 @@ export default function CalendarCreatorPage() {
       const data = await response.json()
 
       // Convert base64 PDF to blob and trigger download
-      const pdfBytes = Uint8Array.from(atob(data.pdf), c => c.charCodeAt(0))
+      const pdfBytes = Uint8Array.from(atob(data.pdf), (c) => c.charCodeAt(0))
       const blob = new Blob([pdfBytes], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -54,7 +54,9 @@ export default function CalendarCreatorPage() {
       document.body.removeChild(a)
     } catch (error) {
       console.error('Error generating calendar:', error)
-      alert(`Failed to generate calendar: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(
+        `Failed to generate calendar: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     } finally {
       setIsGenerating(false)
     }
@@ -64,12 +66,12 @@ export default function CalendarCreatorPage() {
     <PageWithNav navTitle="Create" navEmoji="📅">
       <div
         data-component="calendar-creator"
-        className={css({
+        className={`with-fixed-nav ${css({
           minHeight: '100vh',
           bg: 'gray.900',
           color: 'white',
           padding: '2rem',
-        })}
+        })}`}
       >
         <div
           className={css({
