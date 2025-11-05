@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { JobMonitor } from '@/components/3d-print/JobMonitor'
+import { PageWithNav } from '@/components/PageWithNav'
 import { STLPreview } from '@/components/3d-print/STLPreview'
 import { useState } from 'react'
 import { css } from '../../../../styled-system/css'
@@ -73,25 +74,26 @@ export default function ThreeDPrintPage() {
   }
 
   return (
-    <div
-      data-component="3d-print-page"
-      className={css({
-        maxWidth: '1200px',
-        mx: 'auto',
-        p: 6,
-      })}
-    >
-      <h1
+    <PageWithNav navTitle={t('navTitle')} navEmoji="🖨️">
+      <div
+        data-component="3d-print-page"
         className={css({
-          fontSize: '3xl',
-          fontWeight: 'bold',
-          mb: 2,
+          maxWidth: '1200px',
+          mx: 'auto',
+          p: 6,
         })}
       >
-        {t('pageTitle')}
-      </h1>
+        <h1
+          className={css({
+            fontSize: '3xl',
+            fontWeight: 'bold',
+            mb: 2,
+          })}
+        >
+          {t('pageTitle')}
+        </h1>
 
-      <p className={css({ mb: 6, color: 'gray.600' })}>{t('pageSubtitle')}</p>
+        <p className={css({ mb: 6, color: 'gray.600' })}>{t('pageSubtitle')}</p>
 
       <div
         className={css({
@@ -561,5 +563,6 @@ export default function ThreeDPrintPage() {
         </div>
       </div>
     </div>
+    </PageWithNav>
   )
 }

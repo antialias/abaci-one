@@ -29,6 +29,7 @@
       }
     },
     "abacus": {
+      "navTitle": "Creador de Ábaco 3D",
       "pageTitle": "Personaliza Tu Ábaco Imprimible en 3D",
       "pageSubtitle": "Ajusta los parámetros a continuación para personalizar tu ábaco, luego genera y descarga el archivo para impresión 3D.",
       "customizationTitle": "Parámetros de Personalización",

@@ -29,6 +29,7 @@
       }
     },
     "abacus": {
+      "navTitle": "3D Abacus Creator",
       "pageTitle": "Customize Your 3D Printable Abacus",
       "pageSubtitle": "Adjust the parameters below to customize your abacus, then generate and download the file for 3D printing.",
       "customizationTitle": "Customization Parameters",

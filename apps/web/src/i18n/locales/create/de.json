@@ -29,6 +29,7 @@
       }
     },
     "abacus": {
+      "navTitle": "3D-Abakus-Ersteller",
       "pageTitle": "Passen Sie Ihren 3D-druckbaren Abakus an",
       "pageSubtitle": "Passen Sie die Parameter unten an, um Ihren Abakus anzupassen, und generieren und laden Sie dann die Datei für den 3D-Druck herunter.",
       "customizationTitle": "Anpassungsparameter",
