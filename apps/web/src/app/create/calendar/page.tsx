@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { css } from '../../../../styled-system/css'
 import { useAbacusConfig } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -16,6 +16,19 @@ export default function CalendarCreatorPage() {
   const [paperSize, setPaperSize] = useState<'us-letter' | 'a4' | 'a3' | 'tabloid'>('us-letter')
   const [isGenerating, setIsGenerating] = useState(false)
   const [previewSvg, setPreviewSvg] = useState<string | null>(null)
+
+  // Detect default paper size based on user's locale (client-side only)
+  useEffect(() => {
+    // Get user's locale
+    const locale = navigator.language || navigator.languages?.[0] || 'en-US'
+    const country = locale.split('-')[1]?.toUpperCase()
+
+    // Countries that use US Letter (8.5" × 11")
+    const letterCountries = ['US', 'CA', 'MX', 'GT', 'PA', 'DO', 'PR', 'PH']
+
+    const detectedSize = letterCountries.includes(country || '') ? 'us-letter' : 'a4'
+    setPaperSize(detectedSize)
+  }, [])
 
   const handleGenerate = async () => {
     setIsGenerating(true)

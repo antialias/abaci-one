@@ -95,43 +95,93 @@ export function generateDailyTypst(config: TypstDailyConfig): string {
   paper: "${paperConfig.typstName}",
   margin: (x: ${paperConfig.marginX}, y: ${paperConfig.marginY}),
 )[
-  // Header: Year
-  #align(center)[
-    #v(1em)
-    #image("year.svg", width: 30%)
+  #set text(font: "Georgia")
+
+  // Decorative borders
+  #rect(
+    width: 100%,
+    height: 100%,
+    stroke: (paint: rgb("#2563eb"), thickness: 3pt),
+    radius: 8pt,
+    inset: 0pt,
+  )[
+    #rect(
+      width: 100%,
+      height: 100%,
+      stroke: (paint: rgb("#2563eb"), thickness: 1pt),
+      radius: 4pt,
+      inset: 10pt,
+    )[
+      #v(10pt)
+
+      // Header section with background
+      #rect(
+        width: 100%,
+        height: 90pt,
+        fill: rgb("#eff6ff"),
+        stroke: (paint: rgb("#2563eb"), thickness: 2pt),
+        radius: 6pt,
+      )[
+        #align(center)[
+          #v(15pt)
+          #text(size: 32pt, weight: "bold", fill: rgb("#1e40af"), tracking: 2pt)[
+            ${monthName.toUpperCase()}
+          ]
+          #v(5pt)
+          #image("year.svg", width: 15%)
+        ]
+      ]
+
+      #v(15pt)
+
+      // Day of week (large and prominent)
+      #align(center)[
+        #text(size: 28pt, weight: "bold", fill: rgb("#1e3a8a"))[
+          ${dayOfWeek}
+        ]
+      ]
+
+      #v(10pt)
+
+      // Day abacus (main focus, large)
+      #align(center)[
+        #image("day-${day}.svg", width: 45%)
+      ]
+
+      #v(10pt)
+
+      // Full date
+      #align(center)[
+        #text(size: 18pt, weight: 500, fill: rgb("#475569"))[
+          ${monthName} ${day}, ${year}
+        ]
+      ]
+
+      #v(1fr)
+
+      // Notes section with decorative box
+      #rect(
+        width: 100%,
+        height: 90pt,
+        fill: rgb("#fefce8"),
+        stroke: (paint: rgb("#ca8a04"), thickness: 2pt),
+        radius: 4pt,
+      )[
+        #v(8pt)
+        #text(size: 14pt, weight: "bold", fill: rgb("#854d0e"))[
+          #h(10pt) Notes:
+        ]
+        #v(8pt)
+        #line(length: 95%, stroke: (paint: rgb("#ca8a04"), thickness: 1pt))
+        #v(8pt)
+        #line(length: 95%, stroke: (paint: rgb("#ca8a04"), thickness: 1pt))
+        #v(8pt)
+        #line(length: 95%, stroke: (paint: rgb("#ca8a04"), thickness: 1pt))
+      ]
+
+      #v(10pt)
+    ]
   ]
-
-  #v(2em)
-
-  // Main: Day number as large abacus
-  #align(center + horizon)[
-    #image("day-${day}.svg", width: 50%)
-  ]
-
-  #v(2em)
-
-  // Footer: Day of week and date
-  #align(center)[
-    #text(size: 18pt, weight: "bold")[${dayOfWeek}]
-
-    #v(0.5em)
-
-    #text(size: 14pt)[${monthName} ${day}, ${year}]
-  ]
-
-  // Notes section
-  #v(3em)
-  #line(length: 100%, stroke: 0.5pt)
-  #v(0.5em)
-  #text(size: 10pt, fill: gray)[Notes:]
-  #v(0.5em)
-  #line(length: 100%, stroke: 0.5pt)
-  #v(1em)
-  #line(length: 100%, stroke: 0.5pt)
-  #v(1em)
-  #line(length: 100%, stroke: 0.5pt)
-  #v(1em)
-  #line(length: 100%, stroke: 0.5pt)
 ]
 
 ${day < daysInMonth ? '' : ''}`
@@ -141,7 +191,5 @@ ${day < daysInMonth ? '' : ''}`
     }
   }
 
-  return `#set text(font: "Arial")
-${pages}
-`
+  return pages
 }

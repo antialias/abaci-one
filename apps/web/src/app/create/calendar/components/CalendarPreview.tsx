@@ -22,7 +22,8 @@ async function fetchTypstPreview(
   })
 
   if (!response.ok) {
-    throw new Error('Failed to fetch preview')
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.error || errorData.message || 'Failed to fetch preview')
   }
 
   const data = await response.json()
@@ -34,14 +35,14 @@ export function CalendarPreview({ month, year, format, previewSvg }: CalendarPre
   const { data: typstPreviewSvg, isLoading } = useQuery({
     queryKey: ['calendar-typst-preview', month, year, format],
     queryFn: () => fetchTypstPreview(month, year, format),
-    enabled: typeof window !== 'undefined' && format === 'monthly', // Only run on client and for monthly format
+    enabled: typeof window !== 'undefined', // Run on client for both formats
   })
 
   // Use generated PDF SVG if available, otherwise use Typst live preview
   const displaySvg = previewSvg || typstPreviewSvg
 
   // Show loading state while fetching preview
-  if (isLoading || (!displaySvg && format === 'monthly')) {
+  if (isLoading || !displaySvg) {
     return (
       <div
         data-component="calendar-preview"
@@ -63,35 +64,7 @@ export function CalendarPreview({ month, year, format, previewSvg }: CalendarPre
             textAlign: 'center',
           })}
         >
-          Loading preview...
-        </p>
-      </div>
-    )
-  }
-
-  if (!displaySvg) {
-    return (
-      <div
-        data-component="calendar-preview"
-        className={css({
-          bg: 'gray.800',
-          borderRadius: '12px',
-          padding: '2rem',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '600px',
-        })}
-      >
-        <p
-          className={css({
-            fontSize: '1.25rem',
-            color: 'gray.400',
-            textAlign: 'center',
-          })}
-        >
-          {format === 'daily' ? 'Daily format - preview after generation' : 'No preview available'}
+          {isLoading ? 'Loading preview...' : 'No preview available'}
         </p>
       </div>
     )
@@ -118,7 +91,11 @@ export function CalendarPreview({ month, year, format, previewSvg }: CalendarPre
           fontWeight: 'bold',
         })}
       >
-        {previewSvg ? 'Generated PDF' : 'Live Preview'}
+        {previewSvg
+          ? 'Generated PDF'
+          : format === 'daily'
+            ? 'Live Preview (First Day)'
+            : 'Live Preview'}
       </p>
       <div
         className={css({
