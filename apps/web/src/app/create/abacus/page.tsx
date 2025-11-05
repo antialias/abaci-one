@@ -96,13 +96,13 @@ export default function ThreeDPrintPage() {
 
         <p className={css({ mb: 6, color: 'gray.600' })}>{t('pageSubtitle')}</p>
 
-      <div
-        className={css({
-          display: 'grid',
-          gridTemplateColumns: { base: '1fr', md: '1fr 1fr' },
-          gap: 8,
-        })}
-      >
+        <div
+          className={css({
+            display: 'grid',
+            gridTemplateColumns: { base: '1fr', md: '1fr 1fr' },
+            gap: 8,
+          })}
+        >
         {/* Left column: Controls */}
         <div data-section="controls">
           <div
@@ -562,7 +562,8 @@ export default function ThreeDPrintPage() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+        </div>
       </div>
     </PageWithNav>
   )
