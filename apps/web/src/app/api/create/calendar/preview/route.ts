@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const calendarSvg = generateCalendarComposite({
       month,
       year,
-      renderToString: renderToStaticMarkup
+      renderToString: renderToStaticMarkup,
     })
     writeFileSync(join(tempDir, 'calendar.svg'), calendarSvg)
 

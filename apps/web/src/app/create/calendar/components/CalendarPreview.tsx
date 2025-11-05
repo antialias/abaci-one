@@ -10,7 +10,11 @@ interface CalendarPreviewProps {
   previewSvg: string | null
 }
 
-async function fetchTypstPreview(month: number, year: number, format: string): Promise<string | null> {
+async function fetchTypstPreview(
+  month: number,
+  year: number,
+  format: string
+): Promise<string | null> {
   const response = await fetch('/api/create/calendar/preview', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

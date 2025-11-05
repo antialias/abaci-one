@@ -226,7 +226,6 @@ export function MyAbacus() {
             />
           </div>
         </div>
-
       </div>
 
       {/* Keyframes for animations */}

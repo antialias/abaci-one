@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       const calendarSvg = generateCalendarComposite({
         month,
         year,
-        renderToString: renderToStaticMarkup
+        renderToString: renderToStaticMarkup,
       })
       if (!calendarSvg || calendarSvg.trim().length === 0) {
         throw new Error('Generated empty composite calendar SVG')
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       {
         error: 'Failed to generate calendar',
         message: errorMessage,
-        ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack }),
       },
       { status: 500 }
     )

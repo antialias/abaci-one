@@ -14,8 +14,8 @@ export default function TestStaticAbacusPage() {
     <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
       <h1 style={{ marginBottom: '10px' }}>AbacusStatic Test (Server Component)</h1>
       <p style={{ color: '#64748b', marginBottom: '30px' }}>
-        This page is a React Server Component - no &quot;use client&quot; directive!
-        All abacus displays below are rendered on the server with zero client-side JavaScript.
+        This page is a React Server Component - no &quot;use client&quot; directive! All abacus
+        displays below are rendered on the server with zero client-side JavaScript.
       </p>
 
       <div
@@ -39,26 +39,20 @@ export default function TestStaticAbacusPage() {
               gap: '10px',
             }}
           >
-            <AbacusStatic
-              value={num}
-              columns="auto"
-              hideInactiveBeads
-              compact
-              scaleFactor={0.9}
-            />
-            <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#475569' }}>
-              {num}
-            </span>
+            <AbacusStatic value={num} columns="auto" hideInactiveBeads compact scaleFactor={0.9} />
+            <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#475569' }}>{num}</span>
           </div>
         ))}
       </div>
 
-      <div style={{ marginTop: '40px', padding: '20px', background: '#f0fdf4', borderRadius: '8px' }}>
+      <div
+        style={{ marginTop: '40px', padding: '20px', background: '#f0fdf4', borderRadius: '8px' }}
+      >
         <h2 style={{ marginTop: 0, color: '#166534' }}>✅ Success!</h2>
         <p style={{ color: '#15803d' }}>
-          If you can see the abacus displays above, then AbacusStatic is working correctly
-          in React Server Components. Check the page source - you&apos;ll see pure HTML/SVG with
-          no client-side hydration markers!
+          If you can see the abacus displays above, then AbacusStatic is working correctly in React
+          Server Components. Check the page source - you&apos;ll see pure HTML/SVG with no
+          client-side hydration markers!
         </p>
       </div>
     </div>
