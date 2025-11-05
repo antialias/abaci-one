@@ -75,14 +75,15 @@ export default function ThreeDPrintPage() {
 
   return (
     <PageWithNav navTitle={t('navTitle')} navEmoji="🖨️">
-      <div
-        data-component="3d-print-page"
-        className={css({
-          maxWidth: '1200px',
-          mx: 'auto',
-          p: 6,
-        })}
-      >
+      <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
+        <div
+          data-component="3d-print-page"
+          className={css({
+            maxWidth: '1200px',
+            mx: 'auto',
+            p: 6,
+          })}
+        >
         <h1
           className={css({
             fontSize: '3xl',
@@ -562,7 +563,7 @@ export default function ThreeDPrintPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
     </PageWithNav>
   )
 }
