@@ -245,7 +245,7 @@ export function ReadingNumbersGuide() {
                   border: '1px solid',
                   borderColor: 'gray.200',
                   rounded: 'lg',
-                  p: '4',
+                  p: '2',
                   textAlign: 'center',
                   display: 'flex',
                   flexDirection: 'column',
@@ -257,42 +257,32 @@ export function ReadingNumbersGuide() {
                     fontSize: 'xl',
                     fontWeight: 'bold',
                     color: 'brand.600',
-                    mb: '3',
+                    mb: '2',
                   })}
                 >
                   {example.num}
                 </div>
 
-                {/* Fixed size container for consistent abacus rendering */}
                 <div
                   className={css({
-                    width: '200px',
-                    height: '400px',
-                    bg: 'white',
-                    border: '1px solid',
-                    borderColor: 'gray.300',
-                    rounded: 'md',
-                    mb: '3',
+                    flex: '1',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    overflow: 'hidden',
-                    mx: 'auto',
+                    my: '2',
                   })}
                 >
-                  <div className={css({ width: '100%', height: '100%' })}>
-                    <AbacusReact
-                      value={example.num}
-                      columns={1}
-                      beadShape={appConfig.beadShape}
-                      colorScheme={appConfig.colorScheme}
-                      hideInactiveBeads={appConfig.hideInactiveBeads}
-                      scaleFactor={1.2}
-                      interactive={false}
-                      showNumbers={false}
-                      animated={true}
-                    />
-                  </div>
+                  <AbacusReact
+                    value={example.num}
+                    columns={1}
+                    beadShape={appConfig.beadShape}
+                    colorScheme={appConfig.colorScheme}
+                    hideInactiveBeads={appConfig.hideInactiveBeads}
+                    scaleFactor={1.2}
+                    interactive={false}
+                    showNumbers={false}
+                    animated={true}
+                  />
                 </div>
 
                 <p
@@ -301,7 +291,7 @@ export function ReadingNumbersGuide() {
                     color: 'gray.600',
                     lineHeight: 'tight',
                     textAlign: 'center',
-                    mt: 'auto',
+                    mt: '2',
                   })}
                 >
                   {t(`singleDigits.examples.${example.descKey}`)}
@@ -471,7 +461,7 @@ export function ReadingNumbersGuide() {
                     border: '1px solid',
                     borderColor: 'blue.300',
                     rounded: 'lg',
-                    p: '4',
+                    p: '2',
                     textAlign: 'center',
                     display: 'flex',
                     flexDirection: 'column',
@@ -483,42 +473,32 @@ export function ReadingNumbersGuide() {
                       fontSize: '2xl',
                       fontWeight: 'bold',
                       color: 'blue.600',
-                      mb: '3',
+                      mb: '2',
                     })}
                   >
                     {example.num}
                   </div>
 
-                  {/* Fixed size container for multi-digit numbers */}
                   <div
                     className={css({
-                      width: '320px',
-                      height: '350px',
-                      bg: 'gray.50',
-                      border: '1px solid',
-                      borderColor: 'blue.200',
-                      rounded: 'md',
-                      mb: '3',
+                      flex: '1',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      overflow: 'hidden',
-                      mx: 'auto',
+                      my: '2',
                     })}
                   >
-                    <div className={css({ width: '100%', height: '100%' })}>
-                      <AbacusReact
-                        value={example.num}
-                        columns={'auto'}
-                        beadShape={appConfig.beadShape}
-                        colorScheme={appConfig.colorScheme}
-                        hideInactiveBeads={appConfig.hideInactiveBeads}
-                        scaleFactor={1.2}
-                        interactive={false}
-                        showNumbers={false}
-                        animated={true}
-                      />
-                    </div>
+                    <AbacusReact
+                      value={example.num}
+                      columns={'auto'}
+                      beadShape={appConfig.beadShape}
+                      colorScheme={appConfig.colorScheme}
+                      hideInactiveBeads={appConfig.hideInactiveBeads}
+                      scaleFactor={1.2}
+                      interactive={false}
+                      showNumbers={false}
+                      animated={true}
+                    />
                   </div>
 
                   <p
@@ -527,6 +507,7 @@ export function ReadingNumbersGuide() {
                       color: 'blue.700',
                       lineHeight: 'relaxed',
                       textAlign: 'center',
+                      mt: '2',
                     })}
                   >
                     {t(`multiDigit.examples.${example.descKey}`)}
