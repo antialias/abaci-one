@@ -7,7 +7,7 @@
  * Different: No hooks, no animations, no interactions, simplified bead rendering
  */
 
-import { numberToAbacusState, calculateStandardDimensions } from './AbacusUtils'
+import { numberToAbacusState, calculateStandardDimensions, type CropPadding } from './AbacusUtils'
 import { AbacusSVGRenderer } from './AbacusSVGRenderer'
 import { AbacusStaticBead } from './AbacusStaticBead'
 import type {
@@ -30,6 +30,7 @@ export interface AbacusStaticConfig {
   customStyles?: AbacusCustomStyles
   highlightColumns?: number[]
   columnLabels?: string[]
+  cropToActiveBeads?: boolean | { padding?: CropPadding }
 }
 
 // Shared color logic (matches AbacusReact)
@@ -106,6 +107,7 @@ export function AbacusStatic({
   customStyles,
   highlightColumns = [],
   columnLabels = [],
+  cropToActiveBeads,
 }: AbacusStaticConfig) {
   // Calculate columns
   const valueStr = value.toString().replace('-', '')
@@ -175,6 +177,7 @@ export function AbacusStatic({
       customStyles={customStyles}
       highlightColumns={highlightColumns}
       columnLabels={columnLabels}
+      cropToActiveBeads={cropToActiveBeads}
       BeadComponent={AbacusStaticBead}
       getBeadColor={getBeadColor}
     />

@@ -7,7 +7,7 @@ import NumberFlow from "@number-flow/react";
 import { useAbacusConfig, getDefaultAbacusConfig } from "./AbacusContext";
 import { playBeadSound } from "./soundManager";
 import * as Abacus3DUtils from "./Abacus3DUtils";
-import { calculateStandardDimensions, calculateBeadPosition } from "./AbacusUtils";
+import { calculateStandardDimensions, calculateBeadPosition, type CropPadding } from "./AbacusUtils";
 import { AbacusSVGRenderer } from "./AbacusSVGRenderer";
 import { AbacusAnimatedBead } from "./AbacusAnimatedBead";
 import "./Abacus3D.css";
@@ -295,6 +295,9 @@ export interface AbacusConfig {
   showDirectionIndicators?: boolean; // Show direction arrows/indicators on beads
   disabledColumns?: number[]; // Disable interaction on specific columns (legacy - array indices)
   disabledBeads?: BeadHighlight[]; // Support both place-value and column-index based disabling
+
+  // Cropping
+  cropToActiveBeads?: boolean | { padding?: CropPadding }; // Crop viewBox to show only active beads
 
   // Legacy callbacks for backward compatibility
   onClick?: (bead: BeadConfig) => void;
@@ -1595,6 +1598,8 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   showDirectionIndicators = false,
   disabledColumns = [],
   disabledBeads = [],
+  // Cropping
+  cropToActiveBeads,
   // Legacy callbacks
   onClick,
   onValueChange,
@@ -2215,6 +2220,7 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         interactive={finalConfig.interactive}
         highlightColumns={highlightColumns}
         columnLabels={columnLabels}
+        cropToActiveBeads={cropToActiveBeads}
         defsContent={defsContent}
         BeadComponent={AbacusAnimatedBead}
         getBeadColor={getBeadColor}

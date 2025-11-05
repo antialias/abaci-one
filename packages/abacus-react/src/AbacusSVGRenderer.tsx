@@ -34,7 +34,7 @@
 import React from 'react'
 import type { AbacusLayoutDimensions } from './AbacusUtils'
 import type { BeadConfig, AbacusCustomStyles, ValidPlaceValues } from './AbacusReact'
-import { numberToAbacusState, calculateBeadPosition, type AbacusState } from './AbacusUtils'
+import { numberToAbacusState, calculateBeadPosition, calculateAbacusCrop, type AbacusState, type CropPadding } from './AbacusUtils'
 
 /**
  * Props that bead components must accept
@@ -83,6 +83,9 @@ export interface AbacusSVGRendererProps {
   customStyles?: AbacusCustomStyles
   interactive?: boolean  // Enable interactive CSS styles
 
+  // Cropping
+  cropToActiveBeads?: boolean | { padding?: CropPadding }
+
   // Tutorial features
   highlightColumns?: number[]
   columnLabels?: string[]
@@ -127,6 +130,7 @@ export function AbacusSVGRenderer({
   showNumbers,
   customStyles,
   interactive = false,
+  cropToActiveBeads,
   highlightColumns = [],
   columnLabels = [],
   defsContent,
@@ -141,12 +145,26 @@ export function AbacusSVGRenderer({
 }: AbacusSVGRendererProps) {
   const { width, height, rodSpacing, barY, beadSize, barThickness, labelHeight, numbersHeight } = dimensions
 
+  // Calculate crop viewBox if enabled
+  let viewBox = `0 0 ${width} ${height}`
+  let svgWidth = width
+  let svgHeight = height
+
+  if (cropToActiveBeads) {
+    const padding = typeof cropToActiveBeads === 'object' ? cropToActiveBeads.padding : undefined
+    // Use the actual scaleFactor so crop calculations match the rendered abacus size
+    const crop = calculateAbacusCrop(Number(value), columns, scaleFactor, padding)
+    viewBox = crop.viewBox
+    svgWidth = crop.width
+    svgHeight = crop.height
+  }
+
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width={width * scaleFactor}
-      height={height * scaleFactor}
-      viewBox={`0 0 ${width} ${height}`}
+      width={svgWidth}
+      height={svgHeight}
+      viewBox={viewBox}
       className={`abacus-svg ${hideInactiveBeads ? 'hide-inactive-mode' : ''} ${interactive ? 'interactive' : ''}`}
       style={{ overflow: 'visible', display: 'block' }}
     >
