@@ -17,7 +17,18 @@
       "Bash(pnpm build:*)",
       "Bash(pnpm --filter @soroban/web build:*)",
       "Bash(pnpm tsc:*)",
-      "Bash(AbacusReact.tsx)"
+      "Bash(AbacusReact.tsx)",
+      "Bash(git log:*)",
+      "Bash(pnpm dev)",
+      "Bash(npx biome:*)",
+      "Bash(pnpm --filter @soroban/web tsc:*)",
+      "Bash(git tag:*)",
+      "Bash(gh api:*)",
+      "WebSearch",
+      "WebFetch(domain:schroer.ca)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm search:*)",
+      "Bash(pnpm add:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
