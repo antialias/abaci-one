@@ -126,13 +126,14 @@ When asked to make ANY changes:
 
 **CRITICAL: The user manages running the dev server, NOT Claude Code.**
 
-- ❌ DO NOT run `npm run dev` or `npm start`
+- ❌ DO NOT run `pnpm dev`, `npm run dev`, or `npm start`
 - ❌ DO NOT attempt to start, stop, or restart the dev server
+- ❌ DO NOT kill processes on port 3000
 - ❌ DO NOT use background Bash processes for the dev server
 - ✅ Make code changes and let the user restart the server when needed
 - ✅ You may run other commands like `npm run type-check`, `npm run lint`, etc.
 
-The user will manually start/restart the dev server after you make changes.
+**The user runs the dev server themselves.** The user will manually start/restart the dev server after you make changes.
 
 ## Details
 
