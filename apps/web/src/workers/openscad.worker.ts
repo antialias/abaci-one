@@ -142,10 +142,13 @@ scale([scale_factor, scale_factor, scale_factor]) {
     console.log('[OpenSCAD Worker] Rendering complete:', stlBuffer.byteLength, 'bytes')
 
     // Send the result back
-    self.postMessage({
-      type: 'result',
-      stl: stlBuffer,
-    }, [stlBuffer])  // Transfer ownership of the buffer
+    self.postMessage(
+      {
+        type: 'result',
+        stl: stlBuffer,
+      },
+      [stlBuffer]
+    ) // Transfer ownership of the buffer
 
     // Clean up STL file
     try {

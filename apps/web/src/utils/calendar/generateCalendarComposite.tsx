@@ -119,7 +119,7 @@ export function generateCalendarComposite(options: CalendarCompositeOptions): st
         compact={false}
         hideInactiveBeads={true}
         cropToActiveBeads={{
-          padding: { top: 8, bottom: 2, left: 5, right: 5 }
+          padding: { top: 8, bottom: 2, left: 5, right: 5 },
         }}
       />
     )

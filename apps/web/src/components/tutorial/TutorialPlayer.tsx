@@ -1109,13 +1109,20 @@ function TutorialPlayerContent({
 
     // Debug logging for custom styles
     if (Object.keys(styles).length > 0) {
-      console.log('📋 TUTORIAL CUSTOM STYLES:', JSON.stringify({
-        beadLevelHighlights,
-        columnLevelHighlights,
-        finalStyles: styles,
-        currentStepHighlightBeads: currentStep.highlightBeads,
-        abacusColumns,
-      }, null, 2))
+      console.log(
+        '📋 TUTORIAL CUSTOM STYLES:',
+        JSON.stringify(
+          {
+            beadLevelHighlights,
+            columnLevelHighlights,
+            finalStyles: styles,
+            currentStepHighlightBeads: currentStep.highlightBeads,
+            abacusColumns,
+          },
+          null,
+          2
+        )
+      )
     }
 
     return Object.keys(styles).length > 0 ? styles : undefined

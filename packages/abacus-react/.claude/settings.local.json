@@ -28,7 +28,18 @@
       "WebFetch(domain:schroer.ca)",
       "WebFetch(domain:github.com)",
       "Bash(npm search:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(/tmp/icon-test.svg)",
+      "Bash(/tmp/icon-fixed.svg)",
+      "Bash(/tmp/icon-new.svg)",
+      "Bash(for day in 1 15 25 31)",
+      "Bash(do npx tsx scripts/generateDayIcon.tsx $day)",
+      "Bash(for day in 1 5 15 25 31)",
+      "Bash(do echo \"=== Day $day ===\")",
+      "Bash(/tmp/icon-day-$day.svg)",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(node /tmp/test-crop.mjs:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
