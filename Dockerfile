@@ -107,22 +107,59 @@ RUN mkdir -p /bosl2 && \
     find . -type f ! -name "*.scad" -delete && \
     find . -type d -empty -delete
 
+# OpenSCAD builder stage - download and prepare newer OpenSCAD binary
+FROM node:18-slim AS openscad-builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    ca-certificates \
+    file \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download latest OpenSCAD AppImage and extract it
+# Using 2024.11 which has CGAL fixes for intersection operations
+RUN wget -q https://files.openscad.org/OpenSCAD-2024.11.18-x86_64.AppImage -O /tmp/openscad.AppImage && \
+    chmod +x /tmp/openscad.AppImage && \
+    cd /tmp && \
+    ./openscad.AppImage --appimage-extract && \
+    mv squashfs-root/usr/bin/openscad /usr/local/bin/openscad && \
+    mv squashfs-root/usr/lib /usr/local/openscad-lib && \
+    chmod +x /usr/local/bin/openscad
+
 # Production image - Using Debian base for OpenSCAD availability
 FROM node:18-slim AS runner
 WORKDIR /app
 
 # Install ONLY runtime dependencies (no build tools)
-# Using Debian because OpenSCAD is not available in Alpine repos
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     qpdf \
-    openscad \
     ca-certificates \
+    libgomp1 \
+    libglu1-mesa \
+    libglew2.2 \
+    libfreetype6 \
+    libfontconfig1 \
+    libharfbuzz0b \
+    libxml2 \
+    libzip4 \
+    libdouble-conversion3 \
+    libqt5core5a \
+    libqt5gui5 \
+    libqt5widgets5 \
+    libqt5concurrent5 \
+    libqt5multimedia5 \
+    libqt5network5 \
+    libqt5dbus5 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy typst binary from typst-builder stage
 COPY --from=typst-builder /usr/local/bin/typst /usr/local/bin/typst
+
+# Copy newer OpenSCAD from openscad-builder stage
+COPY --from=openscad-builder /usr/local/bin/openscad /usr/local/bin/openscad
+COPY --from=openscad-builder /usr/local/openscad-lib /usr/local/openscad-lib
+ENV LD_LIBRARY_PATH=/usr/local/openscad-lib:$LD_LIBRARY_PATH
 
 # Copy minimized BOSL2 library from bosl2-builder stage
 RUN mkdir -p /usr/share/openscad/libraries
