@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { ConfigurationFormWithoutGenerate } from '@/components/ConfigurationFormWithoutGenerate'
 import { GenerationProgress } from '@/components/GenerationProgress'
-import { LivePreview } from '@/components/LivePreview'
+import { FlashcardPreview } from '@/components/FlashcardPreview'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StyleControls } from '@/components/StyleControls'
 import { css } from '../../../../styled-system/css'
@@ -281,7 +281,7 @@ export default function CreatePage() {
               <div className={stack({ gap: '6' })}>
                 <form.Subscribe
                   selector={(state) => state}
-                  children={(state) => <LivePreview config={state.values} />}
+                  children={(state) => <FlashcardPreview config={state.values} />}
                 />
 
                 {/* Generate Button within Preview */}
