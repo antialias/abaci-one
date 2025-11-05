@@ -76,6 +76,13 @@
         "title": "🎨 Visueller Stil",
         "subtitle": "Sehen Sie Änderungen sofort in der Vorschau"
       },
+      "preview": {
+        "loading": "Vorschau wird generiert...",
+        "noPreview": "Keine Vorschau verfügbar",
+        "error": "Vorschau konnte nicht geladen werden",
+        "livePreview": "Live-Vorschau (erste Seite)",
+        "hint": "Änderungen werden automatisch aktualisiert"
+      },
       "generate": {
         "button": "Lernkarten generieren",
         "generating": "Ihre Lernkarten werden generiert..."

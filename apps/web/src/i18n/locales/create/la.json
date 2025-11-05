@@ -76,6 +76,13 @@
         "title": "🎨 Stilus Visualis",
         "subtitle": "Mutationes statim in praevisione vide"
       },
+      "preview": {
+        "loading": "Praevisio generatur...",
+        "noPreview": "Praevisio non disponibilis",
+        "error": "Praevisio onerari non potuit",
+        "livePreview": "Praevisio Viva (pagina prima)",
+        "hint": "Mutationes automatice aggiornuntur"
+      },
       "generate": {
         "button": "Cartas Genera",
         "generating": "Cartae Tuae Generantur..."

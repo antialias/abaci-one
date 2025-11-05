@@ -76,6 +76,13 @@
         "title": "🎨 Estilo Visual",
         "subtitle": "Ver cambios instantáneamente en la vista previa"
       },
+      "preview": {
+        "loading": "Generando vista previa...",
+        "noPreview": "Vista previa no disponible",
+        "error": "Error al cargar la vista previa",
+        "livePreview": "Vista Previa en Vivo (primera página)",
+        "hint": "Los cambios se actualizan automáticamente"
+      },
       "generate": {
         "button": "Generar Tarjetas Didácticas",
         "generating": "Generando Tus Tarjetas Didácticas..."

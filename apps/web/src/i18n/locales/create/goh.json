@@ -76,6 +76,13 @@
         "title": "🎨 Gisihtisstil",
         "subtitle": "Gisih wihsala statim in forasihti"
       },
+      "preview": {
+        "loading": "Forasihti wirdit giskaffan...",
+        "noPreview": "Nihein forasihti gifuoganu",
+        "error": "Forasihti ni mahtī gihladōn",
+        "livePreview": "Libbāntaz Forasihti (ērista blat)",
+        "hint": "Wihsala werdent automatisch giniuwit"
+      },
       "generate": {
         "button": "Fleissachartun Giskaffen",
         "generating": "Thīna Fleissachartun Werdent Giskaffan..."
