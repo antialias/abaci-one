@@ -266,8 +266,8 @@ export function ReadingNumbersGuide() {
                 {/* Fixed size container for consistent abacus rendering */}
                 <div
                   className={css({
-                    width: '120px',
-                    height: '240px',
+                    width: '200px',
+                    height: '400px',
                     bg: 'white',
                     border: '1px solid',
                     borderColor: 'gray.300',
@@ -287,7 +287,7 @@ export function ReadingNumbersGuide() {
                       beadShape={appConfig.beadShape}
                       colorScheme={appConfig.colorScheme}
                       hideInactiveBeads={appConfig.hideInactiveBeads}
-                      scaleFactor={0.7}
+                      scaleFactor={1.2}
                       interactive={false}
                       showNumbers={false}
                       animated={true}
@@ -492,8 +492,8 @@ export function ReadingNumbersGuide() {
                   {/* Fixed size container for multi-digit numbers */}
                   <div
                     className={css({
-                      width: '180px',
-                      height: '200px',
+                      width: '320px',
+                      height: '350px',
                       bg: 'gray.50',
                       border: '1px solid',
                       borderColor: 'blue.200',
@@ -513,7 +513,7 @@ export function ReadingNumbersGuide() {
                         beadShape={appConfig.beadShape}
                         colorScheme={appConfig.colorScheme}
                         hideInactiveBeads={appConfig.hideInactiveBeads}
-                        scaleFactor={0.8}
+                        scaleFactor={1.2}
                         interactive={false}
                         showNumbers={false}
                         animated={true}
