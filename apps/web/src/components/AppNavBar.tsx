@@ -495,6 +495,8 @@ function MinimalNav({
         justifyContent: 'center',
         alignItems: 'flex-start',
         pointerEvents: 'none',
+        // Set CSS variable for minimal nav height (top offset + approx button height)
+        ['--app-nav-height' as any]: '92px',
       }}
     >
       {/* Hamburger Menu - positioned absolutely on left */}
@@ -607,6 +609,10 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   return (
     <Tooltip.Provider delayDuration={200}>
       <header
+        style={{
+          // Set CSS variable for full nav height
+          ['--app-nav-height' as any]: '72px',
+        }}
         className={css({
           bg: isTransparent ? 'transparent' : 'rgba(0, 0, 0, 0.5)',
           backdropFilter: isTransparent ? 'none' : 'blur(12px)',

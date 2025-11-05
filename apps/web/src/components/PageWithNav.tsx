@@ -213,7 +213,13 @@ export function PageWithNav({
   return (
     <>
       <AppNavBar navSlot={navContent} />
-      {children}
+      <div
+        style={{
+          paddingTop: 'var(--app-nav-height, 80px)',
+        }}
+      >
+        {children}
+      </div>
       {configurePlayerId && (
         <PlayerConfigDialog
           playerId={configurePlayerId}
