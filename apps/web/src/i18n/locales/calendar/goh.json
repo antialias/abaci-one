@@ -1,0 +1,61 @@
+{
+  "calendar": {
+    "pageTitle": "Abacus Kalender Giscaffan",
+    "pageSubtitle": "Drucchāri kalendera mit abacus tagozalun giskaffen",
+    "format": {
+      "title": "Kalenderart",
+      "monthly": "Mānoðkalender (ein sīta per mānoð)",
+      "daily": "Tagkalender (ein sīta per tag)"
+    },
+    "date": {
+      "title": "Tag",
+      "month": "Mānoð",
+      "year": "Jār"
+    },
+    "paperSize": {
+      "title": "Papiergrōzi",
+      "usLetter": "US Brief (8.5\" × 11\")",
+      "a4": "A4 (210mm × 297mm)",
+      "a3": "A3 (297mm × 420mm)",
+      "tabloid": "Tabloid (11\" × 17\")"
+    },
+    "styling": {
+      "preview": "Kalender abacus stil forasihti:"
+    },
+    "generate": {
+      "button": "PDF Kalender Giskaffen",
+      "generating": "PDF wirdit giskaffan..."
+    },
+    "preview": {
+      "loading": "Forasihti ladet...",
+      "noPreview": "Nein forasihti ferfuogbar",
+      "generatedPdf": "Giskaffan PDF",
+      "livePreview": "Lebenti Forasihti",
+      "livePreviewFirstDay": "Lebenti Forasihti (Ēristo Tag)"
+    },
+    "months": {
+      "january": "Hartmānot",
+      "february": "Hornung",
+      "march": "Lentzinmānot",
+      "april": "Ōstarmānot",
+      "may": "Winnemānot",
+      "june": "Brāhmānot",
+      "july": "Hewimānot",
+      "august": "Aranmānot",
+      "september": "Witumanot",
+      "october": "Windurmānot",
+      "november": "Herbistmānot",
+      "december": "Heilagmānot"
+    },
+    "weekdays": {
+      "sunday": "Sunnūntag",
+      "monday": "Mānetag",
+      "tuesday": "Ziostag",
+      "wednesday": "Mittawehha",
+      "thursday": "Donarestag",
+      "friday": "Frīatag",
+      "saturday": "Sambaztag"
+    },
+    "notes": "Notiziun:"
+  }
+}

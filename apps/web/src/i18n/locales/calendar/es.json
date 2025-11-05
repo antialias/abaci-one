@@ -1,0 +1,61 @@
+{
+  "calendar": {
+    "pageTitle": "Crear Calendario de Ábaco",
+    "pageSubtitle": "Generar calendarios imprimibles con números de fecha de ábaco",
+    "format": {
+      "title": "Formato de Calendario",
+      "monthly": "Calendario Mensual (una página por mes)",
+      "daily": "Calendario Diario (una página por día)"
+    },
+    "date": {
+      "title": "Fecha",
+      "month": "Mes",
+      "year": "Año"
+    },
+    "paperSize": {
+      "title": "Tamaño de Papel",
+      "usLetter": "Carta US (8.5\" × 11\")",
+      "a4": "A4 (210mm × 297mm)",
+      "a3": "A3 (297mm × 420mm)",
+      "tabloid": "Tabloide (11\" × 17\")"
+    },
+    "styling": {
+      "preview": "Vista previa del estilo de ábaco del calendario:"
+    },
+    "generate": {
+      "button": "Generar Calendario PDF",
+      "generating": "Generando PDF..."
+    },
+    "preview": {
+      "loading": "Cargando vista previa...",
+      "noPreview": "No hay vista previa disponible",
+      "generatedPdf": "PDF Generado",
+      "livePreview": "Vista Previa en Vivo",
+      "livePreviewFirstDay": "Vista Previa en Vivo (Primer Día)"
+    },
+    "months": {
+      "january": "Enero",
+      "february": "Febrero",
+      "march": "Marzo",
+      "april": "Abril",
+      "may": "Mayo",
+      "june": "Junio",
+      "july": "Julio",
+      "august": "Agosto",
+      "september": "Septiembre",
+      "october": "Octubre",
+      "november": "Noviembre",
+      "december": "Diciembre"
+    },
+    "weekdays": {
+      "sunday": "Domingo",
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado"
+    },
+    "notes": "Notas:"
+  }
+}

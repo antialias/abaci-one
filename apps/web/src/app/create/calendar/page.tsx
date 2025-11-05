@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../styled-system/css'
 import { useAbacusConfig } from '@soroban/abacus-react'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -8,6 +9,7 @@ import { CalendarConfigPanel } from './components/CalendarConfigPanel'
 import { CalendarPreview } from './components/CalendarPreview'
 
 export default function CalendarCreatorPage() {
+  const t = useTranslations('calendar')
   const currentDate = new Date()
   const abacusConfig = useAbacusConfig()
   const [month, setMonth] = useState(currentDate.getMonth() + 1) // 1-12
@@ -108,7 +110,7 @@ export default function CalendarCreatorPage() {
                 color: 'yellow.400',
               })}
             >
-              Create Abacus Calendar
+              {t('pageTitle')}
             </h1>
             <p
               className={css({
@@ -116,7 +118,7 @@ export default function CalendarCreatorPage() {
                 color: 'gray.300',
               })}
             >
-              Generate printable calendars with abacus date numbers
+              {t('pageSubtitle')}
             </p>
           </header>
 

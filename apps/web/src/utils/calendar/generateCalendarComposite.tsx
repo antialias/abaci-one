@@ -117,6 +117,10 @@ export function generateCalendarComposite(options: CalendarCompositeOptions): st
         showNumbers={false}
         frameVisible={true}
         compact={false}
+        hideInactiveBeads={true}
+        cropToActiveBeads={{
+          padding: { top: 8, bottom: 2, left: 5, right: 5 }
+        }}
       />
     )
   }
@@ -179,22 +183,41 @@ export function generateCalendarComposite(options: CalendarCompositeOptions): st
       const cellX = MARGIN + col * CELL_WIDTH
       const cellY = GRID_START_Y + WEEKDAY_ROW_HEIGHT + row * DAY_CELL_HEIGHT
 
+      // Render cropped abacus SVG
+      const abacusSVG = renderAbacusSVG(day, 2, 1)
+
+      // Extract viewBox and dimensions from the cropped SVG
+      const viewBoxMatch = abacusSVG.match(/viewBox="([^"]*)"/)
+      const widthMatch = abacusSVG.match(/width="?([0-9.]+)"?/)
+      const heightMatch = abacusSVG.match(/height="?([0-9.]+)"?/)
+
+      const croppedViewBox = viewBoxMatch ? viewBoxMatch[1] : '0 0 120 230'
+      const croppedWidth = widthMatch ? parseFloat(widthMatch[1]) : ABACUS_NATURAL_WIDTH
+      const croppedHeight = heightMatch ? parseFloat(heightMatch[1]) : ABACUS_NATURAL_HEIGHT
+
+      // Calculate scale to fit cropped abacus in cell
+      const MAX_SCALE_X = (CELL_WIDTH - CELL_PADDING * 2) / croppedWidth
+      const MAX_SCALE_Y = (DAY_CELL_HEIGHT - CELL_PADDING * 2) / croppedHeight
+      const fitScale = Math.min(MAX_SCALE_X, MAX_SCALE_Y) * 0.95 // 95% to leave breathing room
+
+      const scaledWidth = croppedWidth * fitScale
+      const scaledHeight = croppedHeight * fitScale
+
       // Center abacus in cell
       const abacusCenterX = cellX + CELL_WIDTH / 2
       const abacusCenterY = cellY + DAY_CELL_HEIGHT / 2
 
-      // Offset to top-left corner of abacus (accounting for scaled size)
-      const abacusX = abacusCenterX - SCALED_ABACUS_WIDTH / 2
-      const abacusY = abacusCenterY - SCALED_ABACUS_HEIGHT / 2
+      // Offset to top-left corner of abacus
+      const abacusX = abacusCenterX - scaledWidth / 2
+      const abacusY = abacusCenterY - scaledHeight / 2
 
-      // Render at scale=1 and let the nested SVG handle scaling via viewBox
-      const abacusSVG = renderAbacusSVG(day, 2, 1)
+      // Extract SVG content (remove outer <svg> tags)
       const svgContent = abacusSVG.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '')
 
       return `
   <!-- Day ${day} (row ${row}, col ${col}) -->
-  <svg x="${abacusX}" y="${abacusY}" width="${SCALED_ABACUS_WIDTH}" height="${SCALED_ABACUS_HEIGHT}"
-       viewBox="0 0 ${ABACUS_NATURAL_WIDTH} ${ABACUS_NATURAL_HEIGHT}">
+  <svg x="${abacusX}" y="${abacusY}" width="${scaledWidth}" height="${scaledHeight}"
+       viewBox="${croppedViewBox}">
     ${svgContent}
   </svg>`
     })

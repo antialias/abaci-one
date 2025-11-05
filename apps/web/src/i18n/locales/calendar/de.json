@@ -1,0 +1,61 @@
+{
+  "calendar": {
+    "pageTitle": "Abakus-Kalender erstellen",
+    "pageSubtitle": "Druckbare Kalender mit Abakus-Datumszahlen erstellen",
+    "format": {
+      "title": "Kalenderformat",
+      "monthly": "Monatskalender (eine Seite pro Monat)",
+      "daily": "Tageskalender (eine Seite pro Tag)"
+    },
+    "date": {
+      "title": "Datum",
+      "month": "Monat",
+      "year": "Jahr"
+    },
+    "paperSize": {
+      "title": "Papiergröße",
+      "usLetter": "US Letter (8,5\" × 11\")",
+      "a4": "A4 (210mm × 297mm)",
+      "a3": "A3 (297mm × 420mm)",
+      "tabloid": "Tabloid (11\" × 17\")"
+    },
+    "styling": {
+      "preview": "Kalender-Abakus-Stil Vorschau:"
+    },
+    "generate": {
+      "button": "PDF-Kalender erstellen",
+      "generating": "PDF wird erstellt..."
+    },
+    "preview": {
+      "loading": "Vorschau wird geladen...",
+      "noPreview": "Keine Vorschau verfügbar",
+      "generatedPdf": "Erstelltes PDF",
+      "livePreview": "Live-Vorschau",
+      "livePreviewFirstDay": "Live-Vorschau (Erster Tag)"
+    },
+    "months": {
+      "january": "Januar",
+      "february": "Februar",
+      "march": "März",
+      "april": "April",
+      "may": "Mai",
+      "june": "Juni",
+      "july": "Juli",
+      "august": "August",
+      "september": "September",
+      "october": "Oktober",
+      "november": "November",
+      "december": "Dezember"
+    },
+    "weekdays": {
+      "sunday": "Sonntag",
+      "monday": "Montag",
+      "tuesday": "Dienstag",
+      "wednesday": "Mittwoch",
+      "thursday": "Donnerstag",
+      "friday": "Freitag",
+      "saturday": "Samstag"
+    },
+    "notes": "Notizen:"
+  }
+}

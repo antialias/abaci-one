@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../../styled-system/css'
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import { AbacusDisplayDropdown } from '@/components/AbacusDisplayDropdown'
@@ -17,21 +18,6 @@ interface CalendarConfigPanelProps {
   onGenerate: () => void
 }
 
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
-
 export function CalendarConfigPanel({
   month,
   year,
@@ -44,7 +30,23 @@ export function CalendarConfigPanel({
   onPaperSizeChange,
   onGenerate,
 }: CalendarConfigPanelProps) {
+  const t = useTranslations('calendar')
   const abacusConfig = useAbacusConfig()
+
+  const MONTHS = [
+    t('months.january'),
+    t('months.february'),
+    t('months.march'),
+    t('months.april'),
+    t('months.may'),
+    t('months.june'),
+    t('months.july'),
+    t('months.august'),
+    t('months.september'),
+    t('months.october'),
+    t('months.november'),
+    t('months.december'),
+  ]
 
   return (
     <div
@@ -75,7 +77,7 @@ export function CalendarConfigPanel({
             color: 'yellow.400',
           })}
         >
-          Calendar Format
+          {t('format.title')}
         </legend>
         <div
           className={css({
@@ -104,7 +106,7 @@ export function CalendarConfigPanel({
                 cursor: 'pointer',
               })}
             />
-            <span>Monthly Calendar (one page per month)</span>
+            <span>{t('format.monthly')}</span>
           </label>
           <label
             className={css({
@@ -126,7 +128,7 @@ export function CalendarConfigPanel({
                 cursor: 'pointer',
               })}
             />
-            <span>Daily Calendar (one page per day)</span>
+            <span>{t('format.daily')}</span>
           </label>
         </div>
       </fieldset>
@@ -148,7 +150,7 @@ export function CalendarConfigPanel({
             color: 'yellow.400',
           })}
         >
-          Date
+          {t('date.title')}
         </legend>
         <div
           className={css({
@@ -216,7 +218,7 @@ export function CalendarConfigPanel({
             color: 'yellow.400',
           })}
         >
-          Paper Size
+          {t('paperSize.title')}
         </legend>
         <select
           data-element="paper-size-select"
@@ -236,10 +238,10 @@ export function CalendarConfigPanel({
             _hover: { borderColor: 'gray.500' },
           })}
         >
-          <option value="us-letter">US Letter (8.5" × 11")</option>
-          <option value="a4">A4 (210mm × 297mm)</option>
-          <option value="a3">A3 (297mm × 420mm)</option>
-          <option value="tabloid">Tabloid (11" × 17")</option>
+          <option value="us-letter">{t('paperSize.usLetter')}</option>
+          <option value="a4">{t('paperSize.a4')}</option>
+          <option value="a3">{t('paperSize.a3')}</option>
+          <option value="tabloid">{t('paperSize.tabloid')}</option>
         </select>
       </fieldset>
 
@@ -259,7 +261,7 @@ export function CalendarConfigPanel({
             color: 'gray.300',
           })}
         >
-          Calendar abacus style preview:
+          {t('styling.preview')}
         </p>
         <div
           className={css({
@@ -312,7 +314,7 @@ export function CalendarConfigPanel({
           },
         })}
       >
-        {isGenerating ? 'Generating PDF...' : 'Generate PDF Calendar'}
+        {isGenerating ? t('generate.generating') : t('generate.button')}
       </button>
     </div>
   )

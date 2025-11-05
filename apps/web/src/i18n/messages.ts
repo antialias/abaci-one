@@ -1,4 +1,5 @@
 import { rithmomachiaMessages } from '@/arcade-games/rithmomachia/messages'
+import { calendarMessages } from '@/i18n/locales/calendar/messages'
 import { gamesMessages } from '@/i18n/locales/games/messages'
 import { guideMessages } from '@/i18n/locales/guide/messages'
 import { homeMessages } from '@/i18n/locales/home/messages'
@@ -40,6 +41,7 @@ export async function getMessages(locale: Locale) {
     { games: gamesMessages[locale] },
     { guide: guideMessages[locale] },
     { tutorial: tutorialMessages[locale] },
+    { calendar: calendarMessages[locale] },
     rithmomachiaMessages[locale]
   )
 }

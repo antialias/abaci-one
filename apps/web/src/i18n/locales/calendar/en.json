@@ -1,0 +1,61 @@
+{
+  "calendar": {
+    "pageTitle": "Create Abacus Calendar",
+    "pageSubtitle": "Generate printable calendars with abacus date numbers",
+    "format": {
+      "title": "Calendar Format",
+      "monthly": "Monthly Calendar (one page per month)",
+      "daily": "Daily Calendar (one page per day)"
+    },
+    "date": {
+      "title": "Date",
+      "month": "Month",
+      "year": "Year"
+    },
+    "paperSize": {
+      "title": "Paper Size",
+      "usLetter": "US Letter (8.5\" × 11\")",
+      "a4": "A4 (210mm × 297mm)",
+      "a3": "A3 (297mm × 420mm)",
+      "tabloid": "Tabloid (11\" × 17\")"
+    },
+    "styling": {
+      "preview": "Calendar abacus style preview:"
+    },
+    "generate": {
+      "button": "Generate PDF Calendar",
+      "generating": "Generating PDF..."
+    },
+    "preview": {
+      "loading": "Loading preview...",
+      "noPreview": "No preview available",
+      "generatedPdf": "Generated PDF",
+      "livePreview": "Live Preview",
+      "livePreviewFirstDay": "Live Preview (First Day)"
+    },
+    "months": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    },
+    "weekdays": {
+      "sunday": "Sunday",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday"
+    },
+    "notes": "Notes:"
+  }
+}

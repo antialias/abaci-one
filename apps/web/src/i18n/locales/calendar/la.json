@@ -1,0 +1,61 @@
+{
+  "calendar": {
+    "pageTitle": "Calendarium Abaci Creare",
+    "pageSubtitle": "Calendaria imprimibilia cum numeris diei abaci generare",
+    "format": {
+      "title": "Forma Calendarii",
+      "monthly": "Calendarium Mensuale (una pagina per mensem)",
+      "daily": "Calendarium Diurnum (una pagina per diem)"
+    },
+    "date": {
+      "title": "Dies",
+      "month": "Mensis",
+      "year": "Annus"
+    },
+    "paperSize": {
+      "title": "Magnitudo Chartae",
+      "usLetter": "US Epistula (8.5\" × 11\")",
+      "a4": "A4 (210mm × 297mm)",
+      "a3": "A3 (297mm × 420mm)",
+      "tabloid": "Tabloid (11\" × 17\")"
+    },
+    "styling": {
+      "preview": "Praevisio stili abaci calendarii:"
+    },
+    "generate": {
+      "button": "Calendarium PDF Generare",
+      "generating": "PDF Generatur..."
+    },
+    "preview": {
+      "loading": "Praevisio cargatur...",
+      "noPreview": "Nulla praevisio disponibilis",
+      "generatedPdf": "PDF Generatum",
+      "livePreview": "Praevisio Viva",
+      "livePreviewFirstDay": "Praevisio Viva (Primus Dies)"
+    },
+    "months": {
+      "january": "Ianuarius",
+      "february": "Februarius",
+      "march": "Martius",
+      "april": "Aprilis",
+      "may": "Maius",
+      "june": "Iunius",
+      "july": "Iulius",
+      "august": "Augustus",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    },
+    "weekdays": {
+      "sunday": "Dies Solis",
+      "monday": "Dies Lunae",
+      "tuesday": "Dies Martis",
+      "wednesday": "Dies Mercurii",
+      "thursday": "Dies Iovis",
+      "friday": "Dies Veneris",
+      "saturday": "Dies Saturni"
+    },
+    "notes": "Notae:"
+  }
+}

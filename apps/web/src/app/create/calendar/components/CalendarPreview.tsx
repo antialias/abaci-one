@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import { css } from '../../../../../styled-system/css'
 
 interface CalendarPreviewProps {
@@ -31,6 +32,7 @@ async function fetchTypstPreview(
 }
 
 export function CalendarPreview({ month, year, format, previewSvg }: CalendarPreviewProps) {
+  const t = useTranslations('calendar')
   // Use React Query to fetch Typst-generated preview (client-side only)
   const { data: typstPreviewSvg, isLoading } = useQuery({
     queryKey: ['calendar-typst-preview', month, year, format],
@@ -64,7 +66,7 @@ export function CalendarPreview({ month, year, format, previewSvg }: CalendarPre
             textAlign: 'center',
           })}
         >
-          {isLoading ? 'Loading preview...' : 'No preview available'}
+          {isLoading ? t('preview.loading') : t('preview.noPreview')}
         </p>
       </div>
     )
@@ -92,10 +94,10 @@ export function CalendarPreview({ month, year, format, previewSvg }: CalendarPre
         })}
       >
         {previewSvg
-          ? 'Generated PDF'
+          ? t('preview.generatedPdf')
           : format === 'daily'
-            ? 'Live Preview (First Day)'
-            : 'Live Preview'}
+            ? t('preview.livePreviewFirstDay')
+            : t('preview.livePreview')}
       </p>
       <div
         className={css({
