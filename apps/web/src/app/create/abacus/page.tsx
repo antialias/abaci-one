@@ -74,7 +74,7 @@ export default function ThreeDPrintPage() {
   }
 
   return (
-    <PageWithNav navTitle={t('navTitle')} navEmoji="🖨️">
+    <PageWithNav navTitle={t('navTitle')} navEmoji="🖨">
       <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
         <div
           data-component="3d-print-page"
