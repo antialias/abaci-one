@@ -113,11 +113,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     ca-certificates \
     file \
+    libfuse2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Download latest OpenSCAD AppImage and extract it
 # Using 2024.11 which has CGAL fixes for intersection operations
-RUN wget -q https://files.openscad.org/OpenSCAD-2024.11.18-x86_64.AppImage -O /tmp/openscad.AppImage && \
+# APPIMAGE_EXTRACT_AND_RUN=1 allows extraction without FUSE mounting
+RUN export APPIMAGE_EXTRACT_AND_RUN=1 && \
+    wget -q https://files.openscad.org/OpenSCAD-2024.11.18-x86_64.AppImage -O /tmp/openscad.AppImage && \
     chmod +x /tmp/openscad.AppImage && \
     cd /tmp && \
     ./openscad.AppImage --appimage-extract && \
