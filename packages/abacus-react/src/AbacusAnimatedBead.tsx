@@ -232,28 +232,6 @@ export function AbacusAnimatedBead({
     const stroke = customStyle?.stroke || '#000'
     const strokeWidth = customStyle?.strokeWidth || 0.5
 
-    // Debug logging for bead styling - only log yellow highlights
-    if (customStyle && customStyle.fill === '#fbbf24') {
-      console.log('🔴 YELLOW HIGHLIGHT BEAD RENDER:', JSON.stringify({
-        bead: {
-          type: bead.type,
-          position: bead.position,
-          placeValue: bead.placeValue,
-          active: bead.active,
-        },
-        size,
-        halfSize,
-        customStyle,
-        finalStyle: {
-          fillValue,
-          opacity,
-          stroke,
-          strokeWidth,
-        },
-        shape,
-      }, null, 2))
-    }
-
     switch (shape) {
       case 'diamond':
         return (

@@ -711,13 +711,6 @@ function mergeBeadStyles(
     const beadStyles = customStyles.beads[columnIndex];
     if (beadType === "heaven" && beadStyles.heaven) {
       mergedStyle = { ...mergedStyle, ...beadStyles.heaven };
-      console.log('🎨 BEAD STYLE MERGE (heaven):', JSON.stringify({
-        columnIndex,
-        beadType,
-        isActive,
-        appliedStyle: beadStyles.heaven,
-        mergedStyle
-      }, null, 2))
     }
     if (
       beadType === "earth" &&
@@ -725,14 +718,6 @@ function mergeBeadStyles(
       beadStyles.earth?.[position]
     ) {
       mergedStyle = { ...mergedStyle, ...beadStyles.earth[position] };
-      console.log('🎨 BEAD STYLE MERGE (earth):', JSON.stringify({
-        columnIndex,
-        beadType,
-        position,
-        isActive,
-        appliedStyle: beadStyles.earth[position],
-        mergedStyle
-      }, null, 2))
     }
   }
 
@@ -2150,21 +2135,6 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
       bead.type === 'earth' ? bead.position : undefined,
       bead.active,
     )
-
-    // Debug: log when we're computing styles for a bead that might have custom styles
-    if (customStyles?.beads?.[columnIndex]) {
-      console.log('🎯 CALCULATE EXTRA BEAD PROPS:', JSON.stringify({
-        bead: {
-          type: bead.type,
-          position: bead.position,
-          placeValue: bead.placeValue,
-          active: bead.active,
-        },
-        columnIndex,
-        customStylesBeads: customStyles.beads[columnIndex],
-        computedBeadStyle: beadStyle,
-      }, null, 2))
-    }
 
     // Return extra props for AbacusAnimatedBead
     return {
