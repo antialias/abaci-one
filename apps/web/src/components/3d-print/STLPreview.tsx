@@ -2,7 +2,7 @@
 
 import { OrbitControls, Stage } from '@react-three/drei'
 import { Canvas, useLoader } from '@react-three/fiber'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 // @ts-expect-error - STLLoader doesn't have TypeScript declarations
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { css } from '../../../styled-system/css'
@@ -30,68 +30,86 @@ export function STLPreview({ columns, scaleFactor }: STLPreviewProps) {
   const [previewUrl, setPreviewUrl] = useState<string>('/3d-models/simplified.abacus.stl')
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const workerRef = useRef<Worker | null>(null)
 
+  // Initialize worker
   useEffect(() => {
-    let mounted = true
+    const worker = new Worker(new URL('../../workers/openscad.worker.ts', import.meta.url), {
+      type: 'module',
+    })
 
-    const generatePreview = async () => {
-      setIsGenerating(true)
-      setError(null)
+    worker.onmessage = (event: MessageEvent) => {
+      const { data } = event
 
-      try {
-        const response = await fetch('/api/abacus/preview', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ columns, scaleFactor }),
-        })
+      switch (data.type) {
+        case 'ready':
+          console.log('[STLPreview] Worker ready')
+          break
 
-        if (!response.ok) {
-          throw new Error('Failed to generate preview')
-        }
+        case 'result': {
+          // Create blob from STL data
+          const blob = new Blob([data.stl], { type: 'application/octet-stream' })
+          const objectUrl = URL.createObjectURL(blob)
 
-        // Convert response to blob and create object URL
-        const blob = await response.blob()
-        const objectUrl = URL.createObjectURL(blob)
-
-        if (mounted) {
           // Revoke old URL if it exists
           if (previewUrl && previewUrl.startsWith('blob:')) {
             URL.revokeObjectURL(previewUrl)
           }
-          setPreviewUrl(objectUrl)
-        } else {
-          // Component unmounted, clean up the URL
-          URL.revokeObjectURL(objectUrl)
-        }
-      } catch (err) {
-        if (mounted) {
-          const errorMessage = err instanceof Error ? err.message : 'Failed to generate preview'
 
-          // Check if this is an OpenSCAD not found error
-          if (
-            errorMessage.includes('openscad: command not found') ||
-            errorMessage.includes('Command failed: openscad')
-          ) {
-            setError('OpenSCAD not installed (preview only available in production/Docker)')
-            // Fallback to showing the base STL
-            setPreviewUrl('/3d-models/simplified.abacus.stl')
-          } else {
-            setError(errorMessage)
-          }
-          console.error('Preview generation error:', err)
-        }
-      } finally {
-        if (mounted) {
+          setPreviewUrl(objectUrl)
           setIsGenerating(false)
+          setError(null)
+          break
         }
+
+        case 'error':
+          console.error('[STLPreview] Worker error:', data.error)
+          setError(data.error)
+          setIsGenerating(false)
+          // Fallback to showing the base STL
+          setPreviewUrl('/3d-models/simplified.abacus.stl')
+          break
+
+        default:
+          console.warn('[STLPreview] Unknown message type:', data)
       }
     }
 
-    // Debounce: Wait 1 second after parameters change before regenerating
-    const timeoutId = setTimeout(generatePreview, 1000)
+    worker.onerror = (error) => {
+      console.error('[STLPreview] Worker error:', error)
+      setError('Worker failed to load')
+      setIsGenerating(false)
+    }
+
+    workerRef.current = worker
 
     return () => {
-      mounted = false
+      worker.terminate()
+      workerRef.current = null
+      // Clean up any blob URLs
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [])
+
+  // Trigger rendering when parameters change
+  useEffect(() => {
+    if (!workerRef.current) return
+
+    setIsGenerating(true)
+    setError(null)
+
+    // Debounce: Wait 500ms after parameters change before regenerating
+    const timeoutId = setTimeout(() => {
+      workerRef.current?.postMessage({
+        type: 'render',
+        columns,
+        scaleFactor,
+      })
+    }, 500)
+
+    return () => {
       clearTimeout(timeoutId)
     }
   }, [columns, scaleFactor])

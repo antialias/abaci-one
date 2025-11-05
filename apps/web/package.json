@@ -71,6 +71,7 @@
     "next": "^14.2.32",
     "next-auth": "5.0.0-beta.29",
     "next-intl": "^4.4.0",
+    "openscad-wasm-prebuilt": "^1.2.0",
     "python-bridge": "^1.1.0",
     "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
