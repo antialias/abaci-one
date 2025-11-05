@@ -188,6 +188,9 @@ importers:
       next-intl:
         specifier: ^4.4.0
         version: 4.4.0(next@14.2.33(@babel/core@7.28.4)(@playwright/test@1.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+      openscad-wasm-prebuilt:
+        specifier: ^1.2.0
+        version: 1.2.0
       python-bridge:
         specifier: ^1.1.0
         version: 1.1.0
@@ -7483,6 +7486,9 @@ packages:
   open@8.4.2:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
+
+  openscad-wasm-prebuilt@1.2.0:
+    resolution: {integrity: sha512-JfXJlopHVHvsYiVYUKYDXkg8yOkABm8zclo8zPrSRBeeICR+fitesO6NRwBdAzSdbtOYh6Scmuz/XLyhllbzYA==}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -17736,6 +17742,8 @@ snapshots:
       define-lazy-prop: 2.0.0
       is-docker: 2.2.1
       is-wsl: 2.2.0
+
+  openscad-wasm-prebuilt@1.2.0: {}
 
   optionator@0.9.4:
     dependencies:
