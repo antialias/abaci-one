@@ -26,6 +26,14 @@
         "feature2": "Multiple paper sizes",
         "feature3": "Uses your abacus styling",
         "button": "Create Calendar"
+      },
+      "worksheets": {
+        "title": "Worksheet Creator",
+        "description": "Generate custom addition worksheets with adjustable difficulty and regrouping practice.",
+        "feature1": "Tunable difficulty progression",
+        "feature2": "Regrouping practice control",
+        "feature3": "Print-ready PDF generation",
+        "button": "Create Worksheets"
       }
     },
     "abacus": {
@@ -76,6 +84,13 @@
         "title": "🎨 Visual Style",
         "subtitle": "See changes instantly in the preview"
       },
+      "preview": {
+        "loading": "Generating preview...",
+        "noPreview": "No preview available",
+        "error": "Failed to load preview",
+        "livePreview": "Live Preview (first page)",
+        "hint": "Changes update automatically"
+      },
       "generate": {
         "button": "Generate Flashcards",
         "generating": "Generating Your Flashcards..."
@@ -83,6 +98,48 @@
       "error": {
         "title": "Generation Failed",
         "tryAgain": "Try Again"
+      }
+    },
+    "worksheets": {
+      "addition": {
+        "navTitle": "Addition Worksheets",
+        "pageTitle": "Double-Digit Addition Worksheet Creator",
+        "pageSubtitle": "Create custom worksheets with tunable difficulty and regrouping practice",
+        "config": {
+          "title": "Configuration",
+          "subtitle": "Customize your worksheet settings",
+          "personalization": {
+            "title": "Personalization",
+            "name": "Student Name"
+          },
+          "problemSet": {
+            "title": "Problem Set",
+            "layout": "Layout"
+          },
+          "difficulty": {
+            "title": "Difficulty Control",
+            "pAnyStart": "Any Regrouping (at end)",
+            "pAllStart": "Both Regrouping (at end)",
+            "interpolate": "Progressive difficulty (start easy, end at target %)"
+          },
+          "display": {
+            "title": "Display Options",
+            "showCarryBoxes": "Show carry boxes",
+            "showCellBorder": "Show cell borders"
+          }
+        },
+        "preview": {
+          "title": "Live Preview",
+          "subtitle": "First 6 problems of your worksheet"
+        },
+        "generate": {
+          "button": "Generate Worksheet PDF",
+          "generating": "Generating..."
+        },
+        "error": {
+          "title": "Generation Failed",
+          "tryAgain": "Try Again"
+        }
       }
     }
   }
