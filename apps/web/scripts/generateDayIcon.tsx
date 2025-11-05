@@ -8,7 +8,13 @@
 
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { AbacusReact } from '@soroban/abacus-react'
+import {
+  AbacusReact,
+  numberToAbacusState,
+  calculateStandardDimensions,
+  calculateBeadPosition,
+  type BeadPositionConfig,
+} from '@soroban/abacus-react'
 
 // Extract just the SVG element content from rendered output
 function extractSvgContent(markup: string): string {
@@ -27,49 +33,87 @@ interface BoundingBox {
   maxY: number
 }
 
+/**
+ * Calculate bounding box for icon cropping using actual bead position calculations
+ * This replaces fragile regex parsing with deterministic position math
+ */
 function getAbacusBoundingBox(
-  svgContent: string,
+  day: number,
   scaleFactor: number,
   columns: number
 ): BoundingBox {
-  // Parse column posts: <rect x="..." y="..." width="..." height="..." ... >
-  const postRegex = /<rect\s+x="([^"]+)"\s+y="([^"]+)"\s+width="([^"]+)"\s+height="([^"]+)"/g
-  const postMatches = [...svgContent.matchAll(postRegex)]
+  // Get which beads are active for this day
+  const abacusState = numberToAbacusState(day, columns)
 
-  // Parse active bead transforms: <g class="abacus-bead active" transform="translate(x, y)">
-  const activeBeadRegex =
-    /<g\s+class="abacus-bead active[^"]*"\s+transform="translate\(([^,]+),\s*([^)]+)\)"/g
-  const beadMatches = [...svgContent.matchAll(activeBeadRegex)]
+  // Get layout dimensions
+  const dimensions = calculateStandardDimensions({
+    columns,
+    scaleFactor,
+    showNumbers: false,
+    columnLabels: [],
+  })
 
-  if (beadMatches.length === 0) {
-    // Fallback if no active beads found - show full abacus
+  // Calculate positions of all active beads
+  const activeBeadPositions: Array<{ x: number; y: number }> = []
+
+  for (let placeValue = 0; placeValue < columns; placeValue++) {
+    const columnState = abacusState[placeValue]
+    if (!columnState) continue
+
+    // Heaven bead
+    if (columnState.heavenActive) {
+      const bead: BeadPositionConfig = {
+        type: 'heaven',
+        active: true,
+        position: 0,
+        placeValue,
+      }
+      const pos = calculateBeadPosition(bead, dimensions, { earthActive: columnState.earthActive })
+      activeBeadPositions.push(pos)
+    }
+
+    // Earth beads
+    for (let earthPos = 0; earthPos < columnState.earthActive; earthPos++) {
+      const bead: BeadPositionConfig = {
+        type: 'earth',
+        active: true,
+        position: earthPos,
+        placeValue,
+      }
+      const pos = calculateBeadPosition(bead, dimensions, { earthActive: columnState.earthActive })
+      activeBeadPositions.push(pos)
+    }
+  }
+
+  if (activeBeadPositions.length === 0) {
+    // Fallback if no active beads - show full abacus
     return { minX: 0, minY: 0, maxX: 50 * scaleFactor, maxY: 120 * scaleFactor }
   }
 
-  // Bead dimensions (diamond): width ≈ 30px * scaleFactor, height ≈ 21px * scaleFactor
-  const beadHeight = 21.6 * scaleFactor
+  // Calculate bounding box from active bead positions
+  const beadSize = dimensions.beadSize
+  const beadWidth = beadSize * 2.5 // Diamond width is ~2.5x the size parameter
+  const beadHeight = beadSize * 1.8 // Diamond height is ~1.8x the size parameter
 
-  // HORIZONTAL BOUNDS: Always show full width of both columns (fixed for all days)
   let minX = Infinity
   let maxX = -Infinity
-
-  for (const match of postMatches) {
-    const x = parseFloat(match[1])
-    const width = parseFloat(match[3])
-    minX = Math.min(minX, x)
-    maxX = Math.max(maxX, x + width)
-  }
-
-  // VERTICAL BOUNDS: Crop to active beads (dynamic based on which beads are active)
   let minY = Infinity
   let maxY = -Infinity
 
-  for (const match of beadMatches) {
-    const y = parseFloat(match[2])
-    // Top of topmost active bead to bottom of bottommost active bead
-    minY = Math.min(minY, y)
-    maxY = Math.max(maxY, y + beadHeight)
+  for (const pos of activeBeadPositions) {
+    // Bead center is at pos.x, pos.y
+    // Calculate bounding box for diamond shape
+    minX = Math.min(minX, pos.x - beadWidth / 2)
+    maxX = Math.max(maxX, pos.x + beadWidth / 2)
+    minY = Math.min(minY, pos.y - beadHeight / 2)
+    maxY = Math.max(maxY, pos.y + beadHeight / 2)
   }
+
+  // HORIZONTAL BOUNDS: Always show full width of all columns (consistent across all days)
+  // Use rod positions for consistent horizontal bounds
+  const rodSpacing = dimensions.rodSpacing
+  minX = rodSpacing / 2 - beadWidth / 2
+  maxX = (columns - 0.5) * rodSpacing + beadWidth / 2
 
   return { minX, minY, maxX, maxY }
 }
@@ -125,8 +169,8 @@ let svgContent = extractSvgContent(abacusMarkup)
 // Remove !important from CSS (production code policy)
 svgContent = svgContent.replace(/\s*!important/g, '')
 
-// Calculate bounding box including posts, bar, and active beads
-const bbox = getAbacusBoundingBox(svgContent, 1.8, 2)
+// Calculate bounding box using proper bead position calculations
+const bbox = getAbacusBoundingBox(day, 1.8, 2)
 
 // Add minimal padding around active beads (in abacus coordinates)
 // Less padding below since we want to cut tight to the last bead

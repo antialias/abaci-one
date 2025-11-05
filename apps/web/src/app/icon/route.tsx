@@ -26,8 +26,24 @@ function generateDayIcon(day: number): string {
   return svg
 }
 
-export async function GET() {
-  const dayOfMonth = getDayOfMonth()
+export async function GET(request: Request) {
+  // Parse query parameters for testing
+  const { searchParams } = new URL(request.url)
+  const dayParam = searchParams.get('day')
+
+  // Use override day if provided (for testing), otherwise use current day
+  let dayOfMonth: number
+  if (dayParam) {
+    const parsedDay = parseInt(dayParam, 10)
+    // Validate day is 1-31
+    if (parsedDay >= 1 && parsedDay <= 31) {
+      dayOfMonth = parsedDay
+    } else {
+      return new Response('Invalid day parameter. Must be 1-31.', { status: 400 })
+    }
+  } else {
+    dayOfMonth = getDayOfMonth()
+  }
 
   // Check cache first
   let svg = iconCache.get(dayOfMonth)
@@ -37,10 +53,12 @@ export async function GET() {
     svg = generateDayIcon(dayOfMonth)
     iconCache.set(dayOfMonth, svg)
 
-    // Clear old cache entries (keep only current day)
-    for (const [cachedDay] of iconCache) {
-      if (cachedDay !== dayOfMonth) {
-        iconCache.delete(cachedDay)
+    // Clear old cache entries (keep only current day, unless testing with override)
+    if (!dayParam) {
+      for (const [cachedDay] of iconCache) {
+        if (cachedDay !== dayOfMonth) {
+          iconCache.delete(cachedDay)
+        }
       }
     }
   }
@@ -48,8 +66,10 @@ export async function GET() {
   return new Response(svg, {
     headers: {
       'Content-Type': 'image/svg+xml',
-      // Cache for 1 hour so it updates throughout the day
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+      // Cache for 1 hour for current day, shorter cache for test overrides
+      'Cache-Control': dayParam
+        ? 'public, max-age=60, s-maxage=60'
+        : 'public, max-age=3600, s-maxage=3600',
     },
   })
 }
