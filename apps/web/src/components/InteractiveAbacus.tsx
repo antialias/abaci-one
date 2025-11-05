@@ -66,32 +66,6 @@ export function InteractiveAbacus({
       const beadPosition = beadElement.getAttribute('data-bead-position')
       const isActive = beadElement.getAttribute('data-bead-active') === '1'
 
-      console.log('Bead clicked:', {
-        beadType,
-        beadColumn,
-        beadPosition,
-        isActive,
-      })
-      console.log('Current value before click:', currentValue)
-
-      if (beadType === 'earth') {
-        const position = parseInt(beadPosition || '0', 10)
-        const placeValue = beadColumn
-        const columnPower = 10 ** placeValue
-        const currentDigit = Math.floor(currentValue / columnPower) % 10
-        const heavenContribution = Math.floor(currentDigit / 5) * 5
-        const earthContribution = currentDigit % 5
-        console.log('Earth bead analysis:', {
-          position,
-          beadColumn,
-          placeValue,
-          columnPower,
-          currentDigit,
-          heavenContribution,
-          earthContribution,
-        })
-      }
-
       if (beadType === 'heaven') {
         // Toggle heaven bead (worth 5)
         // Now using place-value based column numbering: 0=ones, 1=tens, 2=hundreds
@@ -139,13 +113,6 @@ export function InteractiveAbacus({
           // So earthContribution should be position + 1 (3)
           newEarthContribution = position + 1
         }
-
-        console.log('Earth bead calculation:', {
-          position,
-          isActive,
-          currentEarthContribution: earthContribution,
-          newEarthContribution,
-        })
 
         // Calculate the new digit for this column
         const newDigit = heavenContribution + newEarthContribution

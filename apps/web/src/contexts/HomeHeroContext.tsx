@@ -53,49 +53,28 @@ export function HomeHeroProvider({ children }: { children: React.ReactNode }) {
 
   // Load from sessionStorage after mount (client-only, no hydration mismatch)
   useEffect(() => {
-    console.log('[HeroAbacus] Loading from sessionStorage...')
     isLoadingFromStorage.current = true // Block saves during load
 
     const saved = sessionStorage.getItem('heroAbacusValue')
-    console.log('[HeroAbacus] Saved value from storage:', saved)
 
     if (saved) {
       const parsedValue = parseInt(saved, 10)
-      console.log('[HeroAbacus] Parsed value:', parsedValue)
       if (!Number.isNaN(parsedValue)) {
-        console.log('[HeroAbacus] Setting abacus value to:', parsedValue)
         setAbacusValue(parsedValue)
       }
-    } else {
-      console.log('[HeroAbacus] No saved value found, staying at 0')
     }
 
     // Use setTimeout to ensure the value has been set before we allow saves
     setTimeout(() => {
       isLoadingFromStorage.current = false
       setIsAbacusLoaded(true)
-      console.log('[HeroAbacus] Load complete, allowing saves now and fading in')
     }, 0)
   }, [])
 
   // Persist value to sessionStorage when it changes (but skip during load)
   useEffect(() => {
-    console.log(
-      '[HeroAbacus] Save effect triggered. Value:',
-      abacusValue,
-      'isLoadingFromStorage:',
-      isLoadingFromStorage.current
-    )
-
     if (!isLoadingFromStorage.current) {
-      console.log('[HeroAbacus] Saving to sessionStorage:', abacusValue)
       sessionStorage.setItem('heroAbacusValue', abacusValue.toString())
-      console.log(
-        '[HeroAbacus] Saved successfully. Storage now contains:',
-        sessionStorage.getItem('heroAbacusValue')
-      )
-    } else {
-      console.log('[HeroAbacus] Skipping save (currently loading from storage)')
     }
   }, [abacusValue])
 
