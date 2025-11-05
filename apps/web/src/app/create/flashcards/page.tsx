@@ -2,6 +2,7 @@
 
 import { useAbacusConfig } from '@soroban/abacus-react'
 import { useForm } from '@tanstack/react-form'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { ConfigurationFormWithoutGenerate } from '@/components/ConfigurationFormWithoutGenerate'
 import { GenerationProgress } from '@/components/GenerationProgress'
@@ -104,6 +105,7 @@ function validateAndCompleteConfig(formState: FlashcardFormState): FlashcardConf
 type GenerationStatus = 'idle' | 'generating' | 'error'
 
 export default function CreatePage() {
+  const t = useTranslations('create.flashcards')
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const globalConfig = useAbacusConfig()
@@ -184,7 +186,7 @@ export default function CreatePage() {
   }
 
   return (
-    <PageWithNav navTitle="Create Flashcards" navEmoji="✨">
+    <PageWithNav navTitle={t('navTitle')} navEmoji="✨">
       <div className={css({ minHeight: '100vh', bg: 'gray.50' })}>
         {/* Main Content */}
         <div className={container({ maxW: '7xl', px: '4', py: '8' })}>
@@ -197,7 +199,7 @@ export default function CreatePage() {
                   color: 'gray.900',
                 })}
               >
-                Create Your Flashcards
+                {t('pageTitle')}
               </h1>
               <p
                 className={css({
@@ -205,7 +207,7 @@ export default function CreatePage() {
                   color: 'gray.600',
                 })}
               >
-                Configure content and style, preview instantly, then generate your flashcards
+                {t('pageSubtitle')}
               </p>
             </div>
           </div>
@@ -248,7 +250,7 @@ export default function CreatePage() {
                       color: 'gray.900',
                     })}
                   >
-                    🎨 Visual Style
+                    {t('stylePanel.title')}
                   </h3>
                   <p
                     className={css({
@@ -256,7 +258,7 @@ export default function CreatePage() {
                       color: 'gray.600',
                     })}
                   >
-                    See changes instantly in the preview
+                    {t('stylePanel.subtitle')}
                   </p>
                 </div>
 
@@ -337,12 +339,12 @@ export default function CreatePage() {
                               animation: 'spin 1s linear infinite',
                             })}
                           />
-                          Generating Your Flashcards...
+                          {t('generate.generating')}
                         </>
                       ) : (
                         <>
                           <div className={css({ fontSize: 'xl' })}>✨</div>
-                          Generate Flashcards
+                          {t('generate.button')}
                         </>
                       )}
                     </span>
@@ -374,7 +376,7 @@ export default function CreatePage() {
                       color: 'red.800',
                     })}
                   >
-                    Generation Failed
+                    {t('error.title')}
                   </h3>
                 </div>
                 <p
@@ -399,7 +401,7 @@ export default function CreatePage() {
                     _hover: { bg: 'red.700' },
                   })}
                 >
-                  Try Again
+                  {t('error.tryAgain')}
                 </button>
               </div>
             </div>

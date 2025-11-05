@@ -1,0 +1,88 @@
+{
+  "create": {
+    "hub": {
+      "pageTitle": "Instrumenta Discendi Tua Crea",
+      "pageSubtitle": "Cartas memoriativas vel modulos abaci 3D imprimibiles designa ut experientiam discendi tuam augeas",
+      "flashcards": {
+        "title": "Creator Chartarum Memorativarum",
+        "description": "Cartas memoriativas cum visualizationibus abaci designa. Perfectus ad discendum et docendum recognitionem numerorum et arithmeticam.",
+        "feature1": "Limites numerorum configurabiles",
+        "feature2": "Multi styli et dispositiones",
+        "feature3": "Generatio PDF parata ad imprimendum",
+        "button": "Cartas Crea"
+      },
+      "abacus": {
+        "title": "Creator Abaci 3D",
+        "description": "Modulos abaci 3D imprimibiles configura et depone. Magnitudinem, columnas, colores tuos elige pro instrumento discendi perfecto.",
+        "feature1": "Magnitudo et columnae adaptabiles",
+        "feature2": "Configuratio colorum 3MF",
+        "feature3": "Praevisio 3D viva",
+        "button": "Modulum 3D Crea"
+      },
+      "calendar": {
+        "title": "Calendarium Abaci",
+        "description": "Calendaria imprimibilia genera ubi omnis dies ut abacus monstratur. Perfectus ad docendam repraesentationem numerorum.",
+        "feature1": "Formae mensuales vel diurnae",
+        "feature2": "Magnitudines chartae multiplices",
+        "feature3": "Stilum abaci tui utitur",
+        "button": "Calendarium Crea"
+      }
+    },
+    "abacus": {
+      "pageTitle": "Abacum Tuum 3D Imprimibilem Configura",
+      "pageSubtitle": "Parametros infra adapta ut abacum tuum configures, deinde fasciculum genera et depone pro impressione 3D.",
+      "customizationTitle": "Parametri Configurationis",
+      "columns": {
+        "label": "Numerus Columnarum: {{count}}",
+        "help": "Numerus totalis columnarum in abaco (1-13)"
+      },
+      "scaleFactor": {
+        "label": "Factor Scalae: {{factor}}x",
+        "help": "Multiplicator magnitudinis totalis (servat proportionem aspectus, valores maiores = magnitudo fasciculi maior)"
+      },
+      "widthMm": {
+        "label": "Latitudo in mm (optionalis)",
+        "placeholder": "Vacuum relinque ut factorem scalae utaris",
+        "help": "Latitudinem exactam in millimetris specifica (factorem scalae superat)"
+      },
+      "format": {
+        "label": "Forma Exitus"
+      },
+      "colors": {
+        "title": "Configuratio Colorum 3MF",
+        "frame": "Color Cornicis",
+        "heavenBead": "Color Globuli Caelestis",
+        "earthBead": "Color Globuli Terrae",
+        "decoration": "Color Ornamenti"
+      },
+      "generate": {
+        "button": "Fasciculum Genera",
+        "generating": "Generatur..."
+      },
+      "download": "{{format}} Depone",
+      "preview": {
+        "title": "Praevisio",
+        "liveDescription": "Praevisio viva: Praevisio automatice renovatur dum parametros adaptas (cum mora 1 secundi). Hoc designum exactum libri specularis plicati quod generabitur monstrat.",
+        "note": "Nota: Generatio praevisionis OpenSCAD requirit. Si errorem vides, facultas praevisionis solum in productione (Docker) operatur. Facultas deponendi adhuc operabitur cum explicatur.",
+        "instructions": "Mure tuo utere ut modulum 3D rotas et augeas."
+      }
+    },
+    "flashcards": {
+      "navTitle": "Cartas Crea",
+      "pageTitle": "Cartas Tuas Crea",
+      "pageSubtitle": "Contentum et stylum configura, statim praevide, deinde cartas tuas genera",
+      "stylePanel": {
+        "title": "🎨 Stilus Visualis",
+        "subtitle": "Mutationes statim in praevisione vide"
+      },
+      "generate": {
+        "button": "Cartas Genera",
+        "generating": "Cartae Tuae Generantur..."
+      },
+      "error": {
+        "title": "Generatio Defecit",
+        "tryAgain": "Iterum Tempta"
+      }
+    }
+  }
+}

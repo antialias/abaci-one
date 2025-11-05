@@ -50,6 +50,9 @@ export {
   calculateAbacusDimensions,
   calculateStandardDimensions,  // NEW: Shared layout calculator
   calculateBeadPosition,         // NEW: Bead position calculator
+  calculateBeadDimensions,       // NEW: Calculate exact bead dimensions by shape
+  calculateActiveBeadsBounds,    // NEW: Calculate bounding box for active beads
+  calculateAbacusCrop,           // NEW: Calculate crop parameters with padding
 } from "./AbacusUtils";
 export type {
   BeadState,
@@ -59,6 +62,9 @@ export type {
   PlaceValueBasedBead,
   AbacusLayoutDimensions,        // NEW: Complete layout dimensions type
   BeadPositionConfig,            // NEW: Bead config for position calculation
+  CropPadding,                   // NEW: Padding config for cropping
+  BoundingBox,                   // NEW: Bounding box type
+  CropResult,                    // NEW: Complete crop calculation result
 } from "./AbacusUtils";
 
 export { useAbacusDiff, useAbacusState } from "./AbacusHooks";

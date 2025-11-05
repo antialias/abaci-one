@@ -1,0 +1,88 @@
+{
+  "create": {
+    "hub": {
+      "pageTitle": "Erstellen Sie Ihre Lernwerkzeuge",
+      "pageSubtitle": "Entwerfen Sie individuelle Lernkarten oder 3D-druckbare Abakus-Modelle, um Ihr Lernerlebnis zu verbessern",
+      "flashcards": {
+        "title": "Lernkarten-Creator",
+        "description": "Entwerfen Sie individuelle Lernkarten mit Abakus-Visualisierungen. Perfekt zum Lernen und Lehren von Zahlenerkennung und Arithmetik.",
+        "feature1": "Anpassbare Zahlenbereiche",
+        "feature2": "Mehrere Stile und Layouts",
+        "feature3": "Druckfertige PDF-Generierung",
+        "button": "Lernkarten erstellen"
+      },
+      "abacus": {
+        "title": "3D-Abakus-Creator",
+        "description": "Passen Sie 3D-druckbare Abakus-Modelle an und laden Sie sie herunter. Wählen Sie Größe, Spalten und Farben für das perfekte Lernwerkzeug.",
+        "feature1": "Einstellbare Größe und Spalten",
+        "feature2": "3MF-Farbanpassung",
+        "feature3": "Live-3D-Vorschau",
+        "button": "3D-Modell erstellen"
+      },
+      "calendar": {
+        "title": "Abakus-Kalender",
+        "description": "Erstellen Sie druckbare Kalender, bei denen jedes Datum als Abakus angezeigt wird. Perfekt zum Lehren der Zahlendarstellung.",
+        "feature1": "Monatliche oder tägliche Formate",
+        "feature2": "Mehrere Papiergrößen",
+        "feature3": "Verwendet Ihren Abakus-Stil",
+        "button": "Kalender erstellen"
+      }
+    },
+    "abacus": {
+      "pageTitle": "Passen Sie Ihren 3D-druckbaren Abakus an",
+      "pageSubtitle": "Passen Sie die Parameter unten an, um Ihren Abakus anzupassen, und generieren und laden Sie dann die Datei für den 3D-Druck herunter.",
+      "customizationTitle": "Anpassungsparameter",
+      "columns": {
+        "label": "Anzahl der Spalten: {{count}}",
+        "help": "Gesamtanzahl der Spalten im Abakus (1-13)"
+      },
+      "scaleFactor": {
+        "label": "Skalierungsfaktor: {{factor}}x",
+        "help": "Gesamtgrößenmultiplikator (behält Seitenverhältnis bei, größere Werte = größere Dateigröße)"
+      },
+      "widthMm": {
+        "label": "Breite in mm (optional)",
+        "placeholder": "Leer lassen, um Skalierungsfaktor zu verwenden",
+        "help": "Geben Sie die genaue Breite in Millimetern an (überschreibt Skalierungsfaktor)"
+      },
+      "format": {
+        "label": "Ausgabeformat"
+      },
+      "colors": {
+        "title": "3MF-Farbanpassung",
+        "frame": "Rahmenfarbe",
+        "heavenBead": "Himmelsperlenfarbe",
+        "earthBead": "Erdperlenfarbe",
+        "decoration": "Dekorationsfarbe"
+      },
+      "generate": {
+        "button": "Datei generieren",
+        "generating": "Wird generiert..."
+      },
+      "download": "{{format}} herunterladen",
+      "preview": {
+        "title": "Vorschau",
+        "liveDescription": "Live-Vorschau: Die Vorschau wird automatisch aktualisiert, wenn Sie Parameter anpassen (mit 1 Sekunde Verzögerung). Dies zeigt das genaue gespiegelte Buchfalz-Design, das generiert wird.",
+        "note": "Hinweis: Die Vorschaugenerierung erfordert OpenSCAD. Wenn Sie einen Fehler sehen, funktioniert die Vorschaufunktion nur in der Produktion (Docker). Die Download-Funktionalität funktioniert weiterhin, wenn sie bereitgestellt wird.",
+        "instructions": "Verwenden Sie Ihre Maus, um das 3D-Modell zu drehen und zu zoomen."
+      }
+    },
+    "flashcards": {
+      "navTitle": "Lernkarten erstellen",
+      "pageTitle": "Erstellen Sie Ihre Lernkarten",
+      "pageSubtitle": "Konfigurieren Sie Inhalt und Stil, sehen Sie die Vorschau sofort und generieren Sie dann Ihre Lernkarten",
+      "stylePanel": {
+        "title": "🎨 Visueller Stil",
+        "subtitle": "Sehen Sie Änderungen sofort in der Vorschau"
+      },
+      "generate": {
+        "button": "Lernkarten generieren",
+        "generating": "Ihre Lernkarten werden generiert..."
+      },
+      "error": {
+        "title": "Generierung fehlgeschlagen",
+        "tryAgain": "Erneut versuchen"
+      }
+    }
+  }
+}

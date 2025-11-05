@@ -6,6 +6,38 @@
 import type { ValidPlaceValues, BeadHighlight } from './AbacusReact'
 
 /**
+ * Calculate the actual rendered dimensions of a bead based on its shape
+ * These values match the exact rendering in AbacusStaticBead and AbacusAnimatedBead
+ *
+ * @param size - The base bead size parameter
+ * @param shape - The bead shape ('circle', 'diamond', or 'square')
+ * @returns Object with width and height of the rendered bead
+ */
+export function calculateBeadDimensions(
+  size: number,
+  shape: 'circle' | 'diamond' | 'square' = 'diamond'
+): { width: number; height: number } {
+  switch (shape) {
+    case 'diamond':
+      // Diamond polygon: points=`${size*0.7},0 ${size*1.4},${size/2} ${size*0.7},${size} 0,${size/2}`
+      // Spans from x=0 to x=size*1.4, y=0 to y=size
+      return { width: size * 1.4, height: size }
+
+    case 'circle':
+      // Circle with radius=size/2, so diameter=size
+      return { width: size, height: size }
+
+    case 'square':
+      // Square with width=size, height=size
+      return { width: size, height: size }
+
+    default:
+      // Default to diamond (most common/largest)
+      return { width: size * 1.4, height: size }
+  }
+}
+
+/**
  * Represents the state of beads in a single column
  */
 export interface BeadState {
@@ -515,7 +547,7 @@ export function calculateBeadPosition(
   dimensions: AbacusLayoutDimensions,
   columnState?: ColumnStateForPositioning
 ): { x: number; y: number } {
-  const { beadSize, rodSpacing, heavenEarthGap, barThickness, activeGap, inactiveGap, adjacentSpacing, totalColumns } = dimensions
+  const { beadSize, rodSpacing, heavenEarthGap, barThickness, activeGap, inactiveGap, adjacentSpacing, totalColumns, labelHeight } = dimensions
 
   // X position based on place value (rightmost = ones place)
   const columnIndex = totalColumns - 1 - bead.placeValue
@@ -523,14 +555,15 @@ export function calculateBeadPosition(
 
   // Y position based on bead type and active state
   // These formulas match the original Typst implementation exactly
+  // NOTE: All Y positions are offset by labelHeight to match absolute SVG coordinates
   if (bead.type === 'heaven') {
     if (bead.active) {
       // Active heaven bead: positioned close to reckoning bar (Typst line 175)
-      const y = heavenEarthGap - beadSize / 2 - activeGap
+      const y = labelHeight + heavenEarthGap - beadSize / 2 - activeGap
       return { x, y }
     } else {
       // Inactive heaven bead: positioned away from reckoning bar (Typst line 178)
-      const y = heavenEarthGap - inactiveGap - beadSize / 2
+      const y = labelHeight + heavenEarthGap - inactiveGap - beadSize / 2
       return { x, y }
     }
   } else {
@@ -539,7 +572,7 @@ export function calculateBeadPosition(
 
     if (bead.active) {
       // Active beads: positioned near reckoning bar, adjacent beads touch (Typst line 251)
-      const y = heavenEarthGap + barThickness + activeGap + beadSize / 2 +
+      const y = labelHeight + heavenEarthGap + barThickness + activeGap + beadSize / 2 +
                 bead.position * (beadSize + adjacentSpacing)
       return { x, y }
     } else {
@@ -547,16 +580,194 @@ export function calculateBeadPosition(
       let y: number
       if (earthActive > 0) {
         // Position after the last active bead + gap, then adjacent inactive beads touch (Typst line 256)
-        y = heavenEarthGap + barThickness + activeGap + beadSize / 2 +
+        y = labelHeight + heavenEarthGap + barThickness + activeGap + beadSize / 2 +
             (earthActive - 1) * (beadSize + adjacentSpacing) +
             beadSize / 2 + inactiveGap + beadSize / 2 +
             (bead.position - earthActive) * (beadSize + adjacentSpacing)
       } else {
         // No active beads: position after reckoning bar + gap, adjacent inactive beads touch (Typst line 259)
-        y = heavenEarthGap + barThickness + inactiveGap + beadSize / 2 +
+        y = labelHeight + heavenEarthGap + barThickness + inactiveGap + beadSize / 2 +
             bead.position * (beadSize + adjacentSpacing)
       }
       return { x, y }
     }
+  }
+}
+
+/**
+ * Padding configuration for cropping
+ */
+export interface CropPadding {
+  top?: number
+  bottom?: number
+  left?: number
+  right?: number
+}
+
+/**
+ * Bounding box for crop area
+ */
+export interface BoundingBox {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+  width: number
+  height: number
+}
+
+/**
+ * Complete crop calculation result
+ */
+export interface CropResult extends BoundingBox {
+  viewBox: string  // SVG viewBox attribute value
+  scaledWidth: number  // Width after scaling to fit target
+  scaledHeight: number  // Height after scaling to fit target
+}
+
+/**
+ * Calculate bounding box around active beads for a given value
+ * Uses the same position calculations as the rendering engine
+ *
+ * @param value - The number to display
+ * @param columns - Number of columns
+ * @param scaleFactor - Scale factor for the abacus
+ * @returns Bounding box containing all active beads
+ */
+export function calculateActiveBeadsBounds(
+  value: number,
+  columns: number,
+  scaleFactor: number = 1
+): BoundingBox {
+  // Get which beads are active for this value
+  const abacusState = numberToAbacusState(value, columns)
+
+  // Get layout dimensions
+  const dimensions = calculateStandardDimensions({
+    columns,
+    scaleFactor,
+    showNumbers: false,
+    columnLabels: [],
+  })
+
+  // Calculate positions of all active beads
+  const activeBeadPositions: Array<{ x: number; y: number }> = []
+
+  for (let placeValue = 0; placeValue < columns; placeValue++) {
+    const columnState = abacusState[placeValue]
+    if (!columnState) continue
+
+    // Heaven bead
+    if (columnState.heavenActive) {
+      const bead: BeadPositionConfig = {
+        type: 'heaven',
+        active: true,
+        position: 0,
+        placeValue,
+      }
+      const pos = calculateBeadPosition(bead, dimensions, { earthActive: columnState.earthActive })
+      activeBeadPositions.push(pos)
+    }
+
+    // Earth beads
+    for (let earthPos = 0; earthPos < columnState.earthActive; earthPos++) {
+      const bead: BeadPositionConfig = {
+        type: 'earth',
+        active: true,
+        position: earthPos,
+        placeValue,
+      }
+      const pos = calculateBeadPosition(bead, dimensions, { earthActive: columnState.earthActive })
+      activeBeadPositions.push(pos)
+    }
+  }
+
+  if (activeBeadPositions.length === 0) {
+    // Fallback if no active beads - show full abacus
+    return {
+      minX: 0,
+      minY: 0,
+      maxX: dimensions.width,
+      maxY: dimensions.height,
+      width: dimensions.width,
+      height: dimensions.height,
+    }
+  }
+
+  // Calculate bounding box from active bead positions
+  // Use diamond dimensions (largest bead shape) for consistent cropping across all shapes
+  const { width: beadWidth, height: beadHeight } = calculateBeadDimensions(dimensions.beadSize, 'diamond')
+
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+
+  for (const pos of activeBeadPositions) {
+    // Bead center is at pos.x, pos.y
+    // Calculate bounding box for diamond shape
+    minX = Math.min(minX, pos.x - beadWidth / 2)
+    maxX = Math.max(maxX, pos.x + beadWidth / 2)
+    minY = Math.min(minY, pos.y - beadHeight / 2)
+    maxY = Math.max(maxY, pos.y + beadHeight / 2)
+  }
+
+  // HORIZONTAL BOUNDS: Always show full width of all columns (consistent across all values)
+  // Use rod positions for consistent horizontal bounds
+  const rodSpacing = dimensions.rodSpacing
+  minX = rodSpacing / 2 - beadWidth / 2
+  maxX = (columns - 0.5) * rodSpacing + beadWidth / 2
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX,
+    height: maxY - minY,
+  }
+}
+
+/**
+ * Calculate crop parameters with padding for SVG viewBox
+ *
+ * @param value - The number to display
+ * @param columns - Number of columns
+ * @param scaleFactor - Scale factor for the abacus
+ * @param padding - Padding to add around the crop area
+ * @returns Complete crop result with viewBox and dimensions
+ */
+export function calculateAbacusCrop(
+  value: number,
+  columns: number,
+  scaleFactor: number = 1,
+  padding: CropPadding = {}
+): CropResult {
+  const bbox = calculateActiveBeadsBounds(value, columns, scaleFactor)
+
+  // Apply padding
+  const paddingTop = padding.top ?? 0
+  const paddingBottom = padding.bottom ?? 0
+  const paddingLeft = padding.left ?? 0
+  const paddingRight = padding.right ?? 0
+
+  const cropX = bbox.minX - paddingLeft
+  const cropY = bbox.minY - paddingTop
+  const cropWidth = bbox.width + paddingLeft + paddingRight
+  const cropHeight = bbox.height + paddingTop + paddingBottom
+
+  // Create viewBox string
+  const viewBox = `${cropX} ${cropY} ${cropWidth} ${cropHeight}`
+
+  return {
+    minX: cropX,
+    minY: cropY,
+    maxX: cropX + cropWidth,
+    maxY: cropY + cropHeight,
+    width: cropWidth,
+    height: cropHeight,
+    viewBox,
+    scaledWidth: cropWidth,
+    scaledHeight: cropHeight,
   }
 }

@@ -1,0 +1,88 @@
+{
+  "create": {
+    "hub": {
+      "pageTitle": "Create Your Learning Tools",
+      "pageSubtitle": "Design custom flashcards or 3D printable abacus models to enhance your learning experience",
+      "flashcards": {
+        "title": "Flashcard Creator",
+        "description": "Design custom flashcards with abacus visualizations. Perfect for learning and teaching number recognition and arithmetic.",
+        "feature1": "Customizable number ranges",
+        "feature2": "Multiple styles and layouts",
+        "feature3": "Print-ready PDF generation",
+        "button": "Create Flashcards"
+      },
+      "abacus": {
+        "title": "3D Abacus Creator",
+        "description": "Customize and download 3D printable abacus models. Choose your size, columns, and colors for the perfect learning tool.",
+        "feature1": "Adjustable size and columns",
+        "feature2": "3MF color customization",
+        "feature3": "Live 3D preview",
+        "button": "Create 3D Model"
+      },
+      "calendar": {
+        "title": "Abacus Calendar",
+        "description": "Generate printable calendars where every date is shown as an abacus. Perfect for teaching number representation.",
+        "feature1": "Monthly or daily formats",
+        "feature2": "Multiple paper sizes",
+        "feature3": "Uses your abacus styling",
+        "button": "Create Calendar"
+      }
+    },
+    "abacus": {
+      "pageTitle": "Customize Your 3D Printable Abacus",
+      "pageSubtitle": "Adjust the parameters below to customize your abacus, then generate and download the file for 3D printing.",
+      "customizationTitle": "Customization Parameters",
+      "columns": {
+        "label": "Number of Columns: {{count}}",
+        "help": "Total number of columns in the abacus (1-13)"
+      },
+      "scaleFactor": {
+        "label": "Scale Factor: {{factor}}x",
+        "help": "Overall size multiplier (preserves aspect ratio, larger values = bigger file size)"
+      },
+      "widthMm": {
+        "label": "Width in mm (optional)",
+        "placeholder": "Leave empty to use scale factor",
+        "help": "Specify exact width in millimeters (overrides scale factor)"
+      },
+      "format": {
+        "label": "Output Format"
+      },
+      "colors": {
+        "title": "3MF Color Customization",
+        "frame": "Frame Color",
+        "heavenBead": "Heaven Bead Color",
+        "earthBead": "Earth Bead Color",
+        "decoration": "Decoration Color"
+      },
+      "generate": {
+        "button": "Generate File",
+        "generating": "Generating..."
+      },
+      "download": "Download {{format}}",
+      "preview": {
+        "title": "Preview",
+        "liveDescription": "Live Preview: The preview updates automatically as you adjust parameters (with a 1-second delay). This shows the exact mirrored book-fold design that will be generated.",
+        "note": "Note: Preview generation requires OpenSCAD. If you see an error, the preview feature only works in production (Docker). The download functionality will still work when deployed.",
+        "instructions": "Use your mouse to rotate and zoom the 3D model."
+      }
+    },
+    "flashcards": {
+      "navTitle": "Create Flashcards",
+      "pageTitle": "Create Your Flashcards",
+      "pageSubtitle": "Configure content and style, preview instantly, then generate your flashcards",
+      "stylePanel": {
+        "title": "🎨 Visual Style",
+        "subtitle": "See changes instantly in the preview"
+      },
+      "generate": {
+        "button": "Generate Flashcards",
+        "generating": "Generating Your Flashcards..."
+      },
+      "error": {
+        "title": "Generation Failed",
+        "tryAgain": "Try Again"
+      }
+    }
+  }
+}

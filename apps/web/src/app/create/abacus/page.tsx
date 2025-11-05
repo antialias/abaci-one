@@ -1,11 +1,13 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { JobMonitor } from '@/components/3d-print/JobMonitor'
 import { STLPreview } from '@/components/3d-print/STLPreview'
 import { useState } from 'react'
 import { css } from '../../../../styled-system/css'
 
 export default function ThreeDPrintPage() {
+  const t = useTranslations('create.abacus')
   // New unified parameter system
   const [columns, setColumns] = useState(4)
   const [scaleFactor, setScaleFactor] = useState(1.5)
@@ -86,13 +88,10 @@ export default function ThreeDPrintPage() {
           mb: 2,
         })}
       >
-        Customize Your 3D Printable Abacus
+        {t('pageTitle')}
       </h1>
 
-      <p className={css({ mb: 6, color: 'gray.600' })}>
-        Adjust the parameters below to customize your abacus, then generate and download the file
-        for 3D printing.
-      </p>
+      <p className={css({ mb: 6, color: 'gray.600' })}>{t('pageSubtitle')}</p>
 
       <div
         className={css({
@@ -118,7 +117,7 @@ export default function ThreeDPrintPage() {
                 mb: 4,
               })}
             >
-              Customization Parameters
+              {t('customizationTitle')}
             </h2>
 
             {/* Number of Columns */}
@@ -130,7 +129,7 @@ export default function ThreeDPrintPage() {
                   mb: 2,
                 })}
               >
-                Number of Columns: {columns}
+                {t('columns.label', { count: columns })}
               </label>
               <input
                 type="range"
@@ -148,7 +147,7 @@ export default function ThreeDPrintPage() {
                   mt: 1,
                 })}
               >
-                Total number of columns in the abacus (1-13)
+                {t('columns.help')}
               </div>
             </div>
 
@@ -161,7 +160,7 @@ export default function ThreeDPrintPage() {
                   mb: 2,
                 })}
               >
-                Scale Factor: {scaleFactor.toFixed(1)}x
+                {t('scaleFactor.label', { factor: scaleFactor.toFixed(1) })}
               </label>
               <input
                 type="range"
@@ -179,7 +178,7 @@ export default function ThreeDPrintPage() {
                   mt: 1,
                 })}
               >
-                Overall size multiplier (preserves aspect ratio, larger values = bigger file size)
+                {t('scaleFactor.help')}
               </div>
             </div>
 
@@ -192,7 +191,7 @@ export default function ThreeDPrintPage() {
                   mb: 2,
                 })}
               >
-                Width in mm (optional)
+                {t('widthMm.label')}
               </label>
               <input
                 type="number"
@@ -204,7 +203,7 @@ export default function ThreeDPrintPage() {
                   const value = e.target.value
                   setWidthMm(value ? Number.parseFloat(value) : undefined)
                 }}
-                placeholder="Leave empty to use scale factor"
+                placeholder={t('widthMm.placeholder')}
                 className={css({
                   width: '100%',
                   px: 3,
@@ -225,7 +224,7 @@ export default function ThreeDPrintPage() {
                   mt: 1,
                 })}
               >
-                Specify exact width in millimeters (overrides scale factor)
+                {t('widthMm.help')}
               </div>
             </div>
 
@@ -238,7 +237,7 @@ export default function ThreeDPrintPage() {
                   mb: 2,
                 })}
               >
-                Output Format
+                {t('format.label')}
               </label>
               <div className={css({ display: 'flex', gap: 2, flexWrap: 'wrap' })}>
                 <button
@@ -308,7 +307,7 @@ export default function ThreeDPrintPage() {
                     mb: 3,
                   })}
                 >
-                  3MF Color Customization
+                  {t('colors.title')}
                 </h3>
 
                 {/* Frame Color */}
@@ -320,7 +319,7 @@ export default function ThreeDPrintPage() {
                       mb: 1,
                     })}
                   >
-                    Frame Color
+                    {t('colors.frame')}
                   </label>
                   <div className={css({ display: 'flex', gap: 2, alignItems: 'center' })}>
                     <input
@@ -356,7 +355,7 @@ export default function ThreeDPrintPage() {
                       mb: 1,
                     })}
                   >
-                    Heaven Bead Color
+                    {t('colors.heavenBead')}
                   </label>
                   <div className={css({ display: 'flex', gap: 2, alignItems: 'center' })}>
                     <input
@@ -392,7 +391,7 @@ export default function ThreeDPrintPage() {
                       mb: 1,
                     })}
                   >
-                    Earth Bead Color
+                    {t('colors.earthBead')}
                   </label>
                   <div className={css({ display: 'flex', gap: 2, alignItems: 'center' })}>
                     <input
@@ -428,7 +427,7 @@ export default function ThreeDPrintPage() {
                       mb: 1,
                     })}
                   >
-                    Decoration Color
+                    {t('colors.decoration')}
                   </label>
                   <div className={css({ display: 'flex', gap: 2, alignItems: 'center' })}>
                     <input
@@ -476,7 +475,7 @@ export default function ThreeDPrintPage() {
                 _hover: { bg: isGenerating ? 'blue.600' : 'blue.700' },
               })}
             >
-              {isGenerating ? 'Generating...' : 'Generate File'}
+              {isGenerating ? t('generate.generating') : t('generate.button')}
             </button>
 
             {/* Job Status */}
@@ -505,7 +504,7 @@ export default function ThreeDPrintPage() {
                   _hover: { bg: 'green.700' },
                 })}
               >
-                Download {format.toUpperCase()}
+                {t('download', { format: format.toUpperCase() })}
               </button>
             )}
 
@@ -544,7 +543,7 @@ export default function ThreeDPrintPage() {
                 mb: 4,
               })}
             >
-              Preview
+              {t('preview.title')}
             </h2>
             <STLPreview columns={columns} scaleFactor={scaleFactor} />
             <div
@@ -554,17 +553,9 @@ export default function ThreeDPrintPage() {
                 color: 'gray.600',
               })}
             >
-              <p className={css({ mb: 2 })}>
-                <strong>Live Preview:</strong> The preview updates automatically as you adjust
-                parameters (with a 1-second delay). This shows the exact mirrored book-fold design
-                that will be generated.
-              </p>
-              <p className={css({ mb: 2 })}>
-                <strong>Note:</strong> Preview generation requires OpenSCAD. If you see an error,
-                the preview feature only works in production (Docker). The download functionality
-                will still work when deployed.
-              </p>
-              <p>Use your mouse to rotate and zoom the 3D model.</p>
+              <p className={css({ mb: 2 })}>{t('preview.liveDescription')}</p>
+              <p className={css({ mb: 2 })}>{t('preview.note')}</p>
+              <p>{t('preview.instructions')}</p>
             </div>
           </div>
         </div>

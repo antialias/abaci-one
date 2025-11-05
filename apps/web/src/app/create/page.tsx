@@ -1,10 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../styled-system/css'
 
 export default function CreateHubPage() {
+  const t = useTranslations('create.hub')
+
   return (
     <PageWithNav navTitle="Create" navEmoji="✨">
       <div
@@ -81,7 +84,7 @@ export default function CreateHubPage() {
                 letterSpacing: 'tight',
               })}
             >
-              Create Your Learning Tools
+              {t('pageTitle')}
             </h1>
             <p
               className={css({
@@ -93,8 +96,7 @@ export default function CreateHubPage() {
                 textShadow: '0 1px 3px rgba(0,0,0,0.1)',
               })}
             >
-              Design custom flashcards or 3D printable abacus models to enhance your learning
-              experience
+              {t('pageSubtitle')}
             </p>
           </div>
 
@@ -162,7 +164,7 @@ export default function CreateHubPage() {
                     letterSpacing: 'tight',
                   })}
                 >
-                  Flashcard Creator
+                  {t('flashcards.title')}
                 </h2>
 
                 {/* Description */}
@@ -174,8 +176,7 @@ export default function CreateHubPage() {
                     lineHeight: '1.7',
                   })}
                 >
-                  Design custom flashcards with abacus visualizations. Perfect for learning and
-                  teaching number recognition and arithmetic.
+                  {t('flashcards.description')}
                 </p>
 
                 {/* Features */}
@@ -212,7 +213,7 @@ export default function CreateHubPage() {
                     >
                       ✓
                     </span>
-                    Customizable number ranges
+                    {t('flashcards.feature1')}
                   </li>
                   <li
                     className={css({
@@ -239,7 +240,7 @@ export default function CreateHubPage() {
                     >
                       ✓
                     </span>
-                    Multiple styles and layouts
+                    {t('flashcards.feature2')}
                   </li>
                   <li
                     className={css({
@@ -266,7 +267,7 @@ export default function CreateHubPage() {
                     >
                       ✓
                     </span>
-                    Print-ready PDF generation
+                    {t('flashcards.feature3')}
                   </li>
                 </ul>
 
@@ -296,7 +297,7 @@ export default function CreateHubPage() {
                       },
                     })}
                   >
-                    <span>Create Flashcards</span>
+                    <span>{t('flashcards.button')}</span>
                     <span className={css({ fontSize: 'lg' })}>→</span>
                   </div>
                 </div>
@@ -359,7 +360,7 @@ export default function CreateHubPage() {
                     letterSpacing: 'tight',
                   })}
                 >
-                  3D Abacus Creator
+                  {t('abacus.title')}
                 </h2>
 
                 {/* Description */}
@@ -371,8 +372,7 @@ export default function CreateHubPage() {
                     lineHeight: '1.7',
                   })}
                 >
-                  Customize and download 3D printable abacus models. Choose your size, columns, and
-                  colors for the perfect learning tool.
+                  {t('abacus.description')}
                 </p>
 
                 {/* Features */}
@@ -409,7 +409,7 @@ export default function CreateHubPage() {
                     >
                       ✓
                     </span>
-                    Adjustable size and columns
+                    {t('abacus.feature1')}
                   </li>
                   <li
                     className={css({
@@ -436,7 +436,7 @@ export default function CreateHubPage() {
                     >
                       ✓
                     </span>
-                    3MF color customization
+                    {t('abacus.feature2')}
                   </li>
                   <li
                     className={css({
@@ -463,7 +463,7 @@ export default function CreateHubPage() {
                     >
                       ✓
                     </span>
-                    Live 3D preview
+                    {t('abacus.feature3')}
                   </li>
                 </ul>
 
@@ -493,7 +493,7 @@ export default function CreateHubPage() {
                       },
                     })}
                   >
-                    <span>Create 3D Model</span>
+                    <span>{t('abacus.button')}</span>
                     <span className={css({ fontSize: 'lg' })}>→</span>
                   </div>
                 </div>
@@ -556,7 +556,7 @@ export default function CreateHubPage() {
                     letterSpacing: 'tight',
                   })}
                 >
-                  Abacus Calendar
+                  {t('calendar.title')}
                 </h2>
 
                 {/* Description */}
@@ -568,8 +568,7 @@ export default function CreateHubPage() {
                     lineHeight: '1.7',
                   })}
                 >
-                  Generate printable calendars where every date is shown as an abacus. Perfect for
-                  teaching number representation.
+                  {t('calendar.description')}
                 </p>
 
                 {/* Features */}
@@ -606,7 +605,7 @@ export default function CreateHubPage() {
                     >
                       ✓
                     </span>
-                    Monthly or daily formats
+                    {t('calendar.feature1')}
                   </li>
                   <li
                     className={css({
@@ -633,7 +632,7 @@ export default function CreateHubPage() {
                     >
                       ✓
                     </span>
-                    Multiple paper sizes
+                    {t('calendar.feature2')}
                   </li>
                   <li
                     className={css({
@@ -660,7 +659,7 @@ export default function CreateHubPage() {
                     >
                       ✓
                     </span>
-                    Uses your abacus styling
+                    {t('calendar.feature3')}
                   </li>
                 </ul>
 
@@ -690,7 +689,7 @@ export default function CreateHubPage() {
                       },
                     })}
                   >
-                    <span>Create Calendar</span>
+                    <span>{t('calendar.button')}</span>
                     <span className={css({ fontSize: 'lg' })}>→</span>
                   </div>
                 </div>
