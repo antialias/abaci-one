@@ -39,7 +39,8 @@
       "Bash(/tmp/icon-day-$day.svg)",
       "Bash(echo:*)",
       "Bash(done)",
-      "Bash(node /tmp/test-crop.mjs:*)"
+      "Bash(node /tmp/test-crop.mjs:*)",
+      "Bash(git fetch:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
