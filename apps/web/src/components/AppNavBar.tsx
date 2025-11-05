@@ -568,6 +568,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isArcadePage = pathname?.startsWith('/arcade')
+  const isHomePage = pathname === '/'
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
 
   // Try to get home hero context (if on homepage)
@@ -579,7 +580,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const subtitle = homeHero?.subtitle || fallbackSubtitle
 
   // Show branding unless we're on homepage with visible hero
-  const showBranding = !homeHero || !homeHero.isHeroVisible
+  const showBranding = !isHomePage || !homeHero || !homeHero.isHeroVisible
 
   // Auto-detect variant based on context
   // Only arcade pages (not /games) should use minimal nav
@@ -600,8 +601,8 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
     )
   }
 
-  // Check if we should use transparent styling (when hero is visible)
-  const isTransparent = homeHero?.isHeroVisible
+  // Check if we should use transparent styling (when hero is visible on home page)
+  const isTransparent = isHomePage && homeHero?.isHeroVisible
 
   return (
     <Tooltip.Provider delayDuration={200}>
