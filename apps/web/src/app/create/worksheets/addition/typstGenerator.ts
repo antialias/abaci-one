@@ -1,6 +1,7 @@
 // Typst document generator for addition worksheets
 
 import type { AdditionProblem, WorksheetConfig } from './types'
+import { generateTypstHelpers, generateProblemStackFunction } from './typstHelpers'
 
 /**
  * Chunk array into pages of specified size
@@ -67,89 +68,9 @@ function generatePageTypst(
 #let show-ten-frames = ${config.showTenFrames ? 'true' : 'false'}
 #let show-ten-frames-for-all = ${config.showTenFramesForAll ? 'true' : 'false'}
 
-// Place value colors (light pastels)
-#let color-ones = rgb(227, 242, 253)      // Light blue
-#let color-tens = rgb(232, 245, 233)      // Light green
-#let color-hundreds = rgb(255, 249, 196)  // Light yellow
-#let color-none = white                   // No color
+${generateTypstHelpers(cellSize)}
 
-// Ten-frame helper - stacked 2 frames vertically, sized to fit cell width
-// top-color: background for top frame (represents carry to next place value)
-// bottom-color: background for bottom frame (represents current place value)
-#let ten-frame-spacing = 0pt  // No gap between frames
-#let ten-frame-cell-stroke = 0.4pt  // Internal cell strokes - slightly thinner
-#let ten-frame-cell-color = rgb(0, 0, 0, 30%)  // Light gray for internal lines
-#let ten-frame-outer-stroke = 0.8pt  // Dark outer border for frame visibility
-#let ten-frames-stacked(cell-width, top-color, bottom-color) = {
-  let cell-w = cell-width / 5
-  let cell-h = cell-w  // Square cells
-  stack(
-    dir: ttb,
-    spacing: ten-frame-spacing,
-    // Top ten-frame (carry to next place value) - wrapped with outer border
-    box(
-      stroke: ten-frame-outer-stroke + black,
-      inset: 0pt
-    )[
-      #grid(
-        columns: 5,
-        rows: 2,
-        gutter: 0pt,
-        stroke: none,
-        ..for i in range(0, 10) {
-          (box(width: cell-w, height: cell-h, fill: top-color, stroke: ten-frame-cell-stroke + ten-frame-cell-color)[],)
-        }
-      )
-    ],
-    // Bottom ten-frame (current place value overflow) - wrapped with outer border
-    box(
-      stroke: ten-frame-outer-stroke + black,
-      inset: 0pt
-    )[
-      #grid(
-        columns: 5,
-        rows: 2,
-        gutter: 0pt,
-        stroke: none,
-        ..for i in range(0, 10) {
-          (box(width: cell-w, height: cell-h, fill: bottom-color, stroke: ten-frame-cell-stroke + ten-frame-cell-color)[],)
-        }
-      )
-    ]
-  )
-}
-
-// Diagonal-split box for carry cells
-// Shows the transition from one place value to another
-// Visual metaphor: carry "flows" from bottom-right (source) to top-left (destination)
-// source-color: color of the place value where the carry comes FROM (right side)
-// dest-color: color of the place value where the carry goes TO (left side)
-#let diagonal-split-box(cell-size, source-color, dest-color) = {
-  box(width: cell-size, height: cell-size, stroke: 0.5pt)[
-    // Bottom-right triangle (source place value)
-    #place(
-      bottom + right,
-      polygon(
-        fill: source-color,
-        stroke: none,
-        (0pt, 0pt),           // bottom-left corner of triangle
-        (cell-size, 0pt),     // bottom-right corner
-        (cell-size, cell-size) // top-right corner
-      )
-    )
-    // Top-left triangle (destination place value)
-    #place(
-      top + left,
-      polygon(
-        fill: dest-color,
-        stroke: none,
-        (0pt, 0pt),           // top-left corner
-        (cell-size, cell-size), // bottom-right corner of triangle
-        (0pt, cell-size)      // bottom-left corner
-      )
-    )
-  ]
-}
+${generateProblemStackFunction(cellSize)}
 
 #let problem-box(problem, index) = {
   let a = problem.a
@@ -165,106 +86,7 @@ function generatePageTypst(
     height: ${problemBoxHeight}in
   )[
     #align(center + horizon)[
-      #stack(
-        dir: ttb,
-        spacing: 0pt,
-        if show-numbers {
-          align(top + left)[
-            #box(inset: (left: 0.08in, top: 0.05in))[
-              #text(size: ${(cellSize * 0.6 * 72).toFixed(1)}pt, weight: "bold", font: "New Computer Modern Math")[\##(index + 1).]
-            ]
-          ]
-        },
-        grid(
-          columns: (0.5em, ${cellSize}in, ${cellSize}in, ${cellSize}in),
-          gutter: 0pt,
-
-          [],
-          // Hundreds carry box: shows carry FROM tens (green) TO hundreds (yellow)
-          if show-carries {
-            if show-colors {
-              diagonal-split-box(${cellSize}in, color-tens, color-hundreds)
-            } else {
-              box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt)[]
-            }
-          } else { v(${cellSize}in) },
-          // Tens carry box: shows carry FROM ones (blue) TO tens (green)
-          if show-carries {
-            if show-colors {
-              diagonal-split-box(${cellSize}in, color-ones, color-tens)
-            } else {
-              box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt)[]
-            }
-          } else { v(${cellSize}in) },
-          [],
-
-          [],
-          [],
-          box(width: ${cellSize}in, height: ${cellSize}in, fill: if show-colors { color-tens } else { color-none })[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[#str(aT)]]],
-          box(width: ${cellSize}in, height: ${cellSize}in, fill: if show-colors { color-ones } else { color-none })[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[#str(aO)]]],
-
-          box(width: ${cellSize}in, height: ${cellSize}in)[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[+]]],
-          [],
-          box(width: ${cellSize}in, height: ${cellSize}in, fill: if show-colors { color-tens } else { color-none })[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[#str(bT)]]],
-          box(width: ${cellSize}in, height: ${cellSize}in, fill: if show-colors { color-ones } else { color-none })[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[#str(bO)]]],
-
-          // Line row
-          [],
-          line(length: ${cellSize}in, stroke: heavy-stroke),
-          line(length: ${cellSize}in, stroke: heavy-stroke),
-          line(length: ${cellSize}in, stroke: heavy-stroke),
-
-          // Ten-frames row with overlaid line on top
-          // Height calculation: each frame has 2 rows, cell-h = (cell-width/5) [square cells]
-          // Total: 4 * cell-h + spacing = 4 * (cell-width/5) = cell-width * 0.8
-          // Only add this row if ten-frames are enabled AND this problem needs them
-          ..if show-ten-frames {
-            let carry = if (aO + bO) >= 10 { 1 } else { 0 }
-            let tens-regroup = (aT + bT + carry) >= 10
-            let ones-regroup = (aO + bO) >= 10
-            let needs-ten-frames = show-ten-frames-for-all or tens-regroup or ones-regroup
-
-            if needs-ten-frames {
-              (
-                [],
-                [],  // Empty cell for hundreds column
-                if show-ten-frames-for-all or tens-regroup {
-                  // Top frame (carry to hundreds) = color-hundreds, Bottom frame (tens) = color-tens
-                  // Use place() to overlay the line on top
-                  // Add small right margin to create gap between tens and ones ten-frames
-                  box(width: ${cellSize}in, height: ${cellSize}in * 0.8)[
-                    #align(center + top)[#ten-frames-stacked(${cellSize}in * 0.90, if show-colors { color-hundreds } else { color-none }, if show-colors { color-tens } else { color-none })]
-                    #place(top, line(length: ${cellSize}in * 0.90, stroke: heavy-stroke))
-                  ]
-                  h(2.5pt)  // Small horizontal gap between tens and ones ten-frames
-                } else {
-                  v(${cellSize}in * 0.8)
-                },
-                if show-ten-frames-for-all or ones-regroup {
-                  // Top frame (carry to tens) = color-tens, Bottom frame (ones) = color-ones
-                  // Use place() to overlay the line on top
-                  box(width: ${cellSize}in, height: ${cellSize}in * 0.8)[
-                    #align(center + top)[#ten-frames-stacked(${cellSize}in * 0.90, if show-colors { color-tens } else { color-none }, if show-colors { color-ones } else { color-none })]
-                    #place(top, line(length: ${cellSize}in * 0.90, stroke: heavy-stroke))
-                  ]
-                } else {
-                  v(${cellSize}in * 0.8)
-                },
-              )
-            } else {
-              ()
-            }
-          } else {
-            ()
-          },
-
-          // Answer boxes
-          [],
-          if show-answers { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-hundreds } else { color-none })[] } else { v(${cellSize}in) },
-          if show-answers { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-tens } else { color-none })[] } else { v(${cellSize}in) },
-          if show-answers { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-ones } else { color-none })[] } else { v(${cellSize}in) },
-        )
-      )
+      #problem-stack(a, b, aT, aO, bT, bO, index)
     ]
   ]
 }
