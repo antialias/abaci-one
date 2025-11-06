@@ -119,6 +119,38 @@ function generatePageTypst(
   )
 }
 
+// Diagonal-split box for carry cells
+// Shows the transition from one place value to another
+// Visual metaphor: carry "flows" from bottom-right (source) to top-left (destination)
+// source-color: color of the place value where the carry comes FROM (right side)
+// dest-color: color of the place value where the carry goes TO (left side)
+#let diagonal-split-box(cell-size, source-color, dest-color) = {
+  box(width: cell-size, height: cell-size, stroke: 0.5pt)[
+    // Bottom-right triangle (source place value)
+    #place(
+      bottom + right,
+      polygon(
+        fill: source-color,
+        stroke: none,
+        (0pt, 0pt),           // bottom-left corner of triangle
+        (cell-size, 0pt),     // bottom-right corner
+        (cell-size, cell-size) // top-right corner
+      )
+    )
+    // Top-left triangle (destination place value)
+    #place(
+      top + left,
+      polygon(
+        fill: dest-color,
+        stroke: none,
+        (0pt, 0pt),           // top-left corner
+        (cell-size, cell-size), // bottom-right corner of triangle
+        (0pt, cell-size)      // bottom-left corner
+      )
+    )
+  ]
+}
+
 #let problem-box(problem, index) = {
   let a = problem.a
   let b = problem.b
@@ -148,8 +180,22 @@ function generatePageTypst(
           gutter: 0pt,
 
           [],
-          if show-carries { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-tens } else { color-none })[] } else { v(${cellSize}in) },
-          if show-carries { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-ones } else { color-none })[] } else { v(${cellSize}in) },
+          // Hundreds carry box: shows carry FROM tens (green) TO hundreds (yellow)
+          if show-carries {
+            if show-colors {
+              diagonal-split-box(${cellSize}in, color-tens, color-hundreds)
+            } else {
+              box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt)[]
+            }
+          } else { v(${cellSize}in) },
+          // Tens carry box: shows carry FROM ones (blue) TO tens (green)
+          if show-carries {
+            if show-colors {
+              diagonal-split-box(${cellSize}in, color-ones, color-tens)
+            } else {
+              box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt)[]
+            }
+          } else { v(${cellSize}in) },
           [],
 
           [],
