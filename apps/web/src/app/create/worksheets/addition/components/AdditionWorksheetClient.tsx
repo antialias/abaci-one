@@ -9,6 +9,7 @@ import { ConfigPanel } from './ConfigPanel'
 import { WorksheetPreview } from './WorksheetPreview'
 import type { WorksheetFormState } from '../types'
 import { validateWorksheetConfig } from '../validation'
+import type { DisplayExamples } from '../generateExamples'
 
 type GenerationStatus = 'idle' | 'generating' | 'error'
 
@@ -27,9 +28,14 @@ function getDefaultDate(): string {
 interface AdditionWorksheetClientProps {
   initialSettings: Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
   initialPreview?: string[]
+  displayExamples?: DisplayExamples
 }
 
-export function AdditionWorksheetClient({ initialSettings, initialPreview }: AdditionWorksheetClientProps) {
+export function AdditionWorksheetClient({
+  initialSettings,
+  initialPreview,
+  displayExamples,
+}: AdditionWorksheetClientProps) {
   console.log('[Worksheet Client] Component render, initialSettings:', {
     problemsPerPage: initialSettings.problemsPerPage,
     cols: initialSettings.cols,
@@ -44,7 +50,9 @@ export function AdditionWorksheetClient({ initialSettings, initialPreview }: Add
   const [isSaving, setIsSaving] = useState(false)
 
   // Calculate derived state from initial settings
-  const rows = Math.ceil((initialSettings.problemsPerPage * initialSettings.pages) / initialSettings.cols)
+  const rows = Math.ceil(
+    (initialSettings.problemsPerPage * initialSettings.pages) / initialSettings.cols
+  )
   const total = initialSettings.problemsPerPage * initialSettings.pages
 
   // Immediate form state (for controls - updates instantly)
@@ -323,7 +331,11 @@ export function AdditionWorksheetClient({ initialSettings, initialPreview }: Add
                   p: '8',
                 })}
               >
-                <ConfigPanel formState={formState} onChange={handleFormChange} />
+                <ConfigPanel
+                  formState={formState}
+                  onChange={handleFormChange}
+                  displayExamples={displayExamples}
+                />
               </div>
 
               {/* Settings saved indicator */}

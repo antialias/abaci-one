@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { css } from '../../../../../../styled-system/css'
 import { stack } from '../../../../../../styled-system/patterns'
 import type { WorksheetFormState } from '../types'
+import { DisplayOptionsPreview } from './DisplayOptionsPreview'
 
 interface ConfigPanelProps {
   formState: WorksheetFormState
@@ -495,7 +496,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
           p: '3',
         })}
       >
-        <div className={stack({ gap: '2' })}>
+        <div className={stack({ gap: '3' })}>
           <div
             className={css({
               display: 'flex',
@@ -570,131 +571,25 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
             </div>
           </div>
 
-          {/* Checkboxes - 2 columns */}
-          <div
-            className={css({
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '1.5',
-              columnGap: '3',
-            })}
-          >
-            <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-              <input
-                id="showCarryBoxes"
-                type="checkbox"
-                checked={formState.showCarryBoxes ?? true}
-                onChange={(e) => onChange({ showCarryBoxes: e.target.checked })}
-                className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-              />
-              <label
-                htmlFor="showCarryBoxes"
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: 'gray.600',
-                  cursor: 'pointer',
-                })}
-              >
-                Carry Boxes
-              </label>
-            </div>
-
-            <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-              <input
-                id="showAnswerBoxes"
-                type="checkbox"
-                checked={formState.showAnswerBoxes ?? true}
-                onChange={(e) => onChange({ showAnswerBoxes: e.target.checked })}
-                className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-              />
-              <label
-                htmlFor="showAnswerBoxes"
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: 'gray.600',
-                  cursor: 'pointer',
-                })}
-              >
-                Answer Boxes
-              </label>
-            </div>
-
-            <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-              <input
-                id="showPlaceValueColors"
-                type="checkbox"
-                checked={formState.showPlaceValueColors ?? true}
-                onChange={(e) => onChange({ showPlaceValueColors: e.target.checked })}
-                className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-              />
-              <label
-                htmlFor="showPlaceValueColors"
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: 'gray.600',
-                  cursor: 'pointer',
-                })}
-              >
-                Place Value Colors
-              </label>
-            </div>
-
-            <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-              <input
-                id="showProblemNumbers"
-                type="checkbox"
-                checked={formState.showProblemNumbers ?? true}
-                onChange={(e) => onChange({ showProblemNumbers: e.target.checked })}
-                className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-              />
-              <label
-                htmlFor="showProblemNumbers"
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: 'gray.600',
-                  cursor: 'pointer',
-                })}
-              >
-                Problem Numbers
-              </label>
-            </div>
-
-            <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-              <input
-                id="showCellBorder"
-                type="checkbox"
-                checked={formState.showCellBorder ?? true}
-                onChange={(e) => onChange({ showCellBorder: e.target.checked })}
-                className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-              />
-              <label
-                htmlFor="showCellBorder"
-                className={css({
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: 'gray.600',
-                  cursor: 'pointer',
-                })}
-              >
-                Cell Borders
-              </label>
-            </div>
-
-            <div className={stack({ gap: '1.5' })}>
+          <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3' })}>
+            {/* Checkboxes */}
+            <div
+              className={css({
+                display: 'grid',
+                gridTemplateColumns: '1fr',
+                gap: '1.5',
+              })}
+            >
               <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
                 <input
-                  id="showTenFrames"
+                  id="showCarryBoxes"
                   type="checkbox"
-                  checked={formState.showTenFrames ?? false}
-                  onChange={(e) => onChange({ showTenFrames: e.target.checked })}
+                  checked={formState.showCarryBoxes ?? true}
+                  onChange={(e) => onChange({ showCarryBoxes: e.target.checked })}
                   className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
                 />
                 <label
-                  htmlFor="showTenFrames"
+                  htmlFor="showCarryBoxes"
                   className={css({
                     fontSize: 'xs',
                     fontWeight: 'medium',
@@ -702,41 +597,146 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                     cursor: 'pointer',
                   })}
                 >
-                  {formState.showTenFramesForAll ? 'Ten-Frames' : 'Ten-Frames for Regrouping'}
+                  Carry Boxes
                 </label>
               </div>
 
-              {/* Sub-option: Show for all place values */}
-              {formState.showTenFrames && (
-                <div
+              <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
+                <input
+                  id="showAnswerBoxes"
+                  type="checkbox"
+                  checked={formState.showAnswerBoxes ?? true}
+                  onChange={(e) => onChange({ showAnswerBoxes: e.target.checked })}
+                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
+                />
+                <label
+                  htmlFor="showAnswerBoxes"
                   className={css({
-                    display: 'flex',
-                    gap: '1.5',
-                    alignItems: 'center',
-                    ml: '5',
+                    fontSize: 'xs',
+                    fontWeight: 'medium',
+                    color: 'gray.600',
+                    cursor: 'pointer',
                   })}
                 >
+                  Answer Boxes
+                </label>
+              </div>
+
+              <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
+                <input
+                  id="showPlaceValueColors"
+                  type="checkbox"
+                  checked={formState.showPlaceValueColors ?? true}
+                  onChange={(e) => onChange({ showPlaceValueColors: e.target.checked })}
+                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
+                />
+                <label
+                  htmlFor="showPlaceValueColors"
+                  className={css({
+                    fontSize: 'xs',
+                    fontWeight: 'medium',
+                    color: 'gray.600',
+                    cursor: 'pointer',
+                  })}
+                >
+                  Place Value Colors
+                </label>
+              </div>
+
+              <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
+                <input
+                  id="showProblemNumbers"
+                  type="checkbox"
+                  checked={formState.showProblemNumbers ?? true}
+                  onChange={(e) => onChange({ showProblemNumbers: e.target.checked })}
+                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
+                />
+                <label
+                  htmlFor="showProblemNumbers"
+                  className={css({
+                    fontSize: 'xs',
+                    fontWeight: 'medium',
+                    color: 'gray.600',
+                    cursor: 'pointer',
+                  })}
+                >
+                  Problem Numbers
+                </label>
+              </div>
+
+              <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
+                <input
+                  id="showCellBorder"
+                  type="checkbox"
+                  checked={formState.showCellBorder ?? true}
+                  onChange={(e) => onChange({ showCellBorder: e.target.checked })}
+                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
+                />
+                <label
+                  htmlFor="showCellBorder"
+                  className={css({
+                    fontSize: 'xs',
+                    fontWeight: 'medium',
+                    color: 'gray.600',
+                    cursor: 'pointer',
+                  })}
+                >
+                  Cell Borders
+                </label>
+              </div>
+
+              <div className={stack({ gap: '1.5' })}>
+                <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
                   <input
-                    id="showTenFramesForAll"
+                    id="showTenFrames"
                     type="checkbox"
-                    checked={formState.showTenFramesForAll ?? false}
-                    onChange={(e) => onChange({ showTenFramesForAll: e.target.checked })}
-                    className={css({ w: '3', h: '3', cursor: 'pointer', flexShrink: 0 })}
+                    checked={formState.showTenFrames ?? false}
+                    onChange={(e) => onChange({ showTenFrames: e.target.checked })}
+                    className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
                   />
                   <label
-                    htmlFor="showTenFramesForAll"
+                    htmlFor="showTenFrames"
                     className={css({
-                      fontSize: '2xs',
+                      fontSize: 'xs',
                       fontWeight: 'medium',
-                      color: 'gray.500',
+                      color: 'gray.600',
                       cursor: 'pointer',
                     })}
                   >
-                    For all place values
+                    {formState.showTenFramesForAll ? 'Ten-Frames' : 'Ten-Frames for Regrouping'}
                   </label>
                 </div>
-              )}
+
+                {/* Sub-option: Show for all place values */}
+                {formState.showTenFrames && (
+                  <div
+                    className={css({ display: 'flex', gap: '1.5', alignItems: 'center', ml: '5' })}
+                  >
+                    <input
+                      id="showTenFramesForAll"
+                      type="checkbox"
+                      checked={formState.showTenFramesForAll ?? false}
+                      onChange={(e) => onChange({ showTenFramesForAll: e.target.checked })}
+                      className={css({ w: '3', h: '3', cursor: 'pointer', flexShrink: 0 })}
+                    />
+                    <label
+                      htmlFor="showTenFramesForAll"
+                      className={css({
+                        fontSize: '2xs',
+                        fontWeight: 'medium',
+                        color: 'gray.500',
+                        cursor: 'pointer',
+                      })}
+                    >
+                      For all place values
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Live Preview */}
+            <DisplayOptionsPreview formState={formState} />
           </div>
         </div>
       </div>

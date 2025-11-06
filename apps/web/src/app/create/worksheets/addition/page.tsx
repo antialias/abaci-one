@@ -1,13 +1,11 @@
 import { eq, and } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { getViewerId } from '@/lib/viewer'
-import {
-  parseAdditionConfig,
-  defaultAdditionConfig,
-} from '@/app/create/worksheets/config-schemas'
+import { parseAdditionConfig, defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
 import { AdditionWorksheetClient } from './components/AdditionWorksheetClient'
 import type { WorksheetFormState } from './types'
 import { generateWorksheetPreview } from './generatePreview'
+import { generateDisplayExamples } from './generateExamples'
 
 /**
  * Get current date formatted as "Month Day, Year"
@@ -70,7 +68,9 @@ export default async function AdditionWorksheetPage() {
   const initialSettings = await loadWorksheetSettings()
 
   // Calculate derived state needed for preview
-  const rows = Math.ceil((initialSettings.problemsPerPage * initialSettings.pages) / initialSettings.cols)
+  const rows = Math.ceil(
+    (initialSettings.problemsPerPage * initialSettings.pages) / initialSettings.cols
+  )
   const total = initialSettings.problemsPerPage * initialSettings.pages
 
   // Create full config for preview generation
@@ -86,11 +86,17 @@ export default async function AdditionWorksheetPage() {
   const previewResult = generateWorksheetPreview(fullConfig)
   console.log('[SSR] Preview generation complete:', previewResult.success ? 'success' : 'failed')
 
-  // Pass both settings and initial preview data to client
+  // Generate visual examples for display options
+  console.log('[SSR] Generating display option examples...')
+  const displayExamples = generateDisplayExamples()
+  console.log('[SSR] Display examples generation complete:', displayExamples ? 'success' : 'failed')
+
+  // Pass settings, preview, and examples to client
   return (
     <AdditionWorksheetClient
       initialSettings={initialSettings}
       initialPreview={previewResult.success ? previewResult.pages : undefined}
+      displayExamples={displayExamples || undefined}
     />
   )
 }
