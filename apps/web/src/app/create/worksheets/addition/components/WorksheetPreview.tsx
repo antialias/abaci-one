@@ -27,7 +27,11 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
     date: getDefaultDate(),
   }
 
-  const response = await fetch('/api/create/worksheets/addition/preview', {
+  // Use absolute URL for SSR compatibility
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+  const url = `${baseUrl}/api/create/worksheets/addition/preview`
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(configWithDate),

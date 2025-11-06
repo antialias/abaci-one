@@ -100,6 +100,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Unsupported worksheet type: ${worksheetType}` }, { status: 400 })
     }
 
+    // Check if user exists in database
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, viewerId)).limit(1)
+
+    if (!user) {
+      // User doesn't exist yet - this is OK for guest users
+      // Don't save settings for non-existent users
+      console.log(`[Worksheet Settings] Skipping save for non-existent user: ${viewerId}`)
+      return NextResponse.json({
+        success: false,
+        message: 'Settings not saved - user account not created yet',
+      })
+    }
+
     // Serialize config (adds version automatically)
     const configJson = serializeAdditionConfig(config)
 

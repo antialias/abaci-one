@@ -159,10 +159,16 @@ export default function AdditionWorksheetPage() {
         })
 
         if (response.ok) {
-          setLastSaved(new Date())
+          const data = await response.json()
+          // Only set lastSaved if settings were actually saved (not guest user)
+          if (data.success) {
+            setLastSaved(new Date())
+          }
+          // Guest users (success: false) - silently skip saving, no error shown
         }
       } catch (error) {
-        console.error('Failed to save worksheet settings:', error)
+        // Silently fail - settings persistence is not critical
+        console.log('Settings save skipped:', error)
       } finally {
         setIsSaving(false)
       }
