@@ -1,7 +1,6 @@
 'use client'
 
 import * as Checkbox from '@radix-ui/react-checkbox'
-import * as Slider from '@radix-ui/react-slider'
 import { useTranslations } from 'next-intl'
 import { css } from '../../../../../../styled-system/css'
 import { stack } from '../../../../../../styled-system/patterns'
@@ -229,7 +228,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
             >
               Orientation
             </div>
-            <div className={css({ display: 'flex', gap: '1.5' })}>
+            <div className={css({ display: 'flex', gap: '2', justifyContent: 'center' })}>
               <button
                 onClick={() => {
                   const newOrientation = 'portrait'
@@ -249,22 +248,41 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   })
                 }}
                 className={css({
-                  flex: 1,
-                  px: '2.5',
-                  py: '1.5',
-                  border: '1.5px solid',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1',
+                  w: '16',
+                  h: '20',
+                  border: '2px solid',
                   borderColor: currentOrientation === 'portrait' ? 'brand.500' : 'gray.300',
                   bg: currentOrientation === 'portrait' ? 'brand.50' : 'white',
-                  rounded: 'lg',
+                  rounded: 'md',
                   cursor: 'pointer',
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: currentOrientation === 'portrait' ? 'brand.700' : 'gray.600',
                   transition: 'all 0.15s',
                   _hover: { borderColor: 'brand.400', transform: 'translateY(-1px)' },
                 })}
               >
-                Portrait
+                <div
+                  className={css({
+                    w: '8',
+                    h: '10',
+                    border: '1.5px solid',
+                    borderColor: currentOrientation === 'portrait' ? 'brand.400' : 'gray.400',
+                    bg: 'white',
+                    rounded: 'sm',
+                  })}
+                />
+                <div
+                  className={css({
+                    fontSize: '2xs',
+                    fontWeight: 'semibold',
+                    color: currentOrientation === 'portrait' ? 'brand.700' : 'gray.600',
+                  })}
+                >
+                  Portrait
+                </div>
               </button>
               <button
                 onClick={() => {
@@ -285,22 +303,41 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                   })
                 }}
                 className={css({
-                  flex: 1,
-                  px: '2.5',
-                  py: '1.5',
-                  border: '1.5px solid',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1',
+                  w: '20',
+                  h: '16',
+                  border: '2px solid',
                   borderColor: currentOrientation === 'landscape' ? 'brand.500' : 'gray.300',
                   bg: currentOrientation === 'landscape' ? 'brand.50' : 'white',
-                  rounded: 'lg',
+                  rounded: 'md',
                   cursor: 'pointer',
-                  fontSize: 'xs',
-                  fontWeight: 'medium',
-                  color: currentOrientation === 'landscape' ? 'brand.700' : 'gray.600',
                   transition: 'all 0.15s',
                   _hover: { borderColor: 'brand.400', transform: 'translateY(-1px)' },
                 })}
               >
-                Landscape
+                <div
+                  className={css({
+                    w: '10',
+                    h: '8',
+                    border: '1.5px solid',
+                    borderColor: currentOrientation === 'landscape' ? 'brand.400' : 'gray.400',
+                    bg: 'white',
+                    rounded: 'sm',
+                  })}
+                />
+                <div
+                  className={css({
+                    fontSize: '2xs',
+                    fontWeight: 'semibold',
+                    color: currentOrientation === 'landscape' ? 'brand.700' : 'gray.600',
+                  })}
+                >
+                  Landscape
+                </div>
               </button>
             </div>
           </div>
@@ -319,12 +356,22 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
             >
               Problems per Page
             </div>
-            <div className={css({ display: 'flex', flexWrap: 'wrap', gap: '1.5' })}>
+            <div
+              className={css({
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '1.5',
+                justifyContent: 'center',
+              })}
+            >
               {(currentOrientation === 'portrait'
                 ? [6, 8, 10, 12, 15]
                 : [8, 10, 12, 15, 16, 20]
               ).map((count) => {
                 const isSelected = currentProblemsPerPage === count
+                const cols = getDefaultColsForProblemsPerPage(count, currentOrientation)
+                const rows = Math.ceil(count / cols)
+
                 return (
                   <button
                     key={count}
@@ -348,16 +395,18 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                       })
                     }}
                     className={css({
-                      px: '3',
-                      py: '1.5',
-                      border: '1.5px solid',
+                      display: 'grid',
+                      gridTemplateRows: '1fr auto',
+                      alignItems: 'center',
+                      gap: '1',
+                      w: currentOrientation === 'portrait' ? '14' : '16',
+                      h: currentOrientation === 'portrait' ? '16' : '14',
+                      p: '2',
+                      border: '2px solid',
                       borderColor: isSelected ? 'brand.500' : 'gray.300',
                       bg: isSelected ? 'brand.50' : 'white',
                       rounded: 'lg',
                       cursor: 'pointer',
-                      fontSize: 'xs',
-                      fontWeight: 'semibold',
-                      color: isSelected ? 'brand.700' : 'gray.600',
                       transition: 'all 0.15s',
                       _hover: {
                         borderColor: 'brand.400',
@@ -365,7 +414,46 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                       },
                     })}
                   >
-                    {count}
+                    {/* Grid visualization - fills available space with 1fr */}
+                    <div
+                      className={css({
+                        display: 'grid',
+                        placeItems: 'center',
+                        w: 'full',
+                        h: 'full',
+                      })}
+                      style={{
+                        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                        gridTemplateRows: `repeat(${rows}, 1fr)`,
+                        gap: currentOrientation === 'portrait' ? '3px' : '2px',
+                      }}
+                    >
+                      {Array.from({ length: count }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={css({
+                            w: '1.5',
+                            h: '1.5',
+                            bg: isSelected ? 'brand.500' : 'gray.400',
+                            rounded: 'full',
+                          })}
+                        />
+                      ))}
+                    </div>
+                    {/* Count label - fixed height */}
+                    <div
+                      className={css({
+                        fontSize: '2xs',
+                        fontWeight: 'semibold',
+                        color: isSelected ? 'brand.700' : 'gray.600',
+                        h: '4',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      })}
+                    >
+                      {count}
+                    </div>
                   </button>
                 )
               })}
@@ -452,7 +540,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
           p: '3',
         })}
       >
-        <div className={stack({ gap: '2' })}>
+        <div className={stack({ gap: '2.5' })}>
           <div
             className={css({
               fontSize: 'xs',
@@ -465,131 +553,161 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
             Difficulty
           </div>
 
-          {/* Dual-range slider */}
+          {/* Difficulty level buttons */}
+          <div className={css({ display: 'flex', gap: '2' })}>
+            {[
+              {
+                level: 'easy',
+                label: 'Easy',
+                pAll: 0,
+                pAny: 0.25,
+                desc: 'Simple addition problems that rarely require carrying to the next place value',
+              },
+              {
+                level: 'medium',
+                label: 'Medium',
+                pAll: 0.25,
+                pAny: 0.75,
+                desc: 'Balanced mix with some carrying from ones to tens, and tens to hundreds',
+              },
+              {
+                level: 'hard',
+                label: 'Hard',
+                pAll: 0.5,
+                pAny: 0.9,
+                desc: 'Challenging problems that frequently require carrying in multiple place values',
+              },
+            ].map(({ level, label, pAll, pAny, desc }) => {
+              // Determine which level is currently selected based on pAll/pAny values
+              const currentPAll = formState.pAllStart ?? 0.25
+              const currentPAny = formState.pAnyStart ?? 0.75
+
+              // Match logic: within 0.05 tolerance
+              const isSelected =
+                Math.abs(currentPAll - pAll) < 0.05 &&
+                Math.abs(currentPAny - pAny) < 0.05
+
+              return (
+                <button
+                  key={level}
+                  onClick={() => {
+                    onChange({
+                      pAllStart: pAll,
+                      pAnyStart: pAny,
+                    })
+                  }}
+                  className={css({
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5',
+                    p: '2.5',
+                    border: '2px solid',
+                    borderColor: isSelected ? 'brand.500' : 'gray.300',
+                    bg: isSelected ? 'brand.50' : 'white',
+                    rounded: 'lg',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    _hover: {
+                      borderColor: 'brand.400',
+                      transform: 'translateY(-1px)',
+                    },
+                  })}
+                >
+                  <div
+                    className={css({
+                      fontSize: 'xs',
+                      fontWeight: 'bold',
+                      color: isSelected ? 'brand.700' : 'gray.700',
+                    })}
+                  >
+                    {label}
+                  </div>
+                  <div
+                    className={css({
+                      fontSize: '2xs',
+                      color: isSelected ? 'brand.600' : 'gray.500',
+                      lineHeight: '1.2',
+                    })}
+                  >
+                    {desc}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Progressive difficulty toggle */}
           <div>
             <div
               className={css({
-                display: 'flex',
-                justifyContent: 'space-between',
                 fontSize: 'xs',
-                fontWeight: 'medium',
-                color: 'gray.600',
-                mb: '2',
+                fontWeight: 'semibold',
+                color: 'gray.500',
+                mb: '1.5',
               })}
             >
-              <div>
-                Both:{' '}
-                <span className={css({ color: 'brand.600', fontWeight: 'semibold' })}>
-                  {Math.round((formState.pAllStart || 0.25) * 100)}%
-                </span>
-              </div>
-              <div>
-                Any:{' '}
-                <span className={css({ color: 'brand.600', fontWeight: 'semibold' })}>
-                  {Math.round((formState.pAnyStart || 0.75) * 100)}%
-                </span>
-              </div>
+              Progressive Difficulty
             </div>
+            <div className={css({ display: 'flex', gap: '2' })}>
+              {[
+                {
+                  value: false,
+                  label: 'Off',
+                  desc: 'All problems will be at the selected difficulty level',
+                },
+                {
+                  value: true,
+                  label: 'On',
+                  desc: 'Problems start easier and gradually build up to the selected difficulty, helping students warm up and gain confidence',
+                },
+              ].map(({ value, label, desc }) => {
+                const isSelected = (formState.interpolate ?? true) === value
 
-            <Slider.Root
-              className={css({
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                userSelect: 'none',
-                touchAction: 'none',
-                width: 'full',
-                height: '6',
+                return (
+                  <button
+                    key={String(value)}
+                    onClick={() => onChange({ interpolate: value })}
+                    className={css({
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5',
+                      p: '2.5',
+                      border: '2px solid',
+                      borderColor: isSelected ? 'brand.500' : 'gray.300',
+                      bg: isSelected ? 'brand.50' : 'white',
+                      rounded: 'lg',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      _hover: {
+                        borderColor: 'brand.400',
+                        transform: 'translateY(-1px)',
+                      },
+                    })}
+                  >
+                    <div
+                      className={css({
+                        fontSize: 'xs',
+                        fontWeight: 'bold',
+                        color: isSelected ? 'brand.700' : 'gray.700',
+                      })}
+                    >
+                      {label}
+                    </div>
+                    <div
+                      className={css({
+                        fontSize: '2xs',
+                        color: isSelected ? 'brand.600' : 'gray.500',
+                        lineHeight: '1.3',
+                      })}
+                    >
+                      {desc}
+                    </div>
+                  </button>
+                )
               })}
-              value={[(formState.pAllStart || 0.25) * 100, (formState.pAnyStart || 0.75) * 100]}
-              onValueChange={(values) => {
-                onChange({
-                  pAllStart: values[0] / 100,
-                  pAnyStart: values[1] / 100,
-                })
-              }}
-              min={0}
-              max={100}
-              step={5}
-              minStepsBetweenThumbs={0}
-            >
-              <Slider.Track
-                className={css({
-                  position: 'relative',
-                  flexGrow: 1,
-                  bg: 'gray.200',
-                  rounded: 'full',
-                  height: '1.5',
-                })}
-              >
-                <Slider.Range
-                  className={css({
-                    position: 'absolute',
-                    bg: 'brand.500',
-                    rounded: 'full',
-                    height: 'full',
-                  })}
-                />
-              </Slider.Track>
-              <Slider.Thumb
-                className={css({
-                  display: 'block',
-                  width: '3.5',
-                  height: '3.5',
-                  bg: 'white',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                  rounded: 'full',
-                  border: '2px solid',
-                  borderColor: 'brand.500',
-                  cursor: 'pointer',
-                  _hover: { transform: 'scale(1.1)' },
-                  _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
-                })}
-              />
-              <Slider.Thumb
-                className={css({
-                  display: 'block',
-                  width: '3.5',
-                  height: '3.5',
-                  bg: 'white',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                  rounded: 'full',
-                  border: '2px solid',
-                  borderColor: 'brand.600',
-                  cursor: 'pointer',
-                  _hover: { transform: 'scale(1.1)' },
-                  _focus: { outline: 'none', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)' },
-                })}
-              />
-            </Slider.Root>
-
-            <div
-              className={css({ fontSize: '2xs', color: 'gray.500', mt: '1.5', lineHeight: '1.3' })}
-            >
-              Regrouping difficulty at worksheet start
             </div>
-          </div>
-
-          {/* Progressive difficulty */}
-          <div className={css({ display: 'flex', gap: '2', alignItems: 'center' })}>
-            <input
-              id="interpolate"
-              type="checkbox"
-              checked={formState.interpolate ?? true}
-              onChange={(e) => onChange({ interpolate: e.target.checked })}
-              className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-            />
-            <label
-              htmlFor="interpolate"
-              className={css({
-                fontSize: 'xs',
-                fontWeight: 'medium',
-                color: 'gray.600',
-                cursor: 'pointer',
-              })}
-            >
-              Progressive difficulty (easy → hard)
-            </label>
           </div>
         </div>
       </div>

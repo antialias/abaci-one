@@ -42,8 +42,8 @@ function generatePageTypst(
   // Calculate cell size to fill the entire problem box
   // Without ten-frames: 5 rows (carry, first number, second number, line, answer)
   // With ten-frames: 5 rows + ten-frames row (0.8 * cellSize for square cells)
-  // Total with ten-frames: 5.8 rows, use 6.4 for breathing room
-  const cellSize = config.showTenFrames ? problemBoxHeight / 6.4 : problemBoxHeight / 5
+  // Total with ten-frames: 5.8 rows, reduced breathing room to maximize size
+  const cellSize = config.showTenFrames ? problemBoxHeight / 6.0 : problemBoxHeight / 4.5
 
   return String.raw`
 // addition-worksheet-page.typ (auto-generated)
