@@ -28,6 +28,9 @@ export default function AdditionWorksheetPage() {
   const t = useTranslations('create.worksheets.addition')
   const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Immediate form state (for controls - updates instantly)
   // PRIMARY state: problemsPerPage, cols, pages (what user controls)
@@ -69,6 +72,104 @@ export default function AdditionWorksheetPage() {
 
     return () => clearTimeout(timer)
   }, [formState])
+
+  // Load saved settings on mount
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/worksheets/settings?type=addition')
+        if (!response.ok) throw new Error('Failed to load settings')
+
+        const data = await response.json()
+        if (data.exists && data.config) {
+          // Load saved config, but preserve derived state
+          const rows = Math.ceil((data.config.problemsPerPage * data.config.pages) / data.config.cols)
+          const total = data.config.problemsPerPage * data.config.pages
+
+          setFormState({
+            ...data.config,
+            rows,
+            total,
+            date: '', // Always start with empty date
+            seed: Date.now() % 2147483647, // Generate new seed
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load worksheet settings:', error)
+        // Continue with defaults
+      } finally {
+        setSettingsLoaded(true)
+      }
+    }
+
+    loadSettings()
+  }, [])
+
+  // Auto-save settings when they change (debounced, only after initial load)
+  useEffect(() => {
+    if (!settingsLoaded) return // Don't save until we've loaded initial settings
+
+    const timer = setTimeout(async () => {
+      setIsSaving(true)
+      try {
+        // Extract only the fields we want to persist (exclude date, seed, derived state)
+        const {
+          problemsPerPage,
+          cols,
+          pages,
+          orientation,
+          name,
+          pAnyStart,
+          pAllStart,
+          interpolate,
+          showCarryBoxes,
+          showAnswerBoxes,
+          showPlaceValueColors,
+          showProblemNumbers,
+          showCellBorder,
+          showTenFrames,
+          showTenFramesForAll,
+          fontSize,
+        } = formState
+
+        const response = await fetch('/api/worksheets/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'addition',
+            config: {
+              problemsPerPage,
+              cols,
+              pages,
+              orientation,
+              name,
+              pAnyStart,
+              pAllStart,
+              interpolate,
+              showCarryBoxes,
+              showAnswerBoxes,
+              showPlaceValueColors,
+              showProblemNumbers,
+              showCellBorder,
+              showTenFrames,
+              showTenFramesForAll,
+              fontSize,
+            },
+          }),
+        })
+
+        if (response.ok) {
+          setLastSaved(new Date())
+        }
+      } catch (error) {
+        console.error('Failed to save worksheet settings:', error)
+      } finally {
+        setIsSaving(false)
+      }
+    }, 1000) // 1 second debounce for auto-save
+
+    return () => clearTimeout(timer)
+  }, [formState, settingsLoaded])
 
   const handleFormChange = (updates: Partial<WorksheetFormState>) => {
     setFormState((prev) => {
@@ -192,16 +293,39 @@ export default function AdditionWorksheetPage() {
             })}
           >
             {/* Configuration Panel */}
-            <div
-              data-section="config-panel"
-              className={css({
-                bg: 'white',
-                rounded: '2xl',
-                shadow: 'card',
-                p: '8',
-              })}
-            >
-              <ConfigPanel formState={formState} onChange={handleFormChange} />
+            <div className={stack({ gap: '3' })}>
+              <div
+                data-section="config-panel"
+                className={css({
+                  bg: 'white',
+                  rounded: '2xl',
+                  shadow: 'card',
+                  p: '8',
+                })}
+              >
+                <ConfigPanel formState={formState} onChange={handleFormChange} />
+              </div>
+
+              {/* Settings saved indicator */}
+              {settingsLoaded && (
+                <div
+                  data-element="settings-status"
+                  className={css({
+                    fontSize: 'sm',
+                    color: 'gray.600',
+                    textAlign: 'center',
+                    py: '2',
+                  })}
+                >
+                  {isSaving ? (
+                    <span className={css({ color: 'gray.500' })}>Saving settings...</span>
+                  ) : lastSaved ? (
+                    <span className={css({ color: 'green.600' })}>
+                      ✓ Settings saved at {lastSaved.toLocaleTimeString()}
+                    </span>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             {/* Preview & Generate Panel */}
