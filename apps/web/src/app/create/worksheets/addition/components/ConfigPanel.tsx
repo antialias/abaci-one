@@ -550,51 +550,44 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
               letterSpacing: 'wider',
             })}
           >
-            Difficulty
+            Regrouping
           </div>
 
-          {/* Difficulty level buttons */}
+          {/* Regrouping toggle */}
           <div className={css({ display: 'flex', gap: '2' })}>
             {[
               {
-                level: 'easy',
-                label: 'Easy',
-                pAll: 0,
-                pAny: 0.25,
-                desc: 'Simple addition problems that rarely require carrying to the next place value',
+                value: false,
+                label: 'Off',
+                desc: 'Simple problems with no regrouping (e.g., 23 + 45 = 68)',
               },
               {
-                level: 'medium',
-                label: 'Medium',
-                pAll: 0.25,
-                pAny: 0.75,
-                desc: 'Balanced mix with some carrying from ones to tens, and tens to hundreds',
+                value: true,
+                label: 'On',
+                desc: 'Include problems that require regrouping (carrying to the next place value)',
               },
-              {
-                level: 'hard',
-                label: 'Hard',
-                pAll: 0.5,
-                pAny: 0.9,
-                desc: 'Challenging problems that frequently require carrying in multiple place values',
-              },
-            ].map(({ level, label, pAll, pAny, desc }) => {
-              // Determine which level is currently selected based on pAll/pAny values
-              const currentPAll = formState.pAllStart ?? 0.25
-              const currentPAny = formState.pAnyStart ?? 0.75
-
-              // Match logic: within 0.05 tolerance
-              const isSelected =
-                Math.abs(currentPAll - pAll) < 0.05 &&
-                Math.abs(currentPAny - pAny) < 0.05
+            ].map(({ value, label, desc }) => {
+              // Regrouping is ON if pAny > 0
+              const hasRegrouping = (formState.pAnyStart ?? 0.75) > 0
+              const isSelected = hasRegrouping === value
 
               return (
                 <button
-                  key={level}
+                  key={String(value)}
                   onClick={() => {
-                    onChange({
-                      pAllStart: pAll,
-                      pAnyStart: pAny,
-                    })
+                    if (value) {
+                      // Turn ON: set to Medium defaults
+                      onChange({
+                        pAllStart: 0.25,
+                        pAnyStart: 0.75,
+                      })
+                    } else {
+                      // Turn OFF: no regrouping at all
+                      onChange({
+                        pAllStart: 0,
+                        pAnyStart: 0,
+                      })
+                    }
                   }}
                   className={css({
                     flex: 1,
@@ -627,7 +620,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                     className={css({
                       fontSize: '2xs',
                       color: isSelected ? 'brand.600' : 'gray.500',
-                      lineHeight: '1.2',
+                      lineHeight: '1.3',
                     })}
                   >
                     {desc}
@@ -637,78 +630,178 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
             })}
           </div>
 
-          {/* Progressive difficulty toggle */}
-          <div>
-            <div
-              className={css({
-                fontSize: 'xs',
-                fontWeight: 'semibold',
-                color: 'gray.500',
-                mb: '1.5',
-              })}
-            >
-              Progressive Difficulty
-            </div>
-            <div className={css({ display: 'flex', gap: '2' })}>
-              {[
-                {
-                  value: false,
-                  label: 'Off',
-                  desc: 'All problems will be at the selected difficulty level',
-                },
-                {
-                  value: true,
-                  label: 'On',
-                  desc: 'Problems start easier and gradually build up to the selected difficulty, helping students warm up and gain confidence',
-                },
-              ].map(({ value, label, desc }) => {
-                const isSelected = (formState.interpolate ?? true) === value
+          {/* Collapsible regrouping difficulty controls */}
+          {(formState.pAnyStart ?? 0.75) > 0 && (
+            <div className={css({ display: 'flex', flexDirection: 'column', gap: '2.5', pt: '1' })}>
+              {/* Regrouping difficulty level buttons */}
+              <div>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    fontWeight: 'semibold',
+                    color: 'gray.500',
+                    mb: '1.5',
+                  })}
+                >
+                  Regrouping Frequency
+                </div>
+                <div className={css({ display: 'flex', gap: '2' })}>
+                  {[
+                    {
+                      level: 'easy',
+                      label: 'Occasional',
+                      pAll: 0,
+                      pAny: 0.25,
+                      desc: 'Regrouping happens rarely, mostly in the ones place',
+                    },
+                    {
+                      level: 'medium',
+                      label: 'Regular',
+                      pAll: 0.25,
+                      pAny: 0.75,
+                      desc: 'Balanced mix with regular regrouping from ones to tens, and tens to hundreds',
+                    },
+                    {
+                      level: 'hard',
+                      label: 'Frequent',
+                      pAll: 0.5,
+                      pAny: 0.9,
+                      desc: 'Most problems require regrouping across multiple place values',
+                    },
+                  ].map(({ level, label, pAll, pAny, desc }) => {
+                    // Determine which level is currently selected based on pAll/pAny values
+                    const currentPAll = formState.pAllStart ?? 0.25
+                    const currentPAny = formState.pAnyStart ?? 0.75
 
-                return (
-                  <button
-                    key={String(value)}
-                    onClick={() => onChange({ interpolate: value })}
-                    className={css({
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.5',
-                      p: '2.5',
-                      border: '2px solid',
-                      borderColor: isSelected ? 'brand.500' : 'gray.300',
-                      bg: isSelected ? 'brand.50' : 'white',
-                      rounded: 'lg',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      _hover: {
-                        borderColor: 'brand.400',
-                        transform: 'translateY(-1px)',
-                      },
-                    })}
-                  >
-                    <div
-                      className={css({
-                        fontSize: 'xs',
-                        fontWeight: 'bold',
-                        color: isSelected ? 'brand.700' : 'gray.700',
-                      })}
-                    >
-                      {label}
-                    </div>
-                    <div
-                      className={css({
-                        fontSize: '2xs',
-                        color: isSelected ? 'brand.600' : 'gray.500',
-                        lineHeight: '1.3',
-                      })}
-                    >
-                      {desc}
-                    </div>
-                  </button>
-                )
-              })}
+                    // Match logic: within 0.05 tolerance
+                    const isSelected =
+                      Math.abs(currentPAll - pAll) < 0.05 && Math.abs(currentPAny - pAny) < 0.05
+
+                    return (
+                      <button
+                        key={level}
+                        onClick={() => {
+                          onChange({
+                            pAllStart: pAll,
+                            pAnyStart: pAny,
+                          })
+                        }}
+                        className={css({
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5',
+                          p: '2.5',
+                          border: '2px solid',
+                          borderColor: isSelected ? 'brand.500' : 'gray.300',
+                          bg: isSelected ? 'brand.50' : 'white',
+                          rounded: 'lg',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          _hover: {
+                            borderColor: 'brand.400',
+                            transform: 'translateY(-1px)',
+                          },
+                        })}
+                      >
+                        <div
+                          className={css({
+                            fontSize: 'xs',
+                            fontWeight: 'bold',
+                            color: isSelected ? 'brand.700' : 'gray.700',
+                          })}
+                        >
+                          {label}
+                        </div>
+                        <div
+                          className={css({
+                            fontSize: '2xs',
+                            color: isSelected ? 'brand.600' : 'gray.500',
+                            lineHeight: '1.2',
+                          })}
+                        >
+                          {desc}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Progressive difficulty toggle */}
+              <div>
+                <div
+                  className={css({
+                    fontSize: 'xs',
+                    fontWeight: 'semibold',
+                    color: 'gray.500',
+                    mb: '1.5',
+                  })}
+                >
+                  Progressive Difficulty
+                </div>
+                <div className={css({ display: 'flex', gap: '2' })}>
+                  {[
+                    {
+                      value: false,
+                      label: 'Off',
+                      desc: 'All problems at the selected regrouping frequency',
+                    },
+                    {
+                      value: true,
+                      label: 'On',
+                      desc: 'Start with simpler regrouping and gradually build up to the selected frequency, helping students warm up',
+                    },
+                  ].map(({ value, label, desc }) => {
+                    const isSelected = (formState.interpolate ?? true) === value
+
+                    return (
+                      <button
+                        key={String(value)}
+                        onClick={() => onChange({ interpolate: value })}
+                        className={css({
+                          flex: 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5',
+                          p: '2.5',
+                          border: '2px solid',
+                          borderColor: isSelected ? 'brand.500' : 'gray.300',
+                          bg: isSelected ? 'brand.50' : 'white',
+                          rounded: 'lg',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          _hover: {
+                            borderColor: 'brand.400',
+                            transform: 'translateY(-1px)',
+                          },
+                        })}
+                      >
+                        <div
+                          className={css({
+                            fontSize: 'xs',
+                            fontWeight: 'bold',
+                            color: isSelected ? 'brand.700' : 'gray.700',
+                          })}
+                        >
+                          {label}
+                        </div>
+                        <div
+                          className={css({
+                            fontSize: '2xs',
+                            color: isSelected ? 'brand.600' : 'gray.500',
+                            lineHeight: '1.3',
+                          })}
+                        >
+                          {desc}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
