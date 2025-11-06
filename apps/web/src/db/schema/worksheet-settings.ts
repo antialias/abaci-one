@@ -1,5 +1,4 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { users } from './users'
 
 /**
  * Worksheet generator settings table - persists user preferences per worksheet type
@@ -9,15 +8,16 @@ import { users } from './users'
  *
  * The config column stores versioned JSON that is validated at runtime
  * See src/app/create/worksheets/config-schemas.ts for schema definitions
+ *
+ * Note: No foreign key constraint - allows guest users to save settings
+ * (matches pattern used by room_members table)
  */
 export const worksheetSettings = sqliteTable('worksheet_settings', {
   /** Unique identifier (UUID) */
   id: text('id').primaryKey(),
 
-  /** Foreign key to users table */
-  userId: text('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
+  /** User ID (may be authenticated user or guest ID) */
+  userId: text('user_id').notNull(),
 
   /** Type of worksheet: 'addition', 'subtraction', 'multiplication', etc. */
   worksheetType: text('worksheet_type').notNull(),
