@@ -107,9 +107,15 @@ export default function AdditionWorksheetPage() {
 
   // Auto-save settings when they change (debounced, only after initial load)
   useEffect(() => {
-    if (!settingsLoaded) return // Don't save until we've loaded initial settings
+    if (!settingsLoaded) {
+      console.log('[Worksheet Settings] Skipping save - settings not loaded yet')
+      return // Don't save until we've loaded initial settings
+    }
+
+    console.log('[Worksheet Settings] Settings changed, will save in 1s...')
 
     const timer = setTimeout(async () => {
+      console.log('[Worksheet Settings] Attempting to save settings...')
       setIsSaving(true)
       try {
         // Extract only the fields we want to persist (exclude date, seed, derived state)
@@ -160,15 +166,21 @@ export default function AdditionWorksheetPage() {
 
         if (response.ok) {
           const data = await response.json()
+          console.log('[Worksheet Settings] Save response:', data)
           // Only set lastSaved if settings were actually saved (not guest user)
           if (data.success) {
+            console.log('[Worksheet Settings] ✓ Settings saved successfully')
             setLastSaved(new Date())
+          } else {
+            console.log('[Worksheet Settings] Save skipped (guest user or no user account)')
           }
           // Guest users (success: false) - silently skip saving, no error shown
+        } else {
+          console.error('[Worksheet Settings] Save failed with status:', response.status)
         }
       } catch (error) {
         // Silently fail - settings persistence is not critical
-        console.log('Settings save skipped:', error)
+        console.error('[Worksheet Settings] Settings save error:', error)
       } finally {
         setIsSaving(false)
       }
