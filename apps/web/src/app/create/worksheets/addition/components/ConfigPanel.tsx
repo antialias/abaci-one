@@ -1,5 +1,6 @@
 'use client'
 
+import * as Checkbox from '@radix-ui/react-checkbox'
 import * as Slider from '@radix-ui/react-slider'
 import { useTranslations } from 'next-intl'
 import { css } from '../../../../../../styled-system/css'
@@ -10,6 +11,114 @@ import { DisplayOptionsPreview } from './DisplayOptionsPreview'
 interface ConfigPanelProps {
   formState: WorksheetFormState
   onChange: (updates: Partial<WorksheetFormState>) => void
+}
+
+interface ToggleOptionProps {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: string
+  description: string
+  children?: React.ReactNode
+}
+
+function ToggleOption({ checked, onChange, label, description, children }: ToggleOptionProps) {
+  return (
+    <div
+      data-element="toggle-option-container"
+      className={css({
+        display: 'flex',
+        flexDirection: 'column',
+        h: children ? 'auto' : '20',
+        bg: checked ? 'brand.50' : 'white',
+        border: '2px solid',
+        borderColor: checked ? 'brand.500' : 'gray.200',
+        rounded: 'lg',
+        transition: 'all 0.15s',
+        _hover: {
+          borderColor: checked ? 'brand.600' : 'gray.300',
+          bg: checked ? 'brand.100' : 'gray.50',
+        },
+      })}
+    >
+      <Checkbox.Root
+        checked={checked}
+        onCheckedChange={onChange}
+        data-element="toggle-option"
+        className={css({
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          gap: '1.5',
+          p: '2.5',
+          bg: 'transparent',
+          border: 'none',
+          rounded: 'lg',
+          cursor: 'pointer',
+          textAlign: 'left',
+          w: 'full',
+          _focus: {
+            outline: 'none',
+            ring: '2px',
+            ringColor: 'brand.300',
+          },
+        })}
+      >
+        <div
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '2',
+          })}
+        >
+          <div
+            className={css({
+              fontSize: 'xs',
+              fontWeight: 'semibold',
+              color: checked ? 'brand.700' : 'gray.700',
+            })}
+          >
+            {label}
+          </div>
+          <div
+            className={css({
+              w: '9',
+              h: '5',
+              bg: checked ? 'brand.500' : 'gray.300',
+              rounded: 'full',
+              position: 'relative',
+              transition: 'background-color 0.15s',
+              flexShrink: 0,
+            })}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: '0.125rem',
+                left: checked ? '1.125rem' : '0.125rem',
+                width: '1rem',
+                height: '1rem',
+                background: 'white',
+                borderRadius: '9999px',
+                transition: 'left 0.15s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }}
+            />
+          </div>
+        </div>
+        <div
+          className={css({
+            fontSize: '2xs',
+            color: checked ? 'brand.600' : 'gray.500',
+            lineHeight: '1.3',
+          })}
+        >
+          {description}
+        </div>
+      </Checkbox.Root>
+      {children}
+    </div>
+  )
 }
 
 export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
@@ -571,168 +680,134 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
             </div>
           </div>
 
-          <div className={css({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3' })}>
-            {/* Checkboxes */}
+          {/* Two-column grid: toggle options on left, preview on right */}
+          <div className={css({ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '3' })}>
+            {/* Toggle Options in 2-column grid */}
             <div
               className={css({
                 display: 'grid',
-                gridTemplateColumns: '1fr',
-                gap: '1.5',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '2',
+                alignItems: 'start',
               })}
             >
-              <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-                <input
-                  id="showCarryBoxes"
-                  type="checkbox"
-                  checked={formState.showCarryBoxes ?? true}
-                  onChange={(e) => onChange({ showCarryBoxes: e.target.checked })}
-                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-                />
-                <label
-                  htmlFor="showCarryBoxes"
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: 'medium',
-                    color: 'gray.600',
-                    cursor: 'pointer',
-                  })}
-                >
-                  Carry Boxes
-                </label>
-              </div>
+              <ToggleOption
+                checked={formState.showCarryBoxes ?? true}
+                onChange={(checked) => onChange({ showCarryBoxes: checked })}
+                label="Carry Boxes"
+                description="Help students track regrouping during addition"
+              />
 
-              <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-                <input
-                  id="showAnswerBoxes"
-                  type="checkbox"
-                  checked={formState.showAnswerBoxes ?? true}
-                  onChange={(e) => onChange({ showAnswerBoxes: e.target.checked })}
-                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-                />
-                <label
-                  htmlFor="showAnswerBoxes"
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: 'medium',
-                    color: 'gray.600',
-                    cursor: 'pointer',
-                  })}
-                >
-                  Answer Boxes
-                </label>
-              </div>
+              <ToggleOption
+                checked={formState.showAnswerBoxes ?? true}
+                onChange={(checked) => onChange({ showAnswerBoxes: checked })}
+                label="Answer Boxes"
+                description="Guide students to write organized, aligned answers"
+              />
 
-              <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-                <input
-                  id="showPlaceValueColors"
-                  type="checkbox"
-                  checked={formState.showPlaceValueColors ?? true}
-                  onChange={(e) => onChange({ showPlaceValueColors: e.target.checked })}
-                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-                />
-                <label
-                  htmlFor="showPlaceValueColors"
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: 'medium',
-                    color: 'gray.600',
-                    cursor: 'pointer',
-                  })}
-                >
-                  Place Value Colors
-                </label>
-              </div>
+              <ToggleOption
+                checked={formState.showPlaceValueColors ?? true}
+                onChange={(checked) => onChange({ showPlaceValueColors: checked })}
+                label="Place Value Colors"
+                description="Reinforce place value understanding visually"
+              />
 
-              <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-                <input
-                  id="showProblemNumbers"
-                  type="checkbox"
-                  checked={formState.showProblemNumbers ?? true}
-                  onChange={(e) => onChange({ showProblemNumbers: e.target.checked })}
-                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-                />
-                <label
-                  htmlFor="showProblemNumbers"
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: 'medium',
-                    color: 'gray.600',
-                    cursor: 'pointer',
-                  })}
-                >
-                  Problem Numbers
-                </label>
-              </div>
+              <ToggleOption
+                checked={formState.showProblemNumbers ?? true}
+                onChange={(checked) => onChange({ showProblemNumbers: checked })}
+                label="Problem Numbers"
+                description="Help students track progress and reference problems"
+              />
 
-              <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-                <input
-                  id="showCellBorder"
-                  type="checkbox"
-                  checked={formState.showCellBorder ?? true}
-                  onChange={(e) => onChange({ showCellBorder: e.target.checked })}
-                  className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-                />
-                <label
-                  htmlFor="showCellBorder"
-                  className={css({
-                    fontSize: 'xs',
-                    fontWeight: 'medium',
-                    color: 'gray.600',
-                    cursor: 'pointer',
-                  })}
-                >
-                  Cell Borders
-                </label>
-              </div>
+              <ToggleOption
+                checked={formState.showCellBorder ?? true}
+                onChange={(checked) => onChange({ showCellBorder: checked })}
+                label="Cell Borders"
+                description="Organize problems visually for easier focus"
+              />
 
-              <div className={stack({ gap: '1.5' })}>
-                <div className={css({ display: 'flex', gap: '1.5', alignItems: 'center' })}>
-                  <input
-                    id="showTenFrames"
-                    type="checkbox"
-                    checked={formState.showTenFrames ?? false}
-                    onChange={(e) => onChange({ showTenFrames: e.target.checked })}
-                    className={css({ w: '3.5', h: '3.5', cursor: 'pointer', flexShrink: 0 })}
-                  />
-                  <label
-                    htmlFor="showTenFrames"
+              <ToggleOption
+                checked={formState.showTenFrames ?? false}
+                onChange={(checked) => {
+                  onChange({ showTenFrames: checked })
+                  // Auto-disable "for all" when disabling ten-frames
+                  if (!checked) {
+                    onChange({ showTenFramesForAll: false })
+                  }
+                }}
+                label="Ten-Frames"
+                description="Visualize regrouping with concrete counting tools"
+              >
+                {/* Sub-option: Show ten-frames for all - always rendered but hidden when parent is unchecked */}
+                <div
+                  className={css({
+                    display: 'flex',
+                    gap: '2',
+                    alignItems: 'center',
+                    pt: '2',
+                    mt: '1.5',
+                    borderTop: '1px solid',
+                    borderColor: 'brand.300',
+                    opacity: formState.showTenFrames ? 1 : 0,
+                    visibility: formState.showTenFrames ? 'visible' : 'hidden',
+                    pointerEvents: formState.showTenFrames ? 'auto' : 'none',
+                    transition: 'opacity 0.15s',
+                  })}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Checkbox.Root
+                    checked={formState.showTenFramesForAll ?? false}
+                    onCheckedChange={(checked) =>
+                      onChange({ showTenFramesForAll: checked as boolean })
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    data-element="ten-frames-all-checkbox"
                     className={css({
-                      fontSize: 'xs',
-                      fontWeight: 'medium',
-                      color: 'gray.600',
+                      w: '3.5',
+                      h: '3.5',
                       cursor: 'pointer',
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bg: formState.showTenFramesForAll ? 'brand.500' : 'white',
+                      border: '2px solid',
+                      borderColor: formState.showTenFramesForAll ? 'brand.500' : 'gray.300',
+                      rounded: 'sm',
+                      transition: 'all 0.15s',
                     })}
                   >
-                    {formState.showTenFramesForAll ? 'Ten-Frames' : 'Ten-Frames for Regrouping'}
+                    <Checkbox.Indicator>
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 15 15"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3355 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.55529 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z"
+                          fill="white"
+                        />
+                      </svg>
+                    </Checkbox.Indicator>
+                  </Checkbox.Root>
+                  <label
+                    className={css({
+                      fontSize: '2xs',
+                      fontWeight: 'medium',
+                      color: 'brand.700',
+                      cursor: 'pointer',
+                    })}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onChange({ showTenFramesForAll: !formState.showTenFramesForAll })
+                    }}
+                  >
+                    Show for all problems (not just regrouping)
                   </label>
                 </div>
-
-                {/* Sub-option: Show for all place values */}
-                {formState.showTenFrames && (
-                  <div
-                    className={css({ display: 'flex', gap: '1.5', alignItems: 'center', ml: '5' })}
-                  >
-                    <input
-                      id="showTenFramesForAll"
-                      type="checkbox"
-                      checked={formState.showTenFramesForAll ?? false}
-                      onChange={(e) => onChange({ showTenFramesForAll: e.target.checked })}
-                      className={css({ w: '3', h: '3', cursor: 'pointer', flexShrink: 0 })}
-                    />
-                    <label
-                      htmlFor="showTenFramesForAll"
-                      className={css({
-                        fontSize: '2xs',
-                        fontWeight: 'medium',
-                        color: 'gray.500',
-                        cursor: 'pointer',
-                      })}
-                    >
-                      For all place values
-                    </label>
-                  </div>
-                )}
-              </div>
+              </ToggleOption>
             </div>
 
             {/* Live Preview */}
