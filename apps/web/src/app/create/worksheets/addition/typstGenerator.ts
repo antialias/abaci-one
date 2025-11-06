@@ -171,40 +171,45 @@ function generatePageTypst(
           // Ten-frames row with overlaid line on top
           // Height calculation: each frame has 2 rows, cell-h = (cell-width/5) [square cells]
           // Total: 4 * cell-h + spacing = 4 * (cell-width/5) = cell-width * 0.8
-          [],
-          [],  // Empty cell for hundreds column
-          if show-ten-frames {
+          // Only add this row if ten-frames are enabled AND this problem needs them
+          ..if show-ten-frames {
             let carry = if (aO + bO) >= 10 { 1 } else { 0 }
             let tens-regroup = (aT + bT + carry) >= 10
-            if show-ten-frames-for-all or tens-regroup {
-              // Top frame (carry to hundreds) = color-hundreds, Bottom frame (tens) = color-tens
-              // Use place() to overlay the line on top
-              // Add small right margin to create gap between tens and ones ten-frames
-              box(width: ${cellSize}in, height: ${cellSize}in * 0.8)[
-                #align(center + top)[#ten-frames-stacked(${cellSize}in * 0.90, if show-colors { color-hundreds } else { color-none }, if show-colors { color-tens } else { color-none })]
-                #place(top, line(length: ${cellSize}in * 0.90, stroke: heavy-stroke))
-              ]
-              h(2.5pt)  // Small horizontal gap between tens and ones ten-frames
-            } else {
-              v(${cellSize}in * 0.8)
-            }
-          } else {
-            v(${cellSize}in * 0.8)
-          },
-          if show-ten-frames {
             let ones-regroup = (aO + bO) >= 10
-            if show-ten-frames-for-all or ones-regroup {
-              // Top frame (carry to tens) = color-tens, Bottom frame (ones) = color-ones
-              // Use place() to overlay the line on top
-              box(width: ${cellSize}in, height: ${cellSize}in * 0.8)[
-                #align(center + top)[#ten-frames-stacked(${cellSize}in * 0.90, if show-colors { color-tens } else { color-none }, if show-colors { color-ones } else { color-none })]
-                #place(top, line(length: ${cellSize}in * 0.90, stroke: heavy-stroke))
-              ]
+            let needs-ten-frames = show-ten-frames-for-all or tens-regroup or ones-regroup
+
+            if needs-ten-frames {
+              (
+                [],
+                [],  // Empty cell for hundreds column
+                if show-ten-frames-for-all or tens-regroup {
+                  // Top frame (carry to hundreds) = color-hundreds, Bottom frame (tens) = color-tens
+                  // Use place() to overlay the line on top
+                  // Add small right margin to create gap between tens and ones ten-frames
+                  box(width: ${cellSize}in, height: ${cellSize}in * 0.8)[
+                    #align(center + top)[#ten-frames-stacked(${cellSize}in * 0.90, if show-colors { color-hundreds } else { color-none }, if show-colors { color-tens } else { color-none })]
+                    #place(top, line(length: ${cellSize}in * 0.90, stroke: heavy-stroke))
+                  ]
+                  h(2.5pt)  // Small horizontal gap between tens and ones ten-frames
+                } else {
+                  v(${cellSize}in * 0.8)
+                },
+                if show-ten-frames-for-all or ones-regroup {
+                  // Top frame (carry to tens) = color-tens, Bottom frame (ones) = color-ones
+                  // Use place() to overlay the line on top
+                  box(width: ${cellSize}in, height: ${cellSize}in * 0.8)[
+                    #align(center + top)[#ten-frames-stacked(${cellSize}in * 0.90, if show-colors { color-tens } else { color-none }, if show-colors { color-ones } else { color-none })]
+                    #place(top, line(length: ${cellSize}in * 0.90, stroke: heavy-stroke))
+                  ]
+                } else {
+                  v(${cellSize}in * 0.8)
+                },
+              )
             } else {
-              v(${cellSize}in * 0.8)
+              ()
             }
           } else {
-            v(${cellSize}in * 0.8)
+            ()
           },
 
           // Answer boxes
