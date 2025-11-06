@@ -1,16 +1,13 @@
-'use client'
-
-import { useTranslations } from 'next-intl'
-import { useState, useEffect } from 'react'
-import { PageWithNav } from '@/components/PageWithNav'
-import { css } from '../../../../../styled-system/css'
-import { container, grid, hstack, stack } from '../../../../../styled-system/patterns'
-import { ConfigPanel } from './components/ConfigPanel'
-import { WorksheetPreview } from './components/WorksheetPreview'
+import { eq, and } from 'drizzle-orm'
+import { db, schema } from '@/db'
+import { getViewerId } from '@/lib/viewer'
+import {
+  parseAdditionConfig,
+  defaultAdditionConfig,
+} from '@/app/create/worksheets/config-schemas'
+import { AdditionWorksheetClient } from './components/AdditionWorksheetClient'
 import type { WorksheetFormState } from './types'
-import { validateWorksheetConfig } from './validation'
-
-type GenerationStatus = 'idle' | 'generating' | 'error'
+import { generateWorksheetPreview } from './generatePreview'
 
 /**
  * Get current date formatted as "Month Day, Year"
@@ -24,468 +21,76 @@ function getDefaultDate(): string {
   })
 }
 
-export default function AdditionWorksheetPage() {
-  const t = useTranslations('create.worksheets.addition')
-  const [generationStatus, setGenerationStatus] = useState<GenerationStatus>('idle')
-  const [error, setError] = useState<string | null>(null)
-  const [settingsLoaded, setSettingsLoaded] = useState(false)
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
+/**
+ * Load worksheet settings from database (server-side)
+ */
+async function loadWorksheetSettings(): Promise<
+  Omit<WorksheetFormState, 'date' | 'rows' | 'total'>
+> {
+  try {
+    const viewerId = await getViewerId()
 
-  // Immediate form state (for controls - updates instantly)
-  // PRIMARY state: problemsPerPage, cols, pages (what user controls)
-  // DERIVED state: rows, total (calculated from primary)
-  const [formState, setFormState] = useState<WorksheetFormState>({
-    // Primary state
-    problemsPerPage: 20,
-    cols: 5,
-    pages: 1,
-    orientation: 'landscape',
-    // Derived state
-    rows: 4, // (20 / 5) * 1 = 4
-    total: 20, // 20 * 1 = 20
-    // Other settings
-    name: '',
-    date: '', // Will be set at generation time
-    pAnyStart: 0.75,
-    pAllStart: 0.25,
-    interpolate: true,
-    showCarryBoxes: true,
-    showAnswerBoxes: true,
-    showPlaceValueColors: true,
-    showProblemNumbers: true,
-    showCellBorder: true,
-    showTenFrames: false,
-    showTenFramesForAll: false,
-    fontSize: 16,
-    seed: Date.now() % 2147483647,
-  })
+    // Look up user's saved settings
+    const [row] = await db
+      .select()
+      .from(schema.worksheetSettings)
+      .where(
+        and(
+          eq(schema.worksheetSettings.userId, viewerId),
+          eq(schema.worksheetSettings.worksheetType, 'addition')
+        )
+      )
+      .limit(1)
 
-  // Debounced form state (for preview - updates after delay)
-  const [debouncedFormState, setDebouncedFormState] = useState<WorksheetFormState>(formState)
-
-  // Debounce preview updates (500ms delay)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedFormState(formState)
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [formState])
-
-  // Load saved settings on mount
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        const response = await fetch('/api/worksheets/settings?type=addition')
-        if (!response.ok) throw new Error('Failed to load settings')
-
-        const data = await response.json()
-        if (data.exists && data.config) {
-          // Load saved config, but preserve derived state
-          const rows = Math.ceil((data.config.problemsPerPage * data.config.pages) / data.config.cols)
-          const total = data.config.problemsPerPage * data.config.pages
-
-          setFormState({
-            ...data.config,
-            rows,
-            total,
-            date: '', // Always start with empty date
-            seed: Date.now() % 2147483647, // Generate new seed
-          })
-        }
-      } catch (error) {
-        console.error('Failed to load worksheet settings:', error)
-        // Continue with defaults
-      } finally {
-        setSettingsLoaded(true)
+    if (!row) {
+      // No saved settings, return defaults with a stable seed
+      return {
+        ...defaultAdditionConfig,
+        seed: Date.now() % 2147483647,
       }
     }
 
-    loadSettings()
-  }, [])
-
-  // Auto-save settings when they change (debounced, only after initial load)
-  useEffect(() => {
-    if (!settingsLoaded) {
-      console.log('[Worksheet Settings] Skipping save - settings not loaded yet')
-      return // Don't save until we've loaded initial settings
+    // Parse and validate config (auto-migrates to latest version)
+    const config = parseAdditionConfig(row.config)
+    return {
+      ...config,
+      seed: Date.now() % 2147483647,
     }
-
-    console.log('[Worksheet Settings] Settings changed, will save in 1s...')
-
-    const timer = setTimeout(async () => {
-      console.log('[Worksheet Settings] Attempting to save settings...')
-      setIsSaving(true)
-      try {
-        // Extract only the fields we want to persist (exclude date, seed, derived state)
-        const {
-          problemsPerPage,
-          cols,
-          pages,
-          orientation,
-          name,
-          pAnyStart,
-          pAllStart,
-          interpolate,
-          showCarryBoxes,
-          showAnswerBoxes,
-          showPlaceValueColors,
-          showProblemNumbers,
-          showCellBorder,
-          showTenFrames,
-          showTenFramesForAll,
-          fontSize,
-        } = formState
-
-        const response = await fetch('/api/worksheets/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'addition',
-            config: {
-              problemsPerPage,
-              cols,
-              pages,
-              orientation,
-              name,
-              pAnyStart,
-              pAllStart,
-              interpolate,
-              showCarryBoxes,
-              showAnswerBoxes,
-              showPlaceValueColors,
-              showProblemNumbers,
-              showCellBorder,
-              showTenFrames,
-              showTenFramesForAll,
-              fontSize,
-            },
-          }),
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          console.log('[Worksheet Settings] Save response:', data)
-          // Only set lastSaved if settings were actually saved (not guest user)
-          if (data.success) {
-            console.log('[Worksheet Settings] ✓ Settings saved successfully')
-            setLastSaved(new Date())
-          } else {
-            console.log('[Worksheet Settings] Save skipped (guest user or no user account)')
-          }
-          // Guest users (success: false) - silently skip saving, no error shown
-        } else {
-          console.error('[Worksheet Settings] Save failed with status:', response.status)
-        }
-      } catch (error) {
-        // Silently fail - settings persistence is not critical
-        console.error('[Worksheet Settings] Settings save error:', error)
-      } finally {
-        setIsSaving(false)
-      }
-    }, 1000) // 1 second debounce for auto-save
-
-    return () => clearTimeout(timer)
-  }, [formState, settingsLoaded])
-
-  const handleFormChange = (updates: Partial<WorksheetFormState>) => {
-    setFormState((prev) => {
-      const newState = { ...prev, ...updates }
-
-      // Generate new seed when problem settings change
-      const affectsProblems =
-        updates.problemsPerPage !== undefined ||
-        updates.cols !== undefined ||
-        updates.pages !== undefined ||
-        updates.orientation !== undefined ||
-        updates.pAnyStart !== undefined ||
-        updates.pAllStart !== undefined ||
-        updates.interpolate !== undefined
-
-      if (affectsProblems) {
-        newState.seed = Date.now() % 2147483647
-      }
-
-      return newState
-    })
-  }
-
-  const handleGenerate = async () => {
-    setGenerationStatus('generating')
-    setError(null)
-
-    try {
-      // Set current date at generation time
-      const configWithDate = {
-        ...formState,
-        date: getDefaultDate(),
-      }
-
-      // Validate configuration
-      const validation = validateWorksheetConfig(configWithDate)
-      if (!validation.isValid || !validation.config) {
-        throw new Error(validation.errors?.join(', ') || 'Invalid configuration')
-      }
-
-      const response = await fetch('/api/create/worksheets/addition', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(configWithDate),
-      })
-
-      if (!response.ok) {
-        const errorResult = await response.json()
-        const errorMsg = errorResult.details
-          ? `${errorResult.error}\n\n${errorResult.details}`
-          : errorResult.error || 'Generation failed'
-        throw new Error(errorMsg)
-      }
-
-      // Success - response is binary PDF data, trigger download
-      const blob = await response.blob()
-      const filename = `addition-worksheet-${formState.name || 'student'}-${Date.now()}.pdf`
-
-      // Create download link and trigger download
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.style.display = 'none'
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      setGenerationStatus('idle')
-    } catch (err) {
-      console.error('Generation error:', err)
-      setError(err instanceof Error ? err.message : 'Unknown error occurred')
-      setGenerationStatus('error')
+  } catch (error) {
+    console.error('Failed to load worksheet settings:', error)
+    // Return defaults on error with a stable seed
+    return {
+      ...defaultAdditionConfig,
+      seed: Date.now() % 2147483647,
     }
   }
+}
 
-  const handleNewGeneration = () => {
-    setGenerationStatus('idle')
-    setError(null)
+export default async function AdditionWorksheetPage() {
+  const initialSettings = await loadWorksheetSettings()
+
+  // Calculate derived state needed for preview
+  const rows = Math.ceil((initialSettings.problemsPerPage * initialSettings.pages) / initialSettings.cols)
+  const total = initialSettings.problemsPerPage * initialSettings.pages
+
+  // Create full config for preview generation
+  const fullConfig: WorksheetFormState = {
+    ...initialSettings,
+    rows,
+    total,
+    date: getDefaultDate(),
   }
 
+  // Pre-generate worksheet preview on the server
+  console.log('[SSR] Generating worksheet preview on server...')
+  const previewResult = generateWorksheetPreview(fullConfig)
+  console.log('[SSR] Preview generation complete:', previewResult.success ? 'success' : 'failed')
+
+  // Pass both settings and initial preview data to client
   return (
-    <PageWithNav navTitle={t('navTitle')} navEmoji="📝">
-      <div
-        data-component="addition-worksheet-page"
-        className={css({ minHeight: '100vh', bg: 'gray.50' })}
-      >
-        {/* Main Content */}
-        <div className={container({ maxW: '7xl', px: '4', py: '8' })}>
-          <div className={stack({ gap: '6', mb: '8' })}>
-            <div className={stack({ gap: '2', textAlign: 'center' })}>
-              <h1
-                className={css({
-                  fontSize: '3xl',
-                  fontWeight: 'bold',
-                  color: 'gray.900',
-                })}
-              >
-                {t('pageTitle')}
-              </h1>
-              <p
-                className={css({
-                  fontSize: 'lg',
-                  color: 'gray.600',
-                })}
-              >
-                {t('pageSubtitle')}
-              </p>
-            </div>
-          </div>
-
-          {/* Configuration Interface */}
-          <div
-            className={grid({
-              columns: { base: 1, lg: 2 },
-              gap: '8',
-              alignItems: 'start',
-            })}
-          >
-            {/* Configuration Panel */}
-            <div className={stack({ gap: '3' })}>
-              <div
-                data-section="config-panel"
-                className={css({
-                  bg: 'white',
-                  rounded: '2xl',
-                  shadow: 'card',
-                  p: '8',
-                })}
-              >
-                <ConfigPanel formState={formState} onChange={handleFormChange} />
-              </div>
-
-              {/* Settings saved indicator */}
-              {settingsLoaded && (
-                <div
-                  data-element="settings-status"
-                  className={css({
-                    fontSize: 'sm',
-                    color: 'gray.600',
-                    textAlign: 'center',
-                    py: '2',
-                  })}
-                >
-                  {isSaving ? (
-                    <span className={css({ color: 'gray.500' })}>Saving settings...</span>
-                  ) : lastSaved ? (
-                    <span className={css({ color: 'green.600' })}>
-                      ✓ Settings saved at {lastSaved.toLocaleTimeString()}
-                    </span>
-                  ) : null}
-                </div>
-              )}
-            </div>
-
-            {/* Preview & Generate Panel */}
-            <div className={stack({ gap: '8' })}>
-              {/* Preview */}
-              <div
-                data-section="preview-panel"
-                className={css({
-                  bg: 'white',
-                  rounded: '2xl',
-                  shadow: 'card',
-                  p: '6',
-                })}
-              >
-                <WorksheetPreview formState={debouncedFormState} />
-              </div>
-
-              {/* Generate Button */}
-              <div
-                data-section="generate-panel"
-                className={css({
-                  bg: 'white',
-                  rounded: '2xl',
-                  shadow: 'card',
-                  p: '6',
-                })}
-              >
-                <button
-                  data-action="generate-worksheet"
-                  onClick={handleGenerate}
-                  disabled={generationStatus === 'generating'}
-                  className={css({
-                    w: 'full',
-                    px: '6',
-                    py: '4',
-                    bg: 'brand.600',
-                    color: 'white',
-                    fontSize: 'lg',
-                    fontWeight: 'semibold',
-                    rounded: 'xl',
-                    shadow: 'card',
-                    transition: 'all',
-                    cursor: generationStatus === 'generating' ? 'not-allowed' : 'pointer',
-                    opacity: generationStatus === 'generating' ? '0.7' : '1',
-                    _hover:
-                      generationStatus === 'generating'
-                        ? {}
-                        : {
-                            bg: 'brand.700',
-                            transform: 'translateY(-1px)',
-                            shadow: 'modal',
-                          },
-                  })}
-                >
-                  <span className={hstack({ gap: '3', justify: 'center' })}>
-                    {generationStatus === 'generating' ? (
-                      <>
-                        <div
-                          className={css({
-                            w: '5',
-                            h: '5',
-                            border: '2px solid',
-                            borderColor: 'white',
-                            borderTopColor: 'transparent',
-                            rounded: 'full',
-                            animation: 'spin 1s linear infinite',
-                          })}
-                        />
-                        {t('generate.generating')}
-                      </>
-                    ) : (
-                      <>
-                        <div className={css({ fontSize: 'xl' })}>📝</div>
-                        {t('generate.button')}
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Error Display */}
-          {generationStatus === 'error' && error && (
-            <div
-              data-status="error"
-              className={css({
-                bg: 'red.50',
-                border: '1px solid',
-                borderColor: 'red.200',
-                rounded: '2xl',
-                p: '8',
-                mt: '8',
-              })}
-            >
-              <div className={stack({ gap: '4' })}>
-                <div className={hstack({ gap: '3', alignItems: 'center' })}>
-                  <div className={css({ fontSize: '2xl' })}>❌</div>
-                  <h3
-                    className={css({
-                      fontSize: 'xl',
-                      fontWeight: 'semibold',
-                      color: 'red.800',
-                    })}
-                  >
-                    {t('error.title')}
-                  </h3>
-                </div>
-                <pre
-                  className={css({
-                    color: 'red.700',
-                    lineHeight: 'relaxed',
-                    whiteSpace: 'pre-wrap',
-                    fontFamily: 'mono',
-                    fontSize: 'sm',
-                    overflowX: 'auto',
-                  })}
-                >
-                  {error}
-                </pre>
-                <button
-                  data-action="try-again"
-                  onClick={handleNewGeneration}
-                  className={css({
-                    alignSelf: 'start',
-                    px: '4',
-                    py: '2',
-                    bg: 'red.600',
-                    color: 'white',
-                    fontWeight: 'medium',
-                    rounded: 'lg',
-                    transition: 'all',
-                    _hover: { bg: 'red.700' },
-                  })}
-                >
-                  {t('error.tryAgain')}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </PageWithNav>
+    <AdditionWorksheetClient
+      initialSettings={initialSettings}
+      initialPreview={previewResult.success ? previewResult.pages : undefined}
+    />
   )
 }

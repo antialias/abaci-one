@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { css } from '../../../../../../styled-system/css'
@@ -9,6 +9,7 @@ import type { WorksheetFormState } from '../types'
 
 interface WorksheetPreviewProps {
   formState: WorksheetFormState
+  initialData?: string[]
 }
 
 function getDefaultDate(): string {
@@ -21,6 +22,12 @@ function getDefaultDate(): string {
 }
 
 async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<string[]> {
+  const fetchId = Math.random().toString(36).slice(2, 9)
+  console.log(`[WorksheetPreview] fetchWorksheetPreview called (ID: ${fetchId})`, {
+    seed: formState.seed,
+    problemsPerPage: formState.problemsPerPage,
+  })
+
   // Set current date for preview
   const configWithDate = {
     ...formState,
@@ -31,6 +38,7 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
   const url = `${baseUrl}/api/create/worksheets/addition/preview`
 
+  console.log(`[WorksheetPreview] Fetching from API (ID: ${fetchId})...`)
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -46,12 +54,31 @@ async function fetchWorksheetPreview(formState: WorksheetFormState): Promise<str
   }
 
   const data = await response.json()
+  console.log(`[WorksheetPreview] Fetch complete (ID: ${fetchId}), pages:`, data.pages.length)
   return data.pages
 }
 
-function PreviewContent({ formState }: WorksheetPreviewProps) {
+function PreviewContent({ formState, initialData }: WorksheetPreviewProps) {
   const t = useTranslations('create.worksheets.addition')
   const [currentPage, setCurrentPage] = useState(0)
+
+  // Track if we've used the initial data (so we only use it once)
+  const initialDataUsed = useRef(false)
+
+  console.log('[WorksheetPreview] Rendering with formState:', {
+    seed: formState.seed,
+    problemsPerPage: formState.problemsPerPage,
+    hasInitialData: !!initialData,
+    initialDataUsed: initialDataUsed.current,
+  })
+
+  // Only use initialData on the very first query, not on subsequent fetches
+  const queryInitialData = !initialDataUsed.current && initialData ? initialData : undefined
+
+  if (queryInitialData) {
+    console.log('[WorksheetPreview] Using server-generated initial data')
+    initialDataUsed.current = true
+  }
 
   // Use Suspense Query - will suspend during loading
   const { data: pages } = useSuspenseQuery({
@@ -78,8 +105,14 @@ function PreviewContent({ formState }: WorksheetPreviewProps) {
       // Note: fontSize, date, rows, total intentionally excluded
       // (rows and total are derived from primary state)
     ],
-    queryFn: () => fetchWorksheetPreview(formState),
+    queryFn: () => {
+      console.log('[WorksheetPreview] Fetching preview from API...')
+      return fetchWorksheetPreview(formState)
+    },
+    initialData: queryInitialData, // Only use on first render
   })
+
+  console.log('[WorksheetPreview] Preview fetched, pages:', pages.length)
 
   const totalPages = pages.length
 
@@ -283,6 +316,7 @@ function PreviewContent({ formState }: WorksheetPreviewProps) {
 }
 
 function PreviewFallback() {
+  console.log('[WorksheetPreview] Showing fallback (Suspense boundary)')
   return (
     <div
       data-component="worksheet-preview-loading"
@@ -310,10 +344,10 @@ function PreviewFallback() {
   )
 }
 
-export function WorksheetPreview({ formState }: WorksheetPreviewProps) {
+export function WorksheetPreview({ formState, initialData }: WorksheetPreviewProps) {
   return (
     <Suspense fallback={<PreviewFallback />}>
-      <PreviewContent formState={formState} />
+      <PreviewContent formState={formState} initialData={initialData} />
     </Suspense>
   )
 }
