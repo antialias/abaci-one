@@ -70,6 +70,74 @@ Before modifying `package.json` dependencies:
 2. Ask yourself: "Could this code be in `src/` instead?"
 3. If unsure, ask the user before proceeding
 
+## CRITICAL: Code Factoring - Never Fork, Always Factor
+
+**When told to share code between files, NEVER copy/paste. ALWAYS extract to shared utility.**
+
+### The Mistake (Made Multiple Times)
+
+When implementing addition worksheet preview examples, I was told **THREE TIMES** to factor out the problem rendering code:
+- "the example should be closely associated in the codebase semantically with the template"
+- "just be sure to factor, not fork"
+- "we need to be showing exactly what the worksheet template uses"
+
+**What I did wrong:** Copied the Typst problem rendering code from `typstGenerator.ts` to `example/route.ts`
+
+**Why this is wrong:**
+- Changes to worksheet layout won't reflect in preview
+- Maintaining two copies guarantees they'll drift apart
+- Violates DRY (Don't Repeat Yourself)
+- The user explicitly said "factor, not fork"
+
+### What To Do Instead
+
+**✅ CORRECT - Extract to shared function:**
+
+1. Create shared function in `typstHelpers.ts`:
+   ```typescript
+   export function generateProblemBoxFunction(cellSize: number): string {
+     // Returns the Typst function definition that both files can use
+     return `#let problem-box(problem, index) = { ... }`
+   }
+   ```
+
+2. Both `typstGenerator.ts` and `example/route.ts` import and use it:
+   ```typescript
+   import { generateProblemBoxFunction } from './typstHelpers'
+
+   // In Typst template:
+   ${generateProblemBoxFunction(cellSize)}
+
+   // Then call it:
+   #problem-box((a: 45, b: 27), 0)
+   ```
+
+**❌ WRONG - Copy/paste the code:**
+```typescript
+// typstGenerator.ts
+const template = `#let problem-box = { ... }` // ← Original
+
+// example/route.ts
+const template = `#let problem-box = { ... }` // ← Copy/paste = FORKED CODE
+```
+
+### Red Flags
+
+If you find yourself:
+- Copying large blocks of code between files
+- Saying "I'll make it match the other file"
+- Maintaining "two versions" of the same logic
+
+**STOP.** Extract to a shared utility function.
+
+### Rule of Thumb
+
+When the user says "factor" or "share code" or "use the same template":
+1. Find the common code
+2. Extract to shared function in appropriate utility file
+3. Import and call that function from both places
+4. The shared function should be the SINGLE SOURCE OF TRUTH
+
 ## MANDATORY: Quality Checks for ALL Work
 
 **BEFORE declaring ANY work complete, fixed, or working**, you MUST run and pass these checks:
