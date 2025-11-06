@@ -67,11 +67,20 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
   // Determine orientation based on columns (portrait = 2-3 cols, landscape = 4-5 cols)
   const orientation = formState.orientation || (cols <= 3 ? 'portrait' : 'landscape')
 
+  // Get primary state values
+  const problemsPerPage = formState.problemsPerPage ?? total
+  const pages = formState.pages ?? 1
+
   // Build complete config with defaults
   const config: WorksheetConfig = {
-    total,
+    // Primary state
+    problemsPerPage,
     cols,
+    pages,
+    // Derived state
+    total,
     rows,
+    // Other fields
     name: formState.name?.trim() || 'Student',
     date: formState.date?.trim() || getDefaultDate(),
     pAnyStart,
@@ -88,7 +97,12 @@ export function validateWorksheetConfig(formState: WorksheetFormState): Validati
       bottom: 0.7,
     },
     showCarryBoxes: formState.showCarryBoxes ?? true,
+    showAnswerBoxes: formState.showAnswerBoxes ?? true,
+    showPlaceValueColors: formState.showPlaceValueColors ?? true,
+    showProblemNumbers: formState.showProblemNumbers ?? true,
     showCellBorder: formState.showCellBorder ?? true,
+    showTenFrames: formState.showTenFrames ?? false,
+    showTenFramesForAll: formState.showTenFramesForAll ?? false,
     fontSize,
     seed,
   }

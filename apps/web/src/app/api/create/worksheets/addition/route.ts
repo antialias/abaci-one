@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
             typstSource: typstSource.split('\n').slice(0, 20).join('\n') + '\n...',
           }),
         },
-        { status: 500 },
+        { status: 500 }
       )
     }
 

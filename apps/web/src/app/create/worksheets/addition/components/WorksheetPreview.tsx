@@ -53,16 +53,26 @@ function PreviewContent({ formState }: WorksheetPreviewProps) {
   const { data: pages } = useSuspenseQuery({
     queryKey: [
       'worksheet-preview',
-      formState.total,
+      // PRIMARY state
+      formState.problemsPerPage,
       formState.cols,
-      formState.rows,
+      formState.pages,
+      formState.orientation,
+      // Other settings that affect appearance
       formState.name,
       formState.pAnyStart,
       formState.pAllStart,
       formState.interpolate,
       formState.showCarryBoxes,
+      formState.showAnswerBoxes,
+      formState.showPlaceValueColors,
+      formState.showProblemNumbers,
       formState.showCellBorder,
-      // Note: seed, fontSize, and date intentionally excluded
+      formState.showTenFrames,
+      formState.showTenFramesForAll,
+      formState.seed, // Include seed to bust cache when problem set regenerates
+      // Note: fontSize, date, rows, total intentionally excluded
+      // (rows and total are derived from primary state)
     ],
     queryFn: () => fetchWorksheetPreview(formState),
   })

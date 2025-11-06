@@ -20,7 +20,7 @@ function generatePageTypst(
   config: WorksheetConfig,
   pageProblems: AdditionProblem[],
   problemOffset: number,
-  rowsPerPage: number,
+  rowsPerPage: number
 ): string {
   const problemsTypst = pageProblems.map((p) => `  (a: ${p.a}, b: ${p.b}),`).join('\n')
 
@@ -35,20 +35,14 @@ function generatePageTypst(
   // Calculate grid spacing based on ACTUAL rows on this page
   const headerHeight = 0.35 // inches for header
   const availableHeight = contentHeight - headerHeight
-  const gutterSize = 0.15 // inches between items
-  const gutterHeightTotal = gutterSize * (actualRows - 1)
-  const problemBoxHeight = (availableHeight - gutterHeightTotal) / actualRows
+  const problemBoxHeight = availableHeight / actualRows
+  const problemBoxWidth = contentWidth / config.cols
 
-  const gutterWidthTotal = gutterSize * (config.cols - 1)
-  const problemBoxWidth = (contentWidth - gutterWidthTotal) / config.cols
-
-  // Calculate cell size to fit within problem box
-  // Problem has 5 rows: carry boxes, first number, second number, line, answer boxes
-  // Reserve space for problem number and insets
-  const problemNumberHeight = 0.15
-  const insetTotal = 0.05 * 2
-  const availableCellHeight = problemBoxHeight - problemNumberHeight - insetTotal
-  const cellSize = availableCellHeight / 5 // 5 rows in the grid, no max cap
+  // Calculate cell size to fill the entire problem box
+  // Without ten-frames: 5 rows (carry, first number, second number, line, answer)
+  // With ten-frames: 5 rows + ten-frames row (0.8 * cellSize for square cells)
+  // Total with ten-frames: 5.8 rows, use 6.4 for breathing room
+  const cellSize = config.showTenFrames ? problemBoxHeight / 6.4 : problemBoxHeight / 5
 
   return String.raw`
 // addition-worksheet-page.typ (auto-generated)
@@ -59,14 +53,71 @@ function generatePageTypst(
   margin: ${margin}in,
   fill: white
 )
-#set text(size: ${config.fontSize}pt)
+#set text(size: ${config.fontSize}pt, font: "New Computer Modern Math")
 
 // Single non-breakable block to ensure one page
 #block(breakable: false)[
 
-#let cell-outline = ${config.showCellBorder ? '0.6pt' : 'none'}
+#let grid-stroke = ${config.showCellBorder ? '(thickness: 1pt, dash: "dashed", paint: gray.darken(20%))' : 'none'}
 #let heavy-stroke = 0.8pt
 #let show-carries = ${config.showCarryBoxes ? 'true' : 'false'}
+#let show-answers = ${config.showAnswerBoxes ? 'true' : 'false'}
+#let show-colors = ${config.showPlaceValueColors ? 'true' : 'false'}
+#let show-numbers = ${config.showProblemNumbers ? 'true' : 'false'}
+#let show-ten-frames = ${config.showTenFrames ? 'true' : 'false'}
+#let show-ten-frames-for-all = ${config.showTenFramesForAll ? 'true' : 'false'}
+
+// Place value colors (light pastels)
+#let color-ones = rgb(227, 242, 253)      // Light blue
+#let color-tens = rgb(232, 245, 233)      // Light green
+#let color-hundreds = rgb(255, 249, 196)  // Light yellow
+#let color-none = white                   // No color
+
+// Ten-frame helper - stacked 2 frames vertically, sized to fit cell width
+// top-color: background for top frame (represents carry to next place value)
+// bottom-color: background for bottom frame (represents current place value)
+#let ten-frame-spacing = 0pt  // No gap between frames
+#let ten-frame-cell-stroke = 0.4pt  // Internal cell strokes - slightly thinner
+#let ten-frame-cell-color = rgb(0, 0, 0, 30%)  // Light gray for internal lines
+#let ten-frame-outer-stroke = 0.8pt  // Dark outer border for frame visibility
+#let ten-frames-stacked(cell-width, top-color, bottom-color) = {
+  let cell-w = cell-width / 5
+  let cell-h = cell-w  // Square cells
+  stack(
+    dir: ttb,
+    spacing: ten-frame-spacing,
+    // Top ten-frame (carry to next place value) - wrapped with outer border
+    box(
+      stroke: ten-frame-outer-stroke + black,
+      inset: 0pt
+    )[
+      #grid(
+        columns: 5,
+        rows: 2,
+        gutter: 0pt,
+        stroke: none,
+        ..for i in range(0, 10) {
+          (box(width: cell-w, height: cell-h, fill: top-color, stroke: ten-frame-cell-stroke + ten-frame-cell-color)[],)
+        }
+      )
+    ],
+    // Bottom ten-frame (current place value overflow) - wrapped with outer border
+    box(
+      stroke: ten-frame-outer-stroke + black,
+      inset: 0pt
+    )[
+      #grid(
+        columns: 5,
+        rows: 2,
+        gutter: 0pt,
+        stroke: none,
+        ..for i in range(0, 10) {
+          (box(width: cell-w, height: cell-h, fill: bottom-color, stroke: ten-frame-cell-stroke + ten-frame-cell-color)[],)
+        }
+      )
+    ]
+  )
+}
 
 #let problem-box(problem, index) = {
   let a = problem.a
@@ -77,47 +128,92 @@ function generatePageTypst(
   let bO = calc.rem(b, 10)
 
   box(
-    stroke: cell-outline,
-    inset: 0.05in,
+    inset: 0pt,
     width: ${problemBoxWidth}in,
     height: ${problemBoxHeight}in
   )[
     #align(center + horizon)[
-      #block[
-        #align(top + left)[
-          #text(size: 0.5em, weight: "bold")[\##(index + 1).]
-        ]
-
-        #grid(
+      #stack(
+        dir: ttb,
+        spacing: 0pt,
+        if show-numbers {
+          align(top + left)[
+            #box(inset: (left: 0.08in, top: 0.05in))[
+              #text(size: ${(cellSize * 0.6 * 72).toFixed(1)}pt, weight: "bold", font: "New Computer Modern Math")[\##(index + 1).]
+            ]
+          ]
+        },
+        grid(
           columns: (0.5em, ${cellSize}in, ${cellSize}in, ${cellSize}in),
           gutter: 0pt,
 
           [],
-          if show-carries { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt)[] } else { v(${cellSize}in) },
-          if show-carries { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt)[] } else { v(${cellSize}in) },
+          if show-carries { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-tens } else { color-none })[] } else { v(${cellSize}in) },
+          if show-carries { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-ones } else { color-none })[] } else { v(${cellSize}in) },
           [],
 
           [],
           [],
-          box(width: ${cellSize}in, height: ${cellSize}in)[#align(center + horizon)[#text(size: 1em)[#str(aT)]]],
-          box(width: ${cellSize}in, height: ${cellSize}in)[#align(center + horizon)[#text(size: 1em)[#str(aO)]]],
+          box(width: ${cellSize}in, height: ${cellSize}in, fill: if show-colors { color-tens } else { color-none })[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[#str(aT)]]],
+          box(width: ${cellSize}in, height: ${cellSize}in, fill: if show-colors { color-ones } else { color-none })[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[#str(aO)]]],
 
-          box(width: ${cellSize}in, height: ${cellSize}in)[#align(center + horizon)[#text(size: 1em)[+]]],
+          box(width: ${cellSize}in, height: ${cellSize}in)[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[+]]],
           [],
-          box(width: ${cellSize}in, height: ${cellSize}in)[#align(center + horizon)[#text(size: 1em)[#str(bT)]]],
-          box(width: ${cellSize}in, height: ${cellSize}in)[#align(center + horizon)[#text(size: 1em)[#str(bO)]]],
+          box(width: ${cellSize}in, height: ${cellSize}in, fill: if show-colors { color-tens } else { color-none })[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[#str(bT)]]],
+          box(width: ${cellSize}in, height: ${cellSize}in, fill: if show-colors { color-ones } else { color-none })[#align(center + horizon)[#text(size: ${(cellSize * 0.8 * 72).toFixed(1)}pt)[#str(bO)]]],
 
+          // Line row
           [],
           line(length: ${cellSize}in, stroke: heavy-stroke),
           line(length: ${cellSize}in, stroke: heavy-stroke),
           line(length: ${cellSize}in, stroke: heavy-stroke),
 
+          // Ten-frames row with overlaid line on top
+          // Height calculation: each frame has 2 rows, cell-h = (cell-width/5) [square cells]
+          // Total: 4 * cell-h + spacing = 4 * (cell-width/5) = cell-width * 0.8
           [],
-          box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt)[],
-          box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt)[],
-          box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt)[],
+          [],  // Empty cell for hundreds column
+          if show-ten-frames {
+            let carry = if (aO + bO) >= 10 { 1 } else { 0 }
+            let tens-regroup = (aT + bT + carry) >= 10
+            if show-ten-frames-for-all or tens-regroup {
+              // Top frame (carry to hundreds) = color-hundreds, Bottom frame (tens) = color-tens
+              // Use place() to overlay the line on top
+              // Add small right margin to create gap between tens and ones ten-frames
+              box(width: ${cellSize}in, height: ${cellSize}in * 0.8)[
+                #align(center + top)[#ten-frames-stacked(${cellSize}in * 0.90, if show-colors { color-hundreds } else { color-none }, if show-colors { color-tens } else { color-none })]
+                #place(top, line(length: ${cellSize}in * 0.90, stroke: heavy-stroke))
+              ]
+              h(2.5pt)  // Small horizontal gap between tens and ones ten-frames
+            } else {
+              v(${cellSize}in * 0.8)
+            }
+          } else {
+            v(${cellSize}in * 0.8)
+          },
+          if show-ten-frames {
+            let ones-regroup = (aO + bO) >= 10
+            if show-ten-frames-for-all or ones-regroup {
+              // Top frame (carry to tens) = color-tens, Bottom frame (ones) = color-ones
+              // Use place() to overlay the line on top
+              box(width: ${cellSize}in, height: ${cellSize}in * 0.8)[
+                #align(center + top)[#ten-frames-stacked(${cellSize}in * 0.90, if show-colors { color-tens } else { color-none }, if show-colors { color-ones } else { color-none })]
+                #place(top, line(length: ${cellSize}in * 0.90, stroke: heavy-stroke))
+              ]
+            } else {
+              v(${cellSize}in * 0.8)
+            }
+          } else {
+            v(${cellSize}in * 0.8)
+          },
+
+          // Answer boxes
+          [],
+          if show-answers { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-hundreds } else { color-none })[] } else { v(${cellSize}in) },
+          if show-answers { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-tens } else { color-none })[] } else { v(${cellSize}in) },
+          if show-answers { box(width: ${cellSize}in, height: ${cellSize}in, stroke: 0.5pt, fill: if show-colors { color-ones } else { color-none })[] } else { v(${cellSize}in) },
         )
-      ]
+      )
     ]
   ]
 }
@@ -138,8 +234,9 @@ ${problemsTypst}
 // Problem grid - exactly ${actualRows} rows × ${config.cols} columns
 #grid(
   columns: ${config.cols},
-  column-gutter: ${gutterSize}in,
-  row-gutter: ${gutterSize}in,
+  column-gutter: 0pt,
+  row-gutter: 0pt,
+  stroke: grid-stroke,
   ..for r in range(0, ${actualRows}) {
     for c in range(0, ${config.cols}) {
       let idx = r * ${config.cols} + c
@@ -159,17 +256,19 @@ ${problemsTypst}
 /**
  * Generate Typst source code for the worksheet (returns array of page sources)
  */
-export function generateTypstSource(config: WorksheetConfig, problems: AdditionProblem[]): string[] {
-  // Determine rows per page based on orientation (portrait = tall, landscape = wide)
-  const isPortrait = config.page.hIn > config.page.wIn
-  const rowsPerPage = isPortrait ? 5 : 2
-  const problemsPerPage = config.cols * rowsPerPage
+export function generateTypstSource(
+  config: WorksheetConfig,
+  problems: AdditionProblem[]
+): string[] {
+  // Use the problemsPerPage directly from config (primary state)
+  const problemsPerPage = config.problemsPerPage
+  const rowsPerPage = problemsPerPage / config.cols
 
   // Chunk problems into discrete pages
   const pages = chunkProblems(problems, problemsPerPage)
 
   // Generate separate Typst source for each page
   return pages.map((pageProblems, pageIndex) =>
-    generatePageTypst(config, pageProblems, pageIndex * problemsPerPage, rowsPerPage),
+    generatePageTypst(config, pageProblems, pageIndex * problemsPerPage, rowsPerPage)
   )
 }

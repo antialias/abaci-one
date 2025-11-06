@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     if (!validation.isValid || !validation.config) {
       return NextResponse.json(
         { error: 'Invalid configuration', errors: validation.errors },
-        { status: 400 },
+        { status: 400 }
       )
     }
 
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       config.pAnyStart,
       config.pAllStart,
       config.interpolate,
-      config.seed,
+      config.seed
     )
 
     // Generate Typst sources (one per page)
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
             error: `Failed to compile preview (page ${i + 1})`,
             details: stderr,
           },
-          { status: 500 },
+          { status: 500 }
         )
       }
     }
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         error: 'Failed to generate preview',
         message: errorMessage,
       },
-      { status: 500 },
+      { status: 500 }
     )
   }
 }

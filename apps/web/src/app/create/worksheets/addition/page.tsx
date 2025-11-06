@@ -30,20 +30,32 @@ export default function AdditionWorksheetPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Immediate form state (for controls - updates instantly)
+  // PRIMARY state: problemsPerPage, cols, pages (what user controls)
+  // DERIVED state: rows, total (calculated from primary)
   const [formState, setFormState] = useState<WorksheetFormState>({
-    total: 20,
+    // Primary state
+    problemsPerPage: 20,
     cols: 5,
-    rows: 4,
+    pages: 1,
+    orientation: 'landscape',
+    // Derived state
+    rows: 4, // (20 / 5) * 1 = 4
+    total: 20, // 20 * 1 = 20
+    // Other settings
     name: '',
     date: '', // Will be set at generation time
     pAnyStart: 0.75,
     pAllStart: 0.25,
     interpolate: true,
     showCarryBoxes: true,
+    showAnswerBoxes: true,
+    showPlaceValueColors: true,
+    showProblemNumbers: true,
     showCellBorder: true,
+    showTenFrames: false,
+    showTenFramesForAll: false,
     fontSize: 16,
     seed: Date.now() % 2147483647,
-    orientation: 'landscape',
   })
 
   // Debounced form state (for preview - updates after delay)
@@ -64,9 +76,9 @@ export default function AdditionWorksheetPage() {
 
       // Generate new seed when problem settings change
       const affectsProblems =
-        updates.total !== undefined ||
+        updates.problemsPerPage !== undefined ||
         updates.cols !== undefined ||
-        updates.rows !== undefined ||
+        updates.pages !== undefined ||
         updates.orientation !== undefined ||
         updates.pAnyStart !== undefined ||
         updates.pAllStart !== undefined ||
