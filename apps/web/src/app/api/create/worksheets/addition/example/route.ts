@@ -19,6 +19,8 @@ interface ExampleRequest {
   showTenFrames?: boolean
   showTenFramesForAll?: boolean
   fontSize?: number
+  addend1?: number
+  addend2?: number
 }
 
 /**
@@ -26,9 +28,20 @@ interface ExampleRequest {
  * Uses the EXACT same Typst structure as the full worksheet generator
  */
 function generateExampleTypst(config: ExampleRequest): string {
-  // Generate a simple 2-digit + 2-digit problem with carries
-  const problems = generateProblems(1, 0.8, 0.5, false, 12345)
-  const problem = problems[0]
+  // Use custom addends if provided, otherwise generate a problem
+  let a: number
+  let b: number
+
+  if (config.addend1 !== undefined && config.addend2 !== undefined) {
+    a = config.addend1
+    b = config.addend2
+  } else {
+    // Generate a simple 2-digit + 2-digit problem with carries
+    const problems = generateProblems(1, 0.8, 0.5, false, 12345)
+    const problem = problems[0]
+    a = problem.a
+    b = problem.b
+  }
 
   const fontSize = config.fontSize || 14
   const cellSize = 0.35 // Compact cell size for examples
@@ -57,8 +70,8 @@ ${generateTypstHelpers(cellSize)}
 
 ${generateProblemStackFunction(cellSize)}
 
-#let a = ${problem.a}
-#let b = ${problem.b}
+#let a = ${a}
+#let b = ${b}
 #let aT = calc.floor(calc.rem(a, 100) / 10)
 #let aO = calc.rem(a, 10)
 #let bT = calc.floor(calc.rem(b, 100) / 10)

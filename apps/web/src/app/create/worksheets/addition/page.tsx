@@ -5,7 +5,6 @@ import { parseAdditionConfig, defaultAdditionConfig } from '@/app/create/workshe
 import { AdditionWorksheetClient } from './components/AdditionWorksheetClient'
 import type { WorksheetFormState } from './types'
 import { generateWorksheetPreview } from './generatePreview'
-import { generateDisplayExamples } from './generateExamples'
 
 /**
  * Get current date formatted as "Month Day, Year"
@@ -86,17 +85,11 @@ export default async function AdditionWorksheetPage() {
   const previewResult = generateWorksheetPreview(fullConfig)
   console.log('[SSR] Preview generation complete:', previewResult.success ? 'success' : 'failed')
 
-  // Generate visual examples for display options
-  console.log('[SSR] Generating display option examples...')
-  const displayExamples = generateDisplayExamples()
-  console.log('[SSR] Display examples generation complete:', displayExamples ? 'success' : 'failed')
-
-  // Pass settings, preview, and examples to client
+  // Pass settings and preview to client
   return (
     <AdditionWorksheetClient
       initialSettings={initialSettings}
       initialPreview={previewResult.success ? previewResult.pages : undefined}
-      displayExamples={displayExamples || undefined}
     />
   )
 }
