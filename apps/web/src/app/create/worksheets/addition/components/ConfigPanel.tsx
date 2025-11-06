@@ -702,9 +702,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                     cursor: 'pointer',
                   })}
                 >
-                  {formState.showTenFramesForAll
-                    ? 'Ten-Frames'
-                    : 'Ten-Frames for Regrouping'}
+                  {formState.showTenFramesForAll ? 'Ten-Frames' : 'Ten-Frames for Regrouping'}
                 </label>
               </div>
 
