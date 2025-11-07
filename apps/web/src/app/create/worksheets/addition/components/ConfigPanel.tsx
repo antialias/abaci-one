@@ -41,19 +41,19 @@ function getScaffoldingSummary(displayRules: any): string {
   console.log('[getScaffoldingSummary] displayRules:', displayRules)
 
   const scaffoldingParts: string[] = []
-  if (displayRules.carryBoxes === 'always' || displayRules.carryBoxes === 'whenRegrouping') {
+  if (displayRules.carryBoxes !== 'never') {
     scaffoldingParts.push('carry boxes')
     console.log('[getScaffoldingSummary] Adding carry boxes:', displayRules.carryBoxes)
   }
-  if (displayRules.answerBoxes === 'always' || displayRules.answerBoxes === 'whenRegrouping') {
+  if (displayRules.answerBoxes !== 'never') {
     scaffoldingParts.push('answer boxes')
     console.log('[getScaffoldingSummary] Adding answer boxes:', displayRules.answerBoxes)
   }
-  if (displayRules.placeValueColors === 'always' || displayRules.placeValueColors === 'whenRegrouping') {
+  if (displayRules.placeValueColors !== 'never') {
     scaffoldingParts.push('place value colors')
     console.log('[getScaffoldingSummary] Adding place value colors:', displayRules.placeValueColors)
   }
-  if (displayRules.tenFrames === 'always' || displayRules.tenFrames === 'whenRegrouping') {
+  if (displayRules.tenFrames !== 'never') {
     scaffoldingParts.push('ten-frames')
     console.log('[getScaffoldingSummary] Adding ten-frames:', displayRules.tenFrames)
   }
