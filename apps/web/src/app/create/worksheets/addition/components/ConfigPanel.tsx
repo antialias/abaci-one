@@ -4,6 +4,7 @@ import type React from 'react'
 import * as Checkbox from '@radix-ui/react-checkbox'
 import * as Slider from '@radix-ui/react-slider'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useTranslations } from 'next-intl'
 import { css } from '../../../../../../styled-system/css'
 import { stack } from '../../../../../../styled-system/patterns'
@@ -449,6 +450,132 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
               return (
                 <>
+                  {/* Preset Selector Dropdown */}
+                  <div className={css({ mb: '3' })}>
+                    <div
+                      className={css({
+                        fontSize: 'xs',
+                        fontWeight: 'medium',
+                        color: 'gray.700',
+                        mb: '2',
+                      })}
+                    >
+                      Difficulty Preset
+                    </div>
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger asChild>
+                        <button
+                          type="button"
+                          data-action="open-preset-dropdown"
+                          className={css({
+                            w: 'full',
+                            px: '3',
+                            py: '2.5',
+                            border: '2px solid',
+                            borderColor: isCustom ? 'orange.400' : 'gray.300',
+                            bg: isCustom ? 'orange.50' : 'white',
+                            rounded: 'lg',
+                            cursor: 'pointer',
+                            fontSize: 'sm',
+                            fontWeight: 'medium',
+                            color: 'gray.700',
+                            transition: 'all 0.15s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            _hover: {
+                              borderColor: isCustom ? 'orange.500' : 'brand.400',
+                            },
+                          })}
+                        >
+                          <span>
+                            {isCustom
+                              ? '✨ Custom'
+                              : currentProfile
+                                ? DIFFICULTY_PROFILES[currentProfile].label
+                                : 'Early Learner'}
+                          </span>
+                          <span className={css({ fontSize: 'xs', color: 'gray.400' })}>▼</span>
+                        </button>
+                      </DropdownMenu.Trigger>
+
+                      <DropdownMenu.Portal>
+                        <DropdownMenu.Content
+                          className={css({
+                            bg: 'white',
+                            rounded: 'lg',
+                            shadow: 'modal',
+                            border: '1px solid',
+                            borderColor: 'gray.200',
+                            p: '2',
+                            minW: '64',
+                            maxH: '96',
+                            overflowY: 'auto',
+                            zIndex: 50,
+                          })}
+                          sideOffset={5}
+                        >
+                          {DIFFICULTY_PROGRESSION.map((presetName) => {
+                            const preset = DIFFICULTY_PROFILES[presetName]
+                            const isSelected = currentProfile === presetName && !isCustom
+
+                            return (
+                              <DropdownMenu.Item
+                                key={presetName}
+                                data-action={`select-preset-${presetName}`}
+                                onSelect={() => {
+                                  // Apply preset configuration
+                                  onChange({
+                                    difficultyProfile: presetName,
+                                    pAnyStart: preset.regrouping.pAnyStart,
+                                    pAllStart: preset.regrouping.pAllStart,
+                                    displayRules: preset.displayRules,
+                                  })
+                                }}
+                                className={css({
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '1',
+                                  px: '3',
+                                  py: '2.5',
+                                  rounded: 'md',
+                                  cursor: 'pointer',
+                                  outline: 'none',
+                                  bg: isSelected ? 'brand.50' : 'transparent',
+                                  _hover: {
+                                    bg: 'brand.50',
+                                  },
+                                  _focus: {
+                                    bg: 'brand.100',
+                                  },
+                                })}
+                              >
+                                <div
+                                  className={css({
+                                    fontSize: 'sm',
+                                    fontWeight: 'semibold',
+                                    color: isSelected ? 'brand.700' : 'gray.700',
+                                  })}
+                                >
+                                  {preset.label}
+                                </div>
+                                <div
+                                  className={css({
+                                    fontSize: 'xs',
+                                    color: isSelected ? 'brand.600' : 'gray.500',
+                                    lineHeight: '1.3',
+                                  })}
+                                >
+                                  {preset.description}
+                                </div>
+                              </DropdownMenu.Item>
+                            )
+                          })}
+                        </DropdownMenu.Content>
+                      </DropdownMenu.Portal>
+                    </DropdownMenu.Root>
+                  </div>
+
                   {/* Overall Difficulty Slider */}
                   <div className={css({ mb: '3' })}>
                     <div
