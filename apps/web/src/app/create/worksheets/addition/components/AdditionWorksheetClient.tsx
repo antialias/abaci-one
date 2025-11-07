@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import React, { useState, useEffect } from 'react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../../../../styled-system/css'
 import { container, grid, hstack, stack } from '../../../../../../styled-system/patterns'
@@ -229,6 +230,29 @@ export function AdditionWorksheetClient({
     })
   }
 
+  // Helper to get default columns based on problems per page and orientation
+  const getDefaultColsForProblemsPerPage = (
+    problemsPerPage: number,
+    orientation: 'portrait' | 'landscape'
+  ): number => {
+    if (orientation === 'portrait') {
+      if (problemsPerPage === 6) return 2
+      if (problemsPerPage === 8) return 2
+      if (problemsPerPage === 10) return 2
+      if (problemsPerPage === 12) return 3
+      if (problemsPerPage === 15) return 3
+      return 2
+    } else {
+      if (problemsPerPage === 8) return 4
+      if (problemsPerPage === 10) return 5
+      if (problemsPerPage === 12) return 4
+      if (problemsPerPage === 15) return 5
+      if (problemsPerPage === 16) return 4
+      if (problemsPerPage === 20) return 5
+      return 4
+    }
+  }
+
   const handleGenerate = async () => {
     setGenerationStatus('generating')
     setError(null)
@@ -364,17 +388,443 @@ export function AdditionWorksheetClient({
 
             {/* Preview & Generate Panel */}
             <div className={stack({ gap: '8' })}>
-              {/* Preview */}
+              {/* Orientation Panel */}
               <div
-                data-section="preview-panel"
+                data-section="orientation-panel"
                 className={css({
                   bg: 'white',
                   rounded: '2xl',
                   shadow: 'card',
-                  p: '6',
+                  p: '4',
                 })}
               >
-                <WorksheetPreview formState={debouncedFormState} initialData={initialPreview} />
+                <div className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}>
+                  {/* Row 1: Orientation + Pages */}
+                  <div
+                    className={css({
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto',
+                      gap: '3',
+                      alignItems: 'end',
+                    })}
+                  >
+                    {/* Orientation */}
+                    <div>
+                      <div
+                        className={css({
+                          fontSize: '2xs',
+                          fontWeight: 'semibold',
+                          color: 'gray.500',
+                          textTransform: 'uppercase',
+                          letterSpacing: 'wider',
+                          mb: '1.5',
+                        })}
+                      >
+                        Orientation
+                      </div>
+                      <div className={css({ display: 'flex', gap: '1.5' })}>
+                        <button
+                          onClick={() => {
+                            const orientation = 'portrait'
+                            const problemsPerPage = 15
+                            const cols = 3
+                            const pages = formState.pages || 1
+                            const rows = Math.ceil((problemsPerPage * pages) / cols)
+                            const total = problemsPerPage * pages
+                            setFormState({
+                              ...formState,
+                              orientation,
+                              problemsPerPage,
+                              cols,
+                              pages,
+                              rows,
+                              total,
+                            })
+                          }}
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1.5',
+                            flex: '1',
+                            px: '3',
+                            py: '2',
+                            border: '2px solid',
+                            borderColor:
+                              formState.orientation === 'portrait' ? 'brand.500' : 'gray.300',
+                            bg: formState.orientation === 'portrait' ? 'brand.50' : 'white',
+                            rounded: 'lg',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                            _hover: {
+                              borderColor: 'brand.400',
+                            },
+                          })}
+                        >
+                          <div
+                            className={css({
+                              fontSize: 'lg',
+                            })}
+                          >
+                            📄
+                          </div>
+                          <div
+                            className={css({
+                              fontSize: 'sm',
+                              fontWeight: 'semibold',
+                              color:
+                                formState.orientation === 'portrait' ? 'brand.700' : 'gray.600',
+                            })}
+                          >
+                            Portrait
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => {
+                            const orientation = 'landscape'
+                            const problemsPerPage = 20
+                            const cols = 5
+                            const pages = formState.pages || 1
+                            const rows = Math.ceil((problemsPerPage * pages) / cols)
+                            const total = problemsPerPage * pages
+                            setFormState({
+                              ...formState,
+                              orientation,
+                              problemsPerPage,
+                              cols,
+                              pages,
+                              rows,
+                              total,
+                            })
+                          }}
+                          className={css({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1.5',
+                            flex: '1',
+                            px: '3',
+                            py: '2',
+                            border: '2px solid',
+                            borderColor:
+                              formState.orientation === 'landscape' ? 'brand.500' : 'gray.300',
+                            bg: formState.orientation === 'landscape' ? 'brand.50' : 'white',
+                            rounded: 'lg',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                            _hover: {
+                              borderColor: 'brand.400',
+                            },
+                          })}
+                        >
+                          <div
+                            className={css({
+                              fontSize: 'lg',
+                            })}
+                          >
+                            📃
+                          </div>
+                          <div
+                            className={css({
+                              fontSize: 'sm',
+                              fontWeight: 'semibold',
+                              color:
+                                formState.orientation === 'landscape' ? 'brand.700' : 'gray.600',
+                            })}
+                          >
+                            Landscape
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Pages */}
+                    <div>
+                      <div
+                        className={css({
+                          fontSize: '2xs',
+                          fontWeight: 'semibold',
+                          color: 'gray.500',
+                          textTransform: 'uppercase',
+                          letterSpacing: 'wider',
+                          mb: '1.5',
+                        })}
+                      >
+                        Pages
+                      </div>
+                      <div className={css({ display: 'flex', gap: '1' })}>
+                        {[1, 2, 3, 4].map((pageCount) => {
+                          const isSelected = (formState.pages || 1) === pageCount
+                          return (
+                            <button
+                              key={pageCount}
+                              onClick={() => {
+                                const problemsPerPage = formState.problemsPerPage || 15
+                                const cols = formState.cols || 3
+                                const rows = Math.ceil((problemsPerPage * pageCount) / cols)
+                                const total = problemsPerPage * pageCount
+                                setFormState({
+                                  ...formState,
+                                  pages: pageCount,
+                                  rows,
+                                  total,
+                                })
+                              }}
+                              className={css({
+                                w: '10',
+                                h: '10',
+                                border: '2px solid',
+                                borderColor: isSelected ? 'brand.500' : 'gray.300',
+                                bg: isSelected ? 'brand.50' : 'white',
+                                rounded: 'lg',
+                                cursor: 'pointer',
+                                fontSize: 'sm',
+                                fontWeight: 'bold',
+                                color: isSelected ? 'brand.700' : 'gray.600',
+                                transition: 'all 0.15s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                _hover: {
+                                  borderColor: 'brand.400',
+                                },
+                              })}
+                            >
+                              {pageCount}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Problems per page dropdown + Total badge */}
+                  <div
+                    className={css({
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto',
+                      gap: '3',
+                      alignItems: 'center',
+                    })}
+                  >
+                    <div>
+                      <div
+                        className={css({
+                          fontSize: '2xs',
+                          fontWeight: 'semibold',
+                          color: 'gray.500',
+                          textTransform: 'uppercase',
+                          letterSpacing: 'wider',
+                          display: 'block',
+                          mb: '1.5',
+                        })}
+                      >
+                        Problems per Page
+                      </div>
+                      <DropdownMenu.Root>
+                        <DropdownMenu.Trigger asChild>
+                          <button
+                            className={css({
+                              w: 'full',
+                              px: '3',
+                              py: '2',
+                              border: '2px solid',
+                              borderColor: 'gray.300',
+                              bg: 'white',
+                              rounded: 'lg',
+                              cursor: 'pointer',
+                              fontSize: 'sm',
+                              fontWeight: 'medium',
+                              color: 'gray.700',
+                              transition: 'all 0.15s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              _hover: {
+                                borderColor: 'brand.400',
+                              },
+                            })}
+                          >
+                            <span>
+                              {formState.problemsPerPage || 15} problems (
+                              {getDefaultColsForProblemsPerPage(
+                                formState.problemsPerPage || 15,
+                                formState.orientation || 'portrait'
+                              )}{' '}
+                              cols ×{' '}
+                              {Math.ceil(
+                                (formState.problemsPerPage || 15) /
+                                  getDefaultColsForProblemsPerPage(
+                                    formState.problemsPerPage || 15,
+                                    formState.orientation || 'portrait'
+                                  )
+                              )}{' '}
+                              rows)
+                            </span>
+                            <span className={css({ fontSize: 'xs', color: 'gray.400' })}>▼</span>
+                          </button>
+                        </DropdownMenu.Trigger>
+
+                        <DropdownMenu.Portal>
+                          <DropdownMenu.Content
+                            className={css({
+                              bg: 'white',
+                              rounded: 'lg',
+                              shadow: 'modal',
+                              border: '1px solid',
+                              borderColor: 'gray.200',
+                              p: '2',
+                              minW: '64',
+                              maxH: '96',
+                              overflowY: 'auto',
+                              zIndex: 50,
+                            })}
+                            sideOffset={5}
+                          >
+                            <div
+                              className={css({
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: '1',
+                              })}
+                            >
+                              {((formState.orientation || 'portrait') === 'portrait'
+                                ? [6, 8, 10, 12, 15]
+                                : [8, 10, 12, 15, 16, 20]
+                              ).map((count) => {
+                                const orientation = formState.orientation || 'portrait'
+                                const cols = getDefaultColsForProblemsPerPage(count, orientation)
+                              const rows = Math.ceil(count / cols)
+                              const isSelected = (formState.problemsPerPage || 15) === count
+
+                              return (
+                                <DropdownMenu.Item
+                                  key={count}
+                                  onSelect={() => {
+                                    const newCols = getDefaultColsForProblemsPerPage(
+                                      count,
+                                      orientation
+                                    )
+                                    const pages = formState.pages || 1
+                                    const rowsCalc = Math.ceil((count * pages) / newCols)
+                                    const total = count * pages
+                                    setFormState({
+                                      ...formState,
+                                      problemsPerPage: count,
+                                      cols: newCols,
+                                      pages,
+                                      rows: rowsCalc,
+                                      total,
+                                    })
+                                  }}
+                                  className={css({
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '3',
+                                    px: '3',
+                                    py: '2',
+                                    rounded: 'md',
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    bg: isSelected ? 'brand.50' : 'transparent',
+                                    _hover: {
+                                      bg: 'brand.50',
+                                    },
+                                    _focus: {
+                                      bg: 'brand.100',
+                                    },
+                                  })}
+                                >
+                                  {/* Grid visualization */}
+                                  <div
+                                    className={css({
+                                      display: 'grid',
+                                      placeItems: 'center',
+                                      w: '12',
+                                      h: '12',
+                                      flexShrink: 0,
+                                    })}
+                                    style={{
+                                      gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                                      gridTemplateRows: `repeat(${rows}, 1fr)`,
+                                      gap: '2px',
+                                    }}
+                                  >
+                                    {Array.from({ length: count }).map((_, i) => (
+                                      <div
+                                        key={i}
+                                        className={css({
+                                          w: '1.5',
+                                          h: '1.5',
+                                          bg: isSelected ? 'brand.500' : 'gray.400',
+                                          rounded: 'full',
+                                        })}
+                                      />
+                                    ))}
+                                  </div>
+                                  {/* Text description */}
+                                  <div className={css({ flex: 1 })}>
+                                    <div
+                                      className={css({
+                                        fontSize: 'sm',
+                                        fontWeight: 'semibold',
+                                        color: isSelected ? 'brand.700' : 'gray.700',
+                                      })}
+                                    >
+                                      {count} problems
+                                    </div>
+                                    <div
+                                      className={css({
+                                        fontSize: 'xs',
+                                        color: isSelected ? 'brand.600' : 'gray.500',
+                                      })}
+                                    >
+                                      {cols} cols × {rows} rows
+                                    </div>
+                                  </div>
+                                </DropdownMenu.Item>
+                              )
+                            })}
+                            </div>
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Portal>
+                      </DropdownMenu.Root>
+                    </div>
+
+                    {/* Total problems badge */}
+                    <div
+                      className={css({
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '1',
+                      })}
+                    >
+                      <div
+                        className={css({
+                          fontSize: '2xs',
+                          fontWeight: 'semibold',
+                          color: 'gray.500',
+                          textTransform: 'uppercase',
+                          letterSpacing: 'wider',
+                        })}
+                      >
+                        Total
+                      </div>
+                      <div
+                        className={css({
+                          px: '4',
+                          py: '2',
+                          bg: 'brand.100',
+                          rounded: 'full',
+                          fontSize: 'lg',
+                          fontWeight: 'bold',
+                          color: 'brand.700',
+                        })}
+                      >
+                        {(formState.problemsPerPage || 15) * (formState.pages || 1)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Generate Button */}
@@ -438,6 +888,19 @@ export function AdditionWorksheetClient({
                     )}
                   </span>
                 </button>
+              </div>
+
+              {/* Preview */}
+              <div
+                data-section="preview-panel"
+                className={css({
+                  bg: 'white',
+                  rounded: '2xl',
+                  shadow: 'card',
+                  p: '6',
+                })}
+              >
+                <WorksheetPreview formState={debouncedFormState} initialData={initialPreview} />
               </div>
             </div>
           </div>
