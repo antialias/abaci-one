@@ -7,7 +7,11 @@ import NumberFlow from "@number-flow/react";
 import { useAbacusConfig, getDefaultAbacusConfig } from "./AbacusContext";
 import { playBeadSound } from "./soundManager";
 import * as Abacus3DUtils from "./Abacus3DUtils";
-import { calculateStandardDimensions, calculateBeadPosition, type CropPadding } from "./AbacusUtils";
+import {
+  calculateStandardDimensions,
+  calculateBeadPosition,
+  type CropPadding,
+} from "./AbacusUtils";
 import { AbacusSVGRenderer } from "./AbacusSVGRenderer";
 import { AbacusAnimatedBead } from "./AbacusAnimatedBead";
 import "./Abacus3D.css";
@@ -502,7 +506,7 @@ export function useAbacusPlaceStates(
 
       // Convert to string to handle both number and bigint
       const valueStr = value.toString();
-      const digits = valueStr.split('').map(Number);
+      const digits = valueStr.split("").map(Number);
 
       // Always create ALL place values from 0 to maxPlaceValue (to match columns)
       for (let place = 0; place <= maxPlaceValue; place++) {
@@ -536,7 +540,9 @@ export function useAbacusPlaceStates(
       let total = 0n;
       placeStates.forEach((state) => {
         const placeValueNum = 10n ** BigInt(state.placeValue);
-        const digitValue = BigInt((state.heavenActive ? 5 : 0) + state.earthActive);
+        const digitValue = BigInt(
+          (state.heavenActive ? 5 : 0) + state.earthActive,
+        );
         total += digitValue * placeValueNum;
       });
       return total;
@@ -1184,7 +1190,9 @@ function calculateValueFromColumnStates(
 }
 
 // NEW: Native place-value calculation (eliminates the array index nightmare!)
-function calculateValueFromPlaceStates(placeStates: PlaceStatesMap): number | bigint {
+function calculateValueFromPlaceStates(
+  placeStates: PlaceStatesMap,
+): number | bigint {
   // Determine if we need BigInt based on the largest place value
   const maxPlace = Math.max(...Array.from(placeStates.keys()));
   const useBigInt = maxPlace > 14; // >15 digits
@@ -1192,14 +1200,17 @@ function calculateValueFromPlaceStates(placeStates: PlaceStatesMap): number | bi
   if (useBigInt) {
     let value = 0n;
     for (const [placeValue, placeState] of placeStates) {
-      const digitValue = BigInt((placeState.heavenActive ? 5 : 0) + placeState.earthActive);
-      value += digitValue * (10n ** BigInt(placeValue));
+      const digitValue = BigInt(
+        (placeState.heavenActive ? 5 : 0) + placeState.earthActive,
+      );
+      value += digitValue * 10n ** BigInt(placeValue);
     }
     return value;
   } else {
     let value = 0;
     for (const [placeValue, placeState] of placeStates) {
-      const digitValue = (placeState.heavenActive ? 5 : 0) + placeState.earthActive;
+      const digitValue =
+        (placeState.heavenActive ? 5 : 0) + placeState.earthActive;
       value += digitValue * Math.pow(10, placeValue);
     }
     return value;
@@ -1274,26 +1285,30 @@ const Bead: React.FC<BeadProps> = ({
   columnIndex,
 }) => {
   // Detect server-side rendering
-  const isServer = typeof window === 'undefined';
+  const isServer = typeof window === "undefined";
 
   // Use springs only if not on server and animations are enabled
   // Enhanced physics config for 3D modes
   const physicsConfig = React.useMemo(() => {
     if (!enableAnimation || isServer) return { duration: 0 };
-    if (!enhanced3d || enhanced3d === true || enhanced3d === 'subtle') return config.default;
+    if (!enhanced3d || enhanced3d === true || enhanced3d === "subtle")
+      return config.default;
     return Abacus3DUtils.getPhysicsConfig(enhanced3d);
   }, [enableAnimation, isServer, enhanced3d]);
 
   const [{ x: springX, y: springY }, api] = useSpring(() => ({
     x,
     y,
-    config: physicsConfig
+    config: physicsConfig,
   }));
 
   // Arrow pulse animation for urgency indication
   const [{ arrowPulse }, arrowApi] = useSpring(() => ({
     arrowPulse: 1,
-    config: enableAnimation && !isServer ? { tension: 200, friction: 10 } : { duration: 0 },
+    config:
+      enableAnimation && !isServer
+        ? { tension: 200, friction: 10 }
+        : { duration: 0 },
   }));
 
   const gestureStateRef = useRef({
@@ -1322,47 +1337,50 @@ const Bead: React.FC<BeadProps> = ({
   );
 
   // Directional gesture handler - only on client with gestures enabled
-  const bind = (enableGestures && !isServer) ? useDrag(
-    ({ event, movement: [, deltaY], first, active }) => {
-      if (first) {
-        event?.preventDefault();
-        gestureStateRef.current.isDragging = true;
-        gestureStateRef.current.lastDirection = null;
-        gestureStateRef.current.hasGestureTriggered = false;
-        return;
-      }
+  const bind =
+    enableGestures && !isServer
+      ? useDrag(
+          ({ event, movement: [, deltaY], first, active }) => {
+            if (first) {
+              event?.preventDefault();
+              gestureStateRef.current.isDragging = true;
+              gestureStateRef.current.lastDirection = null;
+              gestureStateRef.current.hasGestureTriggered = false;
+              return;
+            }
 
-      // Only process during active drag, ignore drag end
-      if (!active || !gestureStateRef.current.isDragging) {
-        if (!active) {
-          // Clean up on drag end but don't revert state
-          gestureStateRef.current.isDragging = false;
-          gestureStateRef.current.lastDirection = null;
-          // Reset the gesture trigger flag after a short delay to allow clicks
-          setTimeout(() => {
-            gestureStateRef.current.hasGestureTriggered = false;
-          }, 100);
-        }
-        return;
-      }
+            // Only process during active drag, ignore drag end
+            if (!active || !gestureStateRef.current.isDragging) {
+              if (!active) {
+                // Clean up on drag end but don't revert state
+                gestureStateRef.current.isDragging = false;
+                gestureStateRef.current.lastDirection = null;
+                // Reset the gesture trigger flag after a short delay to allow clicks
+                setTimeout(() => {
+                  gestureStateRef.current.hasGestureTriggered = false;
+                }, 100);
+              }
+              return;
+            }
 
-      const currentDirection = getGestureDirection(deltaY);
+            const currentDirection = getGestureDirection(deltaY);
 
-      // Only trigger toggle on direction change or first significant movement
-      if (
-        currentDirection &&
-        currentDirection !== gestureStateRef.current.lastDirection
-      ) {
-        gestureStateRef.current.lastDirection = currentDirection;
-        gestureStateRef.current.hasGestureTriggered = true;
-        onGestureToggle?.(bead, currentDirection);
-      }
-    },
-    {
-      enabled: enableGestures,
-      preventDefault: true,
-    },
-  ) : () => ({});
+            // Only trigger toggle on direction change or first significant movement
+            if (
+              currentDirection &&
+              currentDirection !== gestureStateRef.current.lastDirection
+            ) {
+              gestureStateRef.current.lastDirection = currentDirection;
+              gestureStateRef.current.hasGestureTriggered = true;
+              onGestureToggle?.(bead, currentDirection);
+            }
+          },
+          {
+            enabled: enableGestures,
+            preventDefault: true,
+          },
+        )
+      : () => ({});
 
   React.useEffect(() => {
     if (enableAnimation) {
@@ -1401,8 +1419,8 @@ const Bead: React.FC<BeadProps> = ({
 
     // Determine fill - use gradient for realistic mode, otherwise use color
     let fillValue = color;
-    if (enhanced3d === 'realistic' && columnIndex !== undefined) {
-      if (bead.type === 'heaven') {
+    if (enhanced3d === "realistic" && columnIndex !== undefined) {
+      if (bead.type === "heaven") {
         fillValue = `url(#bead-gradient-${columnIndex}-heaven)`;
       } else {
         fillValue = `url(#bead-gradient-${columnIndex}-earth-${bead.position})`;
@@ -1446,8 +1464,9 @@ const Bead: React.FC<BeadProps> = ({
   };
 
   // Use animated.g only if animations are enabled, otherwise use regular g
-  const GElement = enableAnimation ? animated.g : 'g';
-  const DirectionIndicatorG = (enableAnimation && showDirectionIndicator && direction) ? animated.g : 'g';
+  const GElement = enableAnimation ? animated.g : "g";
+  const DirectionIndicatorG =
+    enableAnimation && showDirectionIndicator && direction ? animated.g : "g";
 
   // Calculate correct offset based on shape (matching Typst positioning)
   const getXOffset = () => {
@@ -1471,7 +1490,8 @@ const Bead: React.FC<BeadProps> = ({
     ? {
         transform: to(
           [springX, springY],
-          (sx, sy) => `translate(${sx - getXOffset()}px, ${sy - getYOffset()}px)`,
+          (sx, sy) =>
+            `translate(${sx - getXOffset()}px, ${sy - getYOffset()}px)`,
         ),
         cursor: enableGestures ? "grab" : onClick ? "pointer" : "default",
         touchAction: "none" as const,
@@ -1511,55 +1531,57 @@ const Bead: React.FC<BeadProps> = ({
       }} // Enable click with gesture conflict prevention
     >
       {renderShape()}
-      {showDirectionIndicator && direction && (() => {
-        const indicatorTransform: any = enableAnimation
-          ? to([arrowPulse], (pulse) => {
-              const centerX = shape === "diamond" ? size * 0.7 : size / 2;
-              const centerY = size / 2;
-              return `translate(${centerX}, ${centerY}) scale(${pulse})`;
-            })
-          : getDirectionIndicatorTransform();
+      {showDirectionIndicator &&
+        direction &&
+        (() => {
+          const indicatorTransform: any = enableAnimation
+            ? to([arrowPulse], (pulse) => {
+                const centerX = shape === "diamond" ? size * 0.7 : size / 2;
+                const centerY = size / 2;
+                return `translate(${centerX}, ${centerY}) scale(${pulse})`;
+              })
+            : getDirectionIndicatorTransform();
 
-        return (
-          <DirectionIndicatorG
-            className="direction-indicator"
-            style={{ pointerEvents: "none" as const }}
-            transform={indicatorTransform}
-          >
-          {(() => {
-            const arrowColors = getArrowColors(
-              bead,
-              direction,
-              totalColumns,
-              colorScheme,
-              colorPalette,
-            );
-            const isUpArrow =
-              direction === "up" ||
-              (direction === "activate" && bead.type === "earth") ||
-              (direction === "deactivate" && bead.type === "heaven");
+          return (
+            <DirectionIndicatorG
+              className="direction-indicator"
+              style={{ pointerEvents: "none" as const }}
+              transform={indicatorTransform}
+            >
+              {(() => {
+                const arrowColors = getArrowColors(
+                  bead,
+                  direction,
+                  totalColumns,
+                  colorScheme,
+                  colorPalette,
+                );
+                const isUpArrow =
+                  direction === "up" ||
+                  (direction === "activate" && bead.type === "earth") ||
+                  (direction === "deactivate" && bead.type === "heaven");
 
-            return isUpArrow ? (
-              // Up arrow - centered with color scheme
-              <polygon
-                points={`${-size * 0.15},${size * 0.05} ${size * 0.15},${size * 0.05} 0,${-size * 0.15}`}
-                fill={arrowColors.fill}
-                stroke={arrowColors.stroke}
-                strokeWidth="1.5"
-              />
-            ) : (
-              // Down arrow - centered with color scheme
-              <polygon
-                points={`${-size * 0.15},${-size * 0.1} ${size * 0.15},${-size * 0.1} 0,${size * 0.1}`}
-                fill={arrowColors.fill}
-                stroke={arrowColors.stroke}
-                strokeWidth="1.5"
-              />
-            );
-          })()}
-          </DirectionIndicatorG>
-        );
-      })()}
+                return isUpArrow ? (
+                  // Up arrow - centered with color scheme
+                  <polygon
+                    points={`${-size * 0.15},${size * 0.05} ${size * 0.15},${size * 0.05} 0,${-size * 0.15}`}
+                    fill={arrowColors.fill}
+                    stroke={arrowColors.stroke}
+                    strokeWidth="1.5"
+                  />
+                ) : (
+                  // Down arrow - centered with color scheme
+                  <polygon
+                    points={`${-size * 0.15},${-size * 0.1} ${size * 0.15},${-size * 0.1} 0,${size * 0.1}`}
+                    fill={arrowColors.fill}
+                    stroke={arrowColors.stroke}
+                    strokeWidth="1.5"
+                  />
+                );
+              })()}
+            </DirectionIndicatorG>
+          );
+        })()}
     </GElement>
   );
 };
@@ -2020,159 +2042,210 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
   // 3D Enhancement: Calculate container classes
   const containerClasses = Abacus3DUtils.get3DContainerClasses(
     enhanced3d,
-    material3d?.lighting
+    material3d?.lighting,
   );
 
   // Convert placeStates Map to AbacusState object for compatibility
   const abacusState = useMemo(() => {
-    const state: Record<number, { heavenActive: boolean; earthActive: number }> = {}
+    const state: Record<
+      number,
+      { heavenActive: boolean; earthActive: number }
+    > = {};
     for (let col = 0; col < effectiveColumns; col++) {
-      const placeValue = effectiveColumns - 1 - col
-      const placeState = placeStates.get(placeValue as ValidPlaceValues)
+      const placeValue = effectiveColumns - 1 - col;
+      const placeState = placeStates.get(placeValue as ValidPlaceValues);
       state[placeValue] = placeState
-        ? { heavenActive: placeState.heavenActive, earthActive: placeState.earthActive }
-        : { heavenActive: false, earthActive: 0 }
+        ? {
+            heavenActive: placeState.heavenActive,
+            earthActive: placeState.earthActive,
+          }
+        : { heavenActive: false, earthActive: 0 };
     }
-    return state
-  }, [placeStates, effectiveColumns])
+    return state;
+  }, [placeStates, effectiveColumns]);
 
   // Calculate standard dimensions for shared renderer
   // Note: We pass empty columnLabels because AbacusReact renders labels separately above the abacus (y=-20)
   // The original useAbacusDimensions didn't account for label space in barY positioning
-  const standardDims = useMemo(() => calculateStandardDimensions({
-    columns: effectiveColumns,
-    scaleFactor: finalConfig.scaleFactor,
-    showNumbers: false, // We render numbers separately with NumberFlow
-    columnLabels: [], // Empty - we handle labels separately to match original positioning
-  }), [effectiveColumns, finalConfig.scaleFactor])
+  const standardDims = useMemo(
+    () =>
+      calculateStandardDimensions({
+        columns: effectiveColumns,
+        scaleFactor: finalConfig.scaleFactor,
+        showNumbers: finalConfig.showNumbers, // Include space for NumberFlow elements in viewBox
+        columnLabels: [], // Empty - we handle labels separately to match original positioning
+      }),
+    [effectiveColumns, finalConfig.scaleFactor, finalConfig.showNumbers],
+  );
 
   // Generate 3D gradients as defs content
   const defsContent = useMemo(() => {
-    if (enhanced3d !== 'realistic' || !material3d) return null
+    if (enhanced3d !== "realistic" || !material3d) return null;
 
     return (
       <>
         {/* Generate gradients for all beads based on material type */}
         {Array.from({ length: effectiveColumns }, (_, colIndex) => {
-          const placeValue = (effectiveColumns - 1 - colIndex) as ValidPlaceValues
+          const placeValue = (effectiveColumns -
+            1 -
+            colIndex) as ValidPlaceValues;
 
           // Create dummy beads to get their colors
           const heavenBead: BeadConfig = {
-            type: 'heaven',
+            type: "heaven",
             value: 5,
             active: true,
             position: 0,
-            placeValue
-          }
+            placeValue,
+          };
           const earthBead: BeadConfig = {
-            type: 'earth',
+            type: "earth",
             value: 1,
             active: true,
             position: 0,
-            placeValue
-          }
+            placeValue,
+          };
 
-          const heavenColor = getBeadColor(heavenBead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette, false)
-          const earthColor = getBeadColor(earthBead, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette, false)
+          const heavenColor = getBeadColor(
+            heavenBead,
+            effectiveColumns,
+            finalConfig.colorScheme,
+            finalConfig.colorPalette,
+            false,
+          );
+          const earthColor = getBeadColor(
+            earthBead,
+            effectiveColumns,
+            finalConfig.colorScheme,
+            finalConfig.colorPalette,
+            false,
+          );
 
           return (
             <React.Fragment key={`gradients-col-${colIndex}`}>
               {/* Heaven bead gradient */}
-              <defs dangerouslySetInnerHTML={{
-                __html: Abacus3DUtils.getBeadGradient(
-                  `bead-gradient-${colIndex}-heaven`,
-                  heavenColor,
-                  material3d.heavenBeads || 'satin',
-                  true
-                )
-              }} />
+              <defs
+                dangerouslySetInnerHTML={{
+                  __html: Abacus3DUtils.getBeadGradient(
+                    `bead-gradient-${colIndex}-heaven`,
+                    heavenColor,
+                    material3d.heavenBeads || "satin",
+                    true,
+                  ),
+                }}
+              />
 
               {/* Earth bead gradients */}
-              {[0, 1, 2, 3].map(pos => (
-                <defs key={`earth-${pos}`} dangerouslySetInnerHTML={{
-                  __html: Abacus3DUtils.getBeadGradient(
-                    `bead-gradient-${colIndex}-earth-${pos}`,
-                    earthColor,
-                    material3d.earthBeads || 'satin',
-                    true
-                  )
-                }} />
+              {[0, 1, 2, 3].map((pos) => (
+                <defs
+                  key={`earth-${pos}`}
+                  dangerouslySetInnerHTML={{
+                    __html: Abacus3DUtils.getBeadGradient(
+                      `bead-gradient-${colIndex}-earth-${pos}`,
+                      earthColor,
+                      material3d.earthBeads || "satin",
+                      true,
+                    ),
+                  }}
+                />
               ))}
             </React.Fragment>
-          )
+          );
         }).filter(Boolean)}
 
         {/* Wood grain texture pattern */}
         {material3d.woodGrain && (
-          <defs dangerouslySetInnerHTML={{
-            __html: Abacus3DUtils.getWoodGrainPattern('wood-grain-pattern')
-          }} />
+          <defs
+            dangerouslySetInnerHTML={{
+              __html: Abacus3DUtils.getWoodGrainPattern("wood-grain-pattern"),
+            }}
+          />
         )}
       </>
-    )
-  }, [enhanced3d, material3d, effectiveColumns, finalConfig.colorScheme, finalConfig.colorPalette])
+    );
+  }, [
+    enhanced3d,
+    material3d,
+    effectiveColumns,
+    finalConfig.colorScheme,
+    finalConfig.colorPalette,
+  ]);
 
   // Enhanced physics config for 3D modes
   const physicsConfig = React.useMemo(() => {
-    if (!finalConfig.animated) return { duration: 0 }
-    if (!enhanced3d || enhanced3d === true || enhanced3d === 'subtle') return config.default
-    return Abacus3DUtils.getPhysicsConfig(enhanced3d)
-  }, [finalConfig.animated, enhanced3d])
+    if (!finalConfig.animated) return { duration: 0 };
+    if (!enhanced3d || enhanced3d === true || enhanced3d === "subtle")
+      return config.default;
+    return Abacus3DUtils.getPhysicsConfig(enhanced3d);
+  }, [finalConfig.animated, enhanced3d]);
 
   // Calculate extra props for AbacusAnimatedBead (animations, gestures, etc.)
   // This function is called for each bead to compute additional props
-  const calculateExtraBeadProps = useCallback((bead: BeadConfig, baseProps: any) => {
-    // Check if bead is highlighted
-    const regularHighlight = isBeadHighlightedByPlaceValue(bead, highlightBeads)
-    const stepHighlight = getBeadStepHighlight(bead, stepBeadHighlights, currentStep)
-    const isHighlighted = regularHighlight || stepHighlight.isHighlighted
+  const calculateExtraBeadProps = useCallback(
+    (bead: BeadConfig, baseProps: any) => {
+      // Check if bead is highlighted
+      const regularHighlight = isBeadHighlightedByPlaceValue(
+        bead,
+        highlightBeads,
+      );
+      const stepHighlight = getBeadStepHighlight(
+        bead,
+        stepBeadHighlights,
+        currentStep,
+      );
+      const isHighlighted = regularHighlight || stepHighlight.isHighlighted;
 
-    // Check if bead is disabled
-    const columnIndex = effectiveColumns - 1 - bead.placeValue
-    const isDisabled = isBeadDisabledByPlaceValue(bead, disabledBeads) || disabledColumns?.includes(columnIndex)
+      // Check if bead is disabled
+      const columnIndex = effectiveColumns - 1 - bead.placeValue;
+      const isDisabled =
+        isBeadDisabledByPlaceValue(bead, disabledBeads) ||
+        disabledColumns?.includes(columnIndex);
 
-    // Apply custom styling
-    const beadStyle = mergeBeadStyles(
-      { fill: baseProps.color },
-      customStyles,
-      columnIndex,
-      bead.type,
-      bead.type === 'earth' ? bead.position : undefined,
-      bead.active,
-    )
+      // Apply custom styling
+      const beadStyle = mergeBeadStyles(
+        { fill: baseProps.color },
+        customStyles,
+        columnIndex,
+        bead.type,
+        bead.type === "earth" ? bead.position : undefined,
+        bead.active,
+      );
 
-    // Return extra props for AbacusAnimatedBead
-    return {
-      color: beadStyle.fill || baseProps.color,
-      customStyle: beadStyle,
-      enableAnimation: finalConfig.animated,
+      // Return extra props for AbacusAnimatedBead
+      return {
+        color: beadStyle.fill || baseProps.color,
+        customStyle: beadStyle,
+        enableAnimation: finalConfig.animated,
+        physicsConfig,
+        enableGestures: finalConfig.interactive || finalConfig.gestures,
+        onGestureToggle: handleGestureToggle,
+        showDirectionIndicator:
+          showDirectionIndicators && stepHighlight.isCurrentStep,
+        direction: stepHighlight.direction,
+        isCurrentStep: stepHighlight.isCurrentStep,
+        enhanced3d,
+        columnIndex,
+        isAbacusHovered,
+      };
+    },
+    [
+      finalConfig.animated,
+      finalConfig.interactive,
+      finalConfig.gestures,
       physicsConfig,
-      enableGestures: finalConfig.interactive || finalConfig.gestures,
-      onGestureToggle: handleGestureToggle,
-      showDirectionIndicator: showDirectionIndicators && stepHighlight.isCurrentStep,
-      direction: stepHighlight.direction,
-      isCurrentStep: stepHighlight.isCurrentStep,
       enhanced3d,
-      columnIndex,
+      highlightBeads,
+      stepBeadHighlights,
+      currentStep,
+      showDirectionIndicators,
+      disabledBeads,
+      disabledColumns,
+      customStyles,
+      effectiveColumns,
+      handleGestureToggle,
       isAbacusHovered,
-    }
-  }, [
-    finalConfig.animated,
-    finalConfig.interactive,
-    finalConfig.gestures,
-    physicsConfig,
-    enhanced3d,
-    highlightBeads,
-    stepBeadHighlights,
-    currentStep,
-    showDirectionIndicators,
-    disabledBeads,
-    disabledColumns,
-    customStyles,
-    effectiveColumns,
-    handleGestureToggle,
-    isAbacusHovered,
-  ])
+    ],
+  );
 
   return (
     <div
@@ -2226,40 +2299,53 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
         getBeadColor={getBeadColor}
         calculateExtraBeadProps={calculateExtraBeadProps}
         onBeadClick={handleBeadClick}
-        onBeadMouseEnter={callbacks?.onBeadHover ? (bead, event) => {
-          const beadClickEvent = {
-            bead,
-            columnIndex: effectiveColumns - 1 - bead.placeValue,
-            beadType: bead.type,
-            position: bead.position,
-            active: bead.active,
-            value: bead.value,
-            event: event!,
-          }
-          callbacks.onBeadHover?.(beadClickEvent)
-        } : undefined}
-        onBeadMouseLeave={callbacks?.onBeadLeave ? (bead, event) => {
-          const beadClickEvent = {
-            bead,
-            columnIndex: effectiveColumns - 1 - bead.placeValue,
-            beadType: bead.type,
-            position: bead.position,
-            active: bead.active,
-            value: bead.value,
-            event: event!,
-          }
-          callbacks.onBeadLeave?.(beadClickEvent)
-        } : undefined}
+        onBeadMouseEnter={
+          callbacks?.onBeadHover
+            ? (bead, event) => {
+                const beadClickEvent = {
+                  bead,
+                  columnIndex: effectiveColumns - 1 - bead.placeValue,
+                  beadType: bead.type,
+                  position: bead.position,
+                  active: bead.active,
+                  value: bead.value,
+                  event: event!,
+                };
+                callbacks.onBeadHover?.(beadClickEvent);
+              }
+            : undefined
+        }
+        onBeadMouseLeave={
+          callbacks?.onBeadLeave
+            ? (bead, event) => {
+                const beadClickEvent = {
+                  bead,
+                  columnIndex: effectiveColumns - 1 - bead.placeValue,
+                  beadType: bead.type,
+                  position: bead.position,
+                  active: bead.active,
+                  value: bead.value,
+                  event: event!,
+                };
+                callbacks.onBeadLeave?.(beadClickEvent);
+              }
+            : undefined
+        }
         onBeadRef={callbacks?.onBeadRef}
       >
         {/* NumberFlow place value displays */}
         {finalConfig.showNumbers &&
           placeValues.map((value, columnIndex) => {
-            const placeValue = effectiveColumns - 1 - columnIndex
-            const x = columnIndex * standardDims.rodSpacing + standardDims.rodSpacing / 2
-            const baseHeight = standardDims.heavenEarthGap + 5 * (standardDims.beadSize + 4 * finalConfig.scaleFactor) + 10 * finalConfig.scaleFactor
-            const y = baseHeight + 25
-            const isActive = activeColumn === columnIndex
+            const placeValue = effectiveColumns - 1 - columnIndex;
+            const x =
+              columnIndex * standardDims.rodSpacing +
+              standardDims.rodSpacing / 2;
+            const baseHeight =
+              standardDims.heavenEarthGap +
+              5 * (standardDims.beadSize + 4 * finalConfig.scaleFactor) +
+              10 * finalConfig.scaleFactor;
+            const y = baseHeight + 25;
+            const isActive = activeColumn === columnIndex;
 
             return (
               <React.Fragment key={`place-display-pv${placeValue}`}>
@@ -2271,10 +2357,20 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                   height={24 * finalConfig.scaleFactor}
                   fill={isActive ? "#e3f2fd" : "#f5f5f5"}
                   stroke={isActive ? "#2196f3" : "#ccc"}
-                  strokeWidth={isActive ? 2 * finalConfig.scaleFactor : 1 * finalConfig.scaleFactor}
+                  strokeWidth={
+                    isActive
+                      ? 2 * finalConfig.scaleFactor
+                      : 1 * finalConfig.scaleFactor
+                  }
                   rx={3 * finalConfig.scaleFactor}
-                  style={{ cursor: finalConfig.interactive ? "pointer" : "default" }}
-                  onClick={finalConfig.interactive ? () => setActiveColumn(columnIndex) : undefined}
+                  style={{
+                    cursor: finalConfig.interactive ? "pointer" : "default",
+                  }}
+                  onClick={
+                    finalConfig.interactive
+                      ? () => setActiveColumn(columnIndex)
+                      : undefined
+                  }
                 />
 
                 {/* NumberFlow */}
@@ -2298,7 +2394,11 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                       pointerEvents: finalConfig.interactive ? "auto" : "none",
                       cursor: finalConfig.interactive ? "pointer" : "default",
                     }}
-                    onClick={finalConfig.interactive ? () => setActiveColumn(columnIndex) : undefined}
+                    onClick={
+                      finalConfig.interactive
+                        ? () => setActiveColumn(columnIndex)
+                        : undefined
+                    }
                   >
                     <NumberFlow
                       value={value}
@@ -2312,34 +2412,40 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                   </div>
                 </foreignObject>
               </React.Fragment>
-            )
+            );
           })}
 
         {/* Overlay system for tooltips, arrows, highlights, etc. */}
         {overlays.map((overlay) => {
-          if (overlay.visible === false) return null
+          if (overlay.visible === false) return null;
 
-          let position = { x: 0, y: 0 }
+          let position = { x: 0, y: 0 };
 
           // Calculate overlay position based on target
           if (overlay.target.type === "bead") {
-            const targetColumn = overlay.target.columnIndex
-            const targetBeadType = overlay.target.beadType
-            const targetBeadPosition = overlay.target.beadPosition
+            const targetColumn = overlay.target.columnIndex;
+            const targetBeadType = overlay.target.beadType;
+            const targetBeadPosition = overlay.target.beadPosition;
 
             if (targetColumn !== undefined && targetBeadType) {
               // Convert columnIndex to placeValue
-              const placeValue = effectiveColumns - 1 - targetColumn
+              const placeValue = effectiveColumns - 1 - targetColumn;
 
               // Get column state to determine if bead is active
-              const columnState = abacusState[placeValue] || { heavenActive: false, earthActive: 0 }
+              const columnState = abacusState[placeValue] || {
+                heavenActive: false,
+                earthActive: 0,
+              };
 
               // Determine if this specific bead is active
-              let isActive = false
-              if (targetBeadType === 'heaven') {
-                isActive = columnState.heavenActive
-              } else if (targetBeadType === 'earth' && targetBeadPosition !== undefined) {
-                isActive = targetBeadPosition < columnState.earthActive
+              let isActive = false;
+              if (targetBeadType === "heaven") {
+                isActive = columnState.heavenActive;
+              } else if (
+                targetBeadType === "earth" &&
+                targetBeadPosition !== undefined
+              ) {
+                isActive = targetBeadPosition < columnState.earthActive;
               }
 
               // Create BeadPositionConfig for calculateBeadPosition
@@ -2348,13 +2454,15 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
                 active: isActive,
                 position: targetBeadPosition ?? 0,
                 placeValue: placeValue,
-              }
+              };
 
               // Use calculateBeadPosition to get exact coordinates
-              position = calculateBeadPosition(beadConfig, standardDims, { earthActive: columnState.earthActive })
+              position = calculateBeadPosition(beadConfig, standardDims, {
+                earthActive: columnState.earthActive,
+              });
             }
           } else if (overlay.target.type === "coordinates") {
-            position = { x: overlay.target.x || 0, y: overlay.target.y || 0 }
+            position = { x: overlay.target.x || 0, y: overlay.target.y || 0 };
           }
 
           return (
@@ -2365,17 +2473,15 @@ export const AbacusReact: React.FC<AbacusConfig> = ({
               width="300"
               height="200"
               style={{
-                overflow: 'visible',
-                pointerEvents: 'none',
-                ...overlay.style
+                overflow: "visible",
+                pointerEvents: "none",
+                ...overlay.style,
               }}
               className={overlay.className}
             >
-              <div style={{ pointerEvents: 'auto' }}>
-                {overlay.content}
-              </div>
+              <div style={{ pointerEvents: "auto" }}>{overlay.content}</div>
             </foreignObject>
-          )
+          );
         })}
       </AbacusSVGRenderer>
     </div>
