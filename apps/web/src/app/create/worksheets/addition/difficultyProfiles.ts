@@ -1041,20 +1041,18 @@ export function makeEasier(
     }
 
     // Fallback: If we couldn't move toward preset, try any valid easier move
+    // Per spec: makeEasier should add support (scaffolding) first, then reduce complexity (regrouping)
     if (!moved) {
-      // Try decreasing regrouping first
-      if (newRegroupingIdx > 0) {
+      // Try decreasing scaffolding (adding help) first
+      if (newScaffoldingIdx > 0 && isValidCombination(newRegroupingIdx, newScaffoldingIdx - 1)) {
+        newScaffoldingIdx--
+        moved = true
+      }
+      // Otherwise try decreasing regrouping (reducing complexity)
+      else if (newRegroupingIdx > 0) {
         const testRegroupingIdx = newRegroupingIdx - 1
         newRegroupingIdx = testRegroupingIdx
         newScaffoldingIdx = clampScaffoldingToValidRange(testRegroupingIdx, newScaffoldingIdx)
-        moved = true
-      }
-      // Otherwise try decreasing scaffolding (adding help)
-      else if (
-        newScaffoldingIdx > 0 &&
-        isValidCombination(newRegroupingIdx, newScaffoldingIdx - 1)
-      ) {
-        newScaffoldingIdx--
         moved = true
       }
     }
