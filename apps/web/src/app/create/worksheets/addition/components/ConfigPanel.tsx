@@ -34,6 +34,27 @@ interface ConfigPanelProps {
   onChange: (updates: Partial<WorksheetFormState>) => void
 }
 
+/**
+ * Generate a human-readable summary of enabled scaffolding aids
+ */
+function getScaffoldingSummary(displayRules: any): string {
+  const scaffoldingParts: string[] = []
+  if (displayRules.carryBoxes === 'always' || displayRules.carryBoxes === 'whenRegrouping') {
+    scaffoldingParts.push('carry boxes')
+  }
+  if (displayRules.answerBoxes === 'always' || displayRules.answerBoxes === 'whenRegrouping') {
+    scaffoldingParts.push('answer boxes')
+  }
+  if (displayRules.placeValueColors === 'always' || displayRules.placeValueColors === 'whenRegrouping') {
+    scaffoldingParts.push('place value colors')
+  }
+  if (displayRules.tenFrames === 'always' || displayRules.tenFrames === 'whenRegrouping') {
+    scaffoldingParts.push('ten-frames')
+  }
+
+  return scaffoldingParts.length > 0 ? scaffoldingParts.join(', ') : 'no scaffolding'
+}
+
 interface ToggleOptionProps {
   checked: boolean
   onChange: (checked: boolean) => void
@@ -415,26 +436,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
 
                 // Generate custom description
                 const regroupingPercent = Math.round(currentRegrouping * 10)
-
-                // Summarize which scaffolding is enabled
-                const scaffoldingParts: string[] = []
-                if (displayRules.carryBoxes === 'always' || displayRules.carryBoxes === 'whenRegrouping') {
-                  scaffoldingParts.push('carry boxes')
-                }
-                if (displayRules.answerBoxes === 'always' || displayRules.answerBoxes === 'whenRegrouping') {
-                  scaffoldingParts.push('answer boxes')
-                }
-                if (displayRules.placeValueColors === 'always' || displayRules.placeValueColors === 'whenRegrouping') {
-                  scaffoldingParts.push('place value colors')
-                }
-                if (displayRules.tenFrames === 'always' || displayRules.tenFrames === 'whenRegrouping') {
-                  scaffoldingParts.push('ten-frames')
-                }
-
-                const scaffoldingSummary = scaffoldingParts.length > 0
-                  ? scaffoldingParts.join(', ')
-                  : 'no scaffolding'
-
+                const scaffoldingSummary = getScaffoldingSummary(displayRules)
                 customDescription = `${regroupingPercent}% regrouping, ${scaffoldingSummary}`
               }
 
@@ -587,11 +589,23 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                 lineHeight: '1.3',
                               })}
                             >
-                              {isCustom
-                                ? customDescription
-                                : currentProfile
-                                  ? DIFFICULTY_PROFILES[currentProfile].description
-                                  : 'Scaffolds appear when needed. Introduces occasional regrouping.'}
+                              {isCustom ? (
+                                customDescription
+                              ) : currentProfile ? (
+                                (() => {
+                                  const preset = DIFFICULTY_PROFILES[currentProfile]
+                                  const regroupingPercent = Math.round(
+                                    calculateRegroupingIntensity(
+                                      preset.regrouping.pAnyStart,
+                                      preset.regrouping.pAllStart
+                                    ) * 10
+                                  )
+                                  const scaffoldingSummary = getScaffoldingSummary(preset.displayRules)
+                                  return `${regroupingPercent}% regrouping, ${scaffoldingSummary}`
+                                })()
+                              ) : (
+                                '25% regrouping, carry boxes, answer boxes, place value colors, ten-frames'
+                              )}
                             </div>
                           </div>
                           <span className={css({ fontSize: 'xs', color: 'gray.400', flexShrink: 0 })}>▼</span>
@@ -617,6 +631,16 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                           {DIFFICULTY_PROGRESSION.map((presetName) => {
                             const preset = DIFFICULTY_PROFILES[presetName]
                             const isSelected = currentProfile === presetName && !isCustom
+
+                            // Generate preset description
+                            const regroupingPercent = Math.round(
+                              calculateRegroupingIntensity(
+                                preset.regrouping.pAnyStart,
+                                preset.regrouping.pAllStart
+                              ) * 10
+                            )
+                            const scaffoldingSummary = getScaffoldingSummary(preset.displayRules)
+                            const presetDescription = `${regroupingPercent}% regrouping, ${scaffoldingSummary}`
 
                             return (
                               <DropdownMenu.Item
@@ -665,7 +689,7 @@ export function ConfigPanel({ formState, onChange }: ConfigPanelProps) {
                                     lineHeight: '1.3',
                                   })}
                                 >
-                                  {preset.description}
+                                  {presetDescription}
                                 </div>
                               </DropdownMenu.Item>
                             )
